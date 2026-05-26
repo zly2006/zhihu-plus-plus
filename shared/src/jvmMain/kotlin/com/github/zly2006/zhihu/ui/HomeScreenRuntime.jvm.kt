@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
+import com.github.zly2006.zhihu.shared.desktop.DesktopLoginRequests
 import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
 import com.github.zly2006.zhihu.ui.subscreens.desktopSystemUpdateState
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
@@ -49,6 +50,7 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
         isDebuggable = true,
         viewModel = viewModel,
         requestLogin = {
+            DesktopLoginRequests.requestLogin()
             account = accountStore.load()
         },
         openExternalUrl = { url ->

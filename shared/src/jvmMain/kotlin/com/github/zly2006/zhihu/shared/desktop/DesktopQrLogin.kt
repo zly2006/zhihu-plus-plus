@@ -9,6 +9,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -19,6 +20,16 @@ import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.shared.login.SharedQrLoginPane
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.DesktopZhihuMain
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
+
+internal object DesktopLoginRequests {
+    val version = MutableStateFlow(0)
+
+    fun requestLogin() {
+        version.update { it + 1 }
+    }
+}
 
 @Composable
 fun DesktopQrLoginScreen(
@@ -27,6 +38,7 @@ fun DesktopQrLoginScreen(
     var statusText by remember { mutableStateOf("正在获取二维码") }
     var isLoggedIn by remember { mutableStateOf(false) }
     var didCheckSavedAccount by remember { mutableStateOf(false) }
+    val loginRequestVersion by DesktopLoginRequests.version.collectAsState()
 
     LaunchedEffect(Unit) {
         val savedData = store.load()
@@ -40,6 +52,14 @@ fun DesktopQrLoginScreen(
             }
         }
         didCheckSavedAccount = true
+    }
+
+    LaunchedEffect(loginRequestVersion) {
+        if (loginRequestVersion > 0) {
+            statusText = "正在获取二维码"
+            isLoggedIn = false
+            didCheckSavedAccount = true
+        }
     }
 
     ZhihuTheme {

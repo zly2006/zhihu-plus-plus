@@ -6,6 +6,7 @@ import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.shared.data.fetchVerifiedZhihuSession
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
+import com.github.zly2006.zhihu.shared.desktop.DesktopLoginRequests
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
@@ -40,9 +41,11 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
             }
         },
         requestLogin = {
+            DesktopLoginRequests.requestLogin()
             accountState.value = store.load().toAccountSettingsAccountState()
         },
         requestQrLoginScan = {
+            DesktopLoginRequests.requestLogin()
             accountState.value = store.load().toAccountSettingsAccountState()
         },
         logout = {
