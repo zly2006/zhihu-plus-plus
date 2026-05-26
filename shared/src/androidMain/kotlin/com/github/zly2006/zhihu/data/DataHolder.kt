@@ -26,10 +26,6 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.util.signFetchRequest
 import kotlinx.coroutines.CancellationException
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.long
-import kotlinx.serialization.json.put
 
 /**
  * 此API没有缓存，谨慎使用！
@@ -48,15 +44,7 @@ suspend fun DataHolder.getContentDetail(
         val jo = AccountData.fetchGet(context, apiUrl) {
             signFetchRequest()
         }!!
-        val jojo = buildJsonObject {
-            jo.entries.forEach { (key, value) ->
-                if (key == "id") {
-                    put(key, value.jsonPrimitive.long)
-                } else {
-                    put(key, value)
-                }
-            }
-        }
+        val jojo = normalizeArticleContentDetailJson(jo)
         // 解析为对应的Content类型
         when (dest.type) {
             ArticleType.Answer -> AccountData.decodeJson<DataHolder.Answer>(jojo)

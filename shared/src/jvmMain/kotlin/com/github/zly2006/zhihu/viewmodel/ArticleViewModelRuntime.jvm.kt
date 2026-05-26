@@ -1,6 +1,7 @@
 package com.github.zly2006.zhihu.viewmodel
 
 import com.github.zly2006.zhihu.data.ContentDetailCache
+import com.github.zly2006.zhihu.data.normalizeArticleContentDetailJson
 import com.github.zly2006.zhihu.data.zhihuArticleContentDetailUrl
 import com.github.zly2006.zhihu.navigation.AnswerNavigatorPage
 import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
@@ -43,12 +44,9 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.long
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
 import java.awt.image.BufferedImage
@@ -113,15 +111,7 @@ class DesktopArticleViewModelRuntime(
             val jo = fetchGet(apiUrl) {
                 configureSignedRequest(this)
             } ?: return null
-            val jojo = buildJsonObject {
-                jo.entries.forEach { (key, value) ->
-                    if (key == "id") {
-                        put(key, JsonPrimitive(value.jsonPrimitive.long))
-                    } else {
-                        put(key, value)
-                    }
-                }
-            }
+            val jojo = normalizeArticleContentDetailJson(jo)
             when (article.type) {
                 ArticleType.Answer -> ZhihuJson.decodeJson<DataHolder.Answer>(jojo)
                 ArticleType.Article -> ZhihuJson.decodeJson<DataHolder.Article>(jojo)

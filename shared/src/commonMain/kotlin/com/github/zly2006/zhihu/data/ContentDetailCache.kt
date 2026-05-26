@@ -148,7 +148,13 @@ object ContentDetailCache {
     }
 }
 
-fun normalizeQuestionDetailJson(jo: JsonObject): JsonObject = buildJsonObject {
+fun normalizeArticleContentDetailJson(jo: JsonObject): JsonObject =
+    normalizeLongIdContentDetailJson(jo)
+
+fun normalizeQuestionDetailJson(jo: JsonObject): JsonObject =
+    normalizeLongIdContentDetailJson(jo)
+
+private fun normalizeLongIdContentDetailJson(jo: JsonObject): JsonObject = buildJsonObject {
     jo.entries.forEach { (key, value) ->
         if (key == "id") {
             put(key, JsonPrimitive(value.jsonPrimitive.long))
