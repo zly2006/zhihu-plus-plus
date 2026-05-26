@@ -32,5 +32,17 @@ fun androidSettingsStore(context: Context): SettingsStore {
         getFloat = { key, defaultValue -> preferences.getFloat(key, defaultValue) },
         putFloat = { key, value -> preferences.edit { putFloat(key, value) } },
         remove = { key -> preferences.edit { remove(key) } },
+        observeKeyChanges = { onChanged ->
+            val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+                if (key != null) {
+                    onChanged(key)
+                }
+            }
+            preferences.registerOnSharedPreferenceChangeListener(listener)
+            val unregister = {
+                preferences.unregisterOnSharedPreferenceChangeListener(listener)
+            }
+            unregister
+        },
     )
 }

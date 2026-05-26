@@ -17,6 +17,7 @@ data class SettingsStore(
     val getFloat: (String, Float) -> Float,
     val putFloat: (String, Float) -> Unit,
     val remove: (String) -> Unit,
+    val observeKeyChanges: (onChanged: (String) -> Unit) -> () -> Unit = { {} },
 )
 
 @Composable
