@@ -51,6 +51,11 @@ data class AnswerNavigatorPage<T>(
     val nextUrl: String,
 )
 
+fun zhihuQuestionFeedsUrl(
+    questionId: Long,
+    limit: Int,
+): String = "https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=$limit"
+
 /**
  * 回答导航器：封装回答切换的来源、历史记录和预取逻辑。
  *

@@ -7,6 +7,7 @@ import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.navigation.zhihuQuestionFeedsUrl
 import com.github.zly2006.zhihu.shared.comment.rootCommentUrl
 import com.github.zly2006.zhihu.shared.data.CollectionItem
 import com.github.zly2006.zhihu.shared.data.CollectionResponse
@@ -149,7 +150,7 @@ class DesktopArticleViewModelRuntime(
                 questionId: Long,
                 pageUrl: String?,
             ): AnswerNavigatorPage<Feed> {
-                val url = pageUrl ?: "https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=6"
+                val url = pageUrl ?: zhihuQuestionFeedsUrl(questionId, limit = 6)
                 val jojo = fetchGet(url) {
                     configureSignedRequest(this)
                 } ?: return AnswerNavigatorPage(emptyList(), "")

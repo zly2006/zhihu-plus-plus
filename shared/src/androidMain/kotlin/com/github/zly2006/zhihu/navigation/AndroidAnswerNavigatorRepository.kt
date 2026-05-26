@@ -26,7 +26,7 @@ class AndroidAnswerNavigatorRepository(
         questionId: Long,
         pageUrl: String?,
     ): AnswerNavigatorPage<Feed> {
-        val url = pageUrl ?: "https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=6"
+        val url = pageUrl ?: zhihuQuestionFeedsUrl(questionId, limit = 6)
         val jojo = AccountData.fetchGet(appContext, url) { signFetchRequest() } ?: return AnswerNavigatorPage(
             items = emptyList(),
             nextUrl = "",
