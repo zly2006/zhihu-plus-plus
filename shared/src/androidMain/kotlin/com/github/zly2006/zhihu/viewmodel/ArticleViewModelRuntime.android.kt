@@ -31,7 +31,8 @@ import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.getContentDetail
+import com.github.zly2006.zhihu.data.ContentDetailCache
+import com.github.zly2006.zhihu.data.getOrFetch
 import com.github.zly2006.zhihu.navigation.AndroidAnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.Article
@@ -61,7 +62,7 @@ class AndroidArticleViewModelRuntime(
     private val context: Context,
 ) : ArticleViewModelRuntime {
     override suspend fun getContentDetail(article: Article): DataHolder.Content? =
-        DataHolder.getContentDetail(context, article)
+        ContentDetailCache.getOrFetch(context, article)
 
     override suspend fun recordOpenEvent(
         destination: Article,
