@@ -10,13 +10,12 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.zhihuAnswerUrl
 import com.github.zly2006.zhihu.navigation.zhihuArticleUrl
+import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.awt.Desktop
-import java.net.URI
 
 @Composable
 actual fun rememberArticleActionsRuntime(): ArticleActionsRuntime {
@@ -78,8 +77,7 @@ actual fun rememberArticleActionsRuntime(): ArticleActionsRuntime {
             }
 
             override fun openArticleInBrowser(article: Article) {
-                if (Desktop.isDesktopSupported()) {
-                    Desktop.getDesktop().browse(URI(articleUrl(article)))
+                if (openDesktopExternalUrl(articleUrl(article))) {
                     userMessages.showMessage("已发送到浏览器")
                 }
             }

@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
+import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.updater.GithubRelease
 import com.github.zly2006.zhihu.shared.updater.SchematicVersion
@@ -18,9 +19,7 @@ import io.ktor.client.request.get
 import io.ktor.client.request.headers
 import io.ktor.http.HttpHeaders
 import kotlinx.coroutines.flow.MutableStateFlow
-import java.awt.Desktop
 import java.io.File
-import java.net.URI
 import java.util.Properties
 
 internal val desktopSystemUpdateState = MutableStateFlow<SystemUpdateState>(SystemUpdateState.NoUpdate)
@@ -186,7 +185,5 @@ private fun openDesktopUrl(url: String) {
     if (url.isBlank()) {
         error("下载链接为空")
     }
-    if (Desktop.isDesktopSupported()) {
-        Desktop.getDesktop().browse(URI(url))
-    }
+    openDesktopExternalUrl(url)
 }

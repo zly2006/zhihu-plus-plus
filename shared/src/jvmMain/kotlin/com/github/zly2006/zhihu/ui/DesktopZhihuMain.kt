@@ -36,6 +36,7 @@ import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.shared.data.fetchHighestQualityZhihuVideoUrl
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
+import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
@@ -46,8 +47,6 @@ import com.github.zly2006.zhihu.viewmodel.prepareDesktopPendingContentOpen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.awt.Desktop
-import java.net.URI
 
 @Composable
 fun DesktopZhihuMain() {
@@ -135,8 +134,8 @@ fun DesktopZhihuMain() {
                     }
                     if (videoUrl == null) {
                         userMessages.showMessage("获取视频链接失败")
-                    } else if (Desktop.isDesktopSupported()) {
-                        Desktop.getDesktop().browse(URI(videoUrl))
+                    } else {
+                        openDesktopExternalUrl(videoUrl)
                     }
                 }
             }

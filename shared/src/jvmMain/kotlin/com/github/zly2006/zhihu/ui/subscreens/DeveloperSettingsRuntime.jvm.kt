@@ -3,14 +3,13 @@ package com.github.zly2006.zhihu.ui.subscreens
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
+import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpMethod
-import java.awt.Toolkit
-import java.awt.datatransfer.StringSelection
 
 private const val DEVELOPER_MODE_KEY = "developer"
 
@@ -61,10 +60,7 @@ actual fun rememberDeveloperSettingsRuntime(): DeveloperSettingsRuntime {
                 ) { response ->
                     response.bodyAsText()
                 }
-                Toolkit.getDefaultToolkit().systemClipboard.setContents(
-                    StringSelection(body),
-                    null,
-                )
+                copyDesktopPlainText(body)
                 body
             },
             showShortMessage = { message ->
