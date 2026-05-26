@@ -49,10 +49,14 @@ actual fun rememberSystemUpdateRuntime(): SystemUpdateRuntime {
                     client = client,
                     githubToken = settings.getStringOrNull("githubToken")?.takeIf { it.isNotBlank() },
                     checkNightly = settings.getBoolean("checkNightlyUpdates", false),
+                    skippedVersion = settings.getStringOrNull(PREF_SKIPPED_VERSION),
                     state = desktopSystemUpdateState,
                 )
             },
-            skipVersion = { desktopSystemUpdateState.value = SystemUpdateState.Latest },
+            skipVersion = { version ->
+                settings.putString(PREF_SKIPPED_VERSION, version)
+                desktopSystemUpdateState.value = SystemUpdateState.Latest
+            },
             resetToNoUpdate = { desktopSystemUpdateState.value = SystemUpdateState.NoUpdate },
             downloadUpdate = { url ->
                 runCatching {
@@ -72,15 +76,17 @@ actual fun rememberSystemUpdateRuntime(): SystemUpdateRuntime {
 
 @Composable
 actual fun rememberExternalUrlOpener(): (String) -> Unit = remember {
-    { url -> runCatching { openDesktopUrl(url) } }
+    { url -> openDesktopUrl(url) }
 }
 
 private const val PREF_AUTO_CHECK_UPDATES = "autoCheckUpdates"
+private const val PREF_SKIPPED_VERSION = "skippedVersion"
 
 private suspend fun checkDesktopUpdate(
     client: HttpClient,
     githubToken: String?,
     checkNightly: Boolean,
+    skippedVersion: String?,
     state: MutableStateFlow<SystemUpdateState>,
 ) {
     try {
@@ -118,16 +124,21 @@ private suspend fun checkDesktopUpdate(
 
         val version = latestVersion
         if (version != null && version > currentVersion) {
-            state.value = SystemUpdateState.UpdateAvailable(
-                version = version.toString(),
-                isNightly = isNightly,
-                releaseNotes = releaseNotes,
-                downloadUrl = latestResponse.htmlUrl ?: latestResponse.assets
-                    .firstOrNull()
-                    ?.browserDownloadUrl
-                    .orEmpty(),
-                cnDownloadUrl = latestResponse.assets.firstOrNull()?.cnDownloadUrl,
-            )
+            val versionString = version.toString()
+            if (skippedVersion != versionString) {
+                state.value = SystemUpdateState.UpdateAvailable(
+                    version = versionString,
+                    isNightly = isNightly,
+                    releaseNotes = releaseNotes,
+                    downloadUrl = latestResponse.htmlUrl ?: latestResponse.assets
+                        .firstOrNull()
+                        ?.browserDownloadUrl
+                        .orEmpty(),
+                    cnDownloadUrl = latestResponse.assets.firstOrNull()?.cnDownloadUrl,
+                )
+            } else {
+                state.value = SystemUpdateState.Latest
+            }
         } else {
             state.value = SystemUpdateState.Latest
         }
