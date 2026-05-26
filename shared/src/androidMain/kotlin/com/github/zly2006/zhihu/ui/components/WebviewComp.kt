@@ -67,9 +67,9 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.data.fetchHighestQualityZhihuVideoUrl
+import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
 import com.github.zly2006.zhihu.shared.util.extractImageUrl
 import com.github.zly2006.zhihu.theme.ThemeManager
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
 import com.github.zly2006.zhihu.util.blacklist
@@ -381,12 +381,13 @@ class CustomWebView : WebView {
             return
         }
         Log.i("CustomWebView", "Loading content for URL: $url with document title: ${document.title()}")
-        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        val fontSize = preferences.getInt(PREF_FONT_SIZE, 100)
-        val lineHeight = preferences.getInt(PREF_LINE_HEIGHT, 160)
+        val settings = androidSettingsStore(context)
+        val fontSize = settings.getInt(PREF_FONT_SIZE, 100)
+        val lineHeight = settings.getInt(PREF_LINE_HEIGHT, 160)
         val customFontFile = java.io.File(context.filesDir, "custom_font")
-        val customFontCss = if (preferences.contains("webviewCustomFontName") && customFontFile.exists()) {
-            val fontName = preferences.getString("webviewCustomFontName", "") ?: ""
+        val customFontName = settings.getStringOrNull("webviewCustomFontName")
+        val customFontCss = if (customFontName != null && customFontFile.exists()) {
+            val fontName = customFontName
             val format = if (fontName.endsWith(".otf", ignoreCase = true)) "opentype" else "truetype"
             "@font-face { font-family: 'ZhihuCustomFont'; src: url('https://zhihu-plus.internal/user-files/custom_font') format('$format'); }\n" +
                 "body { font-family: 'ZhihuCustomFont', sans-serif; }"
@@ -500,8 +501,7 @@ fun WebviewComp(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
-    val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-    val useHardwareAcceleration = preferences.getBoolean("webviewHardwareAcceleration", true)
+    val useHardwareAcceleration = androidSettingsStore(context).getBoolean("webviewHardwareAcceleration", true)
     // JS 上报的内容高度（CSS 像素 = dp，WebView viewport 默认 1 CSS px = 1 dp）；
     // 0 表示尚未收到上报（等待 onPageFinished），此时用 wrapContentSize 避免撑满未知高度
     var contentHeightDp by remember { mutableIntStateOf(0) }
@@ -563,10 +563,10 @@ private class UserFilesPathHandler(
     override fun handle(path: String): WebResourceResponse? {
         val file = java.io.File(context.filesDir, path)
         if (!file.exists() || !file.isFile) return null
-        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        val settings = androidSettingsStore(context)
         val mimeType = when {
             path == "custom_font" -> {
-                val fontName = preferences.getString("webviewCustomFontName", "") ?: ""
+                val fontName = settings.getString("webviewCustomFontName", "")
                 if (fontName.endsWith(".otf", ignoreCase = true)) "font/otf" else "font/ttf"
             }
             else -> "application/octet-stream"
