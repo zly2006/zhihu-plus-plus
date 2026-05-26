@@ -7,10 +7,18 @@ import androidx.compose.runtime.remember
 actual fun rememberUserMessageSink(): UserMessageSink = remember {
     UserMessageSink(
         showShortMessage = { message ->
-            println(message)
+            showDesktopMessage(message)
         },
         showLongMessage = { message ->
-            println(message)
+            showDesktopMessage(message)
         },
     )
+}
+
+private fun showDesktopMessage(message: String) {
+    println(message)
+    runCatching {
+        ProcessBuilder("terminal-notifier", "-message", message, "-sound", "default")
+            .start()
+    }
 }
