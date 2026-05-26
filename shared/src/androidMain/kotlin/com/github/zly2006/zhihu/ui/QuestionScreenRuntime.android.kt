@@ -8,6 +8,7 @@ import androidx.core.net.toUri
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.getContentDetail
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.navigation.zhihuQuestionUrl
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
@@ -83,7 +84,7 @@ actual fun QuestionDetailWebViewContent(
 ) {
     WebviewComp {
         it.loadZhihu(
-            "https://www.zhihu.com/question/$questionId",
+            zhihuQuestionUrl(questionId),
             Jsoup.parse(html),
         )
     }
