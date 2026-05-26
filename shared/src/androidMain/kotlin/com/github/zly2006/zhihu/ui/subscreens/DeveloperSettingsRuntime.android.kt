@@ -8,10 +8,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.edit
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.util.PowerSaveModeCompat
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import com.github.zly2006.zhihu.util.clipboardManager
@@ -19,19 +18,19 @@ import com.github.zly2006.zhihu.util.signFetchRequest
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 
+private const val DEVELOPER_MODE_KEY = "developer"
+
 @Composable
 actual fun rememberDeveloperSettingsRuntime(): DeveloperSettingsRuntime {
     val context = LocalContext.current
     val dataState by AccountData.asState()
-    return remember(context, dataState) {
-        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+    val settings = rememberSettingsStore()
+    return remember(context, dataState, settings) {
         val userMessages = androidUserMessageSink(context)
         DeveloperSettingsRuntime(
-            isDeveloperModeEnabled = { preferences.getBoolean("developer", false) },
+            isDeveloperModeEnabled = { settings.getBoolean(DEVELOPER_MODE_KEY, false) },
             setDeveloperModeEnabled = { enabled ->
-                preferences.edit {
-                    putBoolean("developer", enabled)
-                }
+                settings.putBoolean(DEVELOPER_MODE_KEY, enabled)
             },
             cookies = { dataState.cookies },
             networkStatus = { context.networkStatusText() },
