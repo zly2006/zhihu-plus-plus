@@ -11,6 +11,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 const val ZHIHU_READ_HISTORY_ADD_URL = "https://www.zhihu.com/api/v4/read_history/add"
+const val ZHIHU_LAST_READ_TOUCH_URL = "https://www.zhihu.com/lastread/touch"
 
 fun buildZhihuReadHistoryBody(
     contentToken: String,
@@ -19,6 +20,9 @@ fun buildZhihuReadHistoryBody(
     put("content_token", contentToken)
     put("content_type", contentType)
 }.toString()
+
+fun encodeZhihuLastReadTouchItems(items: List<List<String>>): String =
+    ZhihuJson.json.encodeToString(items)
 
 suspend fun addZhihuReadHistory(
     client: HttpClient,

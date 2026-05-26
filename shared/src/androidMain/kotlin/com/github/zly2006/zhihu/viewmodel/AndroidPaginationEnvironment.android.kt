@@ -43,7 +43,9 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.ZHIHU_CLEAR_ONLINE_HISTORY_URL
+import com.github.zly2006.zhihu.shared.data.ZHIHU_LAST_READ_TOUCH_URL
 import com.github.zly2006.zhihu.shared.data.buildZhihuClearOnlineHistoryBody
+import com.github.zly2006.zhihu.shared.data.encodeZhihuLastReadTouchItems
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
@@ -82,7 +84,6 @@ import io.ktor.serialization.kotlinx.json.json
 import io.ktor.util.appendAll
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.int
@@ -258,13 +259,13 @@ open class SharedAndroidPaginationEnvironment(
             is Feed.PinTarget -> listOf("pin", target.id.toString(), "read")
             else -> return
         }
-        AccountData.fetchPost(context, "https://www.zhihu.com/lastread/touch") {
+        AccountData.fetchPost(context, ZHIHU_LAST_READ_TOUCH_URL) {
             header("x-requested-with", "fetch")
             signFetchRequest()
             setBody(
                 MultiPartFormDataContent(
                     formData {
-                        append("items", Json.encodeToString(listOf(payloadItem)))
+                        append("items", encodeZhihuLastReadTouchItems(listOf(payloadItem)))
                     },
                 ),
             )
@@ -301,7 +302,7 @@ open class SharedAndroidPaginationEnvironment(
         if (items.isEmpty()) return emptySet()
         return AccountData.withAuthenticatedResponse(
             context = context,
-            url = "https://www.zhihu.com/lastread/touch",
+            url = ZHIHU_LAST_READ_TOUCH_URL,
             block = {
                 method = HttpMethod.Post
                 header("x-requested-with", "fetch")
@@ -312,7 +313,7 @@ open class SharedAndroidPaginationEnvironment(
                             val payload = items.map { (type, id) ->
                                 listOf(type, id, "touch")
                             }
-                            append("items", Json.encodeToString(payload))
+                            append("items", encodeZhihuLastReadTouchItems(payload))
                         },
                     ),
                 )

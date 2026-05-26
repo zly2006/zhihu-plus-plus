@@ -13,8 +13,10 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.ZHIHU_CLEAR_ONLINE_HISTORY_URL
+import com.github.zly2006.zhihu.shared.data.ZHIHU_LAST_READ_TOUCH_URL
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.encodeZhihuClearOnlineHistoryBody
+import com.github.zly2006.zhihu.shared.data.encodeZhihuLastReadTouchItems
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
@@ -56,7 +58,6 @@ import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -449,7 +450,7 @@ class DesktopPaginationEnvironment(
         val account = store.load()
         val dc0 = account.cookies["d_c0"] ?: return false
         return store.withAuthenticatedResponse(
-            url = "https://www.zhihu.com/lastread/touch",
+            url = ZHIHU_LAST_READ_TOUCH_URL,
             block = {
                 method = HttpMethod.Post
                 header("x-requested-with", "fetch")
@@ -457,7 +458,7 @@ class DesktopPaginationEnvironment(
                 setBody(
                     MultiPartFormDataContent(
                         formData {
-                            append("items", ZhihuJson.json.encodeToString(payload))
+                            append("items", encodeZhihuLastReadTouchItems(payload))
                         },
                     ),
                 )
