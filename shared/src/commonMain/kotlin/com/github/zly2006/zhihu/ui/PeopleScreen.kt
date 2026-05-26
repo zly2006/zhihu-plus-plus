@@ -19,6 +19,7 @@ package com.github.zly2006.zhihu.ui
 
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -86,12 +87,14 @@ import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
-import com.github.zly2006.zhihu.ui.components.officialBadgeIconModel
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
+import zhihu.shared.generated.resources.Res
+import zhihu.shared.generated.resources.ic_zh_plus_author_badge
 import kotlin.reflect.typeOf
 
 class PeopleAnswersViewModel(
@@ -1415,13 +1418,23 @@ private fun OfficialBadgeDetails(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (badge.iconUrl.isNotBlank()) {
-                    AsyncImage(
-                        model = officialBadgeIconModel(badge.iconUrl),
-                        contentDescription = badge.description,
-                        modifier = Modifier
-                            .padding(end = 6.dp)
-                            .size(18.dp),
-                    )
+                    if (badge.iconUrl == DataHolder.ZH_PLUS_AUTHOR_BADGE_ICON) {
+                        Image(
+                            painter = painterResource(Res.drawable.ic_zh_plus_author_badge),
+                            contentDescription = badge.description,
+                            modifier = Modifier
+                                .padding(end = 6.dp)
+                                .size(18.dp),
+                        )
+                    } else {
+                        AsyncImage(
+                            model = badge.iconUrl,
+                            contentDescription = badge.description,
+                            modifier = Modifier
+                                .padding(end = 6.dp)
+                                .size(18.dp),
+                        )
+                    }
                 }
                 Text(
                     text = "${badge.peopleDetailTitle}: ${badge.description}",
