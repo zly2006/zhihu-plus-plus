@@ -73,6 +73,11 @@ import com.github.zly2006.zhihu.shared.util.SegmentTextPart
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 
 /**
  * 在可选中的 Markdown 子树外承载划线交互弹窗。
@@ -106,6 +111,61 @@ fun zhihuSegmentReactionUrl(
     targetType: String,
     contentId: String,
 ): String = "https://www.zhihu.com/api/v4/reaction/${targetType}s/$contentId/segment_reaction"
+
+fun buildSegmentUnlikeBody(highlight: SegmentHighlightSpan): String = buildJsonObject {
+    put("seg_ids", highlight.meta.segIds.joinToString(","))
+}.toString()
+
+fun buildSegmentLikeBody(highlight: SegmentHighlightSpan): String = buildJsonObject {
+    if (highlight.meta.segIds.isNotEmpty()) {
+        put("seg_id", highlight.meta.segIds.joinToString(","))
+    }
+    put("content", highlight.text)
+    put(
+        "position",
+        buildJsonObject {
+            put(
+                "start",
+                buildJsonObject {
+                    put("paragraph_id", highlight.paragraphId.orEmpty())
+                    put("offset", highlight.startOffset ?: 0)
+                },
+            )
+            put(
+                "end",
+                buildJsonObject {
+                    put("paragraph_id", highlight.paragraphId.orEmpty())
+                    put("offset", highlight.endOffset ?: 0)
+                },
+            )
+        },
+    )
+}.toString()
+
+fun updateSegmentMetaAfterUnlike(highlight: SegmentHighlightSpan): SegmentInfoMeta = highlight.meta.copy(
+    isLike = false,
+    likeCount = (highlight.meta.likeCount - 1).coerceAtLeast(0),
+)
+
+fun updateSegmentMetaAfterLike(
+    highlight: SegmentHighlightSpan,
+    response: JsonObject?,
+): SegmentInfoMeta {
+    val segId = response
+        ?.get("payload")
+        ?.jsonObject
+        ?.get("segId")
+        ?.jsonPrimitive
+        ?.content
+        ?.split(',')
+        ?.filter(String::isNotEmpty)
+        ?: highlight.meta.segIds
+    return highlight.meta.copy(
+        segIds = segId,
+        isLike = true,
+        likeCount = highlight.meta.likeCount + 1,
+    )
+}
 
 @Composable
 expect fun rememberSegmentedTextRuntime(): SegmentedTextRuntime

@@ -13,10 +13,6 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpMethod
 import io.ktor.http.contentType
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.put
 
 @Composable
 actual fun rememberSegmentedTextRuntime(): SegmentedTextRuntime {
@@ -44,6 +40,7 @@ private suspend fun toggleSegmentLike(
     val url = zhihuSegmentReactionUrl(targetType, contentId)
 
     return if (highlight.meta.isLike) {
+        val body = buildSegmentUnlikeBody(highlight)
         AccountData.withAuthenticatedResponse(
             context = context,
             url = url,
@@ -51,63 +48,18 @@ private suspend fun toggleSegmentLike(
                 method = HttpMethod.Delete
                 signFetchRequest()
                 contentType(ContentType.Application.Json)
-                setBody(
-                    buildJsonObject {
-                        put("seg_ids", highlight.meta.segIds.joinToString(","))
-                    }.toString(),
-                )
+                setBody(body)
             },
         ) {
         }
-        highlight.meta.copy(
-            isLike = false,
-            likeCount = (highlight.meta.likeCount - 1).coerceAtLeast(0),
-        )
+        updateSegmentMetaAfterUnlike(highlight)
     } else {
+        val body = buildSegmentLikeBody(highlight)
         val response = AccountData.fetchPost(context, url) {
             signFetchRequest()
             contentType(ContentType.Application.Json)
-            setBody(
-                buildJsonObject {
-                    if (highlight.meta.segIds.isNotEmpty()) {
-                        put("seg_id", highlight.meta.segIds.joinToString(","))
-                    }
-                    put("content", highlight.text)
-                    put(
-                        "position",
-                        buildJsonObject {
-                            put(
-                                "start",
-                                buildJsonObject {
-                                    put("paragraph_id", highlight.paragraphId.orEmpty())
-                                    put("offset", highlight.startOffset ?: 0)
-                                },
-                            )
-                            put(
-                                "end",
-                                buildJsonObject {
-                                    put("paragraph_id", highlight.paragraphId.orEmpty())
-                                    put("offset", highlight.endOffset ?: 0)
-                                },
-                            )
-                        },
-                    )
-                }.toString(),
-            )
+            setBody(body)
         }
-        val segId = response
-            ?.get("payload")
-            ?.jsonObject
-            ?.get("segId")
-            ?.jsonPrimitive
-            ?.content
-            ?.split(',')
-            ?.filter(String::isNotEmpty)
-            ?: highlight.meta.segIds
-        highlight.meta.copy(
-            segIds = segId,
-            isLike = true,
-            likeCount = highlight.meta.likeCount + 1,
-        )
+        updateSegmentMetaAfterLike(highlight, response)
     }
 }

@@ -10,10 +10,6 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpMethod
 import io.ktor.http.contentType
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.put
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
 
@@ -43,64 +39,22 @@ private suspend fun toggleSegmentLike(
     val dc0 = account.cookies["d_c0"] ?: return highlight.meta
 
     return if (highlight.meta.isLike) {
-        val body = buildJsonObject {
-            put("seg_ids", highlight.meta.segIds.joinToString(","))
-        }.toString()
+        val body = buildSegmentUnlikeBody(highlight)
         store.fetchAuthenticatedJson(url) {
             method = HttpMethod.Delete
             signZhihuFetchRequest(dc0 = dc0, body = body)
             contentType(ContentType.Application.Json)
             setBody(body)
         }
-        highlight.meta.copy(
-            isLike = false,
-            likeCount = (highlight.meta.likeCount - 1).coerceAtLeast(0),
-        )
+        updateSegmentMetaAfterUnlike(highlight)
     } else {
-        val body = buildJsonObject {
-            if (highlight.meta.segIds.isNotEmpty()) {
-                put("seg_id", highlight.meta.segIds.joinToString(","))
-            }
-            put("content", highlight.text)
-            put(
-                "position",
-                buildJsonObject {
-                    put(
-                        "start",
-                        buildJsonObject {
-                            put("paragraph_id", highlight.paragraphId.orEmpty())
-                            put("offset", highlight.startOffset ?: 0)
-                        },
-                    )
-                    put(
-                        "end",
-                        buildJsonObject {
-                            put("paragraph_id", highlight.paragraphId.orEmpty())
-                            put("offset", highlight.endOffset ?: 0)
-                        },
-                    )
-                },
-            )
-        }.toString()
+        val body = buildSegmentLikeBody(highlight)
         val response = store.fetchAuthenticatedJson(url) {
             method = HttpMethod.Post
             signZhihuFetchRequest(dc0 = dc0, body = body)
             contentType(ContentType.Application.Json)
             setBody(body)
         }
-        val segId = response
-            ?.get("payload")
-            ?.jsonObject
-            ?.get("segId")
-            ?.jsonPrimitive
-            ?.content
-            ?.split(',')
-            ?.filter(String::isNotEmpty)
-            ?: highlight.meta.segIds
-        highlight.meta.copy(
-            segIds = segId,
-            isLike = true,
-            likeCount = highlight.meta.likeCount + 1,
-        )
+        updateSegmentMetaAfterLike(highlight, response)
     }
 }
