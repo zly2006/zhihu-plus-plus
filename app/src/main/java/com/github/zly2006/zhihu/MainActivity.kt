@@ -25,7 +25,6 @@ import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -73,6 +72,7 @@ import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.shared.filter.TrackedContentIdentity
 import com.github.zly2006.zhihu.shared.nlp.KeywordWeightExtractor
 import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
+import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.shared.util.ZHIHU_WEB_ZSE93
 import com.github.zly2006.zhihu.theme.AndroidThemeSettings
 import com.github.zly2006.zhihu.theme.ZhihuTheme
@@ -216,12 +216,8 @@ class MainActivity :
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to refresh Zhihu token", e)
                     withContext(Dispatchers.Main) {
-                        Toast
-                            .makeText(
-                                this@MainActivity,
-                                "刷新登录状态失败，如多次看到此提示请重新登录",
-                                Toast.LENGTH_LONG,
-                            ).show()
+                        androidUserMessageSink(this@MainActivity)
+                            .showLongMessage("刷新登录状态失败，如多次看到此提示请重新登录")
                     }
                 }
                 if (!PowerSaveModeCompat.getPowerSaveMode(this@MainActivity).isPowerSaveMode) {
@@ -493,9 +489,7 @@ class MainActivity :
                 navController.currentBackStackEntry?.toRoute<Question>()
             }.getOrNull()
             if (current == null) {
-                Toast
-                    .makeText(this, "无法打开视频：未知的内容类型", Toast.LENGTH_SHORT)
-                    .show()
+                androidUserMessageSink(this).showShortMessage("无法打开视频：未知的内容类型")
                 return
             }
             val (contentId, contentType) = when (current) {
@@ -513,9 +507,7 @@ class MainActivity :
             CoroutineScope(Dispatchers.Main).launch {
                 val videoUrl = getHighestQualityVideoUrl(this@MainActivity, httpClient, route.id.toString(), contentId, contentType)
                 if (videoUrl == null) {
-                    Toast
-                        .makeText(this@MainActivity, "获取视频链接失败", Toast.LENGTH_SHORT)
-                        .show()
+                    androidUserMessageSink(this@MainActivity).showShortMessage("获取视频链接失败")
                     return@launch
                 }
                 luoTianYiUrlLauncher(this@MainActivity, videoUrl.toUri())
@@ -667,9 +659,7 @@ class MainActivity :
                         textToSpeech?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                             override fun onStart(utteranceId: String?) {
                                 if (currentIndex == 0) {
-                                    Toast
-                                        .makeText(this@MainActivity, "开始朗读：$title", Toast.LENGTH_SHORT)
-                                        .show()
+                                    androidUserMessageSink(this@MainActivity).showShortMessage("开始朗读：$title")
                                 }
                                 if (utteranceId == "chunk_$currentIndex") {
                                     ttsState = TtsState.Speaking
