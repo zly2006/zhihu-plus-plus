@@ -59,12 +59,10 @@ interface ArticleViewModelRuntime {
 
     fun showLongMessage(message: String)
 
-    fun newPlainTextClip(
+    fun setPlainTextClipboard(
         label: String,
         text: String,
-    ): Any
-
-    fun setPrimaryClip(clip: Any)
+    )
 
     fun xsrfToken(): String
 

@@ -196,13 +196,11 @@ class DesktopArticleViewModelRuntime(
         userMessages.showLongMessage(message)
     }
 
-    override fun newPlainTextClip(
+    override fun setPlainTextClipboard(
         label: String,
         text: String,
-    ): Any = StringSelection(text)
-
-    override fun setPrimaryClip(clip: Any) {
-        Toolkit.getDefaultToolkit().systemClipboard.setContents(clip as StringSelection, null)
+    ) {
+        Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
     }
 
     override fun xsrfToken(): String = store.load().cookies["_xsrf"] ?: ""

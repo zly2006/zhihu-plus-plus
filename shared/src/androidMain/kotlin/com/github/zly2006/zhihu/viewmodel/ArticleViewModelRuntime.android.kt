@@ -273,13 +273,11 @@ class AndroidArticleViewModelRuntime(
         ActivityCompat.requestPermissions(context as Activity, permissions, 1001)
     }
 
-    override fun newPlainTextClip(
+    override fun setPlainTextClipboard(
         label: String,
         text: String,
-    ): Any = ClipData.newPlainText(label, text)
-
-    override fun setPrimaryClip(clip: Any) {
-        context.clipboardManager.setPrimaryClip(clip as ClipData)
+    ) {
+        context.clipboardManager.setPrimaryClip(ClipData.newPlainText(label, text))
     }
 
     override fun showMessage(message: String) {

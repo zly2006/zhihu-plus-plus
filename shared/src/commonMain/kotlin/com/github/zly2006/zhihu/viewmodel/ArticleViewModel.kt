@@ -920,8 +920,7 @@ class ArticleViewModel(
         val markdown = convertToMarkdown()
 
         // 将Markdown文本复制到剪贴板
-        val clip = context.newPlainTextClip("Zhihu Article", markdown)
-        context.setPrimaryClip(clip)
+        context.setPlainTextClipboard("Zhihu Article", markdown)
 
         context.showMessage("文章已复制到剪贴板")
     }
