@@ -640,8 +640,8 @@ fun ArticleScreen(
     val articleBringIntoViewSpec = rememberBottomBarAvoidingBringIntoViewSpec(bottomBarObscuredHeightPx)
 
     // 回答切换手势系统
-    val sharedData = if (articleHost != null && article.type == ArticleType.Answer) {
-        articleHost.articleAnswerSwitchState
+    val sharedData = if (article.type == ArticleType.Answer) {
+        articleRuntime.articleAnswerSwitchState()
     } else {
         null
     }

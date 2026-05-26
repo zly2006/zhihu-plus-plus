@@ -133,7 +133,7 @@ private fun CollectionContentScreenContent(
             includeImages = includeImages,
         )
     }
-    val sharedData = rememberArticleScreenRuntime().articleHost?.articleAnswerSwitchState
+    val sharedData = rememberArticleScreenRuntime().articleRuntime.articleAnswerSwitchState()
 
     LaunchedEffect(testOverrides) {
         if (testOverrides == null && screenViewModel.allData.isEmpty()) {
