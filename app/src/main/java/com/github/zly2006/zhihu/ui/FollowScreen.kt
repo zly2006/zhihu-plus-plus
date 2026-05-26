@@ -61,10 +61,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
@@ -144,10 +148,38 @@ fun FollowScreen(
                 ),
         )
 
+        val nestedScrollConnection = remember(pagerState) {
+            object : NestedScrollConnection {
+                override fun onPostScroll(
+                    consumed: Offset,
+                    available: Offset,
+                    source: NestedScrollSource
+                ): Offset {
+                    return if (consumed.x != 0f) {
+                        Offset(available.x, 0f)
+                    } else {
+                        Offset.Zero
+                    }
+                }
+
+                override suspend fun onPostFling(
+                    consumed: Velocity,
+                    available: Velocity
+                ): Velocity {
+                    return if (consumed.x != 0f) {
+                        Velocity(available.x, 0f)
+                    } else {
+                        Velocity.Zero
+                    }
+                }
+            }
+        }
+
         HorizontalPager(
             state = pagerState,
             modifier = Modifier
                 .fillMaxSize()
+                .nestedScroll(nestedScrollConnection)
                 .testTag(FOLLOW_SCREEN_PAGER_TAG),
         ) { page ->
             when (page) {
@@ -165,37 +197,6 @@ fun FollowScreen(
                     onTestLoadMore = onTestDynamicLoadMore,
                 )
             }
-        }
-    }
-}
-
-@Composable
-fun FollowTopLevelPage(
-    selectedTabIndex: Int,
-    onTabSelected: (Int) -> Unit,
-    scrollToTopTrigger: Int = 0,
-    innerPadding: PaddingValues = PaddingValues(0.dp),
-    isActive: Boolean = true,
-) {
-    Column(
-        modifier = Modifier
-            .padding(bottom = innerPadding.calculateBottomPadding())
-            .then(if (isActive) Modifier else Modifier.clearAndSetSemantics {}),
-    ) {
-        FollowTabRow(
-            selectedTabIndex = selectedTabIndex,
-            onTabSelected = onTabSelected,
-            modifier = Modifier.padding(top = innerPadding.calculateTopPadding()),
-        )
-        when (selectedTabIndex) {
-            0 -> FollowRecommendScreen(
-                scrollToTopTrigger = scrollToTopTrigger,
-                isActive = isActive,
-            )
-            1 -> FollowDynamicScreen(
-                scrollToTopTrigger = scrollToTopTrigger,
-                isActive = isActive,
-            )
         }
     }
 }

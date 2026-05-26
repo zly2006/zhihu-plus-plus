@@ -62,7 +62,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -141,9 +140,7 @@ private sealed class MainTabPage(
 ) {
     data object HomePage : MainTabPage(Home, "home")
 
-    data object FollowRecommendPage : MainTabPage(Follow, "follow_recommend")
-
-    data object FollowDynamicPage : MainTabPage(Follow, "follow_dynamic")
+    data object FollowPage : MainTabPage(Follow, "follow")
 
     data object HotListPage : MainTabPage(HotList, "hotlist")
 
@@ -232,7 +229,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         bottomBarItems.flatMap { item ->
             when (item.first) {
                 Home -> listOf(MainTabPage.HomePage)
-                Follow -> listOf(MainTabPage.FollowRecommendPage, MainTabPage.FollowDynamicPage)
+                Follow -> listOf(MainTabPage.FollowPage)
                 HotList -> listOf(MainTabPage.HotListPage)
                 Daily -> listOf(MainTabPage.DailyPage)
                 OnlineHistory -> listOf(MainTabPage.OnlineHistoryPage)
@@ -250,7 +247,6 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
             it.bottomDestination::class == startDestination::class
         }.takeIf { it >= 0 } ?: 0
 
-    var lastFollowPageKey by rememberSaveable { mutableStateOf(MainTabPage.FollowRecommendPage.key) }
     val mainPagerState = rememberPagerState(
         initialPage = pageIndexForDestination(startDestination),
         pageCount = { mainTabPages.size },
@@ -260,13 +256,8 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     fun currentMainTabPage(): MainTabPage? = mainTabPages.getOrNull(mainPagerState.currentPage)
     var currentMainTabDestination by remember { mutableStateOf(startDestination) }
 
-    fun pageIndexForBottomDestination(destination: TopLevelDestination): Int {
-        if (destination == Follow) {
-            val rememberedFollowPage = mainTabPages.indexOfFirst { it.key == lastFollowPageKey }
-            if (rememberedFollowPage >= 0) return rememberedFollowPage
-        }
-        return pageIndexForDestination(destination)
-    }
+    fun pageIndexForBottomDestination(destination: TopLevelDestination): Int =
+        pageIndexForDestination(destination)
 
     fun navigateTopLevel(destination: TopLevelDestination) {
         val targetPage = pageIndexForBottomDestination(destination)
@@ -276,10 +267,6 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     }
 
     LaunchedEffect(mainPagerState.currentPage, mainTabPages) {
-        when (val page = currentMainTabPage()) {
-            MainTabPage.FollowRecommendPage, MainTabPage.FollowDynamicPage -> lastFollowPageKey = page.key
-            else -> {}
-        }
         currentMainTabPage()?.bottomDestination?.let { destination ->
             currentMainTabDestination = destination
             activity.setCurrentMainTabOpenFrom(destination.openFrom)
@@ -429,19 +416,6 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                         pages = mainTabPages,
                         scrollToTopTrigger = scrollToTopTrigger,
                         innerPadding = innerPadding,
-                        onFollowTabSelected = { followTabIndex ->
-                            val page = if (followTabIndex == 0) {
-                                MainTabPage.FollowRecommendPage
-                            } else {
-                                MainTabPage.FollowDynamicPage
-                            }
-                            val index = mainTabPages.indexOfFirst { it.key == page.key }
-                            if (index >= 0) {
-                                coroutineScope.launch {
-                                    mainPagerState.animateScrollToPage(index)
-                                }
-                            }
-                        },
                     )
                 }
                 composable<Question> { navEntry ->
@@ -584,7 +558,6 @@ private fun MainTabsPager(
     pages: List<MainTabPage>,
     scrollToTopTrigger: Int,
     innerPadding: androidx.compose.foundation.layout.PaddingValues,
-    onFollowTabSelected: (Int) -> Unit,
 ) {
     HorizontalPager(
         state = pagerState,
@@ -596,19 +569,9 @@ private fun MainTabsPager(
                 scrollToTopTrigger = scrollToTopTrigger,
                 innerPadding = innerPadding,
             )
-            MainTabPage.FollowRecommendPage -> FollowTopLevelPage(
-                selectedTabIndex = 0,
-                onTabSelected = onFollowTabSelected,
+            MainTabPage.FollowPage -> FollowScreen(
                 scrollToTopTrigger = scrollToTopTrigger,
                 innerPadding = innerPadding,
-                isActive = pagerState.currentPage == pageIndex,
-            )
-            MainTabPage.FollowDynamicPage -> FollowTopLevelPage(
-                selectedTabIndex = 1,
-                onTabSelected = onFollowTabSelected,
-                scrollToTopTrigger = scrollToTopTrigger,
-                innerPadding = innerPadding,
-                isActive = pagerState.currentPage == pageIndex,
             )
             MainTabPage.HotListPage -> HotListScreen(innerPadding)
             MainTabPage.DailyPage -> DailyScreen()
