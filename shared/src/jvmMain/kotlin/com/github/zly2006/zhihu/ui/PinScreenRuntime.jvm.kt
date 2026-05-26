@@ -30,7 +30,6 @@ import io.ktor.http.HttpMethod
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
@@ -167,47 +166,19 @@ private suspend fun fetchDesktopLinkCardPreview(
     store: DesktopAccountStore,
     userMessages: UserMessageSink,
     linkCard: DataHolder.Pin.ContentLinkCard,
-): PinLinkCardPreview? {
-    val destination = resolveLinkCardDestination(linkCard) ?: return null
-    return when (destination) {
+): PinLinkCardPreview? = fetchPinLinkCardPreview(linkCard) { destination ->
+    when (destination) {
         is Article -> {
-            when (val detail = DesktopArticleViewModelRuntime(store, userMessages).getContentDetail(destination)) {
-                is DataHolder.Article -> PinLinkCardPreview(
-                    title = compactTitle(detail.title),
-                    preview = compactPreview(detail.excerpt.ifBlank { detail.content }),
-                )
-                is DataHolder.Answer -> PinLinkCardPreview(
-                    title = compactTitle(detail.question.title),
-                    preview = compactPreview(detail.excerpt.ifBlank { detail.content }),
-                )
-                else -> null
-            }
+            DesktopArticleViewModelRuntime(store, userMessages).getContentDetail(destination)
         }
         is Question -> {
-            fetchDesktopQuestionDetailForFeedBlock(store, destination)?.let { detail ->
-                PinLinkCardPreview(
-                    title = compactTitle(detail.title),
-                    preview = compactPreview(detail.detail),
-                )
-            }
+            fetchDesktopQuestionDetailForFeedBlock(store, destination)
         }
         is Pin -> {
-            fetchDesktopPinDetail(store, destination)?.let { detail ->
-                PinLinkCardPreview(
-                    title = "${detail.author.name} 的想法",
-                    preview = compactPreview(detail.contentHtml),
-                )
-            }
+            fetchDesktopPinDetail(store, destination)
         }
         else -> null
     }
-}
-
-private fun kotlinx.serialization.json.JsonObject?.booleanCompat(vararg keys: String): Boolean {
-    if (this == null) return false
-    return keys.firstNotNullOfOrNull { key ->
-        get(key)?.jsonPrimitive?.booleanOrNull
-    } ?: false
 }
 
 private fun openDesktopExternalUrl(url: String) {

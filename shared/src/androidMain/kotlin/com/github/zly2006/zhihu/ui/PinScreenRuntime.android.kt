@@ -30,7 +30,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import org.jsoup.Jsoup
@@ -113,45 +112,17 @@ actual fun supportsPinHtmlWebView(): Boolean = true
 private suspend fun fetchAndroidLinkCardPreview(
     context: Context,
     linkCard: DataHolder.Pin.ContentLinkCard,
-): PinLinkCardPreview? {
-    val destination = resolveLinkCardDestination(linkCard) ?: return null
-    return when (destination) {
+): PinLinkCardPreview? = fetchPinLinkCardPreview(linkCard) { destination ->
+    when (destination) {
         is Article -> {
-            when (val detail = DataHolder.getContentDetail(context, destination)) {
-                is DataHolder.Article -> PinLinkCardPreview(
-                    title = compactTitle(detail.title),
-                    preview = compactPreview(detail.excerpt.ifBlank { detail.content }),
-                )
-                is DataHolder.Answer -> PinLinkCardPreview(
-                    title = compactTitle(detail.question.title),
-                    preview = compactPreview(detail.excerpt.ifBlank { detail.content }),
-                )
-                else -> null
-            }
+            DataHolder.getContentDetail(context, destination)
         }
         is Question -> {
-            DataHolder.getContentDetail(context, destination)?.let { detail ->
-                PinLinkCardPreview(
-                    title = compactTitle(detail.title),
-                    preview = compactPreview(detail.detail),
-                )
-            }
+            DataHolder.getContentDetail(context, destination)
         }
         is Pin -> {
-            DataHolder.getContentDetail(context, destination)?.let { detail ->
-                PinLinkCardPreview(
-                    title = "${detail.author.name} 的想法",
-                    preview = compactPreview(detail.contentHtml),
-                )
-            }
+            DataHolder.getContentDetail(context, destination)
         }
         else -> null
     }
-}
-
-private fun kotlinx.serialization.json.JsonObject?.booleanCompat(vararg keys: String): Boolean {
-    if (this == null) return false
-    return keys.firstNotNullOfOrNull { key ->
-        get(key)?.jsonPrimitive?.booleanOrNull
-    } ?: false
 }
