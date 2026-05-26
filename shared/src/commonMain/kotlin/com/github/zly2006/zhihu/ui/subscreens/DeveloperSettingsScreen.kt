@@ -65,6 +65,7 @@ import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.SentenceSimilarityTest
+import com.github.zly2006.zhihu.shared.data.ZHIHU_ME_URL
 import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.ui.components.SettingItemOverall
 import kotlinx.coroutines.delay
@@ -374,14 +375,14 @@ fun DeveloperSettingsScreen() {
     }
 
     if (showSignedRequestDialog) {
-        var urlInput by remember { mutableStateOf("https://www.zhihu.com/api/v4/me") }
+        var urlInput by remember { mutableStateOf(ZHIHU_ME_URL) }
         var responseText by remember { mutableStateOf("") }
         var isLoading by remember { mutableStateOf(false) }
 
         AlertDialog(
             onDismissRequest = {
                 showSignedRequestDialog = false
-                urlInput = "https://www.zhihu.com/api/v4/me"
+                urlInput = ZHIHU_ME_URL
                 responseText = ""
                 isLoading = false
             },
@@ -398,7 +399,7 @@ fun DeveloperSettingsScreen() {
                         value = urlInput,
                         onValueChange = { urlInput = it },
                         label = { Text("请求URL") },
-                        placeholder = { Text("https://www.zhihu.com/api/v4/me") },
+                        placeholder = { Text(ZHIHU_ME_URL) },
                         modifier = Modifier.fillMaxWidth(),
                         maxLines = 3,
                         enabled = !isLoading,
@@ -451,7 +452,7 @@ fun DeveloperSettingsScreen() {
                 TextButton(
                     onClick = {
                         showSignedRequestDialog = false
-                        urlInput = "https://www.zhihu.com/api/v4/me"
+                        urlInput = ZHIHU_ME_URL
                         responseText = ""
                         isLoading = false
                     },
