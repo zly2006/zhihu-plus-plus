@@ -29,14 +29,20 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.jsonArray
 
+fun zhihuFollowMomentsUrl(): String = "https://www.zhihu.com/api/v3/moments?limit=10&desktop=true"
+
+fun zhihuFollowRecommendUrl(): String = "https://api.zhihu.com/moments_v3?feed_type=recommend"
+
+fun zhihuRecentMomentsUrl(): String = "https://api.zhihu.com/moments/recent?type=raw"
+
 class FollowViewModel : BaseFeedViewModel() {
     override val initialUrl: String
-        get() = "https://www.zhihu.com/api/v3/moments?limit=10&desktop=true"
+        get() = zhihuFollowMomentsUrl()
 }
 
 class FollowRecommendViewModel : BaseFeedViewModel() {
     override val initialUrl: String
-        get() = "https://api.zhihu.com/moments_v3?feed_type=recommend"
+        get() = zhihuFollowRecommendUrl()
 }
 
 class RecentMomentsViewModel : ViewModel() {
@@ -63,7 +69,7 @@ class RecentMomentsViewModel : ViewModel() {
         isLoading = true
         viewModelScope.launch {
             try {
-                val json = environment.fetchJson("https://api.zhihu.com/moments/recent?type=raw", "") ?: return@launch
+                val json = environment.fetchJson(zhihuRecentMomentsUrl(), "") ?: return@launch
                 val dataArray = json["data"]?.jsonArray ?: return@launch
                 users.addAll(
                     dataArray.mapNotNull { item ->
