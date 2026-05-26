@@ -6,6 +6,7 @@ import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.zhihuQuestionUrl
+import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.question.QuestionScreenUiState
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
@@ -25,6 +26,25 @@ data class QuestionScreenRuntime(
 fun questionDetailPreview(html: String): String = Ksoup.parse(html).text().trim()
 
 fun zhihuQuestionLogUrl(question: Question): String = "${zhihuQuestionUrl(question.questionId)}/log"
+
+internal fun loadedQuestionScreenData(
+    question: Question,
+    questionData: DataHolder.Question,
+): LoadedQuestionScreenData {
+    val historyDestination = Question(question.questionId, questionData.title)
+    return LoadedQuestionScreenData(
+        uiState = QuestionScreenUiState(
+            questionContent = questionData.detail,
+            answerCount = questionData.answerCount,
+            visitCount = questionData.visitCount,
+            commentCount = questionData.commentCount,
+            followerCount = questionData.followerCount,
+            title = questionData.title,
+            isFollowing = questionData.relationship.isFollowing,
+        ),
+        historyDestination = historyDestination,
+    )
+}
 
 @Composable
 expect fun rememberQuestionScreenRuntime(): QuestionScreenRuntime

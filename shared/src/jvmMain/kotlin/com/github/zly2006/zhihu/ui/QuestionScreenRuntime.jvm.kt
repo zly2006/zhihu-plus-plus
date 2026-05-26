@@ -2,6 +2,7 @@ package com.github.zly2006.zhihu.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import com.github.zly2006.zhihu.data.normalizeQuestionDetailJson
 import com.github.zly2006.zhihu.data.zhihuQuestionContentDetailUrl
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
@@ -11,17 +12,12 @@ import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.shared.question.QuestionScreenUiState
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.viewmodel.consumeDesktopPendingContentOpenFrom
 import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.long
 import java.awt.Desktop
 import java.net.URI
 
@@ -41,26 +37,15 @@ actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {
                 addDesktopReadHistory(store, question.questionId.toString(), "question")
                 val questionData = fetchDesktopQuestionDetail(store, question)
                 if (questionData != null) {
-                    val historyDestination = Question(question.questionId, questionData.title)
-                    historyStorage.add(historyDestination)
+                    val loadedData = loadedQuestionScreenData(question, questionData)
+                    historyStorage.add(loadedData.historyDestination)
                     ContentOpenEventSupport.recordOpenEvent(
                         database = contentFilterDatabase,
                         destination = question,
                         questionId = question.questionId,
                         openFrom = consumeDesktopPendingContentOpenFrom(question),
                     )
-                    LoadedQuestionScreenData(
-                        uiState = QuestionScreenUiState(
-                            questionContent = questionData.detail,
-                            answerCount = questionData.answerCount,
-                            visitCount = questionData.visitCount,
-                            commentCount = questionData.commentCount,
-                            followerCount = questionData.followerCount,
-                            title = questionData.title,
-                            isFollowing = questionData.relationship.isFollowing,
-                        ),
-                        historyDestination = historyDestination,
-                    )
+                    loadedData
                 } else {
                     null
                 }
@@ -98,16 +83,7 @@ private suspend fun fetchDesktopQuestionDetail(
                 signZhihuFetchRequest(dc0 = dc0)
             }
         } ?: return@runCatching null
-        val jojo = buildJsonObject {
-            jo.entries.forEach { (key, value) ->
-                if (key == "id") {
-                    put(key, JsonPrimitive(value.jsonPrimitive.long))
-                } else {
-                    put(key, value)
-                }
-            }
-        }
-        ZhihuJson.decodeJson<DataHolder.Question>(jojo)
+        ZhihuJson.decodeJson<DataHolder.Question>(normalizeQuestionDetailJson(jo))
     }.getOrNull()
 }
 

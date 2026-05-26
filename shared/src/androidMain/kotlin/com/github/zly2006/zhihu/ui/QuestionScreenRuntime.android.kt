@@ -7,14 +7,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.getContentDetail
-import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.zhihuQuestionUrl
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.question.QuestionScreenUiState
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
@@ -35,27 +33,16 @@ actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {
                 AccountData.addReadHistory(context, question.questionId.toString(), "question")
                 val questionData = DataHolder.getContentDetail(context, question)
                 if (questionData != null) {
-                    val historyDestination = Question(question.questionId, questionData.title)
+                    val loadedData = loadedQuestionScreenData(question, questionData)
                     val articleHost = context.articleHost()
-                    articleHost?.postHistoryDestination(historyDestination)
+                    articleHost?.postHistoryDestination(loadedData.historyDestination)
                     ContentOpenEventSupport.recordOpenEvent(
                         database = getContentFilterDatabase(context),
                         destination = question,
                         questionId = question.questionId,
                         openFrom = articleHost?.consumePendingContentOpenFrom(question) ?: ContentOpenFrom.UNKNOWN,
                     )
-                    LoadedQuestionScreenData(
-                        uiState = QuestionScreenUiState(
-                            questionContent = questionData.detail,
-                            answerCount = questionData.answerCount,
-                            visitCount = questionData.visitCount,
-                            commentCount = questionData.commentCount,
-                            followerCount = questionData.followerCount,
-                            title = questionData.title,
-                            isFollowing = questionData.relationship.isFollowing,
-                        ),
-                        historyDestination = historyDestination,
-                    )
+                    loadedData
                 } else {
                     null
                 }

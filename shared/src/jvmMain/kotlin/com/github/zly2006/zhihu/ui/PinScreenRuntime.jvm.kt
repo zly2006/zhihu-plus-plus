@@ -3,6 +3,7 @@ package com.github.zly2006.zhihu.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import com.github.zly2006.zhihu.data.normalizeQuestionDetailJson
 import com.github.zly2006.zhihu.data.zhihuPinContentDetailUrl
 import com.github.zly2006.zhihu.data.zhihuQuestionContentDetailUrl
 import com.github.zly2006.zhihu.navigation.Article
@@ -29,11 +30,8 @@ import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import io.ktor.http.HttpMethod
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.long
 import java.awt.Desktop
 import java.net.URI
 
@@ -149,16 +147,7 @@ internal suspend fun fetchDesktopQuestionDetailForFeedBlock(
                 signZhihuFetchRequest(dc0 = dc0)
             }
         } ?: return@runCatching null
-        val jojo = buildJsonObject {
-            jo.entries.forEach { (key, value) ->
-                if (key == "id") {
-                    put(key, JsonPrimitive(value.jsonPrimitive.long))
-                } else {
-                    put(key, value)
-                }
-            }
-        }
-        ZhihuJson.decodeJson<DataHolder.Question>(jojo)
+        ZhihuJson.decodeJson<DataHolder.Question>(normalizeQuestionDetailJson(jo))
     }.getOrNull()
 }
 

@@ -26,6 +26,11 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.util.Log
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.long
 import kotlin.time.Clock
 
 /**
@@ -139,6 +144,16 @@ object ContentDetailCache {
     suspend fun clearAll() {
         mutex.withLock {
             cache.clear()
+        }
+    }
+}
+
+fun normalizeQuestionDetailJson(jo: JsonObject): JsonObject = buildJsonObject {
+    jo.entries.forEach { (key, value) ->
+        if (key == "id") {
+            put(key, JsonPrimitive(value.jsonPrimitive.long))
+        } else {
+            put(key, value)
         }
     }
 }

@@ -80,17 +80,8 @@ suspend fun DataHolder.getContentDetail(
         val jo = AccountData.fetchGet(context, apiUrl) {
             signFetchRequest()
         }!!
-        val jojo = buildJsonObject {
-            jo.entries.forEach { (key, value) ->
-                if (key == "id") {
-                    put(key, value.jsonPrimitive.long)
-                } else {
-                    put(key, value)
-                }
-            }
-        }
         // 解析为对应的Content类型
-        AccountData.decodeJson<DataHolder.Question>(jojo)
+        AccountData.decodeJson<DataHolder.Question>(normalizeQuestionDetailJson(jo))
     }.getOrElse { e ->
         if (e !is CancellationException) {
             Log.e("getContentDetail", "Failed to fetch content detail for question id=${question.questionId}", e)
