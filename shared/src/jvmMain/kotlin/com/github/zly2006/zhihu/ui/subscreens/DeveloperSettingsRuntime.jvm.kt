@@ -7,8 +7,8 @@ import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
-import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpMethod
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
 
@@ -50,13 +50,16 @@ actual fun rememberDeveloperSettingsRuntime(): DeveloperSettingsRuntime {
             },
             signedGetAndCopy = { url ->
                 val account = store.load()
-                val body = store.createHttpClient(account.cookies).use { client ->
-                    client
-                        .get(url) {
-                            account.cookies["d_c0"]?.let { dc0 ->
-                                signZhihuFetchRequest(dc0 = dc0)
-                            }
-                        }.bodyAsText()
+                val body = store.withAuthenticatedResponse(
+                    url = url,
+                    block = {
+                        method = HttpMethod.Get
+                        account.cookies["d_c0"]?.let { dc0 ->
+                            signZhihuFetchRequest(dc0 = dc0)
+                        }
+                    },
+                ) { response ->
+                    response.bodyAsText()
                 }
                 Toolkit.getDefaultToolkit().systemClipboard.setContents(
                     StringSelection(body),
