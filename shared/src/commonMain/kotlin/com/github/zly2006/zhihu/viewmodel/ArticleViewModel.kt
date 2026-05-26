@@ -493,10 +493,7 @@ class ArticleViewModel(
     fun toggleVoteUp(context: ArticleViewModelRuntime, newState: VoteUpState) {
         viewModelScope.launch {
             try {
-                val endpoint = when (article.type) {
-                    ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${article.id}/voters"
-                    ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${article.id}/voters"
-                }
+                val endpoint = zhihuArticleVotersUrl(article)
 
                 val response = context.fetchPost(endpoint) {
                     when (article.type) {

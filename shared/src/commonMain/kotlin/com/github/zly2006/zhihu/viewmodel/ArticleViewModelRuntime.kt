@@ -19,6 +19,7 @@ package com.github.zly2006.zhihu.viewmodel
 
 import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.shared.data.CollectionResponse
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
@@ -26,6 +27,12 @@ import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+
+fun zhihuArticleVotersUrl(article: Article): String =
+    when (article.type) {
+        ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${article.id}/voters"
+        ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${article.id}/voters"
+    }
 
 interface ArticleViewModelRuntime {
     suspend fun getContentDetail(article: Article): DataHolder.Content?
