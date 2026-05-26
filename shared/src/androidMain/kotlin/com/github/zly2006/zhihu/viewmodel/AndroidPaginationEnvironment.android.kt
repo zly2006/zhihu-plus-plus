@@ -45,9 +45,9 @@ import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
+import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
 import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.shared.util.HttpStatusException
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.util.ResolvedCollectionHtmlExportItem
 import com.github.zly2006.zhihu.util.buildArticleExportFileName
 import com.github.zly2006.zhihu.util.buildOfflineArticleExportHtml
@@ -109,11 +109,11 @@ open class SharedAndroidPaginationEnvironment(
 ) : AndroidContextPaginationEnvironment,
     CollectionContentEnvironment {
     private val localRecommendationEngine by lazy { LocalRecommendationEngine(context) }
+    private val settingsStore by lazy { androidSettingsStore(context) }
     private val userMessageSink by lazy { androidUserMessageSink(context) }
 
     override fun httpClient(): HttpClient {
-        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        val loginForRecommendation = preferences.getBoolean("loginForRecommendation", true)
+        val loginForRecommendation = settingsStore.getBoolean("loginForRecommendation", true)
         if (allowGuestAccess && !loginForRecommendation) {
             return HttpClient {
                 install(HttpCache)
@@ -129,8 +129,7 @@ open class SharedAndroidPaginationEnvironment(
     }
 
     override fun mobileHomeFeedHttpClient(): HttpClient {
-        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        val loginForRecommendation = preferences.getBoolean("loginForRecommendation", true)
+        val loginForRecommendation = settingsStore.getBoolean("loginForRecommendation", true)
 
         return HttpClient {
             install(ContentNegotiation) {
@@ -192,13 +191,10 @@ open class SharedAndroidPaginationEnvironment(
         builder.signFetchRequest()
     }
 
-    override fun feedDisplaySettings(): FeedDisplaySettings {
-        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        return FeedDisplaySettings(
-            enableQualityFilter = preferences.getBoolean("enableQualityFilter", true),
-            reverseBlock = preferences.getBoolean("reverseBlock", false),
-        )
-    }
+    override fun feedDisplaySettings(): FeedDisplaySettings = FeedDisplaySettings(
+        enableQualityFilter = settingsStore.getBoolean("enableQualityFilter", true),
+        reverseBlock = settingsStore.getBoolean("reverseBlock", false),
+    )
 
     override fun localHistory(): List<NavDestination> = HistoryStorage(context).history
 
