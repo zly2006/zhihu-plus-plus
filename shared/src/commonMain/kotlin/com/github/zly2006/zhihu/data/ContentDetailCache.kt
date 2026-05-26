@@ -142,3 +142,14 @@ object ContentDetailCache {
         }
     }
 }
+
+fun zhihuArticleContentDetailUrl(article: Article): String = when (article.type) {
+    ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${article.id}?include=content,topics,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,relationship,ip_info,relationship.vote,author.badge_v2"
+    ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${article.id}?include=content,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,attachment,reaction,ip_info,pagination_info,question.topics,reaction.relation.voting,author.badge_v2"
+}
+
+fun zhihuQuestionContentDetailUrl(question: Question): String =
+    "https://www.zhihu.com/api/v4/questions/${question.questionId}?include=read_count,visit_count,answer_count,voteup_count,comment_count,follower_count,detail,excerpt,author,relationship.is_following,topics"
+
+fun zhihuPinContentDetailUrl(pin: Pin): String =
+    "https://www.zhihu.com/api/v4/pins/${pin.id}"

@@ -3,6 +3,7 @@ package com.github.zly2006.zhihu.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import com.github.zly2006.zhihu.data.zhihuPinContentDetailUrl
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
@@ -108,7 +109,7 @@ internal suspend fun fetchDesktopPinDetail(
     pin: Pin,
 ): DataHolder.Pin? {
     val account = store.load()
-    val endpoint = "https://www.zhihu.com/api/v4/pins/${pin.id}"
+    val endpoint = zhihuPinContentDetailUrl(pin)
     return runCatching {
         val json = store.fetchAuthenticatedJson(endpoint) {
             account.cookies["d_c0"]?.let { dc0 ->

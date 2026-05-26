@@ -1,6 +1,7 @@
 package com.github.zly2006.zhihu.viewmodel
 
 import com.github.zly2006.zhihu.data.ContentDetailCache
+import com.github.zly2006.zhihu.data.zhihuArticleContentDetailUrl
 import com.github.zly2006.zhihu.navigation.AnswerNavigatorPage
 import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.Article
@@ -105,10 +106,7 @@ class DesktopArticleViewModelRuntime(
         }
 
     private suspend fun fetchArticleContentDetail(article: Article): DataHolder.Content? {
-        val apiUrl = when (article.type) {
-            ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${article.id}?include=content,topics,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,relationship,ip_info,relationship.vote,author.badge_v2"
-            ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${article.id}?include=content,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,attachment,reaction,ip_info,pagination_info,question.topics,reaction.relation.voting,author.badge_v2"
-        }
+        val apiUrl = zhihuArticleContentDetailUrl(article)
 
         return runCatching {
             val jo = fetchGet(apiUrl) {
