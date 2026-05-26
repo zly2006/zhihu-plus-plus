@@ -9,9 +9,9 @@ import com.github.zly2006.zhihu.shared.data.SegmentInfoMeta
 import com.github.zly2006.zhihu.shared.util.SegmentHighlightSpan
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.signFetchRequest
-import io.ktor.client.request.delete
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
+import io.ktor.http.HttpMethod
 import io.ktor.http.contentType
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
@@ -44,14 +44,20 @@ private suspend fun toggleSegmentLike(
     val url = "https://www.zhihu.com/api/v4/reaction/${targetType}s/$contentId/segment_reaction"
 
     return if (highlight.meta.isLike) {
-        AccountData.httpClient(context).delete(url) {
-            signFetchRequest()
-            contentType(ContentType.Application.Json)
-            setBody(
-                buildJsonObject {
-                    put("seg_ids", highlight.meta.segIds.joinToString(","))
-                }.toString(),
-            )
+        AccountData.withAuthenticatedResponse(
+            context = context,
+            url = url,
+            block = {
+                method = HttpMethod.Delete
+                signFetchRequest()
+                contentType(ContentType.Application.Json)
+                setBody(
+                    buildJsonObject {
+                        put("seg_ids", highlight.meta.segIds.joinToString(","))
+                    }.toString(),
+                )
+            },
+        ) {
         }
         highlight.meta.copy(
             isLike = false,
