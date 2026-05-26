@@ -36,15 +36,26 @@ import com.github.zly2006.zhihu.viewmodel.local.TaskScheduler
 import com.github.zly2006.zhihu.viewmodel.local.UserBehaviorAnalyzer
 import com.github.zly2006.zhihu.viewmodel.local.getLocalContentDatabase
 import io.ktor.client.HttpClient
+import io.ktor.client.request.forms.MultiPartFormDataContent
+import io.ktor.client.request.forms.formData
+import io.ktor.client.request.header
 import io.ktor.client.request.parameter
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpMethod
+import io.ktor.http.contentType
+import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.put
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -52,6 +63,7 @@ import java.util.Locale
 import java.util.Properties
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
+import io.ktor.http.ContentType as KtorContentType
 
 class DesktopPaginationEnvironment(
     private val store: DesktopAccountStore = DesktopAccountStore(),
@@ -105,6 +117,18 @@ class DesktopPaginationEnvironment(
     override fun localHistory(): List<NavDestination> =
         historyStorage.history
 
+    override suspend fun followQuestion(
+        questionId: Long,
+        follow: Boolean,
+    ) {
+        val account = store.load()
+        val dc0 = account.cookies["d_c0"] ?: return
+        store.fetchAuthenticatedJson("https://www.zhihu.com/api/v4/questions/$questionId/followers") {
+            signZhihuFetchRequest(dc0 = dc0)
+            method = if (follow) HttpMethod.Post else HttpMethod.Delete
+        }
+    }
+
     override suspend fun applyHomeFeedFilters(items: List<FeedDisplayItem>): HomeFeedFilterResult {
         val settings = settingsStore.toFeedFilterSettings()
         val foregroundItems = applyForegroundReadFilterToDisplayItems(
@@ -124,6 +148,17 @@ class DesktopPaginationEnvironment(
             filteredItems = filteredItems,
             reverseBlock = settings.reverseBlock,
         )
+    }
+
+    override suspend fun sendFeedReadStatus(feed: Feed) {
+        val target = feed.target
+        val payloadItem = when (target) {
+            is Feed.AnswerTarget -> listOf("answer", target.id.toString(), "read")
+            is Feed.ArticleTarget -> listOf("article", target.id.toString(), "read")
+            is Feed.PinTarget -> listOf("pin", target.id.toString(), "read")
+            else -> return
+        }
+        postDesktopLastReadTouch(listOf(payloadItem))
     }
 
     override suspend fun recordContentInteraction(feed: Feed) {
@@ -157,8 +192,33 @@ class DesktopPaginationEnvironment(
         }
     }
 
+    override suspend fun markItemsAsTouched(items: Set<Pair<String, String>>): Set<Pair<String, String>> {
+        if (items.isEmpty()) return emptySet()
+        val payload = items.map { (type, id) ->
+            listOf(type, id, "touch")
+        }
+        return if (postDesktopLastReadTouch(payload)) {
+            items
+        } else {
+            emptySet()
+        }
+    }
+
     override suspend fun clearAllHistory() {
         historyStorage.clearAndSave()
+        val account = store.load()
+        val dc0 = account.cookies["d_c0"] ?: return
+        val body = buildJsonObject {
+            put("pairs", JsonArray(emptyList()))
+            put("clear", true)
+        }
+        val bodyText = ZhihuJson.json.encodeToString(JsonObject.serializer(), body)
+        store.fetchAuthenticatedJson("https://api.zhihu.com/read_history/batch_del") {
+            signZhihuFetchRequest(dc0 = dc0, body = bodyText)
+            contentType(KtorContentType.Application.Json)
+            setBody(bodyText)
+            method = HttpMethod.Post
+        }
     }
 
     override fun localRecommendationEngine(): LocalRecommendationEngine = localRecommendationEngine
@@ -317,6 +377,30 @@ class DesktopPaginationEnvironment(
                 }
             }?.get("data")
             ?.jsonArray ?: JsonArray(emptyList())
+    }
+
+    private suspend fun postDesktopLastReadTouch(payload: List<List<String>>): Boolean {
+        val account = store.load()
+        val dc0 = account.cookies["d_c0"] ?: return false
+        return store.createHttpClient(account.cookies).use { client ->
+            val response = client.post("https://www.zhihu.com/lastread/touch") {
+                header("x-requested-with", "fetch")
+                signZhihuFetchRequest(dc0 = dc0)
+                setBody(
+                    MultiPartFormDataContent(
+                        formData {
+                            append("items", ZhihuJson.json.encodeToString(payload))
+                        },
+                    ),
+                )
+            }
+            if (response.status.isSuccess()) {
+                true
+            } else {
+                Log.e("Browse-Touch", response.bodyAsText())
+                false
+            }
+        }
     }
 }
 
