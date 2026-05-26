@@ -12,6 +12,7 @@ package com.github.zly2006.zhihu.viewmodel.feed
 import android.content.Context
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.data.ContentDetailCache
+import com.github.zly2006.zhihu.data.getOrFetch
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem

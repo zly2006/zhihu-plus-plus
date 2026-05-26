@@ -17,16 +17,16 @@
 
 package com.github.zly2006.zhihu.data
 
-import android.content.Context
-import android.util.Log
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.util.Log
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlin.time.Clock
 
 /**
  * 内容详情缓存管理器
@@ -52,8 +52,8 @@ object ContentDetailCache {
      * 获取内容详情，优先从缓存读取
      */
     suspend fun getOrFetch(
-        context: Context,
         navDestination: NavDestination,
+        fetcher: suspend (NavDestination) -> DataHolder.Content?,
     ): DataHolder.Content? {
         val (contentType, contentId) = extractContentInfo(navDestination) ?: return null
         val key = CacheKey(contentType, contentId)
@@ -61,7 +61,7 @@ object ContentDetailCache {
         // 尝试从缓存读取
         mutex.withLock {
             cache[key]?.let { entry ->
-                if (System.currentTimeMillis() - entry.timestamp < CACHE_EXPIRY_MS) {
+                if (Clock.System.now().toEpochMilliseconds() - entry.timestamp < CACHE_EXPIRY_MS) {
                     Log.d("ContentDetailCache", "Cache hit for $contentType:$contentId")
                     return entry.content
                 } else {
@@ -72,7 +72,7 @@ object ContentDetailCache {
 
         // 缓存未命中，从 API 获取
         Log.d("ContentDetailCache", "Cache miss for $contentType:$contentId, fetching...")
-        val content = fetchContent(context, navDestination) ?: return null
+        val content = fetchContent(navDestination, fetcher) ?: return null
 
         // 存入缓存
         mutex.withLock {
@@ -81,7 +81,7 @@ object ContentDetailCache {
                 val oldestKey = cache.entries.minByOrNull { it.value.timestamp }?.key
                 oldestKey?.let { cache.remove(it) }
             }
-            cache[key] = CacheEntry(content, System.currentTimeMillis())
+            cache[key] = CacheEntry(content, Clock.System.now().toEpochMilliseconds())
         }
 
         return content
@@ -111,12 +111,12 @@ object ContentDetailCache {
      * 根据 NavDestination 类型调用对应的 getContentDetail
      */
     private suspend fun fetchContent(
-        context: Context,
         navDestination: NavDestination,
+        fetcher: suspend (NavDestination) -> DataHolder.Content?,
     ): DataHolder.Content? = when (navDestination) {
-        is Article -> DataHolder.getContentDetail(context, navDestination)
-        is Question -> DataHolder.getContentDetail(context, navDestination)
-        is Pin -> DataHolder.getContentDetail(context, navDestination)
+        is Article -> fetcher(navDestination)
+        is Question -> fetcher(navDestination)
+        is Pin -> fetcher(navDestination)
         else -> null
     }
 
@@ -125,10 +125,11 @@ object ContentDetailCache {
      */
     suspend fun clearExpired() {
         mutex.withLock {
-            val now = System.currentTimeMillis()
-            cache.entries.removeIf { (_, entry) ->
-                now - entry.timestamp >= CACHE_EXPIRY_MS
-            }
+            val now = Clock.System.now().toEpochMilliseconds()
+            val expiredKeys = cache.entries
+                .filter { (_, entry) -> now - entry.timestamp >= CACHE_EXPIRY_MS }
+                .map { (key, _) -> key }
+            expiredKeys.forEach { cache.remove(it) }
         }
     }
 
