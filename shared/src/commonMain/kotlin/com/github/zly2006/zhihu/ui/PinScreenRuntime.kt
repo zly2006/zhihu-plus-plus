@@ -26,6 +26,9 @@ data class PinScreenRuntime(
     val openExternalUrl: (String) -> Unit,
 )
 
+fun zhihuPinVotersUpUrl(pin: Pin): String =
+    "https://www.zhihu.com/api/v4/pins/${pin.id}/voters/up"
+
 @Composable
 expect fun rememberPinScreenRuntime(): PinScreenRuntime
 
