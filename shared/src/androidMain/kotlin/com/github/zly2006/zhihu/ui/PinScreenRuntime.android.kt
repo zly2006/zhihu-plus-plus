@@ -1,17 +1,12 @@
 package com.github.zly2006.zhihu.ui
 
 import android.content.Context
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.getContentDetail
-import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
@@ -101,26 +96,18 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
 }
 
 @Composable
-actual fun PinHtmlContent(html: String) {
-    if (rememberSettingsStore().getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)) {
-        WebviewComp {
-            it.isVerticalScrollBarEnabled = false
-            it.setupUpWebviewClient()
-            it.loadZhihu(
-                "https://www.zhihu.com",
-                Jsoup.parse(html),
-            )
-        }
-    } else {
-        Spacer(Modifier.height(10.dp))
-        RenderMarkdown(
-            html = html,
-            modifier = Modifier.questionSelectionWorkaround(),
-            selectable = true,
-            enableScroll = false,
+actual fun PinHtmlWebViewContent(html: String) {
+    WebviewComp {
+        it.isVerticalScrollBarEnabled = false
+        it.setupUpWebviewClient()
+        it.loadZhihu(
+            "https://www.zhihu.com",
+            Jsoup.parse(html),
         )
     }
 }
+
+actual fun supportsPinHtmlWebView(): Boolean = true
 
 private suspend fun fetchAndroidLinkCardPreview(
     context: Context,

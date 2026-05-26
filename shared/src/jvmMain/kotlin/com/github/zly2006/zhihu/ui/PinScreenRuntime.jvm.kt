@@ -1,13 +1,8 @@
 package com.github.zly2006.zhihu.ui
 
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
@@ -91,14 +86,10 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
 }
 
 @Composable
-actual fun PinHtmlContent(html: String) {
-    Spacer(Modifier.height(10.dp))
-    RenderMarkdown(
-        html = html,
-        selectable = true,
-        enableScroll = false,
-    )
+actual fun PinHtmlWebViewContent(html: String) {
 }
+
+actual fun supportsPinHtmlWebView(): Boolean = false
 
 private suspend fun fetchDesktopPinDetail(
     store: DesktopAccountStore,

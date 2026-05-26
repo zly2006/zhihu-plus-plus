@@ -3,12 +3,10 @@ package com.github.zly2006.zhihu.ui
 import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.getContentDetail
-import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
@@ -19,7 +17,6 @@ import com.github.zly2006.zhihu.shared.question.QuestionScreenUiState
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
-import com.github.zly2006.zhihu.util.fuckHonorService
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import org.jsoup.Jsoup
 
@@ -80,23 +77,16 @@ actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {
 }
 
 @Composable
-actual fun QuestionDetailContent(
+actual fun QuestionDetailWebViewContent(
     questionId: Long,
     html: String,
 ) {
-    if (rememberSettingsStore().getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)) {
-        WebviewComp {
-            it.loadZhihu(
-                "https://www.zhihu.com/question/$questionId",
-                Jsoup.parse(html),
-            )
-        }
-    } else {
-        RenderMarkdown(
-            html = html,
-            modifier = Modifier.fuckHonorService(),
-            selectable = true,
-            enableScroll = false,
+    WebviewComp {
+        it.loadZhihu(
+            "https://www.zhihu.com/question/$questionId",
+            Jsoup.parse(html),
         )
     }
 }
+
+actual fun supportsQuestionDetailWebView(): Boolean = true

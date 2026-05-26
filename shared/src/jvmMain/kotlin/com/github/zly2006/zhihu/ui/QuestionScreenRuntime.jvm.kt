@@ -2,7 +2,6 @@ package com.github.zly2006.zhihu.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
@@ -64,16 +63,13 @@ actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {
 }
 
 @Composable
-actual fun QuestionDetailContent(
+actual fun QuestionDetailWebViewContent(
     questionId: Long,
     html: String,
 ) {
-    RenderMarkdown(
-        html = html,
-        selectable = true,
-        enableScroll = false,
-    )
 }
+
+actual fun supportsQuestionDetailWebView(): Boolean = false
 
 private suspend fun fetchDesktopQuestionDetail(
     store: DesktopAccountStore,

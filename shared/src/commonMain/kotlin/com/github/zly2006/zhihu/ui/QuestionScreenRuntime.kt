@@ -1,8 +1,11 @@
 package com.github.zly2006.zhihu.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import com.fleeksoft.ksoup.Ksoup
+import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.question.QuestionScreenUiState
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 
@@ -24,7 +27,31 @@ fun questionDetailPreview(html: String): String = Ksoup.parse(html).text().trim(
 expect fun rememberQuestionScreenRuntime(): QuestionScreenRuntime
 
 @Composable
-expect fun QuestionDetailContent(
+fun QuestionDetailContent(
+    questionId: Long,
+    html: String,
+) {
+    if (rememberSettingsStore().getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false) &&
+        supportsQuestionDetailWebView()
+    ) {
+        QuestionDetailWebViewContent(
+            questionId = questionId,
+            html = html,
+        )
+    } else {
+        RenderMarkdown(
+            html = html,
+            modifier = Modifier.questionSelectionWorkaround(),
+            selectable = true,
+            enableScroll = false,
+        )
+    }
+}
+
+expect fun supportsQuestionDetailWebView(): Boolean
+
+@Composable
+expect fun QuestionDetailWebViewContent(
     questionId: Long,
     html: String,
 )
