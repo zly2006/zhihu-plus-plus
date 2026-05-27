@@ -3,9 +3,9 @@ plugins {
     id("com.android.application") version "9.0.1" apply false
     id("com.android.library") version "9.0.1" apply false
     id("com.mikepenz.aboutlibraries.plugin.android") version "14.0.1" apply false
-    kotlin("android") version "2.3.10" apply false
-    kotlin("plugin.compose") version "2.3.10" apply false
-    kotlin("plugin.serialization") version "2.3.10" apply false
-    id("com.google.devtools.ksp") version "2.3.2" apply false
+    kotlin("android") version "2.3.21" apply false
+    kotlin("plugin.compose") version "2.3.21" apply false
+    kotlin("plugin.serialization") version "2.3.21" apply false
+    id("com.google.devtools.ksp") version "2.3.8" apply false
     id("org.jlleitschuh.gradle.ktlint") version "14.2.0" apply false
 }
