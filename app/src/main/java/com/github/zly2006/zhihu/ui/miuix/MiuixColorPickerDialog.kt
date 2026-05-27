@@ -29,7 +29,7 @@ import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ColorPalette
 import top.yukonga.miuix.kmp.basic.HsvColorPicker
 import top.yukonga.miuix.kmp.basic.SmallTitle
-import top.yukonga.miuix.kmp.basic.Surface
+import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -52,7 +52,7 @@ fun MiuixColorPickerDialog(
     var selectedColor by remember { mutableStateOf(initialColor) }
 
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Surface(modifier = Modifier.padding(32.dp)) {
+        Card(modifier = Modifier.padding(32.dp)) {
             Column(Modifier.padding(24.dp)) {
                 SmallTitle(text = title)
 
