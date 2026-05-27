@@ -44,6 +44,7 @@ import com.github.zly2006.zhihu.theme.ThemeMode
 import com.github.zly2006.zhihu.theme.ThemeStyle
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.ColorPickerDialog
+import com.github.zly2006.zhihu.util.WindowBlurEffect
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Checkbox
 import top.yukonga.miuix.kmp.basic.DropdownItem
@@ -78,6 +79,7 @@ fun MiuixAppearanceSettingsScreen(
     val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE) }
     val navigator = LocalNavigator.current
     val blurEnabled = remember { mutableStateOf(preferences.getBoolean("blurEnabled", true)) }
+    WindowBlurEffect(useBlur = blurEnabled.value)
     val scrollBehavior = MiuixScrollBehavior()
 
     // Theme state
@@ -144,9 +146,6 @@ fun MiuixAppearanceSettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                modifier = if (blurEnabled.value) {
-                    Modifier.background(MiuixTheme.colorScheme.background.copy(alpha = 0.8f))
-                } else Modifier,
                 title = "外观",
                 navigationIcon = {
                     IconButton(onClick = { onExit(); navigator.onNavigateBack() }) {
