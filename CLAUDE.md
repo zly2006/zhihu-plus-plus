@@ -576,7 +576,8 @@ Keep the report factual and specific.
 
 ### 强制约定（不要违反）
 
-1. **只引用三个 miuix 包**：`basic` / `preference` / `theme`。
+1. **只引用四个 miuix 包**：`basic` / `preference` / `theme` / `utils`。
+   `utils` 是 Modifier 扩展（`overScrollVertical`、`scrollEndHaptic` 等），API 稳定。
    需要 `window` / `extra` / `blur` / `icon` 时**停下来跟用户确认**，
    不要自己引——miuix 0.x 还在频繁改 API。
 2. **图标继续用 `androidx.compose.material.icons.*`**（已在 deps 中），
@@ -683,3 +684,17 @@ SideEffect {
 
 本仓库的 `CLAUDE.md` 和 `AGENTS.md` 是同一份内容（diff 为空）。修改其中一份后
 必须同步到另一份，可以用 `cp CLAUDE.md AGENTS.md` 或建立 symlink。
+
+### miuix 设置页标准布局
+
+- 每个分组 = `SmallTitle` + `Card`
+- Card 标准 padding：`.padding(horizontal = 12.dp).padding(bottom = 12.dp)`
+- Card 内部 preference 之间自动有分隔线，不要手动加 Divider
+- 顶部第一项前留一个 `item { Spacer(Modifier.size(12.dp)) }`
+- TopAppBar 配 `MiuixScrollBehavior()` 实现大字折叠，LazyColumn 用 `nestedScroll`
+
+### API 映射追加
+
+| 单选下拉（Material 3 / Miuix / 系统主题这类） | `WindowSpinnerPreference` + `DropdownItem` |
+| 分组容器 | `Card`（basic 包），自带 surface 色和圆角 |
+| TopAppBar 滚动行为 | `MiuixScrollBehavior()`（无参） |
