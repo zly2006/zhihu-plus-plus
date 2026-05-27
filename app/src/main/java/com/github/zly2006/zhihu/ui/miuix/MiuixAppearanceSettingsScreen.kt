@@ -42,8 +42,11 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ThemeMode
 import com.github.zly2006.zhihu.theme.ThemeStyle
+import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
+import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
+import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
-import com.github.zly2006.zhihu.util.WindowBlurEffect
+import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Checkbox
 import top.yukonga.miuix.kmp.basic.DropdownItem
@@ -78,7 +81,7 @@ fun MiuixAppearanceSettingsScreen(
     val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE) }
     val navigator = LocalNavigator.current
     val blurEnabled = remember { mutableStateOf(preferences.getBoolean("blurEnabled", true)) }
-    WindowBlurEffect(useBlur = blurEnabled.value)
+    val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
     val scrollBehavior = MiuixScrollBehavior()
 
     // Theme state
@@ -145,6 +148,7 @@ fun MiuixAppearanceSettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                modifier = Modifier.installerMiuixBlurEffect(backdrop),
                 title = "外观",
                 navigationIcon = {
                     IconButton(onClick = { onExit(); navigator.onNavigateBack() }) {
@@ -157,7 +161,8 @@ fun MiuixAppearanceSettingsScreen(
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().overScrollVertical()
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
+                .nestedScroll(scrollBehavior.nestedScrollConnection)
+                .then(if (backdrop != null) Modifier.layerBackdrop(backdrop!!) else Modifier),
             contentPadding = innerPadding,
         ) {
             item { Spacer(Modifier.size(12.dp)) }

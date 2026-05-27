@@ -643,8 +643,12 @@ Keep the report factual and specific.
 - 一个 miuix 页面里如果不小心引了 `androidx.compose.material3.*` 的组件，
   视觉风格会瞬间穿帮（M3 的圆角、阴影、密度跟 miuix 完全不一样）。**review
   自己写的代码时第一件事：检查 import 列表**。
-- 所有使用 miuix 主题的页面必须调用 `WindowBlurEffect(useBlur = blurEnabled)`（`util/BlurUtil.kt`），
-  用 Android 12+ 的 `FLAG_BLUR_BEHIND` 窗口级模糊。设置项 key `"blurEnabled"`，默认 `true`。
+- 所有 miuix 页面的 TopAppBar 模糊必须走四段式管线（`theme/Backdrop.kt`）：
+  1. `val backdrop = rememberMiuixBlurBackdrop(blurEnabled)` 创建模糊源
+  2. LazyColumn 加 `.layerBackdrop(backdrop)` 指定采样源
+  3. TopAppBar 加 `.installerMiuixBlurEffect(backdrop)` 应用纹理模糊
+  4. TopAppBar 的 containerColor 用 `backdrop.getMiuixAppBarColor()`（透明）
+  设置项 key `"blurEnabled"`，默认 `true`。
 
 ### 反面教材（看到立刻停下）
 
@@ -700,3 +704,36 @@ SideEffect {
 | 单选下拉（Material 3 / Miuix / 系统主题这类） | `WindowSpinnerPreference` + `DropdownItem` |
 | 分组容器 | `Card`（basic 包），自带 surface 色和圆角 |
 | TopAppBar 滚动行为 | `MiuixScrollBehavior()`（无参） |
+
+### 包白名单更新
+
+允许的 miuix 包：
+- top.yukonga.miuix.kmp.basic.*
+- top.yukonga.miuix.kmp.preference.*
+- top.yukonga.miuix.kmp.theme.*
+- top.yukonga.miuix.kmp.utils.* (新增：overScrollVertical、scrollEndHaptic 等修饰符)
+- top.yukonga.miuix.kmp.icon.* (新增：MiuixIcons 图标资源)
+- top.yukonga.miuix.kmp.window.* (新增：WindowBottomSheet、WindowDialog、WindowSpinnerPreference 配套用)
+- top.yukonga.miuix.kmp.blur.* (新增：仅当按完整链路使用——LayerBackdrop + textureBlur + layerBackdrop 三件套都要用上)
+
+### Token 映射表（已确认）
+
+| Material 3 | miuix 映射 |
+|---|---|
+| surface | MiuixTheme.colorScheme.surface |
+| onSurface | MiuixTheme.colorScheme.onSurface |
+| background | MiuixTheme.colorScheme.background |
+| primary | MiuixTheme.colorScheme.primary |
+| surfaceContainerLow | MiuixTheme.colorScheme.surface（近似） |
+| surfaceBright | MiuixTheme.colorScheme.surface（近似） |
+| tertiary | MiuixTheme.colorScheme.tertiaryContainer（近似） |
+| inversePrimary | MiuixTheme.colorScheme.primary.copy(alpha=0.5f)（近似） |
+
+涉及这 4 个近似 token 的代码**优先封装到共享组件**（MiuixFeedCard、MiuixStatusBadge 等），不要在使用点重复翻译。
+
+### BottomSheet / Dialog 标准模式
+
+- 用 `WindowBottomSheet(show: MutableState<Boolean>, onDismissRequest, content)`
+- show 传 MutableState 引用，不是 Boolean
+- 永远跟 Dialog 同级，不要嵌套
+- 内容组件拆出来不带 host（如 ColorPickerContent），调用方决定用 Dialog 还是 BottomSheet
