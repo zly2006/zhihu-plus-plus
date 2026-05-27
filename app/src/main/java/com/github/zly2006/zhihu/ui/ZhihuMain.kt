@@ -117,6 +117,8 @@ import com.github.zly2006.zhihu.theme.ThemeStyle
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.miuix.MiuixAppearanceSettingsScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixBlocklistSettingsScreen
+import com.github.zly2006.zhihu.ui.miuix.MiuixFollowScreen
+import com.github.zly2006.zhihu.ui.miuix.MiuixFollowTopLevelPage
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.BlockedFeedHistoryScreen
@@ -500,10 +502,17 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     HotListScreen(innerPadding)
                 }
                 composable<Follow> {
-                    FollowScreen(
-                        scrollToTopTrigger = scrollToTopTrigger,
-                        innerPadding = innerPadding,
-                    )
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixFollowScreen(
+                            scrollToTopTrigger = scrollToTopTrigger,
+                            innerPadding = innerPadding,
+                        )
+                    } else {
+                        FollowScreen(
+                            scrollToTopTrigger = scrollToTopTrigger,
+                            innerPadding = innerPadding,
+                        )
+                    }
                 }
                 composable<Daily> {
                     DailyScreen()
@@ -611,20 +620,32 @@ private fun MainTabsPager(
                 scrollToTopTrigger = scrollToTopTrigger,
                 innerPadding = innerPadding,
             )
-            MainTabPage.FollowRecommendPage -> FollowTopLevelPage(
-                selectedTabIndex = 0,
-                onTabSelected = onFollowTabSelected,
-                scrollToTopTrigger = scrollToTopTrigger,
-                innerPadding = innerPadding,
-                isActive = pagerState.currentPage == pageIndex,
-            )
-            MainTabPage.FollowDynamicPage -> FollowTopLevelPage(
-                selectedTabIndex = 1,
-                onTabSelected = onFollowTabSelected,
-                scrollToTopTrigger = scrollToTopTrigger,
-                innerPadding = innerPadding,
-                isActive = pagerState.currentPage == pageIndex,
-            )
+            MainTabPage.FollowRecommendPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                MiuixFollowTopLevelPage(
+                    selectedTabIndex = 0, onTabSelected = onFollowTabSelected,
+                    scrollToTopTrigger = scrollToTopTrigger, innerPadding = innerPadding,
+                    isActive = pagerState.currentPage == pageIndex,
+                )
+            } else {
+                FollowTopLevelPage(
+                    selectedTabIndex = 0, onTabSelected = onFollowTabSelected,
+                    scrollToTopTrigger = scrollToTopTrigger, innerPadding = innerPadding,
+                    isActive = pagerState.currentPage == pageIndex,
+                )
+            }
+            MainTabPage.FollowDynamicPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                MiuixFollowTopLevelPage(
+                    selectedTabIndex = 1, onTabSelected = onFollowTabSelected,
+                    scrollToTopTrigger = scrollToTopTrigger, innerPadding = innerPadding,
+                    isActive = pagerState.currentPage == pageIndex,
+                )
+            } else {
+                FollowTopLevelPage(
+                    selectedTabIndex = 1, onTabSelected = onFollowTabSelected,
+                    scrollToTopTrigger = scrollToTopTrigger, innerPadding = innerPadding,
+                    isActive = pagerState.currentPage == pageIndex,
+                )
+            }
             MainTabPage.HotListPage -> HotListScreen(innerPadding)
             MainTabPage.DailyPage -> DailyScreen()
             MainTabPage.OnlineHistoryPage -> OnlineHistoryScreen()
