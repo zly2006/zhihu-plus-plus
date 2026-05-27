@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,11 +48,14 @@ fun MiuixColorPickerDialog(
     onColorSelected: (Color) -> Unit,
 ) {
     var selectedColor by remember { mutableStateOf(initialColor) }
+    var showSheet by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { showSheet = true }
 
     OverlayBottomSheet(
-        show = true,
+        show = showSheet,
         title = title,
-        onDismissRequest = onDismiss,
+        onDismissRequest = { showSheet = false },
+        onDismissFinished = onDismiss,
     ) {
         Column(Modifier.padding(horizontal = 24.dp)) {
             HsvColorPicker(
