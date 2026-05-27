@@ -11,8 +11,11 @@ import android.content.Context
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -97,6 +100,7 @@ fun MiuixAccountSettingScreen(
         scope.launch { delay(SHEET_ANIM_MS); block() }
     }
 
+    Box(Modifier.fillMaxSize().background(MiuixTheme.colorScheme.background)) {
     WindowBottomSheet(
         show = show.value,
         onDismissRequest = { closeThen { onDismissRequest(); navigator.onNavigateBack() } },
@@ -223,5 +227,6 @@ fun MiuixAccountSettingScreen(
                 )
             }
         }
+    }
     }
 }
