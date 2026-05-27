@@ -141,3 +141,539 @@ python3 .agents/skills/ui-review-memory/memory_store.py update-status \
 当我要求你发 PR 的时候，PR 的title必须以feat: /fix: /refactor: 开头，标题和内容必须用中文写。
 提交PR前，先更新master与远程同步或领先，并确保当前分支基于master，而不包括其他feature branch的内容。
 如果一开始给你的提示词包括了issue链接，并且此PR解决了这个issue，应该写上Resolves #issue_number在PR描述里，这样GitHub会自动关联并在PR合并时关闭这个issue。
+# AGENTS.md
+
+## Purpose
+
+This file defines repository-specific instructions for coding agents working on **InstallerX Revived**.
+
+Use it to decide:
+
+* where a change belongs,
+* which constraints must be preserved,
+* what to verify before claiming a task is complete.
+
+Task-specific maintainer instructions take precedence over this file. When the request is narrow, make the smallest coherent change that satisfies it.
+
+For substantial features, invasive refactors, or behavior changes that span several files, sketch a short implementation plan before editing. Keep the plan aligned with the actual implementation as the work proceeds.
+
+---
+
+## Read these first when relevant
+
+* `README.md` — product scope, supported install flows, user-facing feature boundaries.
+* `CONTRIBUTING.md` — translation policy, build prerequisites, contribution expectations.
+* `.github/workflows/pr-check.yml` — the default CI build matrix used for pull requests.
+* `settings.gradle.kts`, `app/build.gradle.kts`, and
+  `gradle/libs.versions.toml` — before touching Gradle, repositories, flavors, versions, or dependencies.
+
+Do not duplicate or contradict those files casually. Update this file only for stable, repository-wide rules that agents should repeatedly follow.
+
+---
+
+## Repository overview
+
+InstallerX Revived is a community-maintained Android installer with:
+
+* dialog, notification, and automatic installation flows,
+* support for APK, APKS, APKM, XAPK, APKs inside ZIP files, and batch APK installation,
+* profile-driven install options and install flags,
+* privileged workflows involving Root, Shizuku, Dhizuku, and hidden APIs,
+* switchable UI families based on Material 3 Expressive and Miuix.
+
+Several product behaviors are intentionally flow-specific. Do **not** assume a feature supported in dialog installation is also valid for notification or automatic installation unless the existing code and docs already establish that.
+
+---
+
+## Critical project constraints
+
+* Preserve the **online/offline** product boundary. The offline flavor must not silently gain network-only behavior or permissions.
+* Prefer the repository’s existing **native API** paths and abstractions. Do not introduce shell-command implementations as a shortcut unless the maintainer explicitly requests it.
+* Treat flow-specific behavior as flow-specific. A capability that exists for dialog installation is not automatically valid for notification or automatic installation.
+* When changing behavior that is described in `README.md`, update it or call out the documentation impact in the handoff.
+
+---
+
+## Project layout
+
+### Top-level areas
+
+* `app/` — main Android application.
+* `hidden-api/` — hidden API declarations/helpers consumed by the app.
+* `build-plugins/` — shared Gradle convention plugins.
+* `baselineprofile/` — Android baseline profile generation.
+* `.github/workflows/` — CI and release automation.
+
+Do not assume every top-level directory is an included Gradle module. Confirm active modules in
+`settings.gradle.kts` before making module-level assumptions.
+
+### Main Kotlin package map
+
+Under `app/src/main/java/com/rosan/installer/`:
+
+* `core/` — shared low-level app infrastructure.
+* `data/` — persistence, concrete providers, repositories, and mappers.
+* `di/` — Koin modules and initialization wiring.
+* `domain/` — domain models, repository contracts, providers, use cases, and business rules.
+* `framework/` — Android/platform-facing integration code.
+* `ui/` — screens, widgets, navigation, themes, and UI-specific models.
+* `util/` — utility helpers.
+
+Preserve this separation. Do not move behavior into a convenient but wrong layer just to finish faster.
+
+---
+
+## Build prerequisites
+
+### Toolchain
+
+* Use the repository Gradle Wrapper: `./gradlew ...`.
+* The project requires **JDK 25**.
+* Kotlin/JVM toolchains and Android compile settings are centrally defined; do not downgrade or loosen them unless the task explicitly requires it.
+
+### GitHub Packages authentication
+
+The project resolves snapshot `miuix` artifacts from GitHub Packages.
+
+For local builds, credentials are expected outside the repository, typically in the global Gradle properties file:
+
+```properties
+gpr.user=YOUR_GITHUB_USERNAME
+gpr.key=YOUR_PERSONAL_ACCESS_TOKEN
+```
+
+The token needs `read:packages` access. CI may instead use `GITHUB_ACTOR` and `GITHUB_TOKEN`.
+
+Never commit credentials, inline them into tracked files, or weaken the existing credential handling.
+
+---
+
+## Default verification
+
+### Standard smoke build
+
+The default repository-level verification target is the same pair used by pull request CI:
+
+```bash
+./gradlew assembleOnlinePreviewDebug assembleOfflinePreviewDebug \
+  -PAPP_ID="com.rosan.installer.x.revived.test"
+```
+
+Run this when the change can reasonably affect app compilation, resources, dependency wiring, or variant-sensitive behavior.
+
+### Report verification honestly
+
+When summarizing work:
+
+* state which commands were run,
+* state whether they passed,
+* say explicitly when verification was not run or could not be completed.
+
+Do not imply a build or test passed unless it actually did.
+
+---
+
+## Gradle, variants, and dependency rules
+
+### Flavors and build levels
+
+The app currently uses two flavor dimensions:
+
+* connectivity:
+
+    * `online`
+    * `offline`
+* level:
+
+    * `Unstable`
+    * `Preview`
+    * `Stable`
+
+Important build behavior includes:
+
+* connectivity-specific `INTERNET_ACCESS_ENABLED`,
+* build-level-specific `BUILD_LEVEL`,
+* git-hash version suffixes for unstable/preview outputs,
+* an optional `VERSION_NAME` Gradle override for release automation.
+
+Do not flatten, rename, or silently bypass flavor logic. If behavior differs by variant, make that relationship explicit.
+
+### Dependencies
+
+* Prefer `gradle/libs.versions.toml` for dependency and plugin version changes.
+* Follow the existing version catalog naming style.
+* Do not scatter raw dependency coordinates or versions across module build files without a strong reason.
+* Respect the current centralized repository setup and `RepositoriesMode.FAIL_ON_PROJECT_REPOS`.
+* The GitHub Packages `miuix` repository is intentionally configured in `settings.gradle.kts`; do not duplicate it in subprojects.
+
+### Signing and release flow
+
+* Release and debug signing behavior is handled centrally in `app/build.gradle.kts`.
+* Local builds may fall back to the debug keystore when custom signing material is absent.
+* Stable release packaging is automated in `.github/workflows/manual-stable-release.yml`.
+
+Do not alter signing fallback, artifact naming, release workflow commands, version generation, or stable-release logic unless the maintainer explicitly asks for that.
+
+---
+
+## Architecture conventions
+
+### Dependency injection
+
+Use the existing Koin structure in `app/src/main/java/com/rosan/installer/di/`.
+
+Relevant modules already include areas such as:
+
+* core,
+* device,
+* engine,
+* initialization,
+* installer sessions,
+* privileged behavior,
+* serialization,
+* settings,
+* view models.
+
+When introducing a new injectable dependency:
+
+* place it in the most relevant existing module,
+* avoid ad-hoc global singletons,
+* keep initialization wiring explicit.
+
+### Application initialization
+
+`App.kt` performs important global startup work, including:
+
+* crash handling initialization,
+* hidden API exemptions on supported Android versions,
+* Monet setup for older platform versions,
+* conditional logging setup,
+* Koin bootstrap,
+* privileged auto-lock service initialization.
+
+Treat the order and presence of this startup logic as sensitive. Do not reorder or remove initialization steps unless the task requires it and the consequences are understood.
+
+### Domain and data boundaries
+
+Keep business rules and platform/data access separate:
+
+* domain models and use cases should not become Android UI utilities,
+* data repositories/providers should not grow presentation logic,
+* UI code should not bypass established repository/use-case boundaries when a domain path already exists.
+
+Prefer extending the existing pattern used by the nearest comparable feature.
+
+---
+
+## Settings-related changes
+
+Settings in this repository are layered and should stay that way.
+
+### Typical settings layout
+
+Domain side:
+
+* `domain/settings/model/`
+* `domain/settings/provider/`
+* `domain/settings/repository/`
+* `domain/settings/usecase/`
+* `domain/settings/util/`
+
+Data side:
+
+* `data/settings/local/`
+* `data/settings/mapper/`
+* `data/settings/provider/`
+* `data/settings/repository/`
+
+### Checklist for adding or changing a setting
+
+When a setting is persisted or exposed through app state, verify whether the change needs:
+
+1. a domain model or state update,
+2. provider/repository contract changes,
+3. data-layer storage or mapping updates,
+4. DI wiring updates,
+5. UI state/action/view-model changes where that feature is presented,
+6. both Material 3 and Miuix screen updates when both UI families expose the same setting,
+7. English and Simplified Chinese string updates.
+
+Do not implement only the visible switch while leaving persistence, mapping, or downstream behavior inconsistent.
+
+---
+
+## UI conventions
+
+### Material 3 Expressive and Miuix are separate UI families
+
+The repository keeps page implementations under distinct paths such as:
+
+* `ui/page/main/`
+* `ui/page/miuix/`
+
+Respect that split.
+
+Do not:
+
+* leak Miuix-only components into Material 3 screens without intent,
+* rebuild Material 3 screens with Miuix assumptions,
+* change shared logic while checking only one UI family.
+
+When a feature exists in both design systems, preserve semantic consistency while allowing implementation details to remain native to each UI family.
+
+### Reusable UI components
+
+For common widgets and shared components:
+
+* keep dependencies as narrow as the existing component boundary allows,
+* do not hardcode behavior that should be supplied by the caller,
+* avoid locking reusable components to one screen-specific style or workflow,
+* prefer composable APIs that remain extensible rather than baking product decisions into generic widgets.
+
+Follow nearby component patterns before inventing a new style.
+
+---
+
+## Text, translation, and wording
+
+### Translation policy
+
+Per repository contribution policy:
+
+* English and Simplified Chinese strings are maintained by developers.
+* Other languages should go through Weblate rather than direct translation PRs.
+
+### When changing user-visible strings
+
+* Update English and Simplified Chinese together when the changed text belongs to both maintained locales.
+* Preserve established product terminology unless the task is explicitly a wording cleanup.
+* Keep safety caveats and compatibility warnings precise. Do not soften them just to make copy shorter.
+* When text distinguishes concepts such as global authorization, profile authorization, install initiator, requester, or system limitations, keep those distinctions intact.
+
+---
+
+## Privileged and installation behavior
+
+This codebase interacts with highly sensitive platform behavior, including:
+
+* app installation flows,
+* install flags and profile inheritance,
+* user/all-user installation handling,
+* Root, Shizuku, Dhizuku, and hidden API paths,
+* ROM-specific compatibility workarounds,
+* attempts to bypass OEM interception only where the project already supports that behavior.
+
+### Rules for sensitive changes
+
+Before changing privileged or install behavior:
+
+1. identify the exact flow being modified: dialog, notification, automatic, profile, or system integration,
+2. check whether the feature is already documented as flow-specific,
+3. preserve permission boundaries and do not imply capabilities the current authorizer cannot provide,
+4. avoid widening behavior from one privileged backend to another without explicit evidence,
+5. keep ROM compatibility behavior explicit instead of hiding it behind vague generic logic.
+
+If a change affects data safety, install success, system-API fallbacks, or ROM-specific behavior, explain the tradeoff clearly in the final summary.
+
+---
+
+## Source and API discipline
+
+* Prefer native APIs and the repository’s existing abstractions over ad-hoc shell-command workflows.
+* Reuse existing platform wrappers, providers, and repositories before adding parallel paths.
+* Avoid introducing reflection, hidden API access, or privileged shortcuts where an existing maintained path already exists.
+* When adding compatibility logic, keep version checks and backend checks local and readable.
+
+---
+
+## CI and workflow boundaries
+
+The workflow directory contains purpose-specific automation such as:
+
+* pull request build checks,
+* preview/dev automation,
+* release automation,
+* CodeQL or other maintenance workflows.
+
+When editing workflows:
+
+* change only the workflow relevant to the request,
+* preserve least-privilege token permissions unless explicitly required,
+* keep package-auth requirements intact,
+* do not conflate PR validation with release packaging.
+
+Release automation deserves extra caution because it may involve version inputs, signing material, artifact renaming, and draft release creation.
+
+---
+
+## Recommended agent workflow
+
+For implementation tasks, follow this order:
+
+1. Restate the concrete behavior being changed.
+2. Locate the smallest relevant area of the repository.
+3. Find the nearest existing pattern and extend it.
+4. Update all affected layers, not only the most visible file.
+5. Run the narrowest meaningful verification, defaulting to the CI-equivalent smoke build when compilation impact is plausible.
+6. Summarize:
+
+    * what changed,
+    * why this shape was chosen,
+    * what was verified,
+    * what remains unverified.
+
+Prefer targeted, reviewable edits over sweeping refactors.
+
+---
+
+## Common mistakes to avoid
+
+* Editing one UI family and forgetting the parallel Material 3 or Miuix surface.
+* Adding a setting toggle without updating persistence or state propagation.
+* Adding repositories to module Gradle files despite centralized repository management.
+* Hardcoding dependency versions outside the version catalog.
+* Modifying release/signing/version automation during unrelated work.
+* Treating dialog-only install behavior as universally available.
+* Weakening or deleting compatibility warnings from strings without understanding why they exist.
+* Reordering app initialization code as a “cleanup.”
+* Claiming a build passed when no verification was run.
+
+---
+
+## Maintainer-facing handoff format
+
+When finishing a task, give a compact handoff that includes:
+
+* **Changed:** files or areas updated.
+* **Behavior:** what users or maintainers should expect now.
+* **Verification:** commands run and result.
+* **Notes:** migration concerns, unverified scenarios, or follow-up risks only when genuinely relevant.
+
+Keep the report factual and specific.
+## Miuix 适配工作手册
+
+本仓库正在做 Material 3 / miuix 双主题适配，采用**页面级分流**模式（参考
+[InstallerX-Revived](https://github.com/wxxsfxyzm/InstallerX-Revived)）。
+如果用户要求你 port 某个页面到 miuix 风格，严格按下面执行。
+
+### 架构
+
+- `ui/` 下是 Material 3 现有页面，**不动**。
+- `ui/miuix/` 下是 miuix 风格的对应页面，文件名加 `Miuix` 前缀。
+- 主题切换由 `theme/ThemeManager.getThemeStyle()` 控制；顶层 `theme/Theme.kt`
+  的 `ZhihuTheme` 自动分流，子页面不需要关心。
+- 路由分流写在 `ui/ZhihuMain.kt` 的 NavHost 里，每个 `composable<>` 加
+  `if useMiuix ... else ...`。
+- 数据层、ViewModel、navigation/、theme/ 都**不归 miuix 适配工作管**，不要碰。
+
+### 参考实现
+
+模仿这个文件的结构和风格：
+**`app/src/main/java/com/github/zly2006/zhihu/ui/miuix/MiuixAppearanceSettingsScreen.kt`**
+
+它演示了 Scaffold + TopAppBar + LazyColumn 骨架、`SuperSwitch` / `SuperArrow`
+设置项、`LocalNavigator` 返回、`ThemeManager` 读写。
+
+### 强制约定（不要违反）
+
+1. **只引用三个 miuix 包**：`basic` / `preference` / `theme`。
+   需要 `window` / `extra` / `blur` / `icon` 时**停下来跟用户确认**，
+   不要自己引——miuix 0.x 还在频繁改 API。
+2. **图标继续用 `androidx.compose.material.icons.*`**（已在 deps 中），
+   不要引 `miuix-icons` 的图标对象。
+3. **不要新建 ViewModel**。miuix 页面必须**复用** `ui/` 下同名页面的 ViewModel。
+   数据层和业务逻辑零修改，只换表现层。
+4. **不要修改这些目录下的文件**，除非用户明确要求：
+   `theme/`、`navigation/`、`viewmodel/`、`data/`、`util/`、`nlp/`。
+5. **不要引入新的依赖**（Koin、DataStore、Hilt 等），沿用 `ThemeManager` +
+   `SharedPreferences` + `mutableState` 的现有模式。
+6. **不要升级到 Navigation 3**，保持 `navigation-compose:2.9.2`。
+7. **miuix 页面的函数签名必须跟原版完全一致**（参数名、类型、默认值），
+   否则 NavHost 里的分流没法直接换。
+
+### 标准工作流
+
+收到 "port 某某页面" 的任务时：
+
+1. 读 `ui/XxxScreen.kt`（原 M3 版），摸清功能、参数、依赖的 ViewModel。
+2. 在 `ui/miuix/` 下新建 `MiuixXxxScreen.kt`，**函数签名与原版完全一致**。
+3. 用 miuix 组件重写 UI 部分，业务调用（ViewModel 方法、navigator 跳转）
+   原样照抄。
+4. 在 `ui/ZhihuMain.kt` 对应的 `composable<>` 加 if/else 分支：
+   ```kotlin
+   composable<Xxx> { entry ->
+       if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+           MiuixXxxScreen(...)
+       } else {
+           XxxScreen(...)
+       }
+   }
+   ```
+   如果 NavHost 里已经存在 `themedComposable<>` helper，优先用它。
+5. 按现有的构建/调试/复检流程验证（见上面的 "Android 调试标准流程" 和
+   "UI 双代理复检"）。**必须验证两个主题下都正常**，不是只测一个。
+
+### API 映射速查
+
+| Material 3 | miuix 替换 |
+|---|---|
+| `MaterialTheme.colorScheme.X` | `MiuixTheme.colorScheme.X` |
+| `MaterialTheme.typography.bodyLarge` | `MiuixTheme.textStyles.body1` |
+| `androidx.compose.material3.Text` | `top.yukonga.miuix.kmp.basic.Text` |
+| `Scaffold` | `top.yukonga.miuix.kmp.basic.Scaffold` |
+| `TopAppBar` / `LargeTopAppBar` | `top.yukonga.miuix.kmp.basic.TopAppBar` |
+| `Card` | `top.yukonga.miuix.kmp.basic.Card` |
+| `Switch` 设置项 | `SuperSwitch`（preference 包） |
+| `ListItem` 跳转项 | `SuperArrow`（preference 包） |
+| 分组标题 / 小节头 | `SmallTitle`（basic 包） |
+| `AlertDialog` | 暂用 LazyColumn 展开式选择，参考 MiuixAppearanceSettingsScreen |
+| `ModalBottomSheet` | 未确认 API，跟用户确认后再写 |
+
+### 常见坑
+
+- miuix `Scaffold` 没有 `contentWindowInsets` 参数，需要 inset 时在内部
+  用 `WindowInsets.safeDrawing`。
+- miuix `Button` 的 content lambda 是 `BoxScope`，不是 `RowScope`，图标+文字
+  横排要自己包一层 `Row`。
+- 状态栏图标颜色由顶层 `ZhihuTheme` 统一处理，子页面**不要**再写
+  `WindowCompat` 相关代码。
+- `androidx.compose.material3.Text` 和 `top.yukonga.miuix.kmp.basic.Text`
+  同名，**不要在一个文件里混引**。miuix 页面里只引 miuix 的 Text。
+- 一个 miuix 页面里如果不小心引了 `androidx.compose.material3.*` 的组件，
+  视觉风格会瞬间穿帮（M3 的圆角、阴影、密度跟 miuix 完全不一样）。**review
+  自己写的代码时第一件事：检查 import 列表**。
+
+### 反面教材（看到立刻停下）
+
+```kotlin
+// ❌ 不要引这些 miuix 包，先跟用户确认
+import top.yukonga.miuix.kmp.window.WindowDialog
+import top.yukonga.miuix.kmp.extra.SuperDialog
+import top.yukonga.miuix.kmp.blur.layerBackdrop
+
+// ❌ 不要新建 ViewModel
+class MiuixBlocklistViewModel : ViewModel() { ... }
+// 直接 viewModel<BlocklistViewModel>() 复用
+
+// ❌ 不要改原 M3 页面去"统一"什么
+// ui/BlocklistSettingsScreen.kt 必须保持完全不变
+
+// ❌ 不要改路由定义
+// navigation/NavDestination.kt 不归 miuix 适配管
+
+// ❌ 不要在 miuix 页面里写状态栏处理
+SideEffect {
+    WindowCompat.getInsetsController(...).isAppearanceLightStatusBars = ...
+}
+// 顶层 ZhihuTheme 已经处理
+```
+
+### 范围控制
+
+每个 port 任务**只 port 一个页面**。即使发现了其他页面的 bug、性能问题、
+代码重复，**只记 TODO 注释**，不顺手改。一个 PR 一个页面方便 review 和 revert。
+
+### 同步 AGENTS.md
+
+本仓库的 `CLAUDE.md` 和 `AGENTS.md` 是同一份内容（diff 为空）。修改其中一份后
+必须同步到另一份，可以用 `cp CLAUDE.md AGENTS.md` 或建立 symlink。
