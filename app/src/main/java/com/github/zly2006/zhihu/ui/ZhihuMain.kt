@@ -116,6 +116,7 @@ import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ThemeStyle
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.miuix.MiuixAppearanceSettingsScreen
+import com.github.zly2006.zhihu.ui.miuix.MiuixAccountSettingScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixBlocklistSettingsScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixFollowScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixFollowTopLevelPage
@@ -524,7 +525,11 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     OnlineHistoryScreen()
                 }
                 composable<Account> {
-                    AccountSettingScreen(innerPadding)
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixAccountSettingScreen(innerPadding)
+                    } else {
+                        AccountSettingScreen(innerPadding)
+                    }
                 }
                 composable<Search> { navEntry ->
                     val search: Search = navEntry.toRoute()
@@ -649,7 +654,11 @@ private fun MainTabsPager(
             MainTabPage.HotListPage -> HotListScreen(innerPadding)
             MainTabPage.DailyPage -> DailyScreen()
             MainTabPage.OnlineHistoryPage -> OnlineHistoryScreen()
-            MainTabPage.AccountPage -> AccountSettingScreen(innerPadding)
+            MainTabPage.AccountPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                MiuixAccountSettingScreen(innerPadding)
+            } else {
+                AccountSettingScreen(innerPadding)
+            }
         }
     }
 }
