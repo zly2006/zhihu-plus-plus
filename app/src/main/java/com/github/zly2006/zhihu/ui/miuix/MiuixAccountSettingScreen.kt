@@ -135,7 +135,10 @@ fun MiuixAccountSettingScreen(
             } else {
                 item {
                     SmallTitle(text = "账号", insideMargin = PaddingValues(16.dp, 8.dp))
-                    Card(modifier = Modifier.padding(bottom = 12.dp)) {
+                    Card(
+                        modifier = Modifier.padding(bottom = 12.dp),
+                        colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.secondaryContainer),
+                    ) {
                         ArrowPreference(
                             title = "登录知乎",
                             onClick = { closeThen { context.startActivity(Intent(context, LoginActivity::class.java)) } },
@@ -149,7 +152,10 @@ fun MiuixAccountSettingScreen(
             if (data.login) {
                 item {
                     SmallTitle(text = "快捷入口", insideMargin = PaddingValues(16.dp, 8.dp))
-                    Card(modifier = Modifier.padding(bottom = 12.dp)) {
+                    Card(
+                        modifier = Modifier.padding(bottom = 12.dp),
+                        colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.secondaryContainer),
+                    ) {
                         ArrowPreference(
                             title = "收藏夹", onClick = { closeThen { data.self?.urlToken?.let { navigator.onNavigate(Collections(it)) } } },
                             startAction = { Icon(Icons.Default.BookmarkBorder, null) },
