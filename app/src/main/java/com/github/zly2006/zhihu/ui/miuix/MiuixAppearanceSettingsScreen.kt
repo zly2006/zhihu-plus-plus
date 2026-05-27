@@ -149,6 +149,7 @@ fun MiuixAppearanceSettingsScreen(
         topBar = {
             TopAppBar(
                 modifier = Modifier.installerMiuixBlurEffect(backdrop),
+                color = backdrop.getMiuixAppBarColor(),
                 title = "外观",
                 navigationIcon = {
                     IconButton(onClick = { onExit(); navigator.onNavigateBack() }) {
@@ -162,7 +163,7 @@ fun MiuixAppearanceSettingsScreen(
         LazyColumn(
             modifier = Modifier.fillMaxSize().overScrollVertical()
                 .nestedScroll(scrollBehavior.nestedScrollConnection)
-                .then(if (backdrop != null) Modifier.layerBackdrop(backdrop!!) else Modifier),
+                .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier),
             contentPadding = innerPadding,
         ) {
             item { Spacer(Modifier.size(12.dp)) }
