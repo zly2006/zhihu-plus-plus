@@ -43,7 +43,6 @@ import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ThemeMode
 import com.github.zly2006.zhihu.theme.ThemeStyle
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
-import com.github.zly2006.zhihu.ui.components.ColorPickerDialog
 import com.github.zly2006.zhihu.util.WindowBlurEffect
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Checkbox
@@ -348,12 +347,12 @@ fun MiuixAppearanceSettingsScreen(
     }
 
     // Color picker dialogs (outside LazyColumn)
-    if (showColorPicker) ColorPickerDialog(
+    if (showColorPicker) MiuixColorPickerDialog(
         "选择主题色", customColor,
         onDismiss = { showColorPicker = false },
         onColorSelected = { ThemeManager.setCustomColor(context, it); showColorPicker = false },
     )
-    if (showBgPicker) ColorPickerDialog(
+    if (showBgPicker) MiuixColorPickerDialog(
         "选择背景颜色", bgColor,
         onDismiss = { showBgPicker = false },
         onColorSelected = { ThemeManager.setBackgroundColor(context, it, isDark); showBgPicker = false },
