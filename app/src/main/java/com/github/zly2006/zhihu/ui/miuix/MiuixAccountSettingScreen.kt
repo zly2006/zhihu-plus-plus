@@ -11,11 +11,7 @@ import android.content.Context
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -24,9 +20,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.automirrored.filled.Logout
@@ -49,12 +44,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.LoginActivity
-import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Collections
@@ -72,8 +65,13 @@ import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Close
+import top.yukonga.miuix.kmp.icon.extended.Ok
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.utils.overScrollVertical
+import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 import top.yukonga.miuix.kmp.window.WindowBottomSheet
 
 private const val SHEET_ANIM_MS = 300L
@@ -89,9 +87,7 @@ fun MiuixAccountSettingScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE) }
-    val data = testAccountData ?: AccountData.asState().let { state ->
-        val liveData by state; liveData
-    }
+    val data = testAccountData ?: AccountData.asState().let { state -> val liveData by state; liveData }
 
     val show = rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(Unit) { show.value = true }
@@ -101,143 +97,129 @@ fun MiuixAccountSettingScreen(
         scope.launch { delay(SHEET_ANIM_MS); block() }
     }
 
-    Box(Modifier.fillMaxSize().background(MiuixTheme.colorScheme.background)) {
     WindowBottomSheet(
         show = show.value,
         onDismissRequest = { closeThen { onDismissRequest(); navigator.onNavigateBack() } },
         title = "账号设置",
+        startAction = {
+            IconButton(onClick = { closeThen { onDismissRequest(); navigator.onNavigateBack() } }) {
+                Icon(MiuixIcons.Close, "关闭", tint = MiuixTheme.colorScheme.onBackground)
+            }
+        },
+        endAction = {
+            IconButton(onClick = { closeThen { onDismissRequest(); navigator.onNavigateBack() } }) {
+                Icon(MiuixIcons.Ok, "确认", tint = MiuixTheme.colorScheme.onBackground)
+            }
+        },
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(vertical = 12.dp),
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth().scrollEndHaptic().overScrollVertical(),
         ) {
             // ── 用户信息 ──
             if (data.login) {
-                Row(
-                    Modifier.fillMaxWidth().clickable {
-                        closeThen {
-                            navigator.onNavigate(Person(
-                                id = data.self?.id ?: "", urlToken = data.self?.urlToken ?: "",
-                                name = data.username,
-                            ))
+                item {
+                    Row(
+                        Modifier.fillMaxWidth().clickable {
+                            closeThen { navigator.onNavigate(Person(id = data.self?.id ?: "", urlToken = data.self?.urlToken ?: "", name = data.username)) }
+                        }.padding(horizontal = 24.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        AsyncImage(data.self?.avatarUrl, "头像", modifier = Modifier.size(56.dp).clip(CircleShape))
+                        Spacer(Modifier.width(12.dp))
+                        Text(data.username, style = AppTokens.text.titleMedium, modifier = Modifier.weight(1f))
+                        IconButton(onClick = { show.value = false; scope.launch { delay(SHEET_ANIM_MS); AccountData.delete(context) } }) {
+                            Icon(Icons.AutoMirrored.Filled.Logout, "退出登录", tint = MiuixTheme.colorScheme.error)
                         }
-                    }.padding(horizontal = 24.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    AsyncImage(data.self?.avatarUrl, "头像",
-                        modifier = Modifier.size(56.dp).clip(CircleShape))
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(data.username, style = AppTokens.text.titleMedium)
-                    }
-                    IconButton(onClick = {
-                        show.value = false
-                        scope.launch { delay(SHEET_ANIM_MS); AccountData.delete(context) }
-                    }) {
-                        Icon(Icons.AutoMirrored.Filled.Logout, "退出登录", tint = MiuixTheme.colorScheme.error)
                     }
                 }
             } else {
-                SmallTitle(text = "账号")
-                Card(
-                    Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp),
-                    colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.surfaceContainerHigh),
-                ) {
-                    ArrowPreference(
-                        title = "登录知乎",
-                        onClick = { closeThen { context.startActivity(Intent(context, LoginActivity::class.java)) } },
-                        startAction = { Icon(Icons.AutoMirrored.Filled.Login, null) },
-                    )
+                item {
+                    SmallTitle(text = "账号", insideMargin = PaddingValues(16.dp, 8.dp))
+                    Card(modifier = Modifier.padding(bottom = 12.dp)) {
+                        ArrowPreference(
+                            title = "登录知乎",
+                            onClick = { closeThen { context.startActivity(Intent(context, LoginActivity::class.java)) } },
+                            startAction = { Icon(Icons.AutoMirrored.Filled.Login, null) },
+                        )
+                    }
                 }
             }
 
             // ── 快捷入口 ──
             if (data.login) {
-                SmallTitle(text = "快捷入口")
-                Card(
-                    Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp),
-                    colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.surfaceContainerHigh),
-                ) {
-                    ArrowPreference(
-                        title = "收藏夹", onClick = { closeThen { data.self?.urlToken?.let { navigator.onNavigate(Collections(it)) } } },
-                        startAction = { Icon(Icons.Default.BookmarkBorder, null) },
-                    )
-                    ArrowPreference(
-                        title = "关注订阅", onClick = {
-                            closeThen {
-                                navigator.onNavigate(Person(id = data.self?.id ?: "", urlToken = data.self?.urlToken ?: "", name = data.username, jumpTo = "关注订阅"))
-                            }
-                        },
-                        startAction = { Icon(Icons.Default.Groups, null) },
-                    )
-                    ArrowPreference(
-                        title = "通知", onClick = { closeThen { onDismissRequest(); navigator.onNavigate(Notification) } },
-                        startAction = { Icon(Icons.Default.Notifications, null) },
-                    )
+                item {
+                    SmallTitle(text = "快捷入口", insideMargin = PaddingValues(16.dp, 8.dp))
+                    Card(modifier = Modifier.padding(bottom = 12.dp)) {
+                        ArrowPreference(
+                            title = "收藏夹", onClick = { closeThen { data.self?.urlToken?.let { navigator.onNavigate(Collections(it)) } } },
+                            startAction = { Icon(Icons.Default.BookmarkBorder, null) },
+                        )
+                        ArrowPreference(
+                            title = "关注订阅", onClick = { closeThen { navigator.onNavigate(Person(id = data.self?.id ?: "", urlToken = data.self?.urlToken ?: "", name = data.username, jumpTo = "关注订阅")) } },
+                            startAction = { Icon(Icons.Default.Groups, null) },
+                        )
+                        ArrowPreference(
+                            title = "通知", onClick = { closeThen { onDismissRequest(); navigator.onNavigate(Notification) } },
+                            startAction = { Icon(Icons.Default.Notifications, null) },
+                        )
+                    }
                 }
             }
 
             // ── 设置 ──
-            SmallTitle(text = "设置")
-            Card(
-                Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp),
-                colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.surfaceContainerHigh),
-            ) {
-                ArrowPreference(
-                    title = "外观与阅读体验", summary = "主题颜色、字体大小等",
-                    onClick = { closeThen { navigator.onNavigate(Account.AppearanceSettings()) } },
-                    startAction = { Icon(Icons.Default.Palette, null) },
-                )
-                ArrowPreference(
-                    title = "推荐系统与内容过滤", summary = "推荐、智能过滤、关键词屏蔽等",
-                    onClick = { closeThen { navigator.onNavigate(Account.RecommendSettings()) } },
-                    startAction = { Icon(Icons.Default.FilterAlt, null) },
-                )
-                ArrowPreference(
-                    title = "系统与更新", summary = "GitHub、更新设置等",
-                    onClick = { closeThen { navigator.onNavigate(Account.SystemAndUpdateSettings) } },
-                    startAction = { Icon(Icons.Default.Settings, null) },
-                )
-                if (preferences.getBoolean("developer", false)) {
+            item {
+                SmallTitle(text = "设置", insideMargin = PaddingValues(16.dp, 8.dp))
+                Card(modifier = Modifier.padding(bottom = 12.dp)) {
                     ArrowPreference(
-                        title = "开发者选项",
-                        onClick = { closeThen { navigator.onNavigate(Account.DeveloperSettings) } },
-                        startAction = { Icon(Icons.Default.Code, null) },
+                        title = "外观与阅读体验", summary = "主题颜色、字体大小等",
+                        onClick = { closeThen { navigator.onNavigate(Account.AppearanceSettings()) } },
+                        startAction = { Icon(Icons.Default.Palette, null) },
                     )
+                    ArrowPreference(
+                        title = "推荐系统与内容过滤", summary = "推荐、智能过滤、关键词屏蔽等",
+                        onClick = { closeThen { navigator.onNavigate(Account.RecommendSettings()) } },
+                        startAction = { Icon(Icons.Default.FilterAlt, null) },
+                    )
+                    ArrowPreference(
+                        title = "系统与更新", summary = "GitHub、更新设置等",
+                        onClick = { closeThen { navigator.onNavigate(Account.SystemAndUpdateSettings) } },
+                        startAction = { Icon(Icons.Default.Settings, null) },
+                    )
+                    if (preferences.getBoolean("developer", false)) {
+                        ArrowPreference(
+                            title = "开发者选项",
+                            onClick = { closeThen { navigator.onNavigate(Account.DeveloperSettings) } },
+                            startAction = { Icon(Icons.Default.Code, null) },
+                        )
+                    }
                 }
             }
 
             // ── 关于 ──
-            SmallTitle(text = "关于")
-            Card(
-                Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp),
-                colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.surfaceContainerHigh),
-            ) {
-                ArrowPreference(
-                    title = "开源许可",
-                    onClick = { closeThen { navigator.onNavigate(Account.OpenSourceLicenses) } },
-                )
-                ArrowPreference(
-                    title = "知乎++",
-                    summary = "版本号：${BuildConfig.VERSION_NAME} ${BuildConfig.BUILD_TYPE}",
-                )
+            item {
+                SmallTitle(text = "关于", insideMargin = PaddingValues(16.dp, 8.dp))
+                Card(modifier = Modifier.padding(bottom = 12.dp)) {
+                    ArrowPreference(
+                        title = "开源许可",
+                        onClick = { closeThen { navigator.onNavigate(Account.OpenSourceLicenses) } },
+                    )
+                    ArrowPreference(
+                        title = "知乎++",
+                        summary = "版本号：${BuildConfig.VERSION_NAME} ${BuildConfig.BUILD_TYPE}",
+                    )
+                }
             }
 
             // 退出登录
             if (data.login) {
-                Spacer(Modifier.height(8.dp))
-                TextButton(
-                    text = "退出登录",
-                    onClick = {
-                        show.value = false
-                        scope.launch { delay(SHEET_ANIM_MS); AccountData.delete(context); Toast.makeText(context, "已退出登录", Toast.LENGTH_SHORT).show() }
-                    },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-                )
+                item {
+                    TextButton(
+                        text = "退出登录",
+                        onClick = { show.value = false; scope.launch { delay(SHEET_ANIM_MS); AccountData.delete(context) } },
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                    )
+                }
             }
         }
-    }
     }
 }

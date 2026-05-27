@@ -155,15 +155,14 @@ fun ZhihuMiuixTheme(
                 isDark = darkTheme,
             )
         } else {
-            // 标准模式不传 keyColor，让 miuix 使用内置默认调色板。
-            // 传入自定义色会导致整个 palette 被该色偏移（暗色主题尤为明显）。
+            // 标准模式：只传 mode，不传 keyColor 和 isDark。
+            // mode 本身已决定亮/暗，额外参数会干扰 miuix 内置 palette。
             ThemeController(
                 colorSchemeMode = when (themeMode) {
                     ThemeMode.SYSTEM -> ColorSchemeMode.System
                     ThemeMode.LIGHT -> ColorSchemeMode.Light
                     ThemeMode.DARK -> ColorSchemeMode.Dark
                 },
-                isDark = darkTheme,
             )
         }
     }
