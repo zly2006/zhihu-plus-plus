@@ -643,6 +643,8 @@ Keep the report factual and specific.
 - 一个 miuix 页面里如果不小心引了 `androidx.compose.material3.*` 的组件，
   视觉风格会瞬间穿帮（M3 的圆角、阴影、密度跟 miuix 完全不一样）。**review
   自己写的代码时第一件事：检查 import 列表**。
+- 所有 miuix 页面里的 **TopAppBar 和底部导航栏必须加半透明背景**（用 `MiuixTheme.colorScheme.background.copy(alpha = 0.8f)`），
+  并受 `blurEnabled` 设置项控制。设置项默认值写 `true`，持久化到 SharedPreferences key `"blurEnabled"`。
 
 ### 反面教材（看到立刻停下）
 

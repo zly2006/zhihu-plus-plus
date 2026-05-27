@@ -77,6 +77,7 @@ fun MiuixAppearanceSettingsScreen(
     val context = LocalContext.current
     val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE) }
     val navigator = LocalNavigator.current
+    val blurEnabled = remember { mutableStateOf(preferences.getBoolean("blurEnabled", true)) }
     val scrollBehavior = MiuixScrollBehavior()
 
     // Theme state
@@ -143,6 +144,9 @@ fun MiuixAppearanceSettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                modifier = if (blurEnabled.value) {
+                    Modifier.background(MiuixTheme.colorScheme.background.copy(alpha = 0.8f))
+                } else Modifier,
                 title = "外观",
                 navigationIcon = {
                     IconButton(onClick = { onExit(); navigator.onNavigateBack() }) {
@@ -165,6 +169,12 @@ fun MiuixAppearanceSettingsScreen(
             item {
                 Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
                     UiEngineSpinner(themeStyle) { ThemeManager.setThemeStyle(context, it) }
+                    SwitchPreference(
+                        checked = blurEnabled.value,
+                        onCheckedChange = { blurEnabled.value = it; preferences.edit { putBoolean("blurEnabled", it) } },
+                        title = "毛玻璃效果",
+                        summary = "顶栏和底栏使用半透明模糊背景（Android 12+ 可用）",
+                    )
                 }
             }
 
