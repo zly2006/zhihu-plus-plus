@@ -2,17 +2,7 @@
  * Zhihu++ - Free & Ad-Free Zhihu client for Android.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as published by
- * the Free Software Foundation (version 3 only).
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * Licensed under AGPL-3.0-only.
  */
 
 package com.github.zly2006.zhihu.theme
@@ -40,6 +30,10 @@ object ThemeManager {
     private val backgroundColorDark = mutableIntStateOf(0xFF121212.toInt())
     private val themeMode = mutableStateOf(ThemeMode.SYSTEM)
 
+    // ===== 新增：UI 风格切换 =====
+    // 默认仍走 Material 3，用户主动开启 miuix
+    private val themeStyle = mutableStateOf(ThemeStyle.Material3)
+
     @Composable
     fun getUseDynamicColor(): Boolean = useDynamicColor.value
 
@@ -55,6 +49,16 @@ object ThemeManager {
 
     @Composable
     fun getThemeMode(): ThemeMode = themeMode.value
+
+    @Composable
+    fun getThemeStyle(): ThemeStyle = themeStyle.value
+
+    /**
+     * 非 Composable 上下文里读 useMiuix 的便捷入口。
+     * 注意：这是裸读 state.value，不会触发 recompose。Composable 里请用 [getThemeStyle]。
+     */
+    val useMiuix: Boolean
+        get() = themeStyle.value == ThemeStyle.Miuix
 
     //
     var isDarkTheme: Boolean = false
@@ -82,6 +86,10 @@ object ThemeManager {
         } catch (_: IllegalArgumentException) {
             ThemeMode.SYSTEM
         }
+        // 新增：读取 UI 风格
+        themeStyle.value = ThemeStyle.fromValueOrDefault(
+            preferences.getString("themeStyle", ThemeStyle.Material3.name)
+        )
     }
 
     fun setUseDynamicColor(context: Context, useDynamic: Boolean) {
@@ -112,5 +120,16 @@ object ThemeManager {
         themeMode.value = mode
         val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
         preferences.edit { putString("themeMode", mode.name) }
+    }
+
+    /**
+     * 新增：切换 UI 风格。
+     * 改完后顶层 ZhihuTheme 会自动 recompose 到对应主题，且因为 movableContentOf 包裹，
+     * 子组件不会被销毁重建，ViewModel 和滚动位置都保留。
+     */
+    fun setThemeStyle(context: Context, style: ThemeStyle) {
+        themeStyle.value = style
+        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        preferences.edit { putString("themeStyle", style.name) }
     }
 }

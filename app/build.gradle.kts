@@ -37,7 +37,7 @@ ksp {
 
 android {
     namespace = "com.github.zly2006.zhihu"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.github.zly2006.zhplus"
@@ -266,4 +266,12 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
     androidTestImplementation("io.ktor:ktor-client-mock:$ktor")
+
+    // ===== miuix 0.9.1 =====
+    val miuixVersion = "0.9.1"
+    implementation("top.yukonga.miuix.kmp:miuix-core-android:$miuixVersion")
+    implementation("top.yukonga.miuix.kmp:miuix-ui-android:$miuixVersion")
+    implementation("top.yukonga.miuix.kmp:miuix-preference-android:$miuixVersion")
+    implementation("top.yukonga.miuix.kmp:miuix-icons-android:$miuixVersion")
+    // implementation("top.yukonga.miuix.kmp:miuix-blur-android:$miuixVersion")  // 毛玻璃按需启用
 }

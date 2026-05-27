@@ -113,7 +113,9 @@ import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.navigation.SentenceSimilarityTest
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.theme.ThemeStyle
 import com.github.zly2006.zhihu.theme.ZhihuTheme
+import com.github.zly2006.zhihu.ui.miuix.MiuixAppearanceSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.BlockedFeedHistoryScreen
@@ -551,10 +553,18 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 }
                 composable<Account.AppearanceSettings> {
                     val args = it.toRoute<Account.AppearanceSettings>()
-                    AppearanceSettingsScreen(
-                        setting = args.setting,
-                        onExit = reloadBottomBarPreferences,
-                    )
+                    val useMiuix = ThemeManager.getThemeStyle() == ThemeStyle.Miuix
+                    if (useMiuix) {
+                        MiuixAppearanceSettingsScreen(
+                            setting = args.setting,
+                            onExit = reloadBottomBarPreferences,
+                        )
+                    } else {
+                        AppearanceSettingsScreen(
+                            setting = args.setting,
+                            onExit = reloadBottomBarPreferences,
+                        )
+                    }
                 }
                 composable<Account.RecommendSettings> {
                     val args = it.toRoute<Account.RecommendSettings>()
