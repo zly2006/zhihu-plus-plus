@@ -10,6 +10,7 @@ import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.answerNavigatorPageFromJson
 import com.github.zly2006.zhihu.navigation.zhihuQuestionFeedsUrl
+import com.github.zly2006.zhihu.shared.comment.decodeZhihuCommentData
 import com.github.zly2006.zhihu.shared.comment.rootCommentUrl
 import com.github.zly2006.zhihu.shared.data.CollectionItem
 import com.github.zly2006.zhihu.shared.data.DataHolder
@@ -232,14 +233,7 @@ class DesktopArticleViewModelRuntime(
             configureSignedRequest(this)
         } ?: return emptyList()
 
-        return json["data"]
-            ?.jsonArray
-            ?.mapNotNull { element ->
-                runCatching {
-                    ZhihuJson.decodeJson<DataHolder.Comment>(element)
-                }.getOrNull()
-            }?.take(safeRequestedCount)
-            .orEmpty()
+        return decodeZhihuCommentData(json, safeRequestedCount)
     }
 
     override fun accountHttpClient(): HttpClient =

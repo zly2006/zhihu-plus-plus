@@ -36,6 +36,7 @@ import com.github.zly2006.zhihu.data.getOrFetch
 import com.github.zly2006.zhihu.navigation.AndroidAnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.shared.comment.decodeZhihuCommentData
 import com.github.zly2006.zhihu.shared.comment.rootCommentUrl
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
@@ -53,7 +54,6 @@ import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonArray
 import java.io.File
 
 class AndroidArticleViewModelRuntime(
@@ -111,14 +111,7 @@ class AndroidArticleViewModelRuntime(
             signFetchRequest()
         } ?: return emptyList()
 
-        return json["data"]
-            ?.jsonArray
-            ?.mapNotNull { element ->
-                runCatching {
-                    AccountData.decodeJson<DataHolder.Comment>(element)
-                }.getOrNull()
-            }?.take(safeRequestedCount)
-            .orEmpty()
+        return decodeZhihuCommentData(json, safeRequestedCount)
     }
 
     override fun configureSignedRequest(builder: HttpRequestBuilder) {
