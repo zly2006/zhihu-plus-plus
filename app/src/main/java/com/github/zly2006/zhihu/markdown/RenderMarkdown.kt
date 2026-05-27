@@ -56,6 +56,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalViewConfiguration
+import androidx.compose.ui.platform.ViewConfiguration
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -214,6 +216,26 @@ fun RenderVideoBox(
     }
 }
 
+/**
+ * 禁用谷歌的双击选择文字功能。
+ *
+ * 比较hack的做法，但目前没有更好的方案了。
+ */
+@Composable
+private fun NoDoubleClickSelectionScope(content: @Composable () -> Unit) {
+    val current = LocalViewConfiguration.current
+    val patched =
+        remember(current) {
+            object : ViewConfiguration by current {
+                override val doubleTapTimeoutMillis: Long = 0L
+            }
+        }
+
+    CompositionLocalProvider(LocalViewConfiguration provides patched) {
+        content()
+    }
+}
+
 @Composable
 fun RenderMarkdown(
     html: String,
@@ -230,7 +252,7 @@ fun RenderMarkdown(
     val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE) }
     val fontSize = preferences.getInt(PREF_FONT_SIZE, 100)
     val lineHeight = preferences.getInt(PREF_LINE_HEIGHT, 160)
-    val defaultTheme = MarkdownTheme.fromMaterialTheme()
+    val defaultTheme = MarkdownTheme.material3()
 
     val fontResult = rememberLatexFonts(context, AccountData.httpClient(context))
     val mathFont = fontResult.downloaded?.mathFont ?: defaultTheme.mathFont
@@ -249,21 +271,24 @@ fun RenderMarkdown(
         LocalSegmentCommentHost provides { target -> segmentCommentTarget = target },
         LocalSegmentActionSheetHost provides { state -> segmentActionSheetState = state },
     ) {
-        Markdown(
-            document = document,
-            modifier = modifier,
-            imageContent = ::RenderImage,
-            scrollState = scrollState,
-            enableScroll = enableScroll,
-            enableSelection = selectable,
-            onLinkClick = { url ->
-                resolveContent(url)?.let { navigator.onNavigate(it) }
-                    ?: luoTianYiUrlLauncher(context, url.toUri())
-            },
-            header = header,
-            footer = footer,
-            theme = theme,
-        )
+        Box(modifier = modifier) {
+            NoDoubleClickSelectionScope {
+                Markdown(
+                    document = document,
+                    imageContent = ::RenderImage,
+                    scrollState = scrollState,
+                    enableScroll = enableScroll,
+                    enableSelection = selectable,
+                    onLinkClick = { url ->
+                        resolveContent(url)?.let { navigator.onNavigate(it) }
+                            ?: luoTianYiUrlLauncher(context, url.toUri())
+                    },
+                    header = header,
+                    footer = footer,
+                    theme = theme,
+                )
+            }
+        }
     }
     segmentCommentTarget?.let { target ->
         CommentScreenComponent(

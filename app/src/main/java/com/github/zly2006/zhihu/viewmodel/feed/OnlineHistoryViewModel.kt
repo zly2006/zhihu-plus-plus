@@ -29,7 +29,7 @@ import kotlinx.serialization.json.JsonArray
 class OnlineHistoryViewModel : BaseFeedViewModel() {
     override val initialUrl: String = "https://api.zhihu.com/unify-consumption/read_history?offset=0&limit=10"
 
-    override fun processResponse(context: Context, data: List<Feed>, rawData: JsonArray) {
+    override suspend fun processResponse(context: Context, data: List<Feed>, rawData: JsonArray) {
         val history = (context as MainActivity).history
 
         val response = rawData.mapNotNull {

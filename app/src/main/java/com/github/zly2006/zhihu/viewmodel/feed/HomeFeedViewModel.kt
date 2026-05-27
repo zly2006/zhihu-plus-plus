@@ -62,7 +62,7 @@ class HomeFeedViewModel :
     }
 
     @OptIn(DelicateCoroutinesApi::class)
-    override fun processResponse(context: Context, data: List<Feed>, rawData: JsonArray) {
+    override suspend fun processResponse(context: Context, data: List<Feed>, rawData: JsonArray) {
         allData.addAll(data)
         debugData.addAll(rawData)
 

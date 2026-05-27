@@ -75,7 +75,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
             get() = localFeedId ?: localContentId ?: navDestination?.toString() ?: "$title|${summary.orEmpty()}|$details"
     }
 
-    override fun processResponse(context: Context, data: List<Feed>, rawData: JsonArray) {
+    override suspend fun processResponse(context: Context, data: List<Feed>, rawData: JsonArray) {
         super.processResponse(context, data, rawData)
         addDisplayItems(data.flatten().map { createDisplayItem(context, it) })
     }

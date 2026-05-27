@@ -25,5 +25,5 @@ enum class RecommendationMode(
     WEB("Web 端推荐", "server", "使用知乎网页端的推荐算法"),
     ANDROID("安卓端推荐", "android", "使用知乎安卓端的推荐算法"),
     LOCAL("本地推荐", "local", "基于本地数据的推荐算法"),
-    MIXED("混合推荐", "mixed", "融合安卓和网页端推荐算法，并过滤严选内容"),
+    MIXED("混合推荐", "mixed", "融合安卓和网页端推荐算法，并过滤盐选内容"),
 }

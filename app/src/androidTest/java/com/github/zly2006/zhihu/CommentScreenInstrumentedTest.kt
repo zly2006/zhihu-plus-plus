@@ -23,6 +23,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -72,8 +73,12 @@ import com.github.zly2006.zhihu.ui.commentRowTag
 import com.github.zly2006.zhihu.viewmodel.CommentItem
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.CommentSortOrder
+import com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager
 import io.ktor.client.HttpClient
 import io.ktor.http.HttpMethod
+import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonArray
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -87,8 +92,9 @@ class CommentScreenInstrumentedTest {
     val composeRule: MainActivityComposeRule = createAndroidComposeRule<MainActivity>()
 
     @Before
-    fun setUp() {
+    fun setUp() = runBlocking {
         composeRule.resetAppPreferences()
+        BlocklistManager.getInstance(composeRule.activity).clearAllBlockedUsers()
         ZhihuMockApi.mockJsonPrefix(
             method = HttpMethod.Post,
             urlPrefix = "https://www.zhihu.com/api/v4/comments/",
@@ -99,6 +105,11 @@ class CommentScreenInstrumentedTest {
             urlPrefix = "https://www.zhihu.com/api/v4/comments/",
             body = "{}",
         )
+    }
+
+    @After
+    fun tearDown() = runBlocking {
+        BlocklistManager.getInstance(composeRule.activity).clearAllBlockedUsers()
     }
 
     @Test
@@ -304,9 +315,76 @@ class CommentScreenInstrumentedTest {
 
         composeRule.onNodeWithText("离线发送的回复").assertIsDisplayed()
         composeRule.onAllNodesWithTag(COMMENT_REPLY_BANNER_TAG).assertCountEquals(0)
-        composeRule.onNodeWithText("回复 子回复作者 1...").assertDoesNotExist()
+        composeRule.onAllNodesWithText("回复 子回复作者 1...").assertCountEquals(0)
         composeRule.onNodeWithText("写下你的评论...").assertIsDisplayed()
         assertEquals(listOf(SeededChildCommentViewModel.Submission("离线发送的回复", "child-1")), viewModel.submissions)
+    }
+
+    @Test
+    fun blockedUsersAreRemovedFromRootAndEmbeddedChildComments() {
+        /*
+         * Expected behavior:
+         * 1. Production response processing should remove a root comment authored by a blocked user.
+         * 2. Kept root comments should also drop embedded child comments from blocked users before
+         *    the screen receives them.
+         */
+        val viewModel = SeededRootCommentViewModel(
+            article = ROOT_ARTICLE,
+            seededComments = emptyList(),
+        )
+        runBlocking {
+            val blocklistManager = BlocklistManager.getInstance(composeRule.activity)
+            blocklistManager.addBlockedUser("blocked-root-author", "被屏蔽根评论作者")
+            blocklistManager.addBlockedUser("blocked-child-author", "被屏蔽子评论作者")
+            viewModel.processForTest(
+                composeRule.activity,
+                listOf(
+                    seedComment(
+                        id = "blocked-root",
+                        authorId = "blocked-root-author",
+                        authorName = "被屏蔽根评论作者",
+                        content = "这条根评论不应展示",
+                    ),
+                    seedComment(
+                        id = "allowed-root",
+                        authorId = "allowed-root-author",
+                        authorName = "可见根评论作者",
+                        content = "这条根评论应展示",
+                        childCommentCount = 2,
+                        childComments = listOf(
+                            seedComment(
+                                id = "blocked-child",
+                                authorId = "blocked-child-author",
+                                authorName = "被屏蔽子评论作者",
+                                content = "这条内嵌子评论不应展示",
+                            ),
+                            seedComment(
+                                id = "allowed-child",
+                                authorId = "allowed-child-author",
+                                authorName = "可见子评论作者",
+                                content = "这条内嵌子评论应展示",
+                            ),
+                        ),
+                    ),
+                ),
+            )
+        }
+
+        setCommentScreen(
+            viewModel = viewModel,
+            testOverrides = CommentScreenTestOverrides(
+                viewModel = viewModel,
+                skipInitialLoad = true,
+            ),
+        )
+
+        composeRule.onNodeWithTag(commentRowTag("allowed-root")).assertIsDisplayed()
+        composeRule.onNodeWithText("可见根评论作者").assertIsDisplayed()
+        composeRule.onNodeWithText("这条内嵌子评论应展示").assertIsDisplayed()
+        composeRule.onAllNodesWithTag(commentRowTag("blocked-root")).assertCountEquals(0)
+        composeRule.onAllNodesWithTag(commentRowTag("blocked-child")).assertCountEquals(0)
+        composeRule.onAllNodesWithText("被屏蔽根评论作者").assertCountEquals(0)
+        composeRule.onAllNodesWithText("被屏蔽子评论作者").assertCountEquals(0)
     }
 
     private fun setCommentScreen(
@@ -347,6 +425,10 @@ class CommentScreenInstrumentedTest {
 
         override fun createCommentItem(comment: DataHolder.Comment, article: NavDestination): CommentItem =
             CommentItem(comment, CommentHolder(comment.id, article))
+
+        suspend fun processForTest(context: android.content.Context, data: List<DataHolder.Comment>) {
+            processResponse(context, data, JsonArray(emptyList()))
+        }
 
         override fun loadMore(context: android.content.Context) {
             loadMoreCount += 1

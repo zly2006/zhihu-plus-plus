@@ -24,6 +24,8 @@ import com.hrm.markdown.parser.ast.MathBlock
 import com.hrm.markdown.parser.ast.NativeBlock
 import com.hrm.markdown.parser.ast.Node
 import com.hrm.markdown.parser.ast.Paragraph
+import com.hrm.markdown.parser.ast.StrongEmphasis
+import com.hrm.markdown.parser.ast.Text
 import org.jsoup.Jsoup
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -63,6 +65,47 @@ class MdAstTest {
     }
 
     @Test
+    fun paragraph_with_only_inline_equation_with_space_should_convert_to_math_block() {
+        val document = htmlToMdAst(
+            """
+            <p>  <img eeimg="1" src="https://www.zhihu.com/equation?tex=E%3Dmc%5E2" alt="E=mc^2"/>  </p>
+            """.trimIndent(),
+        )
+
+        assertEquals(1, document.children.size)
+        assertTrue(document.children.single() is MathBlock)
+        assertEquals("E=mc^2", (document.children.single() as MathBlock).literal)
+        assertFalse(document.allNodes().any { it is InlineMath })
+    }
+
+    @Test
+    fun paragraph_inline_strong_text_should_keep_space_between_english_words() {
+        val document = htmlToMdAst(
+            """
+            <p>The <strong>quick</strong> <strong>brown</strong> fox jumps.</p>
+            """.trimIndent(),
+        )
+
+        assertEquals("The quick brown fox jumps.", document.plainText())
+        assertEquals(2, document.allNodes().count { it is StrongEmphasis })
+    }
+
+    @Test
+    fun blockquote_inline_strong_text_should_keep_space_between_english_words() {
+        val document = htmlToMdAst(
+            """
+            <blockquote data-pid="P3CclW4S">你看<b>过</b>某样东西，不代表你真的<b>看见</b>它了。<br>Just because you have <b>looked</b> at something doesn’t mean that you have <b>seen</b> it.</blockquote>
+            """.trimIndent(),
+        )
+
+        assertEquals(
+            "你看过某样东西，不代表你真的看见它了。Just because you have looked at something doesn’t mean that you have seen it.",
+            document.plainText(),
+        )
+        assertEquals(4, document.allNodes().count { it is StrongEmphasis })
+    }
+
+    @Test
     fun extracted_answer_content_should_keep_equation_as_math_not_figure() {
         val htmlFile = File(
             requireNotNull(javaClass.classLoader?.getResource("zhihu_answer_2035661632110585441_content.html")).toURI(),
@@ -82,4 +125,10 @@ class MdAstTest {
 
     private fun Node.allNodes(): List<Node> =
         listOf(this) + if (this is ContainerNode) children.flatMap { it.allNodes() } else emptyList()
+
+    private fun Node.plainText(): String = when (this) {
+        is Text -> literal
+        is ContainerNode -> children.joinToString(separator = "") { it.plainText() }
+        else -> ""
+    }
 }
