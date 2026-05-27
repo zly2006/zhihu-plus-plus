@@ -110,12 +110,10 @@ fun MiuixAccountSettingScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 32.dp),
+                .padding(vertical = 12.dp),
         ) {
             // ── 用户信息 ──
             if (data.login) {
-                Spacer(Modifier.height(12.dp))
                 Row(
                     Modifier.fillMaxWidth().clickable {
                         closeThen {
@@ -124,7 +122,7 @@ fun MiuixAccountSettingScreen(
                                 name = data.username,
                             ))
                         }
-                    }.padding(vertical = 8.dp),
+                    }.padding(horizontal = 24.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     AsyncImage(data.self?.avatarUrl, "头像",
@@ -140,21 +138,21 @@ fun MiuixAccountSettingScreen(
                         Icon(Icons.AutoMirrored.Filled.Logout, "退出登录", tint = MiuixTheme.colorScheme.error)
                     }
                 }
-                Spacer(Modifier.height(8.dp))
             } else {
-                Spacer(Modifier.height(12.dp))
-                ArrowPreference(
-                    title = "登录知乎",
-                    onClick = { closeThen { context.startActivity(Intent(context, LoginActivity::class.java)) } },
-                    startAction = { Icon(Icons.AutoMirrored.Filled.Login, null) },
-                )
-                Spacer(Modifier.height(8.dp))
+                SmallTitle(text = "账号")
+                Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
+                    ArrowPreference(
+                        title = "登录知乎",
+                        onClick = { closeThen { context.startActivity(Intent(context, LoginActivity::class.java)) } },
+                        startAction = { Icon(Icons.AutoMirrored.Filled.Login, null) },
+                    )
+                }
             }
 
             // ── 快捷入口 ──
             if (data.login) {
                 SmallTitle(text = "快捷入口")
-                Card(Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+                Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
                     ArrowPreference(
                         title = "收藏夹", onClick = { closeThen { data.self?.urlToken?.let { navigator.onNavigate(Collections(it)) } } },
                         startAction = { Icon(Icons.Default.BookmarkBorder, null) },
@@ -176,7 +174,7 @@ fun MiuixAccountSettingScreen(
 
             // ── 设置 ──
             SmallTitle(text = "设置")
-            Card(Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+            Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
                 ArrowPreference(
                     title = "外观与阅读体验", summary = "主题颜色、字体大小等",
                     onClick = { closeThen { navigator.onNavigate(Account.AppearanceSettings()) } },
@@ -203,7 +201,7 @@ fun MiuixAccountSettingScreen(
 
             // ── 关于 ──
             SmallTitle(text = "关于")
-            Card(Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+            Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
                 ArrowPreference(
                     title = "开源许可",
                     onClick = { closeThen { navigator.onNavigate(Account.OpenSourceLicenses) } },
@@ -214,16 +212,16 @@ fun MiuixAccountSettingScreen(
                 )
             }
 
-            // 退出登录确认
+            // 退出登录
             if (data.login) {
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(8.dp))
                 TextButton(
                     text = "退出登录",
                     onClick = {
                         show.value = false
                         scope.launch { delay(SHEET_ANIM_MS); AccountData.delete(context); Toast.makeText(context, "已退出登录", Toast.LENGTH_SHORT).show() }
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
                 )
             }
         }
