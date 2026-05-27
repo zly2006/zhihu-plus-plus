@@ -525,7 +525,8 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     OnlineHistoryScreen()
                 }
                 composable<Account> {
-                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                    val style = ThemeManager.getThemeStyle()
+                    if (style == ThemeStyle.Miuix) {
                         MiuixAccountSettingScreen(innerPadding)
                     } else {
                         AccountSettingScreen(innerPadding)
@@ -654,11 +655,7 @@ private fun MainTabsPager(
             MainTabPage.HotListPage -> HotListScreen(innerPadding)
             MainTabPage.DailyPage -> DailyScreen()
             MainTabPage.OnlineHistoryPage -> OnlineHistoryScreen()
-            MainTabPage.AccountPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
-                MiuixAccountSettingScreen(innerPadding)
-            } else {
-                AccountSettingScreen(innerPadding)
-            }
+            MainTabPage.AccountPage -> AccountSettingScreen(innerPadding)
         }
     }
 }

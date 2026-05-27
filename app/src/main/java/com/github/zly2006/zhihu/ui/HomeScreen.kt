@@ -90,6 +90,8 @@ import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Search
+import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.theme.ThemeStyle
 import com.github.zly2006.zhihu.ui.components.AnnouncementCard
 import com.github.zly2006.zhihu.ui.components.AnnouncementCardDefaults
 import com.github.zly2006.zhihu.ui.components.BlockByKeywordsDialog
@@ -99,6 +101,7 @@ import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.PaginatedList
+import com.github.zly2006.zhihu.ui.miuix.MiuixAccountSettingScreen
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.util.clipboardManager
@@ -471,15 +474,23 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
         },
     ) { scaffoldPadding ->
         if (duo3HomeAccount && showAccountBottomSheet) {
-            MyModalBottomSheet(
-                onDismissRequest = { showAccountBottomSheet = false },
-                containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            ) {
-                AccountSettingScreen(
+            if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                MiuixAccountSettingScreen(
                     innerPadding = PaddingValues(0.dp),
                     unreadCount = unreadCount,
                     onDismissRequest = { showAccountBottomSheet = false },
                 )
+            } else {
+                MyModalBottomSheet(
+                    onDismissRequest = { showAccountBottomSheet = false },
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                ) {
+                    AccountSettingScreen(
+                        innerPadding = PaddingValues(0.dp),
+                        unreadCount = unreadCount,
+                        onDismissRequest = { showAccountBottomSheet = false },
+                    )
+                }
             }
         }
 
