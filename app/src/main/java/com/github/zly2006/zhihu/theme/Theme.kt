@@ -18,6 +18,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.remember
@@ -54,12 +55,14 @@ fun ZhihuTheme(
         movableContentOf<@Composable () -> Unit> { it() }
     }
 
-    when (style) {
-        ThemeStyle.Material3 -> ZhihuMaterialTheme {
-            preserved(content)
-        }
-        ThemeStyle.Miuix -> ZhihuMiuixTheme {
-            preserved(content)
+    CompositionLocalProvider(LocalThemeStyle provides style) {
+        when (style) {
+            ThemeStyle.Material3 -> ZhihuMaterialTheme {
+                preserved(content)
+            }
+            ThemeStyle.Miuix -> ZhihuMiuixTheme {
+                preserved(content)
+            }
         }
     }
 }
