@@ -95,6 +95,7 @@ import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ThemeMode
+import com.github.zly2006.zhihu.theme.ThemeStyle
 import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
@@ -302,6 +303,7 @@ fun AppearanceSettingsScreen(
         ) {
             val useDynamicColor = ThemeManager.getUseDynamicColor()
             val currentThemeMode = ThemeManager.getThemeMode()
+            val currentThemeStyle = ThemeManager.getThemeStyle()
 
             // ── 主题 ────────────────────────────────────────────────────────────
 
@@ -350,6 +352,26 @@ fun AppearanceSettingsScreen(
                             }
                         }
                     },
+                )
+
+                SettingItemWithSwitch(
+                    title = { Text("使用 miuix 风格界面") },
+                    description = { Text("切换为类 HyperOS 视觉风格。可随时切回 Material 3。\n切换后整个应用立即生效，不需要重启。") },
+                    checked = currentThemeStyle == ThemeStyle.Miuix,
+                    onCheckedChange = { useMiuix ->
+                        ThemeManager.setThemeStyle(
+                            context,
+                            if (useMiuix) ThemeStyle.Miuix else ThemeStyle.Material3,
+                        )
+                        Toast.makeText(
+                            context,
+                            "已切换到${if (useMiuix) "miuix" else "Material 3"}风格",
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    },
+                    settingKey = "themeStyle",
+                    highlightedKey = setting,
+                    bringIntoViewRequester = requesterFor("themeStyle"),
                 )
 
                 SettingItemWithSwitch(
