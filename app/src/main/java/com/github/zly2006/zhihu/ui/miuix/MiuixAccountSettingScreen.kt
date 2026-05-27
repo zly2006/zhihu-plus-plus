@@ -175,7 +175,10 @@ fun MiuixAccountSettingScreen(
             // ── 设置 ──
             item {
                 SmallTitle(text = "设置", insideMargin = PaddingValues(16.dp, 8.dp))
-                Card(modifier = Modifier.padding(bottom = 12.dp)) {
+                Card(
+                    modifier = Modifier.padding(bottom = 12.dp),
+                    colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.secondaryContainer),
+                ) {
                     ArrowPreference(
                         title = "外观与阅读体验", summary = "主题颜色、字体大小等",
                         onClick = { closeThen { navigator.onNavigate(Account.AppearanceSettings()) } },
@@ -204,7 +207,10 @@ fun MiuixAccountSettingScreen(
             // ── 关于 ──
             item {
                 SmallTitle(text = "关于", insideMargin = PaddingValues(16.dp, 8.dp))
-                Card(modifier = Modifier.padding(bottom = 12.dp)) {
+                Card(
+                    modifier = Modifier.padding(bottom = 12.dp),
+                    colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.secondaryContainer),
+                ) {
                     ArrowPreference(
                         title = "开源许可",
                         onClick = { closeThen { navigator.onNavigate(Account.OpenSourceLicenses) } },
