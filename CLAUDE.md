@@ -576,10 +576,9 @@ Keep the report factual and specific.
 
 ### 强制约定（不要违反）
 
-1. **只引用四个 miuix 包**：`basic` / `preference` / `theme` / `utils`。
-   `utils` 是 Modifier 扩展（`overScrollVertical`、`scrollEndHaptic` 等），API 稳定。
-   需要 `window` / `extra` / `blur` / `icon` 时**停下来跟用户确认**，
-   不要自己引——miuix 0.x 还在频繁改 API。
+1. **只引用六个 miuix 包**：`basic` / `preference` / `theme` / `utils` / `window` / `blur`。
+   `window` 用于 `WindowBottomSheet`（已确认可用）；`blur` 用于四段式纹理模糊管线。
+   需要 `extra` / `icon` 时**停下来跟用户确认**，不要自己引。
 2. **图标继续用 `androidx.compose.material.icons.*`**（已在 deps 中），
    不要引 `miuix-icons` 的图标对象。
 3. **不要新建 ViewModel**。miuix 页面必须**复用** `ui/` 下同名页面的 ViewModel。
@@ -643,6 +642,7 @@ Keep the report factual and specific.
 - 一个 miuix 页面里如果不小心引了 `androidx.compose.material3.*` 的组件，
   视觉风格会瞬间穿帮（M3 的圆角、阴影、密度跟 miuix 完全不一样）。**review
   自己写的代码时第一件事：检查 import 列表**。
+- **BottomSheet 只能用 WindowBottomSheet + MutableState 模式**，不要用 if 包裹。sheet 始终留在树里，`show` 参数用 `MutableState<Boolean>`，内部 `LaunchedEffect(show.value)` 在打开时重置状态。参考 `MiuixColorPickerSheet.kt`。
 - 所有 miuix 页面的 TopAppBar 模糊必须走四段式管线（`theme/Backdrop.kt`）：
   1. `val backdrop = rememberMiuixBlurBackdrop(blurEnabled)` 创建模糊源
   2. LazyColumn 加 `.layerBackdrop(backdrop)` 指定采样源

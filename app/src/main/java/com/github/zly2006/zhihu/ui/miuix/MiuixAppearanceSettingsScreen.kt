@@ -141,9 +141,9 @@ fun MiuixAppearanceSettingsScreen(
     val duo3ArticleBar = remember { mutableStateOf(preferences.getBoolean("duo3_article_bar", false)) }
     val duo3ArticleActions = remember { mutableStateOf(preferences.getBoolean("duo3_article_actions", false)) }
 
-    // Color picker state
-    var showColorPicker by remember { mutableStateOf(false) }
-    var showBgPicker by remember { mutableStateOf(false) }
+    // Color picker state (MutableState ref for WindowBottomSheet pattern)
+    val showColorPicker = remember { mutableStateOf(false) }
+    val showBgPicker = remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -194,14 +194,14 @@ fun MiuixAppearanceSettingsScreen(
                     if (!useDynamicColor) {
                         ArrowPreference(
                             title = "自定义主题色", summary = "点击选择您喜欢的主题颜色",
-                            onClick = { showColorPicker = true },
+                            onClick = { showColorPicker.value = true },
                             endActions = { ColorCircle(customColor) },
                         )
                     }
                     ArrowPreference(
                         title = "自定义背景颜色",
                         summary = if (isDark) "深色模式背景色" else "浅色模式背景色",
-                        onClick = { showBgPicker = true },
+                        onClick = { showBgPicker.value = true },
                         endActions = { ColorCircle(bgColor) },
                     )
                 }
@@ -352,16 +352,24 @@ fun MiuixAppearanceSettingsScreen(
         }
     }
 
-    // Color picker dialogs (outside LazyColumn)
-    if (showColorPicker) MiuixColorPickerDialog(
-        "选择主题色", customColor,
-        onDismiss = { showColorPicker = false },
-        onColorSelected = { ThemeManager.setCustomColor(context, it); showColorPicker = false },
+    // Color picker sheets (always in tree, driven by show state)
+    MiuixColorPickerSheet(
+        show = showColorPicker,
+        title = "选择主题色",
+        initialColor = customColor,
+        onConfirm = {
+            ThemeManager.setCustomColor(context, it)
+            showColorPicker.value = false
+        },
     )
-    if (showBgPicker) MiuixColorPickerDialog(
-        "选择背景颜色", bgColor,
-        onDismiss = { showBgPicker = false },
-        onColorSelected = { ThemeManager.setBackgroundColor(context, it, isDark); showBgPicker = false },
+    MiuixColorPickerSheet(
+        show = showBgPicker,
+        title = "选择背景颜色",
+        initialColor = bgColor,
+        onConfirm = {
+            ThemeManager.setBackgroundColor(context, it, isDark)
+            showBgPicker.value = false
+        },
     )
 }
 
