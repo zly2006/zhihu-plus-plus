@@ -32,6 +32,9 @@ data class CollectionResponse(
     val paging: ZhihuPaging,
 )
 
+fun decodeZhihuCollection(json: JsonElement): Collection =
+    ZhihuJson.decodeJson(json)
+
 fun decodeZhihuCollectionResponse(json: JsonElement): CollectionResponse =
     ZhihuJson.decodeJson(json)
 

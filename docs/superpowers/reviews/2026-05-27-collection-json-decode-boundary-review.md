@@ -35,11 +35,13 @@ The platform runtimes should keep only network execution, authentication, signin
 ## Minimal Implementation
 
 - Add common helpers beside `Collection`:
+  - `decodeZhihuCollection(json)`
   - `decodeZhihuCollectionResponse(json)`
   - `decodeZhihuCollectionList(json)`
 - Make `ArticleViewModel.loadCollections()` call the common response helper directly.
 - Remove `decodeCollectionResponse()` from `ArticleViewModelRuntime` and both platform implementations.
-- Make Android `OpenInBrowser.openUrlInBrowser()` use the common list helper while preserving `jojo["data"]!!` strictness and the original collection lookup order.
+- Make Android `OpenInBrowser.openUrlInBrowser()` use the common list/single collection helpers while preserving `jojo["data"]!!`, `["collection"]!!`, and the original collection lookup/create order.
+- Make Android/JVM `CollectionContentEnvironment.fetchCollection()` use the common single collection helper while preserving their own fetch and error handling.
 
 ## Master Structure Check
 
