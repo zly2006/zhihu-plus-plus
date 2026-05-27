@@ -116,6 +116,7 @@ import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ThemeStyle
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.miuix.MiuixAppearanceSettingsScreen
+import com.github.zly2006.zhihu.ui.miuix.MiuixBlocklistSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.BlockedFeedHistoryScreen
@@ -537,7 +538,11 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     PinScreen(pin)
                 }
                 composable<Account.RecommendSettings.Blocklist> {
-                    BlocklistSettingsScreen()
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixBlocklistSettingsScreen()
+                    } else {
+                        BlocklistSettingsScreen()
+                    }
                 }
                 composable<Account.RecommendSettings.BlockedFeedHistory> {
                     BlockedFeedHistoryScreen()
