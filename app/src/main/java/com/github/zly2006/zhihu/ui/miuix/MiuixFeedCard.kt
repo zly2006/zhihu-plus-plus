@@ -332,7 +332,6 @@ private fun MiuixFeedCardMenuBox(
         IconButton(onClick = { onShowMenuChange(true) }, modifier = Modifier.size(24.dp)) {
             Icon(Icons.Default.MoreVert, "更多选项", tint = AppTokens.colors.onSurfaceVariant, modifier = Modifier.size(16.dp))
         }
-        // TODO: miuix WindowDropdownMenu API differs from M3 DropdownMenu.
-        // For now, the menu trigger icon renders; full menu port needs per-entry onClick wiring.
+        // More 菜单暂未实现，端口时参考 InstallerX WindowListPopup / WindowDropdownMenu
     }
 }

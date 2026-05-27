@@ -649,6 +649,7 @@ Keep the report factual and specific.
   3. TopAppBar 加 `.installerMiuixBlurEffect(backdrop)` 应用纹理模糊
   4. TopAppBar 的 containerColor 用 `backdrop.getMiuixAppBarColor()`（透明）
   设置项 key `"blurEnabled"`，默认 `true`。
+- **More 菜单（FeedCard 右上角弹出菜单）暂未实现**。`WindowDropdownMenu` 语义是锚点浮动菜单，跟 `WindowSpinnerPreference` 不同。遇到时参照 InstallerX `WindowListPopup`。
 
 ### 反面教材（看到立刻停下）
 
