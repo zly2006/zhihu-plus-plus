@@ -59,7 +59,6 @@ import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.SmallTitle
@@ -135,10 +134,7 @@ fun MiuixAccountSettingScreen(
             } else {
                 item {
                     SmallTitle(text = "账号", insideMargin = PaddingValues(16.dp, 8.dp))
-                    Card(
-                        modifier = Modifier.padding(bottom = 12.dp),
-                        colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.secondaryContainer),
-                    ) {
+                    Card(modifier = Modifier.padding(bottom = 12.dp)) {
                         ArrowPreference(
                             title = "登录知乎",
                             onClick = { closeThen { context.startActivity(Intent(context, LoginActivity::class.java)) } },
@@ -152,10 +148,7 @@ fun MiuixAccountSettingScreen(
             if (data.login) {
                 item {
                     SmallTitle(text = "快捷入口", insideMargin = PaddingValues(16.dp, 8.dp))
-                    Card(
-                        modifier = Modifier.padding(bottom = 12.dp),
-                        colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.secondaryContainer),
-                    ) {
+                    Card(modifier = Modifier.padding(bottom = 12.dp)) {
                         ArrowPreference(
                             title = "收藏夹", onClick = { closeThen { data.self?.urlToken?.let { navigator.onNavigate(Collections(it)) } } },
                             startAction = { Icon(Icons.Default.BookmarkBorder, null) },
@@ -177,7 +170,6 @@ fun MiuixAccountSettingScreen(
                 SmallTitle(text = "设置", insideMargin = PaddingValues(16.dp, 8.dp))
                 Card(
                     modifier = Modifier.padding(bottom = 12.dp),
-                    colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.secondaryContainer),
                 ) {
                     ArrowPreference(
                         title = "外观与阅读体验", summary = "主题颜色、字体大小等",
@@ -209,7 +201,6 @@ fun MiuixAccountSettingScreen(
                 SmallTitle(text = "关于", insideMargin = PaddingValues(16.dp, 8.dp))
                 Card(
                     modifier = Modifier.padding(bottom = 12.dp),
-                    colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.secondaryContainer),
                 ) {
                     ArrowPreference(
                         title = "开源许可",
