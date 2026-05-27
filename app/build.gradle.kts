@@ -41,7 +41,7 @@ android {
 
     defaultConfig {
         applicationId = "com.github.zly2006.zhplus"
-        minSdk = 32
+        minSdk = 33
         targetSdk = 35
         versionCode = property("app.versionCode").toString().toIntOrNull() ?: 1
         versionName = property("app.versionName").toString()
@@ -273,5 +273,5 @@ dependencies {
     implementation("top.yukonga.miuix.kmp:miuix-ui-android:$miuixVersion")
     implementation("top.yukonga.miuix.kmp:miuix-preference-android:$miuixVersion")
     implementation("top.yukonga.miuix.kmp:miuix-icons-android:$miuixVersion")
-    // implementation("top.yukonga.miuix.kmp:miuix-blur-android:$miuixVersion")  // 毛玻璃按需启用
+    implementation("top.yukonga.miuix.kmp:miuix-blur-android:$miuixVersion")
 }
