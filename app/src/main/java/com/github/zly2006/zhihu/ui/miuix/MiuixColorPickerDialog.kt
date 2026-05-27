@@ -8,11 +8,9 @@
 package com.github.zly2006.zhihu.ui.miuix
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -28,10 +26,9 @@ import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ColorPalette
 import top.yukonga.miuix.kmp.basic.HsvColorPicker
-import top.yukonga.miuix.kmp.basic.SmallTitle
-import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.overlay.OverlayBottomSheet
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable
@@ -51,38 +48,38 @@ fun MiuixColorPickerDialog(
 ) {
     var selectedColor by remember { mutableStateOf(initialColor) }
 
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Card(modifier = Modifier.padding(32.dp)) {
-            Column(Modifier.padding(24.dp)) {
-                SmallTitle(text = title)
+    OverlayBottomSheet(
+        show = true,
+        title = title,
+        onDismissRequest = onDismiss,
+    ) {
+        Column(Modifier.padding(horizontal = 24.dp)) {
+            HsvColorPicker(
+                color = selectedColor,
+                onColorChanged = { selectedColor = it },
+                modifier = Modifier.fillMaxWidth(),
+            )
 
-                Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
 
-                HsvColorPicker(
+            if (presetColors.isNotEmpty()) {
+                Text("预设颜色", style = MiuixTheme.textStyles.body2)
+                Spacer(Modifier.height(8.dp))
+                ColorPalette(
                     color = selectedColor,
                     onColorChanged = { selectedColor = it },
                     modifier = Modifier.fillMaxWidth(),
                 )
-
-                Spacer(Modifier.height(16.dp))
-
-                if (presetColors.isNotEmpty()) {
-                    Text("预设颜色", style = MiuixTheme.textStyles.body2)
-                    Spacer(Modifier.height(8.dp))
-                    ColorPalette(
-                        color = selectedColor,
-                        onColorChanged = { selectedColor = it },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-
-                Spacer(Modifier.height(20.dp))
-
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
-                    TextButton(text = "取消", onClick = onDismiss)
-                    Button(onClick = { onColorSelected(selectedColor) }) { Text("确定") }
-                }
             }
+
+            Spacer(Modifier.height(20.dp))
+
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
+                TextButton(text = "取消", onClick = onDismiss)
+                Button(onClick = { onColorSelected(selectedColor) }) { Text("确定") }
+            }
+
+            Spacer(Modifier.height(16.dp))
         }
     }
 }
