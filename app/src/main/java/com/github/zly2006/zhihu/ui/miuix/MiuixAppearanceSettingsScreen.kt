@@ -283,11 +283,16 @@ fun MiuixAppearanceSettingsScreen(
                         startDestinationKey.value = it; preferences.edit { putString(START_DESTINATION_PREFERENCE_KEY, it) }
                         Toast.makeText(context, "重启后生效", Toast.LENGTH_SHORT).show()
                     }
-                    ArrowPreference(
-                        title = "选择显示的页面", summary = "建议 3-5 项 (已选 ${selectedBottomBarKeys.value.size})",
-                        onClick = {},
+                    MiuixMultiSelectExpandable(
+                        title = "选择显示的页面",
+                        options = listOf("Home", "Follow", "HotList", "Daily", "OnlineHistory", "Account"),
+                        labels = mapOf(
+                            "Home" to "主页", "Follow" to "关注", "HotList" to "热榜",
+                            "Daily" to "日报", "OnlineHistory" to "历史", "Account" to "账号设置",
+                        ),
+                        selectedOptions = selectedBottomBarKeys.value,
+                        onSelectionChange = { selectedBottomBarKeys.value = it; preferences.edit { putStringSet(BOTTOM_BAR_ITEMS_PREFERENCE_KEY, it) } },
                     )
-                    BottomBarItemsList(selectedBottomBarKeys.value) { selectedBottomBarKeys.value = it; preferences.edit { putStringSet(BOTTOM_BAR_ITEMS_PREFERENCE_KEY, it) } }
                     SwitchPreference(
                         checked = tapToRefresh.value, onCheckedChange = { tapToRefresh.value = it; preferences.edit { putBoolean("bottomBarTapScrollToTop", it) } },
                         title = "点击导航栏回到顶部/刷新", summary = "点击当前页按钮回到顶部，已在顶部则刷新",
@@ -475,26 +480,3 @@ private fun StartDestinationSpinner(current: String, availableKeys: Set<String>,
     )
 }
 
-@Composable
-private fun BottomBarItemsList(selected: Set<String>, onChange: (Set<String>) -> Unit) {
-    val allItems = listOf("Home" to "主页", "Follow" to "关注", "HotList" to "热榜", "Daily" to "日报", "OnlineHistory" to "历史", "Account" to "账号设置")
-    Column {
-        allItems.forEach { (key, label) ->
-            val checked = key in selected
-            Row(
-                Modifier.fillMaxWidth().clickable {
-                    val newSet = if (checked) selected - key else selected + key
-                    if (newSet.size in 3..5) onChange(newSet)
-                }.padding(horizontal = 24.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(label, color = MiuixTheme.colorScheme.onSurface)
-                Checkbox(
-                    state = if (checked) androidx.compose.ui.state.ToggleableState.On else androidx.compose.ui.state.ToggleableState.Off,
-                    onClick = {},
-                )
-            }
-        }
-    }
-}
