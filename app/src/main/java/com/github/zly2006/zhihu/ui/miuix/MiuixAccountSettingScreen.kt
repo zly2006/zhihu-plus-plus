@@ -58,6 +58,7 @@ import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.utils.overScrollVertical
 
 @Composable
 fun MiuixAccountSettingScreen(
@@ -71,7 +72,7 @@ fun MiuixAccountSettingScreen(
     val data = testAccountData ?: AccountData.asState().let { val v by it; v }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().overScrollVertical(),
         contentPadding = innerPadding,
     ) {
         item { Spacer(Modifier.height(12.dp)) }
