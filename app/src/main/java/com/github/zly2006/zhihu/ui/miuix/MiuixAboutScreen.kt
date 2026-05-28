@@ -42,6 +42,7 @@ import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Text
@@ -49,7 +50,7 @@ import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 private val aboutGradient = Brush.linearGradient(
-    colors = listOf(Color(0xFFE8D5F5), Color(0xFFF5D5E8), Color(0xFFD5E5F5)),
+    colors = listOf(Color(0xFFD8B4E2), Color(0xFFE8C4D8), Color(0xFFB4D4E8)),
 )
 
 @Composable
@@ -114,7 +115,10 @@ fun MiuixAboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
             Spacer(Modifier.fillMaxWidth().weight(0.25f))
 
             // Card 1：外部链接
-            Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                colors = CardDefaults.defaultColors(Color.White.copy(alpha = 0.6f), Color.Transparent),
+            ) {
                 ArrowPreference(
                     title = "View Source",
                     endActions = {
@@ -136,7 +140,10 @@ fun MiuixAboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
             Spacer(Modifier.height(12.dp))
 
             // Card 2：许可证
-            Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                colors = CardDefaults.defaultColors(Color.White.copy(alpha = 0.6f), Color.Transparent),
+            ) {
                 ArrowPreference(
                     title = "License",
                     endActions = {
@@ -154,7 +161,10 @@ fun MiuixAboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
             Spacer(Modifier.height(12.dp))
 
             // Card 3：系统与更新
-            Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                colors = CardDefaults.defaultColors(Color.White.copy(alpha = 0.6f), Color.Transparent),
+            ) {
                 ArrowPreference(
                     title = "系统与更新",
                     summary = "GitHub、更新设置等",
