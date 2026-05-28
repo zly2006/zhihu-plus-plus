@@ -8,9 +8,9 @@ import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
+import com.github.zly2006.zhihu.shared.desktop.signDesktopRequest
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.raiseForStatus
-import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
@@ -38,7 +38,7 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
                         "include",
                         peopleProfileIncludePath,
                     )
-                    account.cookies["d_c0"]?.let { dc0 -> signZhihuFetchRequest(dc0 = dc0) }
+                    signDesktopRequest(account.cookies)
                 } ?: error("Empty people profile response")
                 val loadedPerson = ZhihuJson.decodeJson<DataHolder.People>(jojo)
                 historyStorage.add(
@@ -60,7 +60,7 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
                         url = peopleFollowersUrl(person),
                         block = {
                             method = HttpMethod.Delete
-                            account.cookies["d_c0"]?.let { dc0 -> signZhihuFetchRequest(dc0 = dc0) }
+                            signDesktopRequest(account.cookies)
                         },
                     ) { response ->
                         response.raiseForStatus().body<JsonObject>()
@@ -75,7 +75,7 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
                         url = peopleFollowersUrl(person),
                         block = {
                             method = HttpMethod.Post
-                            account.cookies["d_c0"]?.let { dc0 -> signZhihuFetchRequest(dc0 = dc0) }
+                            signDesktopRequest(account.cookies)
                         },
                     ) { response ->
                         response.raiseForStatus().body<JsonObject>()
@@ -94,7 +94,7 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
                         url = peopleBlockUrl(person),
                         block = {
                             method = HttpMethod.Delete
-                            account.cookies["d_c0"]?.let { dc0 -> signZhihuFetchRequest(dc0 = dc0) }
+                            signDesktopRequest(account.cookies)
                         },
                     ) { response ->
                         response.raiseForStatus()
@@ -105,7 +105,7 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
                         url = peopleBlockUrl(person),
                         block = {
                             method = HttpMethod.Post
-                            account.cookies["d_c0"]?.let { dc0 -> signZhihuFetchRequest(dc0 = dc0) }
+                            signDesktopRequest(account.cookies)
                         },
                     ) { response ->
                         response.raiseForStatus()

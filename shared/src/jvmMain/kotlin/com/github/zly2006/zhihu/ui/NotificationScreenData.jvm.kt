@@ -5,10 +5,10 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
+import com.github.zly2006.zhihu.shared.desktop.signDesktopRequest
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
-import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.viewmodel.NotificationPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import io.ktor.client.HttpClient
@@ -85,6 +85,6 @@ private class JvmNotificationPaginationEnvironment(
     }
 
     override fun configureSignedRequest(builder: HttpRequestBuilder) {
-        builder.signZhihuFetchRequest(dc0 = store.load().cookies["d_c0"] ?: "")
+        builder.signDesktopRequest(store.load().cookies)
     }
 }

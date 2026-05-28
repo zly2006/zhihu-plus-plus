@@ -8,10 +8,10 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
+import com.github.zly2006.zhihu.shared.desktop.signDesktopRequest
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.viewmodel.consumeDesktopPendingContentOpenFrom
@@ -77,9 +77,7 @@ private suspend fun fetchDesktopQuestionDetail(
 
     return runCatching {
         val jo = store.fetchAuthenticatedJson(apiUrl) {
-            account.cookies["d_c0"]?.let { dc0 ->
-                signZhihuFetchRequest(dc0 = dc0)
-            }
+            signDesktopRequest(account.cookies)
         } ?: return@runCatching null
         decodeQuestionContentDetail(jo)
     }.getOrNull()

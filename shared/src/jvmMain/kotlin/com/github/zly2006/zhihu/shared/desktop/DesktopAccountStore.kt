@@ -136,3 +136,16 @@ private class PathAccountSessionStore(
         accountFile.deleteIfExists()
     }
 }
+
+/**
+ * JVM 签名便捷函数：从 cookies 提取 d_c0 并签名。
+ * 对应 Android 端 Utils.kt 的 signFetchRequest()。
+ */
+fun HttpRequestBuilder.signDesktopRequest(
+    cookies: Map<String, String>,
+    body: String? = null,
+) {
+    cookies["d_c0"]?.let { dc0 ->
+        signZhihuFetchRequest(dc0 = dc0, body = body)
+    }
+}

@@ -37,9 +37,9 @@ import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.shared.data.fetchHighestQualityZhihuVideoUrl
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
+import com.github.zly2006.zhihu.shared.desktop.signDesktopRequest
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.desktopArticleAnswerSwitchState
@@ -128,7 +128,7 @@ fun DesktopZhihuMain() {
                                 contentType = contentType,
                                 xsrfToken = cookies["_xsrf"],
                             ) {
-                                signZhihuFetchRequest(dc0 = cookies["d_c0"] ?: "")
+                                signDesktopRequest(cookies)
                             }
                         }.getOrNull()
                     }

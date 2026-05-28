@@ -4,9 +4,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
+import com.github.zly2006.zhihu.shared.desktop.signDesktopRequest
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpMethod
@@ -53,9 +53,7 @@ actual fun rememberDeveloperSettingsRuntime(): DeveloperSettingsRuntime {
                     url = url,
                     block = {
                         method = HttpMethod.Get
-                        account.cookies["d_c0"]?.let { dc0 ->
-                            signZhihuFetchRequest(dc0 = dc0)
-                        }
+                        signDesktopRequest(account.cookies)
                     },
                 ) { response ->
                     response.bodyAsText()

@@ -27,10 +27,10 @@ import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDataFile
 import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDownloadsDir
+import com.github.zly2006.zhihu.shared.desktop.signDesktopRequest
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.platform.desktopSettingsStore
 import com.github.zly2006.zhihu.shared.util.Log
-import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.util.buildArticleExportFileName
 import com.github.zly2006.zhihu.util.sanitizeArticleExportFileNamePart
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
@@ -89,9 +89,7 @@ class DesktopPaginationEnvironment(
             if (include.isNotEmpty()) {
                 parameter("include", include)
             }
-            account.cookies["d_c0"]?.let { dc0 ->
-                signZhihuFetchRequest(dc0 = dc0)
-            }
+            signDesktopRequest(account.cookies)
             method = HttpMethod.Get
         }
     }
@@ -134,9 +132,9 @@ class DesktopPaginationEnvironment(
         follow: Boolean,
     ) {
         val account = store.load()
-        val dc0 = account.cookies["d_c0"] ?: return
+        if (account.cookies["d_c0"] == null) return
         store.fetchAuthenticatedJson(zhihuQuestionFollowersUrl(questionId)) {
-            signZhihuFetchRequest(dc0 = dc0)
+            signDesktopRequest(account.cookies)
             method = if (follow) HttpMethod.Post else HttpMethod.Delete
         }
     }
@@ -177,9 +175,7 @@ class DesktopPaginationEnvironment(
         return runCatching {
             val account = store.load()
             val jo = store.fetchAuthenticatedJson(apiUrl) {
-                account.cookies["d_c0"]?.let { dc0 ->
-                    signZhihuFetchRequest(dc0 = dc0)
-                }
+                signDesktopRequest(account.cookies)
                 method = HttpMethod.Get
             } ?: return@runCatching null
             decodeArticleContentDetail(article, jo)
@@ -191,9 +187,7 @@ class DesktopPaginationEnvironment(
         val endpoint = zhihuPinContentDetailUrl(pin)
         return runCatching {
             val json = store.fetchAuthenticatedJson(endpoint) {
-                account.cookies["d_c0"]?.let { dc0 ->
-                    signZhihuFetchRequest(dc0 = dc0)
-                }
+                signDesktopRequest(account.cookies)
                 method = HttpMethod.Get
             } ?: return@runCatching null
             decodePinContentDetail(json)
@@ -223,10 +217,10 @@ class DesktopPaginationEnvironment(
     override suspend fun clearAllHistory() {
         historyStorage.clearAndSave()
         val account = store.load()
-        val dc0 = account.cookies["d_c0"] ?: return
+        if (account.cookies["d_c0"] == null) return
         val bodyText = encodeZhihuClearOnlineHistoryBody()
         store.fetchAuthenticatedJson(ZHIHU_CLEAR_ONLINE_HISTORY_URL) {
-            signZhihuFetchRequest(dc0 = dc0, body = bodyText)
+            signDesktopRequest(account.cookies, bodyText)
             contentType(KtorContentType.Application.Json)
             setBody(bodyText)
             method = HttpMethod.Post
@@ -370,22 +364,20 @@ class DesktopPaginationEnvironment(
         val account = store.load()
         return store
             .fetchAuthenticatedJson(url) {
-                account.cookies["d_c0"]?.let { dc0 ->
-                    signZhihuFetchRequest(dc0 = dc0)
-                }
+                signDesktopRequest(account.cookies)
             }?.get("data")
             ?.jsonArray ?: JsonArray(emptyList())
     }
 
     private suspend fun postDesktopLastReadTouch(payload: List<List<String>>): Boolean {
         val account = store.load()
-        val dc0 = account.cookies["d_c0"] ?: return false
+        if (account.cookies["d_c0"] == null) return false
         return store.withAuthenticatedResponse(
             url = ZHIHU_LAST_READ_TOUCH_URL,
             block = {
                 method = HttpMethod.Post
                 header("x-requested-with", "fetch")
-                signZhihuFetchRequest(dc0 = dc0)
+                signDesktopRequest(account.cookies)
                 setBody(
                     MultiPartFormDataContent(
                         formData {

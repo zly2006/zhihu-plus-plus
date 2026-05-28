@@ -19,11 +19,11 @@ import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
 import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDownloadsDir
+import com.github.zly2006.zhihu.shared.desktop.signDesktopRequest
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.shared.filter.TrackedContentIdentity
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
-import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
 import com.github.zly2006.zhihu.util.ARTICLE_EXPORT_TEMPLATE_ASSET
 import com.github.zly2006.zhihu.util.buildArticleExportData
@@ -186,9 +186,7 @@ class DesktopArticleViewModelRuntime(
     }
 
     override fun configureSignedRequest(builder: HttpRequestBuilder) {
-        store.load().cookies["d_c0"]?.let { dc0 ->
-            builder.signZhihuFetchRequest(dc0 = dc0)
-        }
+        builder.signDesktopRequest(store.load().cookies)
     }
 
     override fun showMessage(message: String) {

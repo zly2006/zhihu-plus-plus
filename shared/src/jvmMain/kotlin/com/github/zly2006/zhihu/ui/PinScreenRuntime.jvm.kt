@@ -13,6 +13,7 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
+import com.github.zly2006.zhihu.shared.desktop.signDesktopRequest
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.pin.PinLinkCardPreview
 import com.github.zly2006.zhihu.shared.pin.PinScreenUiState
@@ -20,7 +21,6 @@ import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
-import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.viewmodel.DesktopArticleViewModelRuntime
@@ -109,9 +109,7 @@ internal suspend fun fetchDesktopPinDetail(
     val endpoint = zhihuPinContentDetailUrl(pin)
     return runCatching {
         val json = store.fetchAuthenticatedJson(endpoint) {
-            account.cookies["d_c0"]?.let { dc0 ->
-                signZhihuFetchRequest(dc0 = dc0)
-            }
+            signDesktopRequest(account.cookies)
         } ?: return@runCatching null
         decodePinContentDetail(json)
     }.getOrNull()
@@ -126,9 +124,7 @@ private suspend fun fetchDesktopPinLike(
     return runCatching {
         store.fetchAuthenticatedJson(endpoint) {
             this.method = method
-            account.cookies["d_c0"]?.let { dc0 ->
-                signZhihuFetchRequest(dc0 = dc0)
-            }
+            signDesktopRequest(account.cookies)
         }
     }.getOrNull()
 }
@@ -142,9 +138,7 @@ internal suspend fun fetchDesktopQuestionDetailForFeedBlock(
 
     return runCatching {
         val jo = store.fetchAuthenticatedJson(apiUrl) {
-            account.cookies["d_c0"]?.let { dc0 ->
-                signZhihuFetchRequest(dc0 = dc0)
-            }
+            signDesktopRequest(account.cookies)
         } ?: return@runCatching null
         decodeQuestionContentDetail(jo)
     }.getOrNull()

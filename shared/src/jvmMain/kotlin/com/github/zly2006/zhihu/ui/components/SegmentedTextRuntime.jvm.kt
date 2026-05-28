@@ -5,8 +5,8 @@ import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.shared.data.SegmentInfoMeta
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
+import com.github.zly2006.zhihu.shared.desktop.signDesktopRequest
 import com.github.zly2006.zhihu.shared.util.SegmentHighlightSpan
-import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpMethod
@@ -35,13 +35,13 @@ private suspend fun toggleSegmentLike(
     val targetType = highlight.contentType ?: return highlight.meta
     val url = zhihuSegmentReactionUrl(targetType, contentId)
     val account = store.load()
-    val dc0 = account.cookies["d_c0"] ?: return highlight.meta
+    if (account.cookies["d_c0"] == null) return highlight.meta
 
     return if (highlight.meta.isLike) {
         val body = buildSegmentUnlikeBody(highlight)
         store.fetchAuthenticatedJson(url) {
             method = HttpMethod.Delete
-            signZhihuFetchRequest(dc0 = dc0, body = body)
+            signDesktopRequest(account.cookies, body)
             contentType(ContentType.Application.Json)
             setBody(body)
         }
@@ -50,7 +50,7 @@ private suspend fun toggleSegmentLike(
         val body = buildSegmentLikeBody(highlight)
         val response = store.fetchAuthenticatedJson(url) {
             method = HttpMethod.Post
-            signZhihuFetchRequest(dc0 = dc0, body = body)
+            signDesktopRequest(account.cookies, body)
             contentType(ContentType.Application.Json)
             setBody(body)
         }
