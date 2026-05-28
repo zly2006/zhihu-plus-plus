@@ -29,6 +29,7 @@ import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDataFile
 import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDownloadsDir
 import com.github.zly2006.zhihu.shared.desktop.signDesktopRequest
 import com.github.zly2006.zhihu.shared.desktop.signedFetchJson
+import com.github.zly2006.zhihu.shared.desktop.signedWithResponse
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.platform.desktopSettingsStore
 import com.github.zly2006.zhihu.shared.util.Log
@@ -350,12 +351,11 @@ class DesktopPaginationEnvironment(
 
     private suspend fun postDesktopLastReadTouch(payload: List<List<String>>): Boolean {
         if (store.load().cookies["d_c0"] == null) return false
-        return store.withAuthenticatedResponse(
+        return store.signedWithResponse(
             url = ZHIHU_LAST_READ_TOUCH_URL,
             block = {
                 method = HttpMethod.Post
                 header("x-requested-with", "fetch")
-                signDesktopRequest(store.load().cookies)
                 setBody(
                     MultiPartFormDataContent(
                         formData {
