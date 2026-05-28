@@ -11,6 +11,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -61,7 +62,9 @@ fun MiuixAboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
     if (darkTheme) {
         Box(modifier = Modifier.fillMaxSize().background(MiuixTheme.colorScheme.background).padding(innerPadding)) { AboutContent(navigator, context) }
     } else {
-        Box(modifier = Modifier.fillMaxSize().background(gradient).padding(innerPadding)) { AboutContent(navigator, context) }
+        Box(modifier = Modifier.fillMaxSize()
+            .drawBehind { drawRect(gradient) }
+            .padding(innerPadding)) { AboutContent(navigator, context) }
     }
 }
 
