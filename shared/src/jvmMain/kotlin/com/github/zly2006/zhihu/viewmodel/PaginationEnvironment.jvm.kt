@@ -21,7 +21,6 @@ import com.github.zly2006.zhihu.shared.data.decodeZhihuCollection
 import com.github.zly2006.zhihu.shared.data.encodeZhihuClearOnlineHistoryBody
 import com.github.zly2006.zhihu.shared.data.encodeZhihuLastReadTouchItems
 import com.github.zly2006.zhihu.shared.data.navDestination
-import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.data.zhihuLastReadTouchItem
 import com.github.zly2006.zhihu.shared.data.zhihuLastReadTouchItems
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
@@ -35,13 +34,12 @@ import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.util.buildArticleExportFileName
 import com.github.zly2006.zhihu.util.sanitizeArticleExportFileNamePart
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
-import com.github.zly2006.zhihu.viewmodel.filter.ContentType
 import com.github.zly2006.zhihu.viewmodel.filter.applyContentFilterToDisplayItems
 import com.github.zly2006.zhihu.viewmodel.filter.applyForegroundReadFilterToDisplayItems
 import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
 import com.github.zly2006.zhihu.viewmodel.filter.desktopKeywordSemanticMatcher
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
-import com.github.zly2006.zhihu.viewmodel.filter.recordContentInteraction
+import com.github.zly2006.zhihu.viewmodel.filter.recordFeedContentInteraction
 import com.github.zly2006.zhihu.viewmodel.filter.toFeedFilterSettings
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import com.github.zly2006.zhihu.viewmodel.local.buildLocalRecommendationEngine
@@ -209,33 +207,7 @@ class DesktopPaginationEnvironment(
 
     override suspend fun recordContentInteraction(feed: Feed) {
         val settings = settingsStore.toFeedFilterSettings()
-        when (val target = feed.target) {
-            is Feed.AnswerTarget -> recordContentInteraction(
-                settings,
-                contentFilterDatabase,
-                ContentType.ANSWER,
-                target.id.toString(),
-            )
-            is Feed.ArticleTarget -> recordContentInteraction(
-                settings,
-                contentFilterDatabase,
-                ContentType.ARTICLE,
-                target.id.toString(),
-            )
-            is Feed.QuestionTarget -> recordContentInteraction(
-                settings,
-                contentFilterDatabase,
-                ContentType.QUESTION,
-                target.id.toString(),
-            )
-            is Feed.PinTarget -> recordContentInteraction(
-                settings,
-                contentFilterDatabase,
-                ContentType.PIN,
-                target.id.toString(),
-            )
-            else -> Unit
-        }
+        recordFeedContentInteraction(settings, contentFilterDatabase, feed)
     }
 
     override suspend fun markItemsAsTouched(items: Set<Pair<String, String>>): Set<Pair<String, String>> {

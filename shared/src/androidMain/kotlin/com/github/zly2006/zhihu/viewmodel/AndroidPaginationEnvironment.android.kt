@@ -48,7 +48,6 @@ import com.github.zly2006.zhihu.shared.data.buildZhihuClearOnlineHistoryBody
 import com.github.zly2006.zhihu.shared.data.decodeZhihuCollection
 import com.github.zly2006.zhihu.shared.data.encodeZhihuLastReadTouchItems
 import com.github.zly2006.zhihu.shared.data.navDestination
-import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.data.zhihuLastReadTouchItem
 import com.github.zly2006.zhihu.shared.data.zhihuLastReadTouchItems
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
@@ -64,9 +63,9 @@ import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.filter.AndroidContentFilterRuntime
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
-import com.github.zly2006.zhihu.viewmodel.filter.ContentType
 import com.github.zly2006.zhihu.viewmodel.filter.contentFilterSettings
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
+import com.github.zly2006.zhihu.viewmodel.filter.recordFeedContentInteraction
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.UserAgent
@@ -270,29 +269,9 @@ open class SharedAndroidPaginationEnvironment(
     }
 
     override suspend fun recordContentInteraction(feed: Feed) {
-        val filterSettings = context.contentFilterSettings()
-        val filterDatabase = getContentFilterDatabase(context)
-        when (val target = feed.target) {
-            is Feed.AnswerTarget -> ContentFilterExtensions.recordContentInteraction(
-                filterSettings,
-                filterDatabase,
-                ContentType.ANSWER,
-                target.id.toString(),
-            )
-            is Feed.ArticleTarget -> ContentFilterExtensions.recordContentInteraction(
-                filterSettings,
-                filterDatabase,
-                ContentType.ARTICLE,
-                target.id.toString(),
-            )
-            is Feed.QuestionTarget -> ContentFilterExtensions.recordContentInteraction(
-                filterSettings,
-                filterDatabase,
-                ContentType.QUESTION,
-                target.id.toString(),
-            )
-            else -> {}
-        }
+        val settings = context.contentFilterSettings()
+        val database = getContentFilterDatabase(context)
+        recordFeedContentInteraction(settings, database, feed)
     }
 
     override suspend fun markItemsAsTouched(items: Set<Pair<String, String>>): Set<Pair<String, String>> {

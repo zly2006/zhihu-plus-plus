@@ -1,6 +1,8 @@
 package com.github.zly2006.zhihu.viewmodel.filter
 
+import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.platform.SettingsStore
 
 /**
@@ -25,6 +27,22 @@ suspend fun recordContentInteraction(
     targetId: String,
 ) {
     database.recordContentInteraction(settings, targetType, targetId)
+}
+
+suspend fun recordFeedContentInteraction(
+    settings: FeedFilterSettings,
+    database: ContentFilterDatabase,
+    feed: Feed,
+) {
+    val target = feed.target ?: return
+    val (targetType, targetId) = when (target) {
+        is Feed.AnswerTarget -> ContentType.ANSWER to target.id.toString()
+        is Feed.ArticleTarget -> ContentType.ARTICLE to target.id.toString()
+        is Feed.QuestionTarget -> ContentType.QUESTION to target.id.toString()
+        is Feed.PinTarget -> ContentType.PIN to target.id.toString()
+        else -> return
+    }
+    recordContentInteraction(settings, database, targetType, targetId)
 }
 
 suspend fun performMaintenanceCleanup(
