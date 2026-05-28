@@ -8,7 +8,8 @@ import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
-import com.github.zly2006.zhihu.shared.desktop.signDesktopRequest
+import com.github.zly2006.zhihu.shared.desktop.signedFetchJson
+import com.github.zly2006.zhihu.shared.desktop.signedWithResponse
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.raiseForStatus
 import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
@@ -32,13 +33,11 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
         PeopleScreenRuntime(
             loadProfile = { person ->
                 store.addReadHistory(contentToken = person.id, contentTypeName = "profile")
-                val account = store.load()
-                val jojo = store.fetchAuthenticatedJson(peopleProfileUrl(person)) {
+                val jojo = store.signedFetchJson(peopleProfileUrl(person)) {
                     parameter(
                         "include",
                         peopleProfileIncludePath,
                     )
-                    signDesktopRequest(account.cookies)
                 } ?: error("Empty people profile response")
                 val loadedPerson = ZhihuJson.decodeJson<DataHolder.People>(jojo)
                 historyStorage.add(
@@ -54,64 +53,28 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
                 )
             },
             toggleFollow = { person, isFollowing, followerCount ->
-                val account = store.load()
-                if (isFollowing) {
-                    val jojo = store.withAuthenticatedResponse(
-                        url = peopleFollowersUrl(person),
-                        block = {
-                            method = HttpMethod.Delete
-                            signDesktopRequest(account.cookies)
-                        },
-                    ) { response ->
-                        response.raiseForStatus().body<JsonObject>()
-                    }
-                    peopleFollowResult(
-                        isFollowingBefore = isFollowing,
-                        followerCountBefore = followerCount,
-                        responseJson = jojo,
-                    )
-                } else {
-                    val jojo = store.withAuthenticatedResponse(
-                        url = peopleFollowersUrl(person),
-                        block = {
-                            method = HttpMethod.Post
-                            signDesktopRequest(account.cookies)
-                        },
-                    ) { response ->
-                        response.raiseForStatus().body<JsonObject>()
-                    }
-                    peopleFollowResult(
-                        isFollowingBefore = isFollowing,
-                        followerCountBefore = followerCount,
-                        responseJson = jojo,
-                    )
+                val method = if (isFollowing) HttpMethod.Delete else HttpMethod.Post
+                val jojo = store.signedWithResponse(
+                    url = peopleFollowersUrl(person),
+                    block = { this.method = method },
+                ) { response ->
+                    response.raiseForStatus().body<JsonObject>()
                 }
+                peopleFollowResult(
+                    isFollowingBefore = isFollowing,
+                    followerCountBefore = followerCount,
+                    responseJson = jojo,
+                )
             },
             toggleBlock = { person, isBlocking ->
-                val account = store.load()
-                if (isBlocking) {
-                    store.withAuthenticatedResponse(
-                        url = peopleBlockUrl(person),
-                        block = {
-                            method = HttpMethod.Delete
-                            signDesktopRequest(account.cookies)
-                        },
-                    ) { response ->
-                        response.raiseForStatus()
-                    }
-                    false
-                } else {
-                    store.withAuthenticatedResponse(
-                        url = peopleBlockUrl(person),
-                        block = {
-                            method = HttpMethod.Post
-                            signDesktopRequest(account.cookies)
-                        },
-                    ) { response ->
-                        response.raiseForStatus()
-                    }
-                    true
+                val method = if (isBlocking) HttpMethod.Delete else HttpMethod.Post
+                store.signedWithResponse(
+                    url = peopleBlockUrl(person),
+                    block = { this.method = method },
+                ) { response ->
+                    response.raiseForStatus()
                 }
+                !isBlocking
             },
             toggleRecommendationBlock = { request ->
                 if (request.isBlocked) {

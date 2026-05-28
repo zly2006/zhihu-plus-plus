@@ -9,7 +9,7 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
-import com.github.zly2006.zhihu.shared.desktop.signDesktopRequest
+import com.github.zly2006.zhihu.shared.desktop.signedFetchJson
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
@@ -71,14 +71,8 @@ actual fun supportsQuestionDetailWebView(): Boolean = false
 private suspend fun fetchDesktopQuestionDetail(
     store: DesktopAccountStore,
     question: Question,
-): DataHolder.Question? {
-    val account = store.load()
-    val apiUrl = zhihuQuestionContentDetailUrl(question)
-
-    return runCatching {
-        val jo = store.fetchAuthenticatedJson(apiUrl) {
-            signDesktopRequest(account.cookies)
-        } ?: return@runCatching null
-        decodeQuestionContentDetail(jo)
-    }.getOrNull()
-}
+): DataHolder.Question? = runCatching {
+    val jo = store.signedFetchJson(zhihuQuestionContentDetailUrl(question))
+        ?: return@runCatching null
+    decodeQuestionContentDetail(jo)
+}.getOrNull()

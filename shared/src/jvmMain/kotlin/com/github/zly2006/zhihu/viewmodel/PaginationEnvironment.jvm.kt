@@ -28,6 +28,7 @@ import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDataFile
 import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDownloadsDir
 import com.github.zly2006.zhihu.shared.desktop.signDesktopRequest
+import com.github.zly2006.zhihu.shared.desktop.signedFetchJson
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.platform.desktopSettingsStore
 import com.github.zly2006.zhihu.shared.util.Log
@@ -83,15 +84,11 @@ class DesktopPaginationEnvironment(
     override suspend fun fetchJson(
         url: String,
         include: String,
-    ): JsonObject? {
-        val account = store.load()
-        return store.fetchAuthenticatedJson(url) {
-            if (include.isNotEmpty()) {
-                parameter("include", include)
-            }
-            signDesktopRequest(account.cookies)
-            method = HttpMethod.Get
+    ): JsonObject? = store.signedFetchJson(url) {
+        if (include.isNotEmpty()) {
+            parameter("include", include)
         }
+        method = HttpMethod.Get
     }
 
     override fun logDecodeFailure(
@@ -131,10 +128,8 @@ class DesktopPaginationEnvironment(
         questionId: Long,
         follow: Boolean,
     ) {
-        val account = store.load()
-        if (account.cookies["d_c0"] == null) return
-        store.fetchAuthenticatedJson(zhihuQuestionFollowersUrl(questionId)) {
-            signDesktopRequest(account.cookies)
+        if (store.load().cookies["d_c0"] == null) return
+        store.signedFetchJson(zhihuQuestionFollowersUrl(questionId)) {
             method = if (follow) HttpMethod.Post else HttpMethod.Delete
         }
     }
@@ -169,30 +164,19 @@ class DesktopPaginationEnvironment(
             }
         }
 
-    private suspend fun fetchDesktopArticleContentDetail(article: Article): DataHolder.Content? {
-        val apiUrl = zhihuArticleContentDetailUrl(article)
+    private suspend fun fetchDesktopArticleContentDetail(article: Article): DataHolder.Content? = runCatching {
+        val jo = store.signedFetchJson(zhihuArticleContentDetailUrl(article)) {
+            method = HttpMethod.Get
+        } ?: return@runCatching null
+        decodeArticleContentDetail(article, jo)
+    }.getOrNull()
 
-        return runCatching {
-            val account = store.load()
-            val jo = store.fetchAuthenticatedJson(apiUrl) {
-                signDesktopRequest(account.cookies)
-                method = HttpMethod.Get
-            } ?: return@runCatching null
-            decodeArticleContentDetail(article, jo)
-        }.getOrNull()
-    }
-
-    private suspend fun fetchDesktopPinContentDetail(pin: Pin): DataHolder.Pin? {
-        val account = store.load()
-        val endpoint = zhihuPinContentDetailUrl(pin)
-        return runCatching {
-            val json = store.fetchAuthenticatedJson(endpoint) {
-                signDesktopRequest(account.cookies)
-                method = HttpMethod.Get
-            } ?: return@runCatching null
-            decodePinContentDetail(json)
-        }.getOrNull()
-    }
+    private suspend fun fetchDesktopPinContentDetail(pin: Pin): DataHolder.Pin? = runCatching {
+        val json = store.signedFetchJson(zhihuPinContentDetailUrl(pin)) {
+            method = HttpMethod.Get
+        } ?: return@runCatching null
+        decodePinContentDetail(json)
+    }.getOrNull()
 
     override suspend fun sendFeedReadStatus(feed: Feed) {
         val payloadItem = zhihuLastReadTouchItem(feed, "read") ?: return
@@ -360,24 +344,20 @@ class DesktopPaginationEnvironment(
         )
     }
 
-    private suspend fun fetchDesktopLocalFeedArray(url: String): JsonArray {
-        val account = store.load()
-        return store
-            .fetchAuthenticatedJson(url) {
-                signDesktopRequest(account.cookies)
-            }?.get("data")
+    private suspend fun fetchDesktopLocalFeedArray(url: String): JsonArray =
+        store
+            .signedFetchJson(url)
+            ?.get("data")
             ?.jsonArray ?: JsonArray(emptyList())
-    }
 
     private suspend fun postDesktopLastReadTouch(payload: List<List<String>>): Boolean {
-        val account = store.load()
-        if (account.cookies["d_c0"] == null) return false
+        if (store.load().cookies["d_c0"] == null) return false
         return store.withAuthenticatedResponse(
             url = ZHIHU_LAST_READ_TOUCH_URL,
             block = {
                 method = HttpMethod.Post
                 header("x-requested-with", "fetch")
-                signDesktopRequest(account.cookies)
+                signDesktopRequest(store.load().cookies)
                 setBody(
                     MultiPartFormDataContent(
                         formData {

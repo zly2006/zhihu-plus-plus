@@ -148,3 +148,27 @@ fun HttpRequestBuilder.signDesktopRequest(
         signZhihuFetchRequest(dc0 = dc0, body = body)
     }
 }
+
+/**
+ * 签名后发起认证请求的便捷方法。
+ * 内部自动加载账号 cookies 并签名，对应 Android 端 fetchGet/fetchPost 模式。
+ */
+suspend fun DesktopAccountStore.signedFetchJson(
+    url: String,
+    block: suspend HttpRequestBuilder.() -> Unit = {},
+): JsonObject? = fetchAuthenticatedJson(url) {
+    signDesktopRequest(load().cookies)
+    block()
+}
+
+/**
+ * 签名后发起认证请求并返回响应的便捷方法。
+ */
+suspend fun <T> DesktopAccountStore.signedWithResponse(
+    url: String,
+    block: suspend HttpRequestBuilder.() -> Unit = {},
+    transform: suspend (HttpResponse) -> T,
+): T = withAuthenticatedResponse(url, {
+    signDesktopRequest(load().cookies)
+    block()
+}, transform)

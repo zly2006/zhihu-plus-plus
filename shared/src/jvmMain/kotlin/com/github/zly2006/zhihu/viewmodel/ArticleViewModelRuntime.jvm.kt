@@ -20,6 +20,7 @@ import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
 import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDownloadsDir
 import com.github.zly2006.zhihu.shared.desktop.signDesktopRequest
+import com.github.zly2006.zhihu.shared.desktop.signedFetchJson
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.shared.filter.TrackedContentIdentity
@@ -172,7 +173,7 @@ class DesktopArticleViewModelRuntime(
     override suspend fun fetchGet(
         url: String,
         block: HttpRequestBuilder.() -> Unit,
-    ): JsonObject? = store.fetchAuthenticatedJson(url) {
+    ): JsonObject? = store.signedFetchJson(url) {
         block()
         method = HttpMethod.Get
     }
@@ -180,7 +181,7 @@ class DesktopArticleViewModelRuntime(
     override suspend fun fetchPost(
         url: String,
         block: HttpRequestBuilder.() -> Unit,
-    ): JsonObject? = store.fetchAuthenticatedJson(url) {
+    ): JsonObject? = store.signedFetchJson(url) {
         block()
         method = HttpMethod.Post
     }

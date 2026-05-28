@@ -14,7 +14,7 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
-import com.github.zly2006.zhihu.shared.desktop.signDesktopRequest
+import com.github.zly2006.zhihu.shared.desktop.signedFetchJson
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.pin.PinLinkCardPreview
 import com.github.zly2006.zhihu.shared.pin.PinScreenUiState
@@ -104,45 +104,30 @@ actual fun supportsPinHtmlWebView(): Boolean = false
 internal suspend fun fetchDesktopPinDetail(
     store: DesktopAccountStore,
     pin: Pin,
-): DataHolder.Pin? {
-    val account = store.load()
-    val endpoint = zhihuPinContentDetailUrl(pin)
-    return runCatching {
-        val json = store.fetchAuthenticatedJson(endpoint) {
-            signDesktopRequest(account.cookies)
-        } ?: return@runCatching null
-        decodePinContentDetail(json)
-    }.getOrNull()
-}
+): DataHolder.Pin? = runCatching {
+    val json = store.signedFetchJson(zhihuPinContentDetailUrl(pin))
+        ?: return@runCatching null
+    decodePinContentDetail(json)
+}.getOrNull()
 
 private suspend fun fetchDesktopPinLike(
     store: DesktopAccountStore,
     endpoint: String,
     method: HttpMethod,
-): JsonObject? {
-    val account = store.load()
-    return runCatching {
-        store.fetchAuthenticatedJson(endpoint) {
-            this.method = method
-            signDesktopRequest(account.cookies)
-        }
-    }.getOrNull()
-}
+): JsonObject? = runCatching {
+    store.signedFetchJson(endpoint) {
+        this.method = method
+    }
+}.getOrNull()
 
 internal suspend fun fetchDesktopQuestionDetailForFeedBlock(
     store: DesktopAccountStore,
     question: Question,
-): DataHolder.Question? {
-    val account = store.load()
-    val apiUrl = zhihuQuestionContentDetailUrl(question)
-
-    return runCatching {
-        val jo = store.fetchAuthenticatedJson(apiUrl) {
-            signDesktopRequest(account.cookies)
-        } ?: return@runCatching null
-        decodeQuestionContentDetail(jo)
-    }.getOrNull()
-}
+): DataHolder.Question? = runCatching {
+    val jo = store.signedFetchJson(zhihuQuestionContentDetailUrl(question))
+        ?: return@runCatching null
+    decodeQuestionContentDetail(jo)
+}.getOrNull()
 
 private suspend fun fetchDesktopLinkCardPreview(
     store: DesktopAccountStore,
