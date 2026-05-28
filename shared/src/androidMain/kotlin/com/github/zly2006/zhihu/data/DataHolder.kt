@@ -20,7 +20,6 @@ package com.github.zly2006.zhihu.data
 import android.content.Context
 import android.util.Log
 import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
@@ -44,12 +43,8 @@ suspend fun DataHolder.getContentDetail(
         val jo = AccountData.fetchGet(context, apiUrl) {
             signFetchRequest()
         }!!
-        val jojo = normalizeArticleContentDetailJson(jo)
         // 解析为对应的Content类型
-        when (dest.type) {
-            ArticleType.Answer -> AccountData.decodeJson<DataHolder.Answer>(jojo)
-            ArticleType.Article -> AccountData.decodeJson<DataHolder.Article>(jojo)
-        }
+        decodeArticleContentDetail(dest, jo)
     }.getOrElse { e ->
         if (e !is CancellationException) {
             Log.e("getContentDetail", "Failed to fetch content detail for ${dest.type} id=${dest.id}", e)
@@ -69,7 +64,7 @@ suspend fun DataHolder.getContentDetail(
             signFetchRequest()
         }!!
         // 解析为对应的Content类型
-        AccountData.decodeJson<DataHolder.Question>(normalizeQuestionDetailJson(jo))
+        decodeQuestionContentDetail(jo)
     }.getOrElse { e ->
         if (e !is CancellationException) {
             Log.e("getContentDetail", "Failed to fetch content detail for question id=${question.questionId}", e)
@@ -88,7 +83,7 @@ suspend fun DataHolder.getContentDetail(
         val jo = AccountData.fetchGet(context, apiUrl) {
             signFetchRequest()
         }!!
-        AccountData.decodeJson<DataHolder.Pin>(jo)
+        decodePinContentDetail(jo)
     }.getOrElse { e ->
         if (e !is CancellationException) {
             Log.e("getContentDetail", "Failed to fetch content detail for pin id=${pin.id}", e)

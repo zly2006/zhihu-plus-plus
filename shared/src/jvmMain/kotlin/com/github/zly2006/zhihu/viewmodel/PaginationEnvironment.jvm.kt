@@ -3,11 +3,11 @@ package com.github.zly2006.zhihu.viewmodel
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.data.ContentDetailCache
-import com.github.zly2006.zhihu.data.normalizeArticleContentDetailJson
+import com.github.zly2006.zhihu.data.decodeArticleContentDetail
+import com.github.zly2006.zhihu.data.decodePinContentDetail
 import com.github.zly2006.zhihu.data.zhihuArticleContentDetailUrl
 import com.github.zly2006.zhihu.data.zhihuPinContentDetailUrl
 import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.shared.data.Collection
@@ -17,7 +17,6 @@ import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.ZHIHU_CLEAR_ONLINE_HISTORY_URL
 import com.github.zly2006.zhihu.shared.data.ZHIHU_LAST_READ_TOUCH_URL
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.decodeZhihuCollection
 import com.github.zly2006.zhihu.shared.data.encodeZhihuClearOnlineHistoryBody
 import com.github.zly2006.zhihu.shared.data.encodeZhihuLastReadTouchItems
@@ -185,11 +184,7 @@ class DesktopPaginationEnvironment(
                 }
                 method = HttpMethod.Get
             } ?: return@runCatching null
-            val jojo = normalizeArticleContentDetailJson(jo)
-            when (article.type) {
-                ArticleType.Answer -> ZhihuJson.decodeJson<DataHolder.Answer>(jojo)
-                ArticleType.Article -> ZhihuJson.decodeJson<DataHolder.Article>(jojo)
-            }
+            decodeArticleContentDetail(article, jo)
         }.getOrNull()
     }
 
@@ -203,7 +198,7 @@ class DesktopPaginationEnvironment(
                 }
                 method = HttpMethod.Get
             } ?: return@runCatching null
-            ZhihuJson.decodeJson<DataHolder.Pin>(json)
+            decodePinContentDetail(json)
         }.getOrNull()
     }
 

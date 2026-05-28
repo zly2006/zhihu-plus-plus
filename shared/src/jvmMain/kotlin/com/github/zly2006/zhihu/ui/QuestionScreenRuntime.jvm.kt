@@ -2,11 +2,10 @@ package com.github.zly2006.zhihu.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import com.github.zly2006.zhihu.data.normalizeQuestionDetailJson
+import com.github.zly2006.zhihu.data.decodeQuestionContentDetail
 import com.github.zly2006.zhihu.data.zhihuQuestionContentDetailUrl
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
@@ -82,7 +81,7 @@ private suspend fun fetchDesktopQuestionDetail(
                 signZhihuFetchRequest(dc0 = dc0)
             }
         } ?: return@runCatching null
-        ZhihuJson.decodeJson<DataHolder.Question>(normalizeQuestionDetailJson(jo))
+        decodeQuestionContentDetail(jo)
     }.getOrNull()
 }
 

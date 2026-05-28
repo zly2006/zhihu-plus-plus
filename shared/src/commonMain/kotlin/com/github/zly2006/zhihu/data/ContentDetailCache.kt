@@ -23,6 +23,7 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.util.Log
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -153,6 +154,23 @@ fun normalizeArticleContentDetailJson(jo: JsonObject): JsonObject =
 
 fun normalizeQuestionDetailJson(jo: JsonObject): JsonObject =
     normalizeLongIdContentDetailJson(jo)
+
+fun decodeArticleContentDetail(
+    article: Article,
+    json: JsonObject,
+): DataHolder.Content {
+    val normalizedJson = normalizeArticleContentDetailJson(json)
+    return when (article.type) {
+        ArticleType.Answer -> ZhihuJson.decodeJson<DataHolder.Answer>(normalizedJson)
+        ArticleType.Article -> ZhihuJson.decodeJson<DataHolder.Article>(normalizedJson)
+    }
+}
+
+fun decodeQuestionContentDetail(json: JsonObject): DataHolder.Question =
+    ZhihuJson.decodeJson(normalizeQuestionDetailJson(json))
+
+fun decodePinContentDetail(json: JsonObject): DataHolder.Pin =
+    ZhihuJson.decodeJson(json)
 
 private fun normalizeLongIdContentDetailJson(jo: JsonObject): JsonObject = buildJsonObject {
     jo.entries.forEach { (key, value) ->

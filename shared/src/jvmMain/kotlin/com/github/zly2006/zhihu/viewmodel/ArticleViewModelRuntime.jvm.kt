@@ -1,12 +1,11 @@
 package com.github.zly2006.zhihu.viewmodel
 
 import com.github.zly2006.zhihu.data.ContentDetailCache
-import com.github.zly2006.zhihu.data.normalizeArticleContentDetailJson
+import com.github.zly2006.zhihu.data.decodeArticleContentDetail
 import com.github.zly2006.zhihu.data.zhihuArticleContentDetailUrl
 import com.github.zly2006.zhihu.navigation.AnswerNavigatorPage
 import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.answerNavigatorPageFromJson
 import com.github.zly2006.zhihu.navigation.zhihuQuestionFeedsUrl
@@ -107,11 +106,7 @@ class DesktopArticleViewModelRuntime(
             val jo = fetchGet(apiUrl) {
                 configureSignedRequest(this)
             } ?: return null
-            val jojo = normalizeArticleContentDetailJson(jo)
-            when (article.type) {
-                ArticleType.Answer -> ZhihuJson.decodeJson<DataHolder.Answer>(jojo)
-                ArticleType.Article -> ZhihuJson.decodeJson<DataHolder.Article>(jojo)
-            }
+            decodeArticleContentDetail(article, jo)
         }.getOrNull()
     }
 
