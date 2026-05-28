@@ -131,17 +131,11 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
                 userMessages.showShortMessage(message)
             },
             openWebUrl = { url ->
-                openDesktopUri(url)
+                openDesktopExternalUrl(url)
             },
             openImage = { url ->
-                openDesktopUri(url)
+                openDesktopExternalUrl(url)
             },
         )
-    }
-}
-
-private fun openDesktopUri(url: String) {
-    runCatching {
-        openDesktopExternalUrl(url)
     }
 }

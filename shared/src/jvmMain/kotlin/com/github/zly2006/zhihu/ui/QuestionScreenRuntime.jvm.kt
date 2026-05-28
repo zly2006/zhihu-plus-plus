@@ -8,6 +8,7 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
+import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
 import com.github.zly2006.zhihu.shared.desktop.signDesktopRequest
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
@@ -17,7 +18,6 @@ import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.viewmodel.consumeDesktopPendingContentOpenFrom
 import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
-import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl as browseDesktopExternalUrl
 
 @Composable
 actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {
@@ -81,10 +81,4 @@ private suspend fun fetchDesktopQuestionDetail(
         } ?: return@runCatching null
         decodeQuestionContentDetail(jo)
     }.getOrNull()
-}
-
-private fun openDesktopExternalUrl(url: String) {
-    runCatching {
-        browseDesktopExternalUrl(url)
-    }
 }

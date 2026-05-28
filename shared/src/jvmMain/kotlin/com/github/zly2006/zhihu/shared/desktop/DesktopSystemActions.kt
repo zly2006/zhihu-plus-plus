@@ -5,13 +5,13 @@ import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
 import java.net.URI
 
-internal fun openDesktopExternalUrl(url: String): Boolean {
+internal fun openDesktopExternalUrl(url: String): Boolean = runCatching {
     if (!Desktop.isDesktopSupported()) {
-        return false
+        return@runCatching false
     }
     Desktop.getDesktop().browse(URI(url))
-    return true
-}
+    true
+}.getOrDefault(false)
 
 internal fun copyDesktopPlainText(text: String) {
     Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)

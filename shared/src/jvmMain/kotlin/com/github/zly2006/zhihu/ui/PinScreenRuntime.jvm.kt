@@ -13,6 +13,7 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
+import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
 import com.github.zly2006.zhihu.shared.desktop.signDesktopRequest
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.pin.PinLinkCardPreview
@@ -32,7 +33,6 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
-import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl as browseDesktopExternalUrl
 
 @Composable
 actual fun rememberPinScreenRuntime(): PinScreenRuntime {
@@ -160,11 +160,5 @@ private suspend fun fetchDesktopLinkCardPreview(
             fetchDesktopPinDetail(store, destination)
         }
         else -> null
-    }
-}
-
-private fun openDesktopExternalUrl(url: String) {
-    runCatching {
-        browseDesktopExternalUrl(url)
     }
 }
