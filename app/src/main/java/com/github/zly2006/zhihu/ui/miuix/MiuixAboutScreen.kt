@@ -8,7 +8,8 @@ package com.github.zly2006.zhihu.ui.miuix
  
 import android.content.Intent
 import androidx.compose.foundation.background
-import coil3.compose.AsyncImage
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.graphics.drawable.toBitmap
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -37,6 +38,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import com.github.zly2006.zhihu.BuildConfig
+import androidx.compose.foundation.Image
+import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
@@ -108,11 +111,12 @@ fun MiuixAboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
                         .clip(RoundedCornerShape(24.dp))
                         .background(Color.White),
                 ) {
-                    AsyncImage(
-                        model = R.mipmap.ic_launcher,
-                        contentDescription = "知乎++",
-                        modifier = Modifier.size(74.dp),
-                    )
+                    val appIcon = remember {
+                        context.packageManager.getApplicationIcon(context.packageName)
+                            .toBitmap(width = 200, height = 200)
+                            .asImageBitmap()
+                    }
+                    Image(bitmap = appIcon, contentDescription = "知乎++", modifier = Modifier.size(74.dp))
                 }
             }
  
