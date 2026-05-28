@@ -147,17 +147,30 @@ fun MiuixFollowTopLevelPage(
     scrollToTopTrigger: Int = 0, innerPadding: PaddingValues = PaddingValues(0.dp),
     isActive: Boolean = true,
 ) {
-    Column(
-        modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
-            .then(if (isActive) Modifier else Modifier.clearAndSetSemantics {}),
-    ) {
-        MiuixFollowTabRow(
-            selectedTabIndex = selectedTabIndex, onTabSelected = onTabSelected,
-            modifier = Modifier.padding(top = innerPadding.calculateTopPadding()),
-        )
-        when (selectedTabIndex) {
-            0 -> FollowRecommendScreen(scrollToTopTrigger = scrollToTopTrigger, isActive = isActive)
-            1 -> FollowDynamicScreen(scrollToTopTrigger = scrollToTopTrigger, isActive = isActive)
+    val backdrop = rememberMiuixBlurBackdrop(true)
+    val scrollBehavior = MiuixScrollBehavior()
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                modifier = Modifier.installerMiuixBlurEffect(backdrop),
+                color = backdrop.getMiuixAppBarColor(),
+                title = "关注",
+                scrollBehavior = scrollBehavior,
+            )
+        },
+    ) { padding ->
+        Column(
+            modifier = Modifier.fillMaxSize()
+                .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
+                .padding(padding)
+                .padding(bottom = innerPadding.calculateBottomPadding())
+                .then(if (isActive) Modifier else Modifier.clearAndSetSemantics {}),
+        ) {
+            MiuixFollowTabRow(selectedTabIndex = selectedTabIndex, onTabSelected = onTabSelected)
+            when (selectedTabIndex) {
+                0 -> FollowRecommendScreen(scrollToTopTrigger = scrollToTopTrigger, isActive = isActive)
+                1 -> FollowDynamicScreen(scrollToTopTrigger = scrollToTopTrigger, isActive = isActive)
+            }
         }
     }
 }
