@@ -12,6 +12,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -60,31 +61,32 @@ fun MiuixAboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
     val gradient = Brush.linearGradient(listOf(Color(0xFFD8B4E2), Color(0xFFE8C4D8), Color(0xFFB4D4E8)))
 
     if (darkTheme) {
-        Box(modifier = Modifier.fillMaxSize().background(MiuixTheme.colorScheme.background).padding(innerPadding)) { AboutContent(navigator, context) }
+        Box(Modifier.fillMaxSize().background(MiuixTheme.colorScheme.background).padding(innerPadding)) {
+            AboutContent(navigator, context)
+        }
     } else {
-        Box(modifier = Modifier.fillMaxSize()
-            .drawBehind { drawRect(gradient) }
-            .padding(innerPadding)) { AboutContent(navigator, context) }
+        Box(Modifier.fillMaxSize().background(Color.Magenta).padding(innerPadding)) {
+            AboutContent(navigator, context)
+        }
     }
 }
 
 @Composable
 private fun AboutContent(navigator: com.github.zly2006.zhihu.navigation.Navigator, context: android.content.Context) {
-    Box(modifier = Modifier.fillMaxSize()) {
-        // 返回箭头
-        IconButton(
-            onClick = { navigator.onNavigateBack() },
-            modifier = Modifier.padding(top = 8.dp, start = 8.dp).align(Alignment.TopStart),
-        ) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回", tint = MiuixTheme.colorScheme.onBackground)
-        }
+    // 返回箭头
+    IconButton(
+        onClick = { navigator.onNavigateBack() },
+        modifier = Modifier.padding(top = 8.dp, start = 8.dp),
+    ) {
+        Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回", tint = MiuixTheme.colorScheme.onBackground)
+    }
 
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            // 顶部留白
-            item(key = "topSpacer") { Spacer(Modifier.height(80.dp)) }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        // 顶部留白
+        item(key = "topSpacer") { Spacer(Modifier.height(80.dp)) }
 
             // App icon
             item(key = "icon") {
@@ -177,5 +179,4 @@ private fun AboutContent(navigator: com.github.zly2006.zhihu.navigation.Navigato
 
             item(key = "bottomSpacer") { Spacer(Modifier.height(32.dp)) }
         }
-    }
 }
