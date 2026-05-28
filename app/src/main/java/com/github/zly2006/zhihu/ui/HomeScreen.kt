@@ -478,7 +478,6 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                 MiuixAccountSettingScreen(
                     innerPadding = PaddingValues(0.dp),
                     unreadCount = unreadCount,
-                    onDismissRequest = { showAccountBottomSheet = false },
                 )
             } else {
                 MyModalBottomSheet(
