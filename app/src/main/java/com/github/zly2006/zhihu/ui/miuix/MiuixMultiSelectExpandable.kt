@@ -6,71 +6,118 @@
 
 package com.github.zly2006.zhihu.ui.miuix
 
+import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material3.Checkbox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import top.yukonga.miuix.kmp.basic.Checkbox
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
+import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable
-fun MiuixMultiSelectExpandable(
+fun <T> MiuixMultiSelectExpandable(
     title: String,
-    options: List<String>,
-    labels: Map<String, String>,
-    selectedOptions: Set<String>,
-    onSelectionChange: (Set<String>) -> Unit,
-    modifier: Modifier = Modifier,
+    options: List<T>,
+    selectedOptions: Set<T>,
+    onSelectionChange: (Set<T>) -> Unit,
+    optionLabel: (T) -> String,
+    lockedOptions: Set<T> = emptySet(),
+    minSelection: Int = 1,
+    emptySummary: String = "未选择",
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val expanded = rememberSaveable { mutableStateOf(false) }
 
-    Column(modifier = modifier) {
+    val arrowRotation by animateFloatAsState(
+        targetValue = if (expanded.value) 180f else 0f, label = "arrow",
+    )
+
+    val summary = if (selectedOptions.isEmpty()) {
+        emptySummary
+    } else {
+        options.filter { it in selectedOptions }.joinToString("、") { optionLabel(it) }
+    }
+
+    Column {
         ArrowPreference(
             title = title,
-            summary = "建议 3-5 项 (已选 ${selectedOptions.size})",
-            onClick = { expanded = !expanded },
-        )
-
-        if (expanded) {
-            HorizontalDivider(
-                color = MiuixTheme.colorScheme.onBackground.copy(alpha = 0.08f),
-                thickness = 0.5.dp,
-            )
-            options.forEach { key ->
-                val checked = key in selectedOptions
-                Row(
-                    Modifier.fillMaxWidth().clickable {
-                        val newSet = if (checked) selectedOptions - key else selectedOptions + key
-                        if (newSet.size in 3..5) onSelectionChange(newSet)
-                    }.padding(horizontal = 24.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(labels[key] ?: key, color = MiuixTheme.colorScheme.onSurface)
-                    Checkbox(
-                        state = if (checked) androidx.compose.ui.state.ToggleableState.On
-                        else androidx.compose.ui.state.ToggleableState.Off,
-                        onClick = {},
-                    )
-                }
-                HorizontalDivider(
-                    color = MiuixTheme.colorScheme.onBackground.copy(alpha = 0.08f),
-                    thickness = 0.5.dp,
+            summary = summary,
+            onClick = { expanded.value = !expanded.value },
+            endActions = {
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowDown,
+                    contentDescription = if (expanded.value) "收起" else "展开",
+                    modifier = Modifier.rotate(arrowRotation),
                 )
+            },
+        )
+        AnimatedVisibility(
+            visible = expanded.value,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut(),
+        ) {
+            Column {
+                options.forEach { option ->
+                    HorizontalDivider(
+                        thickness = 0.5.dp,
+                        color = MiuixTheme.colorScheme.onBackground.copy(alpha = 0.08f),
+                    )
+                    val isLocked = option in lockedOptions
+                    val isChecked = isLocked || option in selectedOptions
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth()
+                            .clickable(enabled = !isLocked) {
+                                val newSet = if (isChecked) selectedOptions - option
+                                else selectedOptions + option
+                                if (newSet.size >= minSelection) {
+                                    onSelectionChange(newSet)
+                                } else {
+                                    Toast.makeText(context, "至少保留 $minSelection 项", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                            .padding(horizontal = 24.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = optionLabel(option),
+                            modifier = Modifier.weight(1f),
+                            style = MiuixTheme.textStyles.body1,
+                            color = if (isLocked) MiuixTheme.colorScheme.onBackground.copy(alpha = 0.4f)
+                            else MiuixTheme.colorScheme.onBackground,
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Checkbox(
+                            checked = isChecked,
+                            onCheckedChange = null,
+                            enabled = !isLocked,
+                        )
+                    }
+                }
             }
         }
     }

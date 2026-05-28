@@ -286,10 +286,7 @@ fun MiuixAppearanceSettingsScreen(
                     MiuixMultiSelectExpandable(
                         title = "选择显示的页面",
                         options = listOf("Home", "Follow", "HotList", "Daily", "OnlineHistory", "Account"),
-                        labels = mapOf(
-                            "Home" to "主页", "Follow" to "关注", "HotList" to "热榜",
-                            "Daily" to "日报", "OnlineHistory" to "历史", "Account" to "账号设置",
-                        ),
+                        optionLabel = { mapOf("Home" to "主页", "Follow" to "关注", "HotList" to "热榜", "Daily" to "日报", "OnlineHistory" to "历史", "Account" to "账号设置")[it] ?: it },
                         selectedOptions = selectedBottomBarKeys.value,
                         onSelectionChange = { selectedBottomBarKeys.value = it; preferences.edit { putStringSet(BOTTOM_BAR_ITEMS_PREFERENCE_KEY, it) } },
                     )
