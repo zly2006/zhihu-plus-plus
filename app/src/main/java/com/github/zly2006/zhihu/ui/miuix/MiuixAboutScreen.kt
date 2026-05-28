@@ -156,8 +156,7 @@ fun MiuixAboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
                     ArrowPreference(
                         title = "系统与更新",
                         summary = "GitHub、更新设置等",
-                        startAction = { Icon(Icons.Default.Settings, null) },
-                        onClick = { navigator.onNavigate(Account.SystemAndUpdateSettings) },
+                    onClick = { navigator.onNavigate(Account.SystemAndUpdateSettings) },
                     )
                 }
             }
