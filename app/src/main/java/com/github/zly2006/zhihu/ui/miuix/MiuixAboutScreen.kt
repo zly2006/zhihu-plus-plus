@@ -43,6 +43,7 @@ import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Text
@@ -55,17 +56,18 @@ fun MiuixAboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
     val context = LocalContext.current
     val darkTheme = isSystemInDarkTheme()
 
-    val bgModifier = if (darkTheme) {
-        Modifier.background(MiuixTheme.colorScheme.background)
-    } else {
-        Modifier.background(
-            Brush.linearGradient(listOf(Color(0xFFD8B4E2), Color(0xFFE8C4D8), Color(0xFFB4D4E8)))
-        )
-    }
+    val gradient = Brush.linearGradient(listOf(Color(0xFFD8B4E2), Color(0xFFE8C4D8), Color(0xFFB4D4E8)))
 
-    Box(
-        modifier = Modifier.fillMaxSize().then(bgModifier).padding(innerPadding),
-    ) {
+    if (darkTheme) {
+        Box(modifier = Modifier.fillMaxSize().background(MiuixTheme.colorScheme.background).padding(innerPadding)) { AboutContent(navigator, context) }
+    } else {
+        Box(modifier = Modifier.fillMaxSize().background(gradient).padding(innerPadding)) { AboutContent(navigator, context) }
+    }
+}
+
+@Composable
+private fun AboutContent(navigator: com.github.zly2006.zhihu.navigation.Navigator, context: android.content.Context) {
+    Box(modifier = Modifier.fillMaxSize()) {
         // 返回箭头
         IconButton(
             onClick = { navigator.onNavigateBack() },
@@ -117,7 +119,10 @@ fun MiuixAboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
 
             // Card 1：外部链接
             item(key = "card1") {
-                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                Card(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                colors = CardDefaults.defaultColors(color = Color.Transparent),
+            ) {
                     ArrowPreference(
                         title = "View Source",
                         endActions = { Text("GitHub", fontSize = MiuixTheme.textStyles.body2.fontSize, color = MiuixTheme.colorScheme.onSurfaceVariantActions) },
@@ -135,7 +140,10 @@ fun MiuixAboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
 
             // Card 2：许可证
             item(key = "card2") {
-                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                Card(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                colors = CardDefaults.defaultColors(color = Color.Transparent),
+            ) {
                     ArrowPreference(
                         title = "License",
                         endActions = { Text("AGPL-3.0", fontSize = MiuixTheme.textStyles.body2.fontSize, color = MiuixTheme.colorScheme.onSurfaceVariantActions) },
@@ -152,7 +160,10 @@ fun MiuixAboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
 
             // Card 3：系统与更新
             item(key = "card3") {
-                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                Card(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                colors = CardDefaults.defaultColors(color = Color.Transparent),
+            ) {
                     ArrowPreference(
                         title = "系统与更新",
                         summary = "GitHub、更新设置等",
