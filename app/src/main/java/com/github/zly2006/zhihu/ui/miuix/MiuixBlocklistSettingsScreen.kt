@@ -78,6 +78,13 @@ import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
+import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
+import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
+import top.yukonga.miuix.kmp.blur.layerBackdrop
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import top.yukonga.miuix.kmp.utils.overScrollVertical
 
 /**
  * miuix 风格的屏蔽设置页。
@@ -147,10 +154,14 @@ fun MiuixBlocklistSettingsScreen(
     LaunchedEffect(testConfig) { if (testConfig == null) loadData() }
 
     val showFab = selectedTab == 0 || selectedTab == 2 || selectedTab == 3
+    val backdrop = rememberMiuixBlurBackdrop(true)
+    val scrollBehavior = MiuixScrollBehavior()
 
     Scaffold(
         topBar = {
             TopAppBar(
+                modifier = Modifier.installerMiuixBlurEffect(backdrop),
+                color = backdrop.getMiuixAppBarColor(),
                 title = "屏蔽设置",
                 navigationIcon = {
                     IconButton(onClick = { navigator.onNavigateBack() }) {
@@ -161,6 +172,7 @@ fun MiuixBlocklistSettingsScreen(
                         )
                     }
                 },
+                scrollBehavior = scrollBehavior,
             )
         },
         floatingActionButton = {
@@ -182,8 +194,11 @@ fun MiuixBlocklistSettingsScreen(
     ) { innerPadding ->
         Column(
             modifier = Modifier
-                .padding(innerPadding)
                 .fillMaxSize()
+                .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
+                .overScrollVertical()
+                .nestedScroll(scrollBehavior.nestedScrollConnection)
+                .padding(innerPadding)
                 .testTag(BlocklistSettingsTestTags.ROOT),
         ) {
             // 统计卡片
@@ -191,7 +206,7 @@ fun MiuixBlocklistSettingsScreen(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp)
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
                         .testTag(BlocklistSettingsTestTags.STATS_CARD),
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
@@ -208,7 +223,7 @@ fun MiuixBlocklistSettingsScreen(
 
             // 导入/导出
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
             ) {
                 TextButton(
@@ -324,7 +339,7 @@ private fun KeywordsTab(
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         if (keywords.isNotEmpty()) {
             item {
-                Row(Modifier.fillMaxWidth().padding(end = 16.dp), horizontalArrangement = Arrangement.End) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.End) {
                     Button(
                         onClick = {
                             testConfig?.onClearKeywords?.let { it(); return@Button }
@@ -404,7 +419,7 @@ private fun UsersTab(
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         if (users.isNotEmpty()) {
             item {
-                Row(Modifier.fillMaxWidth().padding(end = 16.dp), horizontalArrangement = Arrangement.End) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.End) {
                     Button(
                         onClick = {
                             testConfig?.onClearUsers?.let { it(); return@Button }
@@ -499,7 +514,7 @@ private fun TopicsTab(
                 }
             } else {
                 item {
-                    Row(Modifier.fillMaxWidth().padding(end = 16.dp), horizontalArrangement = Arrangement.End) {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.End) {
                         Button(
                             onClick = { onShowClearConfirm(true) },
                             modifier = Modifier.testTag(BlocklistSettingsTestTags.TOPIC_CLEAR_BUTTON),
