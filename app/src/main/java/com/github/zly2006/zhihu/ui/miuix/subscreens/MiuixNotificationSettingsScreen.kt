@@ -4,7 +4,7 @@
  * Licensed under AGPL-3.0-only.
  */
 
-package com.github.zly2006.zhihu.ui.miuix
+package com.github.zly2006.zhihu.ui.miuix.subscreens
 
 import android.content.Context
 import androidx.compose.foundation.layout.Spacer

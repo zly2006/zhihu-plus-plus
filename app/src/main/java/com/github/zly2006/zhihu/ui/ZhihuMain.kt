@@ -115,14 +115,14 @@ import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ThemeStyle
 import com.github.zly2006.zhihu.theme.ZhihuTheme
-import com.github.zly2006.zhihu.ui.miuix.MiuixAppearanceSettingsScreen
+import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixAppearanceSettingsScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixAboutScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixAccountSettingScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixBlocklistSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.AboutScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixFollowScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixFollowTopLevelPage
-import com.github.zly2006.zhihu.ui.miuix.MiuixNotificationSettingsScreen
+import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixNotificationSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.BlockedFeedHistoryScreen

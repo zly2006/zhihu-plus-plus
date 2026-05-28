@@ -5,7 +5,7 @@
  * Licensed under AGPL-3.0-only.
  */
 
-package com.github.zly2006.zhihu.ui.miuix
+package com.github.zly2006.zhihu.ui.miuix.components
 
 import android.content.Context.MODE_PRIVATE
 import android.content.Intent
