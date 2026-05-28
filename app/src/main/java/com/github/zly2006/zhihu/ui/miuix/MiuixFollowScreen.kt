@@ -148,7 +148,7 @@ private fun MiuixFollowTabRow(selectedTabIndex: Int, onTabSelected: (Int) -> Uni
         tabs = listOf("推荐", "动态"),
         selectedTabIndex = selectedTabIndex,
         onTabSelected = onTabSelected,
-        modifier = modifier.testTag(FOLLOW_SCREEN_TAB_ROW_TAG),
+        modifier = modifier.padding(horizontal = 12.dp).testTag(FOLLOW_SCREEN_TAB_ROW_TAG),
     )
 }
 

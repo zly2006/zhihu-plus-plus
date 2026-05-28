@@ -312,7 +312,7 @@ private fun MiuixLoginModeScreen(
                 tabs = listOf("网页登录", "扫码登录"),
                 selectedTabIndex = loginMode,
                 onTabSelected = onModeChanged,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
             )
             Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
                 if (loginMode == LOGIN_MODE_WEB) {
