@@ -291,6 +291,39 @@ object AccountData {
         method = HttpMethod.Post
     }
 
+    /**
+     * Signed convenience: auto-calls [signFetchRequest] then delegates to [fetch].
+     * Mirrors JVM [DesktopAccountStore.signedFetchJson].
+     */
+    suspend fun signedFetch(
+        context: Context,
+        url: String,
+        block: suspend HttpRequestBuilder.() -> Unit = {},
+    ): JsonObject? = fetch(context, url) {
+        signFetchRequest()
+        block()
+    }
+
+    /** Signed GET convenience. */
+    suspend fun signedFetchGet(
+        context: Context,
+        url: String,
+        block: suspend HttpRequestBuilder.() -> Unit = {},
+    ): JsonObject? = fetchGet(context, url) {
+        signFetchRequest()
+        block()
+    }
+
+    /** Signed POST convenience. */
+    suspend fun signedFetchPost(
+        context: Context,
+        url: String,
+        block: suspend HttpRequestBuilder.() -> Unit = {},
+    ): JsonObject? = fetchPost(context, url) {
+        signFetchRequest()
+        block()
+    }
+
     suspend fun <T> withAuthenticatedResponse(
         context: Context,
         url: String,
@@ -318,8 +351,7 @@ object AccountData {
         contentType: String,
     ) {
         runCatching {
-            fetchPost(context, ZHIHU_READ_HISTORY_ADD_URL) {
-                signFetchRequest()
+            signedFetchPost(context, ZHIHU_READ_HISTORY_ADD_URL) {
                 contentType(ContentType.Application.Json)
                 setBody(buildZhihuReadHistoryBody(contentToken, contentType))
             }

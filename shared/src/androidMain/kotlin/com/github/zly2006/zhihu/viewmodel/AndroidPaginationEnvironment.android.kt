@@ -211,8 +211,7 @@ open class SharedAndroidPaginationEnvironment(
         follow: Boolean,
     ) {
         val url = zhihuQuestionFollowersUrl(questionId)
-        AccountData.fetch(context, url) {
-            signFetchRequest()
+        AccountData.signedFetch(context, url) {
             method = if (follow) HttpMethod.Post else HttpMethod.Delete
         }
     }
@@ -255,9 +254,8 @@ open class SharedAndroidPaginationEnvironment(
 
     override suspend fun sendFeedReadStatus(feed: Feed) {
         val payloadItem = zhihuLastReadTouchItem(feed, "read") ?: return
-        AccountData.fetchPost(context, ZHIHU_LAST_READ_TOUCH_URL) {
+        AccountData.signedFetchPost(context, ZHIHU_LAST_READ_TOUCH_URL) {
             header("x-requested-with", "fetch")
-            signFetchRequest()
             setBody(
                 MultiPartFormDataContent(
                     formData {
@@ -304,8 +302,7 @@ open class SharedAndroidPaginationEnvironment(
 
     override suspend fun clearAllHistory() {
         HistoryStorage(context).clearAndSave()
-        AccountData.fetchPost(context, ZHIHU_CLEAR_ONLINE_HISTORY_URL) {
-            signFetchRequest()
+        AccountData.signedFetchPost(context, ZHIHU_CLEAR_ONLINE_HISTORY_URL) {
             contentType(KtorContentType.Application.Json)
             setBody(buildZhihuClearOnlineHistoryBody())
         }

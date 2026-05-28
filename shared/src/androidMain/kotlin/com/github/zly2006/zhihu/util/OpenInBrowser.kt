@@ -37,11 +37,11 @@ import io.ktor.http.isSuccess
 object OpenInBrowser {
     suspend fun openUrlInBrowser(context: Context, destination: NavDestination): Boolean {
         val urlToken = AccountData.data.self?.urlToken ?: return false
-        val jojo = AccountData.fetchGet(context, zhihuPeopleCollectionsUrl(urlToken, limit = 50))!!
+        val jojo = AccountData.signedFetchGet(context, zhihuPeopleCollectionsUrl(urlToken, limit = 50))!!
         val collection = decodeZhihuCollectionList(jojo["data"]!!)
             .firstOrNull { it.description == "com.github.zly2006.zhplus.openinbrowser" }
             ?: decodeZhihuCollection(
-                AccountData.fetchPost(context, zhihuCollectionsUrl()) {
+                AccountData.signedFetchPost(context, zhihuCollectionsUrl()) {
                     contentType(ContentType.Application.Json)
                     setBody(
                         zhihuCollectionCreateBody(
@@ -50,7 +50,6 @@ object OpenInBrowser {
                             isPublic = false,
                         ),
                     )
-                    signFetchRequest()
                 }!!["collection"]!!,
             )
         if (destination is Article) {

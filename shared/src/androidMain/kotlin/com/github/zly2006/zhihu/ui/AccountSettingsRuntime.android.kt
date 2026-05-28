@@ -18,7 +18,6 @@ import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.util.clipboardManager
-import com.github.zly2006.zhihu.util.signFetchRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 
 private const val LOGIN_ACTIVITY_CLASS = "com.github.zly2006.zhihu.LoginActivity"
@@ -52,9 +51,7 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
         refreshProfile = {
             val data = AccountData.data
             if (data.login) {
-                val response = AccountData.fetchGet(context, ZHIHU_ME_URL) {
-                    signFetchRequest()
-                }!!
+                val response = AccountData.signedFetchGet(context, ZHIHU_ME_URL)!!
                 val self = ZhihuJson.decodeJson<com.github.zly2006.zhihu.shared.data.Person>(response)
                 AccountData.saveData(context, data.copy(self = self))
             }

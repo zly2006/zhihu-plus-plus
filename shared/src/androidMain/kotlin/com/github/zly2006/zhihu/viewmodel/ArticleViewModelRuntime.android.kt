@@ -102,13 +102,12 @@ class AndroidArticleViewModelRuntime(
         val safeRequestedCount = requestedCount.coerceAtLeast(0)
         if (safeRequestedCount == 0) return emptyList()
 
-        val json = AccountData.fetchGet(context, article.rootCommentUrl) {
+        val json = AccountData.signedFetchGet(context, article.rootCommentUrl) {
             url {
                 parameters["order"] = "score"
                 parameters["limit"] = safeRequestedCount.coerceAtMost(20).toString()
                 parameters["include"] = "data[*].content,excerpt,headline"
             }
-            signFetchRequest()
         } ?: return emptyList()
 
         return decodeZhihuCommentData(json, safeRequestedCount)

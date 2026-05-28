@@ -9,7 +9,6 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
-import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.filter.ContentType
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 
@@ -26,7 +25,7 @@ class AndroidAnswerNavigatorRepository(
         pageUrl: String?,
     ): AnswerNavigatorPage<Feed> {
         val url = pageUrl ?: zhihuQuestionFeedsUrl(questionId, limit = 6)
-        val jojo = AccountData.fetchGet(appContext, url) { signFetchRequest() } ?: return AnswerNavigatorPage(
+        val jojo = AccountData.signedFetchGet(appContext, url) ?: return AnswerNavigatorPage(
             items = emptyList(),
             nextUrl = "",
         )
@@ -36,7 +35,7 @@ class AndroidAnswerNavigatorRepository(
     }
 
     override suspend fun fetchCollectionItems(pageUrl: String): AnswerNavigatorPage<CollectionItem> {
-        val jojo = AccountData.fetchGet(appContext, pageUrl) { signFetchRequest() } ?: return AnswerNavigatorPage(
+        val jojo = AccountData.signedFetchGet(appContext, pageUrl) ?: return AnswerNavigatorPage(
             items = emptyList(),
             nextUrl = "",
         )

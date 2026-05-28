@@ -28,11 +28,10 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
         PeopleScreenRuntime(
             loadProfile = { person ->
                 AccountData.addReadHistory(context, person.id, "profile")
-                val jojo = AccountData.fetchGet(context, peopleProfileUrl(person)) {
+                val jojo = AccountData.signedFetchGet(context, peopleProfileUrl(person)) {
                     url {
                         parameters["include"] = peopleProfileIncludePath
                     }
-                    signFetchRequest()
                 }!!
                 val loadedPerson = ZhihuJson.decodeJson<DataHolder.People>(jojo)
                 val blocklistManager = getBlocklistManager(context)
