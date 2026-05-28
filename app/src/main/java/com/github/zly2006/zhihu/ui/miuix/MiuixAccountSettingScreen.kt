@@ -98,7 +98,7 @@ fun MiuixAccountSettingScreen(
                     if (data.login) {
                         AsyncImage(data.self?.avatarUrl, "头像", modifier = Modifier.size(56.dp).clip(CircleShape))
                         Spacer(Modifier.width(12.dp))
-                        Text(data.username, style = AppTokens.text.titleMedium, modifier = Modifier.weight(1f))
+                        Text(data.username, style = MiuixTheme.textStyles.body1, modifier = Modifier.weight(1f))
                         Icon(MiuixIcons.ChevronForward, null, tint = MiuixTheme.colorScheme.onSurfaceVariantSummary)
                     } else {
                         Icon(Icons.AutoMirrored.Filled.Login, null, tint = MiuixTheme.colorScheme.primary)
@@ -168,13 +168,14 @@ fun MiuixAccountSettingScreen(
         }
 
         // ── 关于 ──
+        item { SmallTitle(text = "关于") }
         item {
             Card(
                 modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp),
                 colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.secondaryContainer),
             ) {
                 ArrowPreference(
-                    title = "关于",
+                    title = "关于",summary = "关于zhihu++",
                     onClick = { navigator.onNavigate(Account.About) },
                     startAction = { Icon(Icons.Default.Info, null) },
                 )
