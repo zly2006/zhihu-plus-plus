@@ -93,17 +93,16 @@ class DesktopAccountStore(
         contentToken: String,
         contentTypeName: String,
     ) {
-        val account = load()
-        val dc0 = account.cookies["d_c0"] ?: return
-        val body = buildZhihuReadHistoryBody(contentToken, contentTypeName)
-        fetchAuthenticatedJson(ZHIHU_READ_HISTORY_ADD_URL) {
-            method = HttpMethod.Post
-            contentType(ContentType.Application.Json)
-            setBody(body)
-            signZhihuFetchRequest(
-                dc0 = dc0,
-                body = body,
-            )
+        runCatching {
+            val account = load()
+            val dc0 = account.cookies["d_c0"] ?: return
+            val body = buildZhihuReadHistoryBody(contentToken, contentTypeName)
+            fetchAuthenticatedJson(ZHIHU_READ_HISTORY_ADD_URL) {
+                method = HttpMethod.Post
+                contentType(ContentType.Application.Json)
+                setBody(body)
+                signDesktopRequest(account.cookies, body)
+            }
         }
     }
 

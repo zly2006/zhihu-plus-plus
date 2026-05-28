@@ -32,7 +32,7 @@ actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {
     return remember(settings, userMessages, shareRuntime) {
         QuestionScreenRuntime(
             loadQuestion = { question ->
-                addDesktopReadHistory(store, question.questionId.toString(), "question")
+                store.addReadHistory(contentToken = question.questionId.toString(), contentTypeName = "question")
                 val questionData = fetchDesktopQuestionDetail(store, question)
                 if (questionData != null) {
                     val loadedData = loadedQuestionScreenData(question, questionData)
@@ -87,15 +87,4 @@ private fun openDesktopExternalUrl(url: String) {
     runCatching {
         browseDesktopExternalUrl(url)
     }
-}
-
-private suspend fun addDesktopReadHistory(
-    store: DesktopAccountStore,
-    contentToken: String,
-    contentType: String,
-) {
-    store.addReadHistory(
-        contentToken = contentToken,
-        contentTypeName = contentType,
-    )
 }

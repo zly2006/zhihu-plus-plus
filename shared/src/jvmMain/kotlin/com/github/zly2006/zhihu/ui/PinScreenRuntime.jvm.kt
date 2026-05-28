@@ -48,7 +48,7 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
     return remember(scope, settings, userMessages, shareRuntime) {
         PinScreenRuntime(
             loadPinDetail = { pin ->
-                addDesktopReadHistory(store, pin.id.toString(), "pin")
+                store.addReadHistory(contentToken = pin.id.toString(), contentTypeName = "pin")
                 val content = fetchDesktopPinDetail(store, pin)
                 if (content == null) {
                     PinScreenUiState(isLoading = false, errorMessage = "无法加载想法详情")
@@ -167,15 +167,4 @@ private fun openDesktopExternalUrl(url: String) {
     runCatching {
         browseDesktopExternalUrl(url)
     }
-}
-
-private suspend fun addDesktopReadHistory(
-    store: DesktopAccountStore,
-    contentToken: String,
-    contentType: String,
-) {
-    store.addReadHistory(
-        contentToken = contentToken,
-        contentTypeName = contentType,
-    )
 }

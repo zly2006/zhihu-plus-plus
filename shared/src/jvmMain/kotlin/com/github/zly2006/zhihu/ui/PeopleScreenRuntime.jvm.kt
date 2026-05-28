@@ -31,7 +31,7 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
         val blocklistManager = database.createBlocklistManager()
         PeopleScreenRuntime(
             loadProfile = { person ->
-                addDesktopReadHistory(store, person.id, "profile")
+                store.addReadHistory(contentToken = person.id, contentTypeName = "profile")
                 val account = store.load()
                 val jojo = store.fetchAuthenticatedJson(peopleProfileUrl(person)) {
                     parameter(
@@ -136,19 +136,6 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
             openImage = { url ->
                 openDesktopUri(url)
             },
-        )
-    }
-}
-
-private suspend fun addDesktopReadHistory(
-    store: DesktopAccountStore,
-    contentId: String,
-    contentType: String,
-) {
-    runCatching {
-        store.addReadHistory(
-            contentToken = contentId,
-            contentTypeName = contentType,
         )
     }
 }
