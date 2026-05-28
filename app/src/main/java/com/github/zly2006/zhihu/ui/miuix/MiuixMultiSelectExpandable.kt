@@ -8,7 +8,6 @@ package com.github.zly2006.zhihu.ui.miuix
 
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -20,20 +19,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material3.Checkbox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.unit.dp
+import top.yukonga.miuix.kmp.basic.Checkbox
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
-import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -52,10 +47,6 @@ fun <T> MiuixMultiSelectExpandable(
     val context = LocalContext.current
     val expanded = rememberSaveable { mutableStateOf(false) }
 
-    val arrowRotation by animateFloatAsState(
-        targetValue = if (expanded.value) 180f else 0f, label = "arrow",
-    )
-
     val summary = if (selectedOptions.isEmpty()) {
         emptySummary
     } else {
@@ -67,13 +58,6 @@ fun <T> MiuixMultiSelectExpandable(
             title = title,
             summary = summary,
             onClick = { expanded.value = !expanded.value },
-            endActions = {
-                Icon(
-                    imageVector = Icons.Default.KeyboardArrowDown,
-                    contentDescription = if (expanded.value) "收起" else "展开",
-                    modifier = Modifier.rotate(arrowRotation),
-                )
-            },
         )
         AnimatedVisibility(
             visible = expanded.value,
@@ -112,8 +96,8 @@ fun <T> MiuixMultiSelectExpandable(
                         )
                         Spacer(Modifier.width(8.dp))
                         Checkbox(
-                            checked = isChecked,
-                            onCheckedChange = null,
+                            state = if (isChecked) ToggleableState.On else ToggleableState.Off,
+                            onClick = {},
                             enabled = !isLocked,
                         )
                     }
