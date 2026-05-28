@@ -91,11 +91,6 @@ fun MiuixAccountSettingScreen(
                 modifier = Modifier.installerMiuixBlurEffect(backdrop),
                 color = backdrop.getMiuixAppBarColor(),
                 title = "账号设置",
-                navigationIcon = {
-                    IconButton(onClick = { navigator.onNavigateBack() }) {
-                        Icon(MiuixIcons.Back, "返回", tint = MiuixTheme.colorScheme.onBackground)
-                    }
-                },
                 scrollBehavior = scrollBehavior,
             )
         },
