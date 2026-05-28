@@ -122,6 +122,7 @@ import com.github.zly2006.zhihu.ui.miuix.MiuixBlocklistSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.AboutScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixFollowScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixFollowTopLevelPage
+import com.github.zly2006.zhihu.ui.miuix.MiuixNotificationSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.BlockedFeedHistoryScreen
@@ -568,7 +569,11 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     NotificationScreen()
                 }
                 composable<Notification.NotificationSettings> {
-                    NotificationSettingsScreen()
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixNotificationSettingsScreen()
+                    } else {
+                        NotificationSettingsScreen()
+                    }
                 }
                 composable<SentenceSimilarityTest> {
                     SentenceSimilarityTestScreen()
