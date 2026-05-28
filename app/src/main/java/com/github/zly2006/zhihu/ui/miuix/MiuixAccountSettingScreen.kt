@@ -29,9 +29,9 @@ import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -46,7 +46,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.LoginActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.Account
@@ -189,11 +188,6 @@ fun MiuixAccountSettingScreen(
                         onClick = { closeThen { navigator.onNavigate(Account.RecommendSettings()) } },
                         startAction = { Icon(Icons.Default.FilterAlt, null) },
                     )
-                    ArrowPreference(
-                        title = "系统与更新", summary = "GitHub、更新设置等",
-                        onClick = { closeThen { navigator.onNavigate(Account.SystemAndUpdateSettings) } },
-                        startAction = { Icon(Icons.Default.Settings, null) },
-                    )
                     if (preferences.getBoolean("developer", false)) {
                         ArrowPreference(
                             title = "开发者选项",
@@ -204,20 +198,16 @@ fun MiuixAccountSettingScreen(
                 }
             }
 
-            // ── 关于 ──
+            // ── 关于入口 ──
             item {
-                SmallTitle(text = "关于", insideMargin = PaddingValues(16.dp, 8.dp))
                 Card(
                     modifier = Modifier.padding(bottom = 12.dp),
                     colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.secondaryContainer),
                 ) {
                     ArrowPreference(
-                        title = "开源许可",
-                        onClick = { closeThen { navigator.onNavigate(Account.OpenSourceLicenses) } },
-                    )
-                    ArrowPreference(
-                        title = "知乎++",
-                        summary = "版本号：${BuildConfig.VERSION_NAME} ${BuildConfig.BUILD_TYPE}",
+                        title = "关于",
+                        onClick = { closeThen { navigator.onNavigate(Account.About) } },
+                        startAction = { Icon(Icons.Default.Info, null) },
                     )
                 }
             }

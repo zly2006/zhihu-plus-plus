@@ -52,6 +52,7 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.QrCodeScanner
@@ -463,14 +464,6 @@ fun AccountSettingScreen(
                     onClick = { navigator.onNavigate(Account.RecommendSettings()) },
                 )
 
-                SettingItem(
-                    title = { Text("系统与更新") },
-                    description = { Text("GitHub、更新设置等") },
-                    icon = { Icon(Icons.Default.Settings, null) },
-                    modifier = Modifier.testTag(ACCOUNT_SETTINGS_SYSTEM_TAG),
-                    onClick = { navigator.onNavigate(Account.SystemAndUpdateSettings) },
-                )
-
                 AnimatedVisibility(isDeveloper) {
                     SettingItem(
                         title = { Text("开发者选项") },
@@ -498,74 +491,10 @@ fun AccountSettingScreen(
                 footer = { Text("本软件仅供学习交流使用，应用内内容由知乎网站提供，著作权归其对应作者所有。") },
             ) {
                 SettingItem(
-                    title = { Text("知乎++") },
-                    description = { Text("版本号：${BuildConfig.VERSION_NAME} ${BuildConfig.BUILD_TYPE}, ${BuildConfig.GIT_HASH}") },
-                    icon = {
-                        Image(
-                            painterResource(R.drawable.ic_launcher_foreground),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .size(32.dp),
-                        )
-                    },
-                    modifier = Modifier.combinedClickable(
-                        enabled = true,
-                        onClick = {
-                            clickTimes++
-                            if (clickTimes == 5) {
-                                clickTimes = 0
-                                isDeveloper = true
-                                Toast.makeText(context, "You are now a developer", Toast.LENGTH_SHORT).show()
-                            }
-                        },
-                        onLongClick = {
-                            val versionInfo = "${BuildConfig.VERSION_NAME} ${BuildConfig.BUILD_TYPE}, ${BuildConfig.GIT_HASH}"
-                            val clip = android.content.ClipData.newPlainText("version", versionInfo)
-                            context.clipboardManager.setPrimaryClip(clip)
-                            Toast.makeText(context, "已复制版本号", Toast.LENGTH_SHORT).show()
-                        },
-                    ),
-                )
-                SettingItem(
-                    title = { Text("GitHub 项目地址") },
-                    description = { Text("https://github.com/zly2006/zhihu-plus-plus") },
-                    icon = { Icon(painterResource(R.drawable.ic_github_24dp), null) },
-                    onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, "https://github.com/zly2006/zhihu-plus-plus".toUri())
-                        context.startActivity(intent)
-                    },
-                    endAction = {
-                        Icon(
-                            Icons.Default.ArrowOutward,
-                            null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    },
-                )
-
-                SettingItem(
-                    title = { Text("项目协议") },
-                    description = { Text("AGPL-3.0-only") },
-                    icon = { Icon(painterResource(R.drawable.ic_license_24dp), null) },
-                    onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, "https://github.com/zly2006/zhihu-plus-plus/blob/master/LICENSE".toUri())
-                        context.startActivity(intent)
-                    },
-                    endAction = {
-                        Icon(
-                            Icons.Default.ArrowOutward,
-                            null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    },
-                )
-                SettingItem(
-                    title = { Text("开源许可") },
-                    description = { Text("查看第三方组件许可证") },
-                    icon = { Icon(painterResource(R.drawable.ic_license_24dp), null) },
-                    modifier = Modifier.testTag(ACCOUNT_SETTINGS_LICENSES_TAG),
-                    onClick = { navigator.onNavigate(Account.OpenSourceLicenses) },
+                    title = { Text("关于") },
+                    description = { Text("版本信息、许可证、开源许可") },
+                    icon = { Icon(Icons.Default.Info, null) },
+                    onClick = { navigator.onNavigate(Account.About) },
                 )
             }
         }
