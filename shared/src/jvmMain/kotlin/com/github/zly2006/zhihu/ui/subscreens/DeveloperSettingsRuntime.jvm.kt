@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
-import com.github.zly2006.zhihu.shared.desktop.signDesktopRequest
+import com.github.zly2006.zhihu.shared.desktop.signedWithResponse
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
@@ -48,13 +48,9 @@ actual fun rememberDeveloperSettingsRuntime(): DeveloperSettingsRuntime {
                 )
             },
             signedGetAndCopy = { url ->
-                val account = store.load()
-                val body = store.withAuthenticatedResponse(
+                val body = store.signedWithResponse(
                     url = url,
-                    block = {
-                        method = HttpMethod.Get
-                        signDesktopRequest(account.cookies)
-                    },
+                    block = { method = HttpMethod.Get },
                 ) { response ->
                     response.bodyAsText()
                 }

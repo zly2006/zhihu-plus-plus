@@ -200,11 +200,9 @@ class DesktopPaginationEnvironment(
 
     override suspend fun clearAllHistory() {
         historyStorage.clearAndSave()
-        val account = store.load()
-        if (account.cookies["d_c0"] == null) return
+        if (store.load().cookies["d_c0"] == null) return
         val bodyText = encodeZhihuClearOnlineHistoryBody()
-        store.fetchAuthenticatedJson(ZHIHU_CLEAR_ONLINE_HISTORY_URL) {
-            signDesktopRequest(account.cookies, bodyText)
+        store.signedFetchJson(ZHIHU_CLEAR_ONLINE_HISTORY_URL) {
             contentType(KtorContentType.Application.Json)
             setBody(bodyText)
             method = HttpMethod.Post
