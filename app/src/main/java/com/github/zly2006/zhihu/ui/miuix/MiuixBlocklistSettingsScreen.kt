@@ -196,8 +196,6 @@ fun MiuixBlocklistSettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
-                .overScrollVertical()
-                .nestedScroll(scrollBehavior.nestedScrollConnection)
                 .padding(innerPadding)
                 .testTag(BlocklistSettingsTestTags.ROOT),
         ) {
@@ -206,7 +204,7 @@ fun MiuixBlocklistSettingsScreen(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                        .padding(horizontal = 12.dp, vertical = 4.dp)
                         .testTag(BlocklistSettingsTestTags.STATS_CARD),
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
@@ -221,9 +219,9 @@ fun MiuixBlocklistSettingsScreen(
                 }
             }
 
-            // 导入/导出
+            // 导入/导出（跟 stats card 同 padding）
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
             ) {
                 TextButton(
@@ -272,8 +270,12 @@ fun MiuixBlocklistSettingsScreen(
                 modifier = Modifier.testTag(BlocklistSettingsTestTags.TAB_ROW),
             )
 
-            // 内容区
-            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            // 内容区（仅此区域滚动）
+            Box(
+                modifier = Modifier.weight(1f).fillMaxWidth()
+                    .overScrollVertical()
+                    .nestedScroll(scrollBehavior.nestedScrollConnection),
+            ) {
                 when (selectedTab) {
                     0 -> KeywordsTab(
                         keywords = keywords,
