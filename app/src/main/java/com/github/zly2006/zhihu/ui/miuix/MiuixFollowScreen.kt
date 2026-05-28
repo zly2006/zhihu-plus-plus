@@ -72,7 +72,18 @@ import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.TabRow
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
+import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
+import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
+import top.yukonga.miuix.kmp.blur.layerBackdrop
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -85,37 +96,46 @@ fun MiuixFollowScreen(
     onTestDynamicLoadMore: (() -> Unit)? = null,
 ) {
     val viewModel = viewModel<FollowScreenData>()
-    val titles = listOf("推荐", "动态")
-    val pagerState = rememberPagerState(pageCount = { titles.size })
+    val pagerState = rememberPagerState(pageCount = { 2 })
     val coroutineScope = rememberCoroutineScope()
+    val backdrop = rememberMiuixBlurBackdrop(true)
+    val scrollBehavior = MiuixScrollBehavior()
 
     LaunchedEffect(pagerState.currentPage) { viewModel.selectedTabIndex = pagerState.currentPage }
     LaunchedEffect(viewModel.selectedTabIndex) {
         if (pagerState.currentPage != viewModel.selectedTabIndex) pagerState.animateScrollToPage(viewModel.selectedTabIndex)
     }
 
-    Column(modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())) {
-        MiuixFollowTabRow(
-            selectedTabIndex = viewModel.selectedTabIndex,
-            onTabSelected = { index ->
-                viewModel.selectedTabIndex = index
-                coroutineScope.launch { pagerState.animateScrollToPage(index) }
-            },
-            modifier = Modifier.padding(top = innerPadding.calculateTopPadding()),
-        )
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxSize().testTag(FOLLOW_SCREEN_PAGER_TAG),
-        ) { page ->
-            when (page) {
-                0 -> FollowRecommendScreen(
-                    scrollToTopTrigger = scrollToTopTrigger, isActive = pagerState.currentPage == 0,
-                    onTestRefreshClick = onTestRecommendRefreshClick, onTestLoadMore = onTestRecommendLoadMore,
-                )
-                1 -> FollowDynamicScreen(
-                    scrollToTopTrigger = scrollToTopTrigger, isActive = pagerState.currentPage == 1,
-                    onTestRefreshClick = onTestDynamicRefreshClick, onTestLoadMore = onTestDynamicLoadMore,
-                )
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                modifier = Modifier.installerMiuixBlurEffect(backdrop),
+                color = backdrop.getMiuixAppBarColor(),
+                title = "关注",
+                scrollBehavior = scrollBehavior,
+            )
+        },
+    ) { padding ->
+        Column(
+            modifier = Modifier.fillMaxSize()
+                .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
+                .padding(padding)
+                .padding(bottom = innerPadding.calculateBottomPadding()),
+        ) {
+            MiuixFollowTabRow(
+                selectedTabIndex = viewModel.selectedTabIndex,
+                onTabSelected = { index -> viewModel.selectedTabIndex = index; coroutineScope.launch { pagerState.animateScrollToPage(index) } },
+            )
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize().testTag(FOLLOW_SCREEN_PAGER_TAG),
+            ) { page ->
+                when (page) {
+                    0 -> FollowRecommendScreen(scrollToTopTrigger = scrollToTopTrigger, isActive = pagerState.currentPage == 0,
+                        onTestRefreshClick = onTestRecommendRefreshClick, onTestLoadMore = onTestRecommendLoadMore)
+                    1 -> FollowDynamicScreen(scrollToTopTrigger = scrollToTopTrigger, isActive = pagerState.currentPage == 1,
+                        onTestRefreshClick = onTestDynamicRefreshClick, onTestLoadMore = onTestDynamicLoadMore)
+                }
             }
         }
     }
