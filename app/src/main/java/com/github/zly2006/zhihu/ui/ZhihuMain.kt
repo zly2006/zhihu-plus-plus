@@ -669,7 +669,11 @@ private fun MainTabsPager(
             MainTabPage.HotListPage -> HotListScreen(innerPadding)
             MainTabPage.DailyPage -> DailyScreen()
             MainTabPage.OnlineHistoryPage -> OnlineHistoryScreen()
-            MainTabPage.AccountPage -> AccountSettingScreen(innerPadding)
+            MainTabPage.AccountPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                MiuixAccountSettingScreen(innerPadding)
+            } else {
+                AccountSettingScreen(innerPadding)
+            }
         }
     }
 }
