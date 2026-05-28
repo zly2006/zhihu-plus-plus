@@ -71,7 +71,7 @@ fun MiuixAboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
     ) { padding ->
         Box(
             modifier = Modifier.fillMaxSize()
-                .then(if (!darkTheme) Modifier.background(aboutGradient) else Modifier.background(MiuixTheme.colorScheme.background))
+                .background(if (darkTheme) Color(0xFF1A1A1A) else Color.White)
                 .padding(padding).padding(innerPadding),
         ) {
             LazyColumn(
