@@ -7,6 +7,7 @@ import com.github.zly2006.zhihu.data.getOrFetch
 import com.github.zly2006.zhihu.shared.data.CollectionItem
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.filter.ContentType
@@ -30,7 +31,7 @@ class AndroidAnswerNavigatorRepository(
             nextUrl = "",
         )
         return answerNavigatorPageFromJson(jojo) { data ->
-            AccountData.decodeJson<List<Feed>>(data)
+            ZhihuJson.decodeJson<List<Feed>>(data)
         }
     }
 
@@ -40,7 +41,7 @@ class AndroidAnswerNavigatorRepository(
             nextUrl = "",
         )
         return answerNavigatorPageFromJson(jojo) { data ->
-            AccountData.decodeJson<List<CollectionItem>>(data)
+            ZhihuJson.decodeJson<List<CollectionItem>>(data)
         }
     }
 

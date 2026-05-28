@@ -14,6 +14,7 @@ import androidx.core.net.toUri
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.shared.data.ZHIHU_ME_URL
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.util.clipboardManager
@@ -54,7 +55,7 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
                 val response = AccountData.fetchGet(context, ZHIHU_ME_URL) {
                     signFetchRequest()
                 }!!
-                val self = AccountData.decodeJson<com.github.zly2006.zhihu.shared.data.Person>(response)
+                val self = ZhihuJson.decodeJson<com.github.zly2006.zhihu.shared.data.Person>(response)
                 AccountData.saveData(context, data.copy(self = self))
             }
         },

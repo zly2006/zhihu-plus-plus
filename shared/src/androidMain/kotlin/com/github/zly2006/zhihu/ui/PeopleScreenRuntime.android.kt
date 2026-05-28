@@ -8,6 +8,7 @@ import androidx.core.net.toUri
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.shared.util.raiseForStatus
 import com.github.zly2006.zhihu.ui.components.OpenImageDialog
@@ -33,7 +34,7 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
                     }
                     signFetchRequest()
                 }!!
-                val loadedPerson = AccountData.decodeJson<DataHolder.People>(jojo)
+                val loadedPerson = ZhihuJson.decodeJson<DataHolder.People>(jojo)
                 val blocklistManager = getBlocklistManager(context)
                 (context as? ArticleHost)?.postHistoryDestination(
                     Person(
