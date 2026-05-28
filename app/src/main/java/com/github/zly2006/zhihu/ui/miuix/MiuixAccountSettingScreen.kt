@@ -118,7 +118,6 @@ fun MiuixAccountSettingScreen(
             item {
                 Card(
                     modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp),
-                    colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.secondaryContainer),
                 ) {
                     ArrowPreference(
                         title = "收藏夹",
@@ -187,7 +186,6 @@ fun MiuixAccountSettingScreen(
             item {
                 Card(
                     modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp),
-                    colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.secondaryContainer),
                 ) {
                     ArrowPreference(
                         title = "退出登录",
