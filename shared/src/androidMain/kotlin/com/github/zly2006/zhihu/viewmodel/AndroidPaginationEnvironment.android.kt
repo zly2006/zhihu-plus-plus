@@ -331,9 +331,8 @@ open class SharedAndroidPaginationEnvironment(
     override fun answerNavigatorRepository(): AnswerNavigatorRepository = AndroidAnswerNavigatorRepository(context)
 
     override suspend fun fetchCollection(collectionId: String): Collection {
-        val json = AccountData.fetchGet(context, zhihuCollectionUrl(collectionId)) {
-            signFetchRequest()
-        } ?: throw IllegalStateException("收藏夹信息加载失败")
+        val json = fetchJson(zhihuCollectionUrl(collectionId), "")
+            ?: throw IllegalStateException("收藏夹信息加载失败")
         return decodeZhihuCollection(json["collection"] ?: throw IllegalStateException("收藏夹信息为空"))
     }
 
