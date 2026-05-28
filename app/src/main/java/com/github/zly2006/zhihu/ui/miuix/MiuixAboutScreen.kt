@@ -42,6 +42,7 @@ import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
@@ -121,6 +122,7 @@ fun MiuixAboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
             item { Spacer(Modifier.height(48.dp)) }
 
             // Card 1：外部链接
+            item { SmallTitle(text = "外部链接") }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                     ArrowPreference(
@@ -145,6 +147,7 @@ fun MiuixAboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
             item { Spacer(Modifier.height(12.dp)) }
 
             // Card 2：许可证
+            item { SmallTitle(text = "许可证") }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                     ArrowPreference(
@@ -165,6 +168,7 @@ fun MiuixAboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
             item { Spacer(Modifier.height(12.dp)) }
 
             // Card 3：系统与更新
+            item { SmallTitle(text = "系统") }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                     ArrowPreference(

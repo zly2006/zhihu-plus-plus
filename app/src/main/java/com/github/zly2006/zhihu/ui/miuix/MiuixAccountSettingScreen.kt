@@ -53,6 +53,8 @@ import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.ChevronForward
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.preference.ArrowPreference
@@ -96,10 +98,8 @@ fun MiuixAccountSettingScreen(
                     if (data.login) {
                         AsyncImage(data.self?.avatarUrl, "头像", modifier = Modifier.size(56.dp).clip(CircleShape))
                         Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(data.username, style = AppTokens.text.titleMedium)
-                            Text("点击查看主页", style = MiuixTheme.textStyles.subtitle, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
-                        }
+                        Text(data.username, style = AppTokens.text.titleMedium, modifier = Modifier.weight(1f))
+                        Icon(MiuixIcons.ChevronForward, null, tint = MiuixTheme.colorScheme.onSurfaceVariantSummary)
                     } else {
                         Icon(Icons.AutoMirrored.Filled.Login, null, tint = MiuixTheme.colorScheme.primary)
                         Spacer(Modifier.width(12.dp))
