@@ -76,37 +76,22 @@ fun MiuixAccountSettingScreen(
     ) {
         item { Spacer(Modifier.height(12.dp)) }
 
-        // ── 用户信息卡 ──
+        // ── 用户信息 ──
         item {
-            Card(
-                modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)
-                    .clickable {
-                        if (data.login) {
-                            navigator.onNavigate(Person(
-                                id = data.self?.id ?: "", urlToken = data.self?.urlToken ?: "", name = data.username,
-                            ))
-                        } else {
-                            context.startActivity(Intent(context, LoginActivity::class.java))
-                        }
-                    },
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (data.login) {
-                        AsyncImage(data.self?.avatarUrl, "头像", modifier = Modifier.size(56.dp).clip(CircleShape))
-                        Spacer(Modifier.width(12.dp))
-                        Text(data.username, style = MiuixTheme.textStyles.body1, modifier = Modifier.weight(1f))
-                        Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = MiuixTheme.colorScheme.onSurfaceVariantSummary)
-                    } else {
-                        Icon(Icons.AutoMirrored.Filled.Login, null, tint = MiuixTheme.colorScheme.primary)
-                        Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text("登录知乎", style = MiuixTheme.textStyles.title3)
-                            Text("登录后体验完整功能", style = MiuixTheme.textStyles.subtitle, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
-                        }
-                    }
+            Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
+                if (data.login) {
+                    ArrowPreference(
+                        title = data.username,
+                        startAction = { AsyncImage(data.self?.avatarUrl, "头像", modifier = Modifier.size(56.dp).clip(CircleShape)) },
+                        onClick = { navigator.onNavigate(Person(id = data.self?.id ?: "", urlToken = data.self?.urlToken ?: "", name = data.username)) },
+                    )
+                } else {
+                    ArrowPreference(
+                        title = "登录知乎",
+                        summary = "登录后体验完整功能",
+                        startAction = { Icon(Icons.AutoMirrored.Filled.Login, null, tint = MiuixTheme.colorScheme.primary) },
+                        onClick = { context.startActivity(Intent(context, LoginActivity::class.java)) },
+                    )
                 }
             }
         }
