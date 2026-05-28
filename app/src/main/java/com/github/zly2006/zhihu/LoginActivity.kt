@@ -314,7 +314,8 @@ private fun MiuixLoginModeScreen(
                 onTabSelected = onModeChanged,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
             )
-            Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+            Spacer(Modifier.height(8.dp))
+            Box(modifier = Modifier.fillMaxWidth().weight(1f).padding(horizontal = 12.dp)) {
                 if (loginMode == LOGIN_MODE_WEB) {
                     WebviewComp(
                         modifier = Modifier.fillMaxSize(),
