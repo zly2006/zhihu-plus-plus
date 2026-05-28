@@ -101,7 +101,7 @@ import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.PaginatedList
-import com.github.zly2006.zhihu.ui.miuix.MiuixAccountSettingScreen
+import com.github.zly2006.zhihu.ui.miuix.MiuixAccountSheet
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.util.clipboardManager
@@ -475,9 +475,10 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
     ) { scaffoldPadding ->
         if (duo3HomeAccount && showAccountBottomSheet) {
             if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
-                MiuixAccountSettingScreen(
-                    innerPadding = PaddingValues(0.dp),
+                MiuixAccountSheet(
+                    show = showAccountBottomSheet,
                     unreadCount = unreadCount,
+                    onDismiss = { showAccountBottomSheet = false },
                 )
             } else {
                 MyModalBottomSheet(

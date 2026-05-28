@@ -42,7 +42,7 @@ import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
-import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
@@ -58,7 +58,7 @@ fun MiuixAboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            SmallTopAppBar(
                 title = "关于",
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
@@ -71,6 +71,7 @@ fun MiuixAboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize()
+                .padding(innerPadding)
                 .overScrollVertical()
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
             contentPadding = padding,
@@ -176,6 +177,9 @@ fun MiuixAboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
             }
 
             item { Spacer(Modifier.height(32.dp)) }
+
+            // 确保内容始终可滚动，避免 overscroll + nestedScroll 死循环
+            item { Spacer(Modifier.height(800.dp)) }
         }
     }
 }
