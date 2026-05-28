@@ -674,6 +674,9 @@ Keep the report factual and specific.
 - 所有 miuix 页面的 TopAppBar 模糊必须走四段式管线（`theme/Backdrop.kt`）：
   1. `val backdrop = rememberMiuixBlurBackdrop(blurEnabled)` 创建模糊源
   2. LazyColumn 加 `.layerBackdrop(backdrop)` 指定采样源
+  **关键**：`layerBackdrop` 必须在 `overScrollVertical` / `nestedScroll` 之前，
+  否则 overscroll 变换会导致 backdrop 捕获到错误像素，模糊无效。
+  正确顺序：`fillMaxSize → layerBackdrop → overScrollVertical → nestedScroll`
   3. TopAppBar 加 `.installerMiuixBlurEffect(backdrop)` 应用纹理模糊
   4. TopAppBar 的 containerColor 用 `backdrop.getMiuixAppBarColor()`（透明）
   设置项 key `"blurEnabled"`，默认 `true`。

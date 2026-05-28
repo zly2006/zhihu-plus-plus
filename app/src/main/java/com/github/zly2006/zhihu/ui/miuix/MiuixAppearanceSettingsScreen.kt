@@ -161,9 +161,10 @@ fun MiuixAppearanceSettingsScreen(
         },
     ) { innerPadding ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize().overScrollVertical()
-                .nestedScroll(scrollBehavior.nestedScrollConnection)
-                .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier),
+            modifier = Modifier.fillMaxSize()
+                .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
+                .overScrollVertical()
+                .nestedScroll(scrollBehavior.nestedScrollConnection),
             contentPadding = innerPadding,
         ) {
             item { Spacer(Modifier.size(12.dp)) }
