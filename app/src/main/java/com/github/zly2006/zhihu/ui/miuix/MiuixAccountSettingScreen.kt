@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.BookmarkBorder
@@ -53,8 +54,6 @@ import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.ChevronForward
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.preference.ArrowPreference
@@ -99,7 +98,7 @@ fun MiuixAccountSettingScreen(
                         AsyncImage(data.self?.avatarUrl, "头像", modifier = Modifier.size(56.dp).clip(CircleShape))
                         Spacer(Modifier.width(12.dp))
                         Text(data.username, style = MiuixTheme.textStyles.body1, modifier = Modifier.weight(1f))
-                        Icon(MiuixIcons.ChevronForward, null, tint = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = MiuixTheme.colorScheme.onSurfaceVariantSummary)
                     } else {
                         Icon(Icons.AutoMirrored.Filled.Login, null, tint = MiuixTheme.colorScheme.primary)
                         Spacer(Modifier.width(12.dp))
@@ -144,7 +143,6 @@ fun MiuixAccountSettingScreen(
         item {
             Card(
                 modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp),
-                colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.secondaryContainer),
             ) {
                 ArrowPreference(
                     title = "外观与阅读体验", summary = "主题颜色、字体大小等",
@@ -171,7 +169,6 @@ fun MiuixAccountSettingScreen(
         item {
             Card(
                 modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp),
-                colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.secondaryContainer),
             ) {
                 ArrowPreference(
                     title = "关于",summary = "关于zhihu++",
