@@ -85,6 +85,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.toRoute
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.navigation.ArticleTypeNavType
 import com.github.zly2006.zhihu.navigation.CollectionContent
 import com.github.zly2006.zhihu.navigation.Collections
 import com.github.zly2006.zhihu.navigation.Daily
@@ -114,6 +116,7 @@ import com.github.zly2006.zhihu.ui.subscreens.OpenSourceLicensesScreen
 import com.github.zly2006.zhihu.ui.subscreens.SystemAndUpdateSettingsScreen
 import kotlinx.coroutines.launch
 import kotlin.reflect.KClass
+import kotlin.reflect.typeOf
 
 const val SURVEY_URL = "https://v.wjx.cn/vm/Ppfw2R4.aspx#"
 
@@ -413,6 +416,7 @@ fun ZhihuMain(
                     QuestionScreen(question)
                 }
                 composable<Article>(
+                    typeMap = mapOf(typeOf<ArticleType>() to ArticleTypeNavType),
                     enterTransition = platformAdapter.articleEnterTransition,
                     exitTransition = platformAdapter.articleExitTransition,
                 ) { navEntry ->
