@@ -613,21 +613,49 @@ Keep the report factual and specific.
 5. 按现有的构建/调试/复检流程验证（见上面的 "Android 调试标准流程" 和
    "UI 双代理复检"）。**必须验证两个主题下都正常**，不是只测一个。
 
-### API 映射速查
+### 设置项语义映射
 
-| Material 3 | miuix 替换 |
-|---|---|
-| `MaterialTheme.colorScheme.X` | `MiuixTheme.colorScheme.X` |
-| `MaterialTheme.typography.bodyLarge` | `MiuixTheme.textStyles.body1` |
-| `androidx.compose.material3.Text` | `top.yukonga.miuix.kmp.basic.Text` |
-| `Scaffold` | `top.yukonga.miuix.kmp.basic.Scaffold` |
-| `TopAppBar` / `LargeTopAppBar` | `top.yukonga.miuix.kmp.basic.TopAppBar` |
-| `Card` | `top.yukonga.miuix.kmp.basic.Card` |
-| `Switch` 设置项 | `SuperSwitch`（preference 包） |
-| `ListItem` 跳转项 | `SuperArrow`（preference 包） |
-| 分组标题 / 小节头 | `SmallTitle`（basic 包） |
-| `AlertDialog` | 暂用 LazyColumn 展开式选择，参考 MiuixAppearanceSettingsScreen |
-| `ModalBottomSheet` | 未确认 API，跟用户确认后再写 |
+| 语义 | M3 控件 | miuix 等价 | 注意 |
+|---|---|---|---|
+| 开关 | `SettingItemWithSwitch` | `SwitchPreference` | 1:1 |
+| 跳子页 | `SettingItem + onClick` | `ArrowPreference` | 1:1 |
+| 单选（少选项） | `SettingItem + Dropdown` | `WindowSpinnerPreference` | 内联弹出 |
+| 多选 | 自定义 Dialog | `MiuixMultiSelectExpandable` | 内联折叠 |
+| 数值滑块 | `Slider` 行 | 待定（ArrowPreference + 展开 Slider） | |
+| 颜色选择 | 自定义 `ColorPickerDialog` | `MiuixColorPickerSheet` | BottomSheet |
+| 输入文本 | `TextField` | `TextField` + Card 容器 | miuix 无专门 pref |
+| 纯展示 | `SettingItem` 不可点 | `ArrowPreference` summary 不传 onClick | |
+| BottomSheet | `MyModalBottomSheet` | `WindowBottomSheet` + `MutableState<Boolean>` | sheet 始终在树里 |
+
+### 设置项映射进度
+
+| 设置 key | M3 控件 | miuix 控件 | 状态 |
+|---|---|---|---|
+| `themeStyle` | `SettingItemWithSwitch` | `WindowSpinnerPreference` | ✅ |
+| `useDynamicColor` | `SettingItemWithSwitch` | `SwitchPreference` | ✅ |
+| `customThemeColor` | 自定义 Dialog | `MiuixColorPickerSheet` | ✅ |
+| `backgroundColorLight/Dark` | 自定义 Dialog | `MiuixColorPickerSheet` | ✅ |
+| `bottomBarItems` | 自定义多选 | `MiuixMultiSelectExpandable` | ✅ |
+| `fontSize` | Slider | ArrowPreference + 展开 Slider | ✅ |
+| `lineHeight` | Slider | ArrowPreference + 展开 Slider | ✅ |
+| `feedCardStyle` | Dropdown | `WindowSpinnerPreference` | ✅ |
+| `answerSwitchMode` | Dropdown | `WindowSpinnerPreference` | ✅ |
+| `answerDoubleTapAction` | Dropdown | `WindowSpinnerPreference` | ✅ |
+| `showFeedThumbnail` | `SettingItemWithSwitch` | `SwitchPreference` | ✅ |
+| `showRefreshFab` | `SettingItemWithSwitch` | `SwitchPreference` | ✅ |
+| `duo3_*` 系列 | `SettingItemWithSwitch` | `SwitchPreference` | ✅ |
+| `autoHideBottomBar` | `SettingItemWithSwitch` | `SwitchPreference` | ✅ |
+| `bottomBarTapScrollToTop` | `SettingItemWithSwitch` | `SwitchPreference` | ✅ |
+
+### 设置项 port 规则
+
+1. 新增/修改设置项时，先在映射进度表登记 key + 控件类型
+2. SharedPreferences key 和默认值从 `SettingsKeys` object 读，**不许在页面 hardcode 字符串 key**
+3. miuix 端功能必须等价 M3 端：同样 key、同样可选值范围、同样默认值
+4. M3 写法奇葩（如两个 Switch 拼出单选逻辑）→ miuix 端做语义重构，一个 `WindowSpinnerPreference` 解决
+5. M3 没有的功能 → miuix 不主动加，先对齐再增强
+6. miuix 表达力不够 → 退回基础组件在 Card 里自己拼，不强套 preference
+7. 复杂 Dialog → 优先 `WindowBottomSheet`
 
 ### 常见坑
 
