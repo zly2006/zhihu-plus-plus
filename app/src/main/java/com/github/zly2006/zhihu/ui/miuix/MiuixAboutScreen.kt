@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -42,16 +43,11 @@ import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-
-private val aboutGradient = Brush.linearGradient(
-    colors = listOf(Color(0xFFD8B4E2), Color(0xFFE8C4D8), Color(0xFFB4D4E8)),
-)
 
 @Composable
 fun MiuixAboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
@@ -59,12 +55,18 @@ fun MiuixAboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
     val context = LocalContext.current
     val darkTheme = isSystemInDarkTheme()
 
+    val bgModifier = if (darkTheme) {
+        Modifier.background(MiuixTheme.colorScheme.background)
+    } else {
+        Modifier.background(
+            Brush.linearGradient(listOf(Color(0xFFD8B4E2), Color(0xFFE8C4D8), Color(0xFFB4D4E8)))
+        )
+    }
+
     Box(
-        modifier = Modifier.fillMaxSize()
-            .then(if (darkTheme) Modifier.background(MiuixTheme.colorScheme.background) else Modifier.background(aboutGradient))
-            .padding(innerPadding),
+        modifier = Modifier.fillMaxSize().then(bgModifier).padding(innerPadding),
     ) {
-        // 左上角返回箭头（无标题栏）
+        // 返回箭头
         IconButton(
             onClick = { navigator.onNavigateBack() },
             modifier = Modifier.padding(top = 8.dp, start = 8.dp).align(Alignment.TopStart),
@@ -72,108 +74,95 @@ fun MiuixAboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回", tint = MiuixTheme.colorScheme.onBackground)
         }
 
-        Column(
+        LazyColumn(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // 顶部到 icon 之间约占 30% 高度
-            Spacer(Modifier.fillMaxWidth().weight(0.30f))
+            // 顶部留白
+            item(key = "topSpacer") { Spacer(Modifier.height(80.dp)) }
 
-            // App icon（110.dp，白色圆角方底）
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.size(110.dp).clip(RoundedCornerShape(24.dp)).background(Color.White),
-            ) {
-                val appIcon = remember {
-                    context.packageManager.getApplicationIcon(context.packageName)
-                        .toBitmap(width = 200, height = 200).asImageBitmap()
+            // App icon
+            item(key = "icon") {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.size(88.dp).clip(RoundedCornerShape(24.dp)).background(Color.White),
+                ) {
+                    val appIcon = remember {
+                        context.packageManager.getApplicationIcon(context.packageName)
+                            .toBitmap(width = 200, height = 200).asImageBitmap()
+                    }
+                    Image(bitmap = appIcon, contentDescription = "知乎++", modifier = Modifier.size(74.dp))
                 }
-                Image(bitmap = appIcon, contentDescription = "知乎++", modifier = Modifier.size(82.dp))
             }
 
-            Spacer(Modifier.height(16.dp))
+            item(key = "nameGap") { Spacer(Modifier.height(16.dp)) }
 
             // App 名称
-            Text(
-                "知乎++",
-                color = MiuixTheme.colorScheme.onBackground,
-                fontWeight = FontWeight.Bold,
-                fontSize = 36.sp,
-            )
+            item(key = "name") {
+                Text("知乎++", color = MiuixTheme.colorScheme.onBackground,
+                    fontWeight = FontWeight.Bold, fontSize = 36.sp)
+            }
 
-            Spacer(Modifier.height(8.dp))
+            item(key = "verGap") { Spacer(Modifier.height(8.dp)) }
 
             // 版本号
-            Text(
-                "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                fontSize = 20.sp,
-                textAlign = TextAlign.Center,
-            )
+            item(key = "version") {
+                Text("v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    fontSize = 20.sp, textAlign = TextAlign.Center)
+            }
 
-            // 版本号到 Card 之间约占 25% 高度
-            Spacer(Modifier.fillMaxWidth().weight(0.25f))
+            // 到卡片的留白
+            item(key = "midSpacer") { Spacer(Modifier.height(64.dp)) }
 
             // Card 1：外部链接
-            Card(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                colors = CardDefaults.defaultColors(Color.White.copy(alpha = 0.6f), Color.Transparent),
-            ) {
-                ArrowPreference(
-                    title = "View Source",
-                    endActions = {
-                        Text("GitHub", fontSize = MiuixTheme.textStyles.body2.fontSize,
-                            color = MiuixTheme.colorScheme.onSurfaceVariantActions)
-                    },
-                    onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, "https://github.com/zly2006/zhihu-plus-plus".toUri())) },
-                )
-                ArrowPreference(
-                    title = "Join Group",
-                    endActions = {
-                        Text("Telegram", fontSize = MiuixTheme.textStyles.body2.fontSize,
-                            color = MiuixTheme.colorScheme.onSurfaceVariantActions)
-                    },
-                    onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, "https://t.me/+_A1Yto6EpyIyODA1".toUri())) },
-                )
+            item(key = "card1") {
+                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                    ArrowPreference(
+                        title = "View Source",
+                        endActions = { Text("GitHub", fontSize = MiuixTheme.textStyles.body2.fontSize, color = MiuixTheme.colorScheme.onSurfaceVariantActions) },
+                        onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, "https://github.com/zly2006/zhihu-plus-plus".toUri())) },
+                    )
+                    ArrowPreference(
+                        title = "Join Group",
+                        endActions = { Text("Telegram", fontSize = MiuixTheme.textStyles.body2.fontSize, color = MiuixTheme.colorScheme.onSurfaceVariantActions) },
+                        onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, "https://t.me/+_A1Yto6EpyIyODA1".toUri())) },
+                    )
+                }
             }
 
-            Spacer(Modifier.height(12.dp))
+            item(key = "gap1") { Spacer(Modifier.height(12.dp)) }
 
             // Card 2：许可证
-            Card(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                colors = CardDefaults.defaultColors(Color.White.copy(alpha = 0.6f), Color.Transparent),
-            ) {
-                ArrowPreference(
-                    title = "License",
-                    endActions = {
-                        Text("AGPL-3.0", fontSize = MiuixTheme.textStyles.body2.fontSize,
-                            color = MiuixTheme.colorScheme.onSurfaceVariantActions)
-                    },
-                    onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, "https://www.gnu.org/licenses/agpl-3.0.html".toUri())) },
-                )
-                ArrowPreference(
-                    title = "Third Party Licenses",
-                    onClick = { navigator.onNavigate(Account.OpenSourceLicenses) },
-                )
+            item(key = "card2") {
+                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                    ArrowPreference(
+                        title = "License",
+                        endActions = { Text("AGPL-3.0", fontSize = MiuixTheme.textStyles.body2.fontSize, color = MiuixTheme.colorScheme.onSurfaceVariantActions) },
+                        onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, "https://www.gnu.org/licenses/agpl-3.0.html".toUri())) },
+                    )
+                    ArrowPreference(
+                        title = "Third Party Licenses",
+                        onClick = { navigator.onNavigate(Account.OpenSourceLicenses) },
+                    )
+                }
             }
 
-            Spacer(Modifier.height(12.dp))
+            item(key = "gap2") { Spacer(Modifier.height(12.dp)) }
 
             // Card 3：系统与更新
-            Card(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                colors = CardDefaults.defaultColors(Color.White.copy(alpha = 0.6f), Color.Transparent),
-            ) {
-                ArrowPreference(
-                    title = "系统与更新",
-                    summary = "GitHub、更新设置等",
-                    startAction = { Icon(Icons.Default.Settings, null) },
-                    onClick = { navigator.onNavigate(Account.SystemAndUpdateSettings) },
-                )
+            item(key = "card3") {
+                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                    ArrowPreference(
+                        title = "系统与更新",
+                        summary = "GitHub、更新设置等",
+                        startAction = { Icon(Icons.Default.Settings, null) },
+                        onClick = { navigator.onNavigate(Account.SystemAndUpdateSettings) },
+                    )
+                }
             }
 
-            Spacer(Modifier.height(32.dp))
+            item(key = "bottomSpacer") { Spacer(Modifier.height(32.dp)) }
         }
     }
 }
