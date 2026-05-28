@@ -24,8 +24,13 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
+import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
+import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.NotificationPreferences
 import com.github.zly2006.zhihu.ui.NotificationType
+import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -41,6 +46,9 @@ import top.yukonga.miuix.kmp.utils.overScrollVertical
 fun MiuixNotificationSettingsScreen() {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
+    val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE) }
+    val blurEnabled = remember { mutableStateOf(preferences.getBoolean("blurEnabled", true)) }
+    val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
     val scrollBehavior = MiuixScrollBehavior()
 
     var systemNotificationSettings by remember {
@@ -62,6 +70,8 @@ fun MiuixNotificationSettingsScreen() {
     Scaffold(
         topBar = {
             TopAppBar(
+                modifier = Modifier.installerMiuixBlurEffect(backdrop),
+                color = backdrop.getMiuixAppBarColor(),
                 title = "通知设置",
                 navigationIcon = {
                     IconButton(onClick = { navigator.onNavigateBack() }) {
@@ -74,7 +84,8 @@ fun MiuixNotificationSettingsScreen() {
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().overScrollVertical()
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
+                .nestedScroll(scrollBehavior.nestedScrollConnection)
+                .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier),
             contentPadding = innerPadding,
         ) {
             item { Spacer(Modifier.size(12.dp)) }

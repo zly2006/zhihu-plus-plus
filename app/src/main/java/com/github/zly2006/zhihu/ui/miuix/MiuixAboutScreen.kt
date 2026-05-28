@@ -38,6 +38,10 @@ import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
+import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
+import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
+import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -56,10 +60,13 @@ fun MiuixAboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
     val darkTheme = isSystemInDarkTheme()
+    val backdrop = rememberMiuixBlurBackdrop(true)
 
     Scaffold(
         topBar = {
             TopAppBar(
+                modifier = Modifier.installerMiuixBlurEffect(backdrop),
+                color = backdrop.getMiuixAppBarColor(),
                 title = "关于",
                 navigationIcon = {
                     IconButton(onClick = { navigator.onNavigateBack() }) {
@@ -75,7 +82,8 @@ fun MiuixAboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
                 .padding(padding).padding(innerPadding),
         ) {
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize()
+                    .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 item { Spacer(Modifier.height(48.dp)) }
