@@ -51,14 +51,25 @@ import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.theme.AppTokens
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
+import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
+import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
+import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 
 @Composable
 fun MiuixAccountSettingScreen(
@@ -70,10 +81,34 @@ fun MiuixAccountSettingScreen(
     val context = LocalContext.current
     val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE) }
     val data = testAccountData ?: AccountData.asState().let { val v by it; v }
+    val blurEnabled = remember { preferences.getBoolean("blurEnabled", true) }
+    val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
+    val scrollBehavior = MiuixScrollBehavior()
 
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                modifier = Modifier.installerMiuixBlurEffect(backdrop),
+                color = backdrop.getMiuixAppBarColor(),
+                title = "账号设置",
+                navigationIcon = {
+                    IconButton(onClick = { navigator.onNavigateBack() }) {
+                        Icon(MiuixIcons.Back, "返回", tint = MiuixTheme.colorScheme.onBackground)
+                    }
+                },
+                scrollBehavior = scrollBehavior,
+            )
+        },
+    ) { padding ->
     LazyColumn(
-        modifier = Modifier.fillMaxSize().overScrollVertical(),
-        contentPadding = innerPadding,
+        modifier = Modifier.fillMaxSize()
+            .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
+            .overScrollVertical()
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
+        contentPadding = PaddingValues(
+            top = padding.calculateTopPadding(),
+            bottom = padding.calculateBottomPadding() + innerPadding.calculateBottomPadding(),
+        ),
     ) {
         item { Spacer(Modifier.height(12.dp)) }
 
@@ -180,5 +215,6 @@ fun MiuixAccountSettingScreen(
         }
 
         item { Spacer(Modifier.height(24.dp)) }
+    }
     }
 }
