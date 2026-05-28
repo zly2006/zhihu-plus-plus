@@ -119,6 +119,7 @@ import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixAppearanceSettingsScree
 import com.github.zly2006.zhihu.ui.miuix.MiuixAboutScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixAccountSettingScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixBlocklistSettingsScreen
+import com.github.zly2006.zhihu.ui.miuix.MiuixCollectionScreen
 import com.github.zly2006.zhihu.ui.subscreens.AboutScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixFollowScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixFollowTopLevelPage
@@ -541,7 +542,11 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 }
                 composable<Collections> {
                     val data: Collections = it.toRoute()
-                    CollectionScreen(data.userToken)
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixCollectionScreen(data.userToken)
+                    } else {
+                        CollectionScreen(data.userToken)
+                    }
                 }
                 composable<CollectionContent> {
                     val content: CollectionContent = it.toRoute()
