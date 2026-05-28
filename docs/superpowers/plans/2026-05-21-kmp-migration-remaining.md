@@ -345,3 +345,63 @@ terminal-notifier -message "需要扫码登录 JVM 端" -sound default
 - desktop/shared 无 WebView。
 - iOS target 存在，但本次没有运行 iOS 命令。
 - 每个完成 lane 都有聚焦 commit。
+
+## 迁移完成状态（2026-05-29）
+
+### 任务完成总结
+
+| 任务 | 状态 | 说明 |
+|------|------|------|
+| 1. 文档和状态台账 | ✅ 完成 | `docs/kmp-migration-status.md` 已完整记录所有切片 |
+| 2. shared 主导航壳 | ✅ 完成 | `ZhihuMain.kt` 在 `shared/commonMain`，route 注册按 master 大函数结构 |
+| 3. shared theme core | ✅ 完成 | `ThemeManager`/`ZhihuTheme` 在 commonMain，平台只保留持久化/动态色 adapter |
+| 4. PaginationViewModel | ✅ 完成 | ViewModel 本体在 commonMain，平台副作用拆到 `PaginationEnvironment` adapter |
+| 5. 核心内容过滤器 | ✅ 完成 | `ContentFilterManager`/`ContentFilterExtensions`/`BlocklistManager` 在 commonMain |
+| 6. AccountData 分解 | ✅ 完成 | 剩余 67 次调用全是平台 adapter（Context/WebView/SharedPreferences/lifecycle） |
+| 7. desktop 接入 shared UI | ✅ 完成 | `DesktopZhihuMain` 使用 shared `NavDestination`/`NavHost`/页面 |
+| 8. 本地推荐编排 | ✅ 完成 | 核心在 commonMain（13 文件），平台 adapter 薄（2 androidMain, 1 jvmMain） |
+| 9. HTML 解析迁移 | ✅ 完成 | commonMain 使用 Ksoup，Jsoup 仅在 androidMain（WebView HTML 解析）和测试 |
+
+### 编译验证
+
+```
+JAVA_HOME=$(/usr/libexec/java_home -v 25) ./gradlew --no-daemon \
+  :shared:compileKotlinJvm :shared:jvmTest :desktopApp:compileKotlin \
+  :shared:compileAndroidMain :app:compileLiteDebugKotlin assembleLiteDebug --continue
+```
+
+全部通过。
+
+### 边界检查
+
+- `commonMain`/`jvmMain`/`desktopApp` 无 `import android.*`
+- `commonMain`/`jvmMain`/`desktopApp` 无实际 `android.webkit` WebView import（只有 UI 文案和 expect/actual 函数名）
+- `git diff --check` 干净
+
+### 运行时验证
+
+- **AVD**：模拟器因内存压力无法稳定启动（18GB 磁盘空间，58MB 空闲内存），待环境改善后验证
+- **JVM/desktop**：需要 QR 扫码登录，待用户手动验证
+- **编译验证**：所有目标编译通过，单元测试通过
+
+### 剩余平台 adapter 清单
+
+**androidMain（68 文件）**：
+- `AccountData.kt`：账号 JSON 持久化、httpClient、signedFetch* 便捷方法
+- `AndroidPaginationEnvironment.android.kt`：Android 分页环境（12 处 AccountData 调用）
+- `PeopleScreenRuntime.android.kt`：个人页平台能力（7 处）
+- `DeveloperSettingsRuntime.android.kt`：开发者设置平台能力（6 处）
+- `AccountSettingsRuntime.android.kt`：账号设置平台能力（6 处）
+- `ArticleViewModelRuntime.android.kt`：文章页平台能力（5 处）
+- `WebviewComp.kt`：Android WebView 组件（5 处）
+- 其他：OpenInBrowser、CommentScreenRuntime、DataHolder、UpdateManager 等
+
+**jvmMain（44 文件）**：
+- `DesktopAccountStore.kt`：桌面端账号存储、signedFetchJson/signedWithResponse
+- `DesktopPaginationEnvironment.kt`：桌面端分页环境
+- 其他：各页面 runtime adapter
+
+**app/src/main（11 文件）**：
+- `MainActivity.kt`、`LoginActivity.kt`、`WebviewActivity.kt`：Android Activity 壳
+- NLP 相关：`KeywordAnalyzer.kt`、`ModelManager.kt` 等
+- `ZhihuMainAndroidContent.kt`、`ZhihuMainAndroidState.kt`：Android 主页 adapter
