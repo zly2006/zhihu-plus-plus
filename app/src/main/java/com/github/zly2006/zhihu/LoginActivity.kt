@@ -74,6 +74,7 @@ import top.yukonga.miuix.kmp.basic.ButtonDefaults as MiuixButtonDefaults
 import top.yukonga.miuix.kmp.basic.Icon as MiuixIcon
 import top.yukonga.miuix.kmp.basic.IconButton as MiuixIconButton
 import top.yukonga.miuix.kmp.basic.Scaffold as MiuixScaffold
+import top.yukonga.miuix.kmp.basic.TabRow
 import top.yukonga.miuix.kmp.basic.Text as MiuixText
 import top.yukonga.miuix.kmp.basic.TopAppBar as MiuixTopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
@@ -130,12 +131,20 @@ class LoginActivity : ComponentActivity() {
 
                 val useMiuix = ThemeManager.getThemeStyle() == ThemeStyle.Miuix
                 if (currentNoticeStep >= 3) {
-                    Surface(modifier = Modifier.fillMaxSize().systemBarsPadding()) {
-                        LoginModeScreen(
+                    if (useMiuix) {
+                        MiuixLoginModeScreen(
                             activity = this@LoginActivity,
                             loginMode = loginMode,
                             onModeChanged = { loginMode = it },
                         )
+                    } else {
+                        Surface(modifier = Modifier.fillMaxSize().systemBarsPadding()) {
+                            LoginModeScreen(
+                                activity = this@LoginActivity,
+                                loginMode = loginMode,
+                                onModeChanged = { loginMode = it },
+                            )
+                        }
                     }
                 } else if (useMiuix) {
                     when (currentNoticeStep) {
@@ -276,6 +285,45 @@ class LoginActivity : ComponentActivity() {
             }
         } finally {
             isCompletingLogin = false
+        }
+    }
+}
+
+@Composable
+private fun MiuixLoginModeScreen(
+    activity: LoginActivity,
+    loginMode: Int,
+    onModeChanged: (Int) -> Unit,
+) {
+    MiuixScaffold(
+        topBar = {
+            MiuixTopAppBar(
+                title = "登录知乎",
+                navigationIcon = {
+                    MiuixIconButton(onClick = { activity.finish() }) {
+                        MiuixIcon(MiuixIcons.Back, "返回", tint = MiuixTheme.colorScheme.onBackground)
+                    }
+                },
+            )
+        },
+    ) { padding ->
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            TabRow(
+                tabs = listOf("网页登录", "扫码登录"),
+                selectedTabIndex = loginMode,
+                onTabSelected = onModeChanged,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                if (loginMode == LOGIN_MODE_WEB) {
+                    WebviewComp(
+                        modifier = Modifier.fillMaxSize(),
+                        onLoad = { webView -> activity.configureWebLogin(webView) },
+                    )
+                } else {
+                    QrLoginPane(activity = activity)
+                }
+            }
         }
     }
 }
