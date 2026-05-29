@@ -22,10 +22,12 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
-import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.DropdownImpl
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.preference.ArrowPreference
+import top.yukonga.miuix.kmp.basic.ListPopupColumn
+import top.yukonga.miuix.kmp.basic.PopupPositionProvider
+import top.yukonga.miuix.kmp.theme.LocalDismissState
 import top.yukonga.miuix.kmp.window.WindowListPopup
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -108,20 +110,28 @@ fun MiuixOnlineHistoryScreen() {
                         }
                         WindowListPopup(
                             show = showActionsMenu,
+                            alignment = PopupPositionProvider.Align.TopStart,
                             onDismissRequest = { showActionsMenu = false },
                         ) {
-                            Card {
-                                ArrowPreference(
-                                    title = "查看本地历史记录",
-                                    onClick = {
-                                        showActionsMenu = false
+                            val dismissState = LocalDismissState.current
+                            ListPopupColumn {
+                                DropdownImpl(
+                                    text = "查看本地历史记录",
+                                    optionSize = 2,
+                                    isSelected = false,
+                                    index = 0,
+                                    onSelectedIndexChange = {
+                                        dismissState?.invoke()
                                         navigator.onNavigate(History)
                                     },
                                 )
-                                ArrowPreference(
-                                    title = "清除历史记录",
-                                    onClick = {
-                                        showActionsMenu = false
+                                DropdownImpl(
+                                    text = "清除历史记录",
+                                    optionSize = 2,
+                                    isSelected = false,
+                                    index = 1,
+                                    onSelectedIndexChange = {
+                                        dismissState?.invoke()
                                         showClearHistoryDialog = true
                                     },
                                 )
