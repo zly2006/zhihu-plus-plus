@@ -358,15 +358,15 @@ fun MiuixContentFilterSettingsScreen(
         onDismissRequest = { showStatsSheet.value = false },
         title = "过滤统计详情",
     ) {
-        Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 16.dp)) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Text("总记录数: ${filterStats?.totalRecords ?: 0}")
-                Text("过滤率: %.1f%%".format((filterStats?.filterRate ?: 0f) * 100))
+                Text("总记录数: ${filterStats?.totalRecords ?: 0}", fontSize = MiuixTheme.textStyles.body1.fontSize)
+                Text("过滤率: %.1f%%".format((filterStats?.filterRate ?: 0f) * 100), fontSize = MiuixTheme.textStyles.body1.fontSize)
             }
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             Button(
                 onClick = {
                     coroutineScope.launch {
@@ -377,7 +377,7 @@ fun MiuixContentFilterSettingsScreen(
                         } catch (_: Exception) {}
                     }
                 },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
             ) {
                 Text("清理过期数据")
             }
@@ -393,7 +393,7 @@ fun MiuixContentFilterSettingsScreen(
                         } catch (_: Exception) {}
                     }
                 },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
             ) {
                 Text("重置所有数据")
             }
