@@ -77,6 +77,7 @@ import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.forms.MultiPartFormDataContent
 import io.ktor.client.request.forms.formData
 import io.ktor.client.request.header
+import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpMethod
@@ -274,29 +275,23 @@ open class SharedAndroidPaginationEnvironment(
 
     override suspend fun markItemsAsTouched(items: Set<Pair<String, String>>): Set<Pair<String, String>> {
         if (items.isEmpty()) return emptySet()
-        return AccountData.withAuthenticatedResponse(
-            context = context,
-            url = ZHIHU_LAST_READ_TOUCH_URL,
-            block = {
-                method = HttpMethod.Post
-                header("x-requested-with", "fetch")
-                signFetchRequest()
-                setBody(
-                    MultiPartFormDataContent(
-                        formData {
-                            val payload = zhihuLastReadTouchItems(items, "touch")
-                            append("items", encodeZhihuLastReadTouchItems(payload))
-                        },
-                    ),
-                )
-            },
-        ) { response ->
-            if (response.status.isSuccess()) {
-                items
-            } else {
-                Log.e("Browse-Touch", response.bodyAsText())
-                emptySet()
-            }
+        val response = AccountData.httpClient(context).post(ZHIHU_LAST_READ_TOUCH_URL) {
+            header("x-requested-with", "fetch")
+            signFetchRequest()
+            setBody(
+                MultiPartFormDataContent(
+                    formData {
+                        val payload = zhihuLastReadTouchItems(items, "touch")
+                        append("items", encodeZhihuLastReadTouchItems(payload))
+                    },
+                ),
+            )
+        }
+        return if (response.status.isSuccess()) {
+            items
+        } else {
+            Log.e("Browse-Touch", response.bodyAsText())
+            emptySet()
         }
     }
 

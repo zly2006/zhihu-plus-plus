@@ -19,18 +19,18 @@ package com.github.zly2006.zhihu.util
 
 import android.content.Context
 import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.data.decodeZhihuCollection
 import com.github.zly2006.zhihu.shared.data.decodeZhihuCollectionList
-import com.github.zly2006.zhihu.viewmodel.zhihuCollectionContentUrl
 import com.github.zly2006.zhihu.viewmodel.zhihuCollectionCreateBody
 import com.github.zly2006.zhihu.viewmodel.zhihuCollectionsUrl
 import com.github.zly2006.zhihu.viewmodel.zhihuPeopleCollectionsUrl
+import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
-import io.ktor.http.HttpMethod
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 
@@ -57,19 +57,13 @@ object OpenInBrowser {
                 ArticleType.Answer -> "answer"
                 ArticleType.Article -> "article"
             }
-            val url = zhihuCollectionContentUrl(contentType, destination.id)
+            val url = "https://api.zhihu.com/collections/contents/$contentType/${destination.id}"
             val body = "add_collections=${collection.id}"
-            return AccountData.withAuthenticatedResponse(
-                context = context,
-                url = url,
-                block = {
-                    method = HttpMethod.Put
-                    contentType(ContentType.Application.FormUrlEncoded)
-                    setBody(body)
-                },
-            ) { response ->
-                response.status.isSuccess()
-            }
+            return AccountData.httpClient(context).put(url) {
+                signFetchRequest()
+                contentType(ContentType.Application.FormUrlEncoded)
+                setBody(body)
+            }.status.isSuccess()
         }
         return false
     }

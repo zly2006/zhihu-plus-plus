@@ -10,9 +10,10 @@ import com.github.zly2006.zhihu.shared.util.SegmentHighlightSpan
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.signFetchRequest
 import io.ktor.client.call.body
+import io.ktor.client.request.delete
+import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
-import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import kotlinx.serialization.json.JsonElement
@@ -45,30 +46,19 @@ private suspend fun toggleSegmentLike(
 
     return if (highlight.meta.isLike) {
         val body = buildSegmentUnlikeBody(highlight)
-        AccountData.withAuthenticatedResponse(
-            context = context,
-            url = url,
-            block = {
-                method = HttpMethod.Delete
-                signFetchRequest()
-                contentType(ContentType.Application.Json)
-                setBody(body)
-            },
-        ) {
+        AccountData.httpClient(context).delete(url) {
+            signFetchRequest()
+            contentType(ContentType.Application.Json)
+            setBody(body)
         }
         updateSegmentMetaAfterUnlike(highlight)
     } else {
         val body = buildSegmentLikeBody(highlight)
-        val response = AccountData.withAuthenticatedResponse(
-            context = context,
-            url = url,
-            block = {
-                method = HttpMethod.Post
-                signFetchRequest()
-                contentType(ContentType.Application.Json)
-                setBody(body)
-            },
-        ) { response ->
+        val response = AccountData.httpClient(context).post(url) {
+            signFetchRequest()
+            contentType(ContentType.Application.Json)
+            setBody(body)
+        }.let { response ->
             if (response.status == HttpStatusCode.NoContent) {
                 null
             } else {

@@ -15,7 +15,8 @@ import com.github.zly2006.zhihu.ui.components.OpenImageDialog
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.filter.getBlocklistManager
 import io.ktor.client.call.body
-import io.ktor.http.HttpMethod
+import io.ktor.client.request.delete
+import io.ktor.client.request.post
 import kotlinx.serialization.json.JsonObject
 
 private const val WEBVIEW_ACTIVITY_CLASS = "com.github.zly2006.zhihu.WebviewActivity"
@@ -49,32 +50,20 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
             },
             toggleFollow = { person, isFollowing, followerCount ->
                 if (isFollowing) {
-                    val jojo = AccountData.withAuthenticatedResponse(
-                        context = context,
-                        url = peopleFollowersUrl(person),
-                        block = {
-                            method = HttpMethod.Delete
+                    val jojo = AccountData.httpClient(context)
+                        .delete(peopleFollowersUrl(person)) {
                             signFetchRequest()
-                        },
-                    ) { response ->
-                        response.raiseForStatus().body<JsonObject>()
-                    }
+                        }.raiseForStatus().body<JsonObject>()
                     peopleFollowResult(
                         isFollowingBefore = isFollowing,
                         followerCountBefore = followerCount,
                         responseJson = jojo,
                     )
                 } else {
-                    val jojo = AccountData.withAuthenticatedResponse(
-                        context = context,
-                        url = peopleFollowersUrl(person),
-                        block = {
-                            method = HttpMethod.Post
+                    val jojo = AccountData.httpClient(context)
+                        .post(peopleFollowersUrl(person)) {
                             signFetchRequest()
-                        },
-                    ) { response ->
-                        response.raiseForStatus().body<JsonObject>()
-                    }
+                        }.raiseForStatus().body<JsonObject>()
                     peopleFollowResult(
                         isFollowingBefore = isFollowing,
                         followerCountBefore = followerCount,
@@ -84,28 +73,16 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
             },
             toggleBlock = { person, isBlocking ->
                 if (isBlocking) {
-                    AccountData.withAuthenticatedResponse(
-                        context = context,
-                        url = peopleBlockUrl(person),
-                        block = {
-                            method = HttpMethod.Delete
+                    AccountData.httpClient(context)
+                        .delete(peopleBlockUrl(person)) {
                             signFetchRequest()
-                        },
-                    ) { response ->
-                        response.raiseForStatus()
-                    }
+                        }.raiseForStatus()
                     false
                 } else {
-                    AccountData.withAuthenticatedResponse(
-                        context = context,
-                        url = peopleBlockUrl(person),
-                        block = {
-                            method = HttpMethod.Post
+                    AccountData.httpClient(context)
+                        .post(peopleBlockUrl(person)) {
                             signFetchRequest()
-                        },
-                    ) { response ->
-                        response.raiseForStatus()
-                    }
+                        }.raiseForStatus()
                     true
                 }
             },

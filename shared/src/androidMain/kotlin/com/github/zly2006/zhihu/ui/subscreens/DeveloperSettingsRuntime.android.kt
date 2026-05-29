@@ -15,8 +15,6 @@ import com.github.zly2006.zhihu.util.PowerSaveModeCompat
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.signFetchRequest
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.HttpMethod
 
 private const val DEVELOPER_MODE_KEY = "developer"
 
@@ -62,16 +60,9 @@ actual fun rememberDeveloperSettingsRuntime(): DeveloperSettingsRuntime {
                 )
             },
             signedGetAndCopy = { url ->
-                val body = AccountData.withAuthenticatedResponse(
-                    context = context,
-                    url = url,
-                    block = {
-                        method = HttpMethod.Get
-                        signFetchRequest()
-                    },
-                ) { response ->
-                    response.bodyAsText()
-                }
+                val body = AccountData.fetchGet(context, url) {
+                    signFetchRequest()
+                }.toString()
                 val clip = ClipData.newPlainText("Signed Request Response", body)
                 context.clipboardManager.setPrimaryClip(clip)
                 body

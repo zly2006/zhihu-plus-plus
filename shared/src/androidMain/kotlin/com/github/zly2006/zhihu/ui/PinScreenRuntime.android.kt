@@ -26,7 +26,8 @@ import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import io.ktor.client.call.body
-import io.ktor.http.HttpMethod
+import io.ktor.client.request.delete
+import io.ktor.client.request.post
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -67,17 +68,12 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
             toggleLike = { pin, isLiked, onResult ->
                 scope.launch {
                     try {
-                        val method = if (isLiked) HttpMethod.Delete else HttpMethod.Post
                         val endpoint = zhihuPinVotersUpUrl(pin)
-                        val jojo = AccountData.withAuthenticatedResponse(
-                            context = context,
-                            url = endpoint,
-                            block = {
-                                this.method = method
-                                signFetchRequest()
-                            },
-                        ) { response ->
-                            response.body<JsonObject>()
+                        val client = AccountData.httpClient(context)
+                        val jojo = if (isLiked) {
+                            client.delete(endpoint) { signFetchRequest() }.body<JsonObject>()
+                        } else {
+                            client.post(endpoint) { signFetchRequest() }.body<JsonObject>()
                         }
                         onResult(
                             PinLikeResult(
