@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
 import top.yukonga.miuix.kmp.window.WindowBottomSheet
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -352,7 +353,7 @@ fun MiuixContentFilterSettingsScreen(
     }
 
     WindowBottomSheet(
-        show = showStatsSheet,
+        show = showStatsSheet.value,
         onDismissRequest = { showStatsSheet.value = false },
         title = "过滤统计详情",
     ) {
