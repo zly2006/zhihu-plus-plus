@@ -446,7 +446,7 @@ private fun HtmlNode.hasInlineContent(): Boolean = when (this) {
     is TextNode -> text().isNotBlank()
     is Element -> when (tagName().lowercase()) {
         "br" -> false
-        "img" -> extractEquationTex(this) != null || extractImageUrl(this) != null
+        "img" -> extractEquationTex(this) != null || extractImageUrl(this::attr) != null
         else -> childNodes().any { it.hasInlineContent() } || text().isNotBlank()
     }
     else -> false

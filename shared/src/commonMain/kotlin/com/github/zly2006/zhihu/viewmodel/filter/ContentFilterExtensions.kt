@@ -152,4 +152,6 @@ object ContentFilterExtensions {
         onDetailFetchFailed = onDetailFetchFailed,
         onDetailsKeywordFiltered = onDetailsKeywordFiltered,
     )
+
+
 }

@@ -64,12 +64,17 @@ open class QuestionFeedViewModel(
         }
     }
 
-    private suspend fun filterBlockedAnswers(context: Context, data: List<Feed>): List<Feed> {
-        val blockedUserIds = ContentFilterExtensions.getEnabledBlockedUserIds(context)
+    @Suppress("unused")
+    private suspend fun filterBlockedAnswers(data: List<Feed>): List<Feed> {
+        // TODO: implement blocked user filtering in KMP
+        return data
+        /*
+        val blockedUserIds = BlocklistManager.getAllBlockedUsers().map { it.userId }.toSet()
         if (blockedUserIds.isEmpty()) return data
         return data.filterNot { feed ->
             val target = feed.target
             target is Feed.AnswerTarget && target.author?.id in blockedUserIds
         }
+        */
     }
 }

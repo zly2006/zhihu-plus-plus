@@ -43,7 +43,7 @@ abstract class BaseCommentViewModel(
 
     override fun processResponse(environment: PaginationEnvironment, data: List<DataHolder.Comment>, rawData: JsonArray) {
         debugData.addAll(rawData) // 保存原始JSON
-        filterBlockedComments(context, data).forEach { comment ->
+        filterBlockedComments(data).forEach { comment ->
             if (allData.none { it.id == comment.id }) {
                 // 避免服务器返回重复评论时重复添加，造成LazyColumn key冲突
                 allData.add(comment)
@@ -58,11 +58,14 @@ abstract class BaseCommentViewModel(
         }
     }
 
-    private suspend fun filterBlockedComments(
-        context: Context,
+    @Suppress("unused")
+    private fun filterBlockedComments(
         comments: List<DataHolder.Comment>,
     ): List<DataHolder.Comment> {
-        val blockedUserIds = ContentFilterExtensions.getEnabledBlockedUserIds(context)
+        // TODO: implement blocked user filtering in KMP
+        return comments
+        /*
+        val blockedUserIds = BlocklistManager.getAllBlockedUsers().map { it.userId }.toSet()
         if (blockedUserIds.isEmpty()) return comments
         return comments.mapNotNull { comment ->
             if (comment.author.id in blockedUserIds) {
@@ -73,6 +76,7 @@ abstract class BaseCommentViewModel(
                 )
             }
         }
+        */
     }
 
     abstract fun createCommentItem(comment: DataHolder.Comment, article: NavDestination): CommentItem

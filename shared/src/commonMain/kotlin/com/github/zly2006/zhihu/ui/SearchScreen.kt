@@ -142,7 +142,6 @@ fun SearchScreen(
             addAll(loadSearchHistory(settings))
         }
     }
-    var historyMoreMenuExpanded by remember { mutableStateOf(false) }
 
     fun submitSearch(query: String) {
         val trimmedQuery = query.trim()
@@ -158,19 +157,6 @@ fun SearchScreen(
         navigator.onNavigate(Search(query = trimmedQuery))
     }
 
-    fun submitSearch(query: String) {
-        val trimmedQuery = query.trim()
-        if (trimmedQuery.isEmpty()) return
-        if (showSearchHistory.value) {
-            searchHistoryItems.remove(trimmedQuery)
-            searchHistoryItems.add(0, trimmedQuery)
-            while (searchHistoryItems.size > SEARCH_HISTORY_MAX_SIZE) {
-                searchHistoryItems.removeAt(searchHistoryItems.lastIndex)
-            }
-            saveSearchHistory(preferences, searchHistoryItems)
-        }
-        navigator.onNavigate(Search(query = trimmedQuery))
-    }
 
     suspend fun fetchHotSearch() {
         val json = paginationEnvironment.fetchJson(ZHIHU_HOT_SEARCH_URL, "") ?: return
@@ -211,51 +197,6 @@ fun SearchScreen(
                                 historyMoreMenuExpanded = false
                                 searchHistoryItems.clear()
                                 saveSearchHistory(settings, searchHistoryItems)
-                            },
-                        )
-                    }
-                    DropdownMenuItem(
-                        text = { Text("前往设置关闭搜索历史") },
-                        onClick = {
-                            historyMoreMenuExpanded = false
-                            navigator.onNavigate(Account.AppearanceSettings("showSearchHistory"))
-                        },
-                    )
-                }
-            }
-        }
-    }
-
-    @Composable
-    fun SearchHistoryHeader(showClearAction: Boolean) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                text = "搜索历史",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            IconButton(
-                onClick = { historyMoreMenuExpanded = true },
-                modifier = Modifier
-                    .size(40.dp)
-                    .testTag("search_history_more_button"),
-            ) {
-                Icon(Icons.Default.MoreVert, contentDescription = "更多", modifier = Modifier.size(18.dp))
-                DropdownMenu(
-                    expanded = historyMoreMenuExpanded,
-                    onDismissRequest = { historyMoreMenuExpanded = false },
-                ) {
-                    if (showClearAction) {
-                        DropdownMenuItem(
-                            text = { Text("清空搜索历史") },
-                            onClick = {
-                                historyMoreMenuExpanded = false
-                                searchHistoryItems.clear()
-                                saveSearchHistory(preferences, searchHistoryItems)
                             },
                         )
                     }

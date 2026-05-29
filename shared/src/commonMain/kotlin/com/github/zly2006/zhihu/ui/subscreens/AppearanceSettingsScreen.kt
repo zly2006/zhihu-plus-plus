@@ -966,17 +966,17 @@ fun AppearanceSettingsScreen(
                     highlightedKey = settingKey,
                     bringIntoViewRequester = requesterFor("showSearchHotSearch"),
                 )
-                val showSearchHistory = remember { mutableStateOf(preferences.getBoolean("showSearchHistory", true)) }
+                val showSearchHistory = remember { mutableStateOf(settings.getBoolean("showSearchHistory", true)) }
                 SettingItemWithSwitch(
                     title = { Text("记录并显示搜索历史") },
                     description = { Text("在搜索界面显示最近搜索过的关键词，关闭后不再记录新的搜索。") },
                     checked = showSearchHistory.value,
                     onCheckedChange = {
                         showSearchHistory.value = it
-                        preferences.edit { putBoolean("showSearchHistory", it) }
+                        settings.putBoolean("showSearchHistory", it)
                     },
                     settingKey = "showSearchHistory",
-                    highlightedKey = setting,
+                    highlightedKey = settingKey,
                     bringIntoViewRequester = requesterFor("showSearchHistory"),
                 )
             }
