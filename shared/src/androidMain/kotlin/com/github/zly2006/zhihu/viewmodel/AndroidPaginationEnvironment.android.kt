@@ -211,7 +211,7 @@ open class SharedAndroidPaginationEnvironment(
         questionId: Long,
         follow: Boolean,
     ) {
-        val url = zhihuQuestionFollowersUrl(questionId)
+        val url = "https://www.zhihu.com/api/v4/questions/$questionId/followers"
         AccountData.fetch(context, url) {
             signFetchRequest()
             method = if (follow) HttpMethod.Post else HttpMethod.Delete

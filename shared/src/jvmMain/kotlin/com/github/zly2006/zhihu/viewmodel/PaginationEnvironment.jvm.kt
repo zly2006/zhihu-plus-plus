@@ -129,7 +129,7 @@ class DesktopPaginationEnvironment(
         follow: Boolean,
     ) {
         if (store.load().cookies["d_c0"] == null) return
-        store.signedFetchJson(zhihuQuestionFollowersUrl(questionId)) {
+        store.signedFetchJson("https://www.zhihu.com/api/v4/questions/$questionId/followers") {
             method = if (follow) HttpMethod.Post else HttpMethod.Delete
         }
     }

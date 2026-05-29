@@ -9,16 +9,22 @@ import kotlinx.coroutines.flow.emptyFlow
 @Composable
 actual fun rememberBlockedFeedRecordDao(): BlockedFeedRecordDao = remember {
     object : BlockedFeedRecordDao {
+        // TODO: iOS 观察所有记录
         override fun observeAll(): Flow<List<BlockedFeedRecord>> = emptyFlow()
 
+        // TODO: iOS 获取最近记录
         override suspend fun getRecent(limit: Int): List<BlockedFeedRecord> = emptyList()
 
+        // TODO: iOS 插入记录
         override suspend fun insert(record: BlockedFeedRecord): Long = 0L
 
+        // TODO: iOS 删除记录
         override suspend fun deleteById(id: Long) = Unit
 
+        // TODO: iOS 清空所有
         override suspend fun clearAll() = Unit
 
+        // TODO: iOS 维护限制
         override suspend fun maintainLimit() = Unit
     }
 }

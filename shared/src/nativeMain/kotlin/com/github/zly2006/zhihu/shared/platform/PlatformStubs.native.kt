@@ -12,6 +12,7 @@ actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) = Unit
 @Composable
 actual fun rememberScreenSizeDp(): ScreenSizeDp = ScreenSizeDp(width = 0f, height = 0f)
 
+// TODO: iOS 设置存储
 @Composable
 actual fun rememberSettingsStore(): SettingsStore = noopSettingsStore()
 
@@ -19,6 +20,7 @@ actual fun rememberSettingsStore(): SettingsStore = noopSettingsStore()
 @Composable
 actual fun rememberIsLiteVariant(): Boolean = false
 
+// TODO: iOS 用户消息提示
 @Composable
 actual fun rememberUserMessageSink(): UserMessageSink = remember {
     UserMessageSink(showShortMessage = {}, showLongMessage = {})
