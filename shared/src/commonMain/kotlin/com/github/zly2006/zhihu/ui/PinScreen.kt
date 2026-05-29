@@ -558,7 +558,7 @@ private fun PinContent(
                 fontWeight = FontWeight.Bold,
             )
             Spacer(modifier = Modifier.height(8.dp))
-            topics.forEach { topic ->
+            pin.topics!!.forEach { topic ->
                 Text(
                     "# ${topic.name}",
                     style = MaterialTheme.typography.bodyMedium,
