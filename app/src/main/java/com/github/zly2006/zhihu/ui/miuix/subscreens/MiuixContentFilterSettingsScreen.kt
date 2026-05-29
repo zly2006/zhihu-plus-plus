@@ -14,11 +14,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
@@ -361,8 +364,8 @@ fun MiuixContentFilterSettingsScreen(
                         Text("过滤率: %.1f%%".format((filterStats?.filterRate ?: 0f) * 100))
                     }
                     Spacer(modifier = Modifier.height(16.dp))
-                    androidx.compose.material3.Button(
-                        onClick = {
+                    Card(
+                        modifier = Modifier.fillMaxWidth().clickable {
                             coroutineScope.launch {
                                 try {
                                     ContentFilterManager.getInstance(context).cleanupOldData()
@@ -371,11 +374,14 @@ fun MiuixContentFilterSettingsScreen(
                                 } catch (_: Exception) {}
                             }
                         },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text("清理过期数据") }
+                    ) {
+                        Box(Modifier.fillMaxWidth().padding(14.dp), contentAlignment = Alignment.Center) {
+                            Text("清理过期数据", fontSize = 15.sp)
+                        }
+                    }
                     Spacer(modifier = Modifier.height(8.dp))
-                    androidx.compose.material3.Button(
-                        onClick = {
+                    Card(
+                        modifier = Modifier.fillMaxWidth().clickable {
                             coroutineScope.launch {
                                 try {
                                     ContentFilterManager.getInstance(context).clearAllData()
@@ -385,11 +391,11 @@ fun MiuixContentFilterSettingsScreen(
                                 } catch (_: Exception) {}
                             }
                         },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                            containerColor = MiuixTheme.colorScheme.error,
-                        ),
-                    ) { Text("重置所有数据") }
+                    ) {
+                        Box(Modifier.fillMaxWidth().padding(14.dp), contentAlignment = Alignment.Center) {
+                            Text("重置所有数据", fontSize = 15.sp, color = MiuixTheme.colorScheme.error)
+                        }
+                    }
                 }
             },
             confirmButton = {
