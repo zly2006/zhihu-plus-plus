@@ -155,8 +155,8 @@ import zhihu.shared.generated.resources.ic_vote_up_24dp
 import kotlin.math.abs
 import kotlin.math.max
 
-private const val SCROLL_THRESHOLD = 10
-val ScrollThresholdDp = SCROLL_THRESHOLD.dp
+private const val SCROLL_THRESHOLD = 10 // 滑动阈值，单位为dp
+private val ScrollThresholdDp = SCROLL_THRESHOLD.dp
 
 /**
  * 修复 noscript 标签中的图片加载问题。
