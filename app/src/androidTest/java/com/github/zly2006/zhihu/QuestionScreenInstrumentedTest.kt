@@ -28,8 +28,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.github.zly2006.zhihu.data.CommonFeed
-import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.shared.data.CommonFeed
+import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.Question
@@ -59,6 +59,9 @@ import com.github.zly2006.zhihu.ui.QuestionScreenTestOverrides
 import com.github.zly2006.zhihu.ui.questionFeedItemTag
 import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager
+import com.github.zly2006.zhihu.viewmodel.filter.getBlocklistManager
+import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.paginationEnvironment
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonArray
 import org.junit.After
@@ -68,7 +71,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import com.github.zly2006.zhihu.data.Person as FeedPerson
+import com.github.zly2006.zhihu.shared.data.Person as FeedPerson
 
 @RunWith(AndroidJUnit4::class)
 class QuestionScreenInstrumentedTest {
@@ -78,12 +81,12 @@ class QuestionScreenInstrumentedTest {
     @Before
     fun setUp() = runBlocking {
         composeRule.resetAppPreferences()
-        BlocklistManager.getInstance(composeRule.activity).clearAllBlockedUsers()
+        getBlocklistManager(composeRule.activity).clearAllBlockedUsers()
     }
 
     @After
     fun tearDown() = runBlocking {
-        BlocklistManager.getInstance(composeRule.activity).clearAllBlockedUsers()
+        getBlocklistManager(composeRule.activity).clearAllBlockedUsers()
     }
 
     @Test
@@ -206,8 +209,7 @@ class QuestionScreenInstrumentedTest {
          */
         val viewModel = TestableQuestionFeedViewModel(123456789L)
         runBlocking {
-            BlocklistManager
-                .getInstance(composeRule.activity)
+            getBlocklistManager(composeRule.activity)
                 .addBlockedUser("blocked-answer-author", "被屏蔽回答作者")
             viewModel.processForTest(
                 composeRule.activity,
@@ -303,7 +305,7 @@ class QuestionScreenInstrumentedTest {
         questionId: Long,
     ) : QuestionFeedViewModel(questionId) {
         suspend fun processForTest(context: android.content.Context, data: List<Feed>) {
-            processResponse(context, data, JsonArray(emptyList()))
+            processResponse(paginationEnvironment(context), data, JsonArray(emptyList()))
         }
     }
 

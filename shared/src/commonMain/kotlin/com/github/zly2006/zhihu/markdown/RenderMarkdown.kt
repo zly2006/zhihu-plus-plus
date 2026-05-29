@@ -242,7 +242,7 @@ fun RenderMarkdown(
     val settings = rememberSettingsStore()
     val fontSize = settings.getInt(PREF_FONT_SIZE, 100)
     val lineHeight = settings.getInt(PREF_LINE_HEIGHT, 160)
-    val defaultTheme = MarkdownTheme.fromMaterialTheme()
+    val defaultTheme = MarkdownTheme.material3()
 
     val theme = defaultTheme.copy(
         bodyStyle = defaultTheme.bodyStyle.copy(

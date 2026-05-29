@@ -71,7 +71,7 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
-private fun formatCollectionUpdatedTime(seconds: Long): String {
+fun formatCollectionUpdatedTime(seconds: Long): String {
     val dateTime = Instant
         .fromEpochSeconds(seconds)
         .toLocalDateTime(TimeZone.currentSystemDefault())

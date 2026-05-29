@@ -206,7 +206,7 @@ class HomeScreenInstrumentedTest {
         waitForIdle()
 
         val recordingNavigator = setScreenContent {
-            HomeScreen(innerPadding = PaddingValues())
+            HomeScreen(scrollToTopTrigger = 0, innerPadding = PaddingValues())
         }
         activity.runOnUiThread {
             UpdateManager.updateState.value = UpdateManager.UpdateState.NoUpdate

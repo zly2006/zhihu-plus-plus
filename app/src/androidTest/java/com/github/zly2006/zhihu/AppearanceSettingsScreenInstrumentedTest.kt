@@ -160,6 +160,7 @@ class AppearanceSettingsScreenInstrumentedTest {
         }
         composeRule.setScreenContent {
             AppearanceSettingsScreen(
+                onExit = {},
                 setting = setting,
             )
         }

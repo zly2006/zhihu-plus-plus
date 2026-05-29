@@ -43,7 +43,7 @@ import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.CollectionContentScreen
 import com.github.zly2006.zhihu.ui.CollectionContentScreenTestOverrides
-import com.github.zly2006.zhihu.ui.YMDHMS
+import com.github.zly2006.zhihu.ui.formatCollectionUpdatedTime
 import com.github.zly2006.zhihu.viewmodel.CollectionContentViewModel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -250,7 +250,7 @@ class CollectionContentScreenInstrumentedTest {
         "${SEEDED_ITEM_COUNT} 条收藏",
         "${SEEDED_LIKE_COUNT} 个赞同",
         "${SEEDED_COMMENT_COUNT} 条评论",
-        "${YMDHMS.format(Date(SEEDED_UPDATED_TIME_SECONDS * 1000))} 更新",
+        "${formatCollectionUpdatedTime(SEEDED_UPDATED_TIME_SECONDS)} 更新",
     ).joinToString(" · ")
 
     private fun seedQuestionDestination(index: Int) = Question(

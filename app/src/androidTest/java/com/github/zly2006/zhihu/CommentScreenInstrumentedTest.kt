@@ -36,7 +36,7 @@ import androidx.compose.ui.test.swipeRight
 import androidx.test.espresso.Espresso.pressBack
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CommentHolder
@@ -44,6 +44,7 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
+import com.github.zly2006.zhihu.test.InstrumentedTestEnvironment
 import com.github.zly2006.zhihu.test.ZhihuMockApi
 import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
@@ -70,14 +71,17 @@ import com.github.zly2006.zhihu.ui.commentLikeButtonTag
 import com.github.zly2006.zhihu.ui.commentReplyButtonTag
 import com.github.zly2006.zhihu.ui.commentReplyToAuthorTag
 import com.github.zly2006.zhihu.ui.commentRowTag
-import com.github.zly2006.zhihu.viewmodel.CommentItem
+import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
-import com.github.zly2006.zhihu.viewmodel.comment.CommentSortOrder
+import com.github.zly2006.zhihu.shared.comment.CommentSortOrder
 import com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager
+import com.github.zly2006.zhihu.viewmodel.filter.getBlocklistManager
 import io.ktor.client.HttpClient
 import io.ktor.http.HttpMethod
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonArray
+import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.paginationEnvironment
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -94,7 +98,9 @@ class CommentScreenInstrumentedTest {
     @Before
     fun setUp() = runBlocking {
         composeRule.resetAppPreferences()
-        BlocklistManager.getInstance(composeRule.activity).clearAllBlockedUsers()
+        ZhihuMockApi.install(enabled = true)
+        ZhihuMockApi.reset()
+        getBlocklistManager(composeRule.activity).clearAllBlockedUsers()
         ZhihuMockApi.mockJsonPrefix(
             method = HttpMethod.Post,
             urlPrefix = "https://www.zhihu.com/api/v4/comments/",
@@ -109,7 +115,8 @@ class CommentScreenInstrumentedTest {
 
     @After
     fun tearDown() = runBlocking {
-        BlocklistManager.getInstance(composeRule.activity).clearAllBlockedUsers()
+        getBlocklistManager(composeRule.activity).clearAllBlockedUsers()
+        ZhihuMockApi.install(enabled = InstrumentedTestEnvironment.isMockMode())
     }
 
     @Test
@@ -333,7 +340,7 @@ class CommentScreenInstrumentedTest {
             seededComments = emptyList(),
         )
         runBlocking {
-            val blocklistManager = BlocklistManager.getInstance(composeRule.activity)
+            val blocklistManager = getBlocklistManager(composeRule.activity)
             blocklistManager.addBlockedUser("blocked-root-author", "被屏蔽根评论作者")
             blocklistManager.addBlockedUser("blocked-child-author", "被屏蔽子评论作者")
             viewModel.processForTest(
@@ -394,7 +401,6 @@ class CommentScreenInstrumentedTest {
         testOverrides: CommentScreenTestOverrides,
     ): RecordingNavigator = composeRule.setScreenContent {
         CommentScreen(
-            httpClient = httpClient(),
             content = { viewModel.article },
             activeCommentItem = activeCommentItem,
             onChildCommentClick = onChildCommentClick,
@@ -427,22 +433,21 @@ class CommentScreenInstrumentedTest {
             CommentItem(comment, CommentHolder(comment.id, article))
 
         suspend fun processForTest(context: android.content.Context, data: List<DataHolder.Comment>) {
-            processResponse(context, data, JsonArray(emptyList()))
+            processResponse(paginationEnvironment(context), data, JsonArray(emptyList()))
         }
 
-        override fun loadMore(context: android.content.Context) {
+        override fun loadMore(environment: PaginationEnvironment) {
             loadMoreCount += 1
         }
 
-        override fun refresh(context: android.content.Context) {
+        override fun refresh(environment: PaginationEnvironment) {
             refreshHistory += sortOrder
         }
 
         override fun submitComment(
             content: NavDestination,
             commentText: String,
-            httpClient: HttpClient,
-            context: android.content.Context,
+            environment: PaginationEnvironment,
             replyToCommentId: String?,
             onSuccess: () -> Unit,
         ) = Unit
@@ -470,16 +475,15 @@ class CommentScreenInstrumentedTest {
         override fun createCommentItem(comment: DataHolder.Comment, article: NavDestination): CommentItem =
             CommentItem(comment, null)
 
-        override fun loadMore(context: android.content.Context) = Unit
+        override fun loadMore(environment: PaginationEnvironment) = Unit
 
         override fun submitComment(
             content: NavDestination,
             commentText: String,
-            httpClient: HttpClient,
-            context: android.content.Context,
+            environment: PaginationEnvironment,
             replyToCommentId: String?,
             onSuccess: () -> Unit,
-        ) {
+) {
             submissions += Submission(commentText, replyToCommentId)
             allData.add(
                 0,

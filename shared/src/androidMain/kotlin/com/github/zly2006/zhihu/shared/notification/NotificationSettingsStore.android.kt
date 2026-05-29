@@ -14,7 +14,7 @@ actual fun rememberNotificationSettingsStore(): NotificationSettingsStore {
     }
 }
 
-private class AndroidNotificationSettingsStore(
+class AndroidNotificationSettingsStore(
     context: Context,
 ) : NotificationSettingsStore {
     private val preferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)

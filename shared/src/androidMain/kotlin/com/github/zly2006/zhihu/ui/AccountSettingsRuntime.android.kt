@@ -72,7 +72,7 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
     )
 }
 
-private fun AccountData.Data.toAccountSettingsAccountState(): AccountSettingsAccountState = AccountSettingsAccountState(
+fun AccountData.Data.toAccountSettingsAccountState(): AccountSettingsAccountState = AccountSettingsAccountState(
     login = login,
     username = username,
     avatarUrl = self?.avatarUrl,

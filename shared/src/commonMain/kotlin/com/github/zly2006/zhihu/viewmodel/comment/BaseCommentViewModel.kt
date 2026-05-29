@@ -28,6 +28,7 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
+import com.github.zly2006.zhihu.viewmodel.filter.fetchBlockedUserIds
 import io.ktor.client.request.delete
 import io.ktor.client.request.post
 import io.ktor.http.isSuccess
@@ -43,7 +44,7 @@ abstract class BaseCommentViewModel(
 
     override fun processResponse(environment: PaginationEnvironment, data: List<DataHolder.Comment>, rawData: JsonArray) {
         debugData.addAll(rawData) // 保存原始JSON
-        filterBlockedComments(data).forEach { comment ->
+        filterBlockedComments(environment, data).forEach { comment ->
             if (allData.none { it.id == comment.id }) {
                 // 避免服务器返回重复评论时重复添加，造成LazyColumn key冲突
                 allData.add(comment)
@@ -58,14 +59,11 @@ abstract class BaseCommentViewModel(
         }
     }
 
-    @Suppress("unused")
     private fun filterBlockedComments(
+        environment: PaginationEnvironment,
         comments: List<DataHolder.Comment>,
     ): List<DataHolder.Comment> {
-        // TODO: implement blocked user filtering in KMP
-        return comments
-        /*
-        val blockedUserIds = BlocklistManager.getAllBlockedUsers().map { it.userId }.toSet()
+        val blockedUserIds = environment.fetchBlockedUserIds()
         if (blockedUserIds.isEmpty()) return comments
         return comments.mapNotNull { comment ->
             if (comment.author.id in blockedUserIds) {
@@ -76,7 +74,6 @@ abstract class BaseCommentViewModel(
                 )
             }
         }
-        */
     }
 
     abstract fun createCommentItem(comment: DataHolder.Comment, article: NavDestination): CommentItem

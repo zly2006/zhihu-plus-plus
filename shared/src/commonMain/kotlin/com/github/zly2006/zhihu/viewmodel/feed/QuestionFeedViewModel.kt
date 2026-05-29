@@ -25,6 +25,7 @@ import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.filter.fetchBlockedUserIds
 
 open class QuestionFeedViewModel(
     private val questionId: Long,
@@ -64,17 +65,17 @@ open class QuestionFeedViewModel(
         }
     }
 
-    @Suppress("unused")
-    private suspend fun filterBlockedAnswers(data: List<Feed>): List<Feed> {
-        // TODO: implement blocked user filtering in KMP
-        return data
-        /*
-        val blockedUserIds = BlocklistManager.getAllBlockedUsers().map { it.userId }.toSet()
+    override fun processResponse(environment: PaginationEnvironment, data: List<Feed>, rawData: kotlinx.serialization.json.JsonArray) {
+        val filtered = filterBlockedAnswers(environment, data)
+        super.processResponse(environment, filtered, rawData)
+    }
+
+    private fun filterBlockedAnswers(environment: PaginationEnvironment, data: List<Feed>): List<Feed> {
+        val blockedUserIds = environment.fetchBlockedUserIds()
         if (blockedUserIds.isEmpty()) return data
         return data.filterNot { feed ->
             val target = feed.target
             target is Feed.AnswerTarget && target.author?.id in blockedUserIds
         }
-        */
     }
 }

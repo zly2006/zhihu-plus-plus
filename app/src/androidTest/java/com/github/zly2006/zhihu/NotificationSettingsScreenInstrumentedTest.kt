@@ -33,7 +33,7 @@ import com.github.zly2006.zhihu.shared.notification.NotificationType
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
-import com.github.zly2006.zhihu.ui.NotificationPreferences
+import com.github.zly2006.zhihu.shared.notification.AndroidNotificationSettingsStore
 import com.github.zly2006.zhihu.ui.NotificationSettingsScreen
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -137,15 +137,16 @@ class NotificationSettingsScreenInstrumentedTest {
         composeRule.waitUntil(timeoutMillis) { readPreference(toggleCase) == expected }
     }
 
+    private val settingsStore: AndroidNotificationSettingsStore
+        get() = AndroidNotificationSettingsStore(composeRule.activity)
+
     private fun readPreference(toggleCase: ToggleCase): Boolean = when (toggleCase.group) {
-        ToggleGroup.AutoMarkAsRead -> NotificationPreferences.getAutoMarkAsReadEnabled(composeRule.activity)
-        ToggleGroup.SystemNotification -> NotificationPreferences.getSystemNotificationEnabled(
-            composeRule.activity,
+        ToggleGroup.AutoMarkAsRead -> settingsStore.getAutoMarkAsReadEnabled()
+        ToggleGroup.SystemNotification -> settingsStore.getSystemNotificationEnabled(
             checkNotNull(toggleCase.type),
         )
 
-        ToggleGroup.DisplayInApp -> NotificationPreferences.getDisplayInAppEnabled(
-            composeRule.activity,
+        ToggleGroup.DisplayInApp -> settingsStore.getDisplayInAppEnabled(
             checkNotNull(toggleCase.type),
         )
     }
