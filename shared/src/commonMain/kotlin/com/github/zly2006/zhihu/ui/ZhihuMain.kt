@@ -557,7 +557,7 @@ private val TopLevelDestination.openFrom: String?
         else -> null
     }
 
-fun NavBackStackEntry?.hasRoute(cls: KClass<out NavDestination>): Boolean {
+internal fun NavBackStackEntry?.hasRoute(cls: KClass<out NavDestination>): Boolean {
     val dest = this?.destination ?: return false
     return dest.hierarchy.any { it.hasRoute(cls) }
 }

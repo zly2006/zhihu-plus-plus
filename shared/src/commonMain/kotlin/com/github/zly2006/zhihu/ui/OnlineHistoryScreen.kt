@@ -52,7 +52,7 @@ import com.github.zly2006.zhihu.viewmodel.feed.OnlineHistoryViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
 
-const val ONLINE_HISTORY_OVERFLOW_TAG = "online_history_overflow"
+internal const val ONLINE_HISTORY_OVERFLOW_TAG = "online_history_overflow"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
