@@ -74,8 +74,6 @@ import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.FollowedQuestion
-import com.github.zly2006.zhihu.shared.data.FollowedTopic
 import com.github.zly2006.zhihu.shared.data.OfficialBadge
 import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.shared.data.officialBadgeDetails
@@ -92,6 +90,7 @@ import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
 import org.jetbrains.compose.resources.painterResource
 import zhihu.shared.generated.resources.Res
 import zhihu.shared.generated.resources.ic_zh_plus_author_badge
@@ -233,6 +232,32 @@ class PeopleFollowingCollectionsViewModel(
 
     override val include: String
         get() = "data[*].updated_time,answer_count,follower_count,creator"
+}
+
+@Serializable
+data class FollowedQuestion(
+    val id: String,
+    val type: String = "question",
+    val url: String = "",
+    val title: String = "",
+    val questionType: String = "",
+    val created: Long = 0L,
+    val updatedTime: Long = 0L,
+)
+
+@Serializable
+data class FollowedTopic(
+    val id: String = "",
+    val type: String = "topic",
+    val url: String = "",
+    val name: String = "",
+    val avatarUrl: String? = null,
+    val topicType: String? = null,
+    val topic: DataHolder.Topic? = null,
+) {
+    val displayId: String get() = topic?.id ?: id
+    val displayName: String get() = topic?.name ?: name
+    val displayAvatarUrl: String? get() = topic?.avatarUrl ?: avatarUrl
 }
 
 class PeopleFollowingQuestionsViewModel(
