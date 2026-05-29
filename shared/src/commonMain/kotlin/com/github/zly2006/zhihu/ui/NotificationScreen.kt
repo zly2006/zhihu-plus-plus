@@ -20,7 +20,6 @@ package com.github.zly2006.zhihu.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -30,9 +29,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -41,7 +37,6 @@ import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.CopyAll
 import androidx.compose.material.icons.filled.MarkChatRead
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -54,9 +49,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -85,25 +77,12 @@ import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.formatRelativeTime
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
+import com.github.zly2006.zhihu.ui.components.PaginatedList
+import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.viewmodel.NotificationPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-
-data class NotificationScreenData(
-    val notifications: List<NotificationItem>,
-    val totalItemCount: Int,
-    val unreadCount: Int,
-    val isLoading: Boolean,
-    val isEnd: Boolean,
-    val showDebugCopy: Boolean,
-    val refresh: () -> Unit,
-    val loadMore: () -> Unit,
-    val markAsRead: (String) -> Unit,
-    val markAllAsRead: () -> Unit,
-    val copyDebugData: () -> Unit,
-    val showMessage: (String) -> Unit,
-)
 
 data class NotificationScreenRuntime(
     val environment: NotificationPaginationEnvironment,
@@ -117,88 +96,19 @@ expect fun rememberNotificationScreenRuntime(
     settingsStore: NotificationSettingsStore,
 ): NotificationScreenRuntime
 
-@Composable
-fun rememberNotificationScreenData(): NotificationScreenData {
-    val settingsStore = rememberNotificationSettingsStore()
-    val viewModel = viewModel<NotificationViewModel>()
-    val coroutineScope = rememberCoroutineScope()
-    val userMessages = rememberUserMessageSink()
-    val runtime = rememberNotificationScreenRuntime(viewModel, settingsStore)
-    return NotificationScreenData(
-        notifications = viewModel.allData.filter { viewModel.shouldShowNotification(settingsStore, it) },
-        totalItemCount = viewModel.allData.size,
-        unreadCount = viewModel.unreadCount,
-        isLoading = viewModel.isLoading,
-        isEnd = viewModel.isEnd,
-        showDebugCopy = runtime.showDebugCopy,
-        refresh = { viewModel.refresh(runtime.environment) },
-        loadMore = { viewModel.loadMore(runtime.environment) },
-        markAsRead = { id -> viewModel.markAsRead(id) },
-        markAllAsRead = {
-            coroutineScope.launch {
-                viewModel.markAllAsRead(runtime.environment)
-                userMessages.showMessage("已全部标记为已读")
-            }
-        },
-        copyDebugData = {
-            val debugData = Json.encodeToString(viewModel.debugData)
-            runtime.copyDebugText("data", debugData)
-            userMessages.showMessage("已复制调试数据")
-        },
-        showMessage = { message ->
-            userMessages.showMessage(message, UserMessageDuration.Long)
-        },
-    )
-}
-
-@Composable
-fun NotificationDebugCopyButton(
-    visible: Boolean,
-    onClick: () -> Unit,
-) {
-    if (!visible) {
-        return
-    }
-    DraggableRefreshButton(
-        onClick = onClick,
-        preferenceName = "copyAll",
-    ) {
-        Icon(Icons.Default.CopyAll, contentDescription = "复制")
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationScreen() {
     val navigator = LocalNavigator.current
-    val data = rememberNotificationScreenData()
-    val listState = rememberLazyListState()
-    val shouldLoadMore by remember(data.notifications.size, data.totalItemCount, data.isEnd, data.isLoading) {
-        derivedStateOf {
-            val layoutInfo = listState.layoutInfo
-            val lastVisibleIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: return@derivedStateOf false
-            lastVisibleIndex >= layoutInfo.totalItemsCount - 3 &&
-                data.totalItemCount > 0 &&
-                !data.isEnd &&
-                !data.isLoading
-        }
-    }
+    val settingsStore = rememberNotificationSettingsStore()
+    val viewModel = viewModel<NotificationViewModel>()
+    val runtime = rememberNotificationScreenRuntime(viewModel, settingsStore)
+    val coroutineScope = rememberCoroutineScope()
+    val userMessages = rememberUserMessageSink()
 
     LaunchedEffect(Unit) {
-        if (data.totalItemCount == 0) {
-            data.refresh()
-        }
-    }
-
-    LaunchedEffect(shouldLoadMore) {
-        if (shouldLoadMore) {
-            data.loadMore()
-        }
-    }
-
-    LaunchedEffect(data.totalItemCount, data.notifications.size, data.isEnd, data.isLoading) {
-        if (data.totalItemCount > 0 && data.notifications.isEmpty() && !data.isEnd && !data.isLoading) {
-            data.loadMore()
+        if (viewModel.allData.isEmpty()) {
+            viewModel.refresh(runtime.environment)
         }
     }
 
@@ -219,8 +129,13 @@ fun NotificationScreen() {
                     }
                 },
                 actions = {
-                    if (data.unreadCount > 0) {
-                        IconButton(onClick = data.markAllAsRead) {
+                    if (viewModel.unreadCount > 0) {
+                        IconButton(onClick = {
+                            coroutineScope.launch {
+                                viewModel.markAllAsRead(runtime.environment)
+                                userMessages.showMessage("已全部标记为已读")
+                            }
+                        }) {
                             Icon(Icons.Default.MarkChatRead, contentDescription = "已读")
                         }
                     }
@@ -237,54 +152,58 @@ fun NotificationScreen() {
         },
     ) { paddingValues ->
         PullToRefreshBox(
-            isRefreshing = data.isLoading,
-            onRefresh = data.refresh,
+            isRefreshing = viewModel.isLoading,
+            onRefresh = { viewModel.refresh(runtime.environment) },
             modifier = Modifier.padding(paddingValues),
         ) {
-            LazyColumn(
-                state = listState,
+            PaginatedList(
+                items = viewModel.allData,
+                onLoadMore = { viewModel.loadMore(runtime.environment) },
+                isEnd = { viewModel.isEnd },
                 modifier = Modifier.fillMaxSize(),
-            ) {
-                items(data.notifications, key = { it.id }) { notification ->
+                footer = ProgressIndicatorFooter,
+            ) { notification ->
+                if (viewModel.shouldShowNotification(settingsStore, notification)) {
                     NotificationItemView(
                         notification = notification,
                         onClick = {
-                            data.markAsRead(notification.id)
-                            when (val target = notification.target) {
+                            viewModel.markAsRead(notification.id)
+                            // 处理点击事件 - 跳转到对应内容
+                            when (notification.target) {
                                 is NotificationTarget
                                     .Comment,
                                 -> {
-                                    data.showMessage("暂不支持跳转到评论，将跳转到对应回答。")
-                                    target.target?.navDestination?.let {
+                                    userMessages.showMessage("暂不支持跳转到评论，将跳转到对应回答。")
+                                    notification.target.target?.navDestination?.let {
                                         navigator.onNavigate(it)
-                                    } ?: data.showMessage("导航失败")
+                                    } ?: userMessages.showMessage("导航失败")
                                 }
 
                                 is NotificationTarget.Question -> {
-                                    navigator.onNavigate(Question(target.id.toLong(), target.title))
+                                    navigator.onNavigate(Question(notification.target.id.toLong(), notification.target.title))
                                 }
 
                                 is NotificationTarget.People -> {
-                                    navigator.onNavigate(Person(target.id, target.urlToken, name = target.name))
+                                    navigator.onNavigate(Person(notification.target.id, notification.target.urlToken, name = notification.target.name))
                                 }
 
                                 is NotificationTarget.Answer -> {
                                     navigator.onNavigate(
                                         Article(
-                                            title = target.title,
+                                            title = notification.target.title,
                                             type = ArticleType.Answer,
-                                            id = target.id.toLong(),
-                                            excerpt = target.excerpt,
+                                            id = notification.target.id.toLong(),
+                                            excerpt = notification.target.excerpt,
                                         ),
                                     )
                                 }
                                 is NotificationTarget.Article -> {
                                     navigator.onNavigate(
                                         Article(
-                                            title = target.title,
+                                            title = notification.target.title,
                                             type = ArticleType.Article,
-                                            id = target.id.toLong(),
-                                            excerpt = target.excerpt,
+                                            id = notification.target.id.toLong(),
+                                            excerpt = notification.target.excerpt,
                                         ),
                                     )
                                 }
@@ -294,26 +213,19 @@ fun NotificationScreen() {
                         },
                     )
                 }
-
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        if (data.isEnd) {
-                            Text("已经到底啦")
-                        } else if (data.isLoading) {
-                            CircularProgressIndicator()
-                        }
-                    }
+            }
+            if (runtime.showDebugCopy) {
+                DraggableRefreshButton(
+                    onClick = {
+                        val data = Json.encodeToString(viewModel.debugData)
+                        runtime.copyDebugText("data", data)
+                        userMessages.showMessage("已复制调试数据")
+                    },
+                    preferenceName = "copyAll",
+                ) {
+                    Icon(Icons.Default.CopyAll, contentDescription = "复制")
                 }
             }
-            NotificationDebugCopyButton(
-                visible = data.showDebugCopy,
-                onClick = data.copyDebugData,
-            )
         }
     }
 }
