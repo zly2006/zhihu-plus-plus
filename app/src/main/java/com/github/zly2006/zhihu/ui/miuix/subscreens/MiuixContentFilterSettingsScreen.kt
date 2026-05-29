@@ -52,6 +52,7 @@ import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterManager
 import com.github.zly2006.zhihu.viewmodel.filter.FilterStats
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.blur.layerBackdrop
+import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.DropdownItem
 import top.yukonga.miuix.kmp.basic.Icon
@@ -366,8 +367,8 @@ fun MiuixContentFilterSettingsScreen(
                 Text("过滤率: %.1f%%".format((filterStats?.filterRate ?: 0f) * 100))
             }
             Spacer(modifier = Modifier.height(20.dp))
-            Card(
-                modifier = Modifier.fillMaxWidth().clickable {
+            Button(
+                onClick = {
                     coroutineScope.launch {
                         try {
                             ContentFilterManager.getInstance(context).cleanupOldData()
@@ -376,14 +377,13 @@ fun MiuixContentFilterSettingsScreen(
                         } catch (_: Exception) {}
                     }
                 },
+                modifier = Modifier.fillMaxWidth(),
             ) {
-                Box(Modifier.fillMaxWidth().padding(14.dp), contentAlignment = Alignment.Center) {
-                    Text("清理过期数据", fontSize = 15.sp)
-                }
+                Text("清理过期数据")
             }
             Spacer(modifier = Modifier.height(8.dp))
-            Card(
-                modifier = Modifier.fillMaxWidth().clickable {
+            Button(
+                onClick = {
                     coroutineScope.launch {
                         try {
                             ContentFilterManager.getInstance(context).clearAllData()
@@ -393,10 +393,9 @@ fun MiuixContentFilterSettingsScreen(
                         } catch (_: Exception) {}
                     }
                 },
+                modifier = Modifier.fillMaxWidth(),
             ) {
-                Box(Modifier.fillMaxWidth().padding(14.dp), contentAlignment = Alignment.Center) {
-                    Text("重置所有数据", fontSize = 15.sp, color = MiuixTheme.colorScheme.error)
-                }
+                Text("重置所有数据")
             }
         }
     }
