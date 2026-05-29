@@ -37,8 +37,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -100,7 +102,7 @@ fun MiuixOnlineHistoryScreen() {
                     BackHandler(enabled = showActionsMenu) {
                         showActionsMenu = false
                     }
-                    Box {
+                    Box(modifier = Modifier.padding(end = 4.dp)) {
                         IconButton(onClick = { showActionsMenu = true }) {
                             Icon(
                                 Icons.Filled.MoreVert,
@@ -110,12 +112,11 @@ fun MiuixOnlineHistoryScreen() {
                         }
                         WindowListPopup(
                             show = showActionsMenu,
-                            alignment = PopupPositionProvider.Align.TopEnd,
+                            alignment = PopupPositionProvider.Align.BottomEnd,
                             onDismissRequest = { showActionsMenu = false },
-                            popupModifier = Modifier.padding(horizontal = 12.dp),
-                            minWidth = 200.dp,
                         ) {
                             val dismissState = LocalDismissState.current
+                            val haptic = LocalHapticFeedback.current
                             ListPopupColumn {
                                 DropdownImpl(
                                     text = "查看本地历史记录",
@@ -123,6 +124,7 @@ fun MiuixOnlineHistoryScreen() {
                                     isSelected = false,
                                     index = 0,
                                     onSelectedIndexChange = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         dismissState?.invoke()
                                         navigator.onNavigate(History)
                                     },
@@ -133,6 +135,7 @@ fun MiuixOnlineHistoryScreen() {
                                     isSelected = false,
                                     index = 1,
                                     onSelectedIndexChange = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         dismissState?.invoke()
                                         showClearHistoryDialog = true
                                     },
