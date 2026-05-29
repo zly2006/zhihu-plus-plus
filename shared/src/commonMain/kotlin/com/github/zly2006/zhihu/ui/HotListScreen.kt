@@ -48,21 +48,9 @@ import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 const val HOT_LIST_LIST_TAG = "hot_list_list"
 const val HOT_LIST_REFRESH_BUTTON_TAG = "hot_list_refresh_button"
 
-@Composable
-fun HotListScreen(
-    innerPadding: PaddingValues,
-): Unit = HotListScreenContent(innerPadding, onTestRefreshClick = null, onTestLoadMore = null)
-
-@Composable
-fun HotListScreen(
-    innerPadding: PaddingValues = PaddingValues(0.dp),
-    onTestRefreshClick: (() -> Unit)? = null,
-    onTestLoadMore: (() -> Unit)? = null,
-): Unit = HotListScreenContent(innerPadding, onTestRefreshClick, onTestLoadMore)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun HotListScreenContent(
+fun HotListScreen(
     innerPadding: PaddingValues = PaddingValues(0.dp),
     onTestRefreshClick: (() -> Unit)? = null,
     onTestLoadMore: (() -> Unit)? = null,
