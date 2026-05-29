@@ -25,7 +25,6 @@ data class QuestionScreenRuntime(
 
 fun questionDetailPreview(html: String): String = Ksoup.parse(html).text().trim()
 
-fun zhihuQuestionLogUrl(question: Question): String = "${zhihuQuestionUrl(question.questionId)}/log"
 
 internal fun loadedQuestionScreenData(
     question: Question,

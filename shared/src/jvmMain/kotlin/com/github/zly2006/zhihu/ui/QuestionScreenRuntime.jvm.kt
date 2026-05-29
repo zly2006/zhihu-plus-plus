@@ -18,6 +18,7 @@ import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.viewmodel.consumeDesktopPendingContentOpenFrom
 import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
+import com.github.zly2006.zhihu.navigation.zhihuQuestionUrl
 
 @Composable
 actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {
@@ -49,7 +50,7 @@ actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {
                 }
             },
             openLog = { question ->
-                openDesktopExternalUrl(zhihuQuestionLogUrl(question))
+                openDesktopExternalUrl("${zhihuQuestionUrl(question.questionId)}/log")
             },
             handleShareAction = { question, onShowDialog ->
                 handleShareAction(question, settings, shareRuntime, onShowDialog)

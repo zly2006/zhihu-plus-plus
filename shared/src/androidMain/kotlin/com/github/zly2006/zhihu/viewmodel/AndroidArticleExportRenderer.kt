@@ -17,7 +17,6 @@ import android.os.Looper
 import android.view.View
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
-import com.github.zly2006.zhihu.navigation.zhihuWebBaseUrl
 import com.github.zly2006.zhihu.shared.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -142,7 +141,7 @@ class AndroidArticleExportRenderer(
             )
             mainHandler.postDelayed(timeoutRunnable, timeoutMs)
             webView.loadDataWithBaseURL(
-                zhihuWebBaseUrl(),
+                "https://www.zhihu.com",
                 htmlContent,
                 "text/html",
                 "UTF-8",

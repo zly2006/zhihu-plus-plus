@@ -49,7 +49,7 @@ actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {
             },
             openLog = { question ->
                 val intent = Intent(Intent.ACTION_VIEW).apply {
-                    data = zhihuQuestionLogUrl(question).toUri()
+                    data = "${zhihuQuestionUrl(question.questionId)}/log".toUri()
                     setClassName(context, WEBVIEW_ACTIVITY_CLASS)
                 }
                 context.startActivity(intent)

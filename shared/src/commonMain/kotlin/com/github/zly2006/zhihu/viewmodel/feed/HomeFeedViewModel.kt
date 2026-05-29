@@ -38,7 +38,7 @@ class HomeFeedViewModel :
 
     override val initialUrl: String
 //        get() = "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=10"
-        get() = zhihuMobileTopstoryRecommendUrl()
+        get() = "https://api.zhihu.com/topstory/recommend"
 
     init {
         allowGuestAccess = true

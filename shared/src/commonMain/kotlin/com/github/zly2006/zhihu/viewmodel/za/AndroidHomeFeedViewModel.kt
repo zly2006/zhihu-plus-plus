@@ -41,7 +41,7 @@ class AndroidHomeFeedViewModel :
     BaseFeedViewModel(),
     HomeFeedInteractionViewModel {
     override val initialUrl: String
-        get() = zhihuMobileTopstoryRecommendUrl()
+        get() = "https://api.zhihu.com/topstory/recommend"
 
     override fun httpClient(environment: PaginationEnvironment) = environment.mobileHomeFeedHttpClient()
 

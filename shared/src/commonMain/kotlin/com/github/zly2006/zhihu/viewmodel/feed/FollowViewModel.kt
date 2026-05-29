@@ -37,12 +37,12 @@ fun zhihuRecentMomentsUrl(): String = "https://api.zhihu.com/moments/recent?type
 
 class FollowViewModel : BaseFeedViewModel() {
     override val initialUrl: String
-        get() = zhihuFollowMomentsUrl()
+        get() = "https://www.zhihu.com/api/v3/moments?limit=10&desktop=true"
 }
 
 class FollowRecommendViewModel : BaseFeedViewModel() {
     override val initialUrl: String
-        get() = zhihuFollowRecommendUrl()
+        get() = "https://api.zhihu.com/moments_v3?feed_type=recommend"
 }
 
 class RecentMomentsViewModel : ViewModel() {
@@ -69,7 +69,7 @@ class RecentMomentsViewModel : ViewModel() {
         isLoading = true
         viewModelScope.launch {
             try {
-                val json = environment.fetchJson(zhihuRecentMomentsUrl(), "") ?: return@launch
+                val json = environment.fetchJson("https://api.zhihu.com/moments/recent?type=raw", "") ?: return@launch
                 val dataArray = json["data"]?.jsonArray ?: return@launch
                 users.addAll(
                     dataArray.mapNotNull { item ->

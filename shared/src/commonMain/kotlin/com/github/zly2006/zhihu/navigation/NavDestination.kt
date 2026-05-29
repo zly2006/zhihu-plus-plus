@@ -22,8 +22,6 @@ import io.ktor.http.Url
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-fun zhihuWebBaseUrl(): String = "https://www.zhihu.com"
-
 @Serializable
 sealed interface NavDestination
 
