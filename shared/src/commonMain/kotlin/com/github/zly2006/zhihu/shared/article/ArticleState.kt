@@ -3,14 +3,6 @@ package com.github.zly2006.zhihu.shared.article
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.shared.data.OfficialBadge
 
-enum class VoteUpState(
-    val key: String,
-) {
-    Up("up"),
-    Down("down"),
-    Neutral("neutral"),
-}
-
 /**
  * 缓存的回答完整内容，用于水平滑动预览。
  */

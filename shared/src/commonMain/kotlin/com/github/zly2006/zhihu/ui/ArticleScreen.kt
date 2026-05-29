@@ -128,7 +128,6 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.zhihuArticleUrl
 import com.github.zly2006.zhihu.navigation.zhihuQuestionAnswerUrl
 import com.github.zly2006.zhihu.shared.article.CachedAnswerContent
-import com.github.zly2006.zhihu.shared.article.VoteUpState
 import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
@@ -225,6 +224,14 @@ private fun rememberBottomBarAvoidingBringIntoViewSpec(
             }
         }
     }
+}
+
+enum class VoteUpState(
+    val key: String,
+) {
+    Up("up"),
+    Down("down"),
+    Neutral("neutral"),
 }
 
 private val VoteUpNeutralContent = Color(0xFF3671EE)
