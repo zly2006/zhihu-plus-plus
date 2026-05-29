@@ -261,7 +261,7 @@ fun voteUpNeutralButtonColors() = ButtonDefaults.buttonColors(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ArticleSummarySheet(
+private fun ArticleSummarySheet(
     showDialog: Boolean,
     summaryText: String,
     loading: Boolean,
