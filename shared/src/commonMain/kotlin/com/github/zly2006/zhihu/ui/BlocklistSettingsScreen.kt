@@ -142,18 +142,8 @@ data class BlocklistSettingsTestConfig(
 
 @Composable
 fun BlocklistSettingsScreen(
-    nlpContent: BlocklistSettingsNlpContent?,
-): Unit = BlocklistSettingsScreenContent(testConfig = null, nlpContent = nlpContent)
-
-@Composable
-fun BlocklistSettingsScreen(
-    testConfig: BlocklistSettingsTestConfig,
-): Unit = BlocklistSettingsScreenContent(testConfig)
-
-@Composable
-private fun BlocklistSettingsScreenContent(
-    testConfig: BlocklistSettingsTestConfig? = null,
     nlpContent: BlocklistSettingsNlpContent? = null,
+    testConfig: BlocklistSettingsTestConfig? = null,
 ) {
     val navigator = LocalNavigator.current
     val runtime = rememberBlocklistSettingsRuntime()
