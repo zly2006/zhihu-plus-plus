@@ -171,10 +171,12 @@ fun ZhihuMiuixTheme(
         controller = controller,
     ) {
         // miuix 默认背景跟 M3 不一样，套一层 Box 给整个 app 一个 surface 底
+        // 深色模式用纯黑，避免 overscroll 露出灰色
+        val bgColor = if (darkTheme) Color.Black else MiuixTheme.colorScheme.background
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MiuixTheme.colorScheme.background),
+                .background(bgColor),
         ) {
             content()
         }
