@@ -136,6 +136,7 @@ import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import top.yukonga.miuix.kmp.blur.layerBackdrop
+import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixBlockedFeedHistoryScreen
 import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixContentFilterSettingsScreen
 import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixNotificationSettingsScreen
 import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixOpenSourceLicensesScreen
@@ -626,7 +627,11 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     }
                 }
                 composable<Account.RecommendSettings.BlockedFeedHistory> {
-                    BlockedFeedHistoryScreen()
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixBlockedFeedHistoryScreen()
+                    } else {
+                        BlockedFeedHistoryScreen()
+                    }
                 }
                 composable<Notification> {
                     NotificationScreen()
