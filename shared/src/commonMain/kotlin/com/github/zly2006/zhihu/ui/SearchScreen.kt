@@ -273,11 +273,7 @@ fun SearchScreen(
                                     keyboardActions = KeyboardActions(
                                         onSearch = {
                                             keyboardController?.hide()
-                                            if (searchText.isNotBlank()) {
-                                                navigator.onNavigate(
-                                                    Search(query = searchText),
-                                                )
-                                            }
+                                            submitSearch(searchText)
                                         },
                                     ),
                                     decorationBox = { innerTextField ->
