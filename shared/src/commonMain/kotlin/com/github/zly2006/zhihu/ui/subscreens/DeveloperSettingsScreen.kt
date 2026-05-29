@@ -71,10 +71,10 @@ import com.github.zly2006.zhihu.ui.components.SettingItemOverall
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-const val DEVELOPER_SETTINGS_BACK_BUTTON_TAG = "developerSettings/backButton"
-const val DEVELOPER_SETTINGS_MODE_TAG = "developerSettings/modeToggle"
-const val DEVELOPER_SETTINGS_SENTENCE_SIMILARITY_TAG = "developerSettings/sentenceSimilarity"
-const val DEVELOPER_SETTINGS_COLOR_SCHEME_TAG = "developerSettings/colorScheme"
+internal const val DEVELOPER_SETTINGS_BACK_BUTTON_TAG = "developerSettings/backButton"
+internal const val DEVELOPER_SETTINGS_MODE_TAG = "developerSettings/modeToggle"
+internal const val DEVELOPER_SETTINGS_SENTENCE_SIMILARITY_TAG = "developerSettings/sentenceSimilarity"
+internal const val DEVELOPER_SETTINGS_COLOR_SCHEME_TAG = "developerSettings/colorScheme"
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
