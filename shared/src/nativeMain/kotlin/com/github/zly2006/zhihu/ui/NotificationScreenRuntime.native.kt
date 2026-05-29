@@ -31,9 +31,12 @@ private class IosNotificationPaginationEnvironment(
     // TODO: iOS 通知数据获取
     override suspend fun fetchJson(url: String, include: String): JsonObject = error("fetchJson not available on iOS yet")
 
+    // TODO: iOS 解码失败日志
     override fun logDecodeFailure(tag: String?, item: JsonElement, error: Exception) = Unit
 
+    // TODO: iOS 获取失败处理
     override suspend fun handleFetchFailure(tag: String?, error: Exception) = Unit
 
+    // TODO: iOS 签名请求配置
     override fun configureSignedRequest(builder: HttpRequestBuilder) = Unit
 }
