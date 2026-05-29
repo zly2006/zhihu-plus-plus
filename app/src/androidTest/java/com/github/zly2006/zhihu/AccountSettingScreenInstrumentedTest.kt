@@ -56,7 +56,7 @@ import com.github.zly2006.zhihu.ui.ACCOUNT_SETTINGS_SHORTCUT_NOTIFICATION_TAG
 import com.github.zly2006.zhihu.ui.ACCOUNT_SETTINGS_SYSTEM_TAG
 import com.github.zly2006.zhihu.ui.AccountSettingScreen
 import com.github.zly2006.zhihu.ui.AccountSettingsAccountState
-import com.github.zly2006.zhihu.ui.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import io.ktor.http.HttpMethod
 import org.junit.After

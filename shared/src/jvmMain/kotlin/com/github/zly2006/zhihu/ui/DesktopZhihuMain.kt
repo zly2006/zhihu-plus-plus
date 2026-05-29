@@ -47,6 +47,12 @@ import com.github.zly2006.zhihu.viewmodel.prepareDesktopPendingContentOpen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.subscreens.START_DESTINATION_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.subscreens.defaultBottomBarSelectionKeys
+import com.github.zly2006.zhihu.ui.subscreens.navDestinationFromName
+import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarSelection
+import com.github.zly2006.zhihu.ui.subscreens.resolveValidStartDestinationKey
 
 @Composable
 fun DesktopZhihuMain() {

@@ -44,9 +44,9 @@ import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
-import com.github.zly2006.zhihu.ui.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
-import com.github.zly2006.zhihu.ui.START_DESTINATION_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.subscreens.START_DESTINATION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_SCROLL_TAG
