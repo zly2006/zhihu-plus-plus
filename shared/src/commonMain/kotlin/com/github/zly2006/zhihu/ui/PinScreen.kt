@@ -118,18 +118,6 @@ data class PinScreenTestOverrides(
 @Composable
 fun PinScreen(
     pin: Pin,
-): Unit = PinScreenContent(pin, testOverrides = null)
-
-@Composable
-fun PinScreen(
-    pin: Pin,
-    testOverrides: PinScreenTestOverrides,
-): Unit = PinScreenContent(pin, testOverrides)
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun PinScreenContent(
-    pin: Pin,
     testOverrides: PinScreenTestOverrides? = null,
 ) {
     val navigator = LocalNavigator.current
