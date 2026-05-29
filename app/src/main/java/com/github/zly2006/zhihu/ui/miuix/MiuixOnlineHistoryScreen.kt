@@ -22,10 +22,11 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.preference.ArrowPreference
+import top.yukonga.miuix.kmp.window.WindowListPopup
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -105,24 +106,26 @@ fun MiuixOnlineHistoryScreen() {
                                 tint = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onBackground,
                             )
                         }
-                        DropdownMenu(
-                            expanded = showActionsMenu,
+                        WindowListPopup(
+                            show = showActionsMenu,
                             onDismissRequest = { showActionsMenu = false },
                         ) {
-                            DropdownMenuItem(
-                                text = { Text("查看本地历史记录") },
-                                onClick = {
-                                    showActionsMenu = false
-                                    navigator.onNavigate(History)
-                                },
-                            )
-                            DropdownMenuItem(
-                                text = { Text("清除历史记录") },
-                                onClick = {
-                                    showActionsMenu = false
-                                    showClearHistoryDialog = true
-                                },
-                            )
+                            Card {
+                                ArrowPreference(
+                                    title = "查看本地历史记录",
+                                    onClick = {
+                                        showActionsMenu = false
+                                        navigator.onNavigate(History)
+                                    },
+                                )
+                                ArrowPreference(
+                                    title = "清除历史记录",
+                                    onClick = {
+                                        showActionsMenu = false
+                                        showClearHistoryDialog = true
+                                    },
+                                )
+                            }
                         }
                     }
                 },
