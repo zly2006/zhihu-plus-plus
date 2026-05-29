@@ -108,22 +108,10 @@ internal const val ACCOUNT_SETTINGS_LICENSES_TAG = "accountSettings.licenses"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AccountSettingScreen(innerPadding: PaddingValues) {
-    AccountSettingScreen(
-        innerPadding = innerPadding,
-        unreadCount = 0,
-        onDismissRequest = {},
-        refreshAccountProfileOnEnter = true,
-        testAccountData = null,
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
 fun AccountSettingScreen(
     innerPadding: PaddingValues,
-    unreadCount: Int,
-    onDismissRequest: () -> Unit,
+    unreadCount: Int = 0,
+    onDismissRequest: () -> Unit = {},
     refreshAccountProfileOnEnter: Boolean = true,
     testAccountData: AccountSettingsAccountState? = null,
 ) {
