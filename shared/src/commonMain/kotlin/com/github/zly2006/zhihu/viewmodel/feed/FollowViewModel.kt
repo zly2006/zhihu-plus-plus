@@ -29,9 +29,6 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.jsonArray
 
-
-
-
 class FollowViewModel : BaseFeedViewModel() {
     override val initialUrl: String
         get() = "https://www.zhihu.com/api/v3/moments?limit=10&desktop=true"

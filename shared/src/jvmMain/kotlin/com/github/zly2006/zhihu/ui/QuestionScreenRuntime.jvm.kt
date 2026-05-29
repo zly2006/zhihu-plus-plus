@@ -5,6 +5,7 @@ import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.data.decodeQuestionContentDetail
 import com.github.zly2006.zhihu.data.zhihuQuestionContentDetailUrl
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.navigation.zhihuQuestionUrl
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
@@ -18,7 +19,6 @@ import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.viewmodel.consumeDesktopPendingContentOpenFrom
 import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
-import com.github.zly2006.zhihu.navigation.zhihuQuestionUrl
 
 @Composable
 actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {

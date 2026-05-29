@@ -29,7 +29,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 
-
 class HomeFeedViewModel :
     BaseFeedViewModel(),
     HomeFeedInteractionViewModel {

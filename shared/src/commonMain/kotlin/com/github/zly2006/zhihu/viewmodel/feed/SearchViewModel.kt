@@ -21,11 +21,9 @@ import com.github.zly2006.zhihu.shared.data.SearchResult
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.ZhihuPaging
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
-import io.ktor.http.encodeURLParameter
 import kotlinx.serialization.json.jsonArray
 
 const val ZHIHU_HOT_SEARCH_URL = "https://www.zhihu.com/api/v4/search/hot_search"
-
 
 class SearchViewModel(
     val searchQuery: String,
