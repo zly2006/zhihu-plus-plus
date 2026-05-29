@@ -5,9 +5,8 @@ import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.data.decodeArticleContentDetail
 import com.github.zly2006.zhihu.data.decodePinContentDetail
-import com.github.zly2006.zhihu.data.zhihuArticleContentDetailUrl
-import com.github.zly2006.zhihu.data.zhihuPinContentDetailUrl
 import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.shared.data.Collection
@@ -165,14 +164,19 @@ class DesktopPaginationEnvironment(
         }
 
     private suspend fun fetchDesktopArticleContentDetail(article: Article): DataHolder.Content? = runCatching {
-        val jo = store.signedFetchJson(zhihuArticleContentDetailUrl(article)) {
+        val jo = store.signedFetchJson(
+            when (article.type) {
+                ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${article.id}?include=content,topics,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,relationship,ip_info,relationship.vote,author.badge_v2"
+                ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${article.id}?include=content,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,attachment,reaction,ip_info,pagination_info,question.topics,reaction.relation.voting,author.badge_v2"
+            },
+        ) {
             method = HttpMethod.Get
         } ?: return@runCatching null
         decodeArticleContentDetail(article, jo)
     }.getOrNull()
 
     private suspend fun fetchDesktopPinContentDetail(pin: Pin): DataHolder.Pin? = runCatching {
-        val json = store.signedFetchJson(zhihuPinContentDetailUrl(pin)) {
+        val json = store.signedFetchJson("https://www.zhihu.com/api/v4/pins/${pin.id}") {
             method = HttpMethod.Get
         } ?: return@runCatching null
         decodePinContentDetail(json)

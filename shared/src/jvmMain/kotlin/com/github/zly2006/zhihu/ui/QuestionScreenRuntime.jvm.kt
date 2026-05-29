@@ -3,7 +3,6 @@ package com.github.zly2006.zhihu.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.data.decodeQuestionContentDetail
-import com.github.zly2006.zhihu.data.zhihuQuestionContentDetailUrl
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.zhihuQuestionUrl
 import com.github.zly2006.zhihu.shared.data.DataHolder
@@ -73,7 +72,7 @@ private suspend fun fetchDesktopQuestionDetail(
     store: DesktopAccountStore,
     question: Question,
 ): DataHolder.Question? = runCatching {
-    val jo = store.signedFetchJson(zhihuQuestionContentDetailUrl(question))
+    val jo = store.signedFetchJson("https://www.zhihu.com/api/v4/questions/${question.questionId}?include=read_count,visit_count,answer_count,voteup_count,comment_count,follower_count,detail,excerpt,author,relationship.is_following,topics")
         ?: return@runCatching null
     decodeQuestionContentDetail(jo)
 }.getOrNull()

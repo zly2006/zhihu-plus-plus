@@ -5,8 +5,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import com.github.zly2006.zhihu.data.decodePinContentDetail
 import com.github.zly2006.zhihu.data.decodeQuestionContentDetail
-import com.github.zly2006.zhihu.data.zhihuPinContentDetailUrl
-import com.github.zly2006.zhihu.data.zhihuQuestionContentDetailUrl
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
@@ -105,7 +103,7 @@ internal suspend fun fetchDesktopPinDetail(
     store: DesktopAccountStore,
     pin: Pin,
 ): DataHolder.Pin? = runCatching {
-    val json = store.signedFetchJson(zhihuPinContentDetailUrl(pin))
+    val json = store.signedFetchJson("https://www.zhihu.com/api/v4/pins/${pin.id}")
         ?: return@runCatching null
     decodePinContentDetail(json)
 }.getOrNull()
@@ -124,7 +122,7 @@ internal suspend fun fetchDesktopQuestionDetailForFeedBlock(
     store: DesktopAccountStore,
     question: Question,
 ): DataHolder.Question? = runCatching {
-    val jo = store.signedFetchJson(zhihuQuestionContentDetailUrl(question))
+    val jo = store.signedFetchJson("https://www.zhihu.com/api/v4/questions/${question.questionId}?include=read_count,visit_count,answer_count,voteup_count,comment_count,follower_count,detail,excerpt,author,relationship.is_following,topics")
         ?: return@runCatching null
     decodeQuestionContentDetail(jo)
 }.getOrNull()

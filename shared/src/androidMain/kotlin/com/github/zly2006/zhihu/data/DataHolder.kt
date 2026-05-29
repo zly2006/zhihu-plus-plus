@@ -20,6 +20,7 @@ package com.github.zly2006.zhihu.data
 import android.content.Context
 import android.util.Log
 import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
@@ -37,7 +38,10 @@ suspend fun DataHolder.getContentDetail(
     context: Context,
     dest: Article,
 ): DataHolder.Content? {
-    val apiUrl = zhihuArticleContentDetailUrl(dest)
+    val apiUrl = when (dest.type) {
+        ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${dest.id}?include=content,topics,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,relationship,ip_info,relationship.vote,author.badge_v2"
+        ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${dest.id}?include=content,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,attachment,reaction,ip_info,pagination_info,question.topics,reaction.relation.voting,author.badge_v2"
+    }
 
     return runCatching {
         val jo = AccountData.fetchGet(context, apiUrl) { signFetchRequest() }!!
@@ -55,7 +59,7 @@ suspend fun DataHolder.getContentDetail(
     context: Context,
     question: Question,
 ): DataHolder.Question? {
-    val apiUrl = zhihuQuestionContentDetailUrl(question)
+    val apiUrl = "https://www.zhihu.com/api/v4/questions/${question.questionId}?include=read_count,visit_count,answer_count,voteup_count,comment_count,follower_count,detail,excerpt,author,relationship.is_following,topics"
 
     return runCatching {
         val jo = AccountData.fetchGet(context, apiUrl) { signFetchRequest() }!!
@@ -73,7 +77,7 @@ suspend fun DataHolder.getContentDetail(
     context: Context,
     pin: Pin,
 ): DataHolder.Pin? {
-    val apiUrl = zhihuPinContentDetailUrl(pin)
+    val apiUrl = "https://www.zhihu.com/api/v4/pins/${pin.id}"
 
     return runCatching {
         val jo = AccountData.fetchGet(context, apiUrl) { signFetchRequest() }!!
