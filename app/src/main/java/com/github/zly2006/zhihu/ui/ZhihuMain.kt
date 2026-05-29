@@ -51,6 +51,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
+import top.yukonga.miuix.kmp.basic.NavigationBar as MiuixNavigationBar
+import top.yukonga.miuix.kmp.basic.NavigationBarItem as MiuixNavigationBarItem
+import top.yukonga.miuix.kmp.basic.NavigationBarDisplayMode
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
@@ -120,10 +123,22 @@ import com.github.zly2006.zhihu.ui.miuix.MiuixAboutScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixAccountSettingScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixBlocklistSettingsScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixCollectionScreen
+import com.github.zly2006.zhihu.ui.miuix.MiuixDailyScreen
 import com.github.zly2006.zhihu.ui.subscreens.AboutScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixFollowScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixFollowTopLevelPage
+import com.github.zly2006.zhihu.ui.miuix.MiuixHotListScreen
+import com.github.zly2006.zhihu.ui.miuix.MiuixLocalHistoryScreen
+import com.github.zly2006.zhihu.ui.miuix.MiuixOnlineHistoryScreen
+import com.github.zly2006.zhihu.ui.miuix.MiuixPeopleScreen
+import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
+import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
+import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
+import top.yukonga.miuix.kmp.blur.LayerBackdrop
+import top.yukonga.miuix.kmp.blur.layerBackdrop
+import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixContentFilterSettingsScreen
 import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixNotificationSettingsScreen
+import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixOpenSourceLicensesScreen
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.BlockedFeedHistoryScreen
@@ -227,6 +242,10 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
             }
         }
     }
+
+    val useMiuix = ThemeManager.getThemeStyle() == ThemeStyle.Miuix
+    val blurEnabled = preferences.getBoolean("blurEnabled", true)
+    val bottomBarBackdrop = rememberMiuixBlurBackdrop(useMiuix && blurEnabled)
 
     val allBottomBarItems = listOf(
         Triple(Home, "主页", Icons.Filled.Home),
@@ -340,68 +359,90 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     enter = slideInVertically(tween(200)) { it },
                     exit = slideOutVertically(tween(200)) { it },
                 ) {
-                    NavigationBar(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        modifier = Modifier.height(
-                            (if (duo3NavStyle) 64.dp else 56.dp) + bottomPadding,
-                        ),
-                    ) {
-                        @Composable
-                        fun Item(
-                            destination: TopLevelDestination,
-                            label: String,
-                            icon: ImageVector,
+                    if (useMiuix) {
+                        MiuixNavigationBar(
+                            modifier = Modifier
+                                .height(64.dp + bottomPadding)
+                                .installerMiuixBlurEffect(bottomBarBackdrop),
+                            color = bottomBarBackdrop.getMiuixAppBarColor(),
                         ) {
-                            val tag = "nav_tab_${destination.name.lowercase()}"
-                            NavigationBarItem(
-                                currentBottomDestination?.let { it::class == destination::class } == true,
-                                onClick = {
-                                    if (currentBottomDestination?.let { it::class == destination::class } != true) {
-                                        navigateTopLevel(destination)
-                                    } else if (tapToScrollToTopEnabled) {
-                                        scrollToTopTrigger++
-                                    }
-                                },
-                                label = {
-                                    if (duo3NavStyle) {
-                                        Text(label)
-                                    } else {
-                                        Text(
-                                            label,
-                                            style = TextStyle(
-                                                fontSize = 9.sp,
-                                                color = LocalContentColor.current.copy(alpha = 0.6f),
-                                            ),
-                                        )
-                                    }
-                                },
-                                alwaysShowLabel = duo3NavStyle,
-                                colors = if (duo3NavStyle) {
-                                    if (!ThemeManager.isDarkTheme()) {
-                                        NavigationBarItemDefaults.colors().copy(
-                                            selectedIndicatorColor =
-                                                MaterialTheme.colorScheme.secondaryContainer
-                                                    .copy(alpha = 0.92f)
-                                                    .compositeOver(MaterialTheme.colorScheme.secondary),
-                                        )
-                                    } else {
-                                        NavigationBarItemDefaults.colors()
-                                    }
-                                } else {
-                                    NavigationBarItemDefaults.colors(
-                                        selectedIconColor = Color(0xff66ccff),
-                                        indicatorColor = Color.Transparent,
-                                    )
-                                },
-                                icon = {
-                                    Icon(icon, contentDescription = label)
-                                },
-                                modifier = (if (duo3NavStyle) Modifier.padding(top = 4.dp) else Modifier).testTag(tag),
-                            )
+                            bottomBarItems.forEach { item ->
+                                val selected = currentBottomDestination?.let { it::class == item.first::class } == true
+                                MiuixNavigationBarItem(
+                                    selected = selected,
+                                    onClick = {
+                                        if (!selected) navigateTopLevel(item.first)
+                                        else if (tapToScrollToTopEnabled) scrollToTopTrigger++
+                                    },
+                                    icon = item.third,
+                                    label = item.second,
+                                )
+                            }
                         }
+                    } else {
+                        NavigationBar(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            modifier = Modifier.height(
+                                (if (duo3NavStyle) 64.dp else 56.dp) + bottomPadding,
+                            ),
+                        ) {
+                            @Composable
+                            fun Item(
+                                destination: TopLevelDestination,
+                                label: String,
+                                icon: ImageVector,
+                            ) {
+                                val tag = "nav_tab_${destination.name.lowercase()}"
+                                NavigationBarItem(
+                                    currentBottomDestination?.let { it::class == destination::class } == true,
+                                    onClick = {
+                                        if (currentBottomDestination?.let { it::class == destination::class } != true) {
+                                            navigateTopLevel(destination)
+                                        } else if (tapToScrollToTopEnabled) {
+                                            scrollToTopTrigger++
+                                        }
+                                    },
+                                    label = {
+                                        if (duo3NavStyle) {
+                                            Text(label)
+                                        } else {
+                                            Text(
+                                                label,
+                                                style = TextStyle(
+                                                    fontSize = 9.sp,
+                                                    color = LocalContentColor.current.copy(alpha = 0.6f),
+                                                ),
+                                            )
+                                        }
+                                    },
+                                    alwaysShowLabel = duo3NavStyle,
+                                    colors = if (duo3NavStyle) {
+                                        if (!ThemeManager.isDarkTheme()) {
+                                            NavigationBarItemDefaults.colors().copy(
+                                                selectedIndicatorColor =
+                                                    MaterialTheme.colorScheme.secondaryContainer
+                                                        .copy(alpha = 0.92f)
+                                                        .compositeOver(MaterialTheme.colorScheme.secondary),
+                                            )
+                                        } else {
+                                            NavigationBarItemDefaults.colors()
+                                        }
+                                    } else {
+                                        NavigationBarItemDefaults.colors(
+                                            selectedIconColor = Color(0xff66ccff),
+                                            indicatorColor = Color.Transparent,
+                                        )
+                                    },
+                                    icon = {
+                                        Icon(icon, contentDescription = label)
+                                    },
+                                    modifier = (if (duo3NavStyle) Modifier.padding(top = 4.dp) else Modifier).testTag(tag),
+                                )
+                            }
 
-                        bottomBarItems.forEach { item ->
-                            Item(item.first, item.second, item.third)
+                            bottomBarItems.forEach { item ->
+                                Item(item.first, item.second, item.third)
+                            }
                         }
                     }
                 }
@@ -439,6 +480,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                         pages = mainTabPages,
                         scrollToTopTrigger = scrollToTopTrigger,
                         innerPadding = innerPadding,
+                        bottomBarBackdrop = bottomBarBackdrop,
                         onFollowTabSelected = { followTabIndex ->
                             val page = if (followTabIndex == 0) {
                                 MainTabPage.FollowRecommendPage
@@ -504,7 +546,11 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     ArticleScreen(article, viewModel)
                 }
                 composable<HotList> {
-                    HotListScreen(innerPadding)
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixHotListScreen(innerPadding)
+                    } else {
+                        HotListScreen(innerPadding)
+                    }
                 }
                 composable<Follow> {
                     if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
@@ -520,10 +566,18 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     }
                 }
                 composable<Daily> {
-                    DailyScreen()
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixDailyScreen()
+                    } else {
+                        DailyScreen()
+                    }
                 }
                 composable<History> {
-                    LegacyLocalHistoryScreen(innerPadding)
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixLocalHistoryScreen(innerPadding)
+                    } else {
+                        LegacyLocalHistoryScreen(innerPadding)
+                    }
                 }
                 composable<OnlineHistory> {
                     OnlineHistoryScreen()
@@ -554,7 +608,11 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 }
                 composable<Person> {
                     val person: Person = it.toRoute()
-                    PeopleScreen(person)
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixPeopleScreen(person)
+                    } else {
+                        PeopleScreen(person)
+                    }
                 }
                 composable<Pin> {
                     val pin = it.toRoute<Pin>()
@@ -600,7 +658,11 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 }
                 composable<Account.RecommendSettings> {
                     val args = it.toRoute<Account.RecommendSettings>()
-                    ContentFilterSettingsScreen(args.setting)
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixContentFilterSettingsScreen(args.setting)
+                    } else {
+                        ContentFilterSettingsScreen(args.setting)
+                    }
                 }
                 composable<Account.SystemAndUpdateSettings> {
                     SystemAndUpdateSettingsScreen()
@@ -613,7 +675,11 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     }
                 }
                 composable<Account.OpenSourceLicenses> {
-                    OpenSourceLicensesScreen()
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixOpenSourceLicensesScreen()
+                    } else {
+                        OpenSourceLicensesScreen()
+                    }
                 }
                 composable<Account.DeveloperSettings> {
                     DeveloperSettingsScreen()
@@ -633,11 +699,13 @@ private fun MainTabsPager(
     pages: List<MainTabPage>,
     scrollToTopTrigger: Int,
     innerPadding: androidx.compose.foundation.layout.PaddingValues,
+    bottomBarBackdrop: LayerBackdrop? = null,
     onFollowTabSelected: (Int) -> Unit,
 ) {
     HorizontalPager(
         state = pagerState,
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize()
+            .then(if (bottomBarBackdrop != null) Modifier.layerBackdrop(bottomBarBackdrop) else Modifier),
     ) { pageIndex ->
         val page = pages.getOrNull(pageIndex) ?: return@HorizontalPager
         when (page) {
@@ -671,9 +739,21 @@ private fun MainTabsPager(
                     isActive = pagerState.currentPage == pageIndex,
                 )
             }
-            MainTabPage.HotListPage -> HotListScreen(innerPadding)
-            MainTabPage.DailyPage -> DailyScreen()
-            MainTabPage.OnlineHistoryPage -> OnlineHistoryScreen()
+            MainTabPage.HotListPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                MiuixHotListScreen(innerPadding)
+            } else {
+                HotListScreen(innerPadding)
+            }
+            MainTabPage.DailyPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                MiuixDailyScreen()
+            } else {
+                DailyScreen()
+            }
+            MainTabPage.OnlineHistoryPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                MiuixOnlineHistoryScreen()
+            } else {
+                OnlineHistoryScreen()
+            }
             MainTabPage.AccountPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
                 MiuixAccountSettingScreen(innerPadding)
             } else {

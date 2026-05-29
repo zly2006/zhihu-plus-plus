@@ -1,0 +1,404 @@
+/*
+ * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
+ *
+ * Licensed under AGPL-3.0-only.
+ */
+
+package com.github.zly2006.zhihu.ui.miuix
+
+import android.content.Context
+import android.content.Intent
+import androidx.activity.compose.LocalActivity
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.data.DailyStory
+import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.navigation.resolveContent
+import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
+import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
+import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
+import com.github.zly2006.zhihu.ui.DailyScreenUiState
+import com.github.zly2006.zhihu.ui.DailySection
+import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.viewmodel.DailyViewModel
+import kotlinx.coroutines.launch
+import kotlinx.serialization.json.jsonPrimitive
+import org.jsoup.Jsoup
+import top.yukonga.miuix.kmp.blur.layerBackdrop
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.basic.PullToRefresh
+import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.utils.overScrollVertical
+import top.yukonga.miuix.kmp.utils.scrollEndHaptic
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MiuixDailyScreen(
+    testState: DailyScreenUiState? = null,
+    onTestDateSelected: ((String) -> Unit)? = null,
+    onTestLoadMore: (() -> Unit)? = null,
+) {
+    val navigator = LocalNavigator.current
+    val context = LocalActivity.current as MainActivity
+    val viewModel = viewModel<DailyViewModel>()
+    val isTestMode = testState != null
+    var isRefreshing by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val listState = rememberLazyListState()
+    val uiState = testState ?: DailyScreenUiState(
+        sections = viewModel.sections,
+        isLoading = viewModel.isLoading,
+        isLoadingMore = viewModel.isLoadingMore,
+        error = viewModel.error,
+    )
+    val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE) }
+    val blurEnabled = remember { mutableStateOf(preferences.getBoolean("blurEnabled", true)) }
+    val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
+    val scrollBehavior = MiuixScrollBehavior()
+
+    LaunchedEffect(listState, isTestMode, onTestLoadMore) {
+        snapshotFlow {
+            val info = listState.layoutInfo
+            (info.visibleItemsInfo.lastOrNull()?.index ?: 0) to info.totalItemsCount
+        }.collect { (last, total) ->
+            if (total > 0 && last >= total - 3) {
+                if (isTestMode) {
+                    onTestLoadMore?.invoke()
+                } else {
+                    viewModel.loadMore(context.httpClient)
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(isTestMode) {
+        if (!isTestMode && viewModel.sections.isEmpty()) {
+            viewModel.loadLatest(context.httpClient)
+        }
+    }
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = System.currentTimeMillis(),
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDatePicker = false
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val sdf = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
+                        val dateStr = sdf.format(Date(millis))
+                        scope.launch {
+                            if (isTestMode) {
+                                onTestDateSelected?.invoke(dateStr)
+                            } else {
+                                viewModel.loadDate(context.httpClient, dateStr)
+                                listState.scrollToItem(0)
+                            }
+                        }
+                    }
+                }) { Text("确认") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("取消") }
+            },
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                modifier = Modifier.installerMiuixBlurEffect(backdrop),
+                color = backdrop.getMiuixAppBarColor(),
+                title = "知乎日报",
+                actions = {
+                    IconButton(
+                        onClick = { showDatePicker = true },
+                        modifier = Modifier.testTag(DAILY_SCREEN_DATE_PICKER_BUTTON_TAG),
+                    ) {
+                        Icon(Icons.Filled.DateRange, contentDescription = "选择日期")
+                    }
+                },
+                scrollBehavior = scrollBehavior,
+            )
+        },
+    ) { padding ->
+        PullToRefresh(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                scope.launch {
+                    isRefreshing = true
+                    if (!isTestMode) {
+                        viewModel.loadLatest(context.httpClient)
+                        listState.scrollToItem(0)
+                    }
+                    isRefreshing = false
+                }
+            },
+            contentPadding = PaddingValues(top = padding.calculateTopPadding() + 6.dp),
+            refreshTexts = listOf("下拉刷新", "释放刷新", "正在刷新...", "刷新完成"),
+        ) {
+            Box(
+                modifier = if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier,
+            ) {
+                when {
+                    uiState.isLoading -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize().testTag(DAILY_SCREEN_LOADING_TAG),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                CircularProgressIndicator()
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text("正在加载...", color = MiuixTheme.colorScheme.onSurfaceSecondary)
+                            }
+                        }
+                    }
+
+                    uiState.error != null -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize().testTag(DAILY_SCREEN_ERROR_TAG),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(uiState.error ?: "未知错误", color = MiuixTheme.colorScheme.error)
+                        }
+                    }
+
+                    uiState.sections.isEmpty() -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize().testTag(DAILY_SCREEN_EMPTY_TAG),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text("暂无内容", fontSize = 16.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary)
+                        }
+                    }
+
+                    else -> {
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.fillMaxSize()
+                                .fillMaxHeight()
+                                .overScrollVertical()
+                                .scrollEndHaptic()
+                                .nestedScroll(scrollBehavior.nestedScrollConnection)
+                                .testTag(DAILY_SCREEN_LIST_TAG),
+                            contentPadding = PaddingValues(
+                                top = padding.calculateTopPadding() + 8.dp,
+                                bottom = padding.calculateBottomPadding() + 8.dp,
+                            ),
+                        ) {
+                            uiState.sections.forEach { section ->
+                                item(key = "header_${section.date}") {
+                                    MiuixDateHeader(
+                                        date = formatDate(section.date),
+                                        modifier = Modifier.testTag(dailySectionHeaderTag(section.date)),
+                                    )
+                                }
+                                items(section.stories, key = { "story_${it.id}" }) { story ->
+                                    MiuixDailyStoryCard(
+                                        story = story,
+                                        modifier = Modifier.testTag(dailyStoryCardTag(story.id)),
+                                        onClick = {
+                                            if (!isTestMode) {
+                                                scope.launch {
+                                                    val jojo = AccountData.fetchGet(context, "https://daily.zhihu.com/api/7/story/${story.id}")!!
+                                                    val body = Jsoup.parse(jojo["body"]!!.jsonPrimitive.content)
+                                                    val url = body.selectFirst("a")?.attr("href")
+                                                    val destination = url?.let(::resolveContent)
+                                                    if (destination != null) {
+                                                        navigator.onNavigate(destination)
+                                                    } else {
+                                                        val intent = Intent(Intent.ACTION_VIEW, story.url.toUri())
+                                                        context.startActivity(intent)
+                                                    }
+                                                }
+                                            }
+                                        },
+                                    )
+                                }
+                            }
+
+                            if (uiState.isLoadingMore) {
+                                item(key = "loading_more") {
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MiuixDateHeader(date: String, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Box(
+                modifier = Modifier.weight(1f).height(1.dp)
+                    .background(MiuixTheme.colorScheme.onSurface.copy(alpha = 0.2f)),
+            )
+            Text(
+                text = date,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = MiuixTheme.colorScheme.primary,
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
+            Box(
+                modifier = Modifier.weight(1f).height(1.dp)
+                    .background(MiuixTheme.colorScheme.onSurface.copy(alpha = 0.2f)),
+            )
+        }
+    }
+}
+
+@Composable
+private fun MiuixDailyStoryCard(
+    story: DailyStory,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Card(
+        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+            .clickable(onClick = onClick),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            if (story.images.isNotEmpty()) {
+                AsyncImage(
+                    model = story.images.first(),
+                    contentDescription = story.title,
+                    modifier = Modifier.weight(0.3f, fill = true).clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop,
+                )
+            }
+
+            Column(
+                modifier = Modifier.weight(0.7f),
+                verticalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = story.title,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 4,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MiuixTheme.colorScheme.onSurface,
+                )
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Filled.AccessTime,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MiuixTheme.colorScheme.onSurfaceSecondary,
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = story.hint,
+                        fontSize = 12.sp,
+                        color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun formatDate(dateString: String): String = try {
+    val inputFormat = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
+    val outputFormat = SimpleDateFormat("yyyy年MM月dd日", Locale.getDefault())
+    val date = inputFormat.parse(dateString)
+    outputFormat.format(date ?: Date())
+} catch (e: Exception) {
+    dateString
+}
+
+private fun dailySectionHeaderTag(date: String) = "daily_screen_section_$date"
+
+private fun dailyStoryCardTag(storyId: Long) = "daily_screen_story_$storyId"
+
+private const val DAILY_SCREEN_TITLE_TAG = "daily_screen_title"
+private const val DAILY_SCREEN_DATE_PICKER_BUTTON_TAG = "daily_screen_date_picker_button"
+private const val DAILY_SCREEN_LOADING_TAG = "daily_screen_loading"
+private const val DAILY_SCREEN_ERROR_TAG = "daily_screen_error"
+private const val DAILY_SCREEN_EMPTY_TAG = "daily_screen_empty"
+private const val DAILY_SCREEN_LIST_TAG = "daily_screen_list"

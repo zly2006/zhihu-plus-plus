@@ -21,8 +21,10 @@ import android.content.Context.MODE_PRIVATE
 import android.widget.Toast
 import androidx.activity.compose.LocalActivity
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -35,9 +37,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.HotListFeed
@@ -48,6 +53,13 @@ import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.viewmodel.feed.HotListViewModel
+import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.basic.PullToRefresh
+import top.yukonga.miuix.kmp.basic.ScrollBehavior
+import top.yukonga.miuix.kmp.blur.LayerBackdrop
+import top.yukonga.miuix.kmp.blur.layerBackdrop
+import top.yukonga.miuix.kmp.utils.overScrollVertical
+import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
 const val HOT_LIST_LIST_TAG = "hot_list_list"
 const val HOT_LIST_REFRESH_BUTTON_TAG = "hot_list_refresh_button"
@@ -58,9 +70,13 @@ fun HotListScreen(
     innerPadding: PaddingValues = PaddingValues(0.dp),
     onTestRefreshClick: (() -> Unit)? = null,
     onTestLoadMore: (() -> Unit)? = null,
+    backdrop: LayerBackdrop? = null,
+    scrollBehavior: ScrollBehavior? = null,
+    contentTopPadding: Dp = 0.dp,
 ) {
     val context = LocalActivity.current as MainActivity
     val viewModel: HotListViewModel by context.viewModels()
+    val scope = rememberCoroutineScope()
     val preferences = remember {
         context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
     }
@@ -77,45 +93,74 @@ fun HotListScreen(
         }
     }
 
-    // Block user confirm dialog
     var showBlockUserDialog by remember { mutableStateOf(false) }
     var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) }
 
     Column {
-        FeedPullToRefresh(viewModel) {
-            PaginatedList(
-                items = viewModel.displayItems,
-                onLoadMore = { onTestLoadMore?.invoke() ?: viewModel.loadMore(context) },
-                modifier = Modifier
-                    .padding(innerPadding)
-                    .testTag(HOT_LIST_LIST_TAG),
-                isEnd = { viewModel.isEnd },
-                footer = ProgressIndicatorFooter,
-            ) { item ->
-                FeedCard(
-                    item,
-                    thumbnailUrl = (item.feed as? HotListFeed)?.children?.firstOrNull()?.thumbnail,
-                )
+        if (backdrop != null) {
+            // miuix path
+            PullToRefresh(
+                isRefreshing = viewModel.isPullToRefresh && viewModel.isLoading,
+                onRefresh = { scope.launch { viewModel.pullToRefresh(context) } },
+                contentPadding = PaddingValues(top = contentTopPadding + 6.dp),
+                refreshTexts = listOf("下拉刷新", "释放刷新", "正在刷新...", "刷新完成"),
+            ) {
+                Box(modifier = Modifier.layerBackdrop(backdrop)) {
+                    PaginatedList(
+                        items = viewModel.displayItems,
+                        onLoadMore = { onTestLoadMore?.invoke() ?: viewModel.loadMore(context) },
+                        modifier = Modifier.fillMaxHeight().overScrollVertical().scrollEndHaptic()
+                            .then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier)
+                            .testTag(HOT_LIST_LIST_TAG),
+                        contentPadding = PaddingValues(top = contentTopPadding + 6.dp),
+                        isEnd = { viewModel.isEnd },
+                    ) { item ->
+                        com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard(
+                            item = item,
+                            thumbnailUrl = (item.feed as? HotListFeed)?.children?.firstOrNull()?.thumbnail,
+                        )
+                    }
+                }
+                val showRefreshFab = remember { preferences.getBoolean("showRefreshFab", true) }
+                if (showRefreshFab) {
+                    DraggableRefreshButton(
+                        modifier = Modifier.testTag(HOT_LIST_REFRESH_BUTTON_TAG),
+                        onClick = { onTestRefreshClick?.invoke() ?: viewModel.refresh(context) },
+                    ) {
+                        if (viewModel.isLoading) CircularProgressIndicator(modifier = Modifier.size(36.dp))
+                        else Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                    }
+                }
             }
+        } else {
+            // M3 path
+            FeedPullToRefresh(viewModel) {
+                PaginatedList(
+                    items = viewModel.displayItems,
+                    onLoadMore = { onTestLoadMore?.invoke() ?: viewModel.loadMore(context) },
+                    modifier = Modifier.padding(innerPadding).testTag(HOT_LIST_LIST_TAG),
+                    isEnd = { viewModel.isEnd },
+                    footer = ProgressIndicatorFooter,
+                ) { item ->
+                    FeedCard(
+                        item,
+                        thumbnailUrl = (item.feed as? HotListFeed)?.children?.firstOrNull()?.thumbnail,
+                    )
+                }
 
-            val showRefreshFab = remember { preferences.getBoolean("showRefreshFab", true) }
-            if (showRefreshFab) {
-                DraggableRefreshButton(
-                    modifier = Modifier.testTag(HOT_LIST_REFRESH_BUTTON_TAG),
-                    onClick = {
-                        onTestRefreshClick?.invoke() ?: viewModel.refresh(context)
-                    },
-                ) {
-                    if (viewModel.isLoading) {
-                        CircularProgressIndicator(modifier = Modifier.size(36.dp))
-                    } else {
-                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                val showRefreshFab = remember { preferences.getBoolean("showRefreshFab", true) }
+                if (showRefreshFab) {
+                    DraggableRefreshButton(
+                        modifier = Modifier.testTag(HOT_LIST_REFRESH_BUTTON_TAG),
+                        onClick = { onTestRefreshClick?.invoke() ?: viewModel.refresh(context) },
+                    ) {
+                        if (viewModel.isLoading) CircularProgressIndicator(modifier = Modifier.size(36.dp))
+                        else Icon(Icons.Default.Refresh, contentDescription = "刷新")
                     }
                 }
             }
         }
 
-        // Block user confirm dialog
         BlockUserConfirmDialog(
             showDialog = showBlockUserDialog,
             userToBlock = userToBlock,

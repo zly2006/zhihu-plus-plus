@@ -70,20 +70,17 @@ import com.github.zly2006.zhihu.ui.followingUserItemTag
 import com.github.zly2006.zhihu.viewmodel.feed.RecentMomentsViewModel
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.TabRow
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
-import top.yukonga.miuix.kmp.basic.Scaffold
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
-import top.yukonga.miuix.kmp.blur.layerBackdrop
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -95,10 +92,12 @@ fun MiuixFollowScreen(
     onTestDynamicRefreshClick: (() -> Unit)? = null,
     onTestDynamicLoadMore: (() -> Unit)? = null,
 ) {
+    val context = LocalActivity.current as MainActivity
     val viewModel = viewModel<FollowScreenData>()
     val pagerState = rememberPagerState(pageCount = { 2 })
     val coroutineScope = rememberCoroutineScope()
-    val backdrop = rememberMiuixBlurBackdrop(true)
+    val blurEnabled = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE).getBoolean("blurEnabled", true) }
+    val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
 
     LaunchedEffect(pagerState.currentPage) { viewModel.selectedTabIndex = pagerState.currentPage }
@@ -108,34 +107,47 @@ fun MiuixFollowScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            Column(
                 modifier = Modifier.installerMiuixBlurEffect(backdrop),
-                color = backdrop.getMiuixAppBarColor(),
-                title = "关注",
-                scrollBehavior = scrollBehavior,
-            )
+            ) {
+                TopAppBar(
+                    color = backdrop.getMiuixAppBarColor(),
+                    title = "关注",
+                    scrollBehavior = scrollBehavior,
+                )
+                MiuixFollowTabRow(
+                    selectedTabIndex = viewModel.selectedTabIndex,
+                    onTabSelected = { index ->
+                        viewModel.selectedTabIndex = index
+                        coroutineScope.launch { pagerState.animateScrollToPage(index) }
+                    },
+                )
+            }
         },
     ) { padding ->
-        Column(
-            modifier = Modifier.fillMaxSize()
-                .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
-                .padding(padding)
-                .padding(bottom = innerPadding.calculateBottomPadding()),
-        ) {
-            MiuixFollowTabRow(
-                selectedTabIndex = viewModel.selectedTabIndex,
-                onTabSelected = { index -> viewModel.selectedTabIndex = index; coroutineScope.launch { pagerState.animateScrollToPage(index) } },
-            )
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.fillMaxSize().testTag(FOLLOW_SCREEN_PAGER_TAG),
-            ) { page ->
-                when (page) {
-                    0 -> FollowRecommendScreen(scrollToTopTrigger = scrollToTopTrigger, isActive = pagerState.currentPage == 0,
-                        onTestRefreshClick = onTestRecommendRefreshClick, onTestLoadMore = onTestRecommendLoadMore)
-                    1 -> FollowDynamicScreen(scrollToTopTrigger = scrollToTopTrigger, isActive = pagerState.currentPage == 1,
-                        onTestRefreshClick = onTestDynamicRefreshClick, onTestLoadMore = onTestDynamicLoadMore)
-                }
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize().testTag(FOLLOW_SCREEN_PAGER_TAG),
+        ) { page ->
+            when (page) {
+                0 -> FollowRecommendScreen(
+                    scrollToTopTrigger = scrollToTopTrigger,
+                    isActive = pagerState.currentPage == 0,
+                    backdrop = backdrop,
+                    scrollBehavior = scrollBehavior,
+                    contentTopPadding = padding.calculateTopPadding(),
+                    onTestRefreshClick = onTestRecommendRefreshClick,
+                    onTestLoadMore = onTestRecommendLoadMore,
+                )
+                1 -> FollowDynamicScreen(
+                    scrollToTopTrigger = scrollToTopTrigger,
+                    isActive = pagerState.currentPage == 1,
+                    backdrop = backdrop,
+                    scrollBehavior = scrollBehavior,
+                    contentTopPadding = padding.calculateTopPadding(),
+                    onTestRefreshClick = onTestDynamicRefreshClick,
+                    onTestLoadMore = onTestDynamicLoadMore,
+                )
             }
         }
     }
@@ -147,30 +159,37 @@ fun MiuixFollowTopLevelPage(
     scrollToTopTrigger: Int = 0, innerPadding: PaddingValues = PaddingValues(0.dp),
     isActive: Boolean = true,
 ) {
-    val backdrop = rememberMiuixBlurBackdrop(true)
+    val context = LocalActivity.current as MainActivity
+    val blurEnabled = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE).getBoolean("blurEnabled", true) }
+    val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
     Scaffold(
         topBar = {
-            TopAppBar(
+            Column(
                 modifier = Modifier.installerMiuixBlurEffect(backdrop),
-                color = backdrop.getMiuixAppBarColor(),
-                title = "关注",
-                scrollBehavior = scrollBehavior,
-            )
+            ) {
+                TopAppBar(
+                    color = backdrop.getMiuixAppBarColor(),
+                    title = "关注",
+                    scrollBehavior = scrollBehavior,
+                )
+                MiuixFollowTabRow(selectedTabIndex = selectedTabIndex, onTabSelected = onTabSelected)
+            }
         },
     ) { padding ->
-        Column(
-            modifier = Modifier.fillMaxSize()
-                .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
-                .padding(padding)
-                .padding(bottom = innerPadding.calculateBottomPadding())
-                .then(if (isActive) Modifier else Modifier.clearAndSetSemantics {}),
-        ) {
-            MiuixFollowTabRow(selectedTabIndex = selectedTabIndex, onTabSelected = onTabSelected)
-            when (selectedTabIndex) {
-                0 -> FollowRecommendScreen(scrollToTopTrigger = scrollToTopTrigger, isActive = isActive)
-                1 -> FollowDynamicScreen(scrollToTopTrigger = scrollToTopTrigger, isActive = isActive)
-            }
+        when (selectedTabIndex) {
+            0 -> FollowRecommendScreen(
+                scrollToTopTrigger = scrollToTopTrigger, isActive = isActive,
+                backdrop = backdrop,
+                scrollBehavior = scrollBehavior,
+                contentTopPadding = padding.calculateTopPadding(),
+            )
+            1 -> FollowDynamicScreen(
+                scrollToTopTrigger = scrollToTopTrigger, isActive = isActive,
+                backdrop = backdrop,
+                scrollBehavior = scrollBehavior,
+                contentTopPadding = padding.calculateTopPadding(),
+            )
         }
     }
 }

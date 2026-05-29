@@ -66,7 +66,17 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import top.yukonga.miuix.kmp.basic.PullToRefresh
+import top.yukonga.miuix.kmp.basic.ScrollBehavior
+import top.yukonga.miuix.kmp.blur.LayerBackdrop
+import top.yukonga.miuix.kmp.blur.layerBackdrop
+import top.yukonga.miuix.kmp.utils.overScrollVertical
+import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
@@ -304,6 +314,9 @@ fun FollowingUsersRow() {
 fun FollowRecommendScreen(
     scrollToTopTrigger: Int = 0,
     isActive: Boolean = true,
+    backdrop: LayerBackdrop? = null,
+    scrollBehavior: ScrollBehavior? = null,
+    contentTopPadding: Dp = 0.dp,
     onTestRefreshClick: (() -> Unit)? = null,
     onTestLoadMore: (() -> Unit)? = null,
 ) {
@@ -343,56 +356,93 @@ fun FollowRecommendScreen(
         }
     }
 
-    // 屏蔽用户确认对话框
     var showBlockUserDialog by remember { mutableStateOf(false) }
     var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) }
 
-    Column {
-        FeedPullToRefresh(viewModel) {
-            PaginatedList(
-                items = viewModel.displayItems,
-                listState = listState,
-                modifier = Modifier.testTag(FOLLOW_RECOMMEND_LIST_TAG),
-                topContent = {
-                    item {
-                        FollowingUsersRow()
-                    }
-                },
-                onLoadMore = { onTestLoadMore?.invoke() ?: viewModel.loadMore(context) },
-                footer = ProgressIndicatorFooter,
-            ) { item ->
-                FeedCard(
-                    item = item,
-                    modifier = Modifier.testTag(followRecommendItemTag(item.stableKey)),
-                    onBlockUser = { feedItem ->
-                        viewModel.handleBlockUser(context, feedItem) { authorInfo ->
-                            userToBlock = authorInfo
-                            showBlockUserDialog = true
-                        }
-                    },
-                    onBlockTopic = { topicId, topicName ->
-                        viewModel.handleBlockTopic(context, topicId, topicName)
-                    },
-                )
-            }
+    val scope = rememberCoroutineScope()
 
-            if (showRefreshFab) {
-                DraggableRefreshButton(
-                    modifier = Modifier.testTag(FOLLOW_RECOMMEND_REFRESH_BUTTON_TAG),
-                    onClick = {
-                        onTestRefreshClick?.invoke() ?: viewModel.refresh(context)
-                    },
-                ) {
-                    if (viewModel.isLoading) {
-                        CircularProgressIndicator(modifier = Modifier.size(36.dp))
-                    } else {
-                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
+    Column {
+        if (backdrop != null) {
+            // miuix path
+            PullToRefresh(
+                isRefreshing = viewModel.isPullToRefresh && viewModel.isLoading,
+                onRefresh = { scope.launch { viewModel.pullToRefresh(context) } },
+                contentPadding = PaddingValues(top = contentTopPadding + 6.dp),
+                refreshTexts = listOf("下拉刷新", "释放刷新", "正在刷新...", "刷新完成"),
+            ) {
+                Box(modifier = Modifier.layerBackdrop(backdrop)) {
+                    PaginatedList(
+                        items = viewModel.displayItems,
+                        listState = listState,
+                        modifier = Modifier.fillMaxHeight().overScrollVertical().scrollEndHaptic()
+                            .then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier)
+                            .testTag(FOLLOW_RECOMMEND_LIST_TAG),
+                        contentPadding = PaddingValues(top = contentTopPadding + 6.dp),
+                        topContent = { item { FollowingUsersRow() } },
+                        onLoadMore = { onTestLoadMore?.invoke() ?: viewModel.loadMore(context) },
+                    ) { item ->
+                        FeedCard(
+                            item = item,
+                            modifier = Modifier.testTag(followRecommendItemTag(item.stableKey)),
+                            onBlockUser = { feedItem ->
+                                viewModel.handleBlockUser(context, feedItem) { authorInfo ->
+                                    userToBlock = authorInfo
+                                    showBlockUserDialog = true
+                                }
+                            },
+                            onBlockTopic = { topicId, topicName ->
+                                viewModel.handleBlockTopic(context, topicId, topicName)
+                            },
+                        )
+                    }
+                }
+                if (showRefreshFab) {
+                    DraggableRefreshButton(
+                        modifier = Modifier.testTag(FOLLOW_RECOMMEND_REFRESH_BUTTON_TAG),
+                        onClick = { onTestRefreshClick?.invoke() ?: viewModel.refresh(context) },
+                    ) {
+                        if (viewModel.isLoading) CircularProgressIndicator(modifier = Modifier.size(36.dp))
+                        else Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                    }
+                }
+            }
+        } else {
+            // M3 path
+            FeedPullToRefresh(viewModel) {
+                PaginatedList(
+                    items = viewModel.displayItems,
+                    listState = listState,
+                    modifier = Modifier.testTag(FOLLOW_RECOMMEND_LIST_TAG),
+                    topContent = { item { FollowingUsersRow() } },
+                    onLoadMore = { onTestLoadMore?.invoke() ?: viewModel.loadMore(context) },
+                    footer = ProgressIndicatorFooter,
+                ) { item ->
+                    FeedCard(
+                        item = item,
+                        modifier = Modifier.testTag(followRecommendItemTag(item.stableKey)),
+                        onBlockUser = { feedItem ->
+                            viewModel.handleBlockUser(context, feedItem) { authorInfo ->
+                                userToBlock = authorInfo
+                                showBlockUserDialog = true
+                            }
+                        },
+                        onBlockTopic = { topicId, topicName ->
+                            viewModel.handleBlockTopic(context, topicId, topicName)
+                        },
+                    )
+                }
+                if (showRefreshFab) {
+                    DraggableRefreshButton(
+                        modifier = Modifier.testTag(FOLLOW_RECOMMEND_REFRESH_BUTTON_TAG),
+                        onClick = { onTestRefreshClick?.invoke() ?: viewModel.refresh(context) },
+                    ) {
+                        if (viewModel.isLoading) CircularProgressIndicator(modifier = Modifier.size(36.dp))
+                        else Icon(Icons.Default.Refresh, contentDescription = "刷新")
                     }
                 }
             }
         }
 
-        // 屏蔽用户确认对话框
         BlockUserConfirmDialog(
             showDialog = showBlockUserDialog,
             userToBlock = userToBlock,
@@ -415,6 +465,9 @@ fun FollowRecommendScreen(
 fun FollowDynamicScreen(
     scrollToTopTrigger: Int = 0,
     isActive: Boolean = true,
+    backdrop: LayerBackdrop? = null,
+    scrollBehavior: ScrollBehavior? = null,
+    contentTopPadding: Dp = 0.dp,
     onTestRefreshClick: (() -> Unit)? = null,
     onTestLoadMore: (() -> Unit)? = null,
 ) {
@@ -454,62 +507,97 @@ fun FollowDynamicScreen(
         }
     }
 
-    // 屏蔽用户确认对话框
     var showBlockUserDialog by remember { mutableStateOf(false) }
     var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) }
 
-    Column {
-        FeedPullToRefresh(viewModel) {
-            PaginatedList(
-                items = viewModel.displayItems,
-                listState = listState,
-                modifier = Modifier.testTag(FOLLOW_DYNAMIC_LIST_TAG),
-                onLoadMore = { onTestLoadMore?.invoke() ?: viewModel.loadMore(context) },
-                topContent = {
-                    item {
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-                },
-                footer = ProgressIndicatorFooter,
-            ) { item ->
-                FeedCard(
-                    item = item,
-                    modifier = Modifier.testTag(followDynamicItemTag(item.stableKey)),
-                    onLike = {
-                        Toast.makeText(context, "收到喜欢，功能正在优化", Toast.LENGTH_SHORT).show()
-                    },
-                    onDislike = {
-                        Toast.makeText(context, "收到反馈，功能正在优化", Toast.LENGTH_SHORT).show()
-                    },
-                    onBlockUser = { feedItem ->
-                        viewModel.handleBlockUser(context, feedItem) { authorInfo ->
-                            userToBlock = authorInfo
-                            showBlockUserDialog = true
-                        }
-                    },
-                    onBlockTopic = { topicId, topicName ->
-                        viewModel.handleBlockTopic(context, topicId, topicName)
-                    },
-                )
-            }
+    val scope = rememberCoroutineScope()
 
-            if (showRefreshFab) {
-                DraggableRefreshButton(
-                    modifier = Modifier.testTag(FOLLOW_DYNAMIC_REFRESH_BUTTON_TAG),
-                    onClick = {
-                        onTestRefreshClick?.invoke() ?: viewModel.refresh(context)
-                    },
-                ) {
-                    if (viewModel.isLoading) {
-                        CircularProgressIndicator(modifier = Modifier.size(36.dp))
-                    } else {
-                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
+    Column {
+        if (backdrop != null) {
+            // miuix path
+            PullToRefresh(
+                isRefreshing = viewModel.isPullToRefresh && viewModel.isLoading,
+                onRefresh = { scope.launch { viewModel.pullToRefresh(context) } },
+                contentPadding = PaddingValues(top = contentTopPadding + 6.dp),
+                refreshTexts = listOf("下拉刷新", "释放刷新", "正在刷新...", "刷新完成"),
+            ) {
+                Box(modifier = Modifier.layerBackdrop(backdrop)) {
+                    PaginatedList(
+                        items = viewModel.displayItems,
+                        listState = listState,
+                        modifier = Modifier.fillMaxHeight().overScrollVertical().scrollEndHaptic()
+                            .then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier)
+                            .testTag(FOLLOW_DYNAMIC_LIST_TAG),
+                        contentPadding = PaddingValues(top = contentTopPadding + 6.dp),
+                        topContent = { item { Spacer(modifier = Modifier.height(8.dp)) } },
+                        onLoadMore = { onTestLoadMore?.invoke() ?: viewModel.loadMore(context) },
+                    ) { item ->
+                        FeedCard(
+                            item = item,
+                            modifier = Modifier.testTag(followDynamicItemTag(item.stableKey)),
+                            onLike = { Toast.makeText(context, "收到喜欢，功能正在优化", Toast.LENGTH_SHORT).show() },
+                            onDislike = { Toast.makeText(context, "收到反馈，功能正在优化", Toast.LENGTH_SHORT).show() },
+                            onBlockUser = { feedItem ->
+                                viewModel.handleBlockUser(context, feedItem) { authorInfo ->
+                                    userToBlock = authorInfo
+                                    showBlockUserDialog = true
+                                }
+                            },
+                            onBlockTopic = { topicId, topicName ->
+                                viewModel.handleBlockTopic(context, topicId, topicName)
+                            },
+                        )
+                    }
+                }
+                if (showRefreshFab) {
+                    DraggableRefreshButton(
+                        modifier = Modifier.testTag(FOLLOW_DYNAMIC_REFRESH_BUTTON_TAG),
+                        onClick = { onTestRefreshClick?.invoke() ?: viewModel.refresh(context) },
+                    ) {
+                        if (viewModel.isLoading) CircularProgressIndicator(modifier = Modifier.size(36.dp))
+                        else Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                    }
+                }
+            }
+        } else {
+            // M3 path
+            FeedPullToRefresh(viewModel) {
+                PaginatedList(
+                    items = viewModel.displayItems,
+                    listState = listState,
+                    modifier = Modifier.testTag(FOLLOW_DYNAMIC_LIST_TAG),
+                    topContent = { item { Spacer(modifier = Modifier.height(8.dp)) } },
+                    onLoadMore = { onTestLoadMore?.invoke() ?: viewModel.loadMore(context) },
+                    footer = ProgressIndicatorFooter,
+                ) { item ->
+                    FeedCard(
+                        item = item,
+                        modifier = Modifier.testTag(followDynamicItemTag(item.stableKey)),
+                        onLike = { Toast.makeText(context, "收到喜欢，功能正在优化", Toast.LENGTH_SHORT).show() },
+                        onDislike = { Toast.makeText(context, "收到反馈，功能正在优化", Toast.LENGTH_SHORT).show() },
+                        onBlockUser = { feedItem ->
+                            viewModel.handleBlockUser(context, feedItem) { authorInfo ->
+                                userToBlock = authorInfo
+                                showBlockUserDialog = true
+                            }
+                        },
+                        onBlockTopic = { topicId, topicName ->
+                            viewModel.handleBlockTopic(context, topicId, topicName)
+                        },
+                    )
+                }
+                if (showRefreshFab) {
+                    DraggableRefreshButton(
+                        modifier = Modifier.testTag(FOLLOW_DYNAMIC_REFRESH_BUTTON_TAG),
+                        onClick = { onTestRefreshClick?.invoke() ?: viewModel.refresh(context) },
+                    ) {
+                        if (viewModel.isLoading) CircularProgressIndicator(modifier = Modifier.size(36.dp))
+                        else Icon(Icons.Default.Refresh, contentDescription = "刷新")
                     }
                 }
             }
         }
 
-        // 屏蔽用户确认对话框
         BlockUserConfirmDialog(
             showDialog = showBlockUserDialog,
             userToBlock = userToBlock,
