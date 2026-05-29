@@ -187,3 +187,8 @@ python3 .agents/skills/ui-review-memory/memory_store.py update-status \
 - 阶段性迁移写得差不多，且 `./gradlew assembleLiteDebug` 和 `./gradlew :desktopApp:compileKotlin` 都通过后，可以在本迁移分支里及时提交一次。
 - 本迁移仍需遵守 `$superpowers:using-superpowers` 和 `$superpowers:using-git-worktrees` 的流程要求。
 - 每完成一个功能点，且编译通过，要及时commit。
+
+## 经验教训
+
+### 不要因为 internal 限制就提取/复制函数
+当 KMP 版本的库函数标记为 `internal` 时，不应该把该函数复制到本地文件里实现。正确做法是用 `@Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE")` 强制导入 internal 函数。这在 Kotlin/JVM 和 KMP 中都可以工作，是常见的 workaround。

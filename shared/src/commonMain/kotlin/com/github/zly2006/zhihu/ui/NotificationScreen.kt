@@ -73,7 +73,6 @@ import com.github.zly2006.zhihu.shared.data.NotificationTarget
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.notification.rememberNotificationSettingsStore
-import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.formatRelativeTime
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton

@@ -51,7 +51,6 @@ import com.github.zly2006.zhihu.shared.util.decodeZhidaAnswerData
 import com.github.zly2006.zhihu.shared.util.decodeZhidaStreamErrorMessage
 import com.github.zly2006.zhihu.shared.util.mergeSummaryChunk
 import com.github.zly2006.zhihu.shared.util.parseZhidaSsePayload
-import com.github.zly2006.zhihu.ui.formatArticleDateTime
 import com.github.zly2006.zhihu.util.ArticleExportComment
 import com.github.zly2006.zhihu.util.buildArticleExportCommentsHtml
 import com.github.zly2006.zhihu.util.buildArticleExportFileName
@@ -73,6 +72,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.int
@@ -915,5 +915,23 @@ class ArticleViewModel(
         context.setPlainTextClipboard("Zhihu Article", markdown)
 
         context.showMessage("文章已复制到剪贴板")
+    }
+}
+
+fun formatArticleDateTime(seconds: Long): String {
+    val instant = kotlinx.datetime.Instant.fromEpochSeconds(seconds)
+    val dateTime = instant.toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
+    return buildString {
+        append(dateTime.year.toString().padStart(4, '0'))
+        append('-')
+        append((dateTime.month.ordinal + 1).toString().padStart(2, '0'))
+        append('-')
+        append(dateTime.day.toString().padStart(2, '0'))
+        append(' ')
+        append(dateTime.hour.toString().padStart(2, '0'))
+        append(':')
+        append(dateTime.minute.toString().padStart(2, '0'))
+        append(':')
+        append(dateTime.second.toString().padStart(2, '0'))
     }
 }

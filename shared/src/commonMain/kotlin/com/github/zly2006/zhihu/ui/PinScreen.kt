@@ -82,9 +82,9 @@ import com.github.zly2006.zhihu.shared.util.formatCompactCount
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.getShareText
+import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import kotlinx.datetime.Instant
 import androidx.compose.material.icons.outlined.ThumbUp as OutlinedThumbUp
 
 const val PIN_SCREEN_BACK_BUTTON_TAG = "pin_screen_back_button"
@@ -380,10 +380,10 @@ private fun PinContent(
         Text(
             buildString {
                 append("发布于")
-                append(Instant.fromEpochSeconds(pin.created).toLocalDateTime(TimeZone.currentSystemDefault()).run { "${year}-${(month.ordinal + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')} ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}" })
+                append(Instant.fromEpochSeconds(pin.created).toLocalDateTime(TimeZone.currentSystemDefault()).run { "$year-${(month.ordinal + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')} ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}" })
                 if (pin.updated > pin.created) {
                     append(" · 编辑于")
-                    append(Instant.fromEpochSeconds(pin.updated).toLocalDateTime(TimeZone.currentSystemDefault()).run { "${year}-${(month.ordinal + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')} ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}" })
+                    append(Instant.fromEpochSeconds(pin.updated).toLocalDateTime(TimeZone.currentSystemDefault()).run { "$year-${(month.ordinal + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')} ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}" })
                 }
             },
             style = MaterialTheme.typography.bodySmall,

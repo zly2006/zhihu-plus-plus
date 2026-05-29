@@ -15,6 +15,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+@file:Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE")
+
 package com.github.zly2006.zhihu.ui
 
 import androidx.compose.animation.AnimatedVisibility
@@ -35,7 +37,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -80,10 +81,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.material3.TwoRowsTopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -111,7 +110,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewModelScope
@@ -128,7 +126,6 @@ import com.github.zly2006.zhihu.navigation.zhihuArticleUrl
 import com.github.zly2006.zhihu.navigation.zhihuQuestionAnswerUrl
 import com.github.zly2006.zhihu.shared.article.CachedAnswerContent
 import com.github.zly2006.zhihu.shared.article.VoteUpState
-import com.github.zly2006.zhihu.shared.data.OfficialBadge
 import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
@@ -144,58 +141,20 @@ import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
 import com.github.zly2006.zhihu.util.smoothGradient
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
+import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
 import com.materialkolor.ktx.harmonize
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.painterResource
 import zhihu.shared.generated.resources.Res
 import zhihu.shared.generated.resources.ic_vote_down_24dp
 import zhihu.shared.generated.resources.ic_vote_up_24dp
 import kotlin.math.abs
 import kotlin.math.max
-import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
 
 private const val SCROLL_THRESHOLD = 10
 val ScrollThresholdDp = SCROLL_THRESHOLD.dp
-
-fun articleActionText(
-    article: Article,
-    questionId: Long,
-    title: String,
-    authorName: String,
-): String =
-    when (article.type) {
-        ArticleType.Answer -> {
-            "${zhihuQuestionAnswerUrl(questionId, article.id)}\n【$title - $authorName 的回答】"
-        }
-
-        ArticleType.Article -> {
-            "${zhihuArticleUrl(article.id)}\n【$title - $authorName 的文章】"
-        }
-    }
-
-fun articleSpeechText(
-    title: String,
-    content: String,
-    maxContentLength: Int = 50_000,
-): String =
-    buildString {
-        append(title)
-        append("。")
-        if (content.isNotEmpty()) {
-            val contentToProcess =
-                if (content.length > maxContentLength) {
-                    content.substring(0, maxContentLength) + "..."
-                } else {
-                    content
-                }
-            append(Ksoup.parse(contentToProcess).text())
-        }
-    }
 
 /**
  * 修复 noscript 标签中的图片加载问题。
@@ -238,75 +197,6 @@ fun prepareContentDocument(
             }
         }.body()
         .html()
-
-@OptIn(ExperimentalTime::class)
-fun formatArticleDateTime(seconds: Long): String {
-    val dateTime = Instant
-        .fromEpochSeconds(seconds)
-        .toLocalDateTime(TimeZone.currentSystemDefault())
-    return buildString {
-        append(dateTime.year.toString().padStart(4, '0'))
-        append('-')
-        append((dateTime.month.ordinal + 1).toString().padStart(2, '0'))
-        append('-')
-        append(dateTime.day.toString().padStart(2, '0'))
-        append(' ')
-        append(dateTime.hour.toString().padStart(2, '0'))
-        append(':')
-        append(dateTime.minute.toString().padStart(2, '0'))
-        append(':')
-        append(dateTime.second.toString().padStart(2, '0'))
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun AnswerDoubleTapActionDialog(
-    showDialog: Boolean,
-    onDismissRequest: () -> Unit,
-    onActionSelected: (AnswerDoubleTapAction) -> Unit,
-) {
-    if (!showDialog) return
-    MyModalBottomSheet(
-        onDismissRequest = onDismissRequest,
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(
-                text = "设置双击回答动作",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(
-                text = "选择以后双击回答时默认执行的动作。选择后会立即保存到设置，你也可以稍后在设置中修改。",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Button(
-                onClick = { onActionSelected(AnswerDoubleTapAction.None) },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("设为无操作")
-            }
-            Button(
-                onClick = { onActionSelected(AnswerDoubleTapAction.VoteUp) },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("设为点赞")
-            }
-            Button(
-                onClick = { onActionSelected(AnswerDoubleTapAction.OpenComments) },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("设为打开评论区")
-            }
-        }
-    }
-}
 
 @Composable
 fun rememberBottomBarAvoidingBringIntoViewSpec(
@@ -429,38 +319,6 @@ fun ArticleSummarySheet(
             }
         }
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun TwoRowsTopAppBar(
-    title: @Composable (expanded: Boolean) -> Unit,
-    subtitle: (@Composable (expanded: Boolean) -> Unit)?,
-    navigationIcon: @Composable () -> Unit,
-    actions: @Composable RowScope.() -> Unit,
-    titleHorizontalAlignment: Alignment.Horizontal = Alignment.Start,
-    collapsedHeight: Dp = TopAppBarDefaults.TopAppBarExpandedHeight,
-    expandedHeight: Dp = TopAppBarDefaults.TopAppBarExpandedHeight,
-    windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
-    colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(),
-    scrollBehavior: TopAppBarScrollBehavior? = null,
-) {
-    TopAppBar(
-        title = {
-            Column(
-                horizontalAlignment = titleHorizontalAlignment,
-            ) {
-                title(false)
-                subtitle?.invoke(false)
-            }
-        },
-        navigationIcon = navigationIcon,
-        actions = actions,
-        expandedHeight = maxOf(collapsedHeight, expandedHeight),
-        windowInsets = windowInsets,
-        colors = colors,
-        scrollBehavior = scrollBehavior,
-    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1802,20 +1660,61 @@ fun ArticleScreen(
         onDismiss = { showComments = false },
         content = article,
     )
-    AnswerDoubleTapActionDialog(
-        showDialog = showDoubleTapActionDialog,
-        onDismissRequest = { showDoubleTapActionDialog = false },
-        onActionSelected = { action ->
-            showDoubleTapActionDialog = false
-            saveAnswerDoubleTapAction(action)
-            when (action) {
-                AnswerDoubleTapAction.VoteUp -> upVoteFromDoubleTap()
-                AnswerDoubleTapAction.OpenComments -> showComments = true
-                else -> Unit
+    if (showDoubleTapActionDialog) {
+        MyModalBottomSheet(
+            onDismissRequest = { showDoubleTapActionDialog = false },
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = "设置双击回答动作",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = "选择以后双击回答时默认执行的动作。选择后会立即保存到设置，你也可以稍后在设置中修改。",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Button(
+                    onClick = {
+                        showDoubleTapActionDialog = false
+                        saveAnswerDoubleTapAction(AnswerDoubleTapAction.None)
+                        userMessages.showMessage("已将双击回答动作设为：${AnswerDoubleTapAction.None.label}")
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("设为无操作")
+                }
+                Button(
+                    onClick = {
+                        showDoubleTapActionDialog = false
+                        saveAnswerDoubleTapAction(AnswerDoubleTapAction.VoteUp)
+                        upVoteFromDoubleTap()
+                        userMessages.showMessage("已将双击回答动作设为：${AnswerDoubleTapAction.VoteUp.label}")
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("设为点赞")
+                }
+                Button(
+                    onClick = {
+                        showDoubleTapActionDialog = false
+                        saveAnswerDoubleTapAction(AnswerDoubleTapAction.OpenComments)
+                        showComments = true
+                        userMessages.showMessage("已将双击回答动作设为：${AnswerDoubleTapAction.OpenComments.label}")
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("设为打开评论区")
+                }
             }
-            userMessages.showMessage("已将双击回答动作设为：${action.label}")
-        },
-    )
+        }
+    }
     // 导出对话框
     ExportDialogComponent(
         showDialog = showExportDialog,
