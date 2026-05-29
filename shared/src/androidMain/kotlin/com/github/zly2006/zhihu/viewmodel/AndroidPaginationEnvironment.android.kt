@@ -212,7 +212,7 @@ open class SharedAndroidPaginationEnvironment(
         follow: Boolean,
     ) {
         val url = zhihuQuestionFollowersUrl(questionId)
-        AccountData.signedFetch(context, url) {
+        AccountData.fetch(context, url) { signFetchRequest();
             method = if (follow) HttpMethod.Post else HttpMethod.Delete
         }
     }
@@ -255,7 +255,7 @@ open class SharedAndroidPaginationEnvironment(
 
     override suspend fun sendFeedReadStatus(feed: Feed) {
         val payloadItem = zhihuLastReadTouchItem(feed, "read") ?: return
-        AccountData.signedFetchPost(context, ZHIHU_LAST_READ_TOUCH_URL) {
+        AccountData.fetchPost(context, ZHIHU_LAST_READ_TOUCH_URL) { signFetchRequest();
             header("x-requested-with", "fetch")
             setBody(
                 MultiPartFormDataContent(
@@ -297,7 +297,7 @@ open class SharedAndroidPaginationEnvironment(
 
     override suspend fun clearAllHistory() {
         HistoryStorage(context).clearAndSave()
-        AccountData.signedFetchPost(context, ZHIHU_CLEAR_ONLINE_HISTORY_URL) {
+        AccountData.fetchPost(context, ZHIHU_CLEAR_ONLINE_HISTORY_URL) { signFetchRequest();
             contentType(KtorContentType.Application.Json)
             setBody(buildZhihuClearOnlineHistoryBody())
         }
@@ -323,7 +323,7 @@ open class SharedAndroidPaginationEnvironment(
     override fun answerNavigatorRepository(): AnswerNavigatorRepository = AndroidAnswerNavigatorRepository(context)
 
     override suspend fun fetchCollection(collectionId: String): Collection {
-        val json = fetchJson(zhihuCollectionUrl(collectionId), "")
+        val json = fetchJson("https://www.zhihu.com/api/v4/collections/$collectionId", "")
             ?: throw IllegalStateException("收藏夹信息加载失败")
         return decodeZhihuCollection(json["collection"] ?: throw IllegalStateException("收藏夹信息为空"))
     }

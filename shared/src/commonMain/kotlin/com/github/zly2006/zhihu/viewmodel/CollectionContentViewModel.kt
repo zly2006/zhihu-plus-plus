@@ -69,14 +69,8 @@ interface CollectionContentEnvironment : PaginationEnvironment {
     suspend fun handleCollectionExportFailure(error: Exception)
 }
 
-fun zhihuCollectionUrl(collectionId: String): String =
-    "https://www.zhihu.com/api/v4/collections/$collectionId"
 
-fun zhihuCollectionItemsUrl(collectionId: String): String =
-    "${zhihuCollectionUrl(collectionId)}/items"
 
-fun zhihuCollectionsUrl(): String =
-    "https://www.zhihu.com/api/v4/collections"
 
 fun zhihuCollectionCreateBody(
     title: String,
@@ -88,25 +82,7 @@ fun zhihuCollectionCreateBody(
     put("is_public", isPublic)
 }
 
-fun zhihuPeopleCollectionsUrl(urlToken: String, limit: Int? = null): String =
-    buildString {
-        append("https://www.zhihu.com/api/v4/people/")
-        append(urlToken)
-        append("/collections")
-        limit?.let { append("?limit=$it") }
-    }
 
-fun zhihuCollectionContentUrl(
-    contentType: String,
-    contentId: Long,
-    limit: Int? = null,
-): String = buildString {
-    append("https://api.zhihu.com/collections/contents/")
-    append(contentType)
-    append("/")
-    append(contentId)
-    limit?.let { append("?limit=$it") }
-}
 
 class CollectionContentViewModel(
     val collectionId: String,
@@ -120,7 +96,7 @@ class CollectionContentViewModel(
         private set
 
     override val initialUrl: String
-        get() = zhihuCollectionItemsUrl(collectionId)
+        get() = "https://www.zhihu.com/api/v4/collections/$collectionId/items"
 
     override fun processResponse(environment: PaginationEnvironment, data: List<CollectionItem>, rawData: JsonArray) {
         super.processResponse(environment, data, rawData)

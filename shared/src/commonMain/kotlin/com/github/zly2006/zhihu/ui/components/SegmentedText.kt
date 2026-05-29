@@ -107,10 +107,6 @@ data class SegmentedTextRuntime(
     val toggleSegmentLike: suspend (SegmentHighlightSpan) -> SegmentInfoMeta,
 )
 
-fun zhihuSegmentReactionUrl(
-    targetType: String,
-    contentId: String,
-): String = "https://www.zhihu.com/api/v4/reaction/${targetType}s/$contentId/segment_reaction"
 
 fun buildSegmentUnlikeBody(highlight: SegmentHighlightSpan): String = buildJsonObject {
     put("seg_ids", highlight.meta.segIds.joinToString(","))

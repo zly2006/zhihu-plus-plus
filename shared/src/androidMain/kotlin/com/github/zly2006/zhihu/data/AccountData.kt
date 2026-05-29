@@ -34,7 +34,6 @@ import com.github.zly2006.zhihu.shared.data.ZHIHU_READ_HISTORY_ADD_URL
 import com.github.zly2006.zhihu.shared.data.ZhihuCookieStorage
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.buildZhihuReadHistoryBody
-import com.github.zly2006.zhihu.shared.data.executeZhihuAuthenticatedRequest
 import com.github.zly2006.zhihu.shared.data.fetchVerifiedZhihuSession
 import com.github.zly2006.zhihu.shared.data.fetchZhihuAuthenticatedJson
 import com.github.zly2006.zhihu.shared.data.installZhihuCommonClientConfig
@@ -324,23 +323,6 @@ object AccountData {
         block()
     }
 
-    suspend fun <T> withAuthenticatedResponse(
-        context: Context,
-        url: String,
-        block: suspend HttpRequestBuilder.() -> Unit = {},
-        transform: suspend (HttpResponse) -> T,
-    ): T {
-        val client = httpClient(context)
-        val response = executeZhihuAuthenticatedRequest(
-            client = client,
-            url = url,
-            lastRefreshMillis = lastRefreshCookie,
-            updateLastRefreshMillis = { lastRefreshCookie = it },
-            block = block,
-        )
-        return transform(response)
-    }
-
     /**
      * 添加在线阅读历史记录
      * @param contentType 内容类型 (如 "article", "answer", "profile" 等)
@@ -351,7 +333,7 @@ object AccountData {
         contentType: String,
     ) {
         runCatching {
-            signedFetchPost(context, ZHIHU_READ_HISTORY_ADD_URL) {
+            fetchPost(context, ZHIHU_READ_HISTORY_ADD_URL) { signFetchRequest();
                 contentType(ContentType.Application.Json)
                 setBody(buildZhihuReadHistoryBody(contentToken, contentType))
             }

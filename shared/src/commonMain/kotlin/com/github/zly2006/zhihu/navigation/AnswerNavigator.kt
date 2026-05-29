@@ -31,7 +31,6 @@ import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.util.Log
-import com.github.zly2006.zhihu.viewmodel.zhihuCollectionItemsUrl
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
@@ -409,7 +408,7 @@ class CollectionAnswerNavigator(
         }
     }
 
-    private var nextPageUrl: String = zhihuCollectionItemsUrl(collectionId)
+    private var nextPageUrl: String = "https://www.zhihu.com/api/v4/collections/$collectionId/items"
     private var prefetchedArticle: Article? = null
 
     override val previousAnswerPreview: CachedAnswerContent?

@@ -55,7 +55,7 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
             toggleFollow = { person, isFollowing, followerCount ->
                 val method = if (isFollowing) HttpMethod.Delete else HttpMethod.Post
                 val jojo = store.signedWithResponse(
-                    url = peopleFollowersUrl(person),
+                    url = "https://www.zhihu.com/api/v4/members/${person.urlToken}/followers",
                     block = { this.method = method },
                 ) { response ->
                     response.raiseForStatus().body<JsonObject>()
@@ -69,7 +69,7 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
             toggleBlock = { person, isBlocking ->
                 val method = if (isBlocking) HttpMethod.Delete else HttpMethod.Post
                 store.signedWithResponse(
-                    url = peopleBlockUrl(person),
+                    url = "https://www.zhihu.com/api/v4/members/${person.urlToken}/actions/block",
                     block = { this.method = method },
                 ) { response ->
                     response.raiseForStatus()

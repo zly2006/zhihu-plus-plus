@@ -26,11 +26,6 @@ import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
 import kotlinx.serialization.json.JsonObject
 
-fun zhihuArticleVotersUrl(article: Article): String =
-    when (article.type) {
-        ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${article.id}/voters"
-        ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${article.id}/voters"
-    }
 
 interface ArticleViewModelRuntime {
     suspend fun getContentDetail(article: Article): DataHolder.Content?

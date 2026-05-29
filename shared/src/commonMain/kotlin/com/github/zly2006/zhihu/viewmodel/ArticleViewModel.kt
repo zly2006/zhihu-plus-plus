@@ -286,7 +286,7 @@ class ArticleViewModel(
                     ArticleType.Article -> "article"
                 }
                 val action = if (remove) "remove" else "add"
-                val url = zhihuCollectionContentUrl(contentType, article.id)
+                val url = "https://api.zhihu.com/collections/contents/$contentType/${article.id}"
                 val body = "${action}_collections=$collectionId"
 
                 val response = httpClient.put(url) {
@@ -439,7 +439,7 @@ class ArticleViewModel(
                         ArticleType.Answer -> "answer"
                         ArticleType.Article -> "article"
                     }
-                    val collectionsUrl = zhihuCollectionContentUrl(contentType, article.id, limit = 50)
+                    val collectionsUrl = "https://api.zhihu.com/collections/contents/$contentType/${article.id}?limit=50"
                     val jojo = context.fetchGet(collectionsUrl) {
                         context.configureSignedRequest(this)
                     }!!
@@ -476,7 +476,7 @@ class ArticleViewModel(
     ) {
         if (httpClient == null) return
         viewModelScope.launch {
-            context.fetchPost(zhihuCollectionsUrl()) {
+            context.fetchPost("https://www.zhihu.com/api/v4/collections") {
                 contentType(ContentType.Application.Json)
                 setBody(zhihuCollectionCreateBody(title, description, isPublic))
                 context.configureSignedRequest(this)
@@ -488,7 +488,10 @@ class ArticleViewModel(
     fun toggleVoteUp(context: ArticleViewModelRuntime, newState: VoteUpState) {
         viewModelScope.launch {
             try {
-                val endpoint = zhihuArticleVotersUrl(article)
+                val endpoint = when (article.type) {
+        ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${article.id}/voters"
+        ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${article.id}/voters"
+    }
 
                 val response = context.fetchPost(endpoint) {
                     when (article.type) {

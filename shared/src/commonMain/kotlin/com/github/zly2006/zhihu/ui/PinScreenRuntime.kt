@@ -32,8 +32,6 @@ data class PinScreenRuntime(
     val openExternalUrl: (String) -> Unit,
 )
 
-fun zhihuPinVotersUpUrl(pin: Pin): String =
-    "https://www.zhihu.com/api/v4/pins/${pin.id}/voters/up"
 
 internal suspend fun fetchPinLinkCardPreview(
     linkCard: DataHolder.Pin.ContentLinkCard,

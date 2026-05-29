@@ -24,6 +24,7 @@ import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import kotlinx.coroutines.CancellationException
+import com.github.zly2006.zhihu.util.signFetchRequest
 
 /**
  * 此API没有缓存，谨慎使用！
@@ -39,7 +40,7 @@ suspend fun DataHolder.getContentDetail(
     val apiUrl = zhihuArticleContentDetailUrl(dest)
 
     return runCatching {
-        val jo = AccountData.signedFetchGet(context, apiUrl)!!
+        val jo = AccountData.fetchGet(context, apiUrl) { signFetchRequest() }!!
         // 解析为对应的Content类型
         decodeArticleContentDetail(dest, jo)
     }.getOrElse { e ->
@@ -57,7 +58,7 @@ suspend fun DataHolder.getContentDetail(
     val apiUrl = zhihuQuestionContentDetailUrl(question)
 
     return runCatching {
-        val jo = AccountData.signedFetchGet(context, apiUrl)!!
+        val jo = AccountData.fetchGet(context, apiUrl) { signFetchRequest() }!!
         // 解析为对应的Content类型
         decodeQuestionContentDetail(jo)
     }.getOrElse { e ->
@@ -75,7 +76,7 @@ suspend fun DataHolder.getContentDetail(
     val apiUrl = zhihuPinContentDetailUrl(pin)
 
     return runCatching {
-        val jo = AccountData.signedFetchGet(context, apiUrl)!!
+        val jo = AccountData.fetchGet(context, apiUrl) { signFetchRequest() }!!
         decodePinContentDetail(jo)
     }.getOrElse { e ->
         if (e !is CancellationException) {

@@ -42,7 +42,7 @@ private suspend fun toggleSegmentLike(
 ): SegmentInfoMeta {
     val contentId = highlight.contentId ?: return highlight.meta
     val targetType = highlight.contentType ?: return highlight.meta
-    val url = zhihuSegmentReactionUrl(targetType, contentId)
+    val url = "https://www.zhihu.com/api/v4/reaction/${targetType}s/$contentId/segment_reaction"
 
     return if (highlight.meta.isLike) {
         val body = buildSegmentUnlikeBody(highlight)

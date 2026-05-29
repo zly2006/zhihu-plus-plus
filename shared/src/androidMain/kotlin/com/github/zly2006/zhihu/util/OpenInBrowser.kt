@@ -26,8 +26,6 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.data.decodeZhihuCollection
 import com.github.zly2006.zhihu.shared.data.decodeZhihuCollectionList
 import com.github.zly2006.zhihu.viewmodel.zhihuCollectionCreateBody
-import com.github.zly2006.zhihu.viewmodel.zhihuCollectionsUrl
-import com.github.zly2006.zhihu.viewmodel.zhihuPeopleCollectionsUrl
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -37,11 +35,11 @@ import io.ktor.http.isSuccess
 object OpenInBrowser {
     suspend fun openUrlInBrowser(context: Context, destination: NavDestination): Boolean {
         val urlToken = AccountData.data.self?.urlToken ?: return false
-        val jojo = AccountData.signedFetchGet(context, zhihuPeopleCollectionsUrl(urlToken, limit = 50))!!
+        val jojo = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/people/$urlToken/collections?limit=50") { signFetchRequest() }!!
         val collection = decodeZhihuCollectionList(jojo["data"]!!)
             .firstOrNull { it.description == "com.github.zly2006.zhplus.openinbrowser" }
             ?: decodeZhihuCollection(
-                AccountData.signedFetchPost(context, zhihuCollectionsUrl()) {
+                AccountData.fetchPost(context, "https://www.zhihu.com/api/v4/collections") { signFetchRequest();
                     contentType(ContentType.Application.Json)
                     setBody(
                         zhihuCollectionCreateBody(

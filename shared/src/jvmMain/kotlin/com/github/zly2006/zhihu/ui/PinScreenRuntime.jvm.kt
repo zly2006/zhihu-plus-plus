@@ -71,7 +71,7 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
                 scope.launch {
                     try {
                         val method = if (isLiked) HttpMethod.Delete else HttpMethod.Post
-                        val endpoint = zhihuPinVotersUpUrl(pin)
+                        val endpoint = "https://www.zhihu.com/api/v4/pins/${pin.id}/voters/up"
                         val jojo = fetchDesktopPinLike(store, endpoint, method) ?: return@launch
                         onResult(
                             PinLikeResult(

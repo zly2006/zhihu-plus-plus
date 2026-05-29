@@ -68,7 +68,7 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
             toggleLike = { pin, isLiked, onResult ->
                 scope.launch {
                     try {
-                        val endpoint = zhihuPinVotersUpUrl(pin)
+                        val endpoint = "https://www.zhihu.com/api/v4/pins/${pin.id}/voters/up"
                         val client = AccountData.httpClient(context)
                         val jojo = if (isLiked) {
                             client.delete(endpoint) { signFetchRequest() }.body<JsonObject>()
