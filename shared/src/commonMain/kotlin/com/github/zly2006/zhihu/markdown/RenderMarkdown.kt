@@ -54,6 +54,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalViewConfiguration
+import androidx.compose.ui.platform.ViewConfiguration
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -201,6 +203,26 @@ fun RenderVideoBox(
                 modifier = Modifier.padding(16.dp),
             )
         }
+    }
+}
+
+/**
+ * 禁用谷歌的双击选择文字功能。
+ *
+ * 比较hack的做法，但目前没有更好的方案了。
+ */
+@Composable
+private fun NoDoubleClickSelectionScope(content: @Composable () -> Unit) {
+    val current = LocalViewConfiguration.current
+    val patched =
+        remember(current) {
+            object : ViewConfiguration by current {
+                override val doubleTapTimeoutMillis: Long = 0L
+            }
+        }
+
+    CompositionLocalProvider(LocalViewConfiguration provides patched) {
+        content()
     }
 }
 

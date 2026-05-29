@@ -404,6 +404,7 @@ const val PEOPLE_SCREEN_ANSWER_SORT_HOT_TAG = "people_screen_answer_sort_voteups
 const val PEOPLE_SCREEN_ANSWER_SORT_TIME_TAG = "people_screen_answer_sort_created"
 const val PEOPLE_SCREEN_ARTICLE_SORT_HOT_TAG = "people_screen_article_sort_voteups"
 const val PEOPLE_SCREEN_ARTICLE_SORT_TIME_TAG = "people_screen_article_sort_created"
+const val PEOPLE_SCREEN_OFFICIAL_BADGE_TAG = "people_screen_official_badge"
 
 fun peopleScreenTabTag(index: Int): String = "people_screen_tab_$index"
 
@@ -1596,7 +1597,9 @@ private fun UserInfoHeader(
                     if (profile.officialBadge != null) {
                         AuthorBadge(
                             badge = profile.officialBadge,
-                            modifier = Modifier.padding(start = 6.dp),
+                            modifier = Modifier
+                                .padding(start = 6.dp)
+                                .testTag(PEOPLE_SCREEN_OFFICIAL_BADGE_TAG),
                         )
                     }
                 }

@@ -66,6 +66,7 @@ import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_FOLLOWING_COUNT_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_FOLLOWING_LIST_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_FOLLOW_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_HEADER_TAG
+import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_OFFICIAL_BADGE_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_PINS_LIST_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_QUESTIONS_LIST_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG
@@ -134,7 +135,7 @@ class PeopleScreenInstrumentedTest {
 
         composeRule.onNodeWithTag(PEOPLE_SCREEN_ROOT_TAG).assertIsDisplayed()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_HEADER_TAG).assertIsDisplayed()
-        composeRule.onNodeWithText("优秀答主").assertIsDisplayed()
+        composeRule.onNodeWithTag(PEOPLE_SCREEN_OFFICIAL_BADGE_TAG).assertIsDisplayed()
         composeRule.onNodeWithText("社区成就: 英语等 5 个话题下的优秀答主").assertIsDisplayed()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_AVATAR_TAG).assertIsDisplayed()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_ANSWER_COUNT_TAG).assertIsDisplayed()
@@ -362,7 +363,11 @@ class PeopleScreenInstrumentedTest {
             avatar = "https://example.invalid/avatar/root.png",
             name = "离线用户",
             headline = "离线个人简介",
-            officialBadge = OfficialBadge("优秀答主", "英语等 5 个话题下的优秀答主"),
+            officialBadge = OfficialBadge(
+                title = "优秀答主",
+                description = "英语等 5 个话题下的优秀答主",
+                iconUrl = DataHolder.ZH_PLUS_AUTHOR_BADGE_ICON,
+            ),
             officialBadgeDetails = listOf(
                 OfficialBadge("社区成就", "英语等 5 个话题下的优秀答主"),
             ),

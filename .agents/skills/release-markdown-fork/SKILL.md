@@ -15,6 +15,17 @@ Required:
 - Fork checkout: `/Users/zhaoliyan/IdeaProjects/Zhihu/.tmp/Markdown-zly2006`
 - Main project checkout: `/Users/zhaoliyan/IdeaProjects/Zhihu`
 
+Version rule:
+
+- The zly fork has its own `0.0.1-alpha.N` release line. When upstream moves to
+  `1.x`, do **not** change the fork's base version to match upstream. Always
+  keep `0.0.1` and only increment the `alpha.N` suffix.
+- A diff against upstream may show `VERSION=1.x` → `VERSION=0.0.1-alpha.N`;
+  that is expected for the fork release. Do not "normalize" it back to upstream.
+- In `gradle.properties`, keep a comment immediately above `VERSION` recording
+  the upstream source version, for example:
+  `# Upstream huarangmeng/Markdown version: 1.2.9`.
+
 Optional:
 
 - Proxy for Sonatype and repo1 access:
@@ -82,6 +93,8 @@ The intended final diff should be limited to:
 
 - Publishing metadata changes for `io.github.zly2006`
 - Version bump
+- A `gradle.properties` comment recording the upstream `huarangmeng/Markdown`
+  version the fork release is based on
 - `NativeBlock` parser/renderer support and its tests
 
 ### 3. Publish to Maven Central
@@ -178,6 +191,12 @@ DO NOT PUSH!
 - Keep coordinates unchanged.
 - Poll deployment status until `PUBLISHED`.
 - Only update Zhihu after the renderer root artifact or Android artifact is publicly reachable.
+
+### Version line accidentally follows upstream
+
+- Symptom: after rebasing/branching from the latest upstream tag, the release version is treated as if it should follow upstream's `1.x` line.
+- Cause: confusing "merge latest upstream" with "adopt upstream's published version family".
+- Fix: keep the fork identity stable. For this fork, the public version line remains `0.0.1-alpha.N`; the release task is to advance `N`, not to rename the series.
 
 ## Final report checklist
 

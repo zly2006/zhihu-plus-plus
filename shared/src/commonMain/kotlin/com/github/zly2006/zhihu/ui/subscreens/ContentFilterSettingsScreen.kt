@@ -394,7 +394,7 @@ fun ContentFilterSettingsScreen(
 
                 val blockPaidContent = remember { mutableStateOf(settings.getBoolean("blockPaidContent", true)) }
                 SettingItemWithSwitch(
-                    title = { Text("屏蔽知乎严选付费内容") },
+                    title = { Text("屏蔽知乎盐选付费内容") },
                     description = { Text("屏蔽知乎盐选会员专享的付费回答和文章") },
                     checked = blockPaidContent.value,
                     onCheckedChange = {

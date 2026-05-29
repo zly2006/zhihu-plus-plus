@@ -26,7 +26,7 @@ import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 
-class QuestionFeedViewModel(
+open class QuestionFeedViewModel(
     private val questionId: Long,
 ) : BaseFeedViewModel() {
     var sortOrder by mutableStateOf("default")
@@ -61,6 +61,15 @@ class QuestionFeedViewModel(
             environment.followQuestion(questionId, follow)
         } catch (e: Exception) {
             environment.handleFetchFailure("QuestionFeedViewModel", e)
+        }
+    }
+
+    private suspend fun filterBlockedAnswers(context: Context, data: List<Feed>): List<Feed> {
+        val blockedUserIds = ContentFilterExtensions.getEnabledBlockedUserIds(context)
+        if (blockedUserIds.isEmpty()) return data
+        return data.filterNot { feed ->
+            val target = feed.target
+            target is Feed.AnswerTarget && target.author?.id in blockedUserIds
         }
     }
 }

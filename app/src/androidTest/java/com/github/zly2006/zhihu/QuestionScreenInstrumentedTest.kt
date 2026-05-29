@@ -28,6 +28,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.github.zly2006.zhihu.data.CommonFeed
+import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.Question
@@ -56,12 +58,17 @@ import com.github.zly2006.zhihu.ui.QuestionScreen
 import com.github.zly2006.zhihu.ui.QuestionScreenTestOverrides
 import com.github.zly2006.zhihu.ui.questionFeedItemTag
 import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager
+import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonArray
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import com.github.zly2006.zhihu.data.Person as FeedPerson
 
 @RunWith(AndroidJUnit4::class)
 class QuestionScreenInstrumentedTest {
@@ -69,8 +76,14 @@ class QuestionScreenInstrumentedTest {
     val composeRule: MainActivityComposeRule = createAndroidComposeRule<MainActivity>()
 
     @Before
-    fun setUp() {
+    fun setUp() = runBlocking {
         composeRule.resetAppPreferences()
+        BlocklistManager.getInstance(composeRule.activity).clearAllBlockedUsers()
+    }
+
+    @After
+    fun tearDown() = runBlocking {
+        BlocklistManager.getInstance(composeRule.activity).clearAllBlockedUsers()
     }
 
     @Test
@@ -182,6 +195,43 @@ class QuestionScreenInstrumentedTest {
         )
     }
 
+    @Test
+    fun blockedUserAnswersAreRemovedFromQuestionFeedProcessing() {
+        /*
+         * Expected behavior:
+         * 1. Question answer feeds should honor the same blocked-user switch used by the rest of the
+         *    content filter stack.
+         * 2. A blocked answer author should be removed before display items are created, while
+         *    unblocked answers continue through the existing display mapping.
+         */
+        val viewModel = TestableQuestionFeedViewModel(123456789L)
+        runBlocking {
+            BlocklistManager
+                .getInstance(composeRule.activity)
+                .addBlockedUser("blocked-answer-author", "被屏蔽回答作者")
+            viewModel.processForTest(
+                composeRule.activity,
+                listOf(
+                    seedAnswerFeed(
+                        id = 1L,
+                        authorId = "blocked-answer-author",
+                        authorName = "被屏蔽回答作者",
+                        excerpt = "这条回答不应展示",
+                    ),
+                    seedAnswerFeed(
+                        id = 2L,
+                        authorId = "allowed-answer-author",
+                        authorName = "可见回答作者",
+                        excerpt = "这条回答应展示",
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(listOf("可见回答作者"), viewModel.displayItems.map { it.authorName })
+        assertEquals(listOf("这条回答应展示"), viewModel.displayItems.map { it.summary })
+    }
+
     private fun setScreen(overrides: QuestionScreenTestOverrides): RecordingNavigator = composeRule.setScreenContent {
         QuestionScreen(
             question = Question(questionId = 123456789L, title = "离线问题标题"),
@@ -248,4 +298,43 @@ class QuestionScreenInstrumentedTest {
             localFeedId = "offline-question-item-$id",
         )
     }
+
+    private class TestableQuestionFeedViewModel(
+        questionId: Long,
+    ) : QuestionFeedViewModel(questionId) {
+        suspend fun processForTest(context: android.content.Context, data: List<Feed>) {
+            processResponse(context, data, JsonArray(emptyList()))
+        }
+    }
+
+    private fun seedAnswerFeed(
+        id: Long,
+        authorId: String,
+        authorName: String,
+        excerpt: String,
+    ): Feed = CommonFeed(
+        id = "answer-feed-$id",
+        target = Feed.AnswerTarget(
+            id = id,
+            url = "https://www.zhihu.com/answer/$id",
+            author = FeedPerson(
+                id = authorId,
+                url = "https://www.zhihu.com/people/$authorId",
+                userType = "people",
+                urlToken = "$authorId-token",
+                name = authorName,
+                headline = "$authorName 的离线签名",
+                avatarUrl = "https://example.invalid/avatar/$authorId.png",
+            ),
+            voteupCount = 10,
+            commentCount = 1,
+            question = Feed.QuestionTarget(
+                id = 123456789L,
+                _title = "离线问题标题",
+                url = "https://www.zhihu.com/question/123456789",
+                type = "question",
+            ),
+            excerpt = excerpt,
+        ),
+    )
 }

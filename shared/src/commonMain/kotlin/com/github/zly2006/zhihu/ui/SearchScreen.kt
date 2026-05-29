@@ -133,7 +133,8 @@ fun SearchScreen(
             addAll(testHotSearchQueries.orEmpty().map { query -> HotSearchItem(query = query) })
         }
     }
-    var moreMenuExpanded by remember { mutableStateOf(false) }
+    var hotSearchMoreMenuExpanded by remember { mutableStateOf(false) }
+    var historyMoreMenuExpanded by remember { mutableStateOf(false) }
     val useTestHotSearchQueries = testHotSearchQueries != null
     val showSearchHistory = remember { mutableStateOf(settings.getBoolean("showSearchHistory", true)) }
     val searchHistoryItems = remember {
@@ -153,6 +154,20 @@ fun SearchScreen(
                 searchHistoryItems.removeAt(searchHistoryItems.lastIndex)
             }
             saveSearchHistory(settings, searchHistoryItems)
+        }
+        navigator.onNavigate(Search(query = trimmedQuery))
+    }
+
+    fun submitSearch(query: String) {
+        val trimmedQuery = query.trim()
+        if (trimmedQuery.isEmpty()) return
+        if (showSearchHistory.value) {
+            searchHistoryItems.remove(trimmedQuery)
+            searchHistoryItems.add(0, trimmedQuery)
+            while (searchHistoryItems.size > SEARCH_HISTORY_MAX_SIZE) {
+                searchHistoryItems.removeAt(searchHistoryItems.lastIndex)
+            }
+            saveSearchHistory(preferences, searchHistoryItems)
         }
         navigator.onNavigate(Search(query = trimmedQuery))
     }
@@ -196,6 +211,51 @@ fun SearchScreen(
                                 historyMoreMenuExpanded = false
                                 searchHistoryItems.clear()
                                 saveSearchHistory(settings, searchHistoryItems)
+                            },
+                        )
+                    }
+                    DropdownMenuItem(
+                        text = { Text("前往设置关闭搜索历史") },
+                        onClick = {
+                            historyMoreMenuExpanded = false
+                            navigator.onNavigate(Account.AppearanceSettings("showSearchHistory"))
+                        },
+                    )
+                }
+            }
+        }
+    }
+
+    @Composable
+    fun SearchHistoryHeader(showClearAction: Boolean) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = "搜索历史",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            IconButton(
+                onClick = { historyMoreMenuExpanded = true },
+                modifier = Modifier
+                    .size(40.dp)
+                    .testTag("search_history_more_button"),
+            ) {
+                Icon(Icons.Default.MoreVert, contentDescription = "更多", modifier = Modifier.size(18.dp))
+                DropdownMenu(
+                    expanded = historyMoreMenuExpanded,
+                    onDismissRequest = { historyMoreMenuExpanded = false },
+                ) {
+                    if (showClearAction) {
+                        DropdownMenuItem(
+                            text = { Text("清空搜索历史") },
+                            onClick = {
+                                historyMoreMenuExpanded = false
+                                searchHistoryItems.clear()
+                                saveSearchHistory(preferences, searchHistoryItems)
                             },
                         )
                     }
@@ -292,7 +352,7 @@ fun SearchScreen(
                                     IconButton(
                                         onClick = { searchText = "" },
                                         modifier = Modifier
-                                            .size(20.dp)
+                                            .size(32.dp)
                                             .testTag("search_clear_button"),
                                     ) {
                                         Icon(
@@ -324,7 +384,9 @@ fun SearchScreen(
                 .padding(innerPadding),
         ) {
             if (viewModel.displayItems.isEmpty() && !viewModel.isLoading && viewModel.searchQuery.isEmpty()) {
-                if (showHotSearch.value && hotSearchItems.isNotEmpty()) {
+                val shouldShowHistory = showSearchHistory.value && searchHistoryItems.isNotEmpty()
+                val shouldShowHotSearch = showHotSearch.value && hotSearchItems.isNotEmpty()
+                if (shouldShowHistory || shouldShowHotSearch) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -332,97 +394,150 @@ fun SearchScreen(
                             .padding(16.dp)
                             .testTag("search_hot_list"),
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Text(
-                                text = "热搜",
-                                style = MaterialTheme.typography.titleSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                IconButton(
-                                    onClick = {
-                                        if (useTestHotSearchQueries) {
-                                            onTestHotSearchRefresh?.invoke()
-                                        } else {
-                                            coroutineScope.launch { runCatching { fetchHotSearch() } }
-                                        }
-                                    },
+                        if (shouldShowHistory) {
+                            SearchHistoryHeader(showClearAction = true)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            searchHistoryItems.forEach { query ->
+                                Row(
                                     modifier = Modifier
-                                        .size(32.dp)
-                                        .testTag("search_hot_refresh_button"),
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            keyboardController?.hide()
+                                            submitSearch(query)
+                                        }.padding(vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Icon(Icons.Default.Refresh, contentDescription = "刷新热搜", modifier = Modifier.size(18.dp))
+                                    Icon(
+                                        Icons.Default.Search,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier
+                                            .width(28.dp)
+                                            .size(18.dp),
+                                    )
+                                    Text(
+                                        text = query,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .padding(end = 8.dp),
+                                    )
                                 }
-                                Spacer(modifier = Modifier.width(4.dp))
-                                IconButton(
-                                    onClick = { moreMenuExpanded = true },
-                                    modifier = Modifier
-                                        .size(32.dp)
-                                        .testTag("search_hot_more_button"),
-                                ) {
-                                    Icon(Icons.Default.MoreVert, contentDescription = "更多", modifier = Modifier.size(18.dp))
-                                    DropdownMenu(
-                                        expanded = moreMenuExpanded,
-                                        onDismissRequest = { moreMenuExpanded = false },
+                            }
+                            if (shouldShowHotSearch) {
+                                Spacer(modifier = Modifier.height(16.dp))
+                            }
+                        }
+
+                        if (shouldShowHotSearch) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Text(
+                                    text = "热搜",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    IconButton(
+                                        onClick = {
+                                            if (useTestHotSearchQueries) {
+                                                onTestHotSearchRefresh?.invoke()
+                                            } else {
+                                                coroutineScope.launch { runCatching { fetchHotSearch() } }
+                                            }
+                                        },
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .testTag("search_hot_refresh_button"),
                                     ) {
-                                        DropdownMenuItem(
-                                            text = { Text("关闭热搜显示") },
-                                            onClick = {
-                                                moreMenuExpanded = false
-                                                navigator.onNavigate(Account.AppearanceSettings("showSearchHotSearch"))
-                                            },
+                                        Icon(Icons.Default.Refresh, contentDescription = "刷新热搜", modifier = Modifier.size(18.dp))
+                                    }
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    IconButton(
+                                        onClick = { hotSearchMoreMenuExpanded = true },
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .testTag("search_hot_more_button"),
+                                    ) {
+                                        Icon(Icons.Default.MoreVert, contentDescription = "更多", modifier = Modifier.size(18.dp))
+                                        DropdownMenu(
+                                            expanded = hotSearchMoreMenuExpanded,
+                                            onDismissRequest = { hotSearchMoreMenuExpanded = false },
+                                        ) {
+                                            DropdownMenuItem(
+                                                text = { Text("关闭热搜显示") },
+                                                onClick = {
+                                                    hotSearchMoreMenuExpanded = false
+                                                    navigator.onNavigate(Account.AppearanceSettings("showSearchHotSearch"))
+                                                },
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Column {
+                                hotSearchItems.forEachIndexed { index, item ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                keyboardController?.hide()
+                                                submitSearch(item.query)
+                                            }.padding(vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Text(
+                                            text = "${index + 1}",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = if (index < 3) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.width(28.dp),
                                         )
+                                        Text(
+                                            text = item.query,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .padding(end = 8.dp),
+                                        )
+                                        if (item.hotShow.isNotEmpty()) {
+                                            Text(
+                                                text = item.hotShow,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        hotSearchItems.forEachIndexed { index, item ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        keyboardController?.hide()
-                                        navigator.onNavigate(
-                                            Search(query = item.query),
-                                        )
-                                    }.padding(vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    text = "${index + 1}",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = if (index < 3) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.width(28.dp),
-                                )
-                                Text(
-                                    text = item.query,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .padding(end = 8.dp),
-                                )
-                                if (item.hotShow.isNotEmpty()) {
-                                    Text(
-                                        text = item.hotShow,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                            }
-                        }
                     }
-                } else if (!showHotSearch.value) {
-                    Text(
-                        text = "请输入搜索内容",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                    )
+                } else {
+                    if (showSearchHistory.value) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                        ) {
+                            SearchHistoryHeader(showClearAction = false)
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "暂无搜索历史，输入关键词搜索后会保存在这里",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = "请输入搜索内容",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                        )
+                    }
                 }
             } else {
                 FeedPullToRefresh(viewModel, paginationEnvironment) {
