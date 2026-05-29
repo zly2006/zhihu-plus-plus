@@ -381,7 +381,7 @@ fun FollowRecommendScreen(
                         topContent = { item { FollowingUsersRow() } },
                         onLoadMore = { onTestLoadMore?.invoke() ?: viewModel.loadMore(context) },
                     ) { item ->
-                        FeedCard(
+                        com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard(
                             item = item,
                             modifier = Modifier.testTag(followRecommendItemTag(item.stableKey)),
                             onBlockUser = { feedItem ->
@@ -532,7 +532,7 @@ fun FollowDynamicScreen(
                         topContent = { item { Spacer(modifier = Modifier.height(8.dp)) } },
                         onLoadMore = { onTestLoadMore?.invoke() ?: viewModel.loadMore(context) },
                     ) { item ->
-                        FeedCard(
+                        com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard(
                             item = item,
                             modifier = Modifier.testTag(followDynamicItemTag(item.stableKey)),
                             onLike = { Toast.makeText(context, "收到喜欢，功能正在优化", Toast.LENGTH_SHORT).show() },
