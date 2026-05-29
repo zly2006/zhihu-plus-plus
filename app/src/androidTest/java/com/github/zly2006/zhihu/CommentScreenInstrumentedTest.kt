@@ -36,15 +36,17 @@ import androidx.compose.ui.test.swipeRight
 import androidx.test.espresso.Espresso.pressBack
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CommentHolder
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.shared.comment.CommentSortOrder
+import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
+import com.github.zly2006.zhihu.test.InstrumentedTestEnvironment
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
-import com.github.zly2006.zhihu.test.InstrumentedTestEnvironment
 import com.github.zly2006.zhihu.test.ZhihuMockApi
 import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
@@ -71,17 +73,14 @@ import com.github.zly2006.zhihu.ui.commentLikeButtonTag
 import com.github.zly2006.zhihu.ui.commentReplyButtonTag
 import com.github.zly2006.zhihu.ui.commentReplyToAuthorTag
 import com.github.zly2006.zhihu.ui.commentRowTag
-import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
+import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
-import com.github.zly2006.zhihu.shared.comment.CommentSortOrder
-import com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.getBlocklistManager
+import com.github.zly2006.zhihu.viewmodel.paginationEnvironment
 import io.ktor.client.HttpClient
 import io.ktor.http.HttpMethod
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonArray
-import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
-import com.github.zly2006.zhihu.viewmodel.paginationEnvironment
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -483,7 +482,7 @@ class CommentScreenInstrumentedTest {
             environment: PaginationEnvironment,
             replyToCommentId: String?,
             onSuccess: () -> Unit,
-) {
+        ) {
             submissions += Submission(commentText, replyToCommentId)
             allData.add(
                 0,

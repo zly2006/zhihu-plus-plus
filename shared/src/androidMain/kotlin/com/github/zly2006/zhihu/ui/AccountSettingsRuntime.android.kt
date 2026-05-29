@@ -18,8 +18,8 @@ import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.util.clipboardManager
-import kotlinx.coroutines.flow.MutableStateFlow
 import com.github.zly2006.zhihu.util.signFetchRequest
+import kotlinx.coroutines.flow.MutableStateFlow
 
 private const val LOGIN_ACTIVITY_CLASS = "com.github.zly2006.zhihu.LoginActivity"
 private const val QR_CODE_SCAN_ACTIVITY_CLASS = "com.github.zly2006.zhihu.QRCodeScanActivity"

@@ -107,7 +107,6 @@ data class SegmentedTextRuntime(
     val toggleSegmentLike: suspend (SegmentHighlightSpan) -> SegmentInfoMeta,
 )
 
-
 fun buildSegmentUnlikeBody(highlight: SegmentHighlightSpan): String = buildJsonObject {
     put("seg_ids", highlight.meta.segIds.joinToString(","))
 }.toString()

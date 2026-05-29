@@ -60,9 +60,10 @@ actual fun rememberDeveloperSettingsRuntime(): DeveloperSettingsRuntime {
                 )
             },
             signedGetAndCopy = { url ->
-                val body = AccountData.fetchGet(context, url) {
-                    signFetchRequest()
-                }.toString()
+                val body = AccountData
+                    .fetchGet(context, url) {
+                        signFetchRequest()
+                    }.toString()
                 val clip = ClipData.newPlainText("Signed Request Response", body)
                 context.clipboardManager.setPrimaryClip(clip)
                 body

@@ -17,9 +17,9 @@
 
 package com.github.zly2006.zhihu
 
+import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasTestTag
-import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -31,10 +31,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
-import android.content.Context
 import com.github.zly2006.zhihu.test.resetAppPreferences
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.test.setScreenContent
+import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.subscreens.BlockedFeedHistoryScreen
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedFeedRecord
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedFeedRecordDao
@@ -64,7 +63,8 @@ class BlockedFeedHistoryScreenInstrumentedTest {
         // blocked_feed_records between setUp and the test body. The Activity's onCreate renders
         // AndroidZhihuMain which starts HomeScreen feed loading; the FeedDisplayFilterPipeline
         // then calls saveBlockedFeedRecords. Disabling the filter prevents those insertions.
-        composeRule.activity.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        composeRule.activity
+            .getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
             .edit()
             .putBoolean("enableContentFilter", false)
             .commit()

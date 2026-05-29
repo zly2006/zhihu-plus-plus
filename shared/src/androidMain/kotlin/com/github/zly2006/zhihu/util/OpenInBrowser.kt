@@ -19,12 +19,12 @@ package com.github.zly2006.zhihu.util
 
 import android.content.Context
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.data.decodeZhihuCollection
 import com.github.zly2006.zhihu.shared.data.decodeZhihuCollectionList
+import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.zhihuCollectionCreateBody
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
@@ -39,7 +39,8 @@ object OpenInBrowser {
         val collection = decodeZhihuCollectionList(jojo["data"]!!)
             .firstOrNull { it.description == "com.github.zly2006.zhplus.openinbrowser" }
             ?: decodeZhihuCollection(
-                AccountData.fetchPost(context, "https://www.zhihu.com/api/v4/collections") { signFetchRequest();
+                AccountData.fetchPost(context, "https://www.zhihu.com/api/v4/collections") {
+                    signFetchRequest()
                     contentType(ContentType.Application.Json)
                     setBody(
                         zhihuCollectionCreateBody(
@@ -57,11 +58,14 @@ object OpenInBrowser {
             }
             val url = "https://api.zhihu.com/collections/contents/$contentType/${destination.id}"
             val body = "add_collections=${collection.id}"
-            return AccountData.httpClient(context).put(url) {
-                signFetchRequest()
-                contentType(ContentType.Application.FormUrlEncoded)
-                setBody(body)
-            }.status.isSuccess()
+            return AccountData
+                .httpClient(context)
+                .put(url) {
+                    signFetchRequest()
+                    contentType(ContentType.Application.FormUrlEncoded)
+                    setBody(body)
+                }.status
+                .isSuccess()
         }
         return false
     }

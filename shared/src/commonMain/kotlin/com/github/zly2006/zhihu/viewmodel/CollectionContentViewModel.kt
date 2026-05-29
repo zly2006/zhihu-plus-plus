@@ -69,9 +69,6 @@ interface CollectionContentEnvironment : PaginationEnvironment {
     suspend fun handleCollectionExportFailure(error: Exception)
 }
 
-
-
-
 fun zhihuCollectionCreateBody(
     title: String,
     description: String = "",
@@ -81,8 +78,6 @@ fun zhihuCollectionCreateBody(
     put("description", description)
     put("is_public", isPublic)
 }
-
-
 
 class CollectionContentViewModel(
     val collectionId: String,

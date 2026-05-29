@@ -28,11 +28,11 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.github.zly2006.zhihu.shared.data.CommonFeed
-import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.shared.data.CommonFeed
+import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.shared.question.QuestionScreenUiState
@@ -58,9 +58,7 @@ import com.github.zly2006.zhihu.ui.QuestionScreen
 import com.github.zly2006.zhihu.ui.QuestionScreenTestOverrides
 import com.github.zly2006.zhihu.ui.questionFeedItemTag
 import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.getBlocklistManager
-import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.paginationEnvironment
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonArray

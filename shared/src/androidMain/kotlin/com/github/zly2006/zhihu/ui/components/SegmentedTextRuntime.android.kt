@@ -54,17 +54,19 @@ private suspend fun toggleSegmentLike(
         updateSegmentMetaAfterUnlike(highlight)
     } else {
         val body = buildSegmentLikeBody(highlight)
-        val response = AccountData.httpClient(context).post(url) {
-            signFetchRequest()
-            contentType(ContentType.Application.Json)
-            setBody(body)
-        }.let { response ->
-            if (response.status == HttpStatusCode.NoContent) {
-                null
-            } else {
-                response.body<JsonElement>() as? JsonObject
+        val response = AccountData
+            .httpClient(context)
+            .post(url) {
+                signFetchRequest()
+                contentType(ContentType.Application.Json)
+                setBody(body)
+            }.let { response ->
+                if (response.status == HttpStatusCode.NoContent) {
+                    null
+                } else {
+                    response.body<JsonElement>() as? JsonObject
+                }
             }
-        }
         updateSegmentMetaAfterLike(highlight, response)
     }
 }

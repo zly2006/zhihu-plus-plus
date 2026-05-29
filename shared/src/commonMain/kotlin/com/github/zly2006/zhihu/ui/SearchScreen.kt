@@ -157,7 +157,6 @@ fun SearchScreen(
         navigator.onNavigate(Search(query = trimmedQuery))
     }
 
-
     suspend fun fetchHotSearch() {
         val json = paginationEnvironment.fetchJson(ZHIHU_HOT_SEARCH_URL, "") ?: return
         val queries = json["hot_search_queries"] as? JsonArray ?: return

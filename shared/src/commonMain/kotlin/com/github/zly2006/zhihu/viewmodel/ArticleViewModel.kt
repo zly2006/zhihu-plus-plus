@@ -489,9 +489,9 @@ class ArticleViewModel(
         viewModelScope.launch {
             try {
                 val endpoint = when (article.type) {
-        ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${article.id}/voters"
-        ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${article.id}/voters"
-    }
+                    ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${article.id}/voters"
+                    ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${article.id}/voters"
+                }
 
                 val response = context.fetchPost(endpoint) {
                     when (article.type) {

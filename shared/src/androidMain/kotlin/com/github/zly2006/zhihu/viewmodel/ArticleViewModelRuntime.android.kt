@@ -102,7 +102,8 @@ class AndroidArticleViewModelRuntime(
         val safeRequestedCount = requestedCount.coerceAtLeast(0)
         if (safeRequestedCount == 0) return emptyList()
 
-        val json = AccountData.fetchGet(context, article.rootCommentUrl) { signFetchRequest();
+        val json = AccountData.fetchGet(context, article.rootCommentUrl) {
+            signFetchRequest()
             url {
                 parameters["order"] = "score"
                 parameters["limit"] = safeRequestedCount.coerceAtMost(20).toString()

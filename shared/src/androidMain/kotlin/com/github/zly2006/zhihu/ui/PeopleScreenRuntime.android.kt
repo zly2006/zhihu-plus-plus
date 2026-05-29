@@ -51,20 +51,24 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
             },
             toggleFollow = { person, isFollowing, followerCount ->
                 if (isFollowing) {
-                    val jojo = AccountData.httpClient(context)
+                    val jojo = AccountData
+                        .httpClient(context)
                         .delete("https://www.zhihu.com/api/v4/members/${person.urlToken}/followers") {
                             signFetchRequest()
-                        }.raiseForStatus().body<JsonObject>()
+                        }.raiseForStatus()
+                        .body<JsonObject>()
                     peopleFollowResult(
                         isFollowingBefore = isFollowing,
                         followerCountBefore = followerCount,
                         responseJson = jojo,
                     )
                 } else {
-                    val jojo = AccountData.httpClient(context)
+                    val jojo = AccountData
+                        .httpClient(context)
                         .post("https://www.zhihu.com/api/v4/members/${person.urlToken}/followers") {
                             signFetchRequest()
-                        }.raiseForStatus().body<JsonObject>()
+                        }.raiseForStatus()
+                        .body<JsonObject>()
                     peopleFollowResult(
                         isFollowingBefore = isFollowing,
                         followerCountBefore = followerCount,
@@ -74,13 +78,15 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
             },
             toggleBlock = { person, isBlocking ->
                 if (isBlocking) {
-                    AccountData.httpClient(context)
+                    AccountData
+                        .httpClient(context)
                         .delete("https://www.zhihu.com/api/v4/members/${person.urlToken}/actions/block") {
                             signFetchRequest()
                         }.raiseForStatus()
                     false
                 } else {
-                    AccountData.httpClient(context)
+                    AccountData
+                        .httpClient(context)
                         .post("https://www.zhihu.com/api/v4/members/${person.urlToken}/actions/block") {
                             signFetchRequest()
                         }.raiseForStatus()

@@ -332,7 +332,8 @@ object AccountData {
         contentType: String,
     ) {
         runCatching {
-            fetchPost(context, ZHIHU_READ_HISTORY_ADD_URL) { signFetchRequest();
+            fetchPost(context, ZHIHU_READ_HISTORY_ADD_URL) {
+                signFetchRequest()
                 contentType(ContentType.Application.Json)
                 setBody(buildZhihuReadHistoryBody(contentToken, contentType))
             }

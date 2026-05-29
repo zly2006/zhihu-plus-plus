@@ -29,11 +29,11 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.github.zly2006.zhihu.shared.notification.AndroidNotificationSettingsStore
 import com.github.zly2006.zhihu.shared.notification.NotificationType
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
-import com.github.zly2006.zhihu.shared.notification.AndroidNotificationSettingsStore
 import com.github.zly2006.zhihu.ui.NotificationSettingsScreen
 import org.junit.Assert.assertEquals
 import org.junit.Before

@@ -23,8 +23,8 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
-import kotlinx.coroutines.CancellationException
 import com.github.zly2006.zhihu.util.signFetchRequest
+import kotlinx.coroutines.CancellationException
 
 /**
  * 此API没有缓存，谨慎使用！

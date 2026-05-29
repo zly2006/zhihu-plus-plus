@@ -32,7 +32,6 @@ data class PinScreenRuntime(
     val openExternalUrl: (String) -> Unit,
 )
 
-
 internal suspend fun fetchPinLinkCardPreview(
     linkCard: DataHolder.Pin.ContentLinkCard,
     fetchDetail: suspend (NavDestination) -> DataHolder.Content?,
