@@ -25,7 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.TextButton
+import top.yukonga.miuix.kmp.window.WindowBottomSheet
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -80,7 +80,7 @@ fun MiuixContentFilterSettingsScreen(
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
     val scrollBehavior = MiuixScrollBehavior()
     var filterStats by remember { mutableStateOf<FilterStats?>(null) }
-    var showStatsDialog by remember { mutableStateOf(false) }
+    val showStatsSheet = remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         try { filterStats = ContentFilterManager.getInstance(context).getFilterStats() } catch (_: Exception) {}
@@ -343,7 +343,7 @@ fun MiuixContentFilterSettingsScreen(
                         ArrowPreference(
                             title = "过滤统计",
                             summary = "已累计过滤 ${filterStats?.filteredCount ?: 0} 条内容，点击查看详情",
-                            onClick = { showStatsDialog = true },
+                            onClick = { showStatsSheet.value = true },
                         )
                     }
                 }
@@ -351,58 +351,53 @@ fun MiuixContentFilterSettingsScreen(
         }
     }
 
-    if (showStatsDialog && filterStats != null) {
-        AlertDialog(
-            onDismissRequest = { showStatsDialog = false },
-            title = { Text("过滤统计详情") },
-            text = {
-                Column {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text("总记录数: ${filterStats?.totalRecords}")
-                        Text("过滤率: %.1f%%".format((filterStats?.filterRate ?: 0f) * 100))
+    WindowBottomSheet(
+        show = showStatsSheet,
+        onDismissRequest = { showStatsSheet.value = false },
+        title = "过滤统计详情",
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text("总记录数: ${filterStats?.totalRecords ?: 0}")
+                Text("过滤率: %.1f%%".format((filterStats?.filterRate ?: 0f) * 100))
+            }
+            Spacer(modifier = Modifier.height(20.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth().clickable {
+                    coroutineScope.launch {
+                        try {
+                            ContentFilterManager.getInstance(context).cleanupOldData()
+                            filterStats = ContentFilterManager.getInstance(context).getFilterStats()
+                            Toast.makeText(context, "已清理过期数据", Toast.LENGTH_SHORT).show()
+                        } catch (_: Exception) {}
                     }
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Card(
-                        modifier = Modifier.fillMaxWidth().clickable {
-                            coroutineScope.launch {
-                                try {
-                                    ContentFilterManager.getInstance(context).cleanupOldData()
-                                    filterStats = ContentFilterManager.getInstance(context).getFilterStats()
-                                    Toast.makeText(context, "已清理过期数据", Toast.LENGTH_SHORT).show()
-                                } catch (_: Exception) {}
-                            }
-                        },
-                    ) {
-                        Box(Modifier.fillMaxWidth().padding(14.dp), contentAlignment = Alignment.Center) {
-                            Text("清理过期数据", fontSize = 15.sp)
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Card(
-                        modifier = Modifier.fillMaxWidth().clickable {
-                            coroutineScope.launch {
-                                try {
-                                    ContentFilterManager.getInstance(context).clearAllData()
-                                    filterStats = ContentFilterManager.getInstance(context).getFilterStats()
-                                    Toast.makeText(context, "已重置所有数据", Toast.LENGTH_SHORT).show()
-                                    showStatsDialog = false
-                                } catch (_: Exception) {}
-                            }
-                        },
-                    ) {
-                        Box(Modifier.fillMaxWidth().padding(14.dp), contentAlignment = Alignment.Center) {
-                            Text("重置所有数据", fontSize = 15.sp, color = MiuixTheme.colorScheme.error)
-                        }
-                    }
+                },
+            ) {
+                Box(Modifier.fillMaxWidth().padding(14.dp), contentAlignment = Alignment.Center) {
+                    Text("清理过期数据", fontSize = 15.sp)
                 }
-            },
-            confirmButton = {
-                TextButton(onClick = { showStatsDialog = false }) { Text("关闭") }
-            },
-        )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth().clickable {
+                    coroutineScope.launch {
+                        try {
+                            ContentFilterManager.getInstance(context).clearAllData()
+                            filterStats = ContentFilterManager.getInstance(context).getFilterStats()
+                            Toast.makeText(context, "已重置所有数据", Toast.LENGTH_SHORT).show()
+                            showStatsSheet.value = false
+                        } catch (_: Exception) {}
+                    }
+                },
+            ) {
+                Box(Modifier.fillMaxWidth().padding(14.dp), contentAlignment = Alignment.Center) {
+                    Text("重置所有数据", fontSize = 15.sp, color = MiuixTheme.colorScheme.error)
+                }
+            }
+        }
     }
 }
 
