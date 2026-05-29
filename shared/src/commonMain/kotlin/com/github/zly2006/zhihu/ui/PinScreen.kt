@@ -84,8 +84,7 @@ import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.getShareText
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
+import kotlinx.datetime.Instant
 import androidx.compose.material.icons.outlined.ThumbUp as OutlinedThumbUp
 
 const val PIN_SCREEN_BACK_BUTTON_TAG = "pin_screen_back_button"
@@ -381,10 +380,10 @@ private fun PinContent(
         Text(
             buildString {
                 append("发布于")
-                append(formatPinDateTime(pin.created))
+                append(Instant.fromEpochSeconds(pin.created).toLocalDateTime(TimeZone.currentSystemDefault()).run { "${year}-${(month.ordinal + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')} ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}" })
                 if (pin.updated > pin.created) {
                     append(" · 编辑于")
-                    append(formatPinDateTime(pin.updated))
+                    append(Instant.fromEpochSeconds(pin.updated).toLocalDateTime(TimeZone.currentSystemDefault()).run { "${year}-${(month.ordinal + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')} ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}" })
                 }
             },
             style = MaterialTheme.typography.bodySmall,
@@ -647,21 +646,3 @@ internal fun compactPreview(raw: String, maxLength: Int = 120): String {
 }
 
 internal fun compactTitle(raw: String, maxLength: Int = 56): String = compactPreview(raw, maxLength)
-
-@OptIn(ExperimentalTime::class)
-private fun formatPinDateTime(seconds: Long): String {
-    val dateTime = Instant
-        .fromEpochSeconds(seconds)
-        .toLocalDateTime(TimeZone.currentSystemDefault())
-    return buildString {
-        append(dateTime.year.toString().padStart(4, '0'))
-        append('-')
-        append((dateTime.month.ordinal + 1).toString().padStart(2, '0'))
-        append('-')
-        append(dateTime.day.toString().padStart(2, '0'))
-        append(' ')
-        append(dateTime.hour.toString().padStart(2, '0'))
-        append(':')
-        append(dateTime.minute.toString().padStart(2, '0'))
-    }
-}
