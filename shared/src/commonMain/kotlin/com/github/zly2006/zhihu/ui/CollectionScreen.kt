@@ -17,19 +17,15 @@
 
 package com.github.zly2006.zhihu.ui
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,10 +35,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -50,44 +42,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.navigation.CollectionContent
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.shared.data.Collection
+import com.github.zly2006.zhihu.ui.components.PaginatedList
+import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.viewmodel.CollectionsViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
-
-data class CollectionScreenData(
-    val collections: List<Collection>,
-    val isEnd: Boolean,
-    val isLoading: Boolean,
-    val loadMore: () -> Unit,
-)
-
-@Composable
-fun rememberCollectionScreenData(
-    urlToken: String?,
-    testCollections: List<Collection>? = null,
-): CollectionScreenData {
-    val useTestCollections = testCollections != null || urlToken == null
-    val viewModel: CollectionsViewModel = viewModel(key = urlToken) {
-        CollectionsViewModel(urlToken.orEmpty())
-    }
-    val environment = rememberPaginationEnvironment(allowGuestAccess = false)
-
-    LaunchedEffect(useTestCollections, viewModel, environment) {
-        if (!useTestCollections && viewModel.allData.isEmpty()) {
-            viewModel.refresh(environment)
-        }
-    }
-
-    return CollectionScreenData(
-        collections = testCollections ?: viewModel.allData,
-        isEnd = useTestCollections || viewModel.isEnd,
-        isLoading = viewModel.isLoading,
-        loadMore = {
-            if (!useTestCollections) {
-                viewModel.loadMore(environment)
-            }
-        },
-    )
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -96,22 +54,17 @@ fun CollectionScreen(
     testCollections: List<Collection>? = null,
 ) {
     val navigator = LocalNavigator.current
-    val data = rememberCollectionScreenData(urlToken, testCollections)
-    val listState = rememberLazyListState()
-    val shouldLoadMore by remember(data.collections.size, data.isEnd, data.isLoading) {
-        derivedStateOf {
-            val layoutInfo = listState.layoutInfo
-            val lastVisibleIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: return@derivedStateOf false
-            lastVisibleIndex >= layoutInfo.totalItemsCount - 3 &&
-                data.collections.isNotEmpty() &&
-                !data.isEnd &&
-                !data.isLoading
-        }
+    val environment = rememberPaginationEnvironment(allowGuestAccess = false)
+    val viewModel: CollectionsViewModel = viewModel(key = urlToken) {
+        CollectionsViewModel(urlToken.orEmpty())
     }
+    val listState = rememberLazyListState()
+    val useTestCollections = testCollections != null || urlToken == null
+    val collections = testCollections ?: viewModel.allData
 
-    LaunchedEffect(shouldLoadMore) {
-        if (shouldLoadMore) {
-            data.loadMore()
+    LaunchedEffect(useTestCollections) {
+        if (!useTestCollections && viewModel.allData.isEmpty()) {
+            viewModel.refresh(environment)
         }
     }
 
@@ -136,43 +89,34 @@ fun CollectionScreen(
             )
         },
     ) { innerPadding ->
-        LazyColumn(
-            state = listState,
+        PaginatedList(
+            items = collections,
+            onLoadMore = {
+                if (!useTestCollections) {
+                    viewModel.loadMore(environment)
+                }
+            },
+            isEnd = { useTestCollections || viewModel.isEnd },
+            listState = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 16.dp)
                 .padding(innerPadding)
                 .testTag(COLLECTION_SCREEN_LIST_TAG),
-        ) {
-            items(data.collections, key = { it.id }) { collection ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                        .testTag(collectionScreenItemTag(collection.id)),
-                    elevation = CardDefaults.cardElevation(4.dp),
-                    onClick = {
-                        navigator.onNavigate(CollectionContent(collection.id))
-                    },
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(text = collection.title, style = MaterialTheme.typography.titleMedium)
-                    }
-                }
-            }
-
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (data.isEnd) {
-                        Text("已经到底啦")
-                    } else if (data.isLoading) {
-                        CircularProgressIndicator()
-                    }
+            footer = ProgressIndicatorFooter,
+        ) { collection ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+                    .testTag(collectionScreenItemTag(collection.id)),
+                elevation = CardDefaults.cardElevation(4.dp),
+                onClick = {
+                    navigator.onNavigate(CollectionContent(collection.id))
+                },
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(text = collection.title, style = MaterialTheme.typography.titleMedium)
                 }
             }
         }

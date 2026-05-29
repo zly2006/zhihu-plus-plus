@@ -70,6 +70,7 @@ import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
+import com.github.zly2006.zhihu.shared.platform.SettingsStore
 import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
@@ -83,6 +84,7 @@ import com.github.zly2006.zhihu.viewmodel.feed.ZHIHU_HOT_SEARCH_URL
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonArray
 
 @Serializable
@@ -91,6 +93,23 @@ private data class HotSearchItem(
     val hotShow: String = "",
     val label: String = "",
 )
+
+private const val SEARCH_HISTORY_KEY = "searchHistoryQueries"
+private const val SEARCH_HISTORY_MAX_SIZE = 20
+
+private fun loadSearchHistory(settings: SettingsStore): List<String> =
+    settings
+        .getStringOrNull(SEARCH_HISTORY_KEY)
+        ?.let { json ->
+            runCatching { ZhihuJson.json.decodeFromString<List<String>>(json) }.getOrNull()
+        }.orEmpty()
+
+private fun saveSearchHistory(
+    settings: SettingsStore,
+    history: List<String>,
+) {
+    settings.putString(SEARCH_HISTORY_KEY, ZhihuJson.json.encodeToString(history))
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -116,6 +135,27 @@ fun SearchScreen(
     }
     var moreMenuExpanded by remember { mutableStateOf(false) }
     val useTestHotSearchQueries = testHotSearchQueries != null
+    val showSearchHistory = remember { mutableStateOf(settings.getBoolean("showSearchHistory", true)) }
+    val searchHistoryItems = remember {
+        mutableStateListOf<String>().apply {
+            addAll(loadSearchHistory(settings))
+        }
+    }
+    var historyMoreMenuExpanded by remember { mutableStateOf(false) }
+
+    fun submitSearch(query: String) {
+        val trimmedQuery = query.trim()
+        if (trimmedQuery.isEmpty()) return
+        if (showSearchHistory.value) {
+            searchHistoryItems.remove(trimmedQuery)
+            searchHistoryItems.add(0, trimmedQuery)
+            while (searchHistoryItems.size > SEARCH_HISTORY_MAX_SIZE) {
+                searchHistoryItems.removeAt(searchHistoryItems.lastIndex)
+            }
+            saveSearchHistory(settings, searchHistoryItems)
+        }
+        navigator.onNavigate(Search(query = trimmedQuery))
+    }
 
     suspend fun fetchHotSearch() {
         val json = paginationEnvironment.fetchJson(ZHIHU_HOT_SEARCH_URL, "") ?: return
@@ -123,6 +163,51 @@ fun SearchScreen(
         hotSearchItems.clear()
         queries.take(15).forEach { item ->
             hotSearchItems.add(ZhihuJson.decodeJson(item))
+        }
+    }
+
+    @Composable
+    fun SearchHistoryHeader(showClearAction: Boolean) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = "搜索历史",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            IconButton(
+                onClick = { historyMoreMenuExpanded = true },
+                modifier = Modifier
+                    .size(40.dp)
+                    .testTag("search_history_more_button"),
+            ) {
+                Icon(Icons.Default.MoreVert, contentDescription = "更多", modifier = Modifier.size(18.dp))
+                DropdownMenu(
+                    expanded = historyMoreMenuExpanded,
+                    onDismissRequest = { historyMoreMenuExpanded = false },
+                ) {
+                    if (showClearAction) {
+                        DropdownMenuItem(
+                            text = { Text("清空搜索历史") },
+                            onClick = {
+                                historyMoreMenuExpanded = false
+                                searchHistoryItems.clear()
+                                saveSearchHistory(settings, searchHistoryItems)
+                            },
+                        )
+                    }
+                    DropdownMenuItem(
+                        text = { Text("前往设置关闭搜索历史") },
+                        onClick = {
+                            historyMoreMenuExpanded = false
+                            navigator.onNavigate(Account.AppearanceSettings("showSearchHistory"))
+                        },
+                    )
+                }
+            }
         }
     }
 
