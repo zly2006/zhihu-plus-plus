@@ -25,12 +25,13 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.data.decodeZhihuCollection
 import com.github.zly2006.zhihu.shared.data.decodeZhihuCollectionList
 import com.github.zly2006.zhihu.util.signFetchRequest
-import com.github.zly2006.zhihu.viewmodel.zhihuCollectionCreateBody
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 object OpenInBrowser {
     suspend fun openUrlInBrowser(context: Context, destination: NavDestination): Boolean {
@@ -43,11 +44,11 @@ object OpenInBrowser {
                     signFetchRequest()
                     contentType(ContentType.Application.Json)
                     setBody(
-                        zhihuCollectionCreateBody(
-                            title = "Zhihu++: 要在浏览器中打开的内容",
-                            description = "com.github.zly2006.zhplus.openinbrowser",
-                            isPublic = false,
-                        ),
+                        buildJsonObject {
+                            put("title", "Zhihu++: 要在浏览器中打开的内容")
+                            put("description", "com.github.zly2006.zhplus.openinbrowser")
+                            put("is_public", false)
+                        },
                     )
                 }!!["collection"]!!,
             )

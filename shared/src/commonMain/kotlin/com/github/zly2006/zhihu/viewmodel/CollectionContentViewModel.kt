@@ -34,9 +34,6 @@ import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 import kotlin.reflect.typeOf
 
 data class CollectionHtmlExportProgress(
@@ -67,16 +64,6 @@ interface CollectionContentEnvironment : PaginationEnvironment {
     ): CollectionHtmlExportResult
 
     suspend fun handleCollectionExportFailure(error: Exception)
-}
-
-fun zhihuCollectionCreateBody(
-    title: String,
-    description: String = "",
-    isPublic: Boolean = false,
-): JsonObject = buildJsonObject {
-    put("title", title)
-    put("description", description)
-    put("is_public", isPublic)
 }
 
 class CollectionContentViewModel(

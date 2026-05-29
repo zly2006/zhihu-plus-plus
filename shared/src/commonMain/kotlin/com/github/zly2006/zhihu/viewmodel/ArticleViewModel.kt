@@ -74,10 +74,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 
 class ArticleViewModel(
     private val article: Article,
@@ -478,7 +480,13 @@ class ArticleViewModel(
         viewModelScope.launch {
             context.fetchPost("https://www.zhihu.com/api/v4/collections") {
                 contentType(ContentType.Application.Json)
-                setBody(zhihuCollectionCreateBody(title, description, isPublic))
+                setBody(
+                    buildJsonObject {
+                        put("title", title)
+                        put("description", description)
+                        put("is_public", isPublic)
+                    },
+                )
                 context.configureSignedRequest(this)
             }
             loadCollections(context)
