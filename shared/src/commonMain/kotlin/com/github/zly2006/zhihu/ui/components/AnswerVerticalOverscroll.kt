@@ -74,7 +74,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.shared.article.CachedAnswerContent
+import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.absoluteValue

@@ -14,9 +14,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.github.zly2006.zhihu.navigation.AnswerNavigator
-import com.github.zly2006.zhihu.shared.article.CachedAnswerContent
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
 import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
+import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 
 open class ArticleAnswerSwitchData :
     ViewModel(),

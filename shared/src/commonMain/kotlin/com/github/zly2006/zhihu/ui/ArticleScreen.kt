@@ -127,7 +127,6 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.zhihuArticleUrl
 import com.github.zly2006.zhihu.navigation.zhihuQuestionAnswerUrl
-import com.github.zly2006.zhihu.shared.article.CachedAnswerContent
 import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
@@ -143,6 +142,7 @@ import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
 import com.github.zly2006.zhihu.util.smoothGradient
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
+import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
 import com.materialkolor.ktx.harmonize
 import kotlinx.coroutines.Dispatchers

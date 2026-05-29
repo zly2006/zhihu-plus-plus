@@ -12,8 +12,8 @@ package com.github.zly2006.zhihu.ui
 import androidx.navigation.NavHostController
 import com.github.zly2006.zhihu.navigation.AnswerNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.shared.article.CachedAnswerContent
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
+import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 
 interface ArticleHost {
     val articleNavController: NavHostController
