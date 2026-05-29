@@ -165,7 +165,7 @@ fun MiuixBlockedFeedHistoryScreen() {
                                 )
                             }
                             IconButton(
-                                onClick = onDelete,
+                                onClick = { coroutineScope.launch { dao.deleteById(record.id) } },
                                 modifier = Modifier.size(36.dp).testTag("blocked_feed_history_delete_${record.id}"),
                             ) {
                                 Icon(Icons.Default.Delete, "删除", tint = MiuixTheme.colorScheme.onSurfaceSecondary)
