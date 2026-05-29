@@ -112,6 +112,7 @@ fun MiuixOnlineHistoryScreen() {
                             show = showActionsMenu,
                             alignment = PopupPositionProvider.Align.TopEnd,
                             onDismissRequest = { showActionsMenu = false },
+                            popupModifier = Modifier.padding(horizontal = 12.dp),
                             minWidth = 200.dp,
                         ) {
                             val dismissState = LocalDismissState.current
