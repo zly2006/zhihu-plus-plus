@@ -22,8 +22,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
@@ -59,10 +57,13 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.basic.DropdownEntry
+import top.yukonga.miuix.kmp.basic.DropdownItem
 import top.yukonga.miuix.kmp.basic.PullToRefresh
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.menu.WindowDropdownMenu
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
@@ -98,32 +99,30 @@ fun MiuixOnlineHistoryScreen() {
                         showActionsMenu = false
                     }
                     Box {
-                        IconButton(
-                            onClick = { showActionsMenu = true },
-                        ) {
+                        IconButton(onClick = { showActionsMenu = true }) {
                             Icon(
                                 Icons.Filled.MoreVert,
                                 contentDescription = "更多选项",
                                 tint = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onBackground,
                             )
                         }
-                        DropdownMenu(
-                            expanded = showActionsMenu,
-                            onDismissRequest = { showActionsMenu = false },
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("查看本地历史记录") },
-                                onClick = {
-                                    showActionsMenu = false
-                                    navigator.onNavigate(History)
-                                },
-                            )
-                            DropdownMenuItem(
-                                text = { Text("清除历史记录") },
-                                onClick = {
-                                    showActionsMenu = false
-                                    showClearHistoryDialog = true
-                                },
+                        if (showActionsMenu) {
+                            WindowDropdownMenu(
+                                title = "",
+                                entries = listOf(
+                                    DropdownEntry(listOf(
+                                        DropdownItem(
+                                            text = "查看本地历史记录",
+                                            onClick = { navigator.onNavigate(History) },
+                                        ),
+                                        DropdownItem(
+                                            text = "清除历史记录",
+                                            onClick = { showClearHistoryDialog = true },
+                                        ),
+                                    )),
+                                ),
+                                collapseOnSelection = true,
+                                onExpandedChange = { expanded: Boolean -> if (!expanded) showActionsMenu = false },
                             )
                         }
                     }
