@@ -18,10 +18,10 @@
 package com.github.zly2006.zhihu.viewmodel.comment
 
 import androidx.lifecycle.viewModelScope
-import com.github.zly2006.zhihu.navigation.CommentHolder
-import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.navigation.CommentHolder
+import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.SegmentCommentHolder

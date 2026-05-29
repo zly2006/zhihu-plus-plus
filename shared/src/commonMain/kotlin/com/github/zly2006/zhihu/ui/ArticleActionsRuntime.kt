@@ -4,8 +4,6 @@ import androidx.compose.runtime.Composable
 import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
-import com.github.zly2006.zhihu.navigation.zhihuArticleUrl
-import com.github.zly2006.zhihu.navigation.zhihuQuestionAnswerUrl
 
 interface ArticleActionsRuntime {
     val ttsState: TtsState
@@ -43,10 +41,10 @@ fun articleActionText(
 ): String =
     when (article.type) {
         ArticleType.Answer -> {
-            "${zhihuQuestionAnswerUrl(questionId, article.id)}\n【$title - $authorName 的回答】"
+            "https://www.zhihu.com/question/$questionId/answer/${article.id}\n【$title - $authorName 的回答】"
         }
         ArticleType.Article -> {
-            "${zhihuArticleUrl(article.id)}\n【$title - $authorName 的文章】"
+            "https://zhuanlan.zhihu.com/p/${article.id}\n【$title - $authorName 的文章】"
         }
     }
 

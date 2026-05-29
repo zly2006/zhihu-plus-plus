@@ -7,7 +7,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.zhihuAnswerUrl
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.fuckHonorService
@@ -32,7 +31,7 @@ actual fun rememberArticleScreenRuntime(): ArticleScreenRuntime {
                 if (wv.contentId != articleId) {
                     wv.contentId = articleId
                     wv.loadZhihu(
-                        zhihuAnswerUrl(cached.article.id),
+                        "https://www.zhihu.com/answer/${cached.article.id}",
                         prepareContentDocument(cached.content, onImageLoadFailed),
                         title,
                     )

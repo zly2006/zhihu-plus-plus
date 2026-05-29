@@ -5,27 +5,23 @@ import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
-import com.github.zly2006.zhihu.navigation.zhihuAnswerUrl
-import com.github.zly2006.zhihu.navigation.zhihuArticleUrl
-import com.github.zly2006.zhihu.navigation.zhihuPinUrl
-import com.github.zly2006.zhihu.navigation.zhihuQuestionUrl
 
 fun getShareText(content: NavDestination, title: String = "", authorName: String = ""): String? = when (content) {
     is Article -> {
         when (content.type) {
             ArticleType.Answer -> {
-                "${zhihuAnswerUrl(content.id)}\n【$title - $authorName 的回答】"
+                "https://www.zhihu.com/answer/${content.id}\n【$title - $authorName 的回答】"
             }
             ArticleType.Article -> {
-                "${zhihuArticleUrl(content.id)}\n【$title - $authorName 的文章】"
+                "https://zhuanlan.zhihu.com/p/${content.id}\n【$title - $authorName 的文章】"
             }
         }
     }
     is Question -> {
-        "${zhihuQuestionUrl(content.questionId)}\n【${content.title}】"
+        "https://www.zhihu.com/question/${content.questionId}\n【${content.title}】"
     }
     is Pin -> {
-        zhihuPinUrl(content.id)
+        "https://www.zhihu.com/pin/${content.id}"
     }
     else -> null
 }

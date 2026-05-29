@@ -4,7 +4,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.data.decodeQuestionContentDetail
 import com.github.zly2006.zhihu.navigation.Question
-import com.github.zly2006.zhihu.navigation.zhihuQuestionUrl
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
@@ -49,7 +48,7 @@ actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {
                 }
             },
             openLog = { question ->
-                openDesktopExternalUrl("${zhihuQuestionUrl(question.questionId)}/log")
+                openDesktopExternalUrl("https://www.zhihu.com/question/${question.questionId}/log")
             },
             handleShareAction = { question, onShowDialog ->
                 handleShareAction(question, settings, shareRuntime, onShowDialog)

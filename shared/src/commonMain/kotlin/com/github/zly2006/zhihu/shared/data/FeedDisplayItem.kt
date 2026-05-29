@@ -1,8 +1,5 @@
 package com.github.zly2006.zhihu.shared.data
 
-import com.github.zly2006.zhihu.navigation.zhihuArticleUrl
-import com.github.zly2006.zhihu.navigation.zhihuQuestionAnswerUrl
-
 data class FeedDisplayItem(
     val title: String,
     val summary: String?,
@@ -121,8 +118,8 @@ private fun Feed.toTargetDisplayItem(
                 else -> emptyList()
             },
             segmentSourceUrl = when (target) {
-                is Feed.AnswerTarget -> zhihuQuestionAnswerUrl(target.question.id, target.id)
-                is Feed.ArticleTarget -> zhihuArticleUrl(target.id)
+                is Feed.AnswerTarget -> "https://www.zhihu.com/question/${target.question.id}/answer/${target.id}"
+                is Feed.ArticleTarget -> "https://zhuanlan.zhihu.com/p/${target.id}"
                 else -> null
             },
         )

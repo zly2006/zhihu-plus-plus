@@ -9,15 +9,13 @@ import kotlinx.datetime.plus
 
 const val ZHIHU_DAILY_LATEST_URL = "https://news-at.zhihu.com/api/4/stories/latest"
 
-fun zhihuDailyBeforeUrl(date: String): String = "https://news-at.zhihu.com/api/4/stories/before/$date"
-
 suspend fun fetchLatestDailyStories(client: HttpClient): DailyStoriesResponse =
     client.get(ZHIHU_DAILY_LATEST_URL).body()
 
 suspend fun fetchDailyStoriesBefore(
     client: HttpClient,
     date: String,
-): DailyStoriesResponse = client.get(zhihuDailyBeforeUrl(date)).body()
+): DailyStoriesResponse = client.get("https://news-at.zhihu.com/api/4/stories/before/$date").body()
 
 suspend fun fetchDailyStoriesForDate(
     client: HttpClient,

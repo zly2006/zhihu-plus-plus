@@ -2,9 +2,9 @@ package com.github.zly2006.zhihu.shared.people
 
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.OfficialBadge
 import com.github.zly2006.zhihu.ui.FollowedQuestion
 import com.github.zly2006.zhihu.ui.FollowedTopic
-import com.github.zly2006.zhihu.shared.data.OfficialBadge
 
 data class PeopleProfileUiState(
     val avatar: String = "",

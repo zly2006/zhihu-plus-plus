@@ -7,7 +7,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.getContentDetail
-import com.github.zly2006.zhihu.navigation.zhihuQuestionUrl
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
@@ -49,7 +48,7 @@ actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {
             },
             openLog = { question ->
                 val intent = Intent(Intent.ACTION_VIEW).apply {
-                    data = "${zhihuQuestionUrl(question.questionId)}/log".toUri()
+                    data = "https://www.zhihu.com/question/${question.questionId}/log".toUri()
                     setClassName(context, WEBVIEW_ACTIVITY_CLASS)
                 }
                 context.startActivity(intent)
@@ -71,7 +70,7 @@ actual fun QuestionDetailWebViewContent(
 ) {
     WebviewComp {
         it.loadZhihu(
-            zhihuQuestionUrl(questionId),
+            "https://www.zhihu.com/question/$questionId",
             Jsoup.parse(html),
         )
     }

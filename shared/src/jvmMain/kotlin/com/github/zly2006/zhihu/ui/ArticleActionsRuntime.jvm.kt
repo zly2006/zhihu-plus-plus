@@ -8,8 +8,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
-import com.github.zly2006.zhihu.navigation.zhihuAnswerUrl
-import com.github.zly2006.zhihu.navigation.zhihuArticleUrl
 import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
@@ -84,8 +82,8 @@ actual fun rememberArticleActionsRuntime(): ArticleActionsRuntime {
 
             private fun articleUrl(article: Article): String =
                 when (article.type) {
-                    ArticleType.Answer -> zhihuAnswerUrl(article.id)
-                    ArticleType.Article -> zhihuArticleUrl(article.id)
+                    ArticleType.Answer -> "https://www.zhihu.com/answer/${article.id}"
+                    ArticleType.Article -> "https://zhuanlan.zhihu.com/p/${article.id}"
                 }
 
             private suspend fun speakText(

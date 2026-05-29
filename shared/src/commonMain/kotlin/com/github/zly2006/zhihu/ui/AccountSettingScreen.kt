@@ -85,16 +85,16 @@ import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
+import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
+import com.github.zly2006.zhihu.ui.subscreens.defaultBottomBarSelectionKeys
+import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarSelection
+import com.github.zly2006.zhihu.ui.subscreens.shouldShowAccountHistoryShortcut
 import org.jetbrains.compose.resources.painterResource
 import zhihu.shared.generated.resources.Res
 import zhihu.shared.generated.resources.ic_github_24dp
 import zhihu.shared.generated.resources.ic_launcher_foreground
 import zhihu.shared.generated.resources.ic_license_24dp
-import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
-import com.github.zly2006.zhihu.ui.subscreens.defaultBottomBarSelectionKeys
-import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarSelection
-import com.github.zly2006.zhihu.ui.subscreens.shouldShowAccountHistoryShortcut
 
 internal const val ACCOUNT_SETTINGS_SCROLL_TAG = "accountSettings.scroll"
 internal const val ACCOUNT_SETTINGS_LOGIN_ITEM_TAG = "accountSettings.loginItem"
