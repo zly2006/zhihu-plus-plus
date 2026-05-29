@@ -29,7 +29,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 
-fun zhihuMobileTopstoryRecommendUrl(): String = "https://api.zhihu.com/topstory/recommend"
 
 class HomeFeedViewModel :
     BaseFeedViewModel(),
