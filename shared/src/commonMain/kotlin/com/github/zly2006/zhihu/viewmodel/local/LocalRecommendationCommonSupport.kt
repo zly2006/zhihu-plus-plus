@@ -103,7 +103,7 @@ internal suspend fun buildFallbackRecommendations(
     userBehaviorAnalyzer: UserBehaviorAnalyzer,
     feedGenerator: FeedGenerator,
     limit: Int,
-): List<LocalRecommendationEntry> = withContext(Dispatchers.IO) {
+): List<LocalRecommendationEntry> = withContext(Dispatchers.Default) {
     val behaviorProfile = userBehaviorAnalyzer.buildBehaviorProfile()
 
     dao
@@ -134,7 +134,7 @@ internal suspend fun buildFallbackRecommendations(
 internal suspend fun collectCandidateResults(
     dao: LocalContentDao,
     limit: Int,
-): List<CrawlingResult> = withContext(Dispatchers.IO) {
+): List<CrawlingResult> = withContext(Dispatchers.Default) {
     CrawlingReason.entries
         .flatMap { reason ->
             dao.getResultsByReason(reason).take(limit * 2)

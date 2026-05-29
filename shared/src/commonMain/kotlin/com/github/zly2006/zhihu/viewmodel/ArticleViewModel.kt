@@ -148,7 +148,7 @@ class ArticleViewModel(
     fun loadArticle(runtime: ArticleViewModelRuntime) {
         if (httpClient == null) return
         viewModelScope.launch {
-            withContext(Dispatchers.IO) {
+            withContext(Dispatchers.Default) {
                 try {
                     if (article.type == ArticleType.Answer) {
                         val sharedData = runtime.articleAnswerSwitchState()
@@ -433,7 +433,7 @@ class ArticleViewModel(
     fun loadCollections(context: ArticleViewModelRuntime) {
         if (httpClient == null) return
         viewModelScope.launch {
-            withContext(Dispatchers.IO) {
+            withContext(Dispatchers.Default) {
                 try {
                     val contentType = when (article.type) {
                         ArticleType.Answer -> "answer"
@@ -568,7 +568,7 @@ class ArticleViewModel(
 
         try {
             val htmlContent = createOfflineHtmlContent(context, includeAppAttribution)
-            val savedLocation = withContext(Dispatchers.IO) {
+            val savedLocation = withContext(Dispatchers.Default) {
                 saveHtmlToDownloads(context, htmlContent)
             }
             withContext(Dispatchers.Main) {
@@ -635,7 +635,7 @@ class ArticleViewModel(
                 timeoutMs = if (includeComments) 18_000L else 15_000L,
             )
             bitmap = captureExportBitmap(renderer, preparedWebView)
-            withContext(Dispatchers.IO) {
+            withContext(Dispatchers.Default) {
                 saveImageToMediaStore(runtime, bitmap)
             }
             withContext(Dispatchers.Main) {
@@ -712,7 +712,7 @@ class ArticleViewModel(
     private suspend fun createOfflineHtmlContent(
         runtime: ArticleViewModelRuntime,
         includeAppAttribution: Boolean,
-    ): String = withContext(Dispatchers.IO) {
+    ): String = withContext(Dispatchers.Default) {
         runtime.buildOfflineArticleExportHtml(
             content = requireExportSourceContent(),
             includeAppAttribution = includeAppAttribution,

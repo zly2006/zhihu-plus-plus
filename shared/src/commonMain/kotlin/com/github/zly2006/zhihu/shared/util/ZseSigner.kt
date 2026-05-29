@@ -71,8 +71,8 @@ object ZseSigner {
                 ((ZB[te2] and 0xFF) shl 8) or
                 (ZB[te3] and 0xFF)
 
-        return ti xor Integer.rotateLeft(ti, 2) xor Integer.rotateLeft(ti, 10) xor
-            Integer.rotateLeft(ti, 18) xor Integer.rotateLeft(ti, 24)
+        return ti xor (ti).rotateLeft(2) xor (ti).rotateLeft(10) xor
+            (ti).rotateLeft(18) xor (ti).rotateLeft(24)
     }
 
     private fun rBlock(input16: ByteArray): ByteArray {
@@ -106,7 +106,7 @@ object ZseSigner {
                 mixed[i] = (data[off + i].toInt() xor iv[i].toInt()).toByte()
             }
             iv = rBlock(mixed)
-            System.arraycopy(iv, 0, out, outOff, 16)
+            iv.copyInto(out, outOff, 0, 16)
             off += 16
             outOff += 16
         }
@@ -170,10 +170,10 @@ object ZseSigner {
 
         val c0 = rBlock(first)
         val cipher = ByteArray(plainBytes.size)
-        System.arraycopy(c0, 0, cipher, 0, 16)
+        c0.copyInto(cipher, 0, 0, 16)
         if (plainBytes.size > 16) {
             val rest = xBlocks(plainBytes.copyOfRange(16, plainBytes.size), c0)
-            System.arraycopy(rest, 0, cipher, 16, rest.size)
+            rest.copyInto(cipher, 16, 0, rest.size)
         }
 
         return customEncode(cipher)

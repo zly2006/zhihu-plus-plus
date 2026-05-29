@@ -102,7 +102,7 @@ class HomeFeedViewModel :
      * 在viewModelScope中运行，使用viewModelScope代替GlobalScope
      */
     override fun onUiContentClick(environment: PaginationEnvironment, feed: Feed, item: FeedDisplayItem) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(Dispatchers.Default) {
             environment.sendFeedReadStatus(feed)
             recordContentInteraction(environment, feed)
         }

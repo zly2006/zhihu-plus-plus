@@ -486,7 +486,7 @@ fun ContentFilterSettingsScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
                                 Text("总记录数: ${filterStats?.totalRecords}")
-                                Text("过滤率: %.1f%%".format((filterStats?.filterRate ?: 0f) * 100))
+                                Text("过滤率: ${(filterStats?.filterRate ?: 0f) * 100}%%")
                             }
                             Spacer(modifier = Modifier.height(16.dp))
                             Button(

@@ -46,7 +46,7 @@ class UserBehaviorAnalyzer(
         action: String,
         duration: Long? = null,
     ) {
-        withContext(Dispatchers.IO) {
+        withContext(Dispatchers.Default) {
             val behavior = UserBehavior(
                 contentId = contentId,
                 action = action,
@@ -68,7 +68,7 @@ class UserBehaviorAnalyzer(
         recordBehavior(contentId, "$action:${reason.name}")
     }
 
-    suspend fun buildBehaviorProfile(): RecommendationBehaviorProfile = withContext(Dispatchers.IO) {
+    suspend fun buildBehaviorProfile(): RecommendationBehaviorProfile = withContext(Dispatchers.Default) {
         val recentBehaviors = dao.getBehaviorsSince(
             Clock.System.now().toEpochMilliseconds() - 30 * 24 * 60 * 60 * 1000L,
         )
@@ -113,7 +113,7 @@ class UserBehaviorAnalyzer(
     /**
      * 获取用户偏好分析（简化版本）
      */
-    suspend fun getUserPreferences(): Map<CrawlingReason, Double> = withContext(Dispatchers.IO) {
+    suspend fun getUserPreferences(): Map<CrawlingReason, Double> = withContext(Dispatchers.Default) {
         buildBehaviorProfile().reasonPreferences.mapValues { (_, preference) -> preference.multiplier }
     }
 }

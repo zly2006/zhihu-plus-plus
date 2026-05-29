@@ -94,7 +94,7 @@ object ZhihuFetchSignature {
 
                 val nextD = c
                 c = b
-                b += Integer.rotateLeft(a + f + MD5_K[i] + words[g], MD5_S[i])
+                b += (a + f + MD5_K[i] + words[g]).rotateLeft(MD5_S[i])
                 a = d
                 d = nextD
             }

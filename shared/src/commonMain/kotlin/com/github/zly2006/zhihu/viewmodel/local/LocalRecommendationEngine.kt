@@ -36,7 +36,7 @@ class LocalRecommendationEngine(
     private val logWarning: (String) -> Unit = {},
     private val logError: (String, Throwable) -> Unit = { _, _ -> },
 ) {
-    @Volatile
+    @kotlin.concurrent.Volatile
     private var initialized = false
 
     suspend fun initialize() {
@@ -44,7 +44,7 @@ class LocalRecommendationEngine(
             return
         }
 
-        withContext(Dispatchers.IO) {
+        withContext(Dispatchers.Default) {
             if (initialized) {
                 return@withContext
             }
@@ -54,7 +54,7 @@ class LocalRecommendationEngine(
         }
     }
 
-    suspend fun generateRecommendations(limit: Int = 20): List<LocalRecommendationEntry> = withContext(Dispatchers.IO) {
+    suspend fun generateRecommendations(limit: Int = 20): List<LocalRecommendationEntry> = withContext(Dispatchers.Default) {
         initialize()
 
         var candidates = collectCandidateResults(dao, limit)
@@ -88,7 +88,7 @@ class LocalRecommendationEngine(
     }
 
     suspend fun recordContentOpened(contentId: String, reason: CrawlingReason) {
-        withContext(Dispatchers.IO) {
+        withContext(Dispatchers.Default) {
             userBehaviorAnalyzer.recordContentOpened(contentId, reason)
         }
     }
@@ -99,14 +99,14 @@ class LocalRecommendationEngine(
         reason: CrawlingReason,
         feedback: Double,
     ) {
-        withContext(Dispatchers.IO) {
+        withContext(Dispatchers.Default) {
             feedId?.let { dao.updateFeedFeedback(it, feedback) }
             userBehaviorAnalyzer.recordRecommendationFeedback(contentId, reason, feedback)
         }
     }
 
     suspend fun refreshContent() {
-        withContext(Dispatchers.IO) {
+        withContext(Dispatchers.Default) {
             insertRefreshTasks(dao)
 
             dao
@@ -131,7 +131,7 @@ class LocalRecommendationEngine(
     }
 
     suspend fun cleanup() {
-        withContext(Dispatchers.IO) {
+        withContext(Dispatchers.Default) {
             stopScheduling()
             cleanupLocalRecommendationData(dao)
         }

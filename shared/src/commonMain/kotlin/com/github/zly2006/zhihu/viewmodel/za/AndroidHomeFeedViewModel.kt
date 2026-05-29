@@ -113,7 +113,7 @@ class AndroidHomeFeedViewModel :
     }
 
     override fun onUiContentClick(environment: PaginationEnvironment, feed: Feed, item: FeedDisplayItem) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(Dispatchers.Default) {
             environment.sendFeedReadStatus(feed)
         }
     }

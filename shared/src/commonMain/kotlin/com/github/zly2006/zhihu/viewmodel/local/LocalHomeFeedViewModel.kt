@@ -69,7 +69,7 @@ class LocalHomeFeedViewModel :
         if (!::recommendationEngine.isInitialized) {
             return
         }
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(Dispatchers.Default) {
             recommendationEngine.recordContentOpened(contentId, reason)
         }
     }
@@ -80,7 +80,7 @@ class LocalHomeFeedViewModel :
         if (!::recommendationEngine.isInitialized) {
             return
         }
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(Dispatchers.Default) {
             recommendationEngine.recordRecommendationFeedback(
                 feedId = item.localFeedId,
                 contentId = contentId,

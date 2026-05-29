@@ -21,6 +21,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlin.jvm.JvmInline
 
 object DataHolder {
     const val ZH_PLUS_AUTHOR_USER_ID = "ea09b6c82124e0162caa10d658058c10"

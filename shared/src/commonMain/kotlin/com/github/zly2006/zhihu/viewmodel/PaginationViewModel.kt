@@ -115,7 +115,7 @@ abstract class PaginationViewModel<T : Any>(
                 lastPaging = ZhihuJson.decodeJson(json["paging"]!!)
             }
         } catch (e: Exception) {
-            if (e is java.util.concurrent.CancellationException) throw e
+            if (e is kotlin.coroutines.cancellation.CancellationException) throw e
             environment.handleFetchFailure(this::class.simpleName, e)
         } finally {
             isLoading = false

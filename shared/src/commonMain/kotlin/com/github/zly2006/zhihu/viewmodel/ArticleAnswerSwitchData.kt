@@ -34,7 +34,7 @@ open class ArticleAnswerSwitchData :
     override var pendingInitialContent: CachedAnswerContent? = null
 
     // 标记是否从回答切换导航进入（避免被 LaunchedEffect 重置方向后误判）
-    @Volatile
+    @kotlin.concurrent.Volatile
     override var navigatingFromAnswerSwitch = false
 
     // 导航动画方向

@@ -37,7 +37,7 @@ class CrawlingExecutor(
      * 执行爬虫任务
      */
     suspend fun executeTask(task: CrawlingTask) {
-        withContext(Dispatchers.IO) {
+        withContext(Dispatchers.Default) {
             try {
                 // 更新任务状态为进行中
                 dao.updateTask(

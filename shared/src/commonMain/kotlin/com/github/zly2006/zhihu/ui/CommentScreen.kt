@@ -1295,7 +1295,7 @@ private fun CommentItemPreview() {
         item = DataHolder.Comment(
             id = "123",
             content = "<p>这是一条评论<br/>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum eleifend nisl vitae est tincidunt, non rhoncus magna cursus.</p>",
-            createdTime = System.currentTimeMillis() / 1000,
+            createdTime = Clock.System.now().toEpochMilliseconds() / 1000,
             author = DataHolder.Comment.Author(
                 name = "作者",
                 avatarUrl = "https://i1.hdslb.com/bfs/face/b93b6ff0c1d434ae8026a4bedc82d0d883b5da95.jpg",

@@ -31,27 +31,27 @@ class BlocklistManager(
         keyword: String,
         caseSensitive: Boolean = false,
         isRegex: Boolean = false,
-    ): Long = withContext(Dispatchers.IO) {
+    ): Long = withContext(Dispatchers.Default) {
         service.addBlockedKeyword(keyword, caseSensitive, isRegex)
     }
 
     suspend fun removeBlockedKeyword(keywordId: Long) {
-        withContext(Dispatchers.IO) {
+        withContext(Dispatchers.Default) {
             service.removeBlockedKeyword(keywordId)
         }
     }
 
-    suspend fun getAllBlockedKeywords(): List<BlockedKeyword> = withContext(Dispatchers.IO) {
+    suspend fun getAllBlockedKeywords(): List<BlockedKeyword> = withContext(Dispatchers.Default) {
         service.getAllBlockedKeywords()
     }
 
     suspend fun clearAllBlockedKeywords() {
-        withContext(Dispatchers.IO) {
+        withContext(Dispatchers.Default) {
             service.clearAllBlockedKeywords()
         }
     }
 
-    suspend fun containsBlockedKeyword(text: String?): Boolean = withContext(Dispatchers.IO) {
+    suspend fun containsBlockedKeyword(text: String?): Boolean = withContext(Dispatchers.Default) {
         service.containsBlockedKeyword(text)
     }
 
@@ -61,37 +61,37 @@ class BlocklistManager(
         urlToken: String? = null,
         avatarUrl: String? = null,
     ) {
-        withContext(Dispatchers.IO) {
+        withContext(Dispatchers.Default) {
             service.addBlockedUser(userId, userName, urlToken, avatarUrl)
         }
     }
 
     suspend fun removeBlockedUser(userId: String) {
-        withContext(Dispatchers.IO) {
+        withContext(Dispatchers.Default) {
             service.removeBlockedUser(userId)
         }
     }
 
-    suspend fun getAllBlockedUsers(): List<BlockedUser> = withContext(Dispatchers.IO) {
+    suspend fun getAllBlockedUsers(): List<BlockedUser> = withContext(Dispatchers.Default) {
         service.getAllBlockedUsers()
     }
 
     suspend fun clearAllBlockedUsers() {
-        withContext(Dispatchers.IO) {
+        withContext(Dispatchers.Default) {
             service.clearAllBlockedUsers()
         }
     }
 
-    suspend fun isUserBlocked(userId: String?): Boolean = withContext(Dispatchers.IO) {
+    suspend fun isUserBlocked(userId: String?): Boolean = withContext(Dispatchers.Default) {
         service.isUserBlocked(userId)
     }
 
-    suspend fun getBlocklistStats(): BlocklistStats = withContext(Dispatchers.IO) {
+    suspend fun getBlocklistStats(): BlocklistStats = withContext(Dispatchers.Default) {
         service.getBlocklistStats()
     }
 
     suspend fun clearAllBlocklists() {
-        withContext(Dispatchers.IO) {
+        withContext(Dispatchers.Default) {
             service.clearAllBlocklists()
         }
     }
@@ -99,43 +99,43 @@ class BlocklistManager(
     suspend fun addBlockedTopic(
         topicId: String,
         topicName: String,
-    ): Long = withContext(Dispatchers.IO) {
+    ): Long = withContext(Dispatchers.Default) {
         service.addBlockedTopic(topicId, topicName)
     }
 
     suspend fun removeBlockedTopic(topicId: String) {
-        withContext(Dispatchers.IO) {
+        withContext(Dispatchers.Default) {
             service.removeBlockedTopic(topicId)
         }
     }
 
-    suspend fun getAllBlockedTopics(): List<BlockedTopic> = withContext(Dispatchers.IO) {
+    suspend fun getAllBlockedTopics(): List<BlockedTopic> = withContext(Dispatchers.Default) {
         service.getAllBlockedTopics()
     }
 
     suspend fun clearAllBlockedTopics() {
-        withContext(Dispatchers.IO) {
+        withContext(Dispatchers.Default) {
             service.clearAllBlockedTopics()
         }
     }
 
-    suspend fun isTopicBlocked(topicId: String?): Boolean = withContext(Dispatchers.IO) {
+    suspend fun isTopicBlocked(topicId: String?): Boolean = withContext(Dispatchers.Default) {
         service.isTopicBlocked(topicId)
     }
 
-    suspend fun countBlockedTopics(topicIds: List<String>?): Int = withContext(Dispatchers.IO) {
+    suspend fun countBlockedTopics(topicIds: List<String>?): Int = withContext(Dispatchers.Default) {
         service.countBlockedTopics(topicIds)
     }
 
-    suspend fun exportAllBlocklistToJsonText(): String = withContext(Dispatchers.IO) {
+    suspend fun exportAllBlocklistToJsonText(): String = withContext(Dispatchers.Default) {
         service.encodeAllBlocklistToJson()
     }
 
-    suspend fun importAllBlocklistFromJsonText(text: String): String = withContext(Dispatchers.IO) {
+    suspend fun importAllBlocklistFromJsonText(text: String): String = withContext(Dispatchers.Default) {
         service.importAllBlocklistFromJsonText(text)
     }
 
-    suspend fun getTopicName(topicId: String): String = withContext(Dispatchers.IO) {
+    suspend fun getTopicName(topicId: String): String = withContext(Dispatchers.Default) {
         service.getTopicName(topicId)
     }
 }

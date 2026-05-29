@@ -38,7 +38,7 @@ class TaskScheduler(
      */
     fun startScheduling() {
         schedulerJob?.cancel()
-        schedulerJob = CoroutineScope(Dispatchers.IO).launch {
+        schedulerJob = CoroutineScope(Dispatchers.Default).launch {
             while (isActive) {
                 try {
                     executePendingTasks()

@@ -32,6 +32,7 @@ import io.ktor.http.Url
 import io.ktor.http.encodeURLParameter
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlin.time.Clock
 
 /**
  * 知乎 Token 刷新业务逻辑
@@ -75,7 +76,7 @@ object ZhihuCredentialRefresher {
         httpClient.pluginOrNull(HttpCookies)?.get(Url("https://www.zhihu.com/"))?.get("z_c0")
             ?: throw IllegalArgumentException("刷新失败：缺失关键 cookie z_c0，请重新登录")
 
-        val timestamp = System.currentTimeMillis()
+        val timestamp = Clock.System.now().toEpochMilliseconds()
         val payloadMap = generateRefreshPayload(refreshToken, timestamp)
         Log.d("ZhihuCredentialRefresher", "请求原始数据: $payloadMap")
 

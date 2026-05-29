@@ -192,3 +192,30 @@ python3 .agents/skills/ui-review-memory/memory_store.py update-status \
 
 ### 不要因为 internal 限制就提取/复制函数
 当 KMP 版本的库函数标记为 `internal` 时，不应该把该函数复制到本地文件里实现。正确做法是用 `@Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE")` 强制导入 internal 函数。这在 Kotlin/JVM 和 KMP 中都可以工作，是常见的 workaround。
+
+### 修改 commonMain 代码后必须验证所有平台编译
+只跑 `compileAndroidMain` 不够，commonMain 的代码在所有平台共享。JVM 特有 API（`Integer.rotateLeft`、`System.arraycopy`、`System.currentTimeMillis`、`Dispatchers.IO`、`@Volatile`、`java.*`、`String.format()`）在 Android 编译时可能不报错（因为 Android 有这些 API），但在 JVM/native 编译时会报 `Unresolved reference`。
+
+**正确做法**：修改 commonMain 后必须同时验证：
+```bash
+JAVA_HOME=$(/usr/libexec/java_home -v 25) ./gradlew --no-daemon :shared:compileAndroidMain :shared:compileKotlinJvm
+```
+或者直接跑 `ktlintFormat`（会触发所有平台编译）。
+
+**常见陷阱**：
+- `Integer.rotateLeft(x, n)` → `(x).rotateLeft(n)`（Kotlin stdlib）
+- `System.arraycopy(src, srcPos, dest, destPos, len)` → `src.copyInto(dest, destPos, srcPos, srcPos + len)`
+- `System.currentTimeMillis()` → `Clock.System.now().toEpochMilliseconds()`
+- `Dispatchers.IO` → `Dispatchers.Default`（commonMain 中 IO 是 internal）
+- `@Volatile` → `@kotlin.concurrent.Volatile`
+- `java.util.concurrent.CancellationException` → `kotlin.coroutines.cancellation.CancellationException`
+- `"%.1f".format(x)` → Kotlin 字符串模板 `"${x}"`
+
+### 批量替换后必须用 rg 验证零残留
+Python 脚本做 `str.replace()` 后，必须用 `rg` 搜索确认没有遗漏：
+```bash
+rg "Dispatchers\.IO" --include='*.kt' shared/src/commonMain/
+rg "@Volatile" --include='*.kt' shared/src/commonMain/  
+rg "\.format\(" --include='*.kt' shared/src/commonMain/
+```
+不要假设 replace 全部替换干净——正则可能不匹配所有变体（嵌套括号、多行表达式等）。

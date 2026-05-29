@@ -32,7 +32,7 @@ class FeedGenerator(
     /**
      * 从爬虫结果生成推荐内容
      */
-    suspend fun generateFeedFromResult(result: CrawlingResult, reasonDisplay: String): LocalFeed = withContext(Dispatchers.IO) {
+    suspend fun generateFeedFromResult(result: CrawlingResult, reasonDisplay: String): LocalFeed = withContext(Dispatchers.Default) {
         val stableId = generateFeedId(result)
         val existingFeed = dao.getFeedById(stableId)
         val feed = LocalFeed(
@@ -56,7 +56,7 @@ class FeedGenerator(
     suspend fun generateFeedsFromResults(
         results: List<CrawlingResult>,
         reasonDisplay: String,
-    ): List<LocalFeed> = withContext(Dispatchers.IO) {
+    ): List<LocalFeed> = withContext(Dispatchers.Default) {
         results.map { result ->
             generateFeedFromResult(result, reasonDisplay)
         }

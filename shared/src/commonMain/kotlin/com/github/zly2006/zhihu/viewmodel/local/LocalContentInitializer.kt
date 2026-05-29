@@ -27,7 +27,7 @@ class LocalContentInitializer(
     private val nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) {
     suspend fun initializeIfNeeded() {
-        withContext(Dispatchers.IO) {
+        withContext(Dispatchers.Default) {
             val isInitialized = checkDatabaseHasSufficientData()
             if (!isInitialized) {
                 initializeFromHistory()
