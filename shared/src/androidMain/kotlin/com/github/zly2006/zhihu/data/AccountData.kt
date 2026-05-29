@@ -290,39 +290,6 @@ object AccountData {
     }
 
     /**
-     * Signed convenience: auto-calls [signFetchRequest] then delegates to [fetch].
-     * Mirrors JVM [DesktopAccountStore.signedFetchJson].
-     */
-    suspend fun signedFetch(
-        context: Context,
-        url: String,
-        block: suspend HttpRequestBuilder.() -> Unit = {},
-    ): JsonObject? = fetch(context, url) {
-        signFetchRequest()
-        block()
-    }
-
-    /** Signed GET convenience. */
-    suspend fun signedFetchGet(
-        context: Context,
-        url: String,
-        block: suspend HttpRequestBuilder.() -> Unit = {},
-    ): JsonObject? = fetchGet(context, url) {
-        signFetchRequest()
-        block()
-    }
-
-    /** Signed POST convenience. */
-    suspend fun signedFetchPost(
-        context: Context,
-        url: String,
-        block: suspend HttpRequestBuilder.() -> Unit = {},
-    ): JsonObject? = fetchPost(context, url) {
-        signFetchRequest()
-        block()
-    }
-
-    /**
      * 添加在线阅读历史记录
      * @param contentType 内容类型 (如 "article", "answer", "profile" 等)
      */

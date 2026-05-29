@@ -219,3 +219,12 @@ rg "@Volatile" --include='*.kt' shared/src/commonMain/
 rg "\.format\(" --include='*.kt' shared/src/commonMain/
 ```
 不要假设 replace 全部替换干净——正则可能不匹配所有变体（嵌套括号、多行表达式等）。
+
+### 内联/删除函数定义后必须同步删除所有 import 引用
+上次迁移中，将 `zhihuMobileTopstoryRecommendUrl()` 内联为字符串字面量后，删除了函数定义但遗漏了两个文件的 `import` 语句，导致编译报 `Unresolved reference`。教训：**每次删除或内联函数定义后，必须立刻 `rg` 搜索该函数名，确认没有残留的 import 或调用**，然后立即运行完整构建验证（`compileAndroidMain :shared:compileKotlinJvm`），不能假设"只改了一处就不会出问题"。
+
+```bash
+# 删除函数后必须做的检查
+rg "函数名" -g '*.kt'
+JAVA_HOME=$(/usr/libexec/java_home -v 25) ./gradlew --no-daemon :shared:compileAndroidMain :shared:compileKotlinJvm
+```
