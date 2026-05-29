@@ -43,9 +43,9 @@ import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.ZHIHU_CLEAR_ONLINE_HISTORY_URL
 import com.github.zly2006.zhihu.shared.data.ZHIHU_LAST_READ_TOUCH_URL
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.ZhihuJson.json
 import com.github.zly2006.zhihu.shared.data.buildZhihuClearOnlineHistoryBody
-import com.github.zly2006.zhihu.shared.data.decodeZhihuCollection
 import com.github.zly2006.zhihu.shared.data.encodeZhihuLastReadTouchItems
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.zhihuLastReadTouchItem
@@ -328,7 +328,7 @@ open class SharedAndroidPaginationEnvironment(
     override suspend fun fetchCollection(collectionId: String): Collection {
         val json = fetchJson("https://www.zhihu.com/api/v4/collections/$collectionId", "")
             ?: throw IllegalStateException("收藏夹信息加载失败")
-        return decodeZhihuCollection(json["collection"] ?: throw IllegalStateException("收藏夹信息为空"))
+        return ZhihuJson.decodeJson<Collection>(json["collection"] ?: throw IllegalStateException("收藏夹信息为空"))
     }
 
     override suspend fun exportCollectionItemsToHtmlZip(

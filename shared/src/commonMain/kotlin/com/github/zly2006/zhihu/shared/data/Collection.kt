@@ -1,7 +1,6 @@
 package com.github.zly2006.zhihu.shared.data
 
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonElement
 
 @Serializable
 data class Collection(
@@ -31,12 +30,3 @@ data class CollectionResponse(
     val data: List<Collection>,
     val paging: ZhihuPaging,
 )
-
-fun decodeZhihuCollection(json: JsonElement): Collection =
-    ZhihuJson.decodeJson(json)
-
-fun decodeZhihuCollectionResponse(json: JsonElement): CollectionResponse =
-    ZhihuJson.decodeJson(json)
-
-fun decodeZhihuCollectionList(json: JsonElement): List<Collection> =
-    ZhihuJson.decodeJson(json)
