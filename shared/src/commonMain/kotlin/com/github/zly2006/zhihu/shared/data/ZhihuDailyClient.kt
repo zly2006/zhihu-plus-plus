@@ -17,6 +17,8 @@ suspend fun fetchDailyStoriesBefore(
     date: String,
 ): DailyStoriesResponse = client.get("https://news-at.zhihu.com/api/4/stories/before/$date").body()
 
+fun zhihuDailyBeforeUrl(date: String): String = "https://news-at.zhihu.com/api/4/stories/before/$date"
+
 suspend fun fetchDailyStoriesForDate(
     client: HttpClient,
     date: String,
