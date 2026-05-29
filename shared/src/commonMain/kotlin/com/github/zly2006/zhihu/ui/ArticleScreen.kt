@@ -199,7 +199,7 @@ fun prepareContentDocument(
         .html()
 
 @Composable
-fun rememberBottomBarAvoidingBringIntoViewSpec(
+private fun rememberBottomBarAvoidingBringIntoViewSpec(
     obscuredBottomPx: Float,
 ): BringIntoViewSpec {
     val density = LocalDensity.current
@@ -1571,8 +1571,8 @@ fun ArticleScreen(
             AnswerVerticalOverscroll(
                 previousAnswer = nav?.previousAnswer,
                 nextAnswer = nav?.nextAnswer,
-                onNavigatePrevious = { navigateToPrevious() },
-                onNavigateNext = { navigateToNext() },
+                onNavigatePrevious = navigateToPrevious,
+                onNavigateNext = navigateToNext,
                 isAtTop = { scrollState.value == 0 },
                 isAtBottom = { scrollState.value >= scrollState.maxValue },
                 scrollState = scrollState,
@@ -1583,8 +1583,8 @@ fun ArticleScreen(
             AnswerHorizontalOverscroll(
                 canGoPrevious = nav?.previousAnswer != null,
                 canGoNext = nav?.nextAnswer != null,
-                onNavigatePrevious = { navigateToPrevious() },
-                onNavigateNext = { navigateToNext() },
+                onNavigatePrevious = navigateToPrevious,
+                onNavigateNext = navigateToNext,
                 previousContent = nav?.previousAnswer?.let { cached ->
                     { CachedAnswerPreview(cached) }
                 },
@@ -1823,7 +1823,7 @@ private fun CachedAnswerPreview(
         ) {
             Spacer(modifier = Modifier.height(innerPadding.calculateTopPadding()))
             Row(
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 if (cached.authorAvatarUrl.isNotEmpty()) {
@@ -1844,7 +1844,7 @@ private fun CachedAnswerPreview(
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = cached.authorName,
                             fontWeight = FontWeight.Bold,
