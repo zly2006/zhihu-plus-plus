@@ -171,8 +171,8 @@ fun SearchStatus.SearchPager(
             // 效果 B-3：取消按钮从右侧滑入
             AnimatedVisibility(
                 visible = searchStatus.isExpand() || searchStatus.isAnimatingExpand(),
-                enter = expandHorizontally() + slideInHorizontally(initialOffsetX = { it }),
-                exit = shrinkHorizontally() + slideOutHorizontally(targetOffsetX = { it }),
+                enter = expandHorizontally(animationSpec = tween(300)) + slideInHorizontally(animationSpec = tween(300)) { it },
+                exit = shrinkHorizontally(animationSpec = tween(200)) + slideOutHorizontally(animationSpec = tween(200)) { it },
             ) {
                 Text(
                     text = "取消",
