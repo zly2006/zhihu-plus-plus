@@ -212,6 +212,11 @@ JAVA_HOME=$(/usr/libexec/java_home -v 25) ./gradlew --no-daemon :shared:compileA
 - `java.util.concurrent.CancellationException` → `kotlin.coroutines.cancellation.CancellationException`
 - `"%.1f".format(x)` → Kotlin 字符串模板 `"${x}"`
 
+
+### ktlintFormat 必须在根项目运行
+只跑 `:shared:runKtlintFormatOver*` 不够！根项目的 `ktlintFormat` 会检查所有模块（包括 app、desktopApp），还会触发 iOS 编译验证。如果 nativeMain 有语法错误（比如缺少括号），只跑 shared 模块的 ktlint 不会发现。
+
+**正确做法**：`JAVA_HOME=$(/usr/libexec/java_home -v 25) ./gradlew --no-daemon ktlintFormat`
 ### 批量替换后必须用 rg 验证零残留
 Python 脚本做 `str.replace()` 后，必须用 `rg` 搜索确认没有遗漏：
 ```bash
