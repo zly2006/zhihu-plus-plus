@@ -252,3 +252,11 @@ KMP 迁移中，如果源码的包路径不变（只是从 app 移到 shared 模
 - 只有当源码文件的 `package` 声明确实变了，才更新对应的 import
 - 模块位置变化（app → shared）不影响包路径，import 不需要改
 - 如果确实需要改 import（包路径变了），优先在源码侧创建 typealias 做向后兼容，而不是改测试
+
+### 不得用标准库组件替换自定义fork组件
+根本错误：CI报 `ModalBottomSheetDialog` 签名不匹配时，直接把 `MyModalBottomSheet`（自定义fork，修复了返回键行为）替换成标准 `ModalBottomSheet`。这破坏了自定义功能。
+
+正确做法：
+- 自定义fork组件（如 `MyModalBottomSheet`）是故意fork的，有自定义行为（如返回键只按一次就关闭），绝对不能替换成标准组件
+- CI报 internal API 签名不匹配时，应更新 fork 里的 internal API 调用签名以匹配当前库版本，而不是替换整个组件
+- 判断方法：看组件文件头部注释是否写了 `From: androidx.compose.material3:material3:X.X.X`，如果写了说明是fork，只能更新签名不能替换
