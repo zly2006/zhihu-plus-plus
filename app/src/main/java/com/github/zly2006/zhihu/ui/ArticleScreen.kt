@@ -647,6 +647,7 @@ fun ArticleScreen(
     var pinAnswerDate by remember { mutableStateOf(preferences.getBoolean("pinAnswerDate", false)) }
     var previousScrollValue by remember { mutableIntStateOf(0) }
     var isScrollingUp by remember { mutableStateOf(false) }
+    var navigatingToNextAnswer by remember { mutableStateOf(false) }
     val density = LocalDensity.current
     val scrollDeltaThreshold = with(density) { ScrollThresholdDp.toPx() }
     var topBarHeight by remember { mutableIntStateOf(0) }
@@ -1654,33 +1655,6 @@ fun ArticleScreen(
                             }
                         }
                     }
-                    // Skip answer button
-                    if (article.type == ArticleType.Answer && buttonSkipAnswer) {
-                        var navigatingToNextAnswer by remember { mutableStateOf(false) }
-                        val showSkipButton = !autoHideSkipAnswerButton || isScrollingUp || scrollState.value == 0
-                        val skipButtonAlpha by animateFloatAsState(
-                            targetValue = if (showSkipButton) 1f else 0f,
-                            animationSpec = tween(200),
-                            label = "skipButtonAlpha",
-                        )
-                        DraggableRefreshButton(
-                            modifier = Modifier.graphicsLayer { alpha = skipButtonAlpha },
-                            onClick = {
-                                if (showSkipButton) {
-                                    navigatingToNextAnswer = true
-                                    navigateToNext()
-                                    navigatingToNextAnswer = false
-                                }
-                            },
-                            preferenceName = "buttonSkipAnswer",
-                        ) {
-                            if (navigatingToNextAnswer) {
-                                CircularProgressIndicator(modifier = Modifier.size(30.dp))
-                            } else {
-                                Icon(Icons.Filled.SkipNext, contentDescription = "下一个回答")
-                            }
-                        }
-                    }
                     // Status bar gradient overlay (duo3 only — not needed in master path)
                     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
                     val surfaceColor = MaterialTheme.colorScheme.surfaceContainer
@@ -1701,7 +1675,7 @@ fun ArticleScreen(
     val progressBarBottomPadding = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 96.dp
 
     Box(
-        modifier = Modifier,
+        modifier = Modifier.fillMaxSize(),
     ) {
         // 根据模式渲染
         if (article.type == ArticleType.Answer && answerSwitchMode == "vertical") {
@@ -1776,6 +1750,33 @@ fun ArticleScreen(
                     end = 2.dp,
                 ),
         )
+
+        // Skip answer button — 放在 overscroll 容器外面，避免手势冲突
+        if (article.type == ArticleType.Answer && buttonSkipAnswer) {
+            val showSkipButton = !autoHideSkipAnswerButton || isScrollingUp || scrollState.value == 0
+            val skipButtonAlpha by animateFloatAsState(
+                targetValue = if (showSkipButton) 1f else 0f,
+                animationSpec = tween(200),
+                label = "skipButtonAlpha",
+            )
+            DraggableRefreshButton(
+                modifier = Modifier.graphicsLayer { alpha = skipButtonAlpha },
+                onClick = {
+                    if (showSkipButton) {
+                        navigatingToNextAnswer = true
+                        navigateToNext()
+                        navigatingToNextAnswer = false
+                    }
+                },
+                preferenceName = "buttonSkipAnswer",
+            ) {
+                if (navigatingToNextAnswer) {
+                    CircularProgressIndicator(modifier = Modifier.size(30.dp))
+                } else {
+                    Icon(Icons.Filled.SkipNext, contentDescription = "下一个回答")
+                }
+            }
+        }
     }
 
     // 全屏菜单

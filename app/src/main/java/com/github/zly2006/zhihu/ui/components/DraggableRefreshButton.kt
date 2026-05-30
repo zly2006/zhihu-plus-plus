@@ -21,6 +21,7 @@ import android.content.Context
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -66,65 +67,72 @@ fun DraggableRefreshButton(
     var offsetY by remember { mutableFloatStateOf(preferences.getFloat("$preferenceName-y", Float.MAX_VALUE)) }
     var pressing by remember { mutableStateOf(false) }
 
-    fun adjustFabPosition() {
-        with(density) {
-            offsetX = offsetX.coerceIn(0f, configuration.screenWidthDp.dp.toPx() - 56.dp.toPx())
-            offsetY = offsetY.coerceIn(0f, configuration.screenHeightDp.dp.toPx() - 250.dp.toPx())
+    BoxWithConstraints {
+        val maxWidthPx = with(density) {
+            if (maxWidth.value.isFinite()) maxWidth.toPx() else configuration.screenWidthDp.dp.toPx()
         }
-    }
+        val maxHeightPx = with(density) {
+            if (maxHeight.value.isFinite()) maxHeight.toPx() else configuration.screenHeightDp.dp.toPx()
+        }
 
-    adjustFabPosition()
+        fun adjustFabPosition() {
+            with(density) {
+                offsetX = offsetX.coerceIn(0f, maxWidthPx - 56.dp.toPx())
+                offsetY = offsetY.coerceIn(0f, maxHeightPx - 250.dp.toPx())
+            }
+        }
 
-    val animatedOffsetX by animateFloatAsState(
-        targetValue = offsetX,
-        animationSpec = tween(if (pressing) 1 else 300),
-        label = "offsetX",
-    )
-    val animatedOffsetY by animateFloatAsState(
-        targetValue = offsetY,
-        animationSpec = tween(if (pressing) 1 else 300),
-        label = "offsetY",
-    )
-    val hapticFeedback = LocalHapticFeedback.current
+        adjustFabPosition()
 
-    FloatingActionButton(
-        onClick = onClick,
-        shape = CircleShape,
-        modifier = modifier
-            .offset { IntOffset(animatedOffsetX.roundToInt(), animatedOffsetY.roundToInt()) }
-            .pointerInput(Unit) {
-                detectDragGestures(
-                    onDragStart = {
-                        pressing = true
-                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                    },
-                    onDragEnd = {
-                        pressing = false
-                        adjustFabPosition()
-                        with(density) {
-                            val screenWidth = configuration.screenWidthDp.dp.toPx()
-                            offsetX =
-                                if (offsetX < screenWidth / 2) {
-                                    0f
-                                } else {
-                                    screenWidth - 56.dp.toPx()
-                                }
-                        }
-                        preferences.edit {
-                            putFloat("$preferenceName-x", offsetX)
-                            putFloat("$preferenceName-y", offsetY)
-                        }
-                    },
-                    onDrag = { change, dragAmount ->
-                        change.consume()
-                        if (pressing) {
-                            offsetX += dragAmount.x
-                            offsetY += dragAmount.y
+        val animatedOffsetX by animateFloatAsState(
+            targetValue = offsetX,
+            animationSpec = tween(if (pressing) 1 else 300),
+            label = "offsetX",
+        )
+        val animatedOffsetY by animateFloatAsState(
+            targetValue = offsetY,
+            animationSpec = tween(if (pressing) 1 else 300),
+            label = "offsetY",
+        )
+        val hapticFeedback = LocalHapticFeedback.current
+
+        FloatingActionButton(
+            onClick = onClick,
+            shape = CircleShape,
+            modifier = modifier
+                .offset { IntOffset(animatedOffsetX.roundToInt(), animatedOffsetY.roundToInt()) }
+                .pointerInput(Unit) {
+                    detectDragGestures(
+                        onDragStart = {
+                            pressing = true
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        },
+                        onDragEnd = {
+                            pressing = false
                             adjustFabPosition()
-                        }
-                    },
-                )
-            },
-        content = content,
-    )
+                            with(density) {
+                                offsetX =
+                                    if (offsetX < maxWidthPx / 2) {
+                                        0f
+                                    } else {
+                                        maxWidthPx - 56.dp.toPx()
+                                    }
+                            }
+                            preferences.edit {
+                                putFloat("$preferenceName-x", offsetX)
+                                putFloat("$preferenceName-y", offsetY)
+                            }
+                        },
+                        onDrag = { change, dragAmount ->
+                            change.consume()
+                            if (pressing) {
+                                offsetX += dragAmount.x
+                                offsetY += dragAmount.y
+                            }
+                        },
+                    )
+                },
+            content = content,
+        )
+    }
 }
