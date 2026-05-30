@@ -107,9 +107,8 @@ fun MiuixFeedCard(
     val duo3CardAppearance = remember { preferences.getBoolean("duo3_card_appearance", false) }
     val duo3CardLayout = remember { preferences.getBoolean("duo3_card_layout", false) }
     val duo3CardLargeTitle = remember { preferences.getBoolean(DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY, true) }
-    val fontSizePercent = remember { preferences.getInt("contentFontSize", 100) }
+    val fontSizePercent = preferences.getInt("contentFontSize", 100)
     val titleFontSize = (15.sp * fontSizePercent / 100)
-    val bodyFontSize = (14.sp * fontSizePercent / 100)
 
     val resolvedOnClick: BaseFeedViewModel.FeedDisplayItem.() -> Unit = onClick ?: {
         val self = this
@@ -144,13 +143,13 @@ fun MiuixFeedCard(
                     .clickable { resolvedOnClick(item) }
                     .padding(horizontal = horizontalPadding, vertical = 12.dp),
             ) {
-                MiuixFeedCardContent(item, showFeedThumbnail, thumbnailUrl, duo3CardLayout, duo3CardLargeTitle, titleFontSize, bodyFontSize)
+                MiuixFeedCardContent(item, showFeedThumbnail, thumbnailUrl, duo3CardLayout, duo3CardLargeTitle, titleFontSize)
             }
         }
     } else {
         Box(
             modifier = modifier.fillMaxWidth().heightIn(max = maxHeight)
-                .padding(horizontal = horizontalPadding, vertical = 8.dp),
+                .padding(horizontal = horizontalPadding, vertical = 6.dp),
         ) {
             // miuix Card — NO clickable, NO internal padding (caller controls both)
             Card(
@@ -179,7 +178,7 @@ fun MiuixFeedCard(
                     },
             ) {
                 Column(modifier = Modifier.padding(if (duo3CardAppearance) 16.dp else 12.dp)) {
-                    MiuixFeedCardContent(item, showFeedThumbnail, thumbnailUrl, duo3CardLayout, duo3CardLargeTitle, titleFontSize, bodyFontSize)
+                    MiuixFeedCardContent(item, showFeedThumbnail, thumbnailUrl, duo3CardLayout, duo3CardLargeTitle, titleFontSize)
                     // menu button row
                     Row(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End) {
                         MiuixFeedCardMenuBox(item, showMenu, { showMenu = it }, onBlockUser, onBlockByKeywords, onBlockTopic, navigator)
@@ -240,7 +239,8 @@ private fun MiuixFeedCardContent(
         if (!item.title.isEmpty()) {
             Text(
                 text = parseHtmlTextWithTheme(item.title),
-                style = if (duo3CardLargeTitle) text.titleLarge else text.titleMedium,
+                fontSize = titleFontSize,
+                fontWeight = FontWeight.Bold,
                 maxLines = 2, color = colors.onSurface, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(bottom = 8.dp),
             )
@@ -287,14 +287,14 @@ private fun MiuixFeedCardContent(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 AsyncImage(item.avatarSrc, "头像", modifier = Modifier.clip(CircleShape).size(20.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(item.authorName, fontSize = bodyFontSize, color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                Text(item.authorName, fontSize = 13.sp, color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                 val badge = item.authorBadgeV2.officialBadge()
                 if (badge?.isUsefulInList == true) { Spacer(Modifier.width(4.dp)); AuthorBadge(badge, compact = true) }
             }
         }
         Row {
             Column(Modifier.weight(2f)) {
-                Text(parseHtmlTextWithTheme(item.summary ?: ""), fontSize = bodyFontSize, maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = if (item.isFiltered) 0.dp else 3.dp))
+                Text(parseHtmlTextWithTheme(item.summary ?: ""), fontSize = 13.sp, maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = if (item.isFiltered) 0.dp else 3.dp))
             }
             if (!thumbnailUrl.isNullOrEmpty() && showFeedThumbnail) {
                 Spacer(Modifier.width(8.dp))
