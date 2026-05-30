@@ -83,17 +83,6 @@ class AndroidArticleViewModelRuntime(
     override fun postHistoryDestination(destination: Article) {
         context.articleHost()?.postHistoryDestination(destination)
     }
-
-    override suspend fun fetchGet(
-        url: String,
-        block: HttpRequestBuilder.() -> Unit,
-    ): JsonObject? = AccountData.fetchGet(context, url, block = block)
-
-    override suspend fun fetchPost(
-        url: String,
-        block: HttpRequestBuilder.() -> Unit,
-    ): JsonObject? = AccountData.fetchPost(context, url, block = block)
-
     override suspend fun fetchExportComments(
         article: Article,
         requestedCount: Int,
@@ -112,6 +101,7 @@ class AndroidArticleViewModelRuntime(
 
         return decodeZhihuCommentData(json, safeRequestedCount)
     }
+
 
     override fun configureSignedRequest(builder: HttpRequestBuilder) {
         builder.signFetchRequest()

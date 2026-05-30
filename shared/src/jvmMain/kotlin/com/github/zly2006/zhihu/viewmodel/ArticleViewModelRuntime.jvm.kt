@@ -89,6 +89,22 @@ class DesktopArticleViewModelRuntime(
     private val store: DesktopAccountStore = DesktopAccountStore(),
     private val userMessages: UserMessageSink,
 ) : ArticleViewModelRuntime {
+
+    private suspend fun fetchGet(
+        url: String,
+        block: HttpRequestBuilder.() -> Unit,
+    ): JsonObject? = store.signedFetchJson(url) {
+        block()
+        method = HttpMethod.Get
+    }
+
+    private suspend fun fetchPost(
+        url: String,
+        block: HttpRequestBuilder.() -> Unit,
+    ): JsonObject? = store.signedFetchJson(url) {
+        block()
+        method = HttpMethod.Post
+    }
     private val contentFilterDatabase = getContentFilterDatabase(desktopContentFilterDatabaseFile())
     private val historyStorage = DesktopHistoryStorage()
 
@@ -173,21 +189,6 @@ class DesktopArticleViewModelRuntime(
         historyStorage.add(destination)
     }
 
-    override suspend fun fetchGet(
-        url: String,
-        block: HttpRequestBuilder.() -> Unit,
-    ): JsonObject? = store.signedFetchJson(url) {
-        block()
-        method = HttpMethod.Get
-    }
-
-    override suspend fun fetchPost(
-        url: String,
-        block: HttpRequestBuilder.() -> Unit,
-    ): JsonObject? = store.signedFetchJson(url) {
-        block()
-        method = HttpMethod.Post
-    }
 
     override fun configureSignedRequest(builder: HttpRequestBuilder) {
         builder.signDesktopRequest(store.load().cookies)

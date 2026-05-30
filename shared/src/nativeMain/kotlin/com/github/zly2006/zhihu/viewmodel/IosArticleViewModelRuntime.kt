@@ -44,11 +44,6 @@ class IosArticleViewModelRuntime(
     // TODO: iOS 历史记录
     override fun postHistoryDestination(destination: Article) = Unit
 
-    // TODO: iOS GET 请求
-    override suspend fun fetchGet(url: String, block: HttpRequestBuilder.() -> Unit): JsonObject? = null
-
-    // TODO: iOS POST 请求
-    override suspend fun fetchPost(url: String, block: HttpRequestBuilder.() -> Unit): JsonObject? = null
 
     // TODO: iOS 签名请求
     override fun configureSignedRequest(builder: HttpRequestBuilder) = Unit

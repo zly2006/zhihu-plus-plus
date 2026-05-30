@@ -61,6 +61,7 @@ import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsChannel
+import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
@@ -463,9 +464,9 @@ class ArticleViewModel(
                         ArticleType.Article -> "article"
                     }
                     val collectionsUrl = "https://api.zhihu.com/collections/contents/$contentType/${article.id}?limit=50"
-                    val jojo = context.fetchGet(collectionsUrl) {
+                    val jojo = httpClient!!.get(collectionsUrl) {
                         context.configureSignedRequest(this)
-                    }!!
+                    }.body<JsonObject>()
                     val collectionsData = ZhihuJson.decodeJson<CollectionResponse>(jojo)
                     collections.clear()
                     collections.addAll(
@@ -499,7 +500,7 @@ class ArticleViewModel(
     ) {
         if (httpClient == null) return
         viewModelScope.launch {
-            context.fetchPost("https://www.zhihu.com/api/v4/collections") {
+            httpClient!!.post("https://www.zhihu.com/api/v4/collections") {
                 contentType(ContentType.Application.Json)
                 setBody(
                     buildJsonObject {

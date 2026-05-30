@@ -39,16 +39,6 @@ interface ArticleViewModelRuntime {
 
     fun postHistoryDestination(destination: Article)
 
-    suspend fun fetchGet(
-        url: String,
-        block: HttpRequestBuilder.() -> Unit = {},
-    ): JsonObject?
-
-    suspend fun fetchPost(
-        url: String,
-        block: HttpRequestBuilder.() -> Unit = {},
-    ): JsonObject?
-
     fun configureSignedRequest(builder: HttpRequestBuilder)
 
     fun setPlainTextClipboard(
