@@ -239,3 +239,13 @@ rg "\.format\(" --include='*.kt' shared/src/commonMain/
 rg "函数名" -g '*.kt'
 JAVA_HOME=$(/usr/libexec/java_home -v 25) ./gradlew --no-daemon :shared:compileAndroidMain :shared:compileKotlinJvm
 ```
+
+### 迁移时不得修改测试文件的 import 路径
+KMP 迁移中，如果源码的包路径不变（只是从 app 移到 shared 模块），测试文件的 import 不应被修改。上次 DeepSeek 迁移时把测试文件的 import 从 `com.github.zly2006.zhihu.ui.FollowedQuestion` 改成了 `com.github.zly2006.zhihu.shared.data.FollowedQuestion`，但源码根本没有移到 `shared.data` 包，导致 CI 编译失败。
+
+根因：迁移工具/agent 把"模块名变了"误解为"包路径变了"，错误地替换了测试 import。
+
+正确做法：
+- 只有当源码文件的 `package` 声明确实变了，才更新对应的 import
+- 模块位置变化（app → shared）不影响包路径，import 不需要改
+- 如果确实需要改 import（包路径变了），优先在源码侧创建 typealias 做向后兼容，而不是改测试
