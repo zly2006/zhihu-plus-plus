@@ -208,22 +208,6 @@ class DesktopArticleViewModelRuntime(
 
     override fun requestImageExportPermission() = Unit
 
-    override suspend fun fetchExportComments(
-        article: Article,
-        requestedCount: Int,
-    ): List<DataHolder.Comment> {
-        val safeRequestedCount = requestedCount.coerceAtLeast(0)
-        if (safeRequestedCount == 0) return emptyList()
-
-        val json = fetchGet(article.rootCommentUrl) {
-            parameter("order", "score")
-            parameter("limit", safeRequestedCount.coerceAtMost(20).toString())
-            parameter("include", "data[*].content,excerpt,headline")
-            configureSignedRequest(this)
-        } ?: return emptyList()
-
-        return decodeZhihuCommentData(json, safeRequestedCount)
-    }
 
     override fun accountHttpClient(): HttpClient =
         store.createHttpClient(store.load().cookies)

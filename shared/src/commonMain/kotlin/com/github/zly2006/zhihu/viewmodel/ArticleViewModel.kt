@@ -55,6 +55,7 @@ import com.github.zly2006.zhihu.util.buildArticleExportFileName
 import com.github.zly2006.zhihu.util.prepareArticleExportComment
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import com.github.zly2006.zhihu.shared.comment.decodeZhihuCommentData
 import io.ktor.client.request.accept
 import io.ktor.client.request.get
 import io.ktor.client.request.header
@@ -760,8 +761,15 @@ class ArticleViewModel(
         val safeRequestedCount = requestedCount.coerceAtLeast(0)
         if (safeRequestedCount == 0) return emptyList()
 
-        return runtime
-            .fetchExportComments(article, safeRequestedCount)
+        val client = httpClient ?: runtime.accountHttpClient()
+        val url = when (article.type) {
+            ArticleType.Answer -> "https://www.zhihu.com/api/v4/comment_v5/answers/${article.id}/root_comment"
+            ArticleType.Article -> "https://www.zhihu.com/api/v4/comment_v5/articles/${article.id}/root_comment"
+        }
+        val json = client.get("${'$'}url?order=score&limit=${'$'}{safeRequestedCount.coerceAtMost(20)}&include=data[*].content,excerpt,headline") {
+            runtime.configureSignedRequest(this)
+        }.body<JsonObject>()
+        return decodeZhihuCommentData(json, safeRequestedCount)
             .map(::mapExportComment)
     }
 

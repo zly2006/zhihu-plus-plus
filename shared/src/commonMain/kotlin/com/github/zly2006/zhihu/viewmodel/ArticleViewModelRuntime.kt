@@ -53,10 +53,6 @@ interface ArticleViewModelRuntime {
 
     fun requestImageExportPermission()
 
-    suspend fun fetchExportComments(
-        article: Article,
-        requestedCount: Int,
-    ): List<DataHolder.Comment>
 
     fun accountHttpClient(): HttpClient
 

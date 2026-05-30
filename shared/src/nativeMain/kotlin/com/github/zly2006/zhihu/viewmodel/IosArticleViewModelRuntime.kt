@@ -63,7 +63,6 @@ class IosArticleViewModelRuntime(
     override fun requestImageExportPermission() = Unit
 
     // TODO: iOS 获取导出评论
-    override suspend fun fetchExportComments(article: Article, requestedCount: Int) = emptyList<DataHolder.Comment>()
 
     // TODO: iOS HTTP 客户端
     override fun accountHttpClient(): HttpClient = error("accountHttpClient not available on iOS")

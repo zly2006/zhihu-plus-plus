@@ -83,25 +83,6 @@ class AndroidArticleViewModelRuntime(
         context.articleHost()?.postHistoryDestination(destination)
     }
 
-    override suspend fun fetchExportComments(
-        article: Article,
-        requestedCount: Int,
-    ): List<DataHolder.Comment> {
-        val safeRequestedCount = requestedCount.coerceAtLeast(0)
-        if (safeRequestedCount == 0) return emptyList()
-
-        val json = AccountData.fetchGet(context, article.rootCommentUrl) {
-            signFetchRequest()
-            url {
-                parameters["order"] = "score"
-                parameters["limit"] = safeRequestedCount.coerceAtMost(20).toString()
-                parameters["include"] = "data[*].content,excerpt,headline"
-            }
-        } ?: return emptyList()
-
-        return decodeZhihuCommentData(json, safeRequestedCount)
-    }
-
     override fun configureSignedRequest(builder: HttpRequestBuilder) {
         builder.signFetchRequest()
     }
