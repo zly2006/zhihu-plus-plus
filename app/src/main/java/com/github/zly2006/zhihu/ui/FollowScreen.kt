@@ -70,7 +70,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import top.yukonga.miuix.kmp.basic.PullToRefresh
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
@@ -85,10 +84,7 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
-import com.github.zly2006.zhihu.ui.components.FeedCard
-import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
-import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.viewmodel.feed.FollowRecommendViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.FollowViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.RecentMomentsViewModel
@@ -362,15 +358,15 @@ fun FollowRecommendScreen(
     val scope = rememberCoroutineScope()
 
     Column {
-        if (backdrop != null) {
-            // miuix path
+        run {
+            // 统一 miuix 路径：backdrop=null 时只是不模糊，卡片仍是 MiuixFeedCard
             PullToRefresh(
                 isRefreshing = viewModel.isPullToRefresh && viewModel.isLoading,
                 onRefresh = { scope.launch { viewModel.pullToRefresh(context) } },
                 contentPadding = PaddingValues(top = contentTopPadding + 6.dp),
                 refreshTexts = listOf("下拉刷新", "释放刷新", "正在刷新...", "刷新完成"),
             ) {
-                Box(modifier = Modifier.layerBackdrop(backdrop)) {
+                Box(modifier = if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier) {
                     PaginatedList(
                         items = viewModel.displayItems,
                         listState = listState,
@@ -395,43 +391,6 @@ fun FollowRecommendScreen(
                             },
                         )
                     }
-                }
-                if (showRefreshFab) {
-                    DraggableRefreshButton(
-                        modifier = Modifier.testTag(FOLLOW_RECOMMEND_REFRESH_BUTTON_TAG),
-                        onClick = { onTestRefreshClick?.invoke() ?: viewModel.refresh(context) },
-                    ) {
-                        if (viewModel.isLoading) CircularProgressIndicator(modifier = Modifier.size(36.dp))
-                        else Icon(Icons.Default.Refresh, contentDescription = "刷新")
-                    }
-                }
-            }
-        } else {
-            // M3 path
-            FeedPullToRefresh(viewModel) {
-                PaginatedList(
-                    items = viewModel.displayItems,
-                    listState = listState,
-                    modifier = Modifier
-                        .then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier)
-                        .testTag(FOLLOW_RECOMMEND_LIST_TAG),
-                    topContent = { item { FollowingUsersRow() } },
-                    onLoadMore = { onTestLoadMore?.invoke() ?: viewModel.loadMore(context) },
-                    footer = ProgressIndicatorFooter,
-                ) { item ->
-                    FeedCard(
-                        item = item,
-                        modifier = Modifier.testTag(followRecommendItemTag(item.stableKey)),
-                        onBlockUser = { feedItem ->
-                            viewModel.handleBlockUser(context, feedItem) { authorInfo ->
-                                userToBlock = authorInfo
-                                showBlockUserDialog = true
-                            }
-                        },
-                        onBlockTopic = { topicId, topicName ->
-                            viewModel.handleBlockTopic(context, topicId, topicName)
-                        },
-                    )
                 }
                 if (showRefreshFab) {
                     DraggableRefreshButton(
@@ -515,15 +474,15 @@ fun FollowDynamicScreen(
     val scope = rememberCoroutineScope()
 
     Column {
-        if (backdrop != null) {
-            // miuix path
+        run {
+            // 统一 miuix 路径：backdrop=null 时只是不模糊，卡片仍是 MiuixFeedCard
             PullToRefresh(
                 isRefreshing = viewModel.isPullToRefresh && viewModel.isLoading,
                 onRefresh = { scope.launch { viewModel.pullToRefresh(context) } },
                 contentPadding = PaddingValues(top = contentTopPadding + 6.dp),
                 refreshTexts = listOf("下拉刷新", "释放刷新", "正在刷新...", "刷新完成"),
             ) {
-                Box(modifier = Modifier.layerBackdrop(backdrop)) {
+                Box(modifier = if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier) {
                     PaginatedList(
                         items = viewModel.displayItems,
                         listState = listState,
@@ -550,45 +509,6 @@ fun FollowDynamicScreen(
                             },
                         )
                     }
-                }
-                if (showRefreshFab) {
-                    DraggableRefreshButton(
-                        modifier = Modifier.testTag(FOLLOW_DYNAMIC_REFRESH_BUTTON_TAG),
-                        onClick = { onTestRefreshClick?.invoke() ?: viewModel.refresh(context) },
-                    ) {
-                        if (viewModel.isLoading) CircularProgressIndicator(modifier = Modifier.size(36.dp))
-                        else Icon(Icons.Default.Refresh, contentDescription = "刷新")
-                    }
-                }
-            }
-        } else {
-            // M3 path
-            FeedPullToRefresh(viewModel) {
-                PaginatedList(
-                    items = viewModel.displayItems,
-                    listState = listState,
-                    modifier = Modifier
-                        .then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier)
-                        .testTag(FOLLOW_DYNAMIC_LIST_TAG),
-                    topContent = { item { Spacer(modifier = Modifier.height(8.dp)) } },
-                    onLoadMore = { onTestLoadMore?.invoke() ?: viewModel.loadMore(context) },
-                    footer = ProgressIndicatorFooter,
-                ) { item ->
-                    FeedCard(
-                        item = item,
-                        modifier = Modifier.testTag(followDynamicItemTag(item.stableKey)),
-                        onLike = { Toast.makeText(context, "收到喜欢，功能正在优化", Toast.LENGTH_SHORT).show() },
-                        onDislike = { Toast.makeText(context, "收到反馈，功能正在优化", Toast.LENGTH_SHORT).show() },
-                        onBlockUser = { feedItem ->
-                            viewModel.handleBlockUser(context, feedItem) { authorInfo ->
-                                userToBlock = authorInfo
-                                showBlockUserDialog = true
-                            }
-                        },
-                        onBlockTopic = { topicId, topicName ->
-                            viewModel.handleBlockTopic(context, topicId, topicName)
-                        },
-                    )
                 }
                 if (showRefreshFab) {
                     DraggableRefreshButton(
