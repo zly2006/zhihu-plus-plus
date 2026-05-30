@@ -53,7 +53,6 @@ interface ArticleViewModelRuntime {
 
     fun requestImageExportPermission()
 
-
     fun accountHttpClient(): HttpClient
 
     fun loadExportAssetText(fileName: String): String

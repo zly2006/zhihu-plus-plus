@@ -36,7 +36,6 @@ import com.github.zly2006.zhihu.data.getOrFetch
 import com.github.zly2006.zhihu.navigation.AndroidAnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.shared.comment.decodeZhihuCommentData
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
@@ -48,7 +47,6 @@ import com.github.zly2006.zhihu.util.buildArticleExportHtml
 import com.github.zly2006.zhihu.util.buildOfflineArticleExportHtml
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.signFetchRequest
-import com.github.zly2006.zhihu.viewmodel.comment.RootCommentViewModel.Companion.rootCommentUrl
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder

@@ -13,7 +13,6 @@ data class PeopleProfileLoadResult(
     val urlToken: String?,
 )
 
-
 data class PeopleScreenRuntime(
     val showShortMessage: (String) -> Unit,
     val openWebUrl: (String) -> Unit,

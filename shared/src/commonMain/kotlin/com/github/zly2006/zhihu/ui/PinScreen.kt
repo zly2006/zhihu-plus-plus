@@ -67,6 +67,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.fleeksoft.ksoup.Ksoup
+import com.github.zly2006.zhihu.data.decodePinContentDetail
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
@@ -87,17 +88,15 @@ import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import io.ktor.client.call.body
 import io.ktor.client.request.delete
-import io.ktor.client.request.post
-import com.github.zly2006.zhihu.data.decodePinContentDetail
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import io.ktor.client.request.get
+import io.ktor.client.request.post
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import androidx.compose.material.icons.outlined.ThumbUp as OutlinedThumbUp
 
 const val PIN_SCREEN_BACK_BUTTON_TAG = "pin_screen_back_button"
@@ -129,9 +128,11 @@ private suspend fun loadPinDetail(
     pin: Pin,
 ): PinScreenUiState {
     environment.addReadHistory(pin.id.toString(), "pin")
-    val jsonObject = environment.httpClient().get("https://www.zhihu.com/api/v4/pins/${pin.id}") {
-        environment.configureSignedRequest(this)
-    }.body<JsonObject>()
+    val jsonObject = environment
+        .httpClient()
+        .get("https://www.zhihu.com/api/v4/pins/${pin.id}") {
+            environment.configureSignedRequest(this)
+        }.body<JsonObject>()
     val content = decodePinContentDetail(jsonObject)
     environment.postHistoryDestination(pin)
     environment.recordContentOpenEvent(destination = pin)

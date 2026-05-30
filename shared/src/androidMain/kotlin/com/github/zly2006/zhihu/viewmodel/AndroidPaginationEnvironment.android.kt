@@ -50,10 +50,12 @@ import com.github.zly2006.zhihu.shared.data.encodeZhihuLastReadTouchItems
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.zhihuLastReadTouchItem
 import com.github.zly2006.zhihu.shared.data.zhihuLastReadTouchItems
+import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
 import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.shared.util.HttpStatusException
+import com.github.zly2006.zhihu.ui.articleHost
 import com.github.zly2006.zhihu.util.ResolvedCollectionHtmlExportItem
 import com.github.zly2006.zhihu.util.buildArticleExportFileName
 import com.github.zly2006.zhihu.util.buildOfflineArticleExportHtml
@@ -65,7 +67,6 @@ import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
 import com.github.zly2006.zhihu.viewmodel.filter.contentFilterSettings
 import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
-import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.filter.recordFeedContentInteraction
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
@@ -95,8 +96,16 @@ import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import com.github.zly2006.zhihu.navigation.Article as ArticleDestination
-import com.github.zly2006.zhihu.ui.articleHost
 import io.ktor.http.ContentType as KtorContentType
+import android.Manifest
+import android.content.ContentValues
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.os.Environment
+import android.provider.MediaStore
+import androidx.annotation.RequiresApi
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 
 interface AndroidContextPaginationEnvironment : PaginationEnvironment {
     val context: Context
@@ -210,11 +219,11 @@ open class SharedAndroidPaginationEnvironment(
         AccountData.addReadHistory(context, contentToken, contentTypeName)
     }
 
-        override suspend fun postHistoryDestination(destination: NavDestination) {
+    override suspend fun postHistoryDestination(destination: NavDestination) {
         HistoryStorage(context).add(destination)
     }
 
-        override suspend fun isUserBlocked(userId: String): Boolean =
+    override suspend fun isUserBlocked(userId: String): Boolean =
         getContentFilterDatabase(context).createBlocklistManager().isUserBlocked(userId)
 
     override suspend fun addBlockedUser(
@@ -250,8 +259,6 @@ open class SharedAndroidPaginationEnvironment(
             openFrom = resolvedOpenFrom.ifBlank { "unknown" },
         )
     }
-
-
 
     override suspend fun followQuestion(
         questionId: Long,
@@ -511,6 +518,44 @@ open class SharedAndroidPaginationEnvironment(
             }
         }
     }
+    // Export methods
+    override fun setPlainTextClipboard(
+        label: String,
+        text: String,
+    ) {
+        context.clipboardManager.setPrimaryClip(ClipData.newPlainText(label, text))
+    }
+
+    override fun hasImageExportPermission(): Boolean = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED
+    } else {
+        ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+    }
+
+    override fun requiresHtmlExportPermission(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.Q
+
+    override fun requestImageExportPermission() {
+        val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            arrayOf(Manifest.permission.READ_MEDIA_IMAGES)
+        } else {
+            arrayOf(
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+            )
+        }
+        ActivityCompat.requestPermissions(context as Activity, permissions, 1001)
+    }
+
+    override fun loadExportAssetText(fileName: String): String =
+        context.assets.open(fileName).use { inputStream ->
+            inputStream.bufferedReader().use { reader ->
+                reader.readText()
+            }
+        }
+
+
 }
 
 class SharedAndroidNotificationPaginationEnvironment(

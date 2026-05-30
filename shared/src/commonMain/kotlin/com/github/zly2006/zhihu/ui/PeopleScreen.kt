@@ -401,7 +401,6 @@ class PersonViewModel(
         }
     }
 
-
     suspend fun load(environment: PaginationEnvironment) {
         environment.addReadHistory(person.id, "profile")
 

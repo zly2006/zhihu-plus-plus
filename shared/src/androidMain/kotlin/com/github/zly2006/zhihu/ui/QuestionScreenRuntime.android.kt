@@ -5,17 +5,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
-import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.getContentDetail
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
-import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
-import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import org.jsoup.Jsoup
 
 private const val WEBVIEW_ACTIVITY_CLASS = "com.github.zly2006.zhihu.WebviewActivity"

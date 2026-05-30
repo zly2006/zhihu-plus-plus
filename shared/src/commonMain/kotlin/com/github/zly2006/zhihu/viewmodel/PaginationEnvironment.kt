@@ -22,6 +22,7 @@ import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
@@ -120,6 +121,45 @@ interface PaginationEnvironment {
     suspend fun handleLocalRecommendationFailure(error: Exception) {
         handleFetchFailure("LocalHomeFeedViewModel", error)
     }
+    fun setPlainTextClipboard(
+        label: String,
+        text: String,
+    ) {
+    }
+
+    fun hasImageExportPermission(): Boolean = false
+
+    fun requiresHtmlExportPermission(): Boolean = false
+
+    fun requestImageExportPermission() {
+    }
+
+    fun loadExportAssetText(fileName: String): String = ""
+
+    fun buildArticleExportHtml(
+        content: DataHolder.Content,
+        includeAppAttribution: Boolean,
+        extraSectionsHtml: String,
+    ): String = ""
+
+    suspend fun buildOfflineArticleExportHtml(
+        content: DataHolder.Content,
+        includeAppAttribution: Boolean,
+        httpClient: HttpClient,
+    ): String = ""
+
+    fun saveHtmlToDownloads(
+        displayName: String,
+        htmlContent: String,
+    ): String = ""
+
+    fun saveImageToMediaStore(
+        displayName: String,
+        bitmap: Any,
+    ) {
+    }
+
+    fun articleImageExportRenderer(loadAssetText: (String) -> String): ArticleImageExportRenderer? = null
 
     suspend fun showLocalRecommendationDatabaseError() {
     }

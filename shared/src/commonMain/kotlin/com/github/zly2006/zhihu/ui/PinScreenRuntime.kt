@@ -12,7 +12,6 @@ import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.pin.PinLinkCardPreview
-import com.github.zly2006.zhihu.shared.pin.PinScreenUiState
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import kotlinx.serialization.json.JsonObject

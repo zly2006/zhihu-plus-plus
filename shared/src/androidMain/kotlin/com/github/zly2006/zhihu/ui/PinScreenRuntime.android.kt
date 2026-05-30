@@ -5,24 +5,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
-import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.getContentDetail
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
-import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.shared.pin.PinLinkCardPreview
-import com.github.zly2006.zhihu.shared.pin.PinScreenUiState
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
-import com.github.zly2006.zhihu.util.signFetchRequest
-import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import org.jsoup.Jsoup
 
 @Composable
@@ -31,7 +25,7 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
     val settings = rememberSettingsStore()
     val shareRuntime = rememberShareDialogRuntime()
     return remember(context, settings, shareRuntime) {
-            PinScreenRuntime(
+        PinScreenRuntime(
             handleShareAction = { pin, onShowDialog ->
                 handleShareAction(pin, settings, shareRuntime, onShowDialog)
             },

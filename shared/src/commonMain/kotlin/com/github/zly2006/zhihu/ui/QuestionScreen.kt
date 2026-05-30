@@ -73,6 +73,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.github.zly2006.zhihu.data.decodeQuestionContentDetail
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.question.QuestionScreenUiState
 import com.github.zly2006.zhihu.ui.components.FeedCard
@@ -81,13 +82,12 @@ import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.getShareText
-import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
-import kotlinx.coroutines.launch
-import com.github.zly2006.zhihu.data.decodeQuestionContentDetail
-import io.ktor.client.request.get
 import io.ktor.client.call.body
+import io.ktor.client.request.get
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 
 /**
@@ -129,9 +129,11 @@ private suspend fun loadQuestion(
     environment.addReadHistory(question.questionId.toString(), "question")
     val include = "read_count,visit_count,answer_count,voteup_count,comment_count,follower_count,detail,excerpt,author,relationship.is_following,topics"
     val url = "https://www.zhihu.com/api/v4/questions/${question.questionId}?include=$include"
-    val jsonObject = environment.httpClient().get(url) {
-        environment.configureSignedRequest(this)
-    }.body<JsonObject>()
+    val jsonObject = environment
+        .httpClient()
+        .get(url) {
+            environment.configureSignedRequest(this)
+        }.body<JsonObject>()
     val questionData = decodeQuestionContentDetail(jsonObject)
     val loadedData = loadedQuestionScreenData(question, questionData)
     environment.postHistoryDestination(loadedData.historyDestination)
