@@ -12,7 +12,6 @@ import com.github.zly2006.zhihu.shared.nlp.KeywordWithWeight
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.filter.rememberBlocklistManager
 import kotlinx.coroutines.launch
 
 data class FeedBlockActions(
@@ -47,6 +46,13 @@ data class BlockByKeywordsRuntime(
 @Composable
 expect fun rememberBlockByKeywordsRuntime(): BlockByKeywordsRuntime
 
+data class BlockUserConfirmRuntime(
+    val blockUser: suspend (BlockedFeedAuthor) -> Unit,
+)
+
+@Composable
+expect fun rememberBlockUserConfirmRuntime(): BlockUserConfirmRuntime
+
 @Composable
 fun BlockUserConfirmDialog(
     showDialog: Boolean,
@@ -57,7 +63,7 @@ fun BlockUserConfirmDialog(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val userMessages = rememberUserMessageSink()
-    val blocklistManager = rememberBlocklistManager()
+    val runtime = rememberBlockUserConfirmRuntime()
     BlockUserConfirmDialogContent(
         showDialog = showDialog,
         userToBlock = userToBlock,
@@ -66,12 +72,7 @@ fun BlockUserConfirmDialog(
         onConfirmBlock = { author ->
             coroutineScope.launch {
                 try {
-                    blocklistManager.addBlockedUser(
-                        userId = author.id,
-                        userName = author.name,
-                        urlToken = author.urlToken,
-                        avatarUrl = author.avatarUrl,
-                    )
+                    runtime.blockUser(author)
                     onConfirm()
                     userMessages.showShortMessage("已屏蔽用户：${author.name}")
                 } catch (e: Exception) {
