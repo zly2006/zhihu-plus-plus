@@ -8,6 +8,7 @@
 - 2026-05-30：JVM `DesktopPaginationEnvironment` 的屏蔽用户查询/新增/删除不再重复调用 `getContentFilterDatabase(desktopContentFilterDatabaseFile())`，改为复用同环境已有的 `contentFilterDatabase` 成员；数据库路径、BlocklistManager 逻辑和调用顺序未改。本切片只收敛重复平台数据库获取，不新增 runtime wrapper。
 - 2026-05-30：JVM 问题/想法/文章详情获取进一步收敛到 `DesktopPaginationEnvironment`：Pin 链接卡片预览和 Feed 屏蔽动作不再从 `PinScreenRuntime.jvm.kt` 共享页面私有 fetch helper，而是直接复用同一个 desktop pagination content-detail provider；重复的桌面 Pin/Question 详情 fetch helper 已删除。链接卡片预览、关键词屏蔽、用户屏蔽和 feed 屏蔽提示 UI 未改。
 - 2026-05-30：删除 common `ContentFilterExtensions.kt` 中无调用的 `getEnabledBlockedUserIds()` TODO stub；当前评论/问题 feed 过滤实际入口是 `PaginationEnvironment.fetchBlockedUserIds()`，Android/JVM actual 保持不变。本切片不改过滤 UI 或过滤调用顺序，只去掉未实现且无引用的旧残留。
+- 2026-05-30：`MyModalBottomSheet.kt` 撤销迁移期简单 `ModalBottomSheet` 转发壳，按当前 KMP Material3 `ModalBottomSheet`/`BottomSheet` 内部结构恢复 master 的自定义 bottom sheet 主体和“一次返回键直接关闭”行为；`BottomSheetImpl`/`SheetWindowInsets` 在当前 KMP Material3 中已不可用，`Scrim` 直接 internal 调用会触发 Kotlin synthetic accessor ICE，因此仅保留等价本地 scrim 小函数。对照 master，`MyModalBottomSheet`、`BottomSheet` 函数名、参数形状、`ModalBottomSheetDialog`、`animateToDismiss`、`BottomSheet` 内容主体和 predictive back/drag anchor 结构均保留；未改任何调用处或可见 UI 文案。
 - Project has `shared`, `desktopApp`, Android `app`, and Android-only `sentence_embeddings`.
 - `desktopApp` is a shallow demo1-style launcher.
 - QR login core and QR UI are shared via `SharedQrLoginPane`.
