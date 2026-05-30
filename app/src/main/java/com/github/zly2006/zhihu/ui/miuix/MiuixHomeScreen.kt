@@ -31,6 +31,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,6 +69,7 @@ import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 
 @Composable
@@ -108,17 +111,24 @@ fun MiuixHomeScreen(
     val blurEnabled = remember { preferences.getBoolean("blurEnabled", true) }
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
+    val titleAlpha by animateFloatAsState(
+        targetValue = if (searchStatus.isCollapsed()) 1f else 0f,
+        animationSpec = tween(200),
+        label = "titleAlpha",
+    )
 
     Scaffold(
         topBar = {
             Column(
                 modifier = Modifier.installerMiuixBlurEffect(backdrop),
             ) {
-                TopAppBar(
-                    color = backdrop.getMiuixAppBarColor(),
-                    title = "",
-                    scrollBehavior = scrollBehavior,
-                )
+                Box(modifier = Modifier.graphicsLayer { alpha = titleAlpha }) {
+                    TopAppBar(
+                        color = backdrop.getMiuixAppBarColor(),
+                        title = "主页",
+                        scrollBehavior = scrollBehavior,
+                    )
+                }
                 SearchBarFake(
                     label = searchStatus.label,
                     searchBarTopPadding = 0.dp,
