@@ -17,7 +17,6 @@
 
 package com.github.zly2006.zhihu.shared.data
 import androidx.compose.runtime.Stable
-import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
@@ -47,11 +46,7 @@ import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.descriptors.PrimitiveKind
-import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -292,27 +287,6 @@ data class CollectionResponse(
     val paging: ZhihuPaging,
 )
 
-object HTMLDecoder : KSerializer<String> {
-    override val descriptor = PrimitiveSerialDescriptor("HTMLDecoder", PrimitiveKind.STRING)
-
-    override fun serialize(
-        encoder: Encoder,
-        value: String,
-    ) {
-        encoder.encodeString(value)
-    }
-
-    override fun deserialize(decoder: Decoder): String {
-        val string = decoder.decodeString()
-        return Ksoup
-            .parse(string)
-            .apply {
-                select(".invisible").forEach { it.remove() }
-            }.text()
-    }
-}
-
-@Serializable
 class CollectionItem(
     val created: String,
     val content: Feed.Target,
@@ -334,38 +308,6 @@ data class CollectionHtmlExportDialogState(
 ) {
     val progress: Float
         get() = if (totalCount <= 0) 0f else (processedCount.toFloat() / totalCount.toFloat()).coerceIn(0f, 1f)
-}
-
-@Serializable
-data class DailyStoriesResponse(
-    val date: String,
-    val stories: List<DailyStory>,
-)
-
-@Serializable
-data class DailyStory(
-    val id: Long,
-    val title: String,
-    val url: String,
-    val hint: String,
-    val images: List<String>,
-    val type: Int,
-)
-
-data class DailySection(
-    val date: String,
-    val stories: List<DailyStory>,
-)
-
-enum class RecommendationMode(
-    val displayName: String,
-    val key: String,
-    val description: String,
-) {
-    WEB("Web 端推荐", "server", "使用知乎网页端的推荐算法"),
-    ANDROID("安卓端推荐", "android", "使用知乎安卓端的推荐算法"),
-    LOCAL("本地推荐", "local", "基于本地数据的推荐算法"),
-    MIXED("混合推荐", "mixed", "融合安卓和网页端推荐算法，并过滤严选内容"),
 }
 
 // Re-export from ui package for backward compatibility with tests

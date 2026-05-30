@@ -17,12 +17,12 @@
 
 package com.github.zly2006.zhihu.viewmodel.filter
 
-import com.github.zly2006.zhihu.shared.filter.BlocklistBackup
-import com.github.zly2006.zhihu.shared.filter.KeywordBackup
-import com.github.zly2006.zhihu.shared.filter.NlpKeywordBackup
-import com.github.zly2006.zhihu.shared.filter.TopicBackup
-import com.github.zly2006.zhihu.shared.filter.UserBackup
 import com.github.zly2006.zhihu.shared.util.Log
+import com.github.zly2006.zhihu.viewmodel.filter.BlocklistBackup
+import com.github.zly2006.zhihu.viewmodel.filter.KeywordBackup
+import com.github.zly2006.zhihu.viewmodel.filter.NlpKeywordBackup
+import com.github.zly2006.zhihu.viewmodel.filter.TopicBackup
+import com.github.zly2006.zhihu.viewmodel.filter.UserBackup
 import kotlinx.serialization.json.Json
 
 /**

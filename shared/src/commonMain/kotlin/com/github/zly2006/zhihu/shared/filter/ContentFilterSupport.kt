@@ -18,7 +18,6 @@
 package com.github.zly2006.zhihu.shared.filter
 import androidx.compose.runtime.Composable
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterDao
-import kotlinx.serialization.Serializable
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 
@@ -72,39 +71,3 @@ fun createContentFilterMaintenance(
         },
     )
 }
-
-@Serializable
-data class BlocklistBackup(
-    val version: Int = 2,
-    val exportTime: Long = Clock.System.now().toEpochMilliseconds(),
-    val keywords: List<KeywordBackup> = emptyList(),
-    val nlpKeywords: List<NlpKeywordBackup> = emptyList(),
-    val users: List<UserBackup> = emptyList(),
-    val topics: List<TopicBackup> = emptyList(),
-)
-
-@Serializable
-data class KeywordBackup(
-    val keyword: String,
-    val caseSensitive: Boolean = false,
-    val isRegex: Boolean = false,
-)
-
-@Serializable
-data class NlpKeywordBackup(
-    val keyword: String,
-)
-
-@Serializable
-data class UserBackup(
-    val userId: String,
-    val userName: String,
-    val urlToken: String = "",
-    val avatarUrl: String = "",
-)
-
-@Serializable
-data class TopicBackup(
-    val topicId: String,
-    val topicName: String,
-)
