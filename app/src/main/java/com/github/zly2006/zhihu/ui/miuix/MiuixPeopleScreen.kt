@@ -243,15 +243,13 @@ fun MiuixPeopleScreen(
                         } else {
                             items(items.size, key = { items[it].hashCode() }) { index ->
                                 val item = items[index]
-                                Box(Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
-                                    val feedItem = coerceToFeedItem(item)
-                                    MiuixFeedCard(
-                                        item = feedItem,
-                                        onClick = {
-                                            feedItem.navDestination?.let { navigator.onNavigate(it) }
-                                        },
-                                    )
-                                }
+                                val feedItem = coerceToFeedItem(item)
+                                MiuixFeedCard(
+                                    item = feedItem,
+                                    onClick = {
+                                        feedItem.navDestination?.let { navigator.onNavigate(it) }
+                                    },
+                                )
                             }
                         }
                     }

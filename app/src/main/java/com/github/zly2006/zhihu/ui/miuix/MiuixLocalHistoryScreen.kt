@@ -98,7 +98,6 @@ fun MiuixLocalHistoryScreen(
                     items(viewModel.displayItems.size, key = { viewModel.displayItems[it].stableKey }) { index ->
                         MiuixFeedCard(
                             item = viewModel.displayItems[index],
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                         )
                     }
                 }
