@@ -76,6 +76,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.data.decodeQuestionContentDetail
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.shared.platform.rememberZhihuWebUrlOpener
 import com.github.zly2006.zhihu.shared.question.QuestionScreenUiState
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
@@ -149,6 +150,7 @@ fun QuestionScreen(
     testOverrides: QuestionScreenTestOverrides? = null,
 ) {
     val runtime = rememberQuestionScreenRuntime()
+    val openZhihuWebUrl = rememberZhihuWebUrlOpener()
     val viewModel: QuestionFeedViewModel = testOverrides?.viewModel ?: viewModel(key = "question_${question.questionId}") {
         QuestionFeedViewModel(question.questionId)
     }
@@ -408,7 +410,7 @@ fun QuestionScreen(
                                 onClick = {
                                     testOverrides?.onOpenLog?.invoke() ?: run {
                                         try {
-                                            runtime.openLog(question)
+                                            openZhihuWebUrl("https://www.zhihu.com/question/${question.questionId}/log")
                                         } catch (e: Exception) {
                                             userMessages.showShortMessage("打开日志失败: ${e.message}")
                                         }
