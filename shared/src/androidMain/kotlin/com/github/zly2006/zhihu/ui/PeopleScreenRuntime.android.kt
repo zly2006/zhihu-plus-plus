@@ -8,7 +8,6 @@ import androidx.core.net.toUri
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.ui.components.OpenImageDialog
-import com.github.zly2006.zhihu.viewmodel.filter.getBlocklistManager
 
 private const val WEBVIEW_ACTIVITY_CLASS = "com.github.zly2006.zhihu.WebviewActivity"
 
@@ -18,21 +17,6 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
     return remember(context) {
         val userMessages = androidUserMessageSink(context)
         PeopleScreenRuntime(
-            toggleRecommendationBlock = { request ->
-                val blocklistManager = getBlocklistManager(context)
-                if (request.isBlocked) {
-                    blocklistManager.removeBlockedUser(request.userId)
-                    false
-                } else {
-                    blocklistManager.addBlockedUser(
-                        userId = request.userId,
-                        userName = request.userName,
-                        urlToken = request.urlToken,
-                        avatarUrl = request.avatarUrl,
-                    )
-                    true
-                }
-            },
             showShortMessage = { message ->
                 userMessages.showShortMessage(message)
             },

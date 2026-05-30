@@ -386,17 +386,21 @@ class PersonViewModel(
         }
     }
 
-    suspend fun toggleRecommendationBlock(runtime: PeopleScreenRuntime) {
-        isBlockedInRecommendations = runtime.toggleRecommendationBlock(
-            PeopleRecommendationBlockRequest(
+    suspend fun toggleRecommendationBlock(environment: PaginationEnvironment) {
+        if (isBlockedInRecommendations) {
+            environment.removeBlockedUser(person.id)
+            isBlockedInRecommendations = false
+        } else {
+            environment.addBlockedUser(
                 userId = person.id,
                 userName = name,
                 urlToken = person.urlToken,
                 avatarUrl = avatar,
-                isBlocked = isBlockedInRecommendations,
-            ),
-        )
+            )
+            isBlockedInRecommendations = true
+        }
     }
+
 
     suspend fun load(environment: PaginationEnvironment) {
         environment.addReadHistory(person.id, "profile")
@@ -766,7 +770,7 @@ private fun PeopleScreenContent(
                             } else {
                                 coroutineScope.launch {
                                     try {
-                                        viewModel.toggleRecommendationBlock(runtime)
+                                        viewModel.toggleRecommendationBlock(paginationEnvironment)
                                         runtime.showShortMessage(if (viewModel.isBlockedInRecommendations) "已屏蔽推荐" else "已取消屏蔽推荐")
                                     } catch (e: Exception) {
                                         runtime.showShortMessage("操作失败: ${e.message}")

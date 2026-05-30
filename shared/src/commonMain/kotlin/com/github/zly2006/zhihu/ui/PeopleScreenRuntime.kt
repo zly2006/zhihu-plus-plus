@@ -13,16 +13,8 @@ data class PeopleProfileLoadResult(
     val urlToken: String?,
 )
 
-data class PeopleRecommendationBlockRequest(
-    val userId: String,
-    val userName: String,
-    val urlToken: String,
-    val avatarUrl: String,
-    val isBlocked: Boolean,
-)
 
 data class PeopleScreenRuntime(
-    val toggleRecommendationBlock: suspend (PeopleRecommendationBlockRequest) -> Boolean,
     val showShortMessage: (String) -> Unit,
     val openWebUrl: (String) -> Unit,
     val openImage: (String) -> Unit,

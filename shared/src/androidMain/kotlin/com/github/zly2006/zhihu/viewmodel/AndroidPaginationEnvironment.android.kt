@@ -213,6 +213,25 @@ open class SharedAndroidPaginationEnvironment(
 
         override suspend fun isUserBlocked(userId: String): Boolean =
             getContentFilterDatabase(context).createBlocklistManager().isUserBlocked(userId)
+
+    override suspend fun addBlockedUser(
+        userId: String,
+        userName: String,
+        urlToken: String?,
+        avatarUrl: String?,
+    ) {
+        getContentFilterDatabase(context).createBlocklistManager().addBlockedUser(
+            userId = userId,
+            userName = userName,
+            urlToken = urlToken,
+            avatarUrl = avatarUrl,
+        )
+    }
+
+    override suspend fun removeBlockedUser(userId: String) {
+        getContentFilterDatabase(context).createBlocklistManager().removeBlockedUser(userId)
+    }
+
     }
 
     override suspend fun followQuestion(

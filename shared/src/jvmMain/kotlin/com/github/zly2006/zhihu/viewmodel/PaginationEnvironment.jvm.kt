@@ -131,6 +131,25 @@ class DesktopPaginationEnvironment(
     override suspend fun isUserBlocked(userId: String): Boolean =
         getContentFilterDatabase(desktopContentFilterDatabaseFile()).createBlocklistManager().isUserBlocked(userId)
 
+    override suspend fun addBlockedUser(
+        userId: String,
+        userName: String,
+        urlToken: String?,
+        avatarUrl: String?,
+    ) {
+        getContentFilterDatabase(desktopContentFilterDatabaseFile()).createBlocklistManager().addBlockedUser(
+            userId = userId,
+            userName = userName,
+            urlToken = urlToken,
+            avatarUrl = avatarUrl,
+        )
+    }
+
+    override suspend fun removeBlockedUser(userId: String) {
+        getContentFilterDatabase(desktopContentFilterDatabaseFile()).createBlocklistManager().removeBlockedUser(userId)
+    }
+
+
     override suspend fun followQuestion(
         questionId: Long,
         follow: Boolean,

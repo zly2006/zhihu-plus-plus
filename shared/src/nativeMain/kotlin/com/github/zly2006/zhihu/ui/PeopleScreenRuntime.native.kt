@@ -11,10 +11,4 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
     return remember(userMessages) {
         PeopleScreenRuntime(
             loadProfile = { error("People profile not available on iOS yet") },
-            toggleRecommendationBlock = { error("Recommendation block not available on iOS yet") },
-            showShortMessage = { userMessages.showShortMessage(it) },
-            openWebUrl = { openIosUrl(it) },
-            openImage = { openIosUrl(it) },
-        )
-    }
 }

@@ -95,6 +95,17 @@ interface PaginationEnvironment {
 
     suspend fun isUserBlocked(userId: String): Boolean = false
 
+    suspend fun addBlockedUser(
+        userId: String,
+        userName: String,
+        urlToken: String? = null,
+        avatarUrl: String? = null,
+    ) {
+    }
+
+    suspend fun removeBlockedUser(userId: String) {
+    }
+
     fun localRecommendationEngine(): LocalRecommendationEngine? = null
 
     suspend fun handleLocalRecommendationFailure(error: Exception) {
