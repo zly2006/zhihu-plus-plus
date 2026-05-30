@@ -56,6 +56,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -82,6 +83,15 @@ import com.github.zly2006.zhihu.shared.util.formatCompactCount
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.getShareText
+import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import io.ktor.client.call.body
+import io.ktor.client.request.delete
+import io.ktor.client.request.post
+import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -92,6 +102,25 @@ const val PIN_SCREEN_SHARE_BUTTON_TAG = "pin_screen_share_button"
 const val PIN_SCREEN_LOADING_TAG = "pin_screen_loading"
 const val PIN_SCREEN_ERROR_TAG = "pin_screen_error"
 const val PIN_SCREEN_SCROLL_TAG = "pin_screen_scroll"
+
+private suspend fun togglePinLike(
+    environment: PaginationEnvironment,
+    pin: Pin,
+    isLiked: Boolean,
+): PinLikeResult {
+    val endpoint = "https://www.zhihu.com/api/v4/pins/${pin.id}/voters/up"
+    val client = environment.httpClient()
+    val jojo = if (isLiked) {
+        client.delete(endpoint) { environment.configureSignedRequest(this) }.body<JsonObject>()
+    } else {
+        client.post(endpoint) { environment.configureSignedRequest(this) }.body<JsonObject>()
+    }
+    return PinLikeResult(
+        isLiked = !isLiked,
+        likeCount = jojo["liked_count"]?.jsonPrimitive?.intOrNull ?: -1,
+    )
+}
+
 const val PIN_SCREEN_AUTHOR_TAG = "pin_screen_author"
 const val PIN_SCREEN_LINK_CARD_TAG = "pin_screen_link_card"
 const val PIN_SCREEN_LIKE_BUTTON_TAG = "pin_screen_like_button"
@@ -120,6 +149,9 @@ fun PinScreen(
     testOverrides: PinScreenTestOverrides? = null,
 ) {
     val navigator = LocalNavigator.current
+    val coroutineScope = rememberCoroutineScope()
+    val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
+
     val runtime = rememberPinScreenRuntime()
     var screenState by remember(pin.id, testOverrides) {
         mutableStateOf(
@@ -227,7 +259,8 @@ fun PinScreen(
                         isLiked = screenState.isLiked,
                         likeCount = screenState.likeCount,
                         onLikeClick = {
-                            testOverrides?.onLikeClick?.invoke() ?: runtime.toggleLike(pin, screenState.isLiked) { result ->
+                            testOverrides?.onLikeClick?.invoke() ?: coroutineScope.launch {
+                                val result = togglePinLike(paginationEnvironment, pin, screenState.isLiked)
                                 screenState = screenState.copy(
                                     isLiked = result.isLiked,
                                     likeCount = result.likeCount,

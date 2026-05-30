@@ -65,23 +65,6 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
                     )
                 }
             },
-            toggleLike = { pin, isLiked, onResult ->
-                scope.launch {
-                    try {
-                        val method = if (isLiked) HttpMethod.Delete else HttpMethod.Post
-                        val endpoint = "https://www.zhihu.com/api/v4/pins/${pin.id}/voters/up"
-                        val jojo = fetchDesktopPinLike(store, endpoint, method) ?: return@launch
-                        onResult(
-                            PinLikeResult(
-                                isLiked = !isLiked,
-                                likeCount = jojo["liked_count"]?.jsonPrimitive?.intOrNull ?: -1,
-                            ),
-                        )
-                    } catch (e: Exception) {
-                        Log.e("PinScreenRuntime", "Failed to toggle pin like", e)
-                    }
-                }
-            },
             handleShareAction = { pin, onShowDialog ->
                 handleShareAction(pin, settings, shareRuntime, onShowDialog)
             },

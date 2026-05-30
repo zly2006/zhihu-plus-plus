@@ -64,27 +64,6 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
                     )
                 }
             },
-            toggleLike = { pin, isLiked, onResult ->
-                scope.launch {
-                    try {
-                        val endpoint = "https://www.zhihu.com/api/v4/pins/${pin.id}/voters/up"
-                        val client = AccountData.httpClient(context)
-                        val jojo = if (isLiked) {
-                            client.delete(endpoint) { signFetchRequest() }.body<JsonObject>()
-                        } else {
-                            client.post(endpoint) { signFetchRequest() }.body<JsonObject>()
-                        }
-                        onResult(
-                            PinLikeResult(
-                                isLiked = !isLiked,
-                                likeCount = jojo["liked_count"]?.jsonPrimitive?.intOrNull ?: -1,
-                            ),
-                        )
-                    } catch (e: Exception) {
-                        userMessages.showShortMessage("操作失败: ${e.message}")
-                    }
-                }
-            },
             handleShareAction = { pin, onShowDialog ->
                 handleShareAction(pin, settings, shareRuntime, onShowDialog)
             },
