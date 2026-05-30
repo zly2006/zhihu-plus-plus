@@ -9,16 +9,11 @@ import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
 import com.github.zly2006.zhihu.shared.desktop.signedFetchJson
-import com.github.zly2006.zhihu.shared.desktop.signedWithResponse
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.shared.util.raiseForStatus
 import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
-import io.ktor.client.call.body
 import io.ktor.client.request.parameter
-import io.ktor.http.HttpMethod
-import kotlinx.serialization.json.JsonObject
 
 @Composable
 actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
@@ -51,30 +46,6 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
                     loadedPerson = loadedPerson,
                     isBlockedInRecommendations = blocklistManager.isUserBlocked(loadedPerson.id),
                 )
-            },
-            toggleFollow = { person, isFollowing, followerCount ->
-                val method = if (isFollowing) HttpMethod.Delete else HttpMethod.Post
-                val jojo = store.signedWithResponse(
-                    url = "https://www.zhihu.com/api/v4/members/${person.urlToken}/followers",
-                    block = { this.method = method },
-                ) { response ->
-                    response.raiseForStatus().body<JsonObject>()
-                }
-                peopleFollowResult(
-                    isFollowingBefore = isFollowing,
-                    followerCountBefore = followerCount,
-                    responseJson = jojo,
-                )
-            },
-            toggleBlock = { person, isBlocking ->
-                val method = if (isBlocking) HttpMethod.Delete else HttpMethod.Post
-                store.signedWithResponse(
-                    url = "https://www.zhihu.com/api/v4/members/${person.urlToken}/actions/block",
-                    block = { this.method = method },
-                ) { response ->
-                    response.raiseForStatus()
-                }
-                !isBlocking
             },
             toggleRecommendationBlock = { request ->
                 if (request.isBlocked) {

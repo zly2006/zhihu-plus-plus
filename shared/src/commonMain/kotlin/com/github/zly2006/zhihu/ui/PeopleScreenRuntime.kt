@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:property-naming")
+
 package com.github.zly2006.zhihu.ui
 
 import androidx.compose.runtime.Composable
@@ -6,18 +8,10 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.shared.data.officialBadgeDetails
 import com.github.zly2006.zhihu.shared.people.PeopleProfileUiState
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.int
-import kotlinx.serialization.json.jsonPrimitive
 
 data class PeopleProfileLoadResult(
     val profile: PeopleProfileUiState,
     val urlToken: String?,
-)
-
-data class PeopleFollowResult(
-    val isFollowing: Boolean,
-    val followerCount: Int,
 )
 
 data class PeopleRecommendationBlockRequest(
@@ -30,8 +24,6 @@ data class PeopleRecommendationBlockRequest(
 
 data class PeopleScreenRuntime(
     val loadProfile: suspend (Person) -> PeopleProfileLoadResult,
-    val toggleFollow: suspend (Person, Boolean, Int) -> PeopleFollowResult,
-    val toggleBlock: suspend (Person, Boolean) -> Boolean,
     val toggleRecommendationBlock: suspend (PeopleRecommendationBlockRequest) -> Boolean,
     val showShortMessage: (String) -> Unit,
     val openWebUrl: (String) -> Unit,
@@ -61,22 +53,6 @@ internal fun toPeopleProfileLoadResult(
     ),
     urlToken = loadedPerson.urlToken,
 )
-
-internal fun peopleFollowResult(
-    isFollowingBefore: Boolean,
-    followerCountBefore: Int,
-    responseJson: JsonObject,
-): PeopleFollowResult = if (isFollowingBefore) {
-    PeopleFollowResult(
-        isFollowing = false,
-        followerCount = responseJson["follower_count"]?.jsonPrimitive?.int ?: (followerCountBefore - 1),
-    )
-} else {
-    PeopleFollowResult(
-        isFollowing = true,
-        followerCount = responseJson["follower_count"]?.jsonPrimitive?.int ?: (followerCountBefore + 1),
-    )
-}
 
 @Composable
 expect fun rememberPeopleScreenRuntime(): PeopleScreenRuntime

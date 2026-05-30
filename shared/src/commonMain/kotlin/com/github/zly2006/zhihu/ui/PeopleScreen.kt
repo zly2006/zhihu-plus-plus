@@ -81,6 +81,7 @@ import com.github.zly2006.zhihu.shared.people.PeopleListUiState
 import com.github.zly2006.zhihu.shared.people.PeopleProfileUiState
 import com.github.zly2006.zhihu.shared.people.PeopleScreenUiState
 import com.github.zly2006.zhihu.shared.people.PeopleSortedListUiState
+import com.github.zly2006.zhihu.shared.util.raiseForStatus
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.PaginatedList
@@ -89,8 +90,14 @@ import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import io.ktor.client.call.body
+import io.ktor.client.request.delete
+import io.ktor.client.request.post
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonPrimitive
 import org.jetbrains.compose.resources.painterResource
 import zhihu.shared.generated.resources.Res
 import zhihu.shared.generated.resources.ic_zh_plus_author_badge
@@ -338,14 +345,42 @@ class PersonViewModel(
         followingFeedModel,
     )
 
-    suspend fun toggleFollow(runtime: PeopleScreenRuntime) {
-        val result = runtime.toggleFollow(person, isFollowing, followerCount)
-        followerCount = result.followerCount
-        isFollowing = result.isFollowing
+    suspend fun toggleFollow(environment: PaginationEnvironment) {
+        val client = environment.httpClient()
+        if (isFollowing) {
+            val jojo = client
+                .delete("https://www.zhihu.com/api/v4/members/${person.urlToken}/followers") {
+                    environment.configureSignedRequest(this)
+                }.raiseForStatus()
+                .body<JsonObject>()
+            followerCount = jojo["follower_count"]?.jsonPrimitive?.int ?: (followerCount - 1)
+            isFollowing = false
+        } else {
+            val jojo = client
+                .post("https://www.zhihu.com/api/v4/members/${person.urlToken}/followers") {
+                    environment.configureSignedRequest(this)
+                }.raiseForStatus()
+                .body<JsonObject>()
+            followerCount = jojo["follower_count"]?.jsonPrimitive?.int ?: (followerCount + 1)
+            isFollowing = true
+        }
     }
 
-    suspend fun toggleBlock(runtime: PeopleScreenRuntime) {
-        isBlocking = runtime.toggleBlock(person, isBlocking)
+    suspend fun toggleBlock(environment: PaginationEnvironment) {
+        val client = environment.httpClient()
+        if (isBlocking) {
+            client
+                .delete("https://www.zhihu.com/api/v4/members/${person.urlToken}/actions/block") {
+                    environment.configureSignedRequest(this)
+                }.raiseForStatus()
+            isBlocking = false
+        } else {
+            client
+                .post("https://www.zhihu.com/api/v4/members/${person.urlToken}/actions/block") {
+                    environment.configureSignedRequest(this)
+                }.raiseForStatus()
+            isBlocking = true
+        }
     }
 
     suspend fun toggleRecommendationBlock(runtime: PeopleScreenRuntime) {
@@ -674,7 +709,7 @@ private fun PeopleScreenContent(
                             } else {
                                 coroutineScope.launch {
                                     try {
-                                        viewModel.toggleFollow(runtime)
+                                        viewModel.toggleFollow(paginationEnvironment)
                                     } catch (e: Exception) {
                                         runtime.showShortMessage("操作失败: ${e.message}")
                                     }
@@ -689,7 +724,7 @@ private fun PeopleScreenContent(
                             } else {
                                 coroutineScope.launch {
                                     try {
-                                        viewModel.toggleBlock(runtime)
+                                        viewModel.toggleBlock(paginationEnvironment)
                                     } catch (e: Exception) {
                                         runtime.showShortMessage("操作失败: ${e.message}")
                                     }

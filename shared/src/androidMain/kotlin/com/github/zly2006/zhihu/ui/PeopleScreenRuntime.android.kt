@@ -10,14 +10,9 @@ import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
-import com.github.zly2006.zhihu.shared.util.raiseForStatus
 import com.github.zly2006.zhihu.ui.components.OpenImageDialog
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.filter.getBlocklistManager
-import io.ktor.client.call.body
-import io.ktor.client.request.delete
-import io.ktor.client.request.post
-import kotlinx.serialization.json.JsonObject
 
 private const val WEBVIEW_ACTIVITY_CLASS = "com.github.zly2006.zhihu.WebviewActivity"
 
@@ -48,50 +43,6 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
                     loadedPerson = loadedPerson,
                     isBlockedInRecommendations = blocklistManager.isUserBlocked(loadedPerson.id),
                 )
-            },
-            toggleFollow = { person, isFollowing, followerCount ->
-                if (isFollowing) {
-                    val jojo = AccountData
-                        .httpClient(context)
-                        .delete("https://www.zhihu.com/api/v4/members/${person.urlToken}/followers") {
-                            signFetchRequest()
-                        }.raiseForStatus()
-                        .body<JsonObject>()
-                    peopleFollowResult(
-                        isFollowingBefore = isFollowing,
-                        followerCountBefore = followerCount,
-                        responseJson = jojo,
-                    )
-                } else {
-                    val jojo = AccountData
-                        .httpClient(context)
-                        .post("https://www.zhihu.com/api/v4/members/${person.urlToken}/followers") {
-                            signFetchRequest()
-                        }.raiseForStatus()
-                        .body<JsonObject>()
-                    peopleFollowResult(
-                        isFollowingBefore = isFollowing,
-                        followerCountBefore = followerCount,
-                        responseJson = jojo,
-                    )
-                }
-            },
-            toggleBlock = { person, isBlocking ->
-                if (isBlocking) {
-                    AccountData
-                        .httpClient(context)
-                        .delete("https://www.zhihu.com/api/v4/members/${person.urlToken}/actions/block") {
-                            signFetchRequest()
-                        }.raiseForStatus()
-                    false
-                } else {
-                    AccountData
-                        .httpClient(context)
-                        .post("https://www.zhihu.com/api/v4/members/${person.urlToken}/actions/block") {
-                            signFetchRequest()
-                        }.raiseForStatus()
-                    true
-                }
             },
             toggleRecommendationBlock = { request ->
                 val blocklistManager = getBlocklistManager(context)
