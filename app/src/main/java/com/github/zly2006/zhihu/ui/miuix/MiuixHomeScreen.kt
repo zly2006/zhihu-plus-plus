@@ -112,6 +112,9 @@ fun MiuixHomeScreen(
     val scrollBehavior = MiuixScrollBehavior()
     val statusBarHeight = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
 
+    // 外层 Box：让 SearchPager 覆盖整个屏幕（从真正的屏幕顶部算），
+    // 而不是被困在 Scaffold 内容区（已被 topBar 推下去，会导致不靠顶 + 返回闪现）
+    Box(Modifier.fillMaxSize()) {
     Scaffold(
         topBar = {
             // TopAppBarAnim：消失回弹（alpha 切换 + 背景层）
@@ -185,47 +188,48 @@ fun MiuixHomeScreen(
             }
         },
     ) { padding ->
-        Box(Modifier.fillMaxSize()) {
-            searchStatus.SearchBox {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize()
-                        .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
-                        .overScrollVertical()
-                        .nestedScroll(scrollBehavior.nestedScrollConnection),
-                    contentPadding = PaddingValues(
-                        top = padding.calculateTopPadding() + 6.dp,
-                        bottom = innerPadding.calculateBottomPadding() + 12.dp,
-                    ),
-                ) {
-                    items(viewModel.displayItems.size, key = { viewModel.displayItems[it].stableKey }) { index ->
-                        val item = viewModel.displayItems[index]
-                        Card(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
-                            Box(Modifier.padding(16.dp)) {
-                                Text(text = item.title, color = MiuixTheme.colorScheme.onSurface)
-                            }
+        // Scaffold 内容区：只放 feed
+        searchStatus.SearchBox {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize()
+                    .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
+                    .overScrollVertical()
+                    .nestedScroll(scrollBehavior.nestedScrollConnection),
+                contentPadding = PaddingValues(
+                    top = padding.calculateTopPadding() + 6.dp,
+                    bottom = innerPadding.calculateBottomPadding() + 12.dp,
+                ),
+            ) {
+                items(viewModel.displayItems.size, key = { viewModel.displayItems[it].stableKey }) { index ->
+                    val item = viewModel.displayItems[index]
+                    Card(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
+                        Box(Modifier.padding(16.dp)) {
+                            Text(text = item.title, color = MiuixTheme.colorScheme.onSurface)
                         }
                     }
                 }
             }
-
-            // 搜索浮层：真框从 offsetY 开始动画，与假框位置一致
-            searchStatus.SearchPager(
-                onSearchStatusChange = { searchStatus = it },
-                searchBarTopPadding = statusBarHeight + 12.dp,
-                defaultResult = {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("输入关键词搜索", color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
-                    }
-                },
-                result = {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("搜索结果占位：${searchStatus.searchText}", color = MiuixTheme.colorScheme.onSurface)
-                    }
-                },
-            )
         }
     }
+
+    // 搜索浮层：在 Scaffold 外层、覆盖全屏（从屏幕真正顶部算坐标），
+    // 这样 topPadding = systemBarsPadding + 5.dp 能真正靠到屏幕顶部
+    searchStatus.SearchPager(
+        onSearchStatusChange = { searchStatus = it },
+        searchBarTopPadding = statusBarHeight + 12.dp,
+        defaultResult = {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("输入关键词搜索", color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+            }
+        },
+        result = {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("搜索结果占位：${searchStatus.searchText}", color = MiuixTheme.colorScheme.onSurface)
+            }
+        },
+    )
+    } // 外层 Box 结束
 
     MiuixAccountSheet(
         show = showAccountSheet.value,

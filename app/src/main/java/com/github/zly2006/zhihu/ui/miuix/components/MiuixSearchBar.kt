@@ -72,11 +72,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.InputField
-import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
+import kotlin.math.max
 
 /* ============================================================
  * 效果 A：按下缩放 modifier（假搜索框点击反馈）
@@ -126,7 +124,7 @@ fun SearchStatus.SearchPager(
     // 效果 B-1：搜索框上移到顶的位移动画，动画完成时推进状态机
     val topPadding by animateDpAsState(
         targetValue = if (searchStatus.shouldExpand()) systemBarsPadding + 5.dp
-                      else searchStatus.offsetY.coerceAtLeast(0.dp),
+                      else max(searchStatus.offsetY, 0.dp),
         animationSpec = tween(300, easing = LinearOutSlowInEasing),
         label = "SearchPagerTopPadding",
         finishedListener = { onSearchStatusChange(searchStatus.onAnimationComplete()) },
@@ -143,6 +141,9 @@ fun SearchStatus.SearchPager(
     BackHandler(enabled = searchStatus.shouldExpand()) {
         onSearchStatusChange(searchStatus.copy(searchText = "", current = SearchStatus.Status.COLLAPSING))
     }
+
+    // 完全折叠时不渲染任何东西，避免全屏 Column 盖在 feed 上形成遮罩 / 拦截触摸
+    if (searchStatus.isCollapsed()) return
 
     Column(
         modifier = Modifier
@@ -244,7 +245,7 @@ fun SearchBar(
         decorationBox = { innerTextField ->
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = Icons.Default.Search,
+                    imageVector = MiuixIcons.Basic.Search,
                     contentDescription = "search",
                     modifier = Modifier.size(44.dp).padding(start = 16.dp, end = 8.dp),
                     tint = colorScheme.onSurfaceContainerHigh,
@@ -256,7 +257,7 @@ fun SearchBar(
                     exit = fadeOut() + scaleOut(),
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Close,
+                        imageVector = MiuixIcons.Basic.SearchCleanup,
                         tint = colorScheme.onSurface,
                         contentDescription = "Clean",
                         modifier = Modifier
@@ -301,7 +302,7 @@ fun SearchBarFake(
             label = label,
             leadingIcon = {
                 Icon(
-                    imageVector = Icons.Default.Search,
+                    imageVector = MiuixIcons.Basic.Search,
                     contentDescription = "search",
                     modifier = Modifier.size(44.dp).padding(start = 16.dp, end = 8.dp),
                     tint = colorScheme.onSurfaceContainerHigh,
