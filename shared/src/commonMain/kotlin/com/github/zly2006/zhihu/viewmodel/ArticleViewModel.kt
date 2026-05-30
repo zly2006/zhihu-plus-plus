@@ -53,6 +53,7 @@ import com.github.zly2006.zhihu.util.buildArticleExportCommentsHtml
 import com.github.zly2006.zhihu.util.buildArticleExportFileName
 import com.github.zly2006.zhihu.util.prepareArticleExportComment
 import io.ktor.client.HttpClient
+import io.ktor.client.call.body
 import io.ktor.client.request.accept
 import io.ktor.client.request.header
 import io.ktor.client.request.post
@@ -71,6 +72,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.int
@@ -518,13 +520,15 @@ class ArticleViewModel(
                     ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${article.id}/voters"
                 }
 
-                val response = context.fetchPost(endpoint) {
-                    when (article.type) {
-                        ArticleType.Answer -> setBody(mapOf("type" to newState.key))
-                        ArticleType.Article -> setBody(mapOf("voting" to if (newState == VoteUpState.Up) 1 else 0))
-                    }
-                    contentType(ContentType.Application.Json)
-                }!!
+                val response = httpClient!!
+                    .post(endpoint) {
+                        when (article.type) {
+                            ArticleType.Answer -> setBody(mapOf("type" to newState.key))
+                            ArticleType.Article -> setBody(mapOf("voting" to if (newState == VoteUpState.Up) 1 else 0))
+                        }
+                        contentType(ContentType.Application.Json)
+                        context.configureSignedRequest(this)
+                    }.body<JsonObject>()
 
                 voteUpState = newState
                 voteUpCount = response["voteup_count"]!!.jsonPrimitive.int
