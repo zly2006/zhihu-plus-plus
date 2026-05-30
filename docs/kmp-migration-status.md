@@ -2,6 +2,7 @@
 
 ## Completed
 
+- 2026-05-30：压缩 native/iOS 更新检查和屏蔽列表 runtime stub 的 TODO 标记形式，把独占行 TODO 合并到对应空实现/error stub 同行；所有未实现项仍保留 `TODO: iOS ...` 标记，行为不变。本切片不碰 Android/desktop 主体代码、不改 UI、不执行 iOS 验证，只减少迁移期 stub 行数。
 - 2026-05-30：JVM `SystemUpdateRuntime.downloadUpdate` 删除只转调 `openDesktopExternalUrl()` 的私有 `openDesktopUrl()` wrapper，空下载链接检查和桌面打开调用按原顺序留在 `downloadUpdate` 内。对照 master，系统更新页下载按钮、错误文案、状态写入和桌面不支持 APK 安装语义未改；本切片只删除无语义私有转发函数。
 - 2026-05-30：新增 shared/platform `rememberSystemUrlOpener()` 表达裸系统 URL 打开能力，账户设置页 GitHub 项目地址和协议入口直接调用该通用能力，`AccountSettingsRuntime.openExternalUrl` 及三端转发实现删除。Android actual 保持 master 同类 `ACTION_VIEW` 系统打开语义，不误用 `luoTianYiUrlLauncher`；JVM/native 复用各自平台 URL 打开。对照 master，账户设置页两个设置项、URL、图标、点击位置、版本号/登录/主 Tab 等 runtime 语义未改；本切片只删除账户页 runtime 对系统打开 URL 的重复包装。
 - 2026-05-30：JVM/native `ShareDialogRuntime` 的分享、直接分享、复制链接三处重复剪贴板写入改为复用 shared/platform `rememberPlainTextClipboard()`，并用同一局部 `copyAndNotify` 保持提示文案。Android 复制仍保留在平台 runtime，因为它还同步 `clipboardDestination` 以维持剪贴板导航联动。对照 master，分享弹窗按钮、分享文本、复制 label 和提示文案未改；本切片只去掉 JVM/native 重复剪贴板实现。
