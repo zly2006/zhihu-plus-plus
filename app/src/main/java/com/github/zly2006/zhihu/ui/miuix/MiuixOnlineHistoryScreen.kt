@@ -26,6 +26,7 @@ import androidx.compose.material3.AlertDialog
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.ListPopupColumn
+import top.yukonga.miuix.kmp.basic.PopupPositionProvider
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.LocalDismissState
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -101,6 +102,7 @@ fun MiuixOnlineHistoryScreen() {
                 scrollBehavior = scrollBehavior,
                 actions = {
                     var showActionsMenu by remember { mutableStateOf(false) }
+                    val haptic = LocalHapticFeedback.current
                     BackHandler(enabled = showActionsMenu) {
                         showActionsMenu = false
                     }
@@ -114,10 +116,10 @@ fun MiuixOnlineHistoryScreen() {
                         }
                         WindowListPopup(
                             show = showActionsMenu,
+                            alignment = PopupPositionProvider.Align.BottomEnd,
                             onDismissRequest = { showActionsMenu = false },
                         ) {
                             val dismissState = LocalDismissState.current
-                            val haptic = LocalHapticFeedback.current
                             ListPopupColumn {
                                 Text(
                                     text = "查看本地历史记录",
