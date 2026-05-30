@@ -26,10 +26,6 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
     val coroutineScope = rememberCoroutineScope()
     return remember(manager, userMessages) {
         BlocklistSettingsRuntime(
-            loadKeywords = manager::getAllBlockedKeywords,
-            loadUsers = manager::getAllBlockedUsers,
-            loadTopics = manager::getAllBlockedTopics,
-            loadStats = manager::getBlocklistStats,
             requestImport = { onImported ->
                 val selectedFile = chooseBlocklistImportFile()
                 if (selectedFile != null) {
@@ -49,15 +45,6 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
                 file.writeText(manager.exportAllBlocklistToJsonText())
                 "已导出到 ${file.absolutePath}"
             },
-            addKeyword = manager::addBlockedKeyword,
-            deleteKeyword = manager::removeBlockedKeyword,
-            clearKeywords = manager::clearAllBlockedKeywords,
-            addUser = { userId, userName -> manager.addBlockedUser(userId, userName) },
-            deleteUser = manager::removeBlockedUser,
-            clearUsers = manager::clearAllBlockedUsers,
-            addTopic = manager::addBlockedTopic,
-            deleteTopic = manager::removeBlockedTopic,
-            clearTopics = manager::clearAllBlockedTopics,
         )
     }
 }

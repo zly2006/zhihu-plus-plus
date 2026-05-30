@@ -76,6 +76,7 @@ import com.github.zly2006.zhihu.viewmodel.filter.BlockedTopic
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedUser
 import com.github.zly2006.zhihu.viewmodel.filter.BlocklistStats
 import com.github.zly2006.zhihu.viewmodel.filter.KeywordType
+import com.github.zly2006.zhihu.viewmodel.filter.rememberBlocklistManager
 import kotlinx.coroutines.launch
 
 typealias BlocklistSettingsNlpContent = @Composable (onNavigateBack: () -> Unit) -> Unit
@@ -151,6 +152,7 @@ fun BlocklistSettingsScreen(
     val navigator = LocalNavigator.current
     val userMessages = rememberUserMessageSink()
     val runtime = rememberBlocklistSettingsPlatformRuntime(userMessages)
+    val blocklistManager = rememberBlocklistManager()
     val coroutineScope = rememberCoroutineScope()
 
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -175,12 +177,12 @@ fun BlocklistSettingsScreen(
         coroutineScope.launch {
             try {
                 // 只获取精确匹配的关键词
-                loadedBlockedKeywords = runtime
-                    .loadKeywords()
+                loadedBlockedKeywords = blocklistManager
+                    .getAllBlockedKeywords()
                     .filter { it.getKeywordTypeEnum() == KeywordType.EXACT_MATCH }
-                loadedBlockedUsers = runtime.loadUsers()
-                loadedBlockedTopics = runtime.loadTopics()
-                loadedStats = runtime.loadStats()
+                loadedBlockedUsers = blocklistManager.getAllBlockedUsers()
+                loadedBlockedTopics = blocklistManager.getAllBlockedTopics()
+                loadedStats = blocklistManager.getBlocklistStats()
             } catch (e: Exception) {
                 Log.e("BlocklistSettingsScreen", "Blocklist settings action failed", e)
                 userMessages.showShortMessage("加载数据失败: ${e.message}")
@@ -353,7 +355,7 @@ fun BlocklistSettingsScreen(
                         } else {
                             coroutineScope.launch {
                                 try {
-                                    runtime.deleteKeyword(keyword.id)
+                                    blocklistManager.removeBlockedKeyword(keyword.id)
                                     userMessages.showShortMessage("已删除关键词")
                                     loadData()
                                 } catch (e: Exception) {
@@ -370,7 +372,7 @@ fun BlocklistSettingsScreen(
                         } else {
                             coroutineScope.launch {
                                 try {
-                                    runtime.clearKeywords()
+                                    blocklistManager.clearAllBlockedKeywords()
                                     userMessages.showShortMessage("已清空所有关键词")
                                     loadData()
                                 } catch (e: Exception) {
@@ -398,7 +400,7 @@ fun BlocklistSettingsScreen(
                         } else {
                             coroutineScope.launch {
                                 try {
-                                    runtime.deleteUser(user.userId)
+                                    blocklistManager.removeBlockedUser(user.userId)
                                     userMessages.showShortMessage("已删除用户")
                                     loadData()
                                 } catch (e: Exception) {
@@ -415,7 +417,7 @@ fun BlocklistSettingsScreen(
                         } else {
                             coroutineScope.launch {
                                 try {
-                                    runtime.clearUsers()
+                                    blocklistManager.clearAllBlockedUsers()
                                     userMessages.showShortMessage("已清空所有用户")
                                     loadData()
                                 } catch (e: Exception) {
@@ -444,7 +446,7 @@ fun BlocklistSettingsScreen(
                         } else {
                             coroutineScope.launch {
                                 try {
-                                    runtime.deleteTopic(topic.topicId)
+                                    blocklistManager.removeBlockedTopic(topic.topicId)
                                     userMessages.showShortMessage("已删除主题")
                                     loadData()
                                 } catch (e: Exception) {
@@ -461,7 +463,7 @@ fun BlocklistSettingsScreen(
                         } else {
                             coroutineScope.launch {
                                 try {
-                                    runtime.clearTopics()
+                                    blocklistManager.clearAllBlockedTopics()
                                     userMessages.showShortMessage("已清空所有主题")
                                     loadData()
                                 } catch (e: Exception) {
@@ -488,7 +490,7 @@ fun BlocklistSettingsScreen(
                 } else {
                     coroutineScope.launch {
                         try {
-                            runtime.addKeyword(keyword, caseSensitive, isRegex)
+                            blocklistManager.addBlockedKeyword(keyword, caseSensitive, isRegex)
                             userMessages.showShortMessage("已添加关键词")
                             loadData()
                             showAddKeywordDialog = false
@@ -514,7 +516,7 @@ fun BlocklistSettingsScreen(
                 } else {
                     coroutineScope.launch {
                         try {
-                            runtime.addTopic(topicId, topicName)
+                            blocklistManager.addBlockedTopic(topicId, topicName)
                             userMessages.showShortMessage("已添加主题")
                             loadData()
                             showAddTopicDialog = false
@@ -540,7 +542,7 @@ fun BlocklistSettingsScreen(
                 } else {
                     coroutineScope.launch {
                         try {
-                            runtime.addUser(userId, userName)
+                            blocklistManager.addBlockedUser(userId, userName)
                             userMessages.showShortMessage("已添加用户")
                             loadData()
                             showAddUserDialog = false

@@ -43,10 +43,6 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
     }
     return remember(context, manager, userMessages, importLauncher) {
         BlocklistSettingsRuntime(
-            loadKeywords = manager::getAllBlockedKeywords,
-            loadUsers = manager::getAllBlockedUsers,
-            loadTopics = manager::getAllBlockedTopics,
-            loadStats = manager::getBlocklistStats,
             requestImport = { onImported ->
                 importCallback = onImported
                 importLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
@@ -68,15 +64,6 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
                 context.startActivity(Intent.createChooser(intent, "查看屏蔽规则"))
                 "已导出到 ${file.absolutePath}"
             },
-            addKeyword = manager::addBlockedKeyword,
-            deleteKeyword = manager::removeBlockedKeyword,
-            clearKeywords = manager::clearAllBlockedKeywords,
-            addUser = { userId, userName -> manager.addBlockedUser(userId, userName) },
-            deleteUser = manager::removeBlockedUser,
-            clearUsers = manager::clearAllBlockedUsers,
-            addTopic = manager::addBlockedTopic,
-            deleteTopic = manager::removeBlockedTopic,
-            clearTopics = manager::clearAllBlockedTopics,
         )
     }
 }
