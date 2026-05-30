@@ -11,8 +11,8 @@ import androidx.compose.ui.text.platform.asComposeFontFamily
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
 import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDataFile
-import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDownloadsDir
 import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
+import com.github.zly2006.zhihu.shared.desktop.saveImageToDownloads
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.hrm.latex.renderer.font.MathFont
 import io.ktor.client.call.body
@@ -20,7 +20,6 @@ import io.ktor.client.request.get
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.net.URI
 
 private const val FONT_VERSION = "1"
 private val LM_MATH_URLS = listOf(
@@ -56,7 +55,7 @@ actual fun rememberMarkdownRuntime(): MarkdownRuntime {
 
             override suspend fun saveMarkdownImage(url: String) {
                 runCatching {
-                    saveDesktopMarkdownImage(store, url)
+                    store.saveImageToDownloads(url, "markdown_image")
                 }.onSuccess { file ->
                     userMessages.showShortMessage("已保存图片: ${file.absolutePath}")
                 }.onFailure { error ->
@@ -74,28 +73,6 @@ actual fun rememberMarkdownRuntime(): MarkdownRuntime {
             }
         }
     }
-}
-
-private suspend fun saveDesktopMarkdownImage(
-    store: DesktopAccountStore,
-    url: String,
-): File = withContext(Dispatchers.IO) {
-    val account = store.load()
-    val imageBytes = store.createHttpClient(account.cookies).use { client ->
-        client.get(url).body<ByteArray>()
-    }
-    val downloadsDir = desktopZhihuDownloadsDir()
-    val file = File(downloadsDir, desktopMarkdownImageFileName(url))
-    file.writeBytes(imageBytes)
-    file
-}
-
-private fun desktopMarkdownImageFileName(url: String): String {
-    val pathName = runCatching {
-        URI(url).path.substringAfterLast('/').substringBefore('?')
-    }.getOrNull().orEmpty()
-    val extension = pathName.substringAfterLast('.', "").takeIf { it.length in 2..5 } ?: "jpg"
-    return "markdown_image_${System.currentTimeMillis()}.$extension"
 }
 
 @OptIn(ExperimentalTextApi::class)

@@ -11,14 +11,20 @@ import com.github.zly2006.zhihu.shared.data.fetchZhihuAuthenticatedJson
 import com.github.zly2006.zhihu.shared.data.installZhihuCommonClientConfig
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import io.ktor.client.HttpClient
+import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.client.request.get
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
 import io.ktor.http.HttpMethod
 import io.ktor.http.contentType
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
+import java.io.File
+import java.net.URI
 import java.nio.file.Path
 import kotlin.io.path.createDirectories
 import kotlin.io.path.deleteIfExists
@@ -172,3 +178,28 @@ suspend fun <T> DesktopAccountStore.signedWithResponse(
     signDesktopRequest(load().cookies)
     block()
 }, transform)
+
+suspend fun DesktopAccountStore.saveImageToDownloads(
+    url: String,
+    filePrefix: String,
+): File = withContext(Dispatchers.IO) {
+    val account = load()
+    val imageBytes = createHttpClient(account.cookies).use { client ->
+        client.get(url).body<ByteArray>()
+    }
+    val downloadsDir = desktopZhihuDownloadsDir()
+    val file = File(downloadsDir, desktopImageFileName(filePrefix, url))
+    file.writeBytes(imageBytes)
+    file
+}
+
+private fun desktopImageFileName(
+    filePrefix: String,
+    url: String,
+): String {
+    val pathName = runCatching {
+        URI(url).path.substringAfterLast('/').substringBefore('?')
+    }.getOrNull().orEmpty()
+    val extension = pathName.substringAfterLast('.', "").takeIf { it.length in 2..5 } ?: "jpg"
+    return "${filePrefix}_${System.currentTimeMillis()}.$extension"
+}
