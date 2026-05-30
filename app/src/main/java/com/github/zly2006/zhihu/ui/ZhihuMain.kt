@@ -127,6 +127,7 @@ import com.github.zly2006.zhihu.ui.miuix.MiuixDailyScreen
 import com.github.zly2006.zhihu.ui.subscreens.AboutScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixFollowScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixFollowTopLevelPage
+import com.github.zly2006.zhihu.ui.miuix.MiuixHomeScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixHotListScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixLocalHistoryScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixOnlineHistoryScreen
@@ -714,10 +715,17 @@ private fun MainTabsPager(
     ) { pageIndex ->
         val page = pages.getOrNull(pageIndex) ?: return@HorizontalPager
         when (page) {
-            MainTabPage.HomePage -> HomeScreen(
-                scrollToTopTrigger = scrollToTopTrigger,
-                innerPadding = innerPadding,
-            )
+            MainTabPage.HomePage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                MiuixHomeScreen(
+                    scrollToTopTrigger = scrollToTopTrigger,
+                    innerPadding = innerPadding,
+                )
+            } else {
+                HomeScreen(
+                    scrollToTopTrigger = scrollToTopTrigger,
+                    innerPadding = innerPadding,
+                )
+            }
             MainTabPage.FollowRecommendPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
                 MiuixFollowTopLevelPage(
                     selectedTabIndex = 0, onTabSelected = onFollowTabSelected,
