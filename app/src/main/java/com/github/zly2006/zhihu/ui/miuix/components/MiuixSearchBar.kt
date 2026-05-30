@@ -101,11 +101,23 @@ fun Modifier.pressScale(
 }
 
 /* ============================================================
- * SearchBox：折叠态显示 content（feed），展开态隐藏
+ * SearchBox：折叠态显示 content（feed），展开态淡出隐藏。
+ * 用 alpha 渐变（而非瞬间隐藏），消除展开/收起时背景的突兀感。
+ * feed 始终在组合树里，只改 alpha，避免重新加载。
+ * 展开完成（EXPANDED）后才彻底移除，省去被搜索浮层完全遮住时的绘制开销。
  * ============================================================ */
 @Composable
 fun SearchStatus.SearchBox(content: @Composable () -> Unit) {
-    if (shouldCollapsed()) content()
+    val contentAlpha by animateFloatAsState(
+        targetValue = if (shouldCollapsed()) 1f else 0f,
+        animationSpec = tween(250),
+        label = "searchBoxAlpha",
+    )
+    if (!isExpand()) {
+        Box(modifier = Modifier.graphicsLayer { alpha = contentAlpha }) {
+            content()
+        }
+    }
 }
 
 /* ============================================================
@@ -127,7 +139,7 @@ fun SearchStatus.SearchPager(
     // 效果 B-1：搜索框上移到顶的位移动画，动画完成时推进状态机
     val topPadding by animateDpAsState(
         targetValue = if (searchStatus.shouldExpand()) systemBarsPadding + 5.dp
-                      else searchStatus.offsetY.coerceAtLeast(0.dp),
+                      else (searchStatus.offsetY - 12.dp).coerceAtLeast(0.dp),
         animationSpec = tween(300, easing = LinearOutSlowInEasing),
         label = "SearchPagerTopPadding",
         finishedListener = { onSearchStatusChange(searchStatus.onAnimationComplete()) },

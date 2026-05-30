@@ -21,9 +21,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -50,22 +48,25 @@ import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.RecommendationMode
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.ui.components.PaginatedList
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
 import com.github.zly2006.zhihu.ui.miuix.components.SearchBarFake
 import com.github.zly2006.zhihu.ui.miuix.components.SearchBox
 import com.github.zly2006.zhihu.ui.miuix.components.SearchPager
 import com.github.zly2006.zhihu.ui.miuix.components.SearchStatus
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
+import com.github.zly2006.zhihu.ui.IHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.za.MixedHomeFeedViewModel
-import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -100,8 +101,17 @@ fun MiuixHomeScreen(
     }
 
     val listState = rememberLazyListState()
-    var searchStatus by remember { mutableStateOf(SearchStatus(label = "")) }
+    var searchStatus by remember { mutableStateOf(SearchStatus(label = "搜索知乎")) }
     val showAccountSheet = remember { mutableStateOf(false) }
+
+    // 本地推荐 VM（like/dislike 反馈、本地内容打开）
+    val localHomeViewModel = viewModel as? LocalHomeFeedViewModel
+
+    // 屏蔽相关 state（沿用 HomeScreen 逻辑）
+    var showBlockUserDialog by remember { mutableStateOf(false) }
+    var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var showBlockByKeywordsDialog by remember { mutableStateOf(false) }
+    var feedToBlockByKeywords by remember { mutableStateOf<Pair<String, String?>?>(null) }
 
     LaunchedEffect(currentRecommendationMode, AccountData.data.login) {
         if (viewModel.displayItems.isEmpty()) {
@@ -204,9 +214,11 @@ fun MiuixHomeScreen(
                 Box(
                     modifier = if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier,
                 ) {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize()
+                    PaginatedList(
+                        items = viewModel.displayItems,
+                        listState = listState,
+                        modifier = Modifier
+                            .fillMaxSize()
                             .overScrollVertical()
                             .scrollEndHaptic()
                             .nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -214,15 +226,48 @@ fun MiuixHomeScreen(
                             top = padding.calculateTopPadding() + 6.dp,
                             bottom = innerPadding.calculateBottomPadding() + 12.dp,
                         ),
-                    ) {
-                        items(viewModel.displayItems.size, key = { viewModel.displayItems[it].stableKey }) { index ->
-                            val item = viewModel.displayItems[index]
-                            Card(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
-                                Box(Modifier.padding(16.dp)) {
-                                    Text(text = item.title, color = MiuixTheme.colorScheme.onSurface)
+                        onLoadMore = { viewModel.loadMore(context) },
+                        key = { item -> item.stableKey },
+                    ) { item ->
+                        MiuixFeedCard(
+                            item = item,
+                            onLike = {
+                                if (localHomeViewModel != null && it.localContentId != null) {
+                                    localHomeViewModel.onLocalItemFeedback(context, it, 1.0)
                                 }
-                            }
-                        }
+                            },
+                            onDislike = {
+                                if (localHomeViewModel != null && it.localContentId != null) {
+                                    localHomeViewModel.onLocalItemFeedback(context, it, -1.0)
+                                }
+                            },
+                            onBlockUser = { feedItem ->
+                                viewModel.handleBlockUser(context, feedItem) { authorInfo ->
+                                    userToBlock = authorInfo
+                                    showBlockUserDialog = true
+                                }
+                            },
+                            onBlockByKeywords = { feedItem ->
+                                viewModel.handleBlockByKeywords(context, feedItem) { (_, contentInfo) ->
+                                    feedToBlockByKeywords = contentInfo.first to contentInfo.second
+                                    showBlockByKeywordsDialog = true
+                                }
+                            },
+                            onBlockTopic = { topicId, topicName ->
+                                viewModel.handleBlockTopic(context, topicId, topicName)
+                            },
+                            onClick = {
+                                // 默认跳转逻辑：本地内容回调 + navDestination
+                                val feed = this.feed
+                                if (feed != null) {
+                                    (viewModel as? IHomeFeedViewModel)
+                                        ?.onUiContentClick(context, feed, this)
+                                } else if (localHomeViewModel != null && this.localContentId != null) {
+                                    localHomeViewModel.onLocalItemOpened(context, this)
+                                }
+                                this.navDestination?.let { navigator.onNavigate(it) }
+                            },
+                        )
                     }
                 }
             }
@@ -248,6 +293,41 @@ fun MiuixHomeScreen(
         },
     )
     } // 外层 Box 结束
+
+    // 屏蔽用户确认对话框（与 HomeScreen 同签名）
+    com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog(
+        showDialog = showBlockUserDialog,
+        userToBlock = userToBlock,
+        displayItems = viewModel.displayItems,
+        context = context,
+        onDismiss = {
+            showBlockUserDialog = false
+            userToBlock = null
+        },
+        onConfirm = {
+            viewModel.refresh(context)
+            showBlockUserDialog = false
+            userToBlock = null
+        },
+    )
+
+    // 按关键词屏蔽对话框
+    feedToBlockByKeywords?.let { (title, excerpt) ->
+        com.github.zly2006.zhihu.ui.components.BlockByKeywordsDialog(
+            showDialog = showBlockByKeywordsDialog,
+            feedTitle = title,
+            feedExcerpt = excerpt,
+            onDismiss = {
+                showBlockByKeywordsDialog = false
+                feedToBlockByKeywords = null
+            },
+            onConfirm = {
+                viewModel.refresh(context)
+                showBlockByKeywordsDialog = false
+                feedToBlockByKeywords = null
+            },
+        )
+    }
 
     MiuixAccountSheet(
         show = showAccountSheet.value,
