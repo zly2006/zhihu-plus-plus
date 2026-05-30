@@ -77,6 +77,8 @@ import com.github.zly2006.zhihu.viewmodel.filter.BlocklistStats
 import com.github.zly2006.zhihu.viewmodel.filter.KeywordType
 import kotlinx.coroutines.launch
 
+typealias BlocklistSettingsNlpContent = @Composable (onNavigateBack: () -> Unit) -> Unit
+
 object BlocklistSettingsTestTags {
     const val ROOT = "blocklistSettings:root"
     const val STATS_CARD = "blocklistSettings:statsCard"
