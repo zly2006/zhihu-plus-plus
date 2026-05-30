@@ -12,7 +12,6 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
         PinScreenRuntime(
             handleShareAction = { _, _ -> error("Pin share not available on iOS yet") },
             fetchLinkCardPreview = { null },
-            openExternalUrl = { error("Pin external URL not available on iOS yet") },
         )
     }
 }

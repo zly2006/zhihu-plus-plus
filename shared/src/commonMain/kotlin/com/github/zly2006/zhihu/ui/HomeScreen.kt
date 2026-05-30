@@ -81,6 +81,7 @@ import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.data.zhihuLastReadTouchItem
 import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
+import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.ui.TopLevelReselectAction
@@ -154,6 +155,7 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = true)
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()
+    val openExternalUrl = rememberExternalUrlOpener()
 
     val duo3HomeAccount = settings.getBoolean("duo3_home_account", false)
     val showRefreshFab = settings.getBoolean("showRefreshFab", true)
@@ -456,7 +458,7 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
                             content = "欢迎加入 Zhihu++ QQ 群。1 群已满，我们新建了 2 群。已加入 1 群的朋友请不要重复加群。",
                             accept = { Text("加入") },
                             onAccept = {
-                                runtime.openExternalUrl("https://qm.qq.com/q/A95uVsTTWM")
+                                openExternalUrl("https://qm.qq.com/q/A95uVsTTWM")
                             },
                             dismiss = { Text("关闭") },
                             onDismiss = {

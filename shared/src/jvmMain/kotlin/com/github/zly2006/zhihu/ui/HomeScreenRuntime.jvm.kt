@@ -12,7 +12,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopLoginRequests
-import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
 import com.github.zly2006.zhihu.ui.subscreens.desktopSystemUpdateState
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
@@ -42,7 +41,6 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
         RecommendationMode.WEB -> viewModel<HomeFeedViewModel>(factory = JvmViewModelFactory)
     }
     val localHomeViewModel = viewModel as? LocalHomeFeedViewModel
-    val openExternalUrl = rememberExternalUrlOpener()
     val updateAnnouncement = (updateState as? SystemUpdateState.UpdateAvailable)?.let {
         HomeUpdateAnnouncement(
             version = it.version,
@@ -62,7 +60,6 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
             DesktopLoginRequests.requestLogin()
             account = accountStore.load()
         },
-        openExternalUrl = openExternalUrl,
         recordLocalItemOpened = { item ->
             localHomeViewModel?.onLocalItemOpened(item)
         },

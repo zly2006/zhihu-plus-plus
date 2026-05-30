@@ -10,7 +10,6 @@ import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.pin.PinLinkCardPreview
-import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.handleShareAction
@@ -23,8 +22,7 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
     val context = LocalContext.current
     val settings = rememberSettingsStore()
     val shareRuntime = rememberShareDialogRuntime()
-    val openExternalUrl = rememberExternalUrlOpener()
-    return remember(context, settings, shareRuntime, openExternalUrl) {
+    return remember(context, settings, shareRuntime) {
         PinScreenRuntime(
             handleShareAction = { pin, onShowDialog ->
                 handleShareAction(pin, settings, shareRuntime, onShowDialog)
@@ -32,7 +30,6 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
             fetchLinkCardPreview = { linkCard ->
                 fetchAndroidLinkCardPreview(context, linkCard)
             },
-            openExternalUrl = openExternalUrl,
         )
     }
 }

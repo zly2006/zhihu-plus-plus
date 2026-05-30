@@ -19,7 +19,6 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
             viewModel = viewModel,
             // TODO: iOS 登录
             requestLogin = { userMessages.showMessage("iOS 登录暂未实现") },
-            openExternalUrl = { openIosUrl(it) },
             // TODO: iOS 本地推荐记录
             recordLocalItemOpened = { },
             recordLocalItemFeedback = { _, _ -> false },

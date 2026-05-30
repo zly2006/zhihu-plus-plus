@@ -5,7 +5,6 @@ import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.pin.PinLinkCardPreview
-import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
@@ -17,8 +16,7 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
     val shareRuntime = rememberShareDialogRuntime()
     val store = remember { DesktopAccountStore() }
     val environment = remember(store) { DesktopPaginationEnvironment(store) }
-    val openExternalUrl = rememberExternalUrlOpener()
-    return remember(settings, shareRuntime, environment, openExternalUrl) {
+    return remember(settings, shareRuntime, environment) {
         PinScreenRuntime(
             handleShareAction = { pin, onShowDialog ->
                 handleShareAction(pin, settings, shareRuntime, onShowDialog)
@@ -26,7 +24,6 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
             fetchLinkCardPreview = { linkCard ->
                 fetchDesktopLinkCardPreview(environment, linkCard)
             },
-            openExternalUrl = openExternalUrl,
         )
     }
 }

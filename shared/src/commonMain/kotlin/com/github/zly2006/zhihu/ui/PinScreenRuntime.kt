@@ -26,7 +26,6 @@ data class PinLikeResult(
 data class PinScreenRuntime(
     val handleShareAction: (Pin, () -> Unit) -> Unit,
     val fetchLinkCardPreview: suspend (DataHolder.Pin.ContentLinkCard) -> PinLinkCardPreview?,
-    val openExternalUrl: (String) -> Unit,
 )
 
 internal suspend fun fetchPinLinkCardPreview(
