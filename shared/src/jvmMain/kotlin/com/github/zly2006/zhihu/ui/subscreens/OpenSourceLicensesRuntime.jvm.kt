@@ -13,21 +13,16 @@ actual fun rememberOpenSourceLicensesLibraries(): Libs = remember {
 @Composable
 actual fun rememberShowFullVariantLicenses(): Boolean = false
 
-private fun loadDesktopOpenSourceLicenses(): Libs {
-    val json = loadDesktopAboutLibrariesJson()
-    return if (json.isNullOrBlank()) {
-        Libs(emptyList(), emptySet())
-    } else {
-        runCatching {
-            Libs
-                .Builder()
-                .withJson(json)
-                .build()
-        }.getOrElse {
-            Libs(emptyList(), emptySet())
-        }
-    }
-}
+private fun loadDesktopOpenSourceLicenses(): Libs =
+    loadDesktopAboutLibrariesJson()
+        ?.takeIf { it.isNotBlank() }
+        ?.let { json ->
+            runCatching {
+                Libs.Builder().withJson(json).build()
+            }.getOrElse { emptyDesktopLibs() }
+        } ?: emptyDesktopLibs()
+
+private fun emptyDesktopLibs(): Libs = Libs(emptyList(), emptySet())
 
 private fun loadDesktopAboutLibrariesJson(): String? {
     val resourceJson = Thread

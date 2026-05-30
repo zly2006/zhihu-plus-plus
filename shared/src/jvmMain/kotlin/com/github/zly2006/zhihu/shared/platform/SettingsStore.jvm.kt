@@ -15,9 +15,7 @@ fun desktopSettingsStore(): SettingsStore {
     val properties = Properties()
 
     fun load() {
-        if (settingsFile.isFile) {
-            settingsFile.inputStream().use(properties::load)
-        }
+        if (settingsFile.isFile) settingsFile.inputStream().use(properties::load)
     }
 
     fun save() {

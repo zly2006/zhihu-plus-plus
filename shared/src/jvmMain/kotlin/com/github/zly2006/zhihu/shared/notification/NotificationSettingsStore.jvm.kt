@@ -21,9 +21,7 @@ private class DesktopNotificationSettingsStore : NotificationSettingsStore {
     }
 
     private fun load() {
-        if (settingsFile.isFile) {
-            settingsFile.inputStream().use(properties::load)
-        }
+        if (settingsFile.isFile) settingsFile.inputStream().use(properties::load)
     }
 
     private fun save() {
