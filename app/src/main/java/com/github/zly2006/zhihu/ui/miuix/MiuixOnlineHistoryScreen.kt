@@ -16,18 +16,19 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
-import top.yukonga.miuix.kmp.basic.DropdownImpl
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.ListPopupColumn
-import top.yukonga.miuix.kmp.basic.PopupPositionProvider
+import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.LocalDismissState
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.window.WindowListPopup
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,6 +44,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
@@ -112,33 +114,34 @@ fun MiuixOnlineHistoryScreen() {
                         }
                         WindowListPopup(
                             show = showActionsMenu,
-                            alignment = PopupPositionProvider.Align.BottomEnd,
                             onDismissRequest = { showActionsMenu = false },
                         ) {
                             val dismissState = LocalDismissState.current
                             val haptic = LocalHapticFeedback.current
                             ListPopupColumn {
-                                DropdownImpl(
+                                Text(
                                     text = "查看本地历史记录",
-                                    optionSize = 2,
-                                    isSelected = false,
-                                    index = 0,
-                                    onSelectedIndexChange = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        dismissState?.invoke()
-                                        navigator.onNavigate(History)
-                                    },
+                                    modifier = Modifier
+                                        .clickable {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            dismissState?.invoke()
+                                            navigator.onNavigate(History)
+                                        }
+                                        .padding(horizontal = 20.dp, vertical = 14.dp),
+                                    color = MiuixTheme.colorScheme.onSurface,
+                                    fontSize = 16.sp,
                                 )
-                                DropdownImpl(
+                                Text(
                                     text = "清除历史记录",
-                                    optionSize = 2,
-                                    isSelected = false,
-                                    index = 1,
-                                    onSelectedIndexChange = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        dismissState?.invoke()
-                                        showClearHistoryDialog = true
-                                    },
+                                    modifier = Modifier
+                                        .clickable {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            dismissState?.invoke()
+                                            showClearHistoryDialog = true
+                                        }
+                                        .padding(horizontal = 20.dp, vertical = 14.dp),
+                                    color = MiuixTheme.colorScheme.onSurface,
+                                    fontSize = 16.sp,
                                 )
                             }
                         }
