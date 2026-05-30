@@ -2,6 +2,7 @@
 
 ## Completed
 
+- 2026-05-30：JVM/native `ShareDialogRuntime` 的分享、直接分享、复制链接三处重复剪贴板写入改为复用 shared/platform `rememberPlainTextClipboard()`，并用同一局部 `copyAndNotify` 保持提示文案。Android 复制仍保留在平台 runtime，因为它还同步 `clipboardDestination` 以维持剪贴板导航联动。对照 master，分享弹窗按钮、分享文本、复制 label 和提示文案未改；本切片只去掉 JVM/native 重复剪贴板实现。
 - 2026-05-30：`DeveloperSettingsRuntime.signedGetAndCopy` 改为 `signedGet`，平台 runtime 只负责签名 GET 并返回响应 body，开发者设置页在 common 内直接复用 `rememberPlainTextClipboard()` 完成复制；Android/JVM 不再各自持有剪贴板写入实现。对照 master，签名请求按钮、URL 输入、响应展示、复制 label、成功/失败提示和请求签名流程未改；本切片只删除剪贴板平台转发。
 - 2026-05-30：新增 shared/platform 通用纯文本剪贴板能力，`AccountSettingsRuntime.copyText` 和 `SegmentedTextRuntime.copyText` 删除，账户页版本号长按复制与划线文本复制直接调用 `rememberPlainTextClipboard()`；Account runtime 只保留账号/登录/版本/外链/主 Tab 选择，SegmentedText runtime 只保留划线点赞请求。对照 master，复制入口、label、提示文案、划线弹层动作顺序和可见 UI 未改；本切片只删除剪贴板平台转发壳。
 - 2026-05-30：`AppearanceSettingsRuntime` 删除和 `ThemeSettingsRuntime` 字段完全相同的转发壳，外观设置页直接使用 `rememberThemeSettingsRuntime()`。对照 master，外观设置页本来直接调用 `ThemeManager` 设置主题模式、动态颜色、自定义颜色和背景色；本切片只去掉迁移期重复 data class/copy 层，不改变设置项、调用顺序或可见 UI。

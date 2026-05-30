@@ -5,6 +5,7 @@ import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.platform.SettingsStore
+import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 
 data class ShareDialogRuntime(
     val share: (NavDestination, String) -> Unit,
@@ -14,6 +15,24 @@ data class ShareDialogRuntime(
 
 @Composable
 expect fun rememberShareDialogRuntime(): ShareDialogRuntime
+
+internal fun clipboardShareDialogRuntime(
+    copyPlainText: (label: String, text: String) -> Unit,
+    userMessages: UserMessageSink,
+): ShareDialogRuntime {
+    fun copyAndNotify(
+        shareText: String,
+        message: String,
+    ) {
+        copyPlainText("Link", shareText)
+        userMessages.showMessage(message)
+    }
+    return ShareDialogRuntime(
+        share = { _, shareText -> copyAndNotify(shareText, "已复制分享文本") },
+        directShare = { _, shareText -> copyAndNotify(shareText, "已复制分享文本") },
+        copyLink = { _, shareText -> copyAndNotify(shareText, "已复制链接") },
+    )
+}
 
 @Composable
 fun ShareDialog(
