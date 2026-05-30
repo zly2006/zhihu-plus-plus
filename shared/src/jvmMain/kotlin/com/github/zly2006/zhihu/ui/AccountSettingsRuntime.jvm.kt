@@ -7,7 +7,6 @@ import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.shared.data.fetchVerifiedZhihuSession
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopLoginRequests
-import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
 
 @Composable
 actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
@@ -42,11 +41,6 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
             accountState.value = AccountSettingsAccountState()
         },
         appVersionInfo = { "desktop" },
-        openExternalUrl = { url ->
-            runCatching {
-                openDesktopExternalUrl(url)
-            }
-        },
         selectMainTab = { _: TopLevelDestination -> },
     )
 }

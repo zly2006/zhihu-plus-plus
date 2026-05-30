@@ -6,6 +6,9 @@ import androidx.compose.runtime.Composable
 expect fun rememberExternalUrlOpener(): (String) -> Unit
 
 @Composable
+expect fun rememberSystemUrlOpener(): (String) -> Unit
+
+@Composable
 expect fun rememberZhihuWebUrlOpener(): (String) -> Unit
 
 @Composable

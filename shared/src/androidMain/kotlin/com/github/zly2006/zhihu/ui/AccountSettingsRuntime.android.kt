@@ -53,9 +53,6 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
         requestQrLoginScan = { scanActivityLauncher.launch(context.qrCodeScanActivityIntent()) },
         logout = { AccountData.delete(context) },
         appVersionInfo = { context.zhihuVersionInfo() },
-        openExternalUrl = { url ->
-            context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
-        },
         selectMainTab = { destination -> context.navigateMainTab(destination) },
     )
 }

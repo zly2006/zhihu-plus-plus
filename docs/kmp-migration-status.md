@@ -2,6 +2,7 @@
 
 ## Completed
 
+- 2026-05-30：新增 shared/platform `rememberSystemUrlOpener()` 表达裸系统 URL 打开能力，账户设置页 GitHub 项目地址和协议入口直接调用该通用能力，`AccountSettingsRuntime.openExternalUrl` 及三端转发实现删除。Android actual 保持 master 同类 `ACTION_VIEW` 系统打开语义，不误用 `luoTianYiUrlLauncher`；JVM/native 复用各自平台 URL 打开。对照 master，账户设置页两个设置项、URL、图标、点击位置、版本号/登录/主 Tab 等 runtime 语义未改；本切片只删除账户页 runtime 对系统打开 URL 的重复包装。
 - 2026-05-30：JVM/native `ShareDialogRuntime` 的分享、直接分享、复制链接三处重复剪贴板写入改为复用 shared/platform `rememberPlainTextClipboard()`，并用同一局部 `copyAndNotify` 保持提示文案。Android 复制仍保留在平台 runtime，因为它还同步 `clipboardDestination` 以维持剪贴板导航联动。对照 master，分享弹窗按钮、分享文本、复制 label 和提示文案未改；本切片只去掉 JVM/native 重复剪贴板实现。
 - 2026-05-30：`DeveloperSettingsRuntime.signedGetAndCopy` 改为 `signedGet`，平台 runtime 只负责签名 GET 并返回响应 body，开发者设置页在 common 内直接复用 `rememberPlainTextClipboard()` 完成复制；Android/JVM 不再各自持有剪贴板写入实现。对照 master，签名请求按钮、URL 输入、响应展示、复制 label、成功/失败提示和请求签名流程未改；本切片只删除剪贴板平台转发。
 - 2026-05-30：新增 shared/platform 通用纯文本剪贴板能力，`AccountSettingsRuntime.copyText` 和 `SegmentedTextRuntime.copyText` 删除，账户页版本号长按复制与划线文本复制直接调用 `rememberPlainTextClipboard()`；Account runtime 只保留账号/登录/版本/外链/主 Tab 选择，SegmentedText runtime 只保留划线点赞请求。对照 master，复制入口、label、提示文案、划线弹层动作顺序和可见 UI 未改；本切片只删除剪贴板平台转发壳。

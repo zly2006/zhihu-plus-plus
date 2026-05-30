@@ -24,6 +24,16 @@ actual fun rememberExternalUrlOpener(): (String) -> Unit {
 }
 
 @Composable
+actual fun rememberSystemUrlOpener(): (String) -> Unit {
+    val context = LocalContext.current
+    return remember(context) {
+        { url ->
+            context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+        }
+    }
+}
+
+@Composable
 actual fun rememberZhihuWebUrlOpener(): (String) -> Unit {
     val context = LocalContext.current
     return remember(context) {

@@ -15,6 +15,9 @@ actual fun rememberExternalUrlOpener(): (String) -> Unit = remember {
 }
 
 @Composable
+actual fun rememberSystemUrlOpener(): (String) -> Unit = rememberExternalUrlOpener()
+
+@Composable
 actual fun rememberZhihuWebUrlOpener(): (String) -> Unit = rememberExternalUrlOpener()
 
 @Composable

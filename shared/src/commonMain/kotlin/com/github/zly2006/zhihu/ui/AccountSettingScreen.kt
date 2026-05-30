@@ -84,6 +84,7 @@ import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.shared.platform.rememberPlainTextClipboard
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.shared.platform.rememberSystemUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.ui.components.SettingItem
@@ -127,6 +128,7 @@ fun AccountSettingScreen(
     val runtime = rememberAccountSettingsPlatformRuntime()
     val settings = rememberSettingsStore()
     val copyPlainText = rememberPlainTextClipboard()
+    val openSystemUrl = rememberSystemUrlOpener()
     val userMessages = rememberUserMessageSink()
     val updateRuntime = rememberSystemUpdateRuntime()
     val versionInfo = remember(runtime) { runtime.appVersionInfo() }
@@ -489,7 +491,7 @@ fun AccountSettingScreen(
                     description = { Text("https://github.com/zly2006/zhihu-plus-plus") },
                     icon = { Icon(painterResource(Res.drawable.ic_github_24dp), null) },
                     onClick = {
-                        runtime.openExternalUrl("https://github.com/zly2006/zhihu-plus-plus")
+                        openSystemUrl("https://github.com/zly2006/zhihu-plus-plus")
                     },
                     endAction = {
                         Icon(
@@ -505,7 +507,7 @@ fun AccountSettingScreen(
                     description = { Text("AGPL-3.0-only") },
                     icon = { Icon(painterResource(Res.drawable.ic_license_24dp), null) },
                     onClick = {
-                        runtime.openExternalUrl("https://github.com/zly2006/zhihu-plus-plus/blob/master/LICENSE")
+                        openSystemUrl("https://github.com/zly2006/zhihu-plus-plus/blob/master/LICENSE")
                     },
                     endAction = {
                         Icon(
