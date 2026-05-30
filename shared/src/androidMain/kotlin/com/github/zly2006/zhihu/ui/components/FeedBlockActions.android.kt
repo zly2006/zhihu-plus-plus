@@ -6,7 +6,6 @@ import androidx.compose.ui.platform.LocalContext
 import com.github.zly2006.zhihu.viewmodel.feed.handleBlockByKeywords
 import com.github.zly2006.zhihu.viewmodel.feed.handleBlockTopic
 import com.github.zly2006.zhihu.viewmodel.feed.handleBlockUser
-import com.github.zly2006.zhihu.viewmodel.filter.getBlocklistManager
 
 @Composable
 actual fun rememberFeedBlockActions(): FeedBlockActions {
@@ -21,23 +20,6 @@ actual fun rememberFeedBlockActions(): FeedBlockActions {
             },
             handleBlockByKeywords = { viewModel, feedItem, onShowDialog ->
                 viewModel.handleBlockByKeywords(context, feedItem, onShowDialog)
-            },
-        )
-    }
-}
-
-@Composable
-actual fun rememberBlockUserConfirmRuntime(): BlockUserConfirmRuntime {
-    val context = LocalContext.current
-    return remember(context) {
-        BlockUserConfirmRuntime(
-            blockUser = { author ->
-                getBlocklistManager(context).addBlockedUser(
-                    userId = author.id,
-                    userName = author.name,
-                    urlToken = author.urlToken,
-                    avatarUrl = author.avatarUrl,
-                )
             },
         )
     }

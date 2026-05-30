@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.viewmodel.filter
 
+import androidx.compose.runtime.Composable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -147,3 +148,6 @@ fun ContentFilterDatabase.createBlocklistManager(): BlocklistManager = Blocklist
         topicDao = blockedTopicDao(),
     ),
 )
+
+@Composable
+expect fun rememberBlocklistManager(): BlocklistManager
