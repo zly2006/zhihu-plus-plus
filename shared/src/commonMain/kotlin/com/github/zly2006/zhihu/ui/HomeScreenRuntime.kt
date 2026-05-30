@@ -23,7 +23,6 @@ data class HomeScreenRuntime(
     val viewModel: BaseFeedViewModel,
     val requestLogin: () -> Unit,
     val openExternalUrl: (String) -> Unit,
-    val copyDebugData: (String) -> Unit,
     val recordLocalItemOpened: (FeedDisplayItem) -> Unit,
     val recordLocalItemFeedback: (FeedDisplayItem, Double) -> Boolean,
 )

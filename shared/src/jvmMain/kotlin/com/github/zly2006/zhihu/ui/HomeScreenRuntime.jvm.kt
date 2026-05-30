@@ -12,7 +12,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopLoginRequests
-import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
 import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
 import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
 import com.github.zly2006.zhihu.ui.subscreens.desktopSystemUpdateState
@@ -65,11 +64,6 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
         openExternalUrl = { url ->
             runCatching {
                 openDesktopExternalUrl(url)
-            }
-        },
-        copyDebugData = { data ->
-            runCatching {
-                copyDesktopPlainText(data)
             }
         },
         recordLocalItemOpened = { item ->

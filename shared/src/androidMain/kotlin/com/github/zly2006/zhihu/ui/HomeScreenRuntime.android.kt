@@ -1,6 +1,5 @@
 package com.github.zly2006.zhihu.ui
 
-import android.content.ClipData
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import androidx.compose.runtime.Composable
@@ -12,7 +11,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.updater.UpdateManager
-import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
@@ -61,10 +59,6 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
         },
         openExternalUrl = { url ->
             luoTianYiUrlLauncher(context, android.net.Uri.parse(url))
-        },
-        copyDebugData = { data ->
-            val clip = ClipData.newPlainText("data", data)
-            context.clipboardManager.setPrimaryClip(clip)
         },
         recordLocalItemOpened = { item ->
             localHomeViewModel?.onLocalItemOpened(item)

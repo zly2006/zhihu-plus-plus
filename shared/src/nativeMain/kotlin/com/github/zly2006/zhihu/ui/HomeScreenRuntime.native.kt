@@ -20,8 +20,6 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
             // TODO: iOS 登录
             requestLogin = { userMessages.showMessage("iOS 登录暂未实现") },
             openExternalUrl = { openIosUrl(it) },
-            // TODO: iOS 复制调试数据
-            copyDebugData = { userMessages.showMessage("iOS 复制暂未实现") },
             // TODO: iOS 本地推荐记录
             recordLocalItemOpened = { },
             recordLocalItemFeedback = { _, _ -> false },

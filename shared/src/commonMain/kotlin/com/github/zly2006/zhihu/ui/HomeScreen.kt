@@ -536,7 +536,7 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
                     DraggableRefreshButton(
                         onClick = {
                             val data = Json.encodeToString(viewModel.debugData)
-                            runtime.copyDebugData(data)
+                            paginationEnvironment.setPlainTextClipboard("data", data)
                             userMessages.showShortMessage("已复制调试数据")
                         },
                         preferenceName = "copyAll",
