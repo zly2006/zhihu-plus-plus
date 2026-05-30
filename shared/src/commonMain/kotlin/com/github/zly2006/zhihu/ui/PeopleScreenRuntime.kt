@@ -14,7 +14,6 @@ data class PeopleProfileLoadResult(
 )
 
 data class PeopleScreenRuntime(
-    val showShortMessage: (String) -> Unit,
     val openWebUrl: (String) -> Unit,
     val openImage: (String) -> Unit,
 )

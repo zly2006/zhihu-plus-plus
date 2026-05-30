@@ -82,6 +82,7 @@ import com.github.zly2006.zhihu.shared.people.PeopleListUiState
 import com.github.zly2006.zhihu.shared.people.PeopleProfileUiState
 import com.github.zly2006.zhihu.shared.people.PeopleScreenUiState
 import com.github.zly2006.zhihu.shared.people.PeopleSortedListUiState
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.raiseForStatus
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.FeedCard
@@ -652,6 +653,7 @@ private fun PeopleScreenContent(
 ) {
     val navigator = LocalNavigator.current
     val runtime = rememberPeopleScreenRuntime()
+    val userMessages = rememberUserMessageSink()
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val viewModel = viewModel { PersonViewModel(person) }
     val coroutineScope = rememberCoroutineScope()
@@ -672,7 +674,7 @@ private fun PeopleScreenContent(
         try {
             viewModel.load(paginationEnvironment)
         } catch (e: Exception) {
-            runtime.showShortMessage("加载用户信息失败: ${e.message}")
+            userMessages.showShortMessage("加载用户信息失败: ${e.message}")
         }
     }
     LaunchedEffect(pagerState.currentPage, testOverrides) {
@@ -682,7 +684,7 @@ private fun PeopleScreenContent(
         try {
             viewModel.subFeedModels.getOrNull(pagerState.currentPage)?.loadMore(paginationEnvironment)
         } catch (e: Exception) {
-            runtime.showShortMessage("加载页面内容失败: ${e.message}")
+            userMessages.showShortMessage("加载页面内容失败: ${e.message}")
         }
     }
 
@@ -739,7 +741,7 @@ private fun PeopleScreenContent(
                                     try {
                                         viewModel.toggleFollow(paginationEnvironment)
                                     } catch (e: Exception) {
-                                        runtime.showShortMessage("操作失败: ${e.message}")
+                                        userMessages.showShortMessage("操作失败: ${e.message}")
                                     }
                                 }
                             }
@@ -754,7 +756,7 @@ private fun PeopleScreenContent(
                                     try {
                                         viewModel.toggleBlock(paginationEnvironment)
                                     } catch (e: Exception) {
-                                        runtime.showShortMessage("操作失败: ${e.message}")
+                                        userMessages.showShortMessage("操作失败: ${e.message}")
                                     }
                                 }
                             }
@@ -770,9 +772,9 @@ private fun PeopleScreenContent(
                                 coroutineScope.launch {
                                     try {
                                         viewModel.toggleRecommendationBlock(paginationEnvironment)
-                                        runtime.showShortMessage(if (viewModel.isBlockedInRecommendations) "已屏蔽推荐" else "已取消屏蔽推荐")
+                                        userMessages.showShortMessage(if (viewModel.isBlockedInRecommendations) "已屏蔽推荐" else "已取消屏蔽推荐")
                                     } catch (e: Exception) {
-                                        runtime.showShortMessage("操作失败: ${e.message}")
+                                        userMessages.showShortMessage("操作失败: ${e.message}")
                                     }
                                 }
                             }
