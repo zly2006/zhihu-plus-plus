@@ -35,6 +35,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.ContentDetailCache
+import com.github.zly2006.zhihu.data.getContentDetail
 import com.github.zly2006.zhihu.data.HistoryStorage
 import com.github.zly2006.zhihu.data.getOrFetch
 import com.github.zly2006.zhihu.navigation.AndroidAnswerNavigatorRepository
@@ -263,6 +264,9 @@ open class SharedAndroidPaginationEnvironment(
             openFrom = resolvedOpenFrom.ifBlank { "unknown" },
         )
     }
+
+    override suspend fun getContentDetail(article: ArticleDestination): DataHolder.Content? =
+        DataHolder.getContentDetail(context, article)
 
     override suspend fun followQuestion(
         questionId: Long,
