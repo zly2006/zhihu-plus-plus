@@ -153,10 +153,3 @@ object ContentFilterExtensions {
         onDetailsKeywordFiltered = onDetailsKeywordFiltered,
     )
 }
-
-// TODO: getEnabledBlockedUserIds - 需要 BlocklistManager 支持
-suspend fun getEnabledBlockedUserIds(settings: SettingsStore): Set<String> {
-    if (!isUserBlockingEnabled(settings.toFeedFilterSettings())) return emptySet()
-    // TODO: 实现需要 BlocklistManager.getAllBlockedUsers()
-    return emptySet()
-}

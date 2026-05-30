@@ -7,6 +7,7 @@
 - 2026-05-30：JVM `QuestionScreenRuntime` 删除已无调用的桌面问题详情 fetch、history storage 和内容过滤数据库残留；问题详情加载和 open event 已由 `PaginationEnvironment` 负责，runtime 继续只保留日志页打开、分享动作和短提示。对照 master，问题页关注/分享/日志入口、详情 WebView fallback 和页面 UI 结构未改；本切片只删除无用迁移残留。
 - 2026-05-30：JVM `DesktopPaginationEnvironment` 的屏蔽用户查询/新增/删除不再重复调用 `getContentFilterDatabase(desktopContentFilterDatabaseFile())`，改为复用同环境已有的 `contentFilterDatabase` 成员；数据库路径、BlocklistManager 逻辑和调用顺序未改。本切片只收敛重复平台数据库获取，不新增 runtime wrapper。
 - 2026-05-30：JVM 问题/想法/文章详情获取进一步收敛到 `DesktopPaginationEnvironment`：Pin 链接卡片预览和 Feed 屏蔽动作不再从 `PinScreenRuntime.jvm.kt` 共享页面私有 fetch helper，而是直接复用同一个 desktop pagination content-detail provider；重复的桌面 Pin/Question 详情 fetch helper 已删除。链接卡片预览、关键词屏蔽、用户屏蔽和 feed 屏蔽提示 UI 未改。
+- 2026-05-30：删除 common `ContentFilterExtensions.kt` 中无调用的 `getEnabledBlockedUserIds()` TODO stub；当前评论/问题 feed 过滤实际入口是 `PaginationEnvironment.fetchBlockedUserIds()`，Android/JVM actual 保持不变。本切片不改过滤 UI 或过滤调用顺序，只去掉未实现且无引用的旧残留。
 - Project has `shared`, `desktopApp`, Android `app`, and Android-only `sentence_embeddings`.
 - `desktopApp` is a shallow demo1-style launcher.
 - QR login core and QR UI are shared via `SharedQrLoginPane`.
