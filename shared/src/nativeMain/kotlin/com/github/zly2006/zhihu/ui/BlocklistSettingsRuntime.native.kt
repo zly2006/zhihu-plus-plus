@@ -10,7 +10,6 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
     userMessages: UserMessageSink,
 ): BlocklistSettingsRuntime = remember(userMessages) {
     BlocklistSettingsRuntime(
-        userMessages = userMessages,
         // TODO: iOS 加载关键词
         loadKeywords = { emptyList() },
         // TODO: iOS 加载用户

@@ -26,9 +26,6 @@ data class AccountSettingsRuntime(
 )
 
 @Composable
-fun rememberCommonAccountSettingsRuntime(): AccountSettingsRuntime = rememberAccountSettingsPlatformRuntime()
-
-@Composable
 expect fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime
 
 fun noopSettingsStore(): SettingsStore = SettingsStore(

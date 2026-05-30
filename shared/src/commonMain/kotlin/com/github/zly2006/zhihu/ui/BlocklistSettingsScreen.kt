@@ -69,6 +69,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeyword
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedTopic
@@ -148,7 +149,8 @@ fun BlocklistSettingsScreen(
     testConfig: BlocklistSettingsTestConfig? = null,
 ) {
     val navigator = LocalNavigator.current
-    val runtime = rememberBlocklistSettingsRuntime()
+    val userMessages = rememberUserMessageSink()
+    val runtime = rememberBlocklistSettingsPlatformRuntime(userMessages)
     val coroutineScope = rememberCoroutineScope()
 
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -181,7 +183,7 @@ fun BlocklistSettingsScreen(
                 loadedStats = runtime.loadStats()
             } catch (e: Exception) {
                 Log.e("BlocklistSettingsScreen", "Blocklist settings action failed", e)
-                runtime.userMessages.showShortMessage("加载数据失败: ${e.message}")
+                userMessages.showShortMessage("加载数据失败: ${e.message}")
             }
         }
     }
@@ -295,7 +297,7 @@ fun BlocklistSettingsScreen(
                             importAction()
                         } else {
                             runtime.requestImport { summary ->
-                                runtime.userMessages.showLongMessage("导入成功：$summary")
+                                userMessages.showLongMessage("导入成功：$summary")
                                 loadData()
                             }
                         }
@@ -312,10 +314,10 @@ fun BlocklistSettingsScreen(
                         } else {
                             coroutineScope.launch {
                                 try {
-                                    runtime.userMessages.showLongMessage(runtime.exportRules())
+                                    userMessages.showLongMessage(runtime.exportRules())
                                 } catch (e: Exception) {
                                     Log.e("BlocklistSettingsScreen", "Blocklist settings action failed", e)
-                                    runtime.userMessages.showShortMessage("导出失败: ${e.message}")
+                                    userMessages.showShortMessage("导出失败: ${e.message}")
                                 }
                             }
                         }
@@ -352,11 +354,11 @@ fun BlocklistSettingsScreen(
                             coroutineScope.launch {
                                 try {
                                     runtime.deleteKeyword(keyword.id)
-                                    runtime.userMessages.showShortMessage("已删除关键词")
+                                    userMessages.showShortMessage("已删除关键词")
                                     loadData()
                                 } catch (e: Exception) {
                                     Log.e("BlocklistSettingsScreen", "Blocklist settings action failed", e)
-                                    runtime.userMessages.showShortMessage("删除失败: ${e.message}")
+                                    userMessages.showShortMessage("删除失败: ${e.message}")
                                 }
                             }
                         }
@@ -369,11 +371,11 @@ fun BlocklistSettingsScreen(
                             coroutineScope.launch {
                                 try {
                                     runtime.clearKeywords()
-                                    runtime.userMessages.showShortMessage("已清空所有关键词")
+                                    userMessages.showShortMessage("已清空所有关键词")
                                     loadData()
                                 } catch (e: Exception) {
                                     Log.e("BlocklistSettingsScreen", "Blocklist settings action failed", e)
-                                    runtime.userMessages.showShortMessage("清空失败: ${e.message}")
+                                    userMessages.showShortMessage("清空失败: ${e.message}")
                                 }
                             }
                         }
@@ -397,11 +399,11 @@ fun BlocklistSettingsScreen(
                             coroutineScope.launch {
                                 try {
                                     runtime.deleteUser(user.userId)
-                                    runtime.userMessages.showShortMessage("已删除用户")
+                                    userMessages.showShortMessage("已删除用户")
                                     loadData()
                                 } catch (e: Exception) {
                                     Log.e("BlocklistSettingsScreen", "Blocklist settings action failed", e)
-                                    runtime.userMessages.showShortMessage("删除失败: ${e.message}")
+                                    userMessages.showShortMessage("删除失败: ${e.message}")
                                 }
                             }
                         }
@@ -414,11 +416,11 @@ fun BlocklistSettingsScreen(
                             coroutineScope.launch {
                                 try {
                                     runtime.clearUsers()
-                                    runtime.userMessages.showShortMessage("已清空所有用户")
+                                    userMessages.showShortMessage("已清空所有用户")
                                     loadData()
                                 } catch (e: Exception) {
                                     Log.e("BlocklistSettingsScreen", "Blocklist settings action failed", e)
-                                    runtime.userMessages.showShortMessage("清空失败: ${e.message}")
+                                    userMessages.showShortMessage("清空失败: ${e.message}")
                                 }
                             }
                         }
@@ -443,11 +445,11 @@ fun BlocklistSettingsScreen(
                             coroutineScope.launch {
                                 try {
                                     runtime.deleteTopic(topic.topicId)
-                                    runtime.userMessages.showShortMessage("已删除主题")
+                                    userMessages.showShortMessage("已删除主题")
                                     loadData()
                                 } catch (e: Exception) {
                                     Log.e("BlocklistSettingsScreen", "Blocklist settings action failed", e)
-                                    runtime.userMessages.showShortMessage("删除失败: ${e.message}")
+                                    userMessages.showShortMessage("删除失败: ${e.message}")
                                 }
                             }
                         }
@@ -460,11 +462,11 @@ fun BlocklistSettingsScreen(
                             coroutineScope.launch {
                                 try {
                                     runtime.clearTopics()
-                                    runtime.userMessages.showShortMessage("已清空所有主题")
+                                    userMessages.showShortMessage("已清空所有主题")
                                     loadData()
                                 } catch (e: Exception) {
                                     Log.e("BlocklistSettingsScreen", "Blocklist settings action failed", e)
-                                    runtime.userMessages.showShortMessage("清空失败: ${e.message}")
+                                    userMessages.showShortMessage("清空失败: ${e.message}")
                                 }
                             }
                         }
@@ -487,12 +489,12 @@ fun BlocklistSettingsScreen(
                     coroutineScope.launch {
                         try {
                             runtime.addKeyword(keyword, caseSensitive, isRegex)
-                            runtime.userMessages.showShortMessage("已添加关键词")
+                            userMessages.showShortMessage("已添加关键词")
                             loadData()
                             showAddKeywordDialog = false
                         } catch (e: Exception) {
                             Log.e("BlocklistSettingsScreen", "Blocklist settings action failed", e)
-                            runtime.userMessages.showShortMessage("添加失败: ${e.message}")
+                            userMessages.showShortMessage("添加失败: ${e.message}")
                         }
                     }
                 }
@@ -513,12 +515,12 @@ fun BlocklistSettingsScreen(
                     coroutineScope.launch {
                         try {
                             runtime.addTopic(topicId, topicName)
-                            runtime.userMessages.showShortMessage("已添加主题")
+                            userMessages.showShortMessage("已添加主题")
                             loadData()
                             showAddTopicDialog = false
                         } catch (e: Exception) {
                             Log.e("BlocklistSettingsScreen", "Blocklist settings action failed", e)
-                            runtime.userMessages.showShortMessage("添加失败: ${e.message}")
+                            userMessages.showShortMessage("添加失败: ${e.message}")
                         }
                     }
                 }
@@ -539,12 +541,12 @@ fun BlocklistSettingsScreen(
                     coroutineScope.launch {
                         try {
                             runtime.addUser(userId, userName)
-                            runtime.userMessages.showShortMessage("已添加用户")
+                            userMessages.showShortMessage("已添加用户")
                             loadData()
                             showAddUserDialog = false
                         } catch (e: Exception) {
                             Log.e("BlocklistSettingsScreen", "Blocklist settings action failed", e)
-                            runtime.userMessages.showShortMessage("添加失败: ${e.message}")
+                            userMessages.showShortMessage("添加失败: ${e.message}")
                         }
                     }
                 }

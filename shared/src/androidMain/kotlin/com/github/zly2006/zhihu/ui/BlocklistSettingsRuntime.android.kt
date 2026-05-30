@@ -43,7 +43,6 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
     }
     return remember(context, manager, userMessages, importLauncher) {
         BlocklistSettingsRuntime(
-            userMessages = userMessages,
             loadKeywords = manager::getAllBlockedKeywords,
             loadUsers = manager::getAllBlockedUsers,
             loadTopics = manager::getAllBlockedTopics,

@@ -123,7 +123,7 @@ fun AccountSettingScreen(
     testAccountData: AccountSettingsAccountState? = null,
 ) {
     val navigator = LocalNavigator.current
-    val runtime = rememberCommonAccountSettingsRuntime()
+    val runtime = rememberAccountSettingsPlatformRuntime()
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()
     val updateRuntime = rememberSystemUpdateRuntime()

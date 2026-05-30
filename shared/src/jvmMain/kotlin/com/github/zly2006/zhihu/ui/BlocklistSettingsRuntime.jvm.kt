@@ -26,7 +26,6 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
     val coroutineScope = rememberCoroutineScope()
     return remember(manager, userMessages) {
         BlocklistSettingsRuntime(
-            userMessages = userMessages,
             loadKeywords = manager::getAllBlockedKeywords,
             loadUsers = manager::getAllBlockedUsers,
             loadTopics = manager::getAllBlockedTopics,

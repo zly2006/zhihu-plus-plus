@@ -2,14 +2,12 @@ package com.github.zly2006.zhihu.ui
 
 import androidx.compose.runtime.Composable
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeyword
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedTopic
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedUser
 import com.github.zly2006.zhihu.viewmodel.filter.BlocklistStats
 
 data class BlocklistSettingsRuntime(
-    val userMessages: UserMessageSink,
     val loadKeywords: suspend () -> List<BlockedKeyword>,
     val loadUsers: suspend () -> List<BlockedUser>,
     val loadTopics: suspend () -> List<BlockedTopic>,
@@ -26,12 +24,6 @@ data class BlocklistSettingsRuntime(
     val deleteTopic: suspend (String) -> Unit,
     val clearTopics: suspend () -> Unit,
 )
-
-@Composable
-fun rememberBlocklistSettingsRuntime(): BlocklistSettingsRuntime {
-    val userMessages = rememberUserMessageSink()
-    return rememberBlocklistSettingsPlatformRuntime(userMessages)
-}
 
 @Composable
 expect fun rememberBlocklistSettingsPlatformRuntime(
