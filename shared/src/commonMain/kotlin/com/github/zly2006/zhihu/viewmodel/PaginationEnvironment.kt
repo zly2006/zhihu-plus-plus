@@ -100,6 +100,8 @@ interface PaginationEnvironment {
 
     suspend fun isUserBlocked(userId: String): Boolean = false
 
+    fun blockedUserIds(): Set<String> = emptySet()
+
     suspend fun recordContentOpenEvent(
         destination: NavDestination,
         questionId: Long? = null,

@@ -79,6 +79,7 @@ import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -255,6 +256,15 @@ class DesktopPaginationEnvironment(
 
     override suspend fun isUserBlocked(userId: String): Boolean =
         contentFilterDatabase.createBlocklistManager().isUserBlocked(userId)
+
+    override fun blockedUserIds(): Set<String> =
+        runBlocking {
+            contentFilterDatabase
+                .createBlocklistManager()
+                .getAllBlockedUsers()
+                .map { it.userId }
+                .toSet()
+        }
 
     override suspend fun addBlockedUser(
         userId: String,

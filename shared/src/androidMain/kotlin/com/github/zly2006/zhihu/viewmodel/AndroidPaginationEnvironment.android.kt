@@ -221,6 +221,15 @@ open class SharedAndroidPaginationEnvironment(
     override suspend fun isUserBlocked(userId: String): Boolean =
         getContentFilterDatabase(context).createBlocklistManager().isUserBlocked(userId)
 
+    override fun blockedUserIds(): Set<String> =
+        kotlinx.coroutines.runBlocking {
+            getContentFilterDatabase(context)
+                .createBlocklistManager()
+                .getAllBlockedUsers()
+                .map { it.userId }
+                .toSet()
+        }
+
     override suspend fun addBlockedUser(
         userId: String,
         userName: String,
