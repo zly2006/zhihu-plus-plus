@@ -5,12 +5,14 @@ import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.data.decodeArticleContentDetail
 import com.github.zly2006.zhihu.data.decodePinContentDetail
+import com.github.zly2006.zhihu.data.decodeQuestionContentDetail
 import com.github.zly2006.zhihu.navigation.AnswerNavigatorPage
 import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
+import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.answerNavigatorPageFromJson
 import com.github.zly2006.zhihu.navigation.zhihuQuestionFeedsUrl
 import com.github.zly2006.zhihu.shared.data.Collection
@@ -252,7 +254,7 @@ class DesktopPaginationEnvironment(
     }
 
     override suspend fun isUserBlocked(userId: String): Boolean =
-        getContentFilterDatabase(desktopContentFilterDatabaseFile()).createBlocklistManager().isUserBlocked(userId)
+        contentFilterDatabase.createBlocklistManager().isUserBlocked(userId)
 
     override suspend fun addBlockedUser(
         userId: String,
@@ -260,7 +262,7 @@ class DesktopPaginationEnvironment(
         urlToken: String?,
         avatarUrl: String?,
     ) {
-        getContentFilterDatabase(desktopContentFilterDatabaseFile()).createBlocklistManager().addBlockedUser(
+        contentFilterDatabase.createBlocklistManager().addBlockedUser(
             userId = userId,
             userName = userName,
             urlToken = urlToken,
@@ -269,7 +271,7 @@ class DesktopPaginationEnvironment(
     }
 
     override suspend fun removeBlockedUser(userId: String) {
-        getContentFilterDatabase(desktopContentFilterDatabaseFile()).createBlocklistManager().removeBlockedUser(userId)
+        contentFilterDatabase.createBlocklistManager().removeBlockedUser(userId)
     }
 
     override suspend fun recordContentOpenEvent(
@@ -290,6 +292,9 @@ class DesktopPaginationEnvironment(
 
     override suspend fun getContentDetail(article: Article): DataHolder.Content? =
         fetchContentDetail(article)
+
+    internal suspend fun getContentDetail(destination: NavDestination): DataHolder.Content? =
+        fetchContentDetail(destination)
 
     override suspend fun recordOpenEvent(
         destination: Article,
@@ -333,6 +338,7 @@ class DesktopPaginationEnvironment(
         ContentDetailCache.getOrFetch(destination) { navDestination ->
             when (navDestination) {
                 is Article -> fetchDesktopArticleContentDetail(navDestination)
+                is Question -> fetchDesktopQuestionContentDetail(navDestination)
                 is Pin -> fetchDesktopPinContentDetail(navDestination)
                 else -> null
             }
@@ -348,6 +354,12 @@ class DesktopPaginationEnvironment(
             method = HttpMethod.Get
         } ?: return@runCatching null
         decodeArticleContentDetail(article, jo)
+    }.getOrNull()
+
+    private suspend fun fetchDesktopQuestionContentDetail(question: Question): DataHolder.Question? = runCatching {
+        val jo = store.signedFetchJson("https://www.zhihu.com/api/v4/questions/${question.questionId}?include=read_count,visit_count,answer_count,voteup_count,comment_count,follower_count,detail,excerpt,author,relationship.is_following,topics")
+            ?: return@runCatching null
+        decodeQuestionContentDetail(jo)
     }.getOrNull()
 
     private suspend fun fetchDesktopPinContentDetail(pin: Pin): DataHolder.Pin? = runCatching {
