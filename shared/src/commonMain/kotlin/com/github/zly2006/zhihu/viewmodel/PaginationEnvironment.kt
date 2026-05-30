@@ -124,10 +124,6 @@ interface PaginationEnvironment {
 
     fun answerNavigatorRepository(): AnswerNavigatorRepository? = null
 }
-    suspend fun getContentDetail(article: com.github.zly2006.zhihu.navigation.Article): com.github.zly2006.zhihu.shared.data.DataHolder.Content? = null
-
-    fun xsrfToken(): String = ""
-
 
 data class FeedDisplaySettings(
     val enableQualityFilter: Boolean = true,
