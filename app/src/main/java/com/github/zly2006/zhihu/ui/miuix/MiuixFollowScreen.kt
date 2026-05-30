@@ -96,9 +96,10 @@ fun MiuixFollowScreen(
     val viewModel = viewModel<FollowScreenData>()
     val pagerState = rememberPagerState(pageCount = { 2 })
     val coroutineScope = rememberCoroutineScope()
+    // 模糊开关只在这里用一次：blurEnabled=false 时 backdrop 为 null，
+    // 之后 getMiuixAppBarColor()/installerMiuixBlurEffect() 自动按 null 处理，调用处不再判 blurEnabled
     val blurEnabled = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE).getBoolean("blurEnabled", true) }
-    // backdrop 始终非 null，保证 scrollBehavior + nestedScroll 链路不断；用 blurEnabled 控制颜色
-    val backdrop = rememberMiuixBlurBackdrop(true)  // 始终 miuix 路径，blurEnabled 只控制视觉效果
+    val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
 
     LaunchedEffect(pagerState.currentPage) { viewModel.selectedTabIndex = pagerState.currentPage }
@@ -110,11 +111,11 @@ fun MiuixFollowScreen(
         topBar = {
             Column(
                 modifier = Modifier
-                    .installerMiuixBlurEffect(backdrop, enabled = blurEnabled)
+                    .installerMiuixBlurEffect(backdrop)
                     .padding(bottom = 8.dp),
             ) {
                 TopAppBar(
-                    color = if (blurEnabled) backdrop.getMiuixAppBarColor() else MiuixTheme.colorScheme.surface,
+                    color = backdrop.getMiuixAppBarColor(),
                     title = "关注",
                     scrollBehavior = scrollBehavior,
                 )
@@ -164,17 +165,17 @@ fun MiuixFollowTopLevelPage(
 ) {
     val context = LocalActivity.current as MainActivity
     val blurEnabled = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE).getBoolean("blurEnabled", true) }
-    val backdrop = rememberMiuixBlurBackdrop(true)  // 始终 miuix 路径，blurEnabled 只控制视觉效果
+    val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
     Scaffold(
         topBar = {
             Column(
                 modifier = Modifier
-                    .installerMiuixBlurEffect(backdrop, enabled = blurEnabled)
+                    .installerMiuixBlurEffect(backdrop)
                     .padding(bottom = 8.dp),
             ) {
                 TopAppBar(
-                    color = if (blurEnabled) backdrop.getMiuixAppBarColor() else MiuixTheme.colorScheme.surface,
+                    color = backdrop.getMiuixAppBarColor(),
                     title = "关注",
                     scrollBehavior = scrollBehavior,
                 )
