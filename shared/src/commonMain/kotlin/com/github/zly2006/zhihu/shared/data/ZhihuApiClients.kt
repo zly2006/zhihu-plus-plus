@@ -221,7 +221,6 @@ fun zhihuNotificationRecentUrl(
     limit: Int = 20,
 ): String = "https://www.zhihu.com/api/v4/notifications/v2/recent?limit=$limit"
 
-
 fun decodeZhihuMeNotifications(response: JsonObject): ZhihuMeNotifications =
     ZhihuJson.decodeJson(response)
 

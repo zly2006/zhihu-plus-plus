@@ -17,24 +17,18 @@
 
 package com.github.zly2006.zhihu.viewmodel.feed
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.GroupFeed
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
-import com.github.zly2006.zhihu.shared.data.toDisplayItem
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
-import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
-import kotlin.reflect.typeOf
 
 class HomeFeedViewModel :
     BaseFeedViewModel(),
@@ -142,89 +136,5 @@ class HomeFeedViewModel :
     override fun refresh(environment: PaginationEnvironment) {
         super.refresh(environment)
         reportedTouchedItems.clear()
-    }
-}
-
-abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
-    var displayItems = mutableStateListOf<FeedDisplayItem>()
-    var isPullToRefresh by mutableStateOf(false)
-        protected set
-
-    override fun processResponse(environment: PaginationEnvironment, data: List<Feed>, rawData: JsonArray) {
-        super.processResponse(environment, data, rawData)
-        addDisplayItems(data.flatten().map { createDisplayItem(environment, it) })
-    }
-
-    override fun refresh(environment: PaginationEnvironment) {
-        displayItems.clear()
-        super.refresh(environment)
-    }
-
-    suspend fun pullToRefresh(environment: PaginationEnvironment) {
-        isPullToRefresh = true
-        displayItems.clear()
-        if (isLoading) return
-        errorMessage = null
-        debugData.clear()
-        allData.clear()
-        lastPaging = null // 重置 lastPaging
-        isLoading = true
-        try {
-            fetchFeeds(environment)
-        } catch (e: Exception) {
-            errorHandle(e)
-        }
-        isLoading = false
-        isPullToRefresh = false
-    }
-
-    open fun createDisplayItem(environment: PaginationEnvironment, feed: Feed): FeedDisplayItem {
-        val settings = environment.feedDisplaySettings()
-        return feed.toDisplayItem(
-            enableQualityFilter = settings.enableQualityFilter,
-            reverseBlock = settings.reverseBlock,
-        )
-    }
-
-    fun addDisplayItems(newItems: List<FeedDisplayItem>) {
-        newItems.forEach {
-            if (displayItems.none { existing -> existing.stableKey == it.stableKey }) {
-                displayItems.add(it)
-            }
-        }
-    }
-
-    @Suppress("NOTHING_TO_INLINE")
-    inline fun List<Feed>.flatten() = flatMap {
-        (it as? GroupFeed)?.list ?: listOf(it)
-    }
-
-    // TODO: handleBlockUser - 需要 UserMessageSink 支持
-    fun handleBlockUser(
-        environment: PaginationEnvironment,
-        feedItem: FeedDisplayItem,
-        onShowDialog: (Pair<String, String>) -> Unit,
-    ) {
-        // TODO: 实现需要 ContentDetailCache.getOrFetch 和 UserMessageSink
-    }
-
-    // TODO: handleBlockByKeywords - 需要 UserMessageSink 支持
-    fun handleBlockByKeywords(
-        environment: PaginationEnvironment,
-        feedItem: FeedDisplayItem,
-        onShowDialog: (Pair<FeedDisplayItem, Triple<String, String, String?>>) -> Unit,
-    ) {
-        // TODO: 实现需要 ContentDetailCache.getOrFetch 和 UserMessageSink
-    }
-
-    /**
-     * 屏蔽主题
-     */
-    fun handleBlockTopic(
-        environment: PaginationEnvironment,
-        topicId: String,
-        topicName: String,
-    ) {
-        // TODO: 实现需要 UserMessageSink 和 displayItems 过滤
     }
 }
