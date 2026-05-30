@@ -73,10 +73,9 @@ import androidx.compose.ui.zIndex
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.InputField
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.icon.extended.Close
+import top.yukonga.miuix.kmp.icon.extended.Search
 import top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
 
 /* ============================================================
  * 效果 A：按下缩放 modifier（假搜索框点击反馈）
@@ -247,7 +246,7 @@ fun SearchBar(
         decorationBox = { innerTextField ->
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = Icons.Default.Search,
+                    imageVector = Search,
                     contentDescription = "search",
                     modifier = Modifier.size(44.dp).padding(start = 16.dp, end = 8.dp),
                     tint = colorScheme.onSurfaceContainerHigh,
@@ -259,7 +258,7 @@ fun SearchBar(
                     exit = fadeOut() + scaleOut(),
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Close,
+                        imageVector = Close,
                         tint = colorScheme.onSurface,
                         contentDescription = "Clean",
                         modifier = Modifier
@@ -304,7 +303,7 @@ fun SearchBarFake(
             label = label,
             leadingIcon = {
                 Icon(
-                    imageVector = Icons.Default.Search,
+                    imageVector = Search,
                     contentDescription = "search",
                     modifier = Modifier.size(44.dp).padding(start = 16.dp, end = 8.dp),
                     tint = colorScheme.onSurfaceContainerHigh,
