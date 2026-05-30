@@ -53,11 +53,21 @@ import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.za.MixedHomeFeedViewModel
+import top.yukonga.miuix.kmp.basic.Column
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
+import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
+import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
+import top.yukonga.miuix.kmp.blur.layerBackdrop
+import top.yukonga.miuix.kmp.utils.overScrollVertical
+import top.yukonga.miuix.kmp.utils.scrollEndHaptic
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 
 @Composable
 fun MiuixHomeScreen(
@@ -95,12 +105,23 @@ fun MiuixHomeScreen(
     }
 
     val statusBarHeight = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
+    val blurEnabled = remember { preferences.getBoolean("blurEnabled", true) }
+    val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
+    val scrollBehavior = MiuixScrollBehavior()
 
     Scaffold(
         topBar = {
-            SearchBarFake(
-                label = searchStatus.label,
-                searchBarTopPadding = statusBarHeight + 12.dp,
+            Column(
+                modifier = Modifier.installerMiuixBlurEffect(backdrop),
+            ) {
+                TopAppBar(
+                    color = backdrop.getMiuixAppBarColor(),
+                    title = "",
+                    scrollBehavior = scrollBehavior,
+                )
+                SearchBarFake(
+                    label = searchStatus.label,
+                    searchBarTopPadding = 0.dp,
                 onClick = {
                     // 触发展开（效果 B：展开过渡动画）
                     searchStatus = searchStatus.copy(current = SearchStatus.Status.EXPANDING)
@@ -140,7 +161,10 @@ fun MiuixHomeScreen(
             searchStatus.SearchBox {
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize()
+                        .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
+                        .overScrollVertical()
+                        .nestedScroll(scrollBehavior.nestedScrollConnection),
                     contentPadding = PaddingValues(
                         top = padding.calculateTopPadding() + 6.dp,
                         bottom = innerPadding.calculateBottomPadding() + 12.dp,
@@ -148,7 +172,6 @@ fun MiuixHomeScreen(
                 ) {
                     items(viewModel.displayItems.size, key = { viewModel.displayItems[it].stableKey }) { index ->
                         val item = viewModel.displayItems[index]
-                        // 占位：先用纯文本卡，验证搜索动画用；后续换 MiuixFeedCard
                         top.yukonga.miuix.kmp.basic.Card(
                             modifier = Modifier
                                 .padding(horizontal = 12.dp, vertical = 6.dp),
