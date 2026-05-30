@@ -98,7 +98,7 @@ fun MiuixFollowScreen(
     val coroutineScope = rememberCoroutineScope()
     val blurEnabled = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE).getBoolean("blurEnabled", true) }
     // backdrop 始终非 null，保证 scrollBehavior + nestedScroll 链路不断；用 blurEnabled 控制颜色
-    val backdrop = rememberMiuixBlurBackdrop(true)
+    val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
 
     LaunchedEffect(pagerState.currentPage) { viewModel.selectedTabIndex = pagerState.currentPage }
@@ -109,10 +109,10 @@ fun MiuixFollowScreen(
     Scaffold(
         topBar = {
             Column(
-                modifier = Modifier.installerMiuixBlurEffect(backdrop),
+                modifier = Modifier.installerMiuixBlurEffect(backdrop, enabled = blurEnabled),
             ) {
                 TopAppBar(
-                    color = if (blurEnabled) backdrop.getMiuixAppBarColor() else MiuixTheme.colorScheme.surface,
+                    color = backdrop.getMiuixAppBarColor(),
                     title = "关注",
                     scrollBehavior = scrollBehavior,
                 )
@@ -162,15 +162,15 @@ fun MiuixFollowTopLevelPage(
 ) {
     val context = LocalActivity.current as MainActivity
     val blurEnabled = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE).getBoolean("blurEnabled", true) }
-    val backdrop = rememberMiuixBlurBackdrop(true)
+    val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
     Scaffold(
         topBar = {
             Column(
-                modifier = Modifier.installerMiuixBlurEffect(backdrop),
+                modifier = Modifier.installerMiuixBlurEffect(backdrop, enabled = blurEnabled),
             ) {
                 TopAppBar(
-                    color = if (blurEnabled) backdrop.getMiuixAppBarColor() else MiuixTheme.colorScheme.surface,
+                    color = backdrop.getMiuixAppBarColor(),
                     title = "关注",
                     scrollBehavior = scrollBehavior,
                 )
