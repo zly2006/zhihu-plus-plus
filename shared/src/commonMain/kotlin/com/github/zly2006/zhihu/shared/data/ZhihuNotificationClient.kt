@@ -5,8 +5,6 @@ import io.ktor.client.call.body
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
 import io.ktor.client.request.post
-import io.ktor.http.URLBuilder
-import io.ktor.http.appendPathSegments
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 
@@ -26,11 +24,7 @@ val ZHIHU_NOTIFICATION_READ_ALL_URLS = listOf(
 
 fun zhihuNotificationRecentUrl(
     limit: Int = 20,
-): String = URLBuilder("https://www.zhihu.com")
-    .apply {
-        appendPathSegments("api", "v4", "notifications", "v2", "recent")
-        parameters.append("limit", limit.toString())
-    }.buildString()
+): String = "https://www.zhihu.com/api/v4/notifications/v2/recent?limit=$limit"
 
 @Serializable
 data class ZhihuMeNotifications(

@@ -3,8 +3,6 @@ package com.github.zly2006.zhihu.shared.data
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
-import io.ktor.http.URLBuilder
-import io.ktor.http.appendPathSegments
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -25,12 +23,7 @@ data class OnlineHistoryPage(
 fun zhihuOnlineHistoryUrl(
     offset: Int = 0,
     limit: Int = 10,
-): String = URLBuilder("https://api.zhihu.com")
-    .apply {
-        appendPathSegments("unify-consumption", "read_history")
-        parameters.append("offset", offset.toString())
-        parameters.append("limit", limit.toString())
-    }.buildString()
+): String = "https://api.zhihu.com/unify-consumption/read_history?offset=$offset&limit=$limit"
 
 fun buildZhihuClearOnlineHistoryBody(): JsonObject = buildJsonObject {
     put("pairs", JsonArray(emptyList()))
