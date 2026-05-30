@@ -131,6 +131,8 @@ fun SearchStatus.SearchPager(
         SearchBar(s, onChange, padding)
     },
     searchBarTopPadding: Dp = 12.dp,
+    emptyResult: @Composable () -> Unit = {},
+    loadingResult: @Composable () -> Unit = {},
     result: @Composable () -> Unit,
 ) {
     val searchStatus = this
@@ -220,8 +222,8 @@ fun SearchStatus.SearchPager(
         ) {
             when (searchStatus.resultStatus) {
                 SearchStatus.ResultStatus.DEFAULT -> defaultResult()
-                SearchStatus.ResultStatus.EMPTY -> {}
-                SearchStatus.ResultStatus.LOAD -> {}
+                SearchStatus.ResultStatus.EMPTY -> emptyResult()
+                SearchStatus.ResultStatus.LOAD -> loadingResult()
                 SearchStatus.ResultStatus.SHOW -> result()
             }
         }

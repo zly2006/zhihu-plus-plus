@@ -126,6 +126,45 @@ fun MiuixHomeScreen(
         }
     }
 
+    // ── 同页搜索 ──
+    // 防抖后的查询词：searchText 停止变化 350ms 后才真正搜索，避免每打一个字就请求
+    var debouncedQuery by remember { mutableStateOf("") }
+    LaunchedEffect(searchStatus.searchText) {
+        val q = searchStatus.searchText.trim()
+        if (q.isEmpty()) {
+            debouncedQuery = ""
+        } else {
+            kotlinx.coroutines.delay(350)
+            debouncedQuery = q
+        }
+    }
+    // query 变化时重建 SearchViewModel（SearchViewModel 的 query 是构造参数，不可变）
+    val searchViewModel = remember(debouncedQuery) {
+        if (debouncedQuery.isEmpty()) null
+        else com.github.zly2006.zhihu.viewmodel.feed.SearchViewModel(debouncedQuery)
+    }
+    val searchListState = rememberLazyListState()
+    // 触发搜索 + 驱动 resultStatus
+    LaunchedEffect(searchViewModel) {
+        val vm = searchViewModel
+        if (vm == null) {
+            searchStatus = searchStatus.copy(resultStatus = SearchStatus.ResultStatus.DEFAULT)
+        } else {
+            searchStatus = searchStatus.copy(resultStatus = SearchStatus.ResultStatus.LOAD)
+            vm.refresh(context)
+        }
+    }
+    // 搜索结果加载完成后切换 SHOW / EMPTY
+    LaunchedEffect(searchViewModel?.displayItems?.size, searchViewModel?.isLoading) {
+        val vm = searchViewModel ?: return@LaunchedEffect
+        if (!vm.isLoading) {
+            searchStatus = searchStatus.copy(
+                resultStatus = if (vm.displayItems.isEmpty()) SearchStatus.ResultStatus.EMPTY
+                               else SearchStatus.ResultStatus.SHOW,
+            )
+        }
+    }
+
     val blurEnabled = remember { preferences.getBoolean("blurEnabled", true) }
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
@@ -293,9 +332,37 @@ fun MiuixHomeScreen(
                 Text("输入关键词搜索", color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
             }
         },
-        result = {
+        loadingResult = {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("搜索结果占位：${searchStatus.searchText}", color = MiuixTheme.colorScheme.onSurface)
+                top.yukonga.miuix.kmp.basic.CircularProgressIndicator()
+            }
+        },
+        emptyResult = {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("没有找到相关结果", color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+            }
+        },
+        result = {
+            val vm = searchViewModel
+            if (vm != null) {
+                PaginatedList(
+                    items = vm.displayItems,
+                    listState = searchListState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        top = 6.dp,
+                        bottom = innerPadding.calculateBottomPadding() + 12.dp,
+                    ),
+                    onLoadMore = { vm.loadMore(context) },
+                    key = { item -> item.stableKey },
+                ) { item ->
+                    MiuixFeedCard(
+                        item = item,
+                        onClick = {
+                            this.navDestination?.let { navigator.onNavigate(it) }
+                        },
+                    )
+                }
             }
         },
     )
