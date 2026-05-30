@@ -16,7 +16,6 @@ data class LoadedQuestionScreenData(
 )
 
 data class QuestionScreenRuntime(
-    val loadQuestion: suspend (Question) -> LoadedQuestionScreenData?,
     val openLog: (Question) -> Unit,
     val handleShareAction: (Question, () -> Unit) -> Unit,
     val showShortMessage: (String) -> Unit,

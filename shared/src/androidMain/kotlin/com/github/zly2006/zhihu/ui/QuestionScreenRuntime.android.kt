@@ -28,24 +28,6 @@ actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {
     return remember(context, settings, shareRuntime) {
         val userMessages = androidUserMessageSink(context)
         QuestionScreenRuntime(
-            loadQuestion = { question ->
-                AccountData.addReadHistory(context, question.questionId.toString(), "question")
-                val questionData = DataHolder.getContentDetail(context, question)
-                if (questionData != null) {
-                    val loadedData = loadedQuestionScreenData(question, questionData)
-                    val articleHost = context.articleHost()
-                    articleHost?.postHistoryDestination(loadedData.historyDestination)
-                    ContentOpenEventSupport.recordOpenEvent(
-                        database = getContentFilterDatabase(context),
-                        destination = question,
-                        questionId = question.questionId,
-                        openFrom = articleHost?.consumePendingContentOpenFrom(question) ?: ContentOpenFrom.UNKNOWN,
-                    )
-                    loadedData
-                } else {
-                    null
-                }
-            },
             openLog = { question ->
                 val intent = Intent(Intent.ACTION_VIEW).apply {
                     data = "https://www.zhihu.com/question/${question.questionId}/log".toUri()

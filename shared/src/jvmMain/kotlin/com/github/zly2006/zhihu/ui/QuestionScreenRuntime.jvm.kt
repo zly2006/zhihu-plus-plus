@@ -30,23 +30,6 @@ actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {
     }
     return remember(settings, userMessages, shareRuntime) {
         QuestionScreenRuntime(
-            loadQuestion = { question ->
-                store.addReadHistory(contentToken = question.questionId.toString(), contentTypeName = "question")
-                val questionData = fetchDesktopQuestionDetail(store, question)
-                if (questionData != null) {
-                    val loadedData = loadedQuestionScreenData(question, questionData)
-                    historyStorage.add(loadedData.historyDestination)
-                    ContentOpenEventSupport.recordOpenEvent(
-                        database = contentFilterDatabase,
-                        destination = question,
-                        questionId = question.questionId,
-                        openFrom = consumeDesktopPendingContentOpenFrom(question),
-                    )
-                    loadedData
-                } else {
-                    null
-                }
-            },
             openLog = { question ->
                 openDesktopExternalUrl("https://www.zhihu.com/question/${question.questionId}/log")
             },
