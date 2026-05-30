@@ -120,15 +120,15 @@ fun MiuixHomeScreen(
     Scaffold(
         topBar = {
             Column(
-                modifier = Modifier.installerMiuixBlurEffect(backdrop),
+                modifier = Modifier
+                    .installerMiuixBlurEffect(backdrop)
+                    .graphicsLayer { alpha = titleAlpha },
             ) {
-                Box(modifier = Modifier.graphicsLayer { alpha = titleAlpha }) {
-                    TopAppBar(
-                        color = backdrop.getMiuixAppBarColor(),
-                        title = "主页",
-                        scrollBehavior = scrollBehavior,
-                    )
-                }
+                TopAppBar(
+                    color = backdrop.getMiuixAppBarColor(),
+                    title = "主页",
+                    scrollBehavior = scrollBehavior,
+                )
                 if (searchStatus.shouldCollapsed()) {
                     SearchBarFake(
                         label = searchStatus.label,
