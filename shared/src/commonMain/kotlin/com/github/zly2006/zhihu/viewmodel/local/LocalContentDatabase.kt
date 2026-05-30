@@ -23,7 +23,7 @@ import androidx.room.RoomDatabase
 import androidx.room.RoomDatabase.Builder
 import androidx.room.RoomDatabaseConstructor
 import androidx.room.TypeConverters
-import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import com.github.zly2006.zhihu.data.applyPlatformDriver
 import kotlinx.coroutines.Dispatchers
 
 @Database(
@@ -43,6 +43,6 @@ expect object LocalContentDatabaseConstructor : RoomDatabaseConstructor<LocalCon
 fun buildLocalContentDatabase(
     builder: Builder<LocalContentDatabase>,
 ): LocalContentDatabase = builder
-    .setDriver(BundledSQLiteDriver())
+    .applyPlatformDriver()
     .setQueryCoroutineContext(Dispatchers.Default)
     .build()

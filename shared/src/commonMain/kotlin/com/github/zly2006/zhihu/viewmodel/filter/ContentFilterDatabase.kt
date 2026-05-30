@@ -24,8 +24,8 @@ import androidx.room.RoomDatabase.Builder
 import androidx.room.RoomDatabaseConstructor
 import androidx.room.migration.Migration
 import androidx.sqlite.SQLiteConnection
-import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.sqlite.execSQL
+import com.github.zly2006.zhihu.data.applyPlatformDriver
 import kotlinx.coroutines.Dispatchers
 
 @Database(
@@ -152,6 +152,6 @@ fun buildContentFilterDatabase(
 ): ContentFilterDatabase = builder
     .addMigrations(migration2To3, migration3To4, migration4To5, migration5To6)
     .fallbackToDestructiveMigration(true)
-    .setDriver(BundledSQLiteDriver())
+    .applyPlatformDriver()
     .setQueryCoroutineContext(Dispatchers.Default)
     .build()

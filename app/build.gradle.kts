@@ -256,6 +256,7 @@ dependencies {
     implementation("org.jetbrains.compose.ui:ui-graphics:$composeVersion")
     implementation("org.jetbrains.compose.animation:animation:$composeVersion")
     implementation("org.jetbrains.compose.animation:animation-core:$composeVersion")
+    implementation("org.jetbrains.compose.components:components-resources-android:$composeVersion")
     // Compose (AndroidX — icons, tooling, test not available from JetBrains yet)
     implementation(platform("androidx.compose:compose-bom:2026.05.00"))
     implementation("androidx.compose.material:material-icons-extended")

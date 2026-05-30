@@ -128,7 +128,6 @@ kotlin {
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
             implementation("androidx.room:room-runtime:2.8.4")
-            implementation("androidx.sqlite:sqlite-bundled:2.6.1")
             implementation("com.mikepenz:aboutlibraries-compose-m3:14.0.1")
         }
         commonTest.dependencies {
@@ -151,6 +150,7 @@ kotlin {
             implementation("org.jsoup:jsoup:1.22.1")
         }
         jvmMain.dependencies {
+            implementation("androidx.sqlite:sqlite-bundled:2.6.2")
             implementation(compose.desktop.currentOs)
             implementation("com.google.zxing:core:3.5.3")
             implementation("io.ktor:ktor-client-cio:3.5.0")
