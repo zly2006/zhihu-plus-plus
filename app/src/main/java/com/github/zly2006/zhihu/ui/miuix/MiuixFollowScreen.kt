@@ -112,7 +112,7 @@ fun MiuixFollowScreen(
                 modifier = Modifier.installerMiuixBlurEffect(backdrop, enabled = blurEnabled),
             ) {
                 TopAppBar(
-                    color = backdrop.getMiuixAppBarColor(),
+                    color = if (blurEnabled) backdrop.getMiuixAppBarColor() else MiuixTheme.colorScheme.surface,
                     title = "关注",
                     scrollBehavior = scrollBehavior,
                 )
@@ -170,7 +170,7 @@ fun MiuixFollowTopLevelPage(
                 modifier = Modifier.installerMiuixBlurEffect(backdrop, enabled = blurEnabled),
             ) {
                 TopAppBar(
-                    color = backdrop.getMiuixAppBarColor(),
+                    color = if (blurEnabled) backdrop.getMiuixAppBarColor() else MiuixTheme.colorScheme.surface,
                     title = "关注",
                     scrollBehavior = scrollBehavior,
                 )
