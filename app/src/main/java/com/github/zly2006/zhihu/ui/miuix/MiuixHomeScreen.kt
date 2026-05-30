@@ -177,7 +177,7 @@ fun MiuixHomeScreen(
 
     // 头像 BottomSheet（复用现有 MiuixAccountSheet）
     MiuixAccountSheet(
-        show = showAccountSheet,
-        onDismissRequest = { showAccountSheet.value = false },
+        show = showAccountSheet.value,
+        onDismiss = { showAccountSheet.value = false },
     )
 }
