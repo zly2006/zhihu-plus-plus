@@ -3,7 +3,6 @@ package com.github.zly2006.zhihu.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
-import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.viewmodel.DesktopPaginationEnvironment
@@ -26,10 +25,5 @@ actual fun rememberNotificationScreenRuntime(
     return NotificationScreenRuntime(
         environment = environment,
         showDebugCopy = true,
-        copyDebugText = { _, text ->
-            runCatching {
-                copyDesktopPlainText(text)
-            }
-        },
     )
 }

@@ -18,7 +18,6 @@ actual fun rememberNotificationScreenRuntime(
     NotificationScreenRuntime(
         environment = IosNotificationPaginationEnvironment(settingsStore),
         showDebugCopy = false,
-        copyDebugText = { _, _ -> },
     )
 }
 

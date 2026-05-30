@@ -86,7 +86,6 @@ import kotlinx.serialization.json.Json
 data class NotificationScreenRuntime(
     val environment: NotificationPaginationEnvironment,
     val showDebugCopy: Boolean,
-    val copyDebugText: (label: String, text: String) -> Unit,
 )
 
 @Composable
@@ -217,7 +216,7 @@ fun NotificationScreen() {
                 DraggableRefreshButton(
                     onClick = {
                         val data = Json.encodeToString(viewModel.debugData)
-                        runtime.copyDebugText("data", data)
+                        runtime.environment.setPlainTextClipboard("data", data)
                         userMessages.showMessage("已复制调试数据")
                     },
                     preferenceName = "copyAll",
