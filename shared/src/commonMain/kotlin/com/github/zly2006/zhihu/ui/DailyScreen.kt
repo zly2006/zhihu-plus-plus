@@ -78,7 +78,6 @@ import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.resolveContent
-import com.github.zly2006.zhihu.shared.daily.DailyScreenUiState
 import com.github.zly2006.zhihu.shared.data.DailySection
 import com.github.zly2006.zhihu.shared.data.DailyStory
 import com.github.zly2006.zhihu.shared.util.formatDailyDate
@@ -514,3 +513,10 @@ private const val DAILY_SCREEN_LOADING_TAG = "daily_screen_loading"
 private const val DAILY_SCREEN_ERROR_TAG = "daily_screen_error"
 private const val DAILY_SCREEN_EMPTY_TAG = "daily_screen_empty"
 private const val DAILY_SCREEN_LIST_TAG = "daily_screen_list"
+
+data class DailyScreenUiState(
+    val sections: List<DailySection> = emptyList(),
+    val isLoading: Boolean = false,
+    val isLoadingMore: Boolean = false,
+    val error: String? = null,
+)

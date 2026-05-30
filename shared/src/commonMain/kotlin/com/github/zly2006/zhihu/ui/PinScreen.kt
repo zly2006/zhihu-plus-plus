@@ -78,8 +78,6 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.officialBadge
-import com.github.zly2006.zhihu.shared.pin.PinLinkCardPreview
-import com.github.zly2006.zhihu.shared.pin.PinScreenUiState
 import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.util.formatCompactCount
@@ -708,3 +706,16 @@ internal fun compactPreview(raw: String, maxLength: Int = 120): String {
 }
 
 internal fun compactTitle(raw: String, maxLength: Int = 56): String = compactPreview(raw, maxLength)
+
+data class PinScreenUiState(
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null,
+    val pinContent: DataHolder.Pin? = null,
+    val isLiked: Boolean = false,
+    val likeCount: Int = 0,
+)
+
+data class PinLinkCardPreview(
+    val title: String,
+    val preview: String,
+)

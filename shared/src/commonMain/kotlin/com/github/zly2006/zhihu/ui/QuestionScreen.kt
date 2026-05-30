@@ -78,7 +78,6 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberZhihuWebUrlOpener
-import com.github.zly2006.zhihu.shared.question.QuestionScreenUiState
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
@@ -507,3 +506,14 @@ fun QuestionScreen(
         )
     }
 }
+
+data class QuestionScreenUiState(
+    val questionContent: String = "",
+    val answerCount: Int = 0,
+    val visitCount: Int = 0,
+    val commentCount: Int = 0,
+    val followerCount: Int = 0,
+    val title: String = "",
+    val isFollowing: Boolean = false,
+    val isQuestionDetailExpanded: Boolean = true,
+)
