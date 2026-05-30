@@ -15,11 +15,8 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.shared.data.ZHIHU_ME_URL
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.signFetchRequest
-import kotlinx.coroutines.flow.MutableStateFlow
 
 private const val LOGIN_ACTIVITY_CLASS = "com.github.zly2006.zhihu.LoginActivity"
 private const val QR_CODE_SCAN_ACTIVITY_CLASS = "com.github.zly2006.zhihu.QRCodeScanActivity"
@@ -43,12 +40,8 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
             accountDataState.value.toAccountSettingsAccountState()
         }
     }
-    val settings = rememberSettingsStore()
-    val userMessages = rememberUserMessageSink()
     return AccountSettingsRuntime(
         accountState = accountState,
-        settings = settings,
-        userMessages = userMessages,
         refreshProfile = {
             val data = AccountData.data
             if (data.login) {
@@ -69,7 +62,6 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
             context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
         },
         selectMainTab = { destination -> context.navigateMainTab(destination) },
-        updateState = MutableStateFlow(com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState.NoUpdate),
     )
 }
 

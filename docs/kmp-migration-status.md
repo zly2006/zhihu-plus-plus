@@ -2,6 +2,7 @@
 
 ## Completed
 
+- 2026-05-30：`AccountSettingsRuntime` 删除 `settings`、`userMessages`、`updateState` 三个通用能力字段，账户设置页改为在 common 页面内直接使用 `rememberSettingsStore()`、`rememberUserMessageSink()` 和 `rememberSystemUpdateRuntime()`；Android/JVM/native 平台 runtime 不再先填充这些字段再被 common `copy()` 覆盖，只保留账号状态、登录/扫码/退出、版本信息、复制、外链和主 Tab 选择等真实平台动作。对照 master，账户页设置项、开发者开关、检查更新提示、版本号复制、外链入口和登录/退出流程未改；本切片只删除页面 runtime 对已有 shared 能力的重复包裹。
 - 2026-05-30：`DeveloperSettingsRuntime.showShortMessage` 删除，开发者设置页登录验证、刷新 token、手动 Cookie 和签名请求提示改为在 common 页面内直接复用 `UserMessageSink`；Android/JVM/native runtime 不再包消息提示 lambda，只保留设置、账号、网络状态、签名请求和剪贴板复制等真实平台能力。对照 master，开发者设置页按钮、Cookie 对话框、签名请求对话框、提示文案和响应复制流程未改；本切片只删除消息提示转发壳。
 - 2026-05-30：`QuestionScreenRuntime.showShortMessage` 删除，问题详情加载失败、关注成功和日志打开失败提示改为在 `QuestionScreen` 内直接复用通用 `UserMessageSink`；Android/JVM/native runtime 不再各自包一层消息提示 lambda，只保留打开日志和分享动作这类真实平台差异。对照 master，问题详情加载、关注按钮、日志按钮、分享入口、提示文案和 UI 结构未改；本切片只合并已有平台提示能力和删除空转发。
 - 2026-05-30：`PeopleScreenRuntime.showShortMessage` 删除，用户页加载失败、操作失败和推荐屏蔽提示改为在 `PeopleScreenContent` 内直接复用通用 `UserMessageSink`；Android/JVM/native runtime 不再各自包一层消息提示 lambda，只保留打开网页和打开图片这类真实平台动作。对照 master，用户页加载、关注/屏蔽按钮、推荐屏蔽提示文案、头像/链接打开入口和 UI 结构未改；本切片只合并已有平台提示能力和删除空转发。验证通过 `JAVA_HOME=$(/usr/libexec/java_home -v 25) ./gradlew --no-daemon :shared:compileKotlinJvm :desktopApp:compileKotlin :shared:compileAndroidMain :app:compileLiteDebugKotlin --continue`。

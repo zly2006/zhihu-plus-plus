@@ -9,10 +9,6 @@ import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopLoginRequests
 import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
 import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
-import kotlinx.coroutines.flow.MutableStateFlow
 
 @Composable
 actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
@@ -20,12 +16,8 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
     val accountState = remember {
         mutableStateOf(store.load().toAccountSettingsAccountState())
     }
-    val settings = rememberSettingsStore()
-    val userMessages = rememberUserMessageSink()
     return AccountSettingsRuntime(
         accountState = accountState,
-        settings = settings,
-        userMessages = userMessages,
         refreshProfile = {
             val account = store.load()
             val refreshed = store.createHttpClient(account.cookies).use { client ->
@@ -62,7 +54,6 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
             }
         },
         selectMainTab = { _: TopLevelDestination -> },
-        updateState = MutableStateFlow(SystemUpdateState.NoUpdate),
     )
 }
 

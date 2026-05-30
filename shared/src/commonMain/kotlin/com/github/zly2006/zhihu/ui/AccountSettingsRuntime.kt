@@ -4,12 +4,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.shared.platform.SettingsStore
-import com.github.zly2006.zhihu.shared.platform.UserMessageSink
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
-import com.github.zly2006.zhihu.ui.subscreens.rememberSystemUpdateRuntime
-import kotlinx.coroutines.flow.StateFlow
 
 data class AccountSettingsAccountState(
     val login: Boolean = false,
@@ -21,8 +15,6 @@ data class AccountSettingsAccountState(
 
 data class AccountSettingsRuntime(
     val accountState: State<AccountSettingsAccountState>,
-    val settings: SettingsStore,
-    val userMessages: UserMessageSink,
     val refreshProfile: suspend () -> Unit,
     val requestLogin: () -> Unit,
     val requestQrLoginScan: () -> Unit,
@@ -31,21 +23,10 @@ data class AccountSettingsRuntime(
     val copyText: (label: String, text: String) -> Unit,
     val openExternalUrl: (String) -> Unit,
     val selectMainTab: (TopLevelDestination) -> Unit,
-    val updateState: StateFlow<SystemUpdateState>,
 )
 
 @Composable
-fun rememberCommonAccountSettingsRuntime(): AccountSettingsRuntime {
-    val runtime = rememberAccountSettingsPlatformRuntime()
-    val settings = rememberSettingsStore()
-    val userMessages = rememberUserMessageSink()
-    val updateRuntime = rememberSystemUpdateRuntime()
-    return runtime.copy(
-        settings = settings,
-        userMessages = userMessages,
-        updateState = updateRuntime.state,
-    )
-}
+fun rememberCommonAccountSettingsRuntime(): AccountSettingsRuntime = rememberAccountSettingsPlatformRuntime()
 
 @Composable
 expect fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime

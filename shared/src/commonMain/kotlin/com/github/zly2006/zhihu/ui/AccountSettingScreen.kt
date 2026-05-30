@@ -82,6 +82,8 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
@@ -89,6 +91,7 @@ import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
 import com.github.zly2006.zhihu.ui.subscreens.defaultBottomBarSelectionKeys
 import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarSelection
+import com.github.zly2006.zhihu.ui.subscreens.rememberSystemUpdateRuntime
 import com.github.zly2006.zhihu.ui.subscreens.shouldShowAccountHistoryShortcut
 import org.jetbrains.compose.resources.painterResource
 import zhihu.shared.generated.resources.Res
@@ -121,8 +124,9 @@ fun AccountSettingScreen(
 ) {
     val navigator = LocalNavigator.current
     val runtime = rememberCommonAccountSettingsRuntime()
-    val settings = runtime.settings
-    val userMessages = runtime.userMessages
+    val settings = rememberSettingsStore()
+    val userMessages = rememberUserMessageSink()
+    val updateRuntime = rememberSystemUpdateRuntime()
     val versionInfo = remember(runtime) { runtime.appVersionInfo() }
 
     val useDuo3HomeAccount = remember { settings.getBoolean("duo3_home_account", false) }
@@ -434,7 +438,7 @@ fun AccountSettingScreen(
                 }
             }
 
-            val updateState by runtime.updateState.collectAsState()
+            val updateState by updateRuntime.state.collectAsState()
             LaunchedEffect(updateState) {
                 if (updateState is SystemUpdateState.UpdateAvailable) {
                     val state = updateState as SystemUpdateState.UpdateAvailable
