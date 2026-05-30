@@ -11,9 +11,8 @@ actual fun rememberThemeSettingsRuntime(): ThemeSettingsRuntime = ThemeSettingsR
     setBackgroundColor = ThemeManager::setBackgroundColor,
 )
 
-// TODO: iOS WebView 自定义字体设置
 @Composable
 actual fun WebViewCustomFontSettings(
     customFontName: String?,
     onCustomFontNameChange: (String?) -> Unit,
-) = Unit
+) = Unit // TODO: iOS WebView 自定义字体设置

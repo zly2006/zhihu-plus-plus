@@ -4,24 +4,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.ui.noopSettingsStore
 
-// TODO: iOS 返回手势处理
 @Composable
-actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) = Unit
+actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) = Unit // TODO: iOS 返回手势处理
 
-// TODO: iOS 屏幕尺寸获取
 @Composable
-actual fun rememberScreenSizeDp(): ScreenSizeDp = ScreenSizeDp(width = 0f, height = 0f)
+actual fun rememberScreenSizeDp(): ScreenSizeDp = ScreenSizeDp(width = 0f, height = 0f) // TODO: iOS 屏幕尺寸获取
 
-// TODO: iOS 设置存储
 @Composable
-actual fun rememberSettingsStore(): SettingsStore = noopSettingsStore()
+actual fun rememberSettingsStore(): SettingsStore = noopSettingsStore() // TODO: iOS 设置存储
 
-// TODO: iOS 变体判断
 @Composable
-actual fun rememberIsLiteVariant(): Boolean = false
+actual fun rememberIsLiteVariant(): Boolean = false // TODO: iOS 变体判断
 
-// TODO: iOS 用户消息提示
 @Composable
 actual fun rememberUserMessageSink(): UserMessageSink = remember {
     UserMessageSink(showShortMessage = {}, showLongMessage = {})
-}
+} // TODO: iOS 用户消息提示

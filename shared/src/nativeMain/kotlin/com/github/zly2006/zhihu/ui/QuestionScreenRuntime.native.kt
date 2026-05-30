@@ -18,8 +18,7 @@ actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {
     }
 }
 
-// TODO: iOS 问题 WebView 实现
 @Composable
-actual fun QuestionDetailWebViewContent(questionId: Long, html: String) = Unit
+actual fun QuestionDetailWebViewContent(questionId: Long, html: String) = Unit // TODO: iOS 问题 WebView 实现
 
 actual fun supportsQuestionDetailWebView(): Boolean = false

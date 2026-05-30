@@ -2,22 +2,18 @@ package com.github.zly2006.zhihu.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 
 // TODO: iOS 想法页面完整实现
 @Composable
-actual fun rememberPinScreenRuntime(): PinScreenRuntime {
-    val userMessages = rememberUserMessageSink()
-    return remember(userMessages) {
+actual fun rememberPinScreenRuntime(): PinScreenRuntime =
+    remember {
         PinScreenRuntime(
             handleShareAction = { _, _ -> error("Pin share not available on iOS yet") },
             fetchLinkCardPreview = { null },
         )
     }
-}
 
-// TODO: iOS 想法 WebView 实现
 @Composable
-actual fun PinHtmlWebViewContent(html: String) = Unit
+actual fun PinHtmlWebViewContent(html: String) = Unit // TODO: iOS 想法 WebView 实现
 
 actual fun supportsPinHtmlWebView(): Boolean = false
