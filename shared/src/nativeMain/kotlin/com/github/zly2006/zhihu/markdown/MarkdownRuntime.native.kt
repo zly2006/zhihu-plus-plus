@@ -10,10 +10,8 @@ actual fun rememberMarkdownRuntime(): MarkdownRuntime = remember {
     object : MarkdownRuntime {
         override val mathFont: MathFont? = null
 
-        // TODO: iOS 保存Markdown图片
-        override suspend fun saveMarkdownImage(url: String) = Unit
+        override suspend fun saveMarkdownImage(url: String) = Unit // TODO: iOS 保存Markdown图片
 
-        // TODO: iOS 分享Markdown图片
-        override suspend fun shareMarkdownImage(url: String) = Unit
+        override suspend fun shareMarkdownImage(url: String) = Unit // TODO: iOS 分享Markdown图片
     }
 }

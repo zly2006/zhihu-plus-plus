@@ -13,19 +13,14 @@ actual fun rememberDeveloperSettingsRuntime(): DeveloperSettingsRuntime {
         DeveloperSettingsRuntime(
             isDeveloperModeEnabled = { settings.getBoolean(DEVELOPER_MODE_KEY, false) },
             setDeveloperModeEnabled = { settings.putBoolean(DEVELOPER_MODE_KEY, it) },
-            // TODO: iOS cookies 获取
-            cookies = { emptyMap() },
+            cookies = { emptyMap() }, // TODO: iOS cookies 获取
             networkStatus = { "网络状态：iOS 端使用系统网络" },
             powerSaveModeText = { null },
             runtimeInfo = { DeveloperRuntimeInfo() },
-            // TODO: iOS 登录验证
-            verifyLogin = { false },
-            // TODO: iOS token 刷新
-            refreshToken = { },
-            // TODO: iOS cookies 保存
-            saveCookies = { },
-            // TODO: iOS signed GET
-            signedGet = { "iOS 暂不支持" },
+            verifyLogin = { false }, // TODO: iOS 登录验证
+            refreshToken = { }, // TODO: iOS token 刷新
+            saveCookies = { }, // TODO: iOS cookies 保存
+            signedGet = { "iOS 暂不支持" }, // TODO: iOS signed GET
         )
     }
 }

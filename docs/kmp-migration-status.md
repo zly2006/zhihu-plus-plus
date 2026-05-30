@@ -2,6 +2,7 @@
 
 ## Completed
 
+- 2026-05-30：继续压缩 native/iOS 账号、首页、Markdown、开发者设置和评论 runtime stub 的 TODO 标记形式，把独占行 TODO 合并到对应空实现/error stub 同行；所有未实现项仍保留 `TODO: iOS ...` 标记，返回值、提示文案和空实现行为不变。本切片不碰 Android/desktop 主体代码、不改 UI、不改测试。
 - 2026-05-30：继续压缩 native/iOS 通知设置、内容过滤数据库、分页环境和通知分页环境 stub 的 TODO 标记形式，把独占行 TODO 合并到对应空实现/error stub 同行；所有未实现项仍保留 `TODO: iOS ...` 标记，返回值、error 文案和空实现行为不变。本切片不碰 Android/desktop 主体代码、不改 UI、不改测试。
 - 2026-05-30：压缩 native/iOS 更新检查和屏蔽列表 runtime stub 的 TODO 标记形式，把独占行 TODO 合并到对应空实现/error stub 同行；所有未实现项仍保留 `TODO: iOS ...` 标记，行为不变。本切片不碰 Android/desktop 主体代码、不改 UI、不执行 iOS 验证，只减少迁移期 stub 行数。
 - 2026-05-30：JVM `SystemUpdateRuntime.downloadUpdate` 删除只转调 `openDesktopExternalUrl()` 的私有 `openDesktopUrl()` wrapper，空下载链接检查和桌面打开调用按原顺序留在 `downloadUpdate` 内。对照 master，系统更新页下载按钮、错误文案、状态写入和桌面不支持 APK 安装语义未改；本切片只删除无语义私有转发函数。

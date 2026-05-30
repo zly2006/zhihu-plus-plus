@@ -11,13 +11,11 @@ actual fun rememberCommentScreenRuntime(): CommentScreenRuntime {
     val userMessages = rememberUserMessageSink()
     return remember(userMessages) {
         object : CommentScreenRuntime {
-            // TODO: iOS 图片保存
-            override fun saveImage(imageUrl: String) {
+            override fun saveImage(imageUrl: String) { // TODO: iOS 图片保存
                 userMessages.showMessage("iOS 图片保存暂未实现")
             }
 
-            // TODO: iOS 图片分享
-            override fun shareImage(imageUrl: String) {
+            override fun shareImage(imageUrl: String) { // TODO: iOS 图片分享
                 userMessages.showMessage("iOS 图片分享暂未实现")
             }
         }

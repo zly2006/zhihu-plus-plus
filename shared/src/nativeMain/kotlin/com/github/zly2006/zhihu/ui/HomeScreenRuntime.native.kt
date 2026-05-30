@@ -17,10 +17,8 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
             installedAtLeastThreeHours = false,
             isDebuggable = false,
             viewModel = viewModel,
-            // TODO: iOS 登录
-            requestLogin = { userMessages.showMessage("iOS 登录暂未实现") },
-            // TODO: iOS 本地推荐记录
-            recordLocalItemOpened = { },
+            requestLogin = { userMessages.showMessage("iOS 登录暂未实现") }, // TODO: iOS 登录
+            recordLocalItemOpened = { }, // TODO: iOS 本地推荐记录
             recordLocalItemFeedback = { _, _ -> false },
         )
     }
