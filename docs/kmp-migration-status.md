@@ -4,6 +4,7 @@
 
 - 2026-05-30：JVM 通知页删除页面专用 `JvmNotificationPaginationEnvironment`，改为直接复用 `DesktopPaginationEnvironment` 并由同一环境实现 `NotificationPaginationEnvironment`；通知设置仍由页面传入同一个 `NotificationSettingsStore`，加载失败提示继续复用 `UserMessageSink`，调试复制仍直接调用桌面剪贴板 helper。对照 master，`NotificationScreen` 的刷新、加载更多、标记已读、通知点击导航、调试复制按钮和可见 UI 结构未改；本切片只合并重复 JVM environment 转发壳。验证通过 `JAVA_HOME=$(/usr/libexec/java_home -v 25) ./gradlew --no-daemon :shared:compileKotlinJvm :desktopApp:compileKotlin :shared:compileAndroidMain :app:compileLiteDebugKotlin --continue`。
 - 2026-05-30：JVM `PinScreenRuntime` 删除迁移遗留的未使用 `DesktopHistoryStorage`、内容过滤数据库和 coroutine scope 创建；`DesktopAccountStore` 改为 `remember { ... }` 后继续由同一个 `fetchDesktopLinkCardPreview()` 读取链接卡片详情。对照 master，想法页分享、外链打开、链接卡片预览和评论弹层 UI 入口未改；本切片只清理无用 runtime 状态，不新增 wrapper。
+- 2026-05-30：JVM `QuestionScreenRuntime` 删除已无调用的桌面问题详情 fetch、history storage 和内容过滤数据库残留；问题详情加载和 open event 已由 `PaginationEnvironment` 负责，runtime 继续只保留日志页打开、分享动作和短提示。对照 master，问题页关注/分享/日志入口、详情 WebView fallback 和页面 UI 结构未改；本切片只删除无用迁移残留。
 - Project has `shared`, `desktopApp`, Android `app`, and Android-only `sentence_embeddings`.
 - `desktopApp` is a shallow demo1-style launcher.
 - QR login core and QR UI are shared via `SharedQrLoginPane`.
