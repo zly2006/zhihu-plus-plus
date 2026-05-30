@@ -2,17 +2,9 @@ import org.gradle.jvm.toolchain.JavaLanguageVersion
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
-buildscript {
-    repositories {
-        google()
-        mavenCentral()
-    }
-    dependencies {
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.10")
-    }
+plugins {
+    kotlin("jvm") version "2.3.10"
 }
-
-apply(plugin = "org.jetbrains.kotlin.jvm")
 
 repositories {
     google()
