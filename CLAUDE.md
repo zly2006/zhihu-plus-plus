@@ -217,6 +217,11 @@ JAVA_HOME=$(/usr/libexec/java_home -v 25) ./gradlew --no-daemon :shared:compileA
 只跑 `:shared:runKtlintFormatOver*` 不够！根项目的 `ktlintFormat` 会检查所有模块（包括 app、desktopApp），还会触发 iOS 编译验证。如果 nativeMain 有语法错误（比如缺少括号），只跑 shared 模块的 ktlint 不会发现。
 
 **正确做法**：`JAVA_HOME=$(/usr/libexec/java_home -v 25) ./gradlew --no-daemon ktlintFormat`
+
+### ktlintCheck 不等于 ktlintFormat
+`ktlintFormat` 会自动修复可修复的问题，但有些问题无法自动修复（如文件名不匹配类名、空文件）。这些只有 `ktlintCheck` 才能发现。CI 跑的是 `ktlintCheck`，不是 `ktlintFormat`。
+
+**正确做法**：commit 前必须同时运行 `ktlintFormat` 和 `ktlintCheck`，确保两者都通过。
 ### 批量替换后必须用 rg 验证零残留
 Python 脚本做 `str.replace()` 后，必须用 `rg` 搜索确认没有遗漏：
 ```bash
