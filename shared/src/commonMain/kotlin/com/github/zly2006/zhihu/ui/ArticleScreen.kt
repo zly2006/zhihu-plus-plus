@@ -559,7 +559,6 @@ fun ArticleScreen(
 ) {
     val navigator = LocalNavigator.current
     val articleScreenRuntime = rememberArticleScreenRuntime()
-    val articleRuntime = articleScreenRuntime.articleRuntime
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
     val articleHost = articleScreenRuntime.articleHost
     val previewPreloader = articleScreenRuntime.previewPreloader
@@ -839,7 +838,7 @@ fun ArticleScreen(
 
     // 回答切换手势系统
     val sharedData = if (article.type == ArticleType.Answer) {
-        articleRuntime.articleAnswerSwitchState()
+        environment.articleAnswerSwitchState()
     } else {
         null
     }
@@ -866,7 +865,7 @@ fun ArticleScreen(
                 sharedData.pendingInitialContent = null
             }
         }
-        viewModel.loadArticle(articleRuntime)
+        viewModel.loadArticle(environment)
         viewModel.loadCollections(environment)
     }
 
@@ -1736,16 +1735,16 @@ fun ArticleScreen(
         showDialog = showExportDialog,
         onDismiss = { showExportDialog = false },
         onExportHtml = { includeAppAttribution, onComplete ->
-            viewModel.exportToHtml(articleRuntime, includeAppAttribution, onComplete)
+            viewModel.exportToHtml(environment, includeAppAttribution, onComplete)
         },
         onExportImage = { includeAppAttribution, onComplete ->
-            viewModel.exportToImage(articleRuntime, includeAppAttribution, onComplete)
+            viewModel.exportToImage(environment, includeAppAttribution, onComplete)
         },
         onExportMarkdown = {
-            viewModel.exportToClipboard(articleRuntime)
+            viewModel.exportToClipboard(environment)
         },
         onExportImageWithComments = { commentCount, includeAppAttribution, onComplete ->
-            viewModel.exportToImageWithComments(articleRuntime, commentCount, includeAppAttribution, onComplete)
+            viewModel.exportToImageWithComments(environment, commentCount, includeAppAttribution, onComplete)
         },
     )
 }

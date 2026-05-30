@@ -133,7 +133,8 @@ private fun CollectionContentScreenContent(
             includeImages = includeImages,
         )
     }
-    val sharedData = rememberArticleScreenRuntime().articleRuntime.articleAnswerSwitchState()
+    val environment = rememberPaginationEnvironment(allowGuestAccess = false)
+    val sharedData = environment.articleAnswerSwitchState()
 
     LaunchedEffect(testOverrides) {
         if (testOverrides == null && screenViewModel.allData.isEmpty()) {

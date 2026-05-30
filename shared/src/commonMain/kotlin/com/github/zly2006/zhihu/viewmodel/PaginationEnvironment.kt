@@ -19,10 +19,12 @@ package com.github.zly2006.zhihu.viewmodel
 
 import androidx.compose.runtime.Composable
 import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
+import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
@@ -166,6 +168,18 @@ interface PaginationEnvironment {
     }
 
     fun answerNavigatorRepository(): AnswerNavigatorRepository? = null
+
+    fun accountHttpClient(): HttpClient = httpClient()
+
+    fun articleAnswerSwitchState(): ArticleAnswerSwitchState? = null
+
+    suspend fun getContentDetail(article: Article): DataHolder.Content? = null
+
+    suspend fun recordOpenEvent(
+        destination: Article,
+        questionId: Long?,
+    ) {
+    }
 }
 
 data class FeedDisplaySettings(

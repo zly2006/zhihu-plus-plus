@@ -170,14 +170,14 @@ class ArticleViewModel(
     open class ArticlesSharedData : ArticleAnswerSwitchData()
 
     @OptIn(ExperimentalStdlibApi::class)
-    fun loadArticle(runtime: ArticleViewModelRuntime) {
+    fun loadArticle(environment: PaginationEnvironment) {
         if (httpClient == null) return
         viewModelScope.launch {
             withContext(Dispatchers.Default) {
                 try {
                     if (article.type == ArticleType.Answer) {
-                        val sharedData = runtime.articleAnswerSwitchState()
-                        val answer = runtime.getContentDetail(article) as? DataHolder.Answer
+                        val sharedData = environment.articleAnswerSwitchState()
+                        val answer = environment.getContentDetail(article) as? DataHolder.Answer
                         if (answer != null) {
                             exportSourceContent = answer
                             title = answer.question.title
@@ -208,7 +208,7 @@ class ArticleViewModel(
                             createdAt = answer.createdTime
                             ipInfo = answer.ipInfo
 
-                            runtime.postHistoryDestination(
+                            environment.postHistoryDestination(
                                 Article(
                                     id = answer.id,
                                     type = ArticleType.Answer,
@@ -219,7 +219,7 @@ class ArticleViewModel(
                                     excerpt = answer.excerpt,
                                 ),
                             )
-                            runtime.recordOpenEvent(article, answer.question.id)
+                            environment.recordOpenEvent(article, answer.question.id)
                             // 设置问题回答导航器（如果当前不是收藏夹导航器）
                             if (sharedData?.navigator !is CollectionAnswerNavigator) {
                                 val existingNav = sharedData?.navigator
@@ -231,7 +231,7 @@ class ArticleViewModel(
                                 if (!isSameQuestion) {
                                     sharedData?.navigator = QuestionAnswerNavigator(
                                         questionId = questionId,
-                                        repository = runtime.answerNavigatorRepository(),
+                                        repository = environment.answerNavigatorRepository()!!,
                                     )
                                 }
                             }
@@ -249,7 +249,7 @@ class ArticleViewModel(
                             Log.e("ArticleViewModel", "Answer not found")
                         }
                     } else if (article.type == ArticleType.Article) {
-                        val article = runtime.getContentDetail(article) as? DataHolder.Article
+                        val article = environment.getContentDetail(article) as? DataHolder.Article
                         if (article != null) {
                             exportSourceContent = article
                             title = article.title
@@ -278,7 +278,7 @@ class ArticleViewModel(
                             createdAt = article.created
                             ipInfo = article.ipInfo
 
-                            runtime.postHistoryDestination(
+                            environment.postHistoryDestination(
                                 Article(
                                     id = article.id,
                                     type = ArticleType.Article,
@@ -289,7 +289,7 @@ class ArticleViewModel(
                                     excerpt = article.excerpt,
                                 ),
                             )
-                            runtime.recordOpenEvent(this@ArticleViewModel.article, null)
+                            environment.recordOpenEvent(this@ArticleViewModel.article, null)
                         } else {
                             content = "<h1>你似乎来到了没有知识存在的荒原</h1>"
                             Log.e("ArticleViewModel", "Article not found")
@@ -546,12 +546,12 @@ class ArticleViewModel(
 
     // 导出为图片 - 使用WebView渲染
     suspend fun exportToImage(
-        runtime: ArticleViewModelRuntime,
+        environment: PaginationEnvironment,
         includeAppAttribution: Boolean,
         onComplete: (Boolean) -> Unit,
     ) {
         exportToImageInternal(
-            runtime = runtime,
+            environment = environment,
             includeComments = false,
             commentCount = 0,
             includeAppAttribution = includeAppAttribution,
@@ -562,13 +562,13 @@ class ArticleViewModel(
 
     // 导出为带评论的图片 - 使用WebView渲染
     suspend fun exportToImageWithComments(
-        runtime: ArticleViewModelRuntime,
+        environment: PaginationEnvironment,
         commentCount: Int,
         includeAppAttribution: Boolean,
         onComplete: (Boolean) -> Unit,
     ) {
         exportToImageInternal(
-            runtime = runtime,
+            environment = environment,
             includeComments = true,
             commentCount = commentCount,
             includeAppAttribution = includeAppAttribution,
@@ -578,7 +578,7 @@ class ArticleViewModel(
     }
 
     suspend fun exportToHtml(
-        context: ArticleViewModelRuntime,
+        environment: PaginationEnvironment,
         includeAppAttribution: Boolean,
         onComplete: (Boolean) -> Unit,
     ) {
@@ -590,9 +590,9 @@ class ArticleViewModel(
             return
         }
 
-        if (requiresHtmlExportPermission(context) && !hasStoragePermission(context)) {
+        if (requiresHtmlExportPermission(environment) && !hasStoragePermission(environment)) {
             withContext(Dispatchers.Main) {
-                requestStoragePermission(context)
+                requestStoragePermission(environment)
                 permissionRequestCount++
                 userMessages.showShortMessage("需要存储权限才能导出 HTML，正在请求权限")
                 onComplete(false)
@@ -601,9 +601,9 @@ class ArticleViewModel(
         }
 
         try {
-            val htmlContent = createOfflineHtmlContent(context, includeAppAttribution)
+            val htmlContent = createOfflineHtmlContent(environment, includeAppAttribution)
             val savedLocation = withContext(Dispatchers.Default) {
-                saveHtmlToDownloads(context, htmlContent)
+                saveHtmlToDownloads(environment, htmlContent)
             }
             withContext(Dispatchers.Main) {
                 userMessages.showLongMessage("HTML 已保存到 $savedLocation")
@@ -618,18 +618,18 @@ class ArticleViewModel(
         }
     }
 
-    private fun requiresHtmlExportPermission(runtime: ArticleViewModelRuntime): Boolean =
-        runtime.requiresHtmlExportPermission()
+    private fun requiresHtmlExportPermission(environment: PaginationEnvironment): Boolean =
+        environment.requiresHtmlExportPermission()
 
-    private fun hasStoragePermission(runtime: ArticleViewModelRuntime): Boolean =
-        runtime.hasImageExportPermission()
+    private fun hasStoragePermission(environment: PaginationEnvironment): Boolean =
+        environment.hasImageExportPermission()
 
-    private fun requestStoragePermission(runtime: ArticleViewModelRuntime) {
-        runtime.requestImageExportPermission()
+    private fun requestStoragePermission(environment: PaginationEnvironment) {
+        environment.requestImageExportPermission()
     }
 
     private suspend fun exportToImageInternal(
-        runtime: ArticleViewModelRuntime,
+        environment: PaginationEnvironment,
         includeComments: Boolean,
         commentCount: Int,
         includeAppAttribution: Boolean,
@@ -644,9 +644,9 @@ class ArticleViewModel(
             return
         }
 
-        if (!runtime.hasImageExportPermission()) {
+        if (!environment.hasImageExportPermission()) {
             withContext(Dispatchers.Main) {
-                runtime.requestImageExportPermission()
+                environment.requestImageExportPermission()
                 permissionRequestCount++
                 userMessages.showShortMessage("需要存储权限才能导出图片，正在请求权限")
                 onComplete(false)
@@ -656,12 +656,12 @@ class ArticleViewModel(
 
         var preparedWebView: PreparedArticleExportContent? = null
         var bitmap: Any? = null
-        val renderer = articleImageExportRenderer(runtime)
+        val renderer = articleImageExportRenderer(environment)!!
         try {
             preparedWebView = prepareExportWebView(
                 renderer = renderer,
                 htmlContent = createHtmlContent(
-                    runtime = runtime,
+                    environment = environment,
                     includeComments = includeComments,
                     commentCount = commentCount,
                     includeAppAttribution = includeAppAttribution,
@@ -670,7 +670,7 @@ class ArticleViewModel(
             )
             bitmap = captureExportBitmap(renderer, preparedWebView)
             withContext(Dispatchers.Default) {
-                saveImageToMediaStore(runtime, bitmap)
+                saveImageToMediaStore(environment, bitmap)
             }
             withContext(Dispatchers.Main) {
                 userMessages.showLongMessage(successMessage)
@@ -695,8 +695,8 @@ class ArticleViewModel(
         timeoutMs: Long,
     ): PreparedArticleExportContent = renderer.prepareExportWebView(htmlContent, timeoutMs)
 
-    private fun loadExportAssetText(runtime: ArticleViewModelRuntime, fileName: String): String = try {
-        runtime.loadExportAssetText(fileName)
+    private fun loadExportAssetText(environment: PaginationEnvironment, fileName: String): String = try {
+        environment.loadExportAssetText(fileName)
     } catch (e: Exception) {
         Log.e("ArticleViewModel", "Failed to load export asset: $fileName", e)
         ""
@@ -715,28 +715,28 @@ class ArticleViewModel(
     private fun recycleExportBitmap(renderer: ArticleImageExportRenderer, bitmap: Any) =
         renderer.recycleExportBitmap(bitmap)
 
-    private fun articleImageExportRenderer(runtime: ArticleViewModelRuntime): ArticleImageExportRenderer =
-        runtime.articleImageExportRenderer { fileName ->
-            loadExportAssetText(runtime, fileName)
+    private fun articleImageExportRenderer(environment: PaginationEnvironment): ArticleImageExportRenderer? =
+        environment.articleImageExportRenderer { fileName ->
+            loadExportAssetText(environment, fileName)
         }
 
     // 创建HTML内容
     private suspend fun createHtmlContent(
-        runtime: ArticleViewModelRuntime,
+        environment: PaginationEnvironment,
         includeComments: Boolean,
         commentCount: Int,
         includeAppAttribution: Boolean,
     ): String {
         val commentsHtml = if (includeComments && commentCount > 0) {
             buildArticleExportCommentsHtml(
-                comments = fetchExportComments(runtime, commentCount),
+                comments = fetchExportComments(environment, commentCount),
                 requestedCount = commentCount,
             )
         } else {
             ""
         }
 
-        return runtime.buildArticleExportHtml(
+        return environment.buildArticleExportHtml(
             content = requireExportSourceContent(),
             includeAppAttribution = includeAppAttribution,
             extraSectionsHtml = commentsHtml,
@@ -744,31 +744,31 @@ class ArticleViewModel(
     }
 
     private suspend fun createOfflineHtmlContent(
-        runtime: ArticleViewModelRuntime,
+        environment: PaginationEnvironment,
         includeAppAttribution: Boolean,
     ): String = withContext(Dispatchers.Default) {
-        runtime.buildOfflineArticleExportHtml(
+        environment.buildOfflineArticleExportHtml(
             content = requireExportSourceContent(),
             includeAppAttribution = includeAppAttribution,
-            httpClient = httpClient ?: runtime.accountHttpClient(),
+            httpClient = httpClient ?: environment.accountHttpClient(),
         )
     }
 
     private suspend fun fetchExportComments(
-        runtime: ArticleViewModelRuntime,
+        environment: PaginationEnvironment,
         requestedCount: Int,
     ): List<ArticleExportComment> {
         val safeRequestedCount = requestedCount.coerceAtLeast(0)
         if (safeRequestedCount == 0) return emptyList()
 
-        val client = httpClient ?: runtime.accountHttpClient()
+        val client = httpClient ?: environment.accountHttpClient()
         val url = when (article.type) {
             ArticleType.Answer -> "https://www.zhihu.com/api/v4/comment_v5/answers/${article.id}/root_comment"
             ArticleType.Article -> "https://www.zhihu.com/api/v4/comment_v5/articles/${article.id}/root_comment"
         }
         val json = client
             .get("${'$'}url?order=score&limit=${'$'}{safeRequestedCount.coerceAtMost(20)}&include=data[*].content,excerpt,headline") {
-                runtime.configureSignedRequest(this)
+                environment.configureSignedRequest(this)
             }.body<JsonObject>()
         return decodeZhihuCommentData(json, safeRequestedCount)
             .map(::mapExportComment)
@@ -789,14 +789,14 @@ class ArticleViewModel(
         ?: throw IllegalStateException("内容未加载完成")
 
     // 使用MediaStore保存图片到公共目录
-    private fun saveImageToMediaStore(runtime: ArticleViewModelRuntime, bitmap: Any) {
+    private fun saveImageToMediaStore(environment: PaginationEnvironment, bitmap: Any) {
         val displayName = buildExportFileName("png")
-        runtime.saveImageToMediaStore(displayName, bitmap)
+        environment.saveImageToMediaStore(displayName, bitmap)
     }
 
-    private fun saveHtmlToDownloads(runtime: ArticleViewModelRuntime, htmlContent: String): String {
+    private fun saveHtmlToDownloads(environment: PaginationEnvironment, htmlContent: String): String {
         val displayName = buildExportFileName("html")
-        return runtime.saveHtmlToDownloads(displayName, htmlContent)
+        return environment.saveHtmlToDownloads(displayName, htmlContent)
     }
 
     // 转换为Markdown格式
@@ -953,11 +953,11 @@ class ArticleViewModel(
     }
 
     // 导出到剪贴板
-    fun exportToClipboard(context: ArticleViewModelRuntime) {
+    fun exportToClipboard(environment: PaginationEnvironment) {
         val markdown = convertToMarkdown()
 
         // 将Markdown文本复制到剪贴板
-        context.setPlainTextClipboard("Zhihu Article", markdown)
+        environment.setPlainTextClipboard("Zhihu Article", markdown)
 
         userMessages.showShortMessage("文章已复制到剪贴板")
     }
