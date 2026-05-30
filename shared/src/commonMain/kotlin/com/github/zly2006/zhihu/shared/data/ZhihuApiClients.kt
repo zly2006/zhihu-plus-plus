@@ -221,14 +221,6 @@ fun zhihuNotificationRecentUrl(
     limit: Int = 20,
 ): String = "https://www.zhihu.com/api/v4/notifications/v2/recent?limit=$limit"
 
-@Serializable
-data class ZhihuMeNotifications(
-    val defaultNotificationsCount: Int = 0,
-    val followNotificationsCount: Int = 0,
-    val voteThankNotificationsCount: Int = 0,
-) {
-    val totalCount: Int get() = defaultNotificationsCount + followNotificationsCount + voteThankNotificationsCount
-}
 
 fun decodeZhihuMeNotifications(response: JsonObject): ZhihuMeNotifications =
     ZhihuJson.decodeJson(response)
