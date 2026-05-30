@@ -21,17 +21,17 @@ repositories {
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(25))
+        languageVersion.set(JavaLanguageVersion.of(17))
     }
 }
 
 tasks.withType<JavaCompile>().configureEach {
-    sourceCompatibility = JavaVersion.VERSION_25.toString()
-    targetCompatibility = JavaVersion.VERSION_25.toString()
+    sourceCompatibility = JavaVersion.VERSION_17.toString()
+    targetCompatibility = JavaVersion.VERSION_17.toString()
 }
 
 tasks.withType<KotlinCompile>().configureEach {
     compilerOptions {
-        jvmTarget = JvmTarget.JVM_25
+        jvmTarget = JvmTarget.JVM_17
     }
 }
