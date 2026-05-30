@@ -15,7 +15,6 @@ import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.answerNavigatorPageFromJson
 import com.github.zly2006.zhihu.navigation.zhihuQuestionFeedsUrl
-import com.github.zly2006.zhihu.shared.data.Collection
 import com.github.zly2006.zhihu.shared.data.CollectionItem
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
@@ -82,7 +81,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import java.awt.image.BufferedImage
@@ -155,14 +153,6 @@ class DesktopPaginationEnvironment(
             parameter("include", include)
         }
         method = HttpMethod.Get
-    }
-
-    override fun logDecodeFailure(
-        tag: String?,
-        item: JsonElement,
-        error: Exception,
-    ) {
-        Log.e(tag ?: "PaginationViewModel", "Failed to decode item: $item", error)
     }
 
     override suspend fun handleFetchFailure(
@@ -478,12 +468,6 @@ class DesktopPaginationEnvironment(
 
     override fun articleImageExportRenderer(loadAssetText: (String) -> String): ArticleImageExportRenderer =
         DesktopArticleExportRenderer()
-
-    override suspend fun fetchCollection(collectionId: String): Collection {
-        val json = fetchJson("https://www.zhihu.com/api/v4/collections/$collectionId", "")
-            ?: throw IllegalStateException("收藏夹信息加载失败")
-        return ZhihuJson.decodeJson<Collection>(json["collection"] ?: throw IllegalStateException("收藏夹信息为空"))
-    }
 
     override suspend fun exportCollectionItemsToHtmlZip(
         collectionTitle: String,

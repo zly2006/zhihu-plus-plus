@@ -41,14 +41,12 @@ import com.github.zly2006.zhihu.data.getOrFetch
 import com.github.zly2006.zhihu.navigation.AndroidAnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.shared.data.Collection
 import com.github.zly2006.zhihu.shared.data.CollectionItem
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.ZHIHU_CLEAR_ONLINE_HISTORY_URL
 import com.github.zly2006.zhihu.shared.data.ZHIHU_LAST_READ_TOUCH_URL
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.ZhihuJson.json
 import com.github.zly2006.zhihu.shared.data.buildZhihuClearOnlineHistoryBody
 import com.github.zly2006.zhihu.shared.data.encodeZhihuLastReadTouchItems
@@ -95,7 +93,6 @@ import io.ktor.serialization.kotlinx.json.json
 import io.ktor.util.appendAll
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
@@ -164,14 +161,6 @@ open class SharedAndroidPaginationEnvironment(
         AccountData.fetchGet(context, url) {
             addIncludeAndSign(include)
         }
-
-    override fun logDecodeFailure(
-        tag: String?,
-        item: JsonElement,
-        error: Exception,
-    ) {
-        Log.e(tag, "Failed to decode item: $item", error)
-    }
 
     override suspend fun handleFetchFailure(
         tag: String?,
@@ -385,12 +374,6 @@ open class SharedAndroidPaginationEnvironment(
     }
 
     override fun answerNavigatorRepository(): AnswerNavigatorRepository = AndroidAnswerNavigatorRepository(context)
-
-    override suspend fun fetchCollection(collectionId: String): Collection {
-        val json = fetchJson("https://www.zhihu.com/api/v4/collections/$collectionId", "")
-            ?: throw IllegalStateException("收藏夹信息加载失败")
-        return ZhihuJson.decodeJson<Collection>(json["collection"] ?: throw IllegalStateException("收藏夹信息为空"))
-    }
 
     override suspend fun exportCollectionItemsToHtmlZip(
         collectionTitle: String,

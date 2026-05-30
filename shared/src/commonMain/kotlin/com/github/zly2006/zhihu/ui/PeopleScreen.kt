@@ -411,7 +411,7 @@ class PersonViewModel(
             .httpClient()
             .get(peopleProfileUrl(person)) {
                 url {
-                    parameters["include"] = peopleProfileIncludePath
+                    parameters["include"] = PEOPLE_PROFILE_INCLUDE_PATH
                 }
                 environment.configureSignedRequest(this)
             }.body<JsonObject>()

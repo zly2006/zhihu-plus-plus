@@ -28,6 +28,7 @@ import com.github.zly2006.zhihu.shared.data.CollectionHtmlExportDialogState
 import com.github.zly2006.zhihu.shared.data.CollectionItem
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.ZhihuPaging
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
@@ -54,7 +55,11 @@ data class CollectionHtmlExportResult(
 )
 
 interface CollectionContentEnvironment : PaginationEnvironment {
-    suspend fun fetchCollection(collectionId: String): Collection
+    suspend fun fetchCollection(collectionId: String): Collection {
+        val json = fetchJson("https://www.zhihu.com/api/v4/collections/$collectionId", "")
+            ?: throw IllegalStateException("收藏夹信息加载失败")
+        return ZhihuJson.decodeJson<Collection>(json["collection"] ?: throw IllegalStateException("收藏夹信息为空"))
+    }
 
     suspend fun exportCollectionItemsToHtmlZip(
         collectionTitle: String,

@@ -16,7 +16,6 @@
  */
 
 package com.github.zly2006.zhihu.viewmodel.local
-
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.recommendation.buildContentAffinity as buildSharedContentAffinity
 import com.github.zly2006.zhihu.shared.recommendation.buildLocalRecommendationReason as buildSharedLocalRecommendationReason
