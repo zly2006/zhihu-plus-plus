@@ -73,6 +73,7 @@ import androidx.compose.ui.zIndex
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.InputField
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Close
 import top.yukonga.miuix.kmp.icon.extended.Search
 import top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme
@@ -246,7 +247,7 @@ fun SearchBar(
         decorationBox = { innerTextField ->
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = Search,
+                    imageVector = MiuixIcons.Search,
                     contentDescription = "search",
                     modifier = Modifier.size(44.dp).padding(start = 16.dp, end = 8.dp),
                     tint = colorScheme.onSurfaceContainerHigh,
@@ -258,7 +259,7 @@ fun SearchBar(
                     exit = fadeOut() + scaleOut(),
                 ) {
                     Icon(
-                        imageVector = Close,
+                        imageVector = MiuixIcons.Close,
                         tint = colorScheme.onSurface,
                         contentDescription = "Clean",
                         modifier = Modifier
@@ -303,7 +304,7 @@ fun SearchBarFake(
             label = label,
             leadingIcon = {
                 Icon(
-                    imageVector = Search,
+                    imageVector = MiuixIcons.Search,
                     contentDescription = "search",
                     modifier = Modifier.size(44.dp).padding(start = 16.dp, end = 8.dp),
                     tint = colorScheme.onSurfaceContainerHigh,
