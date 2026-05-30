@@ -128,7 +128,7 @@ private suspend fun checkDesktopUpdate(
 
 private fun desktopVersionName(): String =
     System.getProperty("zhihu.version")
-        ?: SystemAndUpdateSettingsRuntime::class.java.`package`?.implementationVersion
+        ?: SystemUpdateRuntime::class.java.`package`?.implementationVersion
         ?: readDesktopVersionFromGradleProperties()
         ?: "0.0.0"
 

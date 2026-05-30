@@ -1,13 +1,7 @@
 package com.github.zly2006.zhihu.ui.subscreens
 
 import androidx.compose.runtime.Composable
-import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import kotlinx.coroutines.flow.StateFlow
-
-data class SystemAndUpdateSettingsRuntime(
-    val updates: SystemUpdateRuntime,
-    val openExternalUrl: (String) -> Unit,
-)
 
 data class SystemUpdateRuntime(
     val state: StateFlow<SystemUpdateState>,
@@ -45,13 +39,6 @@ sealed interface SystemUpdateState {
         val message: String,
     ) : SystemUpdateState
 }
-
-@Composable
-fun rememberSystemAndUpdateSettingsRuntime(): SystemAndUpdateSettingsRuntime =
-    SystemAndUpdateSettingsRuntime(
-        updates = rememberSystemUpdateRuntime(),
-        openExternalUrl = rememberExternalUrlOpener(),
-    )
 
 @Composable
 expect fun rememberSystemUpdateRuntime(): SystemUpdateRuntime

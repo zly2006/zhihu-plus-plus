@@ -73,6 +73,7 @@ import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.util.ContinuousUsageReminderPolicy
 import com.github.zly2006.zhihu.ui.components.SettingItem
@@ -90,9 +91,9 @@ internal const val CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES_KEY = "continuousU
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SystemAndUpdateSettingsScreen() {
-    val runtime = rememberSystemAndUpdateSettingsRuntime()
     val settings = rememberSettingsStore()
-    val updates = runtime.updates
+    val updates = rememberSystemUpdateRuntime()
+    val openExternalUrl = rememberExternalUrlOpener()
     val navigator = LocalNavigator.current
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -206,7 +207,7 @@ fun SystemAndUpdateSettingsScreen() {
                                     }
                                     Spacer(modifier = Modifier.height(12.dp))
                                     TextButton(
-                                        onClick = { runtime.openExternalUrl("https://github.com/zly2006/zhihu-plus-plus/releases") },
+                                        onClick = { openExternalUrl("https://github.com/zly2006/zhihu-plus-plus/releases") },
                                         modifier = Modifier.align(Alignment.End),
                                     ) {
                                         Text("查看完整更新日志")
@@ -226,7 +227,7 @@ fun SystemAndUpdateSettingsScreen() {
                             Button(
                                 onClick = {
                                     runCatching {
-                                        runtime.openExternalUrl(cnDownloadUrl)
+                                        openExternalUrl(cnDownloadUrl)
                                     }.onFailure {
                                         updates.setError(it.message ?: "无法打开浏览器")
                                     }
@@ -464,7 +465,7 @@ fun SystemAndUpdateSettingsScreen() {
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     },
-                    onClick = { runtime.openExternalUrl("https://discord.gg/YCPFZV5XSA") },
+                    onClick = { openExternalUrl("https://discord.gg/YCPFZV5XSA") },
                 )
 
                 SettingItem(
@@ -478,7 +479,7 @@ fun SystemAndUpdateSettingsScreen() {
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     },
-                    onClick = { runtime.openExternalUrl("https://t.me/+_A1Yto6EpyIyODA1") },
+                    onClick = { openExternalUrl("https://t.me/+_A1Yto6EpyIyODA1") },
                 )
 
                 SettingItem(
@@ -492,7 +493,7 @@ fun SystemAndUpdateSettingsScreen() {
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     },
-                    onClick = { runtime.openExternalUrl("https://github.com/zly2006/zhihu-plus-plus/issues") },
+                    onClick = { openExternalUrl("https://github.com/zly2006/zhihu-plus-plus/issues") },
                 )
             }
         }
