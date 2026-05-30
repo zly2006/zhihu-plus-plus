@@ -20,9 +20,6 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
             // TODO: iOS 登出
             logout = { },
             appVersionInfo = { "iOS" },
-            copyText = { _, text ->
-                platform.UIKit.UIPasteboard.generalPasteboard.string = text
-            },
             openExternalUrl = { openIosUrl(it) },
             // TODO: iOS 主 Tab 切换
             selectMainTab = { },

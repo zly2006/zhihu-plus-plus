@@ -82,6 +82,7 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.shared.platform.rememberPlainTextClipboard
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
@@ -125,6 +126,7 @@ fun AccountSettingScreen(
     val navigator = LocalNavigator.current
     val runtime = rememberAccountSettingsPlatformRuntime()
     val settings = rememberSettingsStore()
+    val copyPlainText = rememberPlainTextClipboard()
     val userMessages = rememberUserMessageSink()
     val updateRuntime = rememberSystemUpdateRuntime()
     val versionInfo = remember(runtime) { runtime.appVersionInfo() }
@@ -477,7 +479,7 @@ fun AccountSettingScreen(
                             }
                         },
                         onLongClick = {
-                            runtime.copyText("version", versionInfo)
+                            copyPlainText("version", versionInfo)
                             userMessages.showShortMessage("已复制版本号")
                         },
                     ),

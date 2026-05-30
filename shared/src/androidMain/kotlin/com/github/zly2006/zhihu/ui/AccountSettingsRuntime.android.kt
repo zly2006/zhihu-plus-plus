@@ -15,7 +15,6 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.shared.data.ZHIHU_ME_URL
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.signFetchRequest
 
 private const val LOGIN_ACTIVITY_CLASS = "com.github.zly2006.zhihu.LoginActivity"
@@ -54,10 +53,6 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
         requestQrLoginScan = { scanActivityLauncher.launch(context.qrCodeScanActivityIntent()) },
         logout = { AccountData.delete(context) },
         appVersionInfo = { context.zhihuVersionInfo() },
-        copyText = { label, text ->
-            val clip = android.content.ClipData.newPlainText(label, text)
-            context.clipboardManager.setPrimaryClip(clip)
-        },
         openExternalUrl = { url ->
             context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
         },

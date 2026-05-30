@@ -14,3 +14,10 @@ actual fun rememberZhihuWebUrlOpener(): (String) -> Unit = rememberExternalUrlOp
 
 @Composable
 actual fun rememberImagePreviewOpener(): (String) -> Unit = rememberExternalUrlOpener()
+
+@Composable
+actual fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit = remember {
+    { _, text ->
+        platform.UIKit.UIPasteboard.generalPasteboard.string = text
+    }
+}

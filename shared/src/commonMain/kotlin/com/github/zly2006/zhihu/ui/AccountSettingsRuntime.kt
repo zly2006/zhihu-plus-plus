@@ -20,7 +20,6 @@ data class AccountSettingsRuntime(
     val requestQrLoginScan: () -> Unit,
     val logout: () -> Unit,
     val appVersionInfo: () -> String,
-    val copyText: (label: String, text: String) -> Unit,
     val openExternalUrl: (String) -> Unit,
     val selectMainTab: (TopLevelDestination) -> Unit,
 )

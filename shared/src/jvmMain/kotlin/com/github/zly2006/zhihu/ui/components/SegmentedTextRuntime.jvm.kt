@@ -4,7 +4,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.shared.data.SegmentInfoMeta
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
-import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
 import com.github.zly2006.zhihu.shared.desktop.signedFetchJson
 import com.github.zly2006.zhihu.shared.util.SegmentHighlightSpan
 import io.ktor.client.request.setBody
@@ -16,11 +15,6 @@ import io.ktor.http.contentType
 actual fun rememberSegmentedTextRuntime(): SegmentedTextRuntime = remember {
     val store = DesktopAccountStore()
     SegmentedTextRuntime(
-        copyText = { _, text ->
-            runCatching {
-                copyDesktopPlainText(text)
-            }
-        },
         toggleSegmentLike = { highlight ->
             toggleSegmentLike(store, highlight)
         },

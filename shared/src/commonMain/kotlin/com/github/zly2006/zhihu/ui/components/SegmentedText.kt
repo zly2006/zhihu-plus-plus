@@ -67,6 +67,7 @@ import androidx.compose.ui.unit.sp
 import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
 import com.github.zly2006.zhihu.shared.data.SegmentInfoMeta
 import com.github.zly2006.zhihu.shared.platform.SettingsStore
+import com.github.zly2006.zhihu.shared.platform.rememberPlainTextClipboard
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.util.SegmentHighlightSpan
 import com.github.zly2006.zhihu.shared.util.SegmentTextPart
@@ -103,7 +104,6 @@ internal val LocalSegmentActionSheetHost = staticCompositionLocalOf<(SegmentActi
 }
 
 data class SegmentedTextRuntime(
-    val copyText: (label: String, text: String) -> Unit,
     val toggleSegmentLike: suspend (SegmentHighlightSpan) -> SegmentInfoMeta,
 )
 
@@ -174,6 +174,7 @@ fun SegmentedText(
     style: TextStyle = segmentedTextStyle(),
 ) {
     val runtime = rememberSegmentedTextRuntime()
+    val copyPlainText = rememberPlainTextClipboard()
     val coroutineScope = rememberCoroutineScope()
     val metaStates = remember(parts) { mutableStateMapOf<String, SegmentInfoMeta>() }
     var selectedHighlight by remember(parts) { mutableStateOf<SegmentHighlightSpan?>(null) }
@@ -222,7 +223,7 @@ fun SegmentedText(
                     }
                 },
                 onCopyClick = {
-                    runtime.copyText("segment_text", selected.text)
+                    copyPlainText("segment_text", selected.text)
                     selectedHighlight = null
                     showSegmentActionSheet(null)
                 },

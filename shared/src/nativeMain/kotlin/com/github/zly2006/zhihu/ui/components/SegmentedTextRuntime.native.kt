@@ -7,7 +7,6 @@ import androidx.compose.runtime.remember
 @Composable
 actual fun rememberSegmentedTextRuntime(): SegmentedTextRuntime = remember {
     SegmentedTextRuntime(
-        copyText = { _, _ -> },
         toggleSegmentLike = { error("Segment like not available on iOS") },
     )
 }

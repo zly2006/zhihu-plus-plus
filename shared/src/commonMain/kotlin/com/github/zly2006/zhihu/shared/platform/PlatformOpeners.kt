@@ -10,3 +10,6 @@ expect fun rememberZhihuWebUrlOpener(): (String) -> Unit
 
 @Composable
 expect fun rememberImagePreviewOpener(): (String) -> Unit
+
+@Composable
+expect fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit
