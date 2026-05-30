@@ -7,22 +7,16 @@ import androidx.compose.runtime.remember
 @Composable
 actual fun rememberNotificationSettingsStore(): NotificationSettingsStore = remember {
     object : NotificationSettingsStore {
-        // TODO: iOS 获取系统通知开关
-        override fun getSystemNotificationEnabled(type: NotificationType): Boolean = false
+        override fun getSystemNotificationEnabled(type: NotificationType): Boolean = false // TODO: iOS 获取系统通知开关
 
-        // TODO: iOS 设置系统通知开关
-        override fun setSystemNotificationEnabled(type: NotificationType, enabled: Boolean) = Unit
+        override fun setSystemNotificationEnabled(type: NotificationType, enabled: Boolean) = Unit // TODO: iOS 设置系统通知开关
 
-        // TODO: 获取App内通知开关
-        override fun getDisplayInAppEnabled(type: NotificationType): Boolean = false
+        override fun getDisplayInAppEnabled(type: NotificationType): Boolean = false // TODO: 获取App内通知开关
 
-        // TODO: iOS 设置App内通知开关
-        override fun setDisplayInAppEnabled(type: NotificationType, enabled: Boolean) = Unit
+        override fun setDisplayInAppEnabled(type: NotificationType, enabled: Boolean) = Unit // TODO: iOS 设置App内通知开关
 
-        // TODO: iOS 获取自动已读开关
-        override fun getAutoMarkAsReadEnabled(): Boolean = false
+        override fun getAutoMarkAsReadEnabled(): Boolean = false // TODO: iOS 获取自动已读开关
 
-        // TODO: iOS 设置自动已读开关
-        override fun setAutoMarkAsReadEnabled(enabled: Boolean) = Unit
+        override fun setAutoMarkAsReadEnabled(enabled: Boolean) = Unit // TODO: iOS 设置自动已读开关
     }
 }
