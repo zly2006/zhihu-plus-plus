@@ -73,6 +73,7 @@ import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.util.ContinuousUsageReminderPolicy
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
@@ -90,7 +91,7 @@ internal const val CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES_KEY = "continuousU
 @Composable
 fun SystemAndUpdateSettingsScreen() {
     val runtime = rememberSystemAndUpdateSettingsRuntime()
-    val settings = runtime.settings
+    val settings = rememberSettingsStore()
     val updates = runtime.updates
     val navigator = LocalNavigator.current
 

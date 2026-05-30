@@ -85,6 +85,8 @@ import com.github.zly2006.zhihu.navigation.HotList
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.theme.ThemeMode
 import com.github.zly2006.zhihu.shared.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
@@ -210,8 +212,8 @@ fun AppearanceSettingsScreen(
 ) {
     val settingKey = setting.orEmpty()
     val runtime = rememberCommonAppearanceSettingsRuntime()
-    val settings = runtime.settings
-    val userMessages = runtime.userMessages
+    val settings = rememberSettingsStore()
+    val userMessages = rememberUserMessageSink()
 
     val scrollState = rememberScrollState()
     val navigator = LocalNavigator.current
