@@ -52,7 +52,10 @@ actual fun rememberSystemUpdateRuntime(): SystemUpdateRuntime {
             resetToNoUpdate = { desktopSystemUpdateState.value = SystemUpdateState.NoUpdate },
             downloadUpdate = { url ->
                 runCatching {
-                    openDesktopUrl(url)
+                    if (url.isBlank()) {
+                        error("下载链接为空")
+                    }
+                    openDesktopExternalUrl(url)
                 }.onFailure {
                     desktopSystemUpdateState.value = SystemUpdateState.Error(it.message ?: "无法打开浏览器")
                 }
@@ -144,11 +147,4 @@ private fun readDesktopVersionFromGradleProperties(): String? {
         dir = dir.parentFile ?: return null
     }
     return null
-}
-
-private fun openDesktopUrl(url: String) {
-    if (url.isBlank()) {
-        error("下载链接为空")
-    }
-    openDesktopExternalUrl(url)
 }
