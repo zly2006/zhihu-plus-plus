@@ -17,16 +17,20 @@
 
 package com.github.zly2006.zhihu.viewmodel
 
+import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.ClipData
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import com.github.zly2006.zhihu.data.AccountData
@@ -97,15 +101,6 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import com.github.zly2006.zhihu.navigation.Article as ArticleDestination
 import io.ktor.http.ContentType as KtorContentType
-import android.Manifest
-import android.content.ContentValues
-import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.os.Environment
-import android.provider.MediaStore
-import androidx.annotation.RequiresApi
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 
 interface AndroidContextPaginationEnvironment : PaginationEnvironment {
     val context: Context
@@ -518,6 +513,7 @@ open class SharedAndroidPaginationEnvironment(
             }
         }
     }
+
     // Export methods
     override fun setPlainTextClipboard(
         label: String,
@@ -554,8 +550,6 @@ open class SharedAndroidPaginationEnvironment(
                 reader.readText()
             }
         }
-
-
 }
 
 class SharedAndroidNotificationPaginationEnvironment(

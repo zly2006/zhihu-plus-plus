@@ -13,19 +13,15 @@ import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
 import com.github.zly2006.zhihu.shared.desktop.signedFetchJson
-import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.pin.PinLinkCardPreview
-import com.github.zly2006.zhihu.shared.pin.PinScreenUiState
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.viewmodel.DesktopArticleViewModelRuntime
-import com.github.zly2006.zhihu.viewmodel.consumeDesktopPendingContentOpenFrom
 import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
-import kotlinx.serialization.json.JsonObject
 
 @Composable
 actual fun rememberPinScreenRuntime(): PinScreenRuntime {
@@ -65,7 +61,6 @@ internal suspend fun fetchDesktopPinDetail(
         ?: return@runCatching null
     decodePinContentDetail(json)
 }.getOrNull()
-
 
 internal suspend fun fetchDesktopQuestionDetailForFeedBlock(
     store: DesktopAccountStore,

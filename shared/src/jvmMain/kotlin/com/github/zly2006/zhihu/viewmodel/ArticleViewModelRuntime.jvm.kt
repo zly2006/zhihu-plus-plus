@@ -9,7 +9,6 @@ import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.answerNavigatorPageFromJson
 import com.github.zly2006.zhihu.navigation.zhihuQuestionFeedsUrl
-import com.github.zly2006.zhihu.shared.comment.decodeZhihuCommentData
 import com.github.zly2006.zhihu.shared.data.CollectionItem
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
@@ -29,14 +28,12 @@ import com.github.zly2006.zhihu.util.ARTICLE_EXPORT_TEMPLATE_ASSET
 import com.github.zly2006.zhihu.util.buildArticleExportData
 import com.github.zly2006.zhihu.util.inlineArticleExportImagesInHtml
 import com.github.zly2006.zhihu.util.renderArticleExportHtml
-import com.github.zly2006.zhihu.viewmodel.comment.RootCommentViewModel.Companion.rootCommentUrl
 import com.github.zly2006.zhihu.viewmodel.filter.ContentType
 import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
-import io.ktor.client.request.parameter
 import io.ktor.client.statement.readRawBytes
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
@@ -207,7 +204,6 @@ class DesktopArticleViewModelRuntime(
     override fun requiresHtmlExportPermission(): Boolean = false
 
     override fun requestImageExportPermission() = Unit
-
 
     override fun accountHttpClient(): HttpClient =
         store.createHttpClient(store.load().cookies)

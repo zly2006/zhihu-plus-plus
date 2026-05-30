@@ -28,6 +28,7 @@ import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDataFile
 import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDownloadsDir
 import com.github.zly2006.zhihu.shared.desktop.signedFetchJson
 import com.github.zly2006.zhihu.shared.desktop.signedWithResponse
+import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.platform.desktopSettingsStore
 import com.github.zly2006.zhihu.shared.util.Log
@@ -36,7 +37,6 @@ import com.github.zly2006.zhihu.util.sanitizeArticleExportFileNamePart
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
 import com.github.zly2006.zhihu.viewmodel.filter.applyContentFilterToDisplayItems
 import com.github.zly2006.zhihu.viewmodel.filter.applyForegroundReadFilterToDisplayItems
-import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
 import com.github.zly2006.zhihu.viewmodel.filter.desktopKeywordSemanticMatcher
@@ -167,8 +167,6 @@ class DesktopPaginationEnvironment(
             openFrom = resolvedOpenFrom.ifBlank { "unknown" },
         )
     }
-
-
 
     override suspend fun followQuestion(
         questionId: Long,
