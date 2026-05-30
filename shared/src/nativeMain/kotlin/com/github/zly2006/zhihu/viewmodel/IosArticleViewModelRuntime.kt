@@ -53,10 +53,6 @@ class IosArticleViewModelRuntime(
     // TODO: iOS 签名请求
     override fun configureSignedRequest(builder: HttpRequestBuilder) = Unit
 
-    override fun showMessage(message: String) = userMessages.showShortMessage(message)
-
-    override fun showLongMessage(message: String) = userMessages.showLongMessage(message)
-
     override fun setPlainTextClipboard(label: String, text: String) {
         platform.UIKit.UIPasteboard.generalPasteboard.string = text
     }

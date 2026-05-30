@@ -39,6 +39,7 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.OfficialBadge
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.officialBadge
+import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.shared.util.ZhidaSummarySsePayload
 import com.github.zly2006.zhihu.shared.util.applySegmentInfosToHtml
@@ -83,6 +84,7 @@ import kotlinx.serialization.json.put
 class ArticleViewModel(
     private val article: Article,
     val httpClient: HttpClient?,
+    private val userMessages: UserMessageSink,
     registerOnPause: (((() -> Unit) -> Unit))? = null,
 ) : ViewModel() {
     var permissionRequestCount by mutableIntStateOf(0)
@@ -317,13 +319,13 @@ class ArticleViewModel(
 
                 if (response.status.isSuccess()) {
                     loadCollections(runtime)
-                    runtime.showMessage(if (remove) "取消收藏成功" else "收藏成功")
+                    userMessages.showShortMessage(if (remove) "取消收藏成功" else "收藏成功")
                 } else {
-                    runtime.showMessage("收藏操作失败")
+                    userMessages.showShortMessage("收藏操作失败")
                 }
             } catch (e: Exception) {
                 Log.e("ArticleViewModel", "Favorite toggle failed", e)
-                runtime.showMessage("收藏操作失败: ${e.message}")
+                userMessages.showShortMessage("收藏操作失败: ${e.message}")
             }
         }
     }
@@ -534,7 +536,7 @@ class ArticleViewModel(
                 voteUpCount = response["voteup_count"]!!.jsonPrimitive.int
             } catch (e: Exception) {
                 Log.e("ArticleViewModel", "Vote up failed", e)
-                context.showMessage("点赞失败: ${e.message}")
+                userMessages.showShortMessage("点赞失败: ${e.message}")
             }
         }
     }
@@ -579,7 +581,7 @@ class ArticleViewModel(
     ) {
         runCatching { requireExportSourceContent() }.onFailure { error ->
             withContext(Dispatchers.Main) {
-                context.showMessage(error.message ?: "内容未加载完成")
+                userMessages.showShortMessage(error.message ?: "内容未加载完成")
                 onComplete(false)
             }
             return
@@ -589,7 +591,7 @@ class ArticleViewModel(
             withContext(Dispatchers.Main) {
                 requestStoragePermission(context)
                 permissionRequestCount++
-                context.showMessage("需要存储权限才能导出 HTML，正在请求权限")
+                userMessages.showShortMessage("需要存储权限才能导出 HTML，正在请求权限")
                 onComplete(false)
             }
             return
@@ -601,13 +603,13 @@ class ArticleViewModel(
                 saveHtmlToDownloads(context, htmlContent)
             }
             withContext(Dispatchers.Main) {
-                context.showLongMessage("HTML 已保存到 $savedLocation")
+                userMessages.showLongMessage("HTML 已保存到 $savedLocation")
                 onComplete(true)
             }
         } catch (e: Exception) {
             Log.e("ArticleViewModel", "HTML export failed", e)
             withContext(Dispatchers.Main) {
-                context.showMessage("HTML 导出失败: ${e.message}")
+                userMessages.showShortMessage("HTML 导出失败: ${e.message}")
                 onComplete(false)
             }
         }
@@ -633,7 +635,7 @@ class ArticleViewModel(
     ) {
         runCatching { requireExportSourceContent() }.onFailure { error ->
             withContext(Dispatchers.Main) {
-                runtime.showMessage(error.message ?: "内容未加载完成")
+                userMessages.showShortMessage(error.message ?: "内容未加载完成")
                 onComplete(false)
             }
             return
@@ -643,7 +645,7 @@ class ArticleViewModel(
             withContext(Dispatchers.Main) {
                 runtime.requestImageExportPermission()
                 permissionRequestCount++
-                runtime.showMessage("需要存储权限才能导出图片，正在请求权限")
+                userMessages.showShortMessage("需要存储权限才能导出图片，正在请求权限")
                 onComplete(false)
             }
             return
@@ -668,14 +670,14 @@ class ArticleViewModel(
                 saveImageToMediaStore(runtime, bitmap)
             }
             withContext(Dispatchers.Main) {
-                runtime.showLongMessage(successMessage)
+                userMessages.showLongMessage(successMessage)
                 onComplete(true)
             }
         } catch (e: Exception) {
             Log.e("ArticleViewModel", "Image export failed", e)
             val errorPrefix = if (includeComments) "带评论图片导出失败" else "图片导出失败"
             withContext(Dispatchers.Main) {
-                runtime.showMessage("$errorPrefix: ${e.message}")
+                userMessages.showShortMessage("$errorPrefix: ${e.message}")
                 onComplete(false)
             }
         } finally {
@@ -946,7 +948,7 @@ class ArticleViewModel(
         // 将Markdown文本复制到剪贴板
         context.setPlainTextClipboard("Zhihu Article", markdown)
 
-        context.showMessage("文章已复制到剪贴板")
+        userMessages.showShortMessage("文章已复制到剪贴板")
     }
 }
 

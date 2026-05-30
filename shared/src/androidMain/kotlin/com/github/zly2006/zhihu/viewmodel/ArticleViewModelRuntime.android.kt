@@ -40,7 +40,6 @@ import com.github.zly2006.zhihu.shared.comment.decodeZhihuCommentData
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
-import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
 import com.github.zly2006.zhihu.ui.articleHost
@@ -267,13 +266,5 @@ class AndroidArticleViewModelRuntime(
         text: String,
     ) {
         context.clipboardManager.setPrimaryClip(ClipData.newPlainText(label, text))
-    }
-
-    override fun showMessage(message: String) {
-        androidUserMessageSink(context).showShortMessage(message)
-    }
-
-    override fun showLongMessage(message: String) {
-        androidUserMessageSink(context).showLongMessage(message)
     }
 }

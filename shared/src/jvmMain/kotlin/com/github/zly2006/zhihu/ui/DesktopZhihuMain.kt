@@ -203,7 +203,7 @@ fun DesktopZhihuMain() {
             },
             article = { article: Article, navEntry ->
                 val articleViewModel: ArticleViewModel = viewModel(navEntry) {
-                    ArticleViewModel(article, httpClient)
+                    ArticleViewModel(article, httpClient, userMessages)
                 }
                 ArticleScreen(article, articleViewModel)
             },

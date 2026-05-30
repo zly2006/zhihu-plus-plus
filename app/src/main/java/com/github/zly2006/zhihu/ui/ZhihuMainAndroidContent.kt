@@ -88,7 +88,7 @@ private fun androidZhihuMainPlatformAdapter(activity: MainActivity) = ZhihuMainP
     },
     article = { article, navEntry ->
         val viewModel: ArticleViewModel = viewModel(navEntry) {
-            ArticleViewModel(article, activity.httpClient) { onPause ->
+            ArticleViewModel(article, activity.httpClient, androidUserMessageSink(activity)) { onPause ->
                 navEntry.lifecycle.addObserver(object : DefaultLifecycleObserver {
                     override fun onPause(owner: LifecycleOwner) {
                         onPause()

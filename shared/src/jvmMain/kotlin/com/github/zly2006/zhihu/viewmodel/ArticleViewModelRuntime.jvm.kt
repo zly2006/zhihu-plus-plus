@@ -193,14 +193,6 @@ class DesktopArticleViewModelRuntime(
         builder.signDesktopRequest(store.load().cookies)
     }
 
-    override fun showMessage(message: String) {
-        userMessages.showShortMessage(message)
-    }
-
-    override fun showLongMessage(message: String) {
-        userMessages.showLongMessage(message)
-    }
-
     override fun setPlainTextClipboard(
         label: String,
         text: String,

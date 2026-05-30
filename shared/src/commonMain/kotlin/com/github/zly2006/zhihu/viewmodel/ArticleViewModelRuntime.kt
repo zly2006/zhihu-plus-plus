@@ -51,10 +51,6 @@ interface ArticleViewModelRuntime {
 
     fun configureSignedRequest(builder: HttpRequestBuilder)
 
-    fun showMessage(message: String)
-
-    fun showLongMessage(message: String)
-
     fun setPlainTextClipboard(
         label: String,
         text: String,
