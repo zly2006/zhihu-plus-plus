@@ -18,7 +18,6 @@ data class LoadedQuestionScreenData(
 data class QuestionScreenRuntime(
     val openLog: (Question) -> Unit,
     val handleShareAction: (Question, () -> Unit) -> Unit,
-    val showShortMessage: (String) -> Unit,
 )
 
 fun questionDetailPreview(html: String): String = Ksoup.parse(html).text().trim()

@@ -5,7 +5,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
-import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.handleShareAction
@@ -20,7 +19,6 @@ actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {
     val settings = rememberSettingsStore()
     val shareRuntime = rememberShareDialogRuntime()
     return remember(context, settings, shareRuntime) {
-        val userMessages = androidUserMessageSink(context)
         QuestionScreenRuntime(
             openLog = { question ->
                 val intent = Intent(Intent.ACTION_VIEW).apply {
@@ -31,9 +29,6 @@ actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {
             },
             handleShareAction = { question, onShowDialog ->
                 handleShareAction(question, settings, shareRuntime, onShowDialog)
-            },
-            showShortMessage = { message ->
-                userMessages.showShortMessage(message)
             },
         )
     }

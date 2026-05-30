@@ -75,6 +75,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.data.decodeQuestionContentDetail
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.question.QuestionScreenUiState
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
@@ -178,6 +179,7 @@ fun QuestionScreen(
         mutableStateOf(initialUiState.isFollowing)
     }
     var showShareDialog by remember { mutableStateOf(false) }
+    val userMessages = rememberUserMessageSink()
     var isQuestionDetailExpanded by rememberSaveable(question.questionId, initialUiState.isQuestionDetailExpanded) {
         mutableStateOf(initialUiState.isQuestionDetailExpanded)
     }
@@ -206,10 +208,10 @@ fun QuestionScreen(
                 followerCount = questionData.followerCount
                 isFollowing = questionData.isFollowing
             } else {
-                runtime.showShortMessage("获取问题详情失败")
+                userMessages.showShortMessage("获取问题详情失败")
             }
         } catch (e: Exception) {
-            runtime.showShortMessage("加载失败: ${e.message}")
+            userMessages.showShortMessage("加载失败: ${e.message}")
         }
     }
 
@@ -372,7 +374,7 @@ fun QuestionScreen(
                                         isFollowing = nextFollowing
                                         followerCount += if (isFollowing) 1 else -1
                                         if (testOverrides == null) {
-                                            runtime.showShortMessage(if (isFollowing) "已关注问题" else "已取消关注问题")
+                                            userMessages.showShortMessage(if (isFollowing) "已关注问题" else "已取消关注问题")
                                         }
                                     }
                                 },
@@ -408,7 +410,7 @@ fun QuestionScreen(
                                         try {
                                             runtime.openLog(question)
                                         } catch (e: Exception) {
-                                            runtime.showShortMessage("打开日志失败: ${e.message}")
+                                            userMessages.showShortMessage("打开日志失败: ${e.message}")
                                         }
                                     }
                                 },
