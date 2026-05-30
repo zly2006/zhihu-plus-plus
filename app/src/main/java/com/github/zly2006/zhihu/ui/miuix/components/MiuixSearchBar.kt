@@ -77,7 +77,6 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
-import kotlin.math.max
 
 /* ============================================================
  * 效果 A：按下缩放 modifier（假搜索框点击反馈）

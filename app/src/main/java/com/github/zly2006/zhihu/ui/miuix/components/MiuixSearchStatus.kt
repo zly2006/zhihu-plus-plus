@@ -6,9 +6,16 @@
 
 package com.github.zly2006.zhihu.ui.miuix.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme
 
 /**
  * 搜索框状态机。4 态：
@@ -16,9 +23,6 @@ import androidx.compose.ui.unit.dp
  *   EXPANDING  展开动画中
  *   EXPANDED   完全展开（搜索浮层 + 键盘）
  *   COLLAPSING 收起动画中
- *
- * 状态推进：点假框 → EXPANDING →(动画完成)→ EXPANDED
- *           点取消/返回 → COLLAPSING →(动画完成)→ COLLAPSED（清空搜索词）
  */
 @Stable
 data class SearchStatus(
@@ -34,11 +38,34 @@ data class SearchStatus(
     fun shouldCollapsed() = current == Status.COLLAPSED || current == Status.COLLAPSING
     fun isAnimatingExpand() = current == Status.EXPANDING
 
-    /** 动画完成后推进状态：EXPANDING→EXPANDED；COLLAPSING→COLLAPSED 并清空搜索词。 */
     fun onAnimationComplete(): SearchStatus = when (current) {
         Status.EXPANDING -> copy(current = Status.EXPANDED)
         Status.COLLAPSING -> copy(searchText = "", current = Status.COLLAPSED)
         else -> this
+    }
+
+    /**
+     * TopAppBar 消失/出现动画（抄 KernelSU）。
+     * 折叠态 alpha=1 显示，展开态 alpha=0 隐藏（带过渡即回弹观感）。
+     * 背景层始终绘制，避免内容透出。
+     */
+    @Composable
+    fun TopAppBarAnim(
+        modifier: Modifier = Modifier,
+        visible: Boolean = shouldCollapsed(),
+        backgroundColor: Color = colorScheme.surface,
+        content: @Composable () -> Unit,
+    ) {
+        Box(modifier = modifier) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(backgroundColor),
+            )
+            Box(
+                modifier = Modifier.graphicsLayer { alpha = if (visible) 1f else 0f },
+            ) { content() }
+        }
     }
 
     enum class Status { EXPANDED, EXPANDING, COLLAPSED, COLLAPSING }
