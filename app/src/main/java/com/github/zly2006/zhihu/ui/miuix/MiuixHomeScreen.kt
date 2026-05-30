@@ -119,6 +119,13 @@ fun MiuixHomeScreen(
         }
     }
 
+    // 点搜索框展开时立即把 feed 滚回顶部，避免展开动画期间背景文字造成模糊穿帮
+    LaunchedEffect(searchStatus.current) {
+        if (searchStatus.isAnimatingExpand() && listState.firstVisibleItemIndex > 0) {
+            listState.scrollToItem(0)
+        }
+    }
+
     val blurEnabled = remember { preferences.getBoolean("blurEnabled", true) }
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
