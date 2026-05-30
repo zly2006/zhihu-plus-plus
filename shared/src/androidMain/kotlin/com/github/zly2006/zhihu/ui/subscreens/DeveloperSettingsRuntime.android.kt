@@ -9,7 +9,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.util.PowerSaveModeCompat
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
@@ -24,7 +23,6 @@ actual fun rememberDeveloperSettingsRuntime(): DeveloperSettingsRuntime {
     val dataState by AccountData.asState()
     val settings = rememberSettingsStore()
     return remember(context, dataState, settings) {
-        val userMessages = androidUserMessageSink(context)
         DeveloperSettingsRuntime(
             isDeveloperModeEnabled = { settings.getBoolean(DEVELOPER_MODE_KEY, false) },
             setDeveloperModeEnabled = { enabled ->
@@ -67,9 +65,6 @@ actual fun rememberDeveloperSettingsRuntime(): DeveloperSettingsRuntime {
                 val clip = ClipData.newPlainText("Signed Request Response", body)
                 context.clipboardManager.setPrimaryClip(clip)
                 body
-            },
-            showShortMessage = { message ->
-                userMessages.showShortMessage(message)
             },
         )
     }

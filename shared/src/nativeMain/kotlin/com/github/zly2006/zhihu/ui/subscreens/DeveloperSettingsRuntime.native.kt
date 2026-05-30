@@ -3,15 +3,13 @@ package com.github.zly2006.zhihu.ui.subscreens
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 
 private const val DEVELOPER_MODE_KEY = "developer"
 
 @Composable
 actual fun rememberDeveloperSettingsRuntime(): DeveloperSettingsRuntime {
     val settings = rememberSettingsStore()
-    val userMessages = rememberUserMessageSink()
-    return remember(settings, userMessages) {
+    return remember(settings) {
         DeveloperSettingsRuntime(
             isDeveloperModeEnabled = { settings.getBoolean(DEVELOPER_MODE_KEY, false) },
             setDeveloperModeEnabled = { settings.putBoolean(DEVELOPER_MODE_KEY, it) },
@@ -28,7 +26,6 @@ actual fun rememberDeveloperSettingsRuntime(): DeveloperSettingsRuntime {
             saveCookies = { },
             // TODO: iOS signed GET
             signedGetAndCopy = { "iOS 暂不支持" },
-            showShortMessage = { userMessages.showMessage(it) },
         )
     }
 }

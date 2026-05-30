@@ -66,6 +66,7 @@ import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.SentenceSimilarityTest
 import com.github.zly2006.zhihu.shared.data.ZHIHU_ME_URL
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.ui.components.SettingItemOverall
 import kotlinx.coroutines.delay
@@ -81,6 +82,7 @@ const val DEVELOPER_SETTINGS_COLOR_SCHEME_TAG = "developerSettings/colorScheme"
 fun DeveloperSettingsScreen() {
     val navigator = LocalNavigator.current
     val runtime = rememberDeveloperSettingsRuntime()
+    val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
     var developerModeEnabled by remember {
         mutableStateOf(runtime.isDeveloperModeEnabled())
@@ -158,9 +160,9 @@ fun DeveloperSettingsScreen() {
                 Button(onClick = {
                     coroutineScope.launch {
                         if (runtime.verifyLogin(runtime.cookies())) {
-                            runtime.showShortMessage("登录成功")
+                            userMessages.showShortMessage("登录成功")
                         } else {
-                            runtime.showShortMessage("登录失败")
+                            userMessages.showShortMessage("登录失败")
                         }
                     }
                 }) { Text("验证登录") }
@@ -168,7 +170,7 @@ fun DeveloperSettingsScreen() {
                 Button(onClick = {
                     coroutineScope.launch {
                         runtime.refreshToken()
-                        runtime.showShortMessage("刷新成功")
+                        userMessages.showShortMessage("刷新成功")
                     }
                 }) { Text("刷新Token") }
 
@@ -334,12 +336,12 @@ fun DeveloperSettingsScreen() {
                                     coroutineScope.launch {
                                         try {
                                             if (runtime.verifyLogin(cookies)) {
-                                                runtime.showShortMessage("Cookie设置成功并验证登录状态")
+                                                userMessages.showShortMessage("Cookie设置成功并验证登录状态")
                                             } else {
-                                                runtime.showShortMessage("Cookie设置成功，但验证登录失败，请检查Cookie是否有效")
+                                                userMessages.showShortMessage("Cookie设置成功，但验证登录失败，请检查Cookie是否有效")
                                             }
                                         } catch (e: Exception) {
-                                            runtime.showShortMessage("验证登录时发生错误：${e.message}")
+                                            userMessages.showShortMessage("验证登录时发生错误：${e.message}")
                                         }
                                     }
 
@@ -347,13 +349,13 @@ fun DeveloperSettingsScreen() {
                                     cookieInputText = ""
                                     showCookieText = false
                                 } else {
-                                    runtime.showShortMessage("未能解析有效的Cookie数据")
+                                    userMessages.showShortMessage("未能解析有效的Cookie数据")
                                 }
                             } catch (e: Exception) {
-                                runtime.showShortMessage("解析Cookie时发生错误：${e.message}")
+                                userMessages.showShortMessage("解析Cookie时发生错误：${e.message}")
                             }
                         } else {
-                            runtime.showShortMessage("请输入Cookie字符串")
+                            userMessages.showShortMessage("请输入Cookie字符串")
                         }
                     },
                 ) {
@@ -431,16 +433,16 @@ fun DeveloperSettingsScreen() {
                                 try {
                                     val body = runtime.signedGetAndCopy(urlInput)
                                     responseText = body
-                                    runtime.showShortMessage("响应已复制到剪贴板")
+                                    userMessages.showShortMessage("响应已复制到剪贴板")
                                 } catch (e: Exception) {
                                     responseText = "错误: ${e.message}"
-                                    runtime.showShortMessage("请求失败: ${e.message}")
+                                    userMessages.showShortMessage("请求失败: ${e.message}")
                                 } finally {
                                     isLoading = false
                                 }
                             }
                         } else {
-                            runtime.showShortMessage("请输入有效的URL")
+                            userMessages.showShortMessage("请输入有效的URL")
                         }
                     },
                     enabled = !isLoading,

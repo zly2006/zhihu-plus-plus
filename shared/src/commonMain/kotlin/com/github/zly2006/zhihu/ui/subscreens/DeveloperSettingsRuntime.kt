@@ -13,7 +13,6 @@ data class DeveloperSettingsRuntime(
     val refreshToken: suspend () -> Unit,
     val saveCookies: (Map<String, String>) -> Unit,
     val signedGetAndCopy: suspend (String) -> String,
-    val showShortMessage: (String) -> Unit,
 )
 
 @Composable
