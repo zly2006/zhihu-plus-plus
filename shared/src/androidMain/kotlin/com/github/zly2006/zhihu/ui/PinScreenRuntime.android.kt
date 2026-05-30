@@ -15,7 +15,6 @@ import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.shared.pin.PinLinkCardPreview
 import com.github.zly2006.zhihu.shared.pin.PinScreenUiState
-import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.handleShareAction
@@ -24,16 +23,6 @@ import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
-import io.ktor.client.call.body
-import io.ktor.client.request.delete
-import io.ktor.client.request.post
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.jsonPrimitive
 import org.jsoup.Jsoup
 
 @Composable
@@ -42,9 +31,7 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
     val settings = rememberSettingsStore()
     val shareRuntime = rememberShareDialogRuntime()
     return remember(context, settings, shareRuntime) {
-        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-        val userMessages = androidUserMessageSink(context)
-        PinScreenRuntime(
+            PinScreenRuntime(
             handleShareAction = { pin, onShowDialog ->
                 handleShareAction(pin, settings, shareRuntime, onShowDialog)
             },
