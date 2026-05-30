@@ -35,7 +35,6 @@ import com.github.zly2006.zhihu.shared.data.CommonFeed
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
-import com.github.zly2006.zhihu.ui.QuestionScreenUiState
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
 import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
@@ -56,6 +55,7 @@ import com.github.zly2006.zhihu.ui.QUESTION_TITLE_TAG
 import com.github.zly2006.zhihu.ui.QUESTION_VIEW_LOG_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.QuestionScreen
 import com.github.zly2006.zhihu.ui.QuestionScreenTestOverrides
+import com.github.zly2006.zhihu.ui.QuestionScreenUiState
 import com.github.zly2006.zhihu.ui.questionFeedItemTag
 import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.filter.getBlocklistManager

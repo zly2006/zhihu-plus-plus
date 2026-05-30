@@ -38,10 +38,6 @@ import com.github.zly2006.zhihu.shared.data.FollowedQuestion
 import com.github.zly2006.zhihu.shared.data.FollowedTopic
 import com.github.zly2006.zhihu.shared.data.OfficialBadge
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
-import com.github.zly2006.zhihu.ui.PeopleListUiState
-import com.github.zly2006.zhihu.ui.PeopleProfileUiState
-import com.github.zly2006.zhihu.ui.PeopleScreenUiState
-import com.github.zly2006.zhihu.ui.PeopleSortedListUiState
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
@@ -72,8 +68,12 @@ import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_QUESTIONS_LIST_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_ROOT_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_SUBSCRIPTIONS_LIST_TAG
+import com.github.zly2006.zhihu.ui.PeopleListUiState
+import com.github.zly2006.zhihu.ui.PeopleProfileUiState
 import com.github.zly2006.zhihu.ui.PeopleScreen
 import com.github.zly2006.zhihu.ui.PeopleScreenTestOverrides
+import com.github.zly2006.zhihu.ui.PeopleScreenUiState
+import com.github.zly2006.zhihu.ui.PeopleSortedListUiState
 import com.github.zly2006.zhihu.ui.peopleScreenAnswerItemTag
 import com.github.zly2006.zhihu.ui.peopleScreenArticleItemTag
 import com.github.zly2006.zhihu.ui.peopleScreenCollectionItemTag
