@@ -15,5 +15,4 @@ actual fun rememberThemeSettingsRuntime(): ThemeSettingsRuntime = ThemeSettingsR
 actual fun WebViewCustomFontSettings(
     customFontName: String?,
     onCustomFontNameChange: (String?) -> Unit,
-) {
-}
+) = Unit // TODO: desktop WebView custom font settings

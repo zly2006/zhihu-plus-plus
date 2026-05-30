@@ -29,8 +29,7 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
 }
 
 @Composable
-actual fun PinHtmlWebViewContent(html: String) {
-}
+actual fun PinHtmlWebViewContent(html: String) = Unit // TODO: desktop Pin WebView
 
 actual fun supportsPinHtmlWebView(): Boolean = false
 
