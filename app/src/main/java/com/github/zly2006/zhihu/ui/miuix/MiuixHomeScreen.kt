@@ -100,7 +100,7 @@ fun MiuixHomeScreen(
     }
 
     val listState = rememberLazyListState()
-    var searchStatus by remember { mutableStateOf(SearchStatus(label = "搜索知乎")) }
+    var searchStatus by remember { mutableStateOf(SearchStatus(label = "")) }
     val showAccountSheet = remember { mutableStateOf(false) }
 
     LaunchedEffect(currentRecommendationMode, AccountData.data.login) {

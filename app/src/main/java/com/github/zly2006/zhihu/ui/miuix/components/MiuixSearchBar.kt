@@ -13,6 +13,7 @@ package com.github.zly2006.zhihu.ui.miuix.components
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
@@ -147,6 +148,12 @@ fun SearchStatus.SearchPager(
     // 完全折叠时不渲染任何东西，避免全屏 Column 盖在 feed 上形成遮罩 / 拦截触摸
     if (searchStatus.isCollapsed()) return
 
+    // 取消按钮动画：用 MutableTransitionState（初始 false），组合后 targetState→true，
+    // 强制播放 enter（淡入）。否则 AnimatedVisibility 首次组合时 visible 已是 true，会跳过 enter，
+    // 表现为"只有淡出没有淡入"。
+    val cancelVisibleState = remember { MutableTransitionState(false) }
+    cancelVisibleState.targetState = searchStatus.isExpand() || searchStatus.isAnimatingExpand()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -168,11 +175,11 @@ fun SearchStatus.SearchPager(
                     expandBar(searchStatus, onSearchStatusChange, searchBarTopPadding)
                 }
             }
-            // 效果 B-3：取消按钮从右侧滑入
+            // 效果 B-3：取消按钮从右侧滑入（用 visibleState 保证有淡入）
             AnimatedVisibility(
-                visible = searchStatus.isExpand() || searchStatus.isAnimatingExpand(),
-                enter = expandHorizontally(animationSpec = tween(300)) + slideInHorizontally(animationSpec = tween(300)) { it },
-                exit = shrinkHorizontally(animationSpec = tween(200)) + slideOutHorizontally(animationSpec = tween(200)) { it },
+                visibleState = cancelVisibleState,
+                enter = expandHorizontally() + slideInHorizontally(initialOffsetX = { it }),
+                exit = shrinkHorizontally() + slideOutHorizontally(targetOffsetX = { it }),
             ) {
                 Text(
                     text = "取消",
