@@ -1,6 +1,7 @@
 package com.github.zly2006.zhihu.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
@@ -9,6 +10,8 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.question.QuestionScreenUiState
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
+import com.github.zly2006.zhihu.ui.components.handleShareAction
+import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 
 data class LoadedQuestionScreenData(
     val uiState: QuestionScreenUiState,
@@ -41,7 +44,17 @@ internal fun loadedQuestionScreenData(
 }
 
 @Composable
-expect fun rememberQuestionScreenRuntime(): QuestionScreenRuntime
+fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {
+    val settings = rememberSettingsStore()
+    val shareRuntime = rememberShareDialogRuntime()
+    return remember(settings, shareRuntime) {
+        QuestionScreenRuntime(
+            handleShareAction = { question, onShowDialog ->
+                handleShareAction(question, settings, shareRuntime, onShowDialog)
+            },
+        )
+    }
+}
 
 @Composable
 fun QuestionDetailContent(
