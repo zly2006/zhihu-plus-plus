@@ -8,24 +8,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.util.PowerSaveModeCompat
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import com.github.zly2006.zhihu.util.signFetchRequest
-
-private const val DEVELOPER_MODE_KEY = "developer"
 
 @Composable
 actual fun rememberDeveloperSettingsRuntime(): DeveloperSettingsRuntime {
     val context = LocalContext.current
     val dataState by AccountData.asState()
-    val settings = rememberSettingsStore()
-    return remember(context, dataState, settings) {
+    return remember(context, dataState) {
         DeveloperSettingsRuntime(
-            isDeveloperModeEnabled = { settings.getBoolean(DEVELOPER_MODE_KEY, false) },
-            setDeveloperModeEnabled = { enabled ->
-                settings.putBoolean(DEVELOPER_MODE_KEY, enabled)
-            },
             cookies = { dataState.cookies },
             networkStatus = { context.networkStatusText() },
             powerSaveModeText = {

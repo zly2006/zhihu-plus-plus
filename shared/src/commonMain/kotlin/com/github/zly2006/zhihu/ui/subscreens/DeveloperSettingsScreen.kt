@@ -67,6 +67,7 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.SentenceSimilarityTest
 import com.github.zly2006.zhihu.shared.data.ZHIHU_ME_URL
 import com.github.zly2006.zhihu.shared.platform.rememberPlainTextClipboard
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.ui.components.SettingItemOverall
@@ -86,8 +87,9 @@ fun DeveloperSettingsScreen() {
     val copyPlainText = rememberPlainTextClipboard()
     val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
+    val settings = rememberSettingsStore()
     var developerModeEnabled by remember {
-        mutableStateOf(runtime.isDeveloperModeEnabled())
+        mutableStateOf(settings.getBoolean("developer", false))
     }
     val continuousUsageDurationMs by produceState(
         initialValue = runtime.runtimeInfo().continuousUsageDurationMs,
@@ -143,7 +145,7 @@ fun DeveloperSettingsScreen() {
                 checked = developerModeEnabled,
                 onCheckedChange = {
                     developerModeEnabled = it
-                    runtime.setDeveloperModeEnabled(it)
+                    settings.putBoolean("developer", it)
                     if (!it) {
                         navigator.onNavigateBack()
                     }

@@ -3,8 +3,6 @@ package com.github.zly2006.zhihu.ui.subscreens
 import androidx.compose.runtime.Composable
 
 data class DeveloperSettingsRuntime(
-    val isDeveloperModeEnabled: () -> Boolean,
-    val setDeveloperModeEnabled: (Boolean) -> Unit,
     val cookies: () -> Map<String, String>,
     val networkStatus: () -> String,
     val powerSaveModeText: () -> String?,
