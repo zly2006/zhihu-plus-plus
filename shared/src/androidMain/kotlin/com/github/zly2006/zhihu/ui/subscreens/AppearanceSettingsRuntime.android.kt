@@ -13,27 +13,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
-import com.github.zly2006.zhihu.shared.theme.ThemeMode
-import com.github.zly2006.zhihu.theme.AndroidThemeSettings
 import java.io.File
-
-@Composable
-actual fun rememberThemeSettingsRuntime(): ThemeSettingsRuntime {
-    val context = LocalContext.current
-    return remember(context) {
-        ThemeSettingsRuntime(
-            setThemeMode = { mode: ThemeMode -> AndroidThemeSettings.setThemeMode(context, mode) },
-            setUseDynamicColor = { enabled -> AndroidThemeSettings.setUseDynamicColor(context, enabled) },
-            setCustomColor = { color -> AndroidThemeSettings.setCustomColor(context, color) },
-            setBackgroundColor = { color, isDark -> AndroidThemeSettings.setBackgroundColor(context, color, isDark) },
-        )
-    }
-}
 
 @Composable
 actual fun WebViewCustomFontSettings(
