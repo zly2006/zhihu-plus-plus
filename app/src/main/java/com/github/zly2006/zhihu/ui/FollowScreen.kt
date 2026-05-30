@@ -412,7 +412,9 @@ fun FollowRecommendScreen(
                 PaginatedList(
                     items = viewModel.displayItems,
                     listState = listState,
-                    modifier = Modifier.testTag(FOLLOW_RECOMMEND_LIST_TAG),
+                    modifier = Modifier
+                        .then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier)
+                        .testTag(FOLLOW_RECOMMEND_LIST_TAG),
                     topContent = { item { FollowingUsersRow() } },
                     onLoadMore = { onTestLoadMore?.invoke() ?: viewModel.loadMore(context) },
                     footer = ProgressIndicatorFooter,
@@ -565,7 +567,9 @@ fun FollowDynamicScreen(
                 PaginatedList(
                     items = viewModel.displayItems,
                     listState = listState,
-                    modifier = Modifier.testTag(FOLLOW_DYNAMIC_LIST_TAG),
+                    modifier = Modifier
+                        .then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier)
+                        .testTag(FOLLOW_DYNAMIC_LIST_TAG),
                     topContent = { item { Spacer(modifier = Modifier.height(8.dp)) } },
                     onLoadMore = { onTestLoadMore?.invoke() ?: viewModel.loadMore(context) },
                     footer = ProgressIndicatorFooter,
