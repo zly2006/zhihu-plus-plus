@@ -53,7 +53,7 @@ import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.za.MixedHomeFeedViewModel
-import top.yukonga.miuix.kmp.basic.Column
+import androidx.compose.foundation.layout.Column
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -122,38 +122,36 @@ fun MiuixHomeScreen(
                 SearchBarFake(
                     label = searchStatus.label,
                     searchBarTopPadding = 0.dp,
-                onClick = {
-                    // 触发展开（效果 B：展开过渡动画）
-                    searchStatus = searchStatus.copy(current = SearchStatus.Status.EXPANDING)
-                },
-                trailingContent = {
-                    // 头像入口：原 HomeScreen 的头像逻辑搬过来，点击弹 sheet（不跳转）
-                    IconButton(
-                        onClick = { showAccountSheet.value = true },
-                        modifier = Modifier.size(44.dp),
-                    ) {
-                        val avatarUrl = AccountData.data.self?.avatarUrl
-                        if (avatarUrl != null) {
-                            AsyncImage(
-                                model = avatarUrl,
-                                contentDescription = "账号",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .size(32.dp)
-                                    .border(0.5.dp, MiuixTheme.colorScheme.outline.copy(alpha = 0.1f), CircleShape)
-                                    .clip(CircleShape),
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.AccountCircle,
-                                contentDescription = "账号",
-                                tint = MiuixTheme.colorScheme.onBackground,
-                                modifier = Modifier.size(32.dp),
-                            )
+                    onClick = {
+                        searchStatus = searchStatus.copy(current = SearchStatus.Status.EXPANDING)
+                    },
+                    trailingContent = {
+                        IconButton(
+                            onClick = { showAccountSheet.value = true },
+                            modifier = Modifier.size(44.dp),
+                        ) {
+                            val avatarUrl = AccountData.data.self?.avatarUrl
+                            if (avatarUrl != null) {
+                                AsyncImage(
+                                    model = avatarUrl,
+                                    contentDescription = "账号",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.size(32.dp)
+                                        .border(0.5.dp, MiuixTheme.colorScheme.outline.copy(alpha = 0.1f), CircleShape)
+                                        .clip(CircleShape),
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.AccountCircle,
+                                    contentDescription = "账号",
+                                    tint = MiuixTheme.colorScheme.onBackground,
+                                    modifier = Modifier.size(32.dp),
+                                )
+                            }
                         }
-                    }
-                },
-            )
+                    },
+                )
+            }
         },
     ) { padding ->
         Box(Modifier.fillMaxSize()) {
