@@ -56,6 +56,8 @@ interface PaginationEnvironment {
     fun configureSignedRequest(builder: HttpRequestBuilder) {
     }
 
+    fun xsrfToken(): String = ""
+
     fun feedDisplaySettings(): FeedDisplaySettings = FeedDisplaySettings()
 
     fun localHistory(): List<NavDestination> = emptyList()

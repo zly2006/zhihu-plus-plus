@@ -95,6 +95,7 @@ import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import com.github.zly2006.zhihu.navigation.Article as ArticleDestination
+import com.github.zly2006.zhihu.ui.articleHost
 import io.ktor.http.ContentType as KtorContentType
 
 interface AndroidContextPaginationEnvironment : PaginationEnvironment {
@@ -207,13 +208,14 @@ open class SharedAndroidPaginationEnvironment(
         contentTypeName: String,
     ) {
         AccountData.addReadHistory(context, contentToken, contentTypeName)
+    }
 
         override suspend fun postHistoryDestination(destination: NavDestination) {
-            HistoryStorage(context).add(destination)
-        }
+        HistoryStorage(context).add(destination)
+    }
 
         override suspend fun isUserBlocked(userId: String): Boolean =
-            getContentFilterDatabase(context).createBlocklistManager().isUserBlocked(userId)
+        getContentFilterDatabase(context).createBlocklistManager().isUserBlocked(userId)
 
     override suspend fun addBlockedUser(
         userId: String,
@@ -250,7 +252,6 @@ open class SharedAndroidPaginationEnvironment(
     }
 
 
-    }
 
     override suspend fun followQuestion(
         questionId: Long,

@@ -142,6 +142,7 @@ import com.github.zly2006.zhihu.util.smoothGradient
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import com.materialkolor.ktx.harmonize
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -160,7 +161,7 @@ private val ScrollThresholdDp = SCROLL_THRESHOLD.dp
  * 修复 noscript 标签中的图片加载问题。
  * 提取为独立函数，确保主 WebView 和预览 WebView 使用相同的文档处理。
  */
-private fun prepareContentDocument(
+internal fun prepareContentDocument(
     content: String,
     onImageLoadFailure: () -> Unit = {},
 ): String =
@@ -559,6 +560,7 @@ fun ArticleScreen(
     val navigator = LocalNavigator.current
     val articleScreenRuntime = rememberArticleScreenRuntime()
     val articleRuntime = articleScreenRuntime.articleRuntime
+    val environment = rememberPaginationEnvironment(allowGuestAccess = false)
     val articleHost = articleScreenRuntime.articleHost
     val previewPreloader = articleScreenRuntime.previewPreloader
     val backStackEntry by articleHost?.articleNavController?.currentBackStackEntryAsState()
@@ -617,7 +619,7 @@ fun ArticleScreen(
     fun upVoteFromDoubleTap() {
         hapticFeedback.performHapticFeedback(HapticFeedbackType.Confirm)
         if (viewModel.voteUpState != VoteUpState.Up) {
-            viewModel.toggleVoteUp(articleRuntime, VoteUpState.Up)
+            viewModel.toggleVoteUp(environment, VoteUpState.Up)
         }
     }
 
@@ -865,7 +867,7 @@ fun ArticleScreen(
             }
         }
         viewModel.loadArticle(articleRuntime)
-        viewModel.loadCollections(articleRuntime)
+        viewModel.loadCollections(environment)
     }
 
     val navigateToPrevious: () -> Unit = {
@@ -1142,7 +1144,7 @@ fun ArticleScreen(
                                 when (viewModel.voteUpState) {
                                     VoteUpState.Neutral -> {
                                         Button(
-                                            onClick = { viewModel.toggleVoteUp(articleRuntime, VoteUpState.Up) },
+                                            onClick = { viewModel.toggleVoteUp(environment, VoteUpState.Up) },
                                             colors = voteUpNeutralButtonColors(),
                                             shape = RectangleShape,
                                             contentPadding = PaddingValues(horizontal = 0.dp),
@@ -1153,7 +1155,7 @@ fun ArticleScreen(
                                             Text(text = viewModel.voteUpCount.toString())
                                         }
                                         Button(
-                                            onClick = { viewModel.toggleVoteUp(articleRuntime, VoteUpState.Down) },
+                                            onClick = { viewModel.toggleVoteUp(environment, VoteUpState.Down) },
                                             colors = voteUpNeutralButtonColors(),
                                             shape = RectangleShape,
                                             modifier = Modifier.height(ButtonDefaults.MinHeight).width(ButtonDefaults.MinHeight),
@@ -1165,7 +1167,7 @@ fun ArticleScreen(
 
                                     VoteUpState.Up -> {
                                         Button(
-                                            onClick = { viewModel.toggleVoteUp(articleRuntime, VoteUpState.Neutral) },
+                                            onClick = { viewModel.toggleVoteUp(environment, VoteUpState.Neutral) },
                                             colors = voteUpActiveButtonColors(),
                                             shape = RectangleShape,
                                             contentPadding = PaddingValues(horizontal = 0.dp),
@@ -1180,7 +1182,7 @@ fun ArticleScreen(
 
                                     VoteUpState.Down -> {
                                         Button(
-                                            onClick = { viewModel.toggleVoteUp(articleRuntime, VoteUpState.Neutral) },
+                                            onClick = { viewModel.toggleVoteUp(environment, VoteUpState.Neutral) },
                                             colors = voteUpActiveButtonColors(),
                                             shape = RectangleShape,
                                             modifier = Modifier.height(ButtonDefaults.MinHeight),
@@ -1270,7 +1272,7 @@ fun ArticleScreen(
                                             .background(upBgColor)
                                             .clickable {
                                                 viewModel.toggleVoteUp(
-                                                    articleRuntime,
+                                                    environment,
                                                     if (viewModel.voteUpState == VoteUpState.Up) VoteUpState.Neutral else VoteUpState.Up,
                                                 )
                                             }.padding(6.dp, 8.dp, 12.dp, 8.dp),
@@ -1310,7 +1312,7 @@ fun ArticleScreen(
                                             .background(downBgColor)
                                             .clickable {
                                                 viewModel.toggleVoteUp(
-                                                    articleRuntime,
+                                                    environment,
                                                     if (viewModel.voteUpState == VoteUpState.Down) VoteUpState.Neutral else VoteUpState.Down,
                                                 )
                                             }.padding(6.dp, 8.dp, 8.dp, 8.dp),
@@ -1632,7 +1634,7 @@ fun ArticleScreen(
         onDismissRequest = { showActionsMenu = false },
         onSummaryRequest = {
             showSummaryDialog = true
-            viewModel.requestAiSummary(articleRuntime)
+            viewModel.requestAiSummary(environment)
         },
         onExportRequest = { showExportDialog = true },
     )
@@ -1647,7 +1649,7 @@ fun ArticleScreen(
             viewModel.cancelAiSummary()
         },
         onRetryRequest = {
-            viewModel.requestAiSummary(articleRuntime)
+            viewModel.requestAiSummary(environment)
         },
     )
 
@@ -1660,12 +1662,12 @@ fun ArticleScreen(
         showDialog = showCollectionDialog,
         onDismiss = { showCollectionDialog = false },
         collections = viewModel.collections,
-        onLoadCollections = { viewModel.loadCollections(articleRuntime) },
+        onLoadCollections = { viewModel.loadCollections(environment) },
         onToggleFavorite = { collection ->
-            viewModel.toggleFavorite(collection.id, collection.isFavorited, articleRuntime)
+            viewModel.toggleFavorite(collection.id, collection.isFavorited, environment)
         },
         onCreateCollection = { title, description, isPublic ->
-            viewModel.createNewCollection(articleRuntime, title, description, isPublic)
+            viewModel.createNewCollection(environment, title, description, isPublic)
         },
     )
 

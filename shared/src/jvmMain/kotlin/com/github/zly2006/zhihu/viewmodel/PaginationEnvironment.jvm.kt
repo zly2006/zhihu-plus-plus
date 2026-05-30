@@ -82,6 +82,8 @@ class DesktopPaginationEnvironment(
 
     override fun httpClient(): HttpClient = store.createHttpClient(store.load().cookies)
 
+    override fun xsrfToken(): String = store.load().cookies["_xsrf"] ?: ""
+
     override suspend fun fetchJson(
         url: String,
         include: String,

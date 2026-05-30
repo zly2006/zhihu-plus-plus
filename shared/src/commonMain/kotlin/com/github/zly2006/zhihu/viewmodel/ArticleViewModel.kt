@@ -302,7 +302,7 @@ class ArticleViewModel(
         }
     }
 
-    fun toggleFavorite(collectionId: String, remove: Boolean, runtime: ArticleViewModelRuntime) {
+    fun toggleFavorite(collectionId: String, remove: Boolean, environment: PaginationEnvironment) {
         if (httpClient == null) return
         viewModelScope.launch {
             try {
@@ -320,7 +320,7 @@ class ArticleViewModel(
                 }
 
                 if (response.status.isSuccess()) {
-                    loadCollections(runtime)
+                    loadCollections(environment)
                     userMessages.showShortMessage(if (remove) "取消收藏成功" else "收藏成功")
                 } else {
                     userMessages.showShortMessage("收藏操作失败")
@@ -332,7 +332,7 @@ class ArticleViewModel(
         }
     }
 
-    fun requestAiSummary(runtime: ArticleViewModelRuntime) {
+    fun requestAiSummary(environment: PaginationEnvironment) {
         if (httpClient == null) {
             aiSummaryError = "未初始化网络客户端"
             return
@@ -355,9 +355,9 @@ class ArticleViewModel(
                 val response = httpClient.post("https://www.zhihu.com/ai_ingress/stream/completion") {
                     accept(ContentType.Text.EventStream)
                     contentType(ContentType.Application.Json)
-                    header("x-xsrftoken", runtime.xsrfToken())
+                    header("x-xsrftoken", environment.xsrfToken())
                     setBody(request)
-                    runtime.configureSignedRequest(this)
+                    environment.configureSignedRequest(this)
                 }
                 if (!response.status.isSuccess()) {
                     val errorBody = response.bodyAsText()
@@ -455,7 +455,7 @@ class ArticleViewModel(
 
     private val collectionOrder = mutableListOf<String>()
 
-    fun loadCollections(context: ArticleViewModelRuntime) {
+    fun loadCollections(environment: PaginationEnvironment) {
         if (httpClient == null) return
         viewModelScope.launch {
             withContext(Dispatchers.Default) {
@@ -467,7 +467,7 @@ class ArticleViewModel(
                     val collectionsUrl = "https://api.zhihu.com/collections/contents/$contentType/${article.id}?limit=50"
                     val jojo = httpClient!!
                         .get(collectionsUrl) {
-                            context.configureSignedRequest(this)
+                            environment.configureSignedRequest(this)
                         }.body<JsonObject>()
                     val collectionsData = ZhihuJson.decodeJson<CollectionResponse>(jojo)
                     collections.clear()
@@ -495,7 +495,7 @@ class ArticleViewModel(
     }
 
     fun createNewCollection(
-        context: ArticleViewModelRuntime,
+        environment: PaginationEnvironment,
         title: String,
         description: String = "",
         isPublic: Boolean = false,
@@ -511,13 +511,13 @@ class ArticleViewModel(
                         put("is_public", isPublic)
                     },
                 )
-                context.configureSignedRequest(this)
+                environment.configureSignedRequest(this)
             }
-            loadCollections(context)
+            loadCollections(environment)
         }
     }
 
-    fun toggleVoteUp(context: ArticleViewModelRuntime, newState: VoteUpState) {
+    fun toggleVoteUp(environment: PaginationEnvironment, newState: VoteUpState) {
         viewModelScope.launch {
             try {
                 val endpoint = when (article.type) {
@@ -532,7 +532,7 @@ class ArticleViewModel(
                             ArticleType.Article -> setBody(mapOf("voting" to if (newState == VoteUpState.Up) 1 else 0))
                         }
                         contentType(ContentType.Application.Json)
-                        context.configureSignedRequest(this)
+                        environment.configureSignedRequest(this)
                     }.body<JsonObject>()
 
                 voteUpState = newState
