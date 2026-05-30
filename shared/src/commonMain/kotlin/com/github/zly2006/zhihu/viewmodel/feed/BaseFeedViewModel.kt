@@ -83,4 +83,33 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
     inline fun List<Feed>.flatten() = flatMap {
         (it as? GroupFeed)?.list ?: listOf(it)
     }
+
+    // TODO: handleBlockUser - 需要 UserMessageSink 支持
+    fun handleBlockUser(
+        environment: PaginationEnvironment,
+        feedItem: FeedDisplayItem,
+        onShowDialog: (Pair<String, String>) -> Unit,
+    ) {
+        // TODO: 实现需要 ContentDetailCache.getOrFetch 和 UserMessageSink
+    }
+
+    // TODO: handleBlockByKeywords - 需要 UserMessageSink 支持
+    fun handleBlockByKeywords(
+        environment: PaginationEnvironment,
+        feedItem: FeedDisplayItem,
+        onShowDialog: (Pair<FeedDisplayItem, Triple<String, String, String?>>) -> Unit,
+    ) {
+        // TODO: 实现需要 ContentDetailCache.getOrFetch 和 UserMessageSink
+    }
+
+    /**
+     * 屏蔽主题
+     */
+    fun handleBlockTopic(
+        environment: PaginationEnvironment,
+        topicId: String,
+        topicName: String,
+    ) {
+        // TODO: 实现需要 UserMessageSink 和 displayItems 过滤
+    }
 }

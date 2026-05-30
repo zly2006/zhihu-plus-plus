@@ -115,6 +115,12 @@ interface PaginationEnvironment {
     ) {
     }
 
+    suspend fun addBlockedTopic(
+        topicId: String,
+        topicName: String,
+    ) {
+    }
+
     suspend fun removeBlockedUser(userId: String) {
     }
 
