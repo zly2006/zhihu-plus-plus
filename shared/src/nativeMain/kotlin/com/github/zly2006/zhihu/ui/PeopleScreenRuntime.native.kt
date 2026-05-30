@@ -10,5 +10,9 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
     val userMessages = rememberUserMessageSink()
     return remember(userMessages) {
         PeopleScreenRuntime(
-            loadProfile = { error("People profile not available on iOS yet") },
+            showShortMessage = { userMessages.showShortMessage(it) },
+            openWebUrl = { error("People web URL not available on iOS yet") },
+            openImage = { error("People image not available on iOS yet") },
+        )
+    }
 }

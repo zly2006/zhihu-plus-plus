@@ -10,6 +10,11 @@ actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {
     val userMessages = rememberUserMessageSink()
     return remember(userMessages) {
         QuestionScreenRuntime(
+            openLog = { error("Question log not available on iOS yet") },
+            handleShareAction = { _, _ -> error("Question share not available on iOS yet") },
+            showShortMessage = { userMessages.showShortMessage(it) },
+        )
+    }
 }
 
 // TODO: iOS 问题 WebView 实现

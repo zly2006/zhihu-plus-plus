@@ -187,7 +187,7 @@ python3 .agents/skills/ui-review-memory/memory_store.py update-status \
 - 阶段性迁移写得差不多，且 `./gradlew assembleLiteDebug` 和 `./gradlew :desktopApp:compileKotlin` 都通过后，可以在本迁移分支里及时提交一次。
 - 本迁移仍需遵守 `$superpowers:using-superpowers` 和 `$superpowers:using-git-worktrees` 的流程要求。
 - 每完成一个功能点，且编译通过，要及时commit。
-- **每次 commit 前必须执行 `ktlintFormat` 格式化**：无论改动大小，提交前必须运行 `JAVA_HOME=$(/usr/libexec/java_home -v 25) ./gradlew --no-daemon :shared:runKtlintFormatOverCommonMainSourceSet :shared:runKtlintFormatOverAndroidMainSourceSet :shared:runKtlintFormatOverJvmMainSourceSet`，确保代码格式统一后再提交。
+- **每次 commit 前必须执行 `ktlintFormat` 格式化**：无论改动大小，提交前必须在根项目运行 `JAVA_HOME=$(/usr/libexec/java_home -v 25) ./gradlew --no-daemon ktlintFormat`，确保代码格式统一后再提交。不要只跑 shared 模块的 ktlint，要在根项目跑！
 
 ## 经验教训
 

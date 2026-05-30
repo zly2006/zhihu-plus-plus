@@ -10,11 +10,9 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
     val userMessages = rememberUserMessageSink()
     return remember(userMessages) {
         PinScreenRuntime(
-            loadPinDetail = { error("Pin detail not available on iOS yet") },
-            toggleLike = { _, _, _ -> error("Pin like not available on iOS yet") },
-            handleShareAction = { _, _ -> },
+            handleShareAction = { _, _ -> error("Pin share not available on iOS yet") },
             fetchLinkCardPreview = { null },
-            openExternalUrl = { openIosUrl(it) },
+            openExternalUrl = { error("Pin external URL not available on iOS yet") },
         )
     }
 }
