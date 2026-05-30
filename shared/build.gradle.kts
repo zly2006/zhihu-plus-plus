@@ -23,7 +23,6 @@ configurations.configureEach {
     }
 }
 
-
 ktlint {
     android.set(true)
     outputToConsole.set(true)
