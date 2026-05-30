@@ -109,7 +109,9 @@ fun MiuixFollowScreen(
     Scaffold(
         topBar = {
             Column(
-                modifier = Modifier.installerMiuixBlurEffect(backdrop, enabled = blurEnabled),
+                modifier = Modifier
+                    .installerMiuixBlurEffect(backdrop, enabled = blurEnabled)
+                    .padding(bottom = 8.dp),
             ) {
                 TopAppBar(
                     color = if (blurEnabled) backdrop.getMiuixAppBarColor() else MiuixTheme.colorScheme.surface,
@@ -167,7 +169,9 @@ fun MiuixFollowTopLevelPage(
     Scaffold(
         topBar = {
             Column(
-                modifier = Modifier.installerMiuixBlurEffect(backdrop, enabled = blurEnabled),
+                modifier = Modifier
+                    .installerMiuixBlurEffect(backdrop, enabled = blurEnabled)
+                    .padding(bottom = 8.dp),
             ) {
                 TopAppBar(
                     color = if (blurEnabled) backdrop.getMiuixAppBarColor() else MiuixTheme.colorScheme.surface,
