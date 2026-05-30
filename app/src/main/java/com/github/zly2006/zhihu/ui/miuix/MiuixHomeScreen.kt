@@ -17,7 +17,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -91,10 +94,13 @@ fun MiuixHomeScreen(
         }
     }
 
+    val statusBarHeight = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
+
     Scaffold(
         topBar = {
             SearchBarFake(
                 label = searchStatus.label,
+                searchBarTopPadding = statusBarHeight + 12.dp,
                 onClick = {
                     // 触发展开（效果 B：展开过渡动画）
                     searchStatus = searchStatus.copy(current = SearchStatus.Status.EXPANDING)
