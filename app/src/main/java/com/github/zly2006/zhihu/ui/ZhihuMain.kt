@@ -130,6 +130,7 @@ import com.github.zly2006.zhihu.ui.miuix.MiuixFollowTopLevelPage
 import com.github.zly2006.zhihu.ui.miuix.MiuixHomeScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixHotListScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixLocalHistoryScreen
+import com.github.zly2006.zhihu.ui.miuix.MiuixNotificationScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixOnlineHistoryScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixPeopleScreen
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
@@ -635,7 +636,11 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     }
                 }
                 composable<Notification> {
-                    NotificationScreen()
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixNotificationScreen()
+                    } else {
+                        NotificationScreen()
+                    }
                 }
                 composable<Notification.NotificationSettings> {
                     if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
