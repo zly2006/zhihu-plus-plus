@@ -1,6 +1,5 @@
 package com.github.zly2006.zhihu.ui.subscreens
 
-import android.content.ClipData
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -12,7 +11,6 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.util.PowerSaveModeCompat
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
-import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.signFetchRequest
 
 private const val DEVELOPER_MODE_KEY = "developer"
@@ -57,14 +55,11 @@ actual fun rememberDeveloperSettingsRuntime(): DeveloperSettingsRuntime {
                     ),
                 )
             },
-            signedGetAndCopy = { url ->
-                val body = AccountData
+            signedGet = { url ->
+                AccountData
                     .fetchGet(context, url) {
                         signFetchRequest()
                     }.toString()
-                val clip = ClipData.newPlainText("Signed Request Response", body)
-                context.clipboardManager.setPrimaryClip(clip)
-                body
             },
         )
     }

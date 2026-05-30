@@ -66,6 +66,7 @@ import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.SentenceSimilarityTest
 import com.github.zly2006.zhihu.shared.data.ZHIHU_ME_URL
+import com.github.zly2006.zhihu.shared.platform.rememberPlainTextClipboard
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.ui.components.SettingItemOverall
@@ -82,6 +83,7 @@ const val DEVELOPER_SETTINGS_COLOR_SCHEME_TAG = "developerSettings/colorScheme"
 fun DeveloperSettingsScreen() {
     val navigator = LocalNavigator.current
     val runtime = rememberDeveloperSettingsRuntime()
+    val copyPlainText = rememberPlainTextClipboard()
     val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
     var developerModeEnabled by remember {
@@ -431,7 +433,8 @@ fun DeveloperSettingsScreen() {
                             isLoading = true
                             coroutineScope.launch {
                                 try {
-                                    val body = runtime.signedGetAndCopy(urlInput)
+                                    val body = runtime.signedGet(urlInput)
+                                    copyPlainText("Signed Request Response", body)
                                     responseText = body
                                     userMessages.showShortMessage("响应已复制到剪贴板")
                                 } catch (e: Exception) {

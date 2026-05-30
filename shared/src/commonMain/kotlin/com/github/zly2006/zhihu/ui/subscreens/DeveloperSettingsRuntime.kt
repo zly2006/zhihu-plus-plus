@@ -12,7 +12,7 @@ data class DeveloperSettingsRuntime(
     val verifyLogin: suspend (Map<String, String>) -> Boolean,
     val refreshToken: suspend () -> Unit,
     val saveCookies: (Map<String, String>) -> Unit,
-    val signedGetAndCopy: suspend (String) -> String,
+    val signedGet: suspend (String) -> String,
 )
 
 @Composable

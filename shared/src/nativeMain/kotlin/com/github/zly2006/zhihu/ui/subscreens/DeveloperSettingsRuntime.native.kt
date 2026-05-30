@@ -25,7 +25,7 @@ actual fun rememberDeveloperSettingsRuntime(): DeveloperSettingsRuntime {
             // TODO: iOS cookies 保存
             saveCookies = { },
             // TODO: iOS signed GET
-            signedGetAndCopy = { "iOS 暂不支持" },
+            signedGet = { "iOS 暂不支持" },
         )
     }
 }
