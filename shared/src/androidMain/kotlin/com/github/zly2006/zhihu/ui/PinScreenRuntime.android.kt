@@ -45,25 +45,6 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
         val userMessages = androidUserMessageSink(context)
         PinScreenRuntime(
-            loadPinDetail = { pin ->
-                AccountData.addReadHistory(context, pin.id.toString(), "pin")
-                val content = DataHolder.getContentDetail(context, pin)
-                if (content == null) {
-                    PinScreenUiState(isLoading = false, errorMessage = "无法加载想法详情")
-                } else {
-                    ContentOpenEventSupport.recordOpenEvent(
-                        database = getContentFilterDatabase(context),
-                        destination = pin,
-                        openFrom = context.articleHost()?.consumePendingContentOpenFrom(pin) ?: ContentOpenFrom.UNKNOWN,
-                    )
-                    PinScreenUiState(
-                        isLoading = false,
-                        pinContent = content,
-                        isLiked = content.virtuals.booleanCompat("isLiked", "is_liked"),
-                        likeCount = content.likeCount,
-                    )
-                }
-            },
             handleShareAction = { pin, onShowDialog ->
                 handleShareAction(pin, settings, shareRuntime, onShowDialog)
             },

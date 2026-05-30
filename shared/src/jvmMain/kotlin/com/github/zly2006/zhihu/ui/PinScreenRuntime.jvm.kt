@@ -45,26 +45,6 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
     }
     return remember(scope, settings, userMessages, shareRuntime) {
         PinScreenRuntime(
-            loadPinDetail = { pin ->
-                store.addReadHistory(contentToken = pin.id.toString(), contentTypeName = "pin")
-                val content = fetchDesktopPinDetail(store, pin)
-                if (content == null) {
-                    PinScreenUiState(isLoading = false, errorMessage = "无法加载想法详情")
-                } else {
-                    historyStorage.add(pin)
-                    ContentOpenEventSupport.recordOpenEvent(
-                        database = contentFilterDatabase,
-                        destination = pin,
-                        openFrom = consumeDesktopPendingContentOpenFrom(pin),
-                    )
-                    PinScreenUiState(
-                        isLoading = false,
-                        pinContent = content,
-                        isLiked = content.virtuals.booleanCompat("isLiked", "is_liked"),
-                        likeCount = content.likeCount,
-                    )
-                }
-            },
             handleShareAction = { pin, onShowDialog ->
                 handleShareAction(pin, settings, shareRuntime, onShowDialog)
             },

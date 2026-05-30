@@ -36,6 +36,7 @@ import com.github.zly2006.zhihu.util.sanitizeArticleExportFileNamePart
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
 import com.github.zly2006.zhihu.viewmodel.filter.applyContentFilterToDisplayItems
 import com.github.zly2006.zhihu.viewmodel.filter.applyForegroundReadFilterToDisplayItems
+import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
 import com.github.zly2006.zhihu.viewmodel.filter.desktopKeywordSemanticMatcher
@@ -148,6 +149,23 @@ class DesktopPaginationEnvironment(
     override suspend fun removeBlockedUser(userId: String) {
         getContentFilterDatabase(desktopContentFilterDatabaseFile()).createBlocklistManager().removeBlockedUser(userId)
     }
+
+    override suspend fun recordContentOpenEvent(
+        destination: NavDestination,
+        questionId: Long?,
+        openFrom: String,
+    ) {
+        val resolvedOpenFrom = openFrom.ifBlank {
+            consumeDesktopPendingContentOpenFrom(destination)
+        }
+        ContentOpenEventSupport.recordOpenEvent(
+            database = contentFilterDatabase,
+            destination = destination,
+            questionId = questionId,
+            openFrom = resolvedOpenFrom.ifBlank { "unknown" },
+        )
+    }
+
 
 
     override suspend fun followQuestion(

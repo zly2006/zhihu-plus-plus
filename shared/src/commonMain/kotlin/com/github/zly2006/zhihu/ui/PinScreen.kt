@@ -88,6 +88,9 @@ import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import io.ktor.client.call.body
 import io.ktor.client.request.delete
 import io.ktor.client.request.post
+import com.github.zly2006.zhihu.data.decodePinContentDetail
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
+import io.ktor.client.request.get
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.intOrNull
@@ -118,6 +121,25 @@ private suspend fun togglePinLike(
     return PinLikeResult(
         isLiked = !isLiked,
         likeCount = jojo["liked_count"]?.jsonPrimitive?.intOrNull ?: -1,
+    )
+}
+
+private suspend fun loadPinDetail(
+    environment: PaginationEnvironment,
+    pin: Pin,
+): PinScreenUiState {
+    environment.addReadHistory(pin.id.toString(), "pin")
+    val jsonObject = environment.httpClient().get("https://www.zhihu.com/api/v4/pins/${pin.id}") {
+        environment.configureSignedRequest(this)
+    }.body<JsonObject>()
+    val content = decodePinContentDetail(jsonObject)
+    environment.postHistoryDestination(pin)
+    environment.recordContentOpenEvent(destination = pin)
+    return PinScreenUiState(
+        isLoading = false,
+        pinContent = content,
+        isLiked = content.virtuals.booleanCompat("isLiked", "is_liked"),
+        likeCount = content.likeCount,
     )
 }
 
@@ -163,7 +185,7 @@ fun PinScreen(
         if (testOverrides == null) {
             screenState = PinScreenUiState(isLoading = true)
             screenState = try {
-                runtime.loadPinDetail(pin)
+                loadPinDetail(paginationEnvironment, pin)
             } catch (e: Exception) {
                 PinScreenUiState(isLoading = false, errorMessage = e.message ?: "未知错误")
             }

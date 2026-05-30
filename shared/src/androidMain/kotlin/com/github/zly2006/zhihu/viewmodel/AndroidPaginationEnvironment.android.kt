@@ -65,6 +65,7 @@ import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
 import com.github.zly2006.zhihu.viewmodel.filter.contentFilterSettings
 import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
+import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.filter.recordFeedContentInteraction
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
@@ -231,6 +232,23 @@ open class SharedAndroidPaginationEnvironment(
     override suspend fun removeBlockedUser(userId: String) {
         getContentFilterDatabase(context).createBlocklistManager().removeBlockedUser(userId)
     }
+
+    override suspend fun recordContentOpenEvent(
+        destination: NavDestination,
+        questionId: Long?,
+        openFrom: String,
+    ) {
+        val resolvedOpenFrom = openFrom.ifBlank {
+            context.articleHost()?.consumePendingContentOpenFrom(destination) ?: ""
+        }
+        ContentOpenEventSupport.recordOpenEvent(
+            database = getContentFilterDatabase(context),
+            destination = destination,
+            questionId = questionId,
+            openFrom = resolvedOpenFrom.ifBlank { "unknown" },
+        )
+    }
+
 
     }
 

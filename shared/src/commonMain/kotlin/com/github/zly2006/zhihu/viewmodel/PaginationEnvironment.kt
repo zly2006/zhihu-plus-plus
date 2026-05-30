@@ -95,6 +95,13 @@ interface PaginationEnvironment {
 
     suspend fun isUserBlocked(userId: String): Boolean = false
 
+    suspend fun recordContentOpenEvent(
+        destination: NavDestination,
+        questionId: Long? = null,
+        openFrom: String = "",
+    ) {
+    }
+
     suspend fun addBlockedUser(
         userId: String,
         userName: String,
