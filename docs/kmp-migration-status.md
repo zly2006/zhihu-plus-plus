@@ -2,6 +2,7 @@
 
 ## Completed
 
+- 2026-05-30：`AppearanceSettingsRuntime` 删除和 `ThemeSettingsRuntime` 字段完全相同的转发壳，外观设置页直接使用 `rememberThemeSettingsRuntime()`。对照 master，外观设置页本来直接调用 `ThemeManager` 设置主题模式、动态颜色、自定义颜色和背景色；本切片只去掉迁移期重复 data class/copy 层，不改变设置项、调用顺序或可见 UI。
 - 2026-05-30：`SystemAndUpdateSettingsRuntime` 删除只包装 `SystemUpdateRuntime` 与通用外链 opener 的页面级空壳；系统与更新页面直接调用 `rememberSystemUpdateRuntime()` 和 `rememberExternalUrlOpener()`，JVM 版本名 fallback 改用仍存在的 `SystemUpdateRuntime` package。对照 master，系统与更新页原本也是在页面函数内直接持有 context/preferences/update 状态并调用外链打开；本切片只去掉迁移期 runtime 聚合层，更新检查、下载、安装、自动检查设置、外链按钮和 UI 结构未改。
 - 2026-05-30：新增 shared/platform 通用打开能力：普通外链、知乎应用内 Web URL、图片预览分别由 common expect 表达，Android actual 保留 `luoTianYiUrlLauncher`、`WebviewActivity` 和 `OpenImageDialog + AccountData.httpClient(context)` 的原行为，JVM/native 退化为平台 URL 打开。`PeopleScreenRuntime` 只剩 `openWebUrl`/`openImage` 后已删除，People 页面直接调用通用 opener；`CommentScreenRuntime`、`MarkdownRuntime`、`PinScreenRuntime`、`HomeScreenRuntime`、`QuestionScreenRuntime` 和系统更新设置中同类打开动作改为内部复用通用 opener，保存/分享/字体/TTS/账号/更新/链接卡片预览等真实页面语义未合并。对照 master，本切片不改 People UI 布局、头像/话题/专栏点击入口、评论/Markdown 图片菜单、Pin/Home/Question 可见结构，只删除重复平台转发壳。
 - 2026-05-30：外观设置和系统与更新设置 runtime 删除通用 `SettingsStore` / `UserMessageSink` 字段，页面改为在 common 内直接调用 `rememberSettingsStore()` / `rememberUserMessageSink()`；runtime 只保留主题写入、系统更新和外链打开这类实际动作。对照 master，设置项读取/写入 key、提示文案、更新状态提示、外链入口和 UI 结构未改；本切片只删除 common runtime 对已有 shared 能力的重复包裹。
