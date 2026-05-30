@@ -6,7 +6,7 @@ import com.github.zly2006.zhihu.ui.openIosUrl
 
 @Composable
 actual fun rememberExternalUrlOpener(): (String) -> Unit = remember {
-    { url -> openIosUrl(url) }
+    ::openIosUrl
 }
 
 @Composable

@@ -7,11 +7,7 @@ import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
 
 @Composable
 actual fun rememberExternalUrlOpener(): (String) -> Unit = remember {
-    { url ->
-        runCatching {
-            openDesktopExternalUrl(url)
-        }
-    }
+    { url -> openDesktopExternalUrl(url) }
 }
 
 @Composable
@@ -26,8 +22,6 @@ actual fun rememberImagePreviewOpener(): (String) -> Unit = rememberExternalUrlO
 @Composable
 actual fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit = remember {
     { _, text ->
-        runCatching {
-            copyDesktopPlainText(text)
-        }
+        runCatching { copyDesktopPlainText(text) }
     }
 }

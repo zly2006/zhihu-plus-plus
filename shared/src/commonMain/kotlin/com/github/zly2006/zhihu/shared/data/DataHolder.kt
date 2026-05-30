@@ -597,9 +597,7 @@ object DataHolder {
         val value: T,
         var count: Int = 0,
     ) : AutoCloseable {
-        override fun close() {
-            count--
-        }
+        override fun close() = Unit.also { count-- }
     }
 
     @Serializable

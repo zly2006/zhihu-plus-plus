@@ -18,5 +18,5 @@ actual fun rememberIsLiteVariant(): Boolean = false // TODO: iOS 变体判断
 
 @Composable
 actual fun rememberUserMessageSink(): UserMessageSink = remember {
-    UserMessageSink(showShortMessage = {}, showLongMessage = {})
+    UserMessageSink(showShortMessage = {})
 } // TODO: iOS 用户消息提示

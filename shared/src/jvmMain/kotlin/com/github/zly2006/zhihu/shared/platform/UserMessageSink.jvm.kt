@@ -5,14 +5,7 @@ import androidx.compose.runtime.remember
 
 @Composable
 actual fun rememberUserMessageSink(): UserMessageSink = remember {
-    UserMessageSink(
-        showShortMessage = { message ->
-            showDesktopMessage(message)
-        },
-        showLongMessage = { message ->
-            showDesktopMessage(message)
-        },
-    )
+    UserMessageSink(::showDesktopMessage)
 }
 
 private fun showDesktopMessage(message: String) {

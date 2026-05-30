@@ -13,6 +13,5 @@ internal fun openDesktopExternalUrl(url: String): Boolean = runCatching {
     true
 }.getOrDefault(false)
 
-internal fun copyDesktopPlainText(text: String) {
+internal fun copyDesktopPlainText(text: String) =
     Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
-}
