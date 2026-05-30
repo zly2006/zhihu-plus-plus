@@ -79,36 +79,28 @@ actual fun rememberCommentEmojiInlineContent(emojiKeys: Set<String>): Map<String
             }.toMap()
     }
 
-actual fun commentEmojiInlineKey(placeholder: String): String? {
-    val fileName = desktopEmojiMapping()[placeholder] ?: return null
-    return "emoji_$fileName"
-}
+actual fun commentEmojiInlineKey(placeholder: String): String? =
+    desktopEmojiMapping()[placeholder]?.let { fileName -> "emoji_$fileName" }
 
 actual fun Modifier.commentSelectionWorkaround(): Modifier = this
 
 private fun desktopEmojiFileByInlineKey(emojiKey: String): File? {
     val fileName = emojiKey.removePrefix("emoji_")
-    return desktopEmojiDirectories()
-        .map { directory -> File(directory, fileName) }
+    return desktopProjectRoots()
+        .map { root -> File(root, "misc/emojis/$fileName") }
         .firstOrNull { it.isFile }
 }
 
 private fun desktopEmojiMapping(): Map<String, String> {
-    val mappingFile = desktopEmojiMappingFiles().firstOrNull { it.isFile } ?: return emptyMap()
+    val mappingFile = desktopProjectRoots()
+        .map { root -> File(root, "misc/emoji_mapping.json") }
+        .firstOrNull { it.isFile } ?: return emptyMap()
     return runCatching {
         Json.decodeFromString<Map<String, String>>(mappingFile.readText())
     }.getOrDefault(emptyMap())
 }
 
-private fun desktopEmojiMappingFiles(): List<File> =
-    desktopProjectRoots().map { root -> File(root, "misc/emoji_mapping.json") }
-
-private fun desktopEmojiDirectories(): List<File> =
-    desktopProjectRoots().map { root -> File(root, "misc/emojis") }
-
-private fun desktopProjectRoots(): List<File> {
-    val userDir = File(System.getProperty("user.dir")).absoluteFile
-    return generateSequence(userDir) { it.parentFile }
+private fun desktopProjectRoots(): List<File> =
+    generateSequence(File(System.getProperty("user.dir")).absoluteFile) { it.parentFile }
         .take(6)
         .toList()
-}
