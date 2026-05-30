@@ -86,7 +86,7 @@ import kotlinx.serialization.json.put
 class ArticleViewModel(
     private val article: Article,
     val httpClient: HttpClient?,
-    private val userMessages: UserMessageSink,
+    private val userMessages: UserMessageSink = UserMessageSink(showShortMessage = {}, showLongMessage = {}),
     registerOnPause: (((() -> Unit) -> Unit))? = null,
 ) : ViewModel() {
     var permissionRequestCount by mutableIntStateOf(0)

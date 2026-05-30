@@ -96,19 +96,19 @@ import zhihu.shared.generated.resources.ic_github_24dp
 import zhihu.shared.generated.resources.ic_launcher_foreground
 import zhihu.shared.generated.resources.ic_license_24dp
 
-internal const val ACCOUNT_SETTINGS_SCROLL_TAG = "accountSettings.scroll"
-internal const val ACCOUNT_SETTINGS_LOGIN_ITEM_TAG = "accountSettings.loginItem"
-internal const val ACCOUNT_SETTINGS_PROFILE_HEADER_TAG = "accountSettings.profileHeader"
-internal const val ACCOUNT_SETTINGS_PROFILE_NAME_TAG = "accountSettings.profileName"
-internal const val ACCOUNT_SETTINGS_SHORTCUT_COLLECTIONS_TAG = "accountSettings.shortcutCollections"
-internal const val ACCOUNT_SETTINGS_SHORTCUT_SUBSCRIPTIONS_TAG = "accountSettings.shortcutSubscriptions"
-internal const val ACCOUNT_SETTINGS_SHORTCUT_NOTIFICATION_TAG = "accountSettings.shortcutNotification"
-internal const val ACCOUNT_SETTINGS_SHORTCUT_HISTORY_TAG = "accountSettings.shortcutHistory"
-internal const val ACCOUNT_SETTINGS_APPEARANCE_TAG = "accountSettings.appearance"
-internal const val ACCOUNT_SETTINGS_RECOMMEND_TAG = "accountSettings.recommend"
-internal const val ACCOUNT_SETTINGS_SYSTEM_TAG = "accountSettings.system"
-internal const val ACCOUNT_SETTINGS_DEVELOPER_TAG = "accountSettings.developer"
-internal const val ACCOUNT_SETTINGS_LICENSES_TAG = "accountSettings.licenses"
+const val ACCOUNT_SETTINGS_SCROLL_TAG = "accountSettings.scroll"
+const val ACCOUNT_SETTINGS_LOGIN_ITEM_TAG = "accountSettings.loginItem"
+const val ACCOUNT_SETTINGS_PROFILE_HEADER_TAG = "accountSettings.profileHeader"
+const val ACCOUNT_SETTINGS_PROFILE_NAME_TAG = "accountSettings.profileName"
+const val ACCOUNT_SETTINGS_SHORTCUT_COLLECTIONS_TAG = "accountSettings.shortcutCollections"
+const val ACCOUNT_SETTINGS_SHORTCUT_SUBSCRIPTIONS_TAG = "accountSettings.shortcutSubscriptions"
+const val ACCOUNT_SETTINGS_SHORTCUT_NOTIFICATION_TAG = "accountSettings.shortcutNotification"
+const val ACCOUNT_SETTINGS_SHORTCUT_HISTORY_TAG = "accountSettings.shortcutHistory"
+const val ACCOUNT_SETTINGS_APPEARANCE_TAG = "accountSettings.appearance"
+const val ACCOUNT_SETTINGS_RECOMMEND_TAG = "accountSettings.recommend"
+const val ACCOUNT_SETTINGS_SYSTEM_TAG = "accountSettings.system"
+const val ACCOUNT_SETTINGS_DEVELOPER_TAG = "accountSettings.developer"
+const val ACCOUNT_SETTINGS_LICENSES_TAG = "accountSettings.licenses"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

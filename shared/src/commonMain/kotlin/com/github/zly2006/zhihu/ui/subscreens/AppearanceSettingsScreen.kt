@@ -101,18 +101,18 @@ import kotlin.time.Duration.Companion.milliseconds
 const val DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY = "duo3_card_large_title"
 const val PREF_FONT_SIZE = "contentFontSize"
 const val PREF_LINE_HEIGHT = "contentLineHeight"
-internal const val APPEARANCE_SETTINGS_SCROLL_TAG = "appearanceSettings.scroll"
-internal const val APPEARANCE_SETTINGS_START_DESTINATION_TAG = "appearanceSettings.startDestination"
-internal const val APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG = "appearanceSettings.answerDoubleTap"
-internal const val APPEARANCE_SETTINGS_USE_WEBVIEW_TAG = "appearanceSettings.useWebView"
-internal const val APPEARANCE_SETTINGS_WEBVIEW_FONT_TAG = "appearanceSettings.webViewFont"
-internal const val APPEARANCE_SETTINGS_WEBVIEW_OPTIONS_TAG = "appearanceSettings.webViewOptions"
-internal const val APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY = "appearanceSettings.bottomBarSection"
+const val APPEARANCE_SETTINGS_SCROLL_TAG = "appearanceSettings.scroll"
+const val APPEARANCE_SETTINGS_START_DESTINATION_TAG = "appearanceSettings.startDestination"
+const val APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG = "appearanceSettings.answerDoubleTap"
+const val APPEARANCE_SETTINGS_USE_WEBVIEW_TAG = "appearanceSettings.useWebView"
+const val APPEARANCE_SETTINGS_WEBVIEW_FONT_TAG = "appearanceSettings.webViewFont"
+const val APPEARANCE_SETTINGS_WEBVIEW_OPTIONS_TAG = "appearanceSettings.webViewOptions"
+const val APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY = "appearanceSettings.bottomBarSection"
 
-internal fun appearanceSettingsStartDestinationOptionTag(key: String): String =
+fun appearanceSettingsStartDestinationOptionTag(key: String): String =
     "appearanceSettings.startDestinationOption.$key"
 
-internal fun appearanceSettingsBottomBarItemTag(key: String): String =
+fun appearanceSettingsBottomBarItemTag(key: String): String =
     "appearanceSettings.bottomBarItem.$key"
 
 const val START_DESTINATION_PREFERENCE_KEY = "startDestination"
