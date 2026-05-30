@@ -12,6 +12,18 @@ plugins {
     id("org.jlleitschuh.gradle.ktlint")
 }
 
+// Force material3 to 1.10.0-alpha05 across all configurations.
+// 根因：material-kolor 在 commonMain 用 strictly 约束强制 1.10.0-alpha05，
+// 但该约束仅作用于 KMP 元数据配置，不会传播到 jvmMain/androidMain 平台配置。
+// 平台配置仍然从 Compose 插件解析到 1.9.0，导致 commonMain 代码（如 MyModalBottomSheet.kt）
+// 编译时用 1.10.0-alpha05 的 API，而平台编译时看到的是 1.9.0，产生 HIDDEN/invisible 编译错误。
+configurations.configureEach {
+    resolutionStrategy {
+        force("org.jetbrains.compose.material3:material3:1.10.0-alpha05")
+    }
+}
+
+
 ktlint {
     android.set(true)
     outputToConsole.set(true)

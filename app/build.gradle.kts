@@ -197,6 +197,17 @@ val coil = "3.4.0"
 val aboutLibraries = "14.0.1"
 val composeVersion = "1.11.0"
 val lifecycleVersion = "2.10.0"
+
+// Force material3 to 1.10.0-alpha05，与 shared 模块保持一致。
+// 根因：shared 模块 commonMain 通过 material-kolor 的 strictly 约束解析到 1.10.0-alpha05，
+// 但平台配置和本模块如果没有 force，会各自解析到不同版本（1.9.0 或 1.11.0-alpha07），
+// 导致运行时类冲突或编译时 internal API 不可见。
+configurations.configureEach {
+    resolutionStrategy {
+        force("org.jetbrains.compose.material3:material3:1.10.0-alpha05")
+    }
+}
+
 dependencies {
     implementation(project(":shared"))
     implementation("androidx.preference:preference:1.2.1")
@@ -240,7 +251,7 @@ dependencies {
     // Compose (core from JetBrains KMP)
     implementation("org.jetbrains.compose.runtime:runtime:$composeVersion")
     implementation("org.jetbrains.compose.foundation:foundation:$composeVersion")
-    implementation("org.jetbrains.compose.material3:material3:1.11.0-alpha07")
+    implementation("org.jetbrains.compose.material3:material3:1.10.0-alpha05")
     implementation("org.jetbrains.compose.ui:ui:$composeVersion")
     implementation("org.jetbrains.compose.ui:ui-graphics:$composeVersion")
     implementation("org.jetbrains.compose.animation:animation:$composeVersion")
