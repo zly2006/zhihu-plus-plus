@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -73,7 +74,7 @@ fun CollectionDialogComponent(
 
     // 对话框内容
     if (showDialog) {
-        MyModalBottomSheet(
+        ModalBottomSheet(
             onDismissRequest = onDismiss,
         ) {
             Column(

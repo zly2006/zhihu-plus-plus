@@ -78,6 +78,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -136,7 +137,6 @@ import com.github.zly2006.zhihu.ui.components.CollectionDialogComponent
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
-import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
 import com.github.zly2006.zhihu.util.smoothGradient
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
@@ -271,7 +271,7 @@ private fun ArticleSummarySheet(
     if (!showDialog) return
     val scrollState = rememberScrollState()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    MyModalBottomSheet(
+    ModalBottomSheet(
         onDismissRequest = onDismissRequest,
         sheetState = sheetState,
     ) {
@@ -535,7 +535,7 @@ fun ArticleActionsMenu(
     }
 
     if (showMenu) {
-        com.github.zly2006.zhihu.ui.components.MyModalBottomSheet(onDismissRequest) {
+        androidx.compose.material3.ModalBottomSheet(onDismissRequest) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1676,7 +1676,7 @@ fun ArticleScreen(
         content = article,
     )
     if (showDoubleTapActionDialog) {
-        MyModalBottomSheet(
+        ModalBottomSheet(
             onDismissRequest = { showDoubleTapActionDialog = false },
         ) {
             Column(
