@@ -18,9 +18,12 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.lazy.items
@@ -33,7 +36,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,7 +49,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import kotlinx.coroutines.launch
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.RecommendationMode
@@ -69,14 +70,12 @@ import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
-import top.yukonga.miuix.kmp.basic.PullToRefresh
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
-import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
 @Composable
 fun MiuixHomeScreen(
@@ -85,7 +84,6 @@ fun MiuixHomeScreen(
 ) {
     val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
-    val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
     val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE) }
 
@@ -112,6 +110,7 @@ fun MiuixHomeScreen(
     val blurEnabled = remember { preferences.getBoolean("blurEnabled", true) }
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
+    val statusBarHeight = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
 
     // 外层 Box：让 SearchPager 覆盖整个屏幕（从真正的屏幕顶部算），
     // 而不是被困在 Scaffold 内容区（已被 topBar 推下去，会导致不靠顶 + 返回闪现）
@@ -157,15 +156,12 @@ fun MiuixHomeScreen(
                     bottomContent = {
                         Box(
                             modifier = Modifier
-                                .alpha(if (searchStatus.shouldCollapsed()) 1f else 0f)
+                                .alpha(if (searchStatus.isCollapsed()) 1f else 0f)
                                 .onGloballyPositioned { coordinates ->
-                                    // 只在折叠态上报 offsetY，锁定假框真实位置
-                                    if (searchStatus.isCollapsed()) {
-                                        with(density) {
-                                            val newOffsetY = coordinates.positionInWindow().y.toDp()
-                                            if (searchStatus.offsetY != newOffsetY) {
-                                                searchStatus = searchStatus.copy(offsetY = newOffsetY)
-                                            }
+                                    with(density) {
+                                        val newOffsetY = coordinates.positionInWindow().y.toDp()
+                                        if (searchStatus.offsetY != newOffsetY) {
+                                            searchStatus = searchStatus.copy(offsetY = newOffsetY)
                                         }
                                     }
                                 }
@@ -192,35 +188,24 @@ fun MiuixHomeScreen(
             }
         },
     ) { padding ->
-        // Scaffold 内容区：feed + 下拉刷新
+        // Scaffold 内容区：只放 feed
         searchStatus.SearchBox {
-            PullToRefresh(
-                isRefreshing = viewModel.isPullToRefresh && viewModel.isLoading,
-                onRefresh = { coroutineScope.launch { viewModel.pullToRefresh(context) } },
-                contentPadding = PaddingValues(top = padding.calculateTopPadding() + 6.dp),
-                refreshTexts = listOf("下拉刷新", "释放刷新", "正在刷新...", "刷新完成"),
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize()
+                    .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
+                    .overScrollVertical()
+                    .nestedScroll(scrollBehavior.nestedScrollConnection),
+                contentPadding = PaddingValues(
+                    top = padding.calculateTopPadding() + 6.dp,
+                    bottom = innerPadding.calculateBottomPadding() + 12.dp,
+                ),
             ) {
-                Box(
-                    modifier = if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier,
-                ) {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize()
-                            .overScrollVertical()
-                            .scrollEndHaptic()
-                            .nestedScroll(scrollBehavior.nestedScrollConnection),
-                        contentPadding = PaddingValues(
-                            top = padding.calculateTopPadding() + 6.dp,
-                            bottom = innerPadding.calculateBottomPadding() + 12.dp,
-                        ),
-                    ) {
-                        items(viewModel.displayItems.size, key = { viewModel.displayItems[it].stableKey }) { index ->
-                            val item = viewModel.displayItems[index]
-                            Card(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
-                                Box(Modifier.padding(16.dp)) {
-                                    Text(text = item.title, color = MiuixTheme.colorScheme.onSurface)
-                                }
-                            }
+                items(viewModel.displayItems.size, key = { viewModel.displayItems[it].stableKey }) { index ->
+                    val item = viewModel.displayItems[index]
+                    Card(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
+                        Box(Modifier.padding(16.dp)) {
+                            Text(text = item.title, color = MiuixTheme.colorScheme.onSurface)
                         }
                     }
                 }
@@ -232,9 +217,7 @@ fun MiuixHomeScreen(
     // 这样 topPadding = systemBarsPadding + 5.dp 能真正靠到屏幕顶部
     searchStatus.SearchPager(
         onSearchStatusChange = { searchStatus = it },
-        // 纯间距，不含 statusBar —— statusBar 高度已由 SearchPager 内部的 topPadding 处理，
-        // 这里再加 statusBar 会双重 padding，导致收起时搜索框偏下
-        searchBarTopPadding = 12.dp,
+        searchBarTopPadding = statusBarHeight + 12.dp,
         defaultResult = {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("输入关键词搜索", color = MiuixTheme.colorScheme.onSurfaceVariantSummary)

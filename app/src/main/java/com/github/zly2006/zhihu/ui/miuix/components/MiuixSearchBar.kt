@@ -125,8 +125,8 @@ fun SearchStatus.SearchPager(
 
     // 效果 B-1：搜索框上移到顶的位移动画，动画完成时推进状态机
     val topPadding by animateDpAsState(
-        targetValue = if (searchStatus.shouldExpand()) systemBarsPadding + 0.dp
-                      else (searchStatus.offsetY - 4.dp).coerceAtLeast(0.dp),
+        targetValue = if (searchStatus.shouldExpand()) systemBarsPadding + 5.dp
+                      else searchStatus.offsetY.coerceAtLeast(0.dp),
         animationSpec = tween(300, easing = LinearOutSlowInEasing),
         label = "SearchPagerTopPadding",
         finishedListener = { onSearchStatusChange(searchStatus.onAnimationComplete()) },
