@@ -32,9 +32,7 @@ class TrySerializer<T : Any>(
     override val descriptor: SerialDescriptor
         get() = serializer.nullable.descriptor
 
-    override fun serialize(encoder: Encoder, value: T?) {
-        // do nothing
-    }
+    override fun serialize(encoder: Encoder, value: T?) = Unit
 
     override fun deserialize(decoder: Decoder): T? = try {
         serializer.deserialize(decoder)
@@ -62,8 +60,7 @@ object NotificationActorsSerializer : KSerializer<List<NotificationActor>> {
     override fun serialize(
         encoder: Encoder,
         value: List<NotificationActor>,
-    ) {
-    }
+    ) = Unit
 
     override fun deserialize(decoder: Decoder): List<NotificationActor> = try {
         ListSerializer(NotificationActor.serializer()).deserialize(decoder)

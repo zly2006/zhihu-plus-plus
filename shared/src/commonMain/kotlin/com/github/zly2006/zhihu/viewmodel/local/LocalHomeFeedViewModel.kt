@@ -133,9 +133,7 @@ class LocalHomeFeedViewModel :
     override suspend fun recordContentInteraction(
         environment: PaginationEnvironment,
         feed: Feed,
-    ) {
-    }
+    ) = Unit
 
-    override fun onUiContentClick(environment: PaginationEnvironment, feed: Feed, item: FeedDisplayItem) {
-    }
+    override fun onUiContentClick(environment: PaginationEnvironment, feed: Feed, item: FeedDisplayItem) = Unit
 }

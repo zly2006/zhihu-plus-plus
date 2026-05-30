@@ -58,8 +58,7 @@ sealed interface Feed {
         override fun serialize(
             encoder: Encoder,
             value: Person?,
-        ) {
-        }
+        ) = Unit
 
         override fun deserialize(decoder: Decoder) = try {
             Person.serializer().deserialize(decoder)

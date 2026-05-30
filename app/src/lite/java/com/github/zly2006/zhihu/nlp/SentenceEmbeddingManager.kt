@@ -26,9 +26,9 @@ object SentenceEmbeddingManager {
     private val _state = MutableStateFlow<ModelState>(ModelState.Uninitialized)
     val state: StateFlow<ModelState> = _state.asStateFlow()
 
-    fun setDefaultContext(context: Context) {}
+    fun setDefaultContext(context: Context) = Unit // TODO: lite variant sentence embeddings are disabled
 
-    fun ensureModel(context: Context) {}
+    fun ensureModel(context: Context) = Unit // TODO: lite variant sentence embeddings are disabled
 
-    suspend fun unload() {}
+    suspend fun unload() = Unit // TODO: lite variant sentence embeddings are disabled
 }

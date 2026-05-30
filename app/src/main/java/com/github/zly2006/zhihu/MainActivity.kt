@@ -692,7 +692,7 @@ class MainActivity :
                             }
 
                             @Suppress("OVERRIDE_DEPRECATION")
-                            override fun onError(p0: String?) { }
+                            override fun onError(p0: String?) = Unit
 
                             override fun onError(utteranceId: String?, errorCode: Int) {
                                 if (utteranceId == "chunk_$currentIndex") {

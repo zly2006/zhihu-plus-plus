@@ -190,7 +190,7 @@ abstract class AnswerNavigator(
      * 在后台预取上一个回答的内容，填充 [previousAnswerContent]，供预览卡片显示完整信息。
      * 默认不预取（问题导航器无上一个来源）。
      */
-    open suspend fun prefetchPrevious(currentArticleId: Long) {}
+    open suspend fun prefetchPrevious(currentArticleId: Long) = Unit
 
     /**
      * 从来源加载上一个回答（非历史），在 [currentAnswerIndex] == 0（即 [goToPrevious] 返回 null）时由

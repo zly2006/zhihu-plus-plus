@@ -24,6 +24,5 @@ class ZhihuCookieStorage(
         Cookie(it.key, it.value, CookieEncoding.RAW, domain = "www.zhihu.com")
     }
 
-    override fun close() {
-    }
+    override fun close() = Unit
 }

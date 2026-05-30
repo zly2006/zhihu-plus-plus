@@ -47,6 +47,5 @@ open class ArticleAnswerSwitchData :
         navigatingFromAnswerSwitch = false
     }
 
-    override fun promoteForNavigation(direction: ArticleAnswerTransitionDirection) {
-    }
+    override fun promoteForNavigation(direction: ArticleAnswerTransitionDirection) = Unit
 }

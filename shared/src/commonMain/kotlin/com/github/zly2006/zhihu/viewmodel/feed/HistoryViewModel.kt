@@ -81,8 +81,7 @@ class HistoryViewModel : BaseFeedViewModel() {
         isLoading = false
     }
 
-    override suspend fun fetchFeeds(environment: PaginationEnvironment) {
-    }
+    override suspend fun fetchFeeds(environment: PaginationEnvironment) = Unit
 
     override fun loadMore(environment: PaginationEnvironment) {
         // 不需要loadMore，所有数据一次性加载
