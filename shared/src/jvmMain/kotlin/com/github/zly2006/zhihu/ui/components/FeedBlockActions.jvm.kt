@@ -13,15 +13,15 @@ import com.github.zly2006.zhihu.viewmodel.feed.resolveFeedBlockAuthorInfo
 import com.github.zly2006.zhihu.viewmodel.feed.resolveFeedKeywordBlockingContent
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeywordService
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
+import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
 import com.github.zly2006.zhihu.viewmodel.filter.desktopKeywordSemanticMatcher
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
-import com.github.zly2006.zhihu.viewmodel.filter.rememberBlocklistManager
 import kotlinx.coroutines.launch
 
 @Composable
 actual fun rememberFeedBlockActions(): FeedBlockActions {
-    val blocklistManager = rememberBlocklistManager()
+    val blocklistManager = rememberDesktopBlocklistManager()
     val userMessages = rememberUserMessageSink()
     val store = remember { DesktopAccountStore() }
     val contentDetailProvider = remember(store) {
@@ -81,6 +81,31 @@ actual fun rememberBlockByKeywordsRuntime(): BlockByKeywordsRuntime = remember {
             blockedKeywordService.addNLPPhrase(phrase)
         },
     )
+}
+
+@Composable
+actual fun rememberBlockUserConfirmRuntime(): BlockUserConfirmRuntime {
+    val blocklistManager = rememberDesktopBlocklistManager()
+    return remember(blocklistManager) {
+        BlockUserConfirmRuntime(
+            blockUser = { author ->
+                blocklistManager.addBlockedUser(
+                    userId = author.id,
+                    userName = author.name,
+                    urlToken = author.urlToken,
+                    avatarUrl = author.avatarUrl,
+                )
+            },
+        )
+    }
+}
+
+@Composable
+private fun rememberDesktopBlocklistManager() = remember {
+    val databaseFile = desktopContentFilterDatabaseFile()
+    databaseFile.parentFile?.mkdirs()
+    val database = getContentFilterDatabase(databaseFile)
+    database.createBlocklistManager()
 }
 
 private fun desktopFeedBlockContentDetailProvider(

@@ -19,3 +19,8 @@ actual fun rememberBlockByKeywordsRuntime(): BlockByKeywordsRuntime = remember {
         addNlpPhrase = { },
     )
 } // TODO: iOS 关键词屏蔽运行时
+
+@Composable
+actual fun rememberBlockUserConfirmRuntime(): BlockUserConfirmRuntime = remember {
+    BlockUserConfirmRuntime(blockUser = { })
+} // TODO: iOS 屏蔽用户确认运行时
