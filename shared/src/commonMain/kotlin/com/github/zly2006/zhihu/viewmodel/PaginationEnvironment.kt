@@ -56,8 +56,7 @@ interface PaginationEnvironment {
         handleFetchFailure("AndroidHomeFeedViewModel", error)
     }
 
-    fun configureSignedRequest(builder: HttpRequestBuilder) {
-    }
+    fun configureSignedRequest(builder: HttpRequestBuilder) = Unit
 
     fun xsrfToken(): String = ""
 
@@ -68,14 +67,12 @@ interface PaginationEnvironment {
     suspend fun addReadHistory(
         contentToken: String,
         contentTypeName: String,
-    ) {
-    }
+    ) = Unit
 
     suspend fun followQuestion(
         questionId: Long,
         follow: Boolean,
-    ) {
-    }
+    ) = Unit
 
     suspend fun applyHomeFeedFilters(items: List<FeedDisplayItem>): HomeFeedFilterResult =
         HomeFeedFilterResult(
@@ -84,19 +81,15 @@ interface PaginationEnvironment {
             reverseBlock = feedDisplaySettings().reverseBlock,
         )
 
-    suspend fun sendFeedReadStatus(feed: Feed) {
-    }
+    suspend fun sendFeedReadStatus(feed: Feed) = Unit
 
-    suspend fun recordContentInteraction(feed: Feed) {
-    }
+    suspend fun recordContentInteraction(feed: Feed) = Unit
 
     suspend fun markItemsAsTouched(items: Set<Pair<String, String>>): Set<Pair<String, String>> = emptySet()
 
-    suspend fun clearAllHistory() {
-    }
+    suspend fun clearAllHistory() = Unit
 
-    suspend fun postHistoryDestination(destination: NavDestination) {
-    }
+    suspend fun postHistoryDestination(destination: NavDestination) = Unit
 
     suspend fun isUserBlocked(userId: String): Boolean = false
 
@@ -106,25 +99,21 @@ interface PaginationEnvironment {
         destination: NavDestination,
         questionId: Long? = null,
         openFrom: String = "",
-    ) {
-    }
+    ) = Unit
 
     suspend fun addBlockedUser(
         userId: String,
         userName: String,
         urlToken: String? = null,
         avatarUrl: String? = null,
-    ) {
-    }
+    ) = Unit
 
     suspend fun addBlockedTopic(
         topicId: String,
         topicName: String,
-    ) {
-    }
+    ) = Unit
 
-    suspend fun removeBlockedUser(userId: String) {
-    }
+    suspend fun removeBlockedUser(userId: String) = Unit
 
     fun localRecommendationEngine(): LocalRecommendationEngine? = null
 
@@ -135,15 +124,13 @@ interface PaginationEnvironment {
     fun setPlainTextClipboard(
         label: String,
         text: String,
-    ) {
-    }
+    ) = Unit
 
     fun hasImageExportPermission(): Boolean = false
 
     fun requiresHtmlExportPermission(): Boolean = false
 
-    fun requestImageExportPermission() {
-    }
+    fun requestImageExportPermission() = Unit
 
     fun loadExportAssetText(fileName: String): String = ""
 
@@ -167,13 +154,11 @@ interface PaginationEnvironment {
     fun saveImageToMediaStore(
         displayName: String,
         bitmap: Any,
-    ) {
-    }
+    ) = Unit
 
     fun articleImageExportRenderer(loadAssetText: (String) -> String): ArticleImageExportRenderer? = null
 
-    suspend fun showLocalRecommendationDatabaseError() {
-    }
+    suspend fun showLocalRecommendationDatabaseError() = Unit
 
     fun answerNavigatorRepository(): AnswerNavigatorRepository? = null
 
@@ -186,8 +171,7 @@ interface PaginationEnvironment {
     suspend fun recordOpenEvent(
         destination: Article,
         questionId: Long?,
-    ) {
-    }
+    ) = Unit
 }
 
 data class FeedDisplaySettings(
