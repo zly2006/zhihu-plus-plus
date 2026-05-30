@@ -64,6 +64,8 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
 import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
+import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
+import com.github.zly2006.zhihu.shared.platform.rememberImagePreviewOpener
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.LocalSegmentActionSheetHost
@@ -83,6 +85,8 @@ fun RenderImage(
     modifier: Modifier,
 ) {
     val runtime = rememberMarkdownRuntime()
+    val openImagePreview = rememberImagePreviewOpener()
+    val openExternalUrl = rememberExternalUrlOpener()
     var expanded by remember { mutableStateOf(false) }
     var pressOffset by remember { mutableStateOf(DpOffset.Zero) }
     val density = LocalDensity.current
@@ -101,7 +105,7 @@ fun RenderImage(
                 .pointerInput(Unit) {
                     detectTapGestures(
                         onTap = {
-                            runtime.openImage(data.url)
+                            openImagePreview(data.url)
                         },
                         onLongPress = { offset ->
                             hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -127,14 +131,14 @@ fun RenderImage(
                     text = { Text("查看图片") },
                     onClick = {
                         expanded = false
-                        runtime.openImage(data.url)
+                        openImagePreview(data.url)
                     },
                 )
                 DropdownMenuItem(
                     text = { Text("在浏览器中打开") },
                     onClick = {
                         expanded = false
-                        runtime.openInBrowser(data.url)
+                        openExternalUrl(data.url)
                     },
                 )
                 DropdownMenuItem(
@@ -239,6 +243,7 @@ fun RenderMarkdown(
     val document = remember(html) { htmlToMdAst(html) }
     val navigator = LocalNavigator.current
     val runtime = rememberMarkdownRuntime()
+    val openExternalUrl = rememberExternalUrlOpener()
     val settings = rememberSettingsStore()
     val fontSize = settings.getInt(PREF_FONT_SIZE, 100)
     val lineHeight = settings.getInt(PREF_LINE_HEIGHT, 160)
@@ -267,7 +272,7 @@ fun RenderMarkdown(
             enableSelection = selectable,
             onLinkClick = { url ->
                 resolveContent(url)?.let { navigator.onNavigate(it) }
-                    ?: runtime.openInBrowser(url)
+                    ?: openExternalUrl(url)
             },
             header = header,
             footer = footer,

@@ -12,8 +12,6 @@ import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
 import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDataFile
 import com.github.zly2006.zhihu.shared.desktop.saveImageToDownloads
-import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
-import com.github.zly2006.zhihu.shared.platform.rememberImagePreviewOpener
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.hrm.latex.renderer.font.MathFont
 import io.ktor.client.call.body
@@ -32,8 +30,6 @@ private val LM_MATH_URLS = listOf(
 actual fun rememberMarkdownRuntime(): MarkdownRuntime {
     val userMessages = rememberUserMessageSink()
     val store = remember { DesktopAccountStore() }
-    val openExternalUrl = rememberExternalUrlOpener()
-    val openImagePreview = rememberImagePreviewOpener()
     var mathFont by remember { mutableStateOf<MathFont?>(null) }
 
     LaunchedEffect(store) {
@@ -42,17 +38,9 @@ actual fun rememberMarkdownRuntime(): MarkdownRuntime {
         }.getOrNull()
     }
 
-    return remember(store, userMessages, openExternalUrl, openImagePreview, mathFont) {
+    return remember(store, userMessages, mathFont) {
         object : MarkdownRuntime {
             override val mathFont: MathFont? = mathFont
-
-            override fun openImage(url: String) {
-                openImagePreview(url)
-            }
-
-            override fun openInBrowser(url: String) {
-                openExternalUrl(url)
-            }
 
             override suspend fun saveMarkdownImage(url: String) {
                 runCatching {

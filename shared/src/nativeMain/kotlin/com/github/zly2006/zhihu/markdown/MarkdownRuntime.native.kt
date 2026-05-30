@@ -10,12 +10,6 @@ actual fun rememberMarkdownRuntime(): MarkdownRuntime = remember {
     object : MarkdownRuntime {
         override val mathFont: MathFont? = null
 
-        // TODO: iOS 打开图片
-        override fun openImage(url: String) = Unit
-
-        // TODO: iOS 浏览器打开链接
-        override fun openInBrowser(url: String) = Unit
-
         // TODO: iOS 保存Markdown图片
         override suspend fun saveMarkdownImage(url: String) = Unit
 
