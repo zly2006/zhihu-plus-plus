@@ -56,12 +56,12 @@ import com.github.zly2006.zhihu.util.prepareArticleExportComment
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.accept
+import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsChannel
-import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
@@ -464,9 +464,10 @@ class ArticleViewModel(
                         ArticleType.Article -> "article"
                     }
                     val collectionsUrl = "https://api.zhihu.com/collections/contents/$contentType/${article.id}?limit=50"
-                    val jojo = httpClient!!.get(collectionsUrl) {
-                        context.configureSignedRequest(this)
-                    }.body<JsonObject>()
+                    val jojo = httpClient!!
+                        .get(collectionsUrl) {
+                            context.configureSignedRequest(this)
+                        }.body<JsonObject>()
                     val collectionsData = ZhihuJson.decodeJson<CollectionResponse>(jojo)
                     collections.clear()
                     collections.addAll(

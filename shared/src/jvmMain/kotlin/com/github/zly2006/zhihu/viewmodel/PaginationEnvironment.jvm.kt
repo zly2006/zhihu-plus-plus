@@ -36,6 +36,7 @@ import com.github.zly2006.zhihu.util.sanitizeArticleExportFileNamePart
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
 import com.github.zly2006.zhihu.viewmodel.filter.applyContentFilterToDisplayItems
 import com.github.zly2006.zhihu.viewmodel.filter.applyForegroundReadFilterToDisplayItems
+import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
 import com.github.zly2006.zhihu.viewmodel.filter.desktopKeywordSemanticMatcher
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
@@ -122,6 +123,13 @@ class DesktopPaginationEnvironment(
             contentTypeName = contentTypeName,
         )
     }
+
+    override suspend fun postHistoryDestination(destination: NavDestination) {
+        historyStorage.add(destination)
+    }
+
+    override suspend fun isUserBlocked(userId: String): Boolean =
+        getContentFilterDatabase(desktopContentFilterDatabaseFile()).createBlocklistManager().isUserBlocked(userId)
 
     override suspend fun followQuestion(
         questionId: Long,

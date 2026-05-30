@@ -3,7 +3,6 @@
 package com.github.zly2006.zhihu.ui
 
 import androidx.compose.runtime.Composable
-import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.shared.data.officialBadgeDetails
@@ -23,7 +22,6 @@ data class PeopleRecommendationBlockRequest(
 )
 
 data class PeopleScreenRuntime(
-    val loadProfile: suspend (Person) -> PeopleProfileLoadResult,
     val toggleRecommendationBlock: suspend (PeopleRecommendationBlockRequest) -> Boolean,
     val showShortMessage: (String) -> Unit,
     val openWebUrl: (String) -> Unit,

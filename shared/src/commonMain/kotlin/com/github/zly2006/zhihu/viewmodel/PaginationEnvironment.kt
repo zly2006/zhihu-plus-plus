@@ -90,6 +90,11 @@ interface PaginationEnvironment {
     suspend fun clearAllHistory() {
     }
 
+    suspend fun postHistoryDestination(destination: NavDestination) {
+    }
+
+    suspend fun isUserBlocked(userId: String): Boolean = false
+
     fun localRecommendationEngine(): LocalRecommendationEngine? = null
 
     suspend fun handleLocalRecommendationFailure(error: Exception) {

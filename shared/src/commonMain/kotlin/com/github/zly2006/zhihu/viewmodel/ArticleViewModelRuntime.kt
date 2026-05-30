@@ -23,7 +23,6 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
-import kotlinx.serialization.json.JsonObject
 
 interface ArticleViewModelRuntime {
     suspend fun getContentDetail(article: Article): DataHolder.Content?

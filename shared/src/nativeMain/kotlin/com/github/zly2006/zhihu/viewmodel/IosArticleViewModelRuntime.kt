@@ -10,7 +10,6 @@ import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
-import kotlinx.serialization.json.JsonObject
 
 // TODO: iOS ArticleViewModelRuntime 完整实现
 class IosArticleViewModelRuntime(
@@ -43,7 +42,6 @@ class IosArticleViewModelRuntime(
 
     // TODO: iOS 历史记录
     override fun postHistoryDestination(destination: Article) = Unit
-
 
     // TODO: iOS 签名请求
     override fun configureSignedRequest(builder: HttpRequestBuilder) = Unit

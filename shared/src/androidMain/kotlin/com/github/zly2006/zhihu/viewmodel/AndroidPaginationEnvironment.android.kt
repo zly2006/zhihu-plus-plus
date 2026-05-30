@@ -64,6 +64,7 @@ import com.github.zly2006.zhihu.viewmodel.filter.AndroidContentFilterRuntime
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
 import com.github.zly2006.zhihu.viewmodel.filter.contentFilterSettings
+import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.filter.recordFeedContentInteraction
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
@@ -205,6 +206,13 @@ open class SharedAndroidPaginationEnvironment(
         contentTypeName: String,
     ) {
         AccountData.addReadHistory(context, contentToken, contentTypeName)
+
+        override suspend fun postHistoryDestination(destination: NavDestination) {
+            HistoryStorage(context).add(destination)
+        }
+
+        override suspend fun isUserBlocked(userId: String): Boolean =
+            getContentFilterDatabase(context).createBlocklistManager().isUserBlocked(userId)
     }
 
     override suspend fun followQuestion(

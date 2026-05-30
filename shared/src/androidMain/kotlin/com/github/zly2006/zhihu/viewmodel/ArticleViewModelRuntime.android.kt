@@ -52,7 +52,6 @@ import com.github.zly2006.zhihu.viewmodel.comment.RootCommentViewModel.Companion
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
-import kotlinx.serialization.json.JsonObject
 import java.io.File
 
 class AndroidArticleViewModelRuntime(
@@ -83,6 +82,7 @@ class AndroidArticleViewModelRuntime(
     override fun postHistoryDestination(destination: Article) {
         context.articleHost()?.postHistoryDestination(destination)
     }
+
     override suspend fun fetchExportComments(
         article: Article,
         requestedCount: Int,
@@ -101,7 +101,6 @@ class AndroidArticleViewModelRuntime(
 
         return decodeZhihuCommentData(json, safeRequestedCount)
     }
-
 
     override fun configureSignedRequest(builder: HttpRequestBuilder) {
         builder.signFetchRequest()

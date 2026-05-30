@@ -75,6 +75,7 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.OfficialBadge
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.shared.data.officialBadgeDetails
 import com.github.zly2006.zhihu.shared.people.PeopleListUiState
@@ -92,7 +93,9 @@ import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import io.ktor.client.call.body
 import io.ktor.client.request.delete
+import io.ktor.client.request.get
 import io.ktor.client.request.post
+import io.ktor.client.request.url
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
@@ -395,9 +398,32 @@ class PersonViewModel(
         )
     }
 
-    suspend fun load(runtime: PeopleScreenRuntime) {
-        val result = runtime.loadProfile(person)
-        val profile = result.profile
+    suspend fun load(environment: PaginationEnvironment) {
+        environment.addReadHistory(person.id, "profile")
+
+        val jojo = environment
+            .httpClient()
+            .get(peopleProfileUrl(person)) {
+                url {
+                    parameters["include"] = peopleProfileIncludePath
+                }
+                environment.configureSignedRequest(this)
+            }.body<JsonObject>()
+
+        val loadedPerson = ZhihuJson.decodeJson<DataHolder.People>(jojo)
+        val urlToken = loadedPerson.urlToken
+
+        environment.postHistoryDestination(
+            Person(
+                id = loadedPerson.id,
+                name = loadedPerson.name,
+                urlToken = urlToken ?: "",
+            ),
+        )
+
+        val isBlocked = environment.isUserBlocked(loadedPerson.id)
+        val profile = toPeopleProfileLoadResult(loadedPerson, isBlocked).profile
+
         this.avatar = profile.avatar
         this.name = profile.name
         this.headline = profile.headline
@@ -410,7 +436,6 @@ class PersonViewModel(
         this.isFollowing = profile.isFollowing
         this.isBlocking = profile.isBlocking
         this.isBlockedInRecommendations = profile.isBlockedInRecommendations
-        val urlToken = result.urlToken
         if (urlToken != null) {
             this.person.urlToken = urlToken
         }
@@ -642,7 +667,7 @@ private fun PeopleScreenContent(
             return@LaunchedEffect
         }
         try {
-            viewModel.load(runtime)
+            viewModel.load(paginationEnvironment)
         } catch (e: Exception) {
             runtime.showShortMessage("加载用户信息失败: ${e.message}")
         }

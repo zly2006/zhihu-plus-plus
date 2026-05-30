@@ -6,12 +6,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.navigation.Person
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.ui.components.OpenImageDialog
-import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.filter.getBlocklistManager
 
 private const val WEBVIEW_ACTIVITY_CLASS = "com.github.zly2006.zhihu.WebviewActivity"
@@ -22,28 +18,6 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
     return remember(context) {
         val userMessages = androidUserMessageSink(context)
         PeopleScreenRuntime(
-            loadProfile = { person ->
-                AccountData.addReadHistory(context, person.id, "profile")
-                val jojo = AccountData.fetchGet(context, peopleProfileUrl(person)) {
-                    signFetchRequest()
-                    url {
-                        parameters["include"] = peopleProfileIncludePath
-                    }
-                }!!
-                val loadedPerson = ZhihuJson.decodeJson<DataHolder.People>(jojo)
-                val blocklistManager = getBlocklistManager(context)
-                (context as? ArticleHost)?.postHistoryDestination(
-                    Person(
-                        id = loadedPerson.id,
-                        name = loadedPerson.name,
-                        urlToken = loadedPerson.urlToken ?: "",
-                    ),
-                )
-                toPeopleProfileLoadResult(
-                    loadedPerson = loadedPerson,
-                    isBlockedInRecommendations = blocklistManager.isUserBlocked(loadedPerson.id),
-                )
-            },
             toggleRecommendationBlock = { request ->
                 val blocklistManager = getBlocklistManager(context)
                 if (request.isBlocked) {
