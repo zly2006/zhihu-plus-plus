@@ -16,7 +16,6 @@
  */
 
 package com.github.zly2006.zhihu.shared.data
-import androidx.compose.runtime.Stable
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
@@ -258,58 +257,5 @@ object ZhihuJson {
         this.json.decodeFromJsonElement(serializer, snakeCaseToCamelCase(json))
 }
 
-@Serializable
-data class Collection(
-    val id: String,
-    val isFavorited: Boolean = false,
-    val type: String = "collection",
-    val title: String = "",
-    val isPublic: Boolean = false,
-    val url: String = "",
-    val description: String = "",
-    val followerCount: Int = 0,
-    val answerCount: Int = 0,
-    val itemCount: Int = 0,
-    val likeCount: Int = 0,
-    val viewCount: Int = 0,
-    val commentCount: Int = 0,
-    val isFollowing: Boolean = false,
-    val isLiking: Boolean = false,
-    val createdTime: Long = 0L,
-    val updatedTime: Long = 0L,
-    val creator: Person? = null,
-    val isDefault: Boolean = false,
-)
-
-@Serializable
-data class CollectionResponse(
-    val data: List<Collection>,
-    val paging: ZhihuPaging,
-)
-
-class CollectionItem(
-    val created: String,
-    val content: Feed.Target,
-)
-
-@Stable
-data class CollectionHtmlExportDialogState(
-    val phaseText: String,
-    val totalCount: Int,
-    val processedCount: Int,
-    val successCount: Int,
-    val skippedCount: Int,
-    val failedCount: Int,
-    val currentTitle: String = "",
-    val isIndeterminate: Boolean = false,
-    val isCompleted: Boolean = false,
-    val resultMessage: String? = null,
-    val zipFilePath: String? = null,
-) {
-    val progress: Float
-        get() = if (totalCount <= 0) 0f else (processedCount.toFloat() / totalCount.toFloat()).coerceIn(0f, 1f)
-}
-
-// Re-export from ui package for backward compatibility with tests
 typealias FollowedQuestion = FollowedQuestionImpl
 typealias FollowedTopic = FollowedTopicImpl

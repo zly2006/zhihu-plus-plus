@@ -17,21 +17,20 @@
 
 package com.github.zly2006.zhihu.viewmodel
 
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
-import com.github.zly2006.zhihu.shared.data.Collection
-import com.github.zly2006.zhihu.shared.data.CollectionHtmlExportDialogState
-import com.github.zly2006.zhihu.shared.data.CollectionItem
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.ZhihuPaging
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
+import com.github.zly2006.zhihu.ui.Collection
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonArray
@@ -239,3 +238,28 @@ class CollectionContentViewModel(
         return beforePaging.next != afterPaging.next || beforePaging.page != afterPaging.page || beforePaging.isEnd != afterPaging.isEnd
     }
 }
+
+class CollectionItem(
+    val created: String,
+    val content: Feed.Target,
+)
+
+@Stable
+data class CollectionHtmlExportDialogState(
+    val phaseText: String,
+    val totalCount: Int,
+    val processedCount: Int,
+    val successCount: Int,
+    val skippedCount: Int,
+    val failedCount: Int,
+    val currentTitle: String = "",
+    val isIndeterminate: Boolean = false,
+    val isCompleted: Boolean = false,
+    val resultMessage: String? = null,
+    val zipFilePath: String? = null,
+) {
+    val progress: Float
+        get() = if (totalCount <= 0) 0f else (processedCount.toFloat() / totalCount.toFloat()).coerceIn(0f, 1f)
+}
+
+// Re-export from ui package for backward compatibility with tests

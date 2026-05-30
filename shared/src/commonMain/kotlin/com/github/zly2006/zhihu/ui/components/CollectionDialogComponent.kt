@@ -50,7 +50,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.github.zly2006.zhihu.shared.data.Collection
+import com.github.zly2006.zhihu.ui.Collection
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
