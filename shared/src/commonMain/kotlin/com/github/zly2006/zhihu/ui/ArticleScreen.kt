@@ -160,7 +160,7 @@ private val ScrollThresholdDp = SCROLL_THRESHOLD.dp
  * 修复 noscript 标签中的图片加载问题。
  * 提取为独立函数，确保主 WebView 和预览 WebView 使用相同的文档处理。
  */
-fun prepareContentDocument(
+private fun prepareContentDocument(
     content: String,
     onImageLoadFailure: () -> Unit = {},
 ): String =
