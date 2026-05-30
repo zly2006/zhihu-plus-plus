@@ -7,14 +7,12 @@ import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.markdown.RenderVideoBox
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
-import com.github.zly2006.zhihu.viewmodel.ArticleViewModelRuntime
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 interface ArticleScreenRuntime {
     val articleHost: ArticleHost?
-    val articleRuntime: ArticleViewModelRuntime
     val previewPreloader: ArticlePreviewPreloader
 }
 

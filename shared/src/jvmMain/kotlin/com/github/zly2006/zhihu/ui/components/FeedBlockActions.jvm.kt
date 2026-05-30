@@ -10,11 +10,10 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.nlp.KeywordAnalyzerCore
 import com.github.zly2006.zhihu.shared.nlp.KeywordWithWeight
-import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.fetchDesktopPinDetail
 import com.github.zly2006.zhihu.ui.fetchDesktopQuestionDetailForFeedBlock
-import com.github.zly2006.zhihu.viewmodel.DesktopArticleViewModelRuntime
+import com.github.zly2006.zhihu.viewmodel.DesktopPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.removeFeedItemsByBlockedTopic
 import com.github.zly2006.zhihu.viewmodel.feed.resolveFeedBlockAuthorInfo
 import com.github.zly2006.zhihu.viewmodel.feed.resolveFeedKeywordBlockingContent
@@ -31,8 +30,8 @@ actual fun rememberFeedBlockActions(): FeedBlockActions {
     val blocklistManager = rememberDesktopBlocklistManager()
     val userMessages = rememberUserMessageSink()
     val store = remember { DesktopAccountStore() }
-    val contentDetailProvider = remember(store, userMessages) {
-        desktopFeedBlockContentDetailProvider(store, userMessages)
+    val contentDetailProvider = remember(store) {
+        desktopFeedBlockContentDetailProvider(store)
     }
     return remember(blocklistManager, userMessages, contentDetailProvider) {
         FeedBlockActions(
@@ -117,20 +116,19 @@ private fun rememberDesktopBlocklistManager() = remember {
 
 private fun desktopFeedBlockContentDetailProvider(
     store: DesktopAccountStore,
-    userMessages: UserMessageSink,
 ): ContentDetailProvider {
-    val articleRuntime = DesktopArticleViewModelRuntime(store, userMessages)
+    val environment = DesktopPaginationEnvironment(store)
     return ContentDetailProvider { destination ->
-        fetchDesktopFeedBlockContentDetail(store, articleRuntime, destination)
+        fetchDesktopFeedBlockContentDetail(store, environment, destination)
     }
 }
 
 private suspend fun fetchDesktopFeedBlockContentDetail(
     store: DesktopAccountStore,
-    articleRuntime: DesktopArticleViewModelRuntime,
+    environment: DesktopPaginationEnvironment,
     destination: NavDestination,
 ) = when (destination) {
-    is Article -> articleRuntime.getContentDetail(destination)
+    is Article -> environment.getContentDetail(destination)
     is Question -> fetchDesktopQuestionDetailForFeedBlock(store, destination)
     is Pin -> fetchDesktopPinDetail(store, destination)
     else -> null

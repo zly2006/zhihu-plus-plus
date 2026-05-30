@@ -5,20 +5,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.viewmodel.IosArticleViewModelRuntime
 
 @Composable
-actual fun rememberArticleScreenRuntime(): ArticleScreenRuntime {
-    val userMessages = rememberUserMessageSink()
-    return remember(userMessages) {
-        object : ArticleScreenRuntime {
-            override val articleHost: ArticleHost? = null
-            override val articleRuntime = IosArticleViewModelRuntime(userMessages)
+actual fun rememberArticleScreenRuntime(): ArticleScreenRuntime = remember {
+    object : ArticleScreenRuntime {
+        override val articleHost: ArticleHost? = null
 
-            // TODO: iOS 预加载实现
-            override val previewPreloader = ArticlePreviewPreloader { _, _, _, _ -> }
-        }
+        // TODO: iOS 预加载实现
+        override val previewPreloader = ArticlePreviewPreloader { _, _, _, _ -> }
     }
 }
 

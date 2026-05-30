@@ -10,8 +10,6 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.fuckHonorService
-import com.github.zly2006.zhihu.viewmodel.AndroidArticleViewModelRuntime
-import com.github.zly2006.zhihu.viewmodel.ArticleViewModelRuntime
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -22,7 +20,6 @@ actual fun rememberArticleScreenRuntime(): ArticleScreenRuntime {
         val articleHost = context.articleHost()
         object : ArticleScreenRuntime {
             override val articleHost: ArticleHost? = articleHost
-            override val articleRuntime: ArticleViewModelRuntime = AndroidArticleViewModelRuntime(context)
             override val previewPreloader: ArticlePreviewPreloader = ArticlePreviewPreloader { cached, isNext, title, onImageLoadFailed ->
                 val previewWebViewStore = articleHost?.articleAnswerSwitchState as? ArticlePreviewWebViewStore
                     ?: return@ArticlePreviewPreloader

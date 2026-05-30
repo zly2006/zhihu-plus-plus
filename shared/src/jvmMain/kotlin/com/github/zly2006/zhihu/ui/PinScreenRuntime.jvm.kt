@@ -14,12 +14,10 @@ import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
 import com.github.zly2006.zhihu.shared.desktop.signedFetchJson
 import com.github.zly2006.zhihu.shared.pin.PinLinkCardPreview
-import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
-import com.github.zly2006.zhihu.viewmodel.DesktopArticleViewModelRuntime
+import com.github.zly2006.zhihu.viewmodel.DesktopPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 
@@ -27,20 +25,19 @@ import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 actual fun rememberPinScreenRuntime(): PinScreenRuntime {
     val scope = rememberCoroutineScope()
     val settings = rememberSettingsStore()
-    val userMessages = rememberUserMessageSink()
     val shareRuntime = rememberShareDialogRuntime()
     val store = DesktopAccountStore()
     val historyStorage = DesktopHistoryStorage()
     val contentFilterDatabase = remember {
         getContentFilterDatabase(desktopContentFilterDatabaseFile())
     }
-    return remember(scope, settings, userMessages, shareRuntime) {
+    return remember(scope, settings, shareRuntime) {
         PinScreenRuntime(
             handleShareAction = { pin, onShowDialog ->
                 handleShareAction(pin, settings, shareRuntime, onShowDialog)
             },
             fetchLinkCardPreview = { linkCard ->
-                fetchDesktopLinkCardPreview(store, userMessages, linkCard)
+                fetchDesktopLinkCardPreview(store, linkCard)
             },
             openExternalUrl = ::openDesktopExternalUrl,
         )
@@ -73,12 +70,11 @@ internal suspend fun fetchDesktopQuestionDetailForFeedBlock(
 
 private suspend fun fetchDesktopLinkCardPreview(
     store: DesktopAccountStore,
-    userMessages: UserMessageSink,
     linkCard: DataHolder.Pin.ContentLinkCard,
 ): PinLinkCardPreview? = fetchPinLinkCardPreview(linkCard) { destination ->
     when (destination) {
         is Article -> {
-            DesktopArticleViewModelRuntime(store, userMessages).getContentDetail(destination)
+            DesktopPaginationEnvironment(store).getContentDetail(destination)
         }
         is Question -> {
             fetchDesktopQuestionDetailForFeedBlock(store, destination)

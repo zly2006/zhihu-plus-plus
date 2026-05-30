@@ -68,3 +68,43 @@ fun MyModalBottomSheet(
         content = content,
     )
 }
+
+@Composable
+@ExperimentalMaterial3Api
+fun BottomSheet(
+    modifier: Modifier = Modifier,
+    state: SheetState = rememberModalBottomSheetState(),
+    onDismissRequest: () -> Unit = {},
+    maxWidth: Dp = BottomSheetDefaults.SheetMaxWidth,
+    gesturesEnabled: Boolean = true,
+    backHandlerEnabled: Boolean = true,
+    dragHandle: @Composable (() -> Unit)? = { BottomSheetDefaults.DragHandle() },
+    contentWindowInsets: @Composable () -> WindowInsets = {
+        BottomSheetDefaults.windowInsets
+    },
+    shape: Shape = BottomSheetDefaults.ExpandedShape,
+    containerColor: Color = BottomSheetDefaults.ContainerColor,
+    contentColor: Color = contentColorFor(containerColor),
+    tonalElevation: Dp = BottomSheetDefaults.Elevation,
+    shadowElevation: Dp = 0.dp,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismissRequest,
+        modifier = modifier,
+        sheetState = state,
+        sheetMaxWidth = maxWidth,
+        sheetGesturesEnabled = gesturesEnabled,
+        shape = shape,
+        containerColor = containerColor,
+        contentColor = contentColor,
+        tonalElevation = tonalElevation,
+        dragHandle = dragHandle,
+        contentWindowInsets = contentWindowInsets,
+        properties = ModalBottomSheetProperties(
+            shouldDismissOnBackPress = backHandlerEnabled,
+            shouldDismissOnClickOutside = true,
+        ),
+        content = content,
+    )
+}
