@@ -5,15 +5,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
 interface CommentScreenRuntime {
-    fun openImage(imageUrl: String)
-
-    fun openImageInBrowser(imageUrl: String)
-
     fun saveImage(imageUrl: String)
 
     fun shareImage(imageUrl: String)
-
-    fun openExternalUrl(url: String)
 }
 
 @Composable

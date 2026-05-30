@@ -128,6 +128,8 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
+import com.github.zly2006.zhihu.shared.platform.rememberImagePreviewOpener
 import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.ChildCommentViewModel
@@ -343,6 +345,8 @@ private fun ClickableImageWithMenu(
     onAction: ((CommentImageMenuAction, String) -> Unit)? = null,
 ) {
     var showContextMenu by remember { mutableStateOf(false) }
+    val openImagePreview = rememberImagePreviewOpener()
+    val openExternalUrl = rememberExternalUrlOpener()
 
     fun handleAction(action: CommentImageMenuAction) {
         if (onAction != null) {
@@ -350,8 +354,8 @@ private fun ClickableImageWithMenu(
             return
         }
         when (action) {
-            CommentImageMenuAction.Open -> runtime.openImage(imageUrl)
-            CommentImageMenuAction.OpenInBrowser -> runtime.openImageInBrowser(imageUrl)
+            CommentImageMenuAction.Open -> openImagePreview(imageUrl)
+            CommentImageMenuAction.OpenInBrowser -> openExternalUrl(imageUrl)
             CommentImageMenuAction.Save -> runtime.saveImage(imageUrl)
             CommentImageMenuAction.Share -> runtime.shareImage(imageUrl)
         }
@@ -1034,6 +1038,7 @@ private fun CommentItem(
                         ?: document.selectFirst("a.comment_sticker")?.attr("href")
                 // 收集所有使用的emoji
                 val emojisUsed = remember { mutableSetOf<String>() }
+                val openExternalUrl = rememberExternalUrlOpener()
                 val string = remember(commentData.content) {
                     emojisUsed.clear()
                     buildAnnotatedString {
@@ -1044,7 +1049,7 @@ private fun CommentItem(
                         dfsSimple(
                             node = stripped,
                             onNavigate = navigator.onNavigate,
-                            openExternalUrl = runtime::openExternalUrl,
+                            openExternalUrl = openExternalUrl,
                             componentUsed = emojisUsed,
                         )
                     }

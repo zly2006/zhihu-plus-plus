@@ -11,10 +11,6 @@ actual fun rememberCommentScreenRuntime(): CommentScreenRuntime {
     val userMessages = rememberUserMessageSink()
     return remember(userMessages) {
         object : CommentScreenRuntime {
-            override fun openImage(imageUrl: String) = openIosUrl(imageUrl)
-
-            override fun openImageInBrowser(imageUrl: String) = openIosUrl(imageUrl)
-
             // TODO: iOS 图片保存
             override fun saveImage(imageUrl: String) {
                 userMessages.showMessage("iOS 图片保存暂未实现")
@@ -24,8 +20,6 @@ actual fun rememberCommentScreenRuntime(): CommentScreenRuntime {
             override fun shareImage(imageUrl: String) {
                 userMessages.showMessage("iOS 图片分享暂未实现")
             }
-
-            override fun openExternalUrl(url: String) = openIosUrl(url)
         }
     }
 }

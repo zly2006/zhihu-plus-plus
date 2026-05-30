@@ -13,8 +13,6 @@ import androidx.compose.ui.unit.em
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
 import com.github.zly2006.zhihu.shared.desktop.saveImageToDownloads
-import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
-import com.github.zly2006.zhihu.shared.platform.rememberImagePreviewOpener
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
@@ -25,19 +23,9 @@ import javax.imageio.ImageIO
 actual fun rememberCommentScreenRuntime(): CommentScreenRuntime {
     val scope = rememberCoroutineScope()
     val userMessages = rememberUserMessageSink()
-    val openExternalUrl = rememberExternalUrlOpener()
-    val openImagePreview = rememberImagePreviewOpener()
-    return remember(scope, userMessages, openExternalUrl, openImagePreview) {
+    return remember(scope, userMessages) {
         val store = DesktopAccountStore()
         object : CommentScreenRuntime {
-            override fun openImage(imageUrl: String) {
-                openImagePreview(imageUrl)
-            }
-
-            override fun openImageInBrowser(imageUrl: String) {
-                openExternalUrl(imageUrl)
-            }
-
             override fun saveImage(imageUrl: String) {
                 scope.launch {
                     runCatching {
@@ -57,10 +45,6 @@ actual fun rememberCommentScreenRuntime(): CommentScreenRuntime {
                 }.onFailure { error ->
                     userMessages.showShortMessage("分享失败: ${error.message}")
                 }
-            }
-
-            override fun openExternalUrl(url: String) {
-                openExternalUrl(url)
             }
         }
     }

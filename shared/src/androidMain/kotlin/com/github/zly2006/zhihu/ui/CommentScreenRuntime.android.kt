@@ -7,8 +7,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
-import com.github.zly2006.zhihu.shared.platform.rememberImagePreviewOpener
 import com.github.zly2006.zhihu.util.EmojiManager
 import com.github.zly2006.zhihu.util.createEmojiInlineContent
 import com.github.zly2006.zhihu.util.fuckHonorService
@@ -20,18 +18,8 @@ import kotlinx.coroutines.launch
 actual fun rememberCommentScreenRuntime(): CommentScreenRuntime {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val openImagePreview = rememberImagePreviewOpener()
-    val openExternalUrl = rememberExternalUrlOpener()
-    return remember(context, scope, openImagePreview, openExternalUrl) {
+    return remember(context, scope) {
         object : CommentScreenRuntime {
-            override fun openImage(imageUrl: String) {
-                openImagePreview(imageUrl)
-            }
-
-            override fun openImageInBrowser(imageUrl: String) {
-                openExternalUrl(imageUrl)
-            }
-
             override fun saveImage(imageUrl: String) {
                 scope.launch {
                     saveImageToGallery(context, AccountData.httpClient(context), imageUrl)
@@ -42,10 +30,6 @@ actual fun rememberCommentScreenRuntime(): CommentScreenRuntime {
                 scope.launch {
                     shareImage(context, AccountData.httpClient(context), imageUrl)
                 }
-            }
-
-            override fun openExternalUrl(url: String) {
-                openExternalUrl(url)
             }
         }
     }
