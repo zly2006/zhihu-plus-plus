@@ -167,6 +167,7 @@ fun MiuixHomeScreen(
             // ② 搜索浮层（展开态）。B 版结果区先占位
             searchStatus.SearchPager(
                 onSearchStatusChange = { searchStatus = it },
+                searchBarTopPadding = statusBarHeight + 12.dp,
                 defaultResult = {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text("输入关键词搜索", color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
