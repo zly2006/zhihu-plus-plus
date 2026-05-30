@@ -26,7 +26,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.github.zly2006.zhihu.shared.daily.DailyScreenUiState
+import com.github.zly2006.zhihu.ui.DailyScreenUiState
 import com.github.zly2006.zhihu.shared.data.DailySection
 import com.github.zly2006.zhihu.shared.data.DailyStory
 import com.github.zly2006.zhihu.test.MainActivityComposeRule

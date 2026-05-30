@@ -38,10 +38,10 @@ import com.github.zly2006.zhihu.shared.data.FollowedQuestion
 import com.github.zly2006.zhihu.shared.data.FollowedTopic
 import com.github.zly2006.zhihu.shared.data.OfficialBadge
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
-import com.github.zly2006.zhihu.shared.people.PeopleListUiState
-import com.github.zly2006.zhihu.shared.people.PeopleProfileUiState
-import com.github.zly2006.zhihu.shared.people.PeopleScreenUiState
-import com.github.zly2006.zhihu.shared.people.PeopleSortedListUiState
+import com.github.zly2006.zhihu.ui.PeopleListUiState
+import com.github.zly2006.zhihu.ui.PeopleProfileUiState
+import com.github.zly2006.zhihu.ui.PeopleScreenUiState
+import com.github.zly2006.zhihu.ui.PeopleSortedListUiState
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
