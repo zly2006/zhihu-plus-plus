@@ -10,23 +10,15 @@ import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.pin.PinLinkCardPreview
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.components.WebviewComp
-import com.github.zly2006.zhihu.ui.components.handleShareAction
-import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import org.jsoup.Jsoup
 
 @Composable
 actual fun rememberPinScreenRuntime(): PinScreenRuntime {
     val context = LocalContext.current
-    val settings = rememberSettingsStore()
-    val shareRuntime = rememberShareDialogRuntime()
-    return remember(context, settings, shareRuntime) {
+    return remember(context) {
         PinScreenRuntime(
-            handleShareAction = { pin, onShowDialog ->
-                handleShareAction(pin, settings, shareRuntime, onShowDialog)
-            },
             fetchLinkCardPreview = { linkCard ->
                 fetchAndroidLinkCardPreview(context, linkCard)
             },

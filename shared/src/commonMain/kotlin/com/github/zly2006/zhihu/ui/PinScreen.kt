@@ -81,10 +81,13 @@ import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.shared.pin.PinLinkCardPreview
 import com.github.zly2006.zhihu.shared.pin.PinScreenUiState
 import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.util.formatCompactCount
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.getShareText
+import com.github.zly2006.zhihu.ui.components.handleShareAction
+import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import io.ktor.client.call.body
@@ -176,7 +179,8 @@ fun PinScreen(
     val coroutineScope = rememberCoroutineScope()
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
 
-    val runtime = rememberPinScreenRuntime()
+    val settings = rememberSettingsStore()
+    val shareRuntime = rememberShareDialogRuntime()
     var screenState by remember(pin.id, testOverrides) {
         mutableStateOf(
             testOverrides?.state ?: PinScreenUiState(isLoading = true),
@@ -233,7 +237,7 @@ fun PinScreen(
                             val shareText = getShareText(pin)
                             if (shareText != null) {
                                 testOverrides?.onShareAction?.invoke { showShareDialog = true }
-                                    ?: runtime.handleShareAction(pin) {
+                                    ?: handleShareAction(pin, settings, shareRuntime) {
                                         showShareDialog = true
                                     }
                             }

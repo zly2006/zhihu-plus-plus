@@ -8,7 +8,6 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime =
     remember {
         // TODO: iOS 想法页面完整实现
         PinScreenRuntime(
-            handleShareAction = { _, _ -> error("Pin share not available on iOS yet") },
             fetchLinkCardPreview = { null },
         )
     }
