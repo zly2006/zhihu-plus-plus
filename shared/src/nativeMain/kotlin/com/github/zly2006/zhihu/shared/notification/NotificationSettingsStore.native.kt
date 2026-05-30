@@ -3,7 +3,6 @@ package com.github.zly2006.zhihu.shared.notification
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 
-// TODO: iOS 通知设置存储完整实现
 @Composable
 actual fun rememberNotificationSettingsStore(): NotificationSettingsStore = remember {
     object : NotificationSettingsStore {
@@ -19,4 +18,4 @@ actual fun rememberNotificationSettingsStore(): NotificationSettingsStore = reme
 
         override fun setAutoMarkAsReadEnabled(enabled: Boolean) = Unit // TODO: iOS 设置自动已读开关
     }
-}
+} // TODO: iOS 通知设置存储完整实现

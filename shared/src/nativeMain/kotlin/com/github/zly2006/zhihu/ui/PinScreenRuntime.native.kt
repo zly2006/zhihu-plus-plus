@@ -3,10 +3,10 @@ package com.github.zly2006.zhihu.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 
-// TODO: iOS 想法页面完整实现
 @Composable
 actual fun rememberPinScreenRuntime(): PinScreenRuntime =
     remember {
+        // TODO: iOS 想法页面完整实现
         PinScreenRuntime(
             handleShareAction = { _, _ -> error("Pin share not available on iOS yet") },
             fetchLinkCardPreview = { null },

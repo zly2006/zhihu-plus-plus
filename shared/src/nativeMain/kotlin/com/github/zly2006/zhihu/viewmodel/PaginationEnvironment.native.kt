@@ -7,10 +7,9 @@ import io.ktor.client.request.HttpRequestBuilder
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
-// TODO: iOS 分页环境完整实现
 @Composable
 actual fun rememberPaginationEnvironment(allowGuestAccess: Boolean): PaginationEnvironment =
-    remember(allowGuestAccess) { IosPaginationEnvironment() }
+    remember(allowGuestAccess) { IosPaginationEnvironment() } // TODO: iOS 分页环境完整实现
 
 private class IosPaginationEnvironment : PaginationEnvironment {
     override fun httpClient(): HttpClient = error("HTTP client not available on iOS") // TODO: iOS HTTP 客户端

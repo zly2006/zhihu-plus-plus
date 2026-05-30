@@ -4,7 +4,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import kotlinx.coroutines.flow.MutableStateFlow
 
-// TODO: iOS 更新检查实现
 @Composable
 actual fun rememberSystemUpdateRuntime(): SystemUpdateRuntime = remember {
     SystemUpdateRuntime(
@@ -19,4 +18,4 @@ actual fun rememberSystemUpdateRuntime(): SystemUpdateRuntime = remember {
         setError = { }, // TODO: iOS 设置错误状态
         supportsApkInstall = false,
     )
-}
+} // TODO: iOS 更新检查实现

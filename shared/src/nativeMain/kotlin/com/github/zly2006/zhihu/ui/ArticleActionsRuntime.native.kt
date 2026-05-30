@@ -16,14 +16,12 @@ actual fun rememberArticleActionsRuntime(): ArticleActionsRuntime {
     val shareRuntime = rememberShareDialogRuntime()
     return remember(userMessages, shareRuntime) {
         object : ArticleActionsRuntime {
-            // TODO: iOS TTS 实现
             override var ttsState: TtsState by mutableStateOf(TtsState.Ready)
-                private set
+                private set // TODO: iOS TTS 实现
 
-            // TODO: iOS TTS 实现
             override fun toggleSpeech(title: String, content: String) {
                 userMessages.showMessage("iOS TTS 暂未实现")
-            }
+            } // TODO: iOS TTS 实现
 
             override fun shareArticle(article: Article, questionId: Long, title: String, authorName: String) {
                 shareRuntime.share(article, articleActionText(article, questionId, title, authorName))

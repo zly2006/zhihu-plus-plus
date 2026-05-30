@@ -5,7 +5,6 @@ import androidx.compose.runtime.remember
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 
-// TODO: iOS 内容过滤数据库完整实现
 @Composable
 actual fun rememberBlockedFeedRecordDao(): BlockedFeedRecordDao = remember {
     object : BlockedFeedRecordDao {
@@ -21,4 +20,4 @@ actual fun rememberBlockedFeedRecordDao(): BlockedFeedRecordDao = remember {
 
         override suspend fun maintainLimit() = Unit // TODO: iOS 维护限制
     }
-}
+} // TODO: iOS 内容过滤数据库完整实现

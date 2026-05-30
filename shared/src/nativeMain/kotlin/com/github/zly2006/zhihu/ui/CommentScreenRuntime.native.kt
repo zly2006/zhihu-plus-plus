@@ -22,11 +22,9 @@ actual fun rememberCommentScreenRuntime(): CommentScreenRuntime {
     }
 }
 
-// TODO: iOS 表情内联内容
 @Composable
-actual fun rememberCommentEmojiInlineContent(emojiKeys: Set<String>): Map<String, InlineTextContent> = emptyMap()
+actual fun rememberCommentEmojiInlineContent(emojiKeys: Set<String>): Map<String, InlineTextContent> = emptyMap() // TODO: iOS 表情内联内容
 
-// TODO: iOS 表情内联 key
-actual fun commentEmojiInlineKey(placeholder: String): String? = null
+actual fun commentEmojiInlineKey(placeholder: String): String? = null // TODO: iOS 表情内联 key
 
 actual fun Modifier.commentSelectionWorkaround(): Modifier = this

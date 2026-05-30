@@ -4,7 +4,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.hrm.latex.renderer.font.MathFont
 
-// TODO: iOS Markdown 运行时完整实现
 @Composable
 actual fun rememberMarkdownRuntime(): MarkdownRuntime = remember {
     object : MarkdownRuntime {
@@ -14,4 +13,4 @@ actual fun rememberMarkdownRuntime(): MarkdownRuntime = remember {
 
         override suspend fun shareMarkdownImage(url: String) = Unit // TODO: iOS 分享Markdown图片
     }
-}
+} // TODO: iOS Markdown 运行时完整实现

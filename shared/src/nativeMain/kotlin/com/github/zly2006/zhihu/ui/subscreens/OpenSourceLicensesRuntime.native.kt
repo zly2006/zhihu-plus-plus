@@ -4,11 +4,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.mikepenz.aboutlibraries.Libs
 
-// TODO: iOS 开源许可证加载
 @Composable
 actual fun rememberOpenSourceLicensesLibraries(): Libs = remember {
     Libs(emptyList(), emptySet())
-}
+} // TODO: iOS 开源许可证加载
 
 @Composable
 actual fun rememberShowFullVariantLicenses(): Boolean = false

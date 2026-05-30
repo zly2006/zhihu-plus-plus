@@ -4,9 +4,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.shared.platform.rememberZhihuWebUrlOpener
 
-// TODO: iOS 问题页面完整实现
 @Composable
-actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {
+actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime { // TODO: iOS 问题页面完整实现
     val openZhihuWebUrl = rememberZhihuWebUrlOpener()
     return remember(openZhihuWebUrl) {
         QuestionScreenRuntime(

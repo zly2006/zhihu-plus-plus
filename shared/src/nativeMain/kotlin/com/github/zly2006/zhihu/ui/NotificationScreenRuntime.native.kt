@@ -9,12 +9,12 @@ import io.ktor.client.request.HttpRequestBuilder
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
-// TODO: iOS 通知页面完整实现
 @Composable
 actual fun rememberNotificationScreenRuntime(
     viewModel: NotificationViewModel,
     settingsStore: NotificationSettingsStore,
 ): NotificationScreenRuntime = remember(settingsStore) {
+    // TODO: iOS 通知页面完整实现
     NotificationScreenRuntime(
         environment = IosNotificationPaginationEnvironment(settingsStore),
         showDebugCopy = false,

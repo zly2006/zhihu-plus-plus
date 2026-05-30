@@ -4,11 +4,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 
-// TODO: iOS 屏蔽列表功能
 @Composable
 actual fun rememberBlocklistSettingsPlatformRuntime(
     userMessages: UserMessageSink,
 ): BlocklistSettingsRuntime = remember(userMessages) {
+    // TODO: iOS 屏蔽列表功能
     BlocklistSettingsRuntime(
         loadKeywords = { emptyList() }, // TODO: iOS 加载关键词
         loadUsers = { emptyList() }, // TODO: iOS 加载用户
