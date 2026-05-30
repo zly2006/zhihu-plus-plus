@@ -2,7 +2,6 @@ package com.github.zly2006.zhihu.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import com.github.zly2006.zhihu.data.decodePinContentDetail
 import com.github.zly2006.zhihu.data.decodeQuestionContentDetail
 import com.github.zly2006.zhihu.navigation.Article
@@ -10,7 +9,6 @@ import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
-import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
 import com.github.zly2006.zhihu.shared.desktop.signedFetchJson
 import com.github.zly2006.zhihu.shared.pin.PinLinkCardPreview
@@ -18,20 +16,13 @@ import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.viewmodel.DesktopPaginationEnvironment
-import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
-import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 
 @Composable
 actual fun rememberPinScreenRuntime(): PinScreenRuntime {
-    val scope = rememberCoroutineScope()
     val settings = rememberSettingsStore()
     val shareRuntime = rememberShareDialogRuntime()
-    val store = DesktopAccountStore()
-    val historyStorage = DesktopHistoryStorage()
-    val contentFilterDatabase = remember {
-        getContentFilterDatabase(desktopContentFilterDatabaseFile())
-    }
-    return remember(scope, settings, shareRuntime) {
+    val store = remember { DesktopAccountStore() }
+    return remember(settings, shareRuntime, store) {
         PinScreenRuntime(
             handleShareAction = { pin, onShowDialog ->
                 handleShareAction(pin, settings, shareRuntime, onShowDialog)

@@ -7,8 +7,10 @@ import java.util.Properties
 
 @Composable
 actual fun rememberNotificationSettingsStore(): NotificationSettingsStore = remember {
-    DesktopNotificationSettingsStore()
+    desktopNotificationSettingsStore()
 }
+
+fun desktopNotificationSettingsStore(): NotificationSettingsStore = DesktopNotificationSettingsStore()
 
 private class DesktopNotificationSettingsStore : NotificationSettingsStore {
     private val settingsFile = desktopZhihuDataFile("notification_settings.properties")

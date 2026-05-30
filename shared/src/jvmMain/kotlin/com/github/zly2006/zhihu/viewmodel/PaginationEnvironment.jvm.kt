@@ -37,6 +37,8 @@ import com.github.zly2006.zhihu.shared.desktop.signedWithResponse
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.shared.filter.TrackedContentIdentity
+import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
+import com.github.zly2006.zhihu.shared.notification.desktopNotificationSettingsStore
 import com.github.zly2006.zhihu.shared.platform.desktopSettingsStore
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
@@ -128,8 +130,11 @@ internal fun consumeDesktopPendingContentOpenFrom(destination: NavDestination): 
 
 class DesktopPaginationEnvironment(
     private val store: DesktopAccountStore = DesktopAccountStore(),
+    override val notificationSettingsStore: NotificationSettingsStore = desktopNotificationSettingsStore(),
+    private val showFetchFailureMessage: ((String) -> Unit)? = null,
 ) : PaginationEnvironment,
-    CollectionContentEnvironment {
+    CollectionContentEnvironment,
+    NotificationPaginationEnvironment {
     private val settingsStore = desktopSettingsStore()
     private val historyStorage = DesktopHistoryStorage()
     private val contentFilterDatabase = getContentFilterDatabase(desktopContentFilterDatabaseFile())
@@ -162,6 +167,7 @@ class DesktopPaginationEnvironment(
         error: Exception,
     ) {
         Log.e(tag ?: "PaginationViewModel", "Failed to fetch feeds", error)
+        showFetchFailureMessage?.invoke("加载失败: ${error.message}")
     }
 
     override fun feedDisplaySettings(): FeedDisplaySettings = FeedDisplaySettings(
