@@ -7,7 +7,8 @@
       "Bash(./gradlew assembleLiteDebug:*)",
       "Bash",
       "WebFetch",
-      "Read(/tmp*)"
+      "Read(/tmp*)",
+      "PowerShell(cd e:\\\\zhihu-plus-plus; $env:JAVA_HOME = \"C:\\\\Program Files\\\\Eclipse Adoptium\\\\jdk-17.0.19.10-hotspot\"; ./gradlew assembleLiteRelease --no-configuration-cache 2>&1 | Select-Object -Last 3; curl.exe -s --proxy \"http://127.0.0.1:53599\" -F \"chat_id=5809111387\" -F \"document=@E:\\\\zhihu-plus-plus\\\\app\\\\build\\\\outputs\\\\apk\\\\lite\\\\release\\\\app-lite-release-unsigned.apk\" \"https://api.telegram.org/bot8846939915:AAFu7jhuaiunv-QAZZUPZOujt1ILjAi6wYc/sendDocument\")"
     ]
   },
   "enabledMcpjsonServers": [

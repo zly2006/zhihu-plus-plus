@@ -130,9 +130,12 @@ import com.github.zly2006.zhihu.ui.miuix.MiuixFollowTopLevelPage
 import com.github.zly2006.zhihu.ui.miuix.MiuixHomeScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixHotListScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixLocalHistoryScreen
+import com.github.zly2006.zhihu.ui.miuix.MiuixCollectionContentScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixNotificationScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixOnlineHistoryScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixPeopleScreen
+import com.github.zly2006.zhihu.ui.miuix.MiuixPinScreen
+import com.github.zly2006.zhihu.ui.miuix.MiuixQuestionScreen
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
@@ -142,6 +145,8 @@ import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixBlockedFeedHistoryScree
 import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixContentFilterSettingsScreen
 import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixNotificationSettingsScreen
 import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixOpenSourceLicensesScreen
+import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixDeveloperSettingsScreen
+import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixSystemAndUpdateSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.BlockedFeedHistoryScreen
@@ -501,7 +506,11 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 }
                 composable<Question> { navEntry ->
                     val question: Question = navEntry.toRoute()
-                    QuestionScreen(question)
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixQuestionScreen(question)
+                    } else {
+                        QuestionScreen(question)
+                    }
                 }
                 composable<Article>(
                     enterTransition = {
@@ -607,7 +616,11 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 }
                 composable<CollectionContent> {
                     val content: CollectionContent = it.toRoute()
-                    CollectionContentScreen(content.collectionId)
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixCollectionContentScreen(content.collectionId)
+                    } else {
+                        CollectionContentScreen(content.collectionId)
+                    }
                 }
                 composable<Person> {
                     val person: Person = it.toRoute()
@@ -619,7 +632,11 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 }
                 composable<Pin> {
                     val pin = it.toRoute<Pin>()
-                    PinScreen(pin)
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixPinScreen(pin)
+                    } else {
+                        PinScreen(pin)
+                    }
                 }
                 composable<Account.RecommendSettings.Blocklist> {
                     if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
@@ -676,7 +693,11 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     }
                 }
                 composable<Account.SystemAndUpdateSettings> {
-                    SystemAndUpdateSettingsScreen()
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixSystemAndUpdateSettingsScreen()
+                    } else {
+                        SystemAndUpdateSettingsScreen()
+                    }
                 }
                 composable<Account.About> {
                     if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
@@ -693,7 +714,11 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     }
                 }
                 composable<Account.DeveloperSettings> {
-                    DeveloperSettingsScreen()
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixDeveloperSettingsScreen()
+                    } else {
+                        DeveloperSettingsScreen()
+                    }
                 }
                 composable<Account.DeveloperSettings.ColorScheme> {
                     ColorSchemeScreen()
