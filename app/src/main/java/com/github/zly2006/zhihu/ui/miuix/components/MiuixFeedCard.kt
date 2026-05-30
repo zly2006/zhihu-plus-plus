@@ -83,7 +83,7 @@ fun MiuixFeedCard(
     modifier: Modifier = Modifier,
     maxHeight: Dp = 240.dp,
     thumbnailUrl: String? = null,
-    horizontalPadding: Dp = 12.dp,
+    horizontalPadding: Dp = 16.dp,
     onLike: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
     onDislike: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
     onBlockUser: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,

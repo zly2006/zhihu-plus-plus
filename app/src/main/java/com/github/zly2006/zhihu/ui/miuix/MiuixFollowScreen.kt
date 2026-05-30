@@ -97,7 +97,8 @@ fun MiuixFollowScreen(
     val pagerState = rememberPagerState(pageCount = { 2 })
     val coroutineScope = rememberCoroutineScope()
     val blurEnabled = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE).getBoolean("blurEnabled", true) }
-    val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
+    // backdrop 始终非 null，保证 scrollBehavior + nestedScroll 链路不断；用 blurEnabled 控制颜色
+    val backdrop = rememberMiuixBlurBackdrop(true)
     val scrollBehavior = MiuixScrollBehavior()
 
     LaunchedEffect(pagerState.currentPage) { viewModel.selectedTabIndex = pagerState.currentPage }
@@ -111,7 +112,7 @@ fun MiuixFollowScreen(
                 modifier = Modifier.installerMiuixBlurEffect(backdrop),
             ) {
                 TopAppBar(
-                    color = backdrop.getMiuixAppBarColor(),
+                    color = if (blurEnabled) backdrop.getMiuixAppBarColor() else MiuixTheme.colorScheme.surface,
                     title = "关注",
                     scrollBehavior = scrollBehavior,
                 )
@@ -161,7 +162,7 @@ fun MiuixFollowTopLevelPage(
 ) {
     val context = LocalActivity.current as MainActivity
     val blurEnabled = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE).getBoolean("blurEnabled", true) }
-    val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
+    val backdrop = rememberMiuixBlurBackdrop(true)
     val scrollBehavior = MiuixScrollBehavior()
     Scaffold(
         topBar = {
@@ -169,7 +170,7 @@ fun MiuixFollowTopLevelPage(
                 modifier = Modifier.installerMiuixBlurEffect(backdrop),
             ) {
                 TopAppBar(
-                    color = backdrop.getMiuixAppBarColor(),
+                    color = if (blurEnabled) backdrop.getMiuixAppBarColor() else MiuixTheme.colorScheme.surface,
                     title = "关注",
                     scrollBehavior = scrollBehavior,
                 )
