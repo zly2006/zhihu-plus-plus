@@ -157,10 +157,9 @@ fun MiuixHomeScreen(
                     bottomContent = {
                         Box(
                             modifier = Modifier
-                                .alpha(if (searchStatus.isCollapsed()) 1f else 0f)
+                                .alpha(if (searchStatus.shouldCollapsed()) 1f else 0f)
                                 .onGloballyPositioned { coordinates ->
-                                    // 只在折叠态上报 offsetY，锁定假框真实位置；
-                                    // 展开/收起期间布局会变，不能更新，否则收起会弹到错误位置
+                                    // 只在折叠态上报 offsetY，锁定假框真实位置
                                     if (searchStatus.isCollapsed()) {
                                         with(density) {
                                             val newOffsetY = coordinates.positionInWindow().y.toDp()
