@@ -129,38 +129,40 @@ fun MiuixHomeScreen(
                         scrollBehavior = scrollBehavior,
                     )
                 }
-                SearchBarFake(
-                    label = searchStatus.label,
-                    searchBarTopPadding = 0.dp,
-                    onClick = {
-                        searchStatus = searchStatus.copy(current = SearchStatus.Status.EXPANDING)
-                    },
-                    trailingContent = {
-                        IconButton(
-                            onClick = { showAccountSheet.value = true },
-                            modifier = Modifier.size(44.dp),
-                        ) {
-                            val avatarUrl = AccountData.data.self?.avatarUrl
-                            if (avatarUrl != null) {
-                                AsyncImage(
-                                    model = avatarUrl,
-                                    contentDescription = "账号",
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.size(32.dp)
-                                        .border(0.5.dp, MiuixTheme.colorScheme.outline.copy(alpha = 0.1f), CircleShape)
-                                        .clip(CircleShape),
-                                )
-                            } else {
-                                Icon(
-                                    imageVector = Icons.Default.AccountCircle,
-                                    contentDescription = "账号",
-                                    tint = MiuixTheme.colorScheme.onBackground,
-                                    modifier = Modifier.size(32.dp),
-                                )
+                if (searchStatus.shouldCollapsed()) {
+                    SearchBarFake(
+                        label = searchStatus.label,
+                        searchBarTopPadding = 0.dp,
+                        onClick = {
+                            searchStatus = searchStatus.copy(current = SearchStatus.Status.EXPANDING)
+                        },
+                        trailingContent = {
+                            IconButton(
+                                onClick = { showAccountSheet.value = true },
+                                modifier = Modifier.size(44.dp),
+                            ) {
+                                val avatarUrl = AccountData.data.self?.avatarUrl
+                                if (avatarUrl != null) {
+                                    AsyncImage(
+                                        model = avatarUrl,
+                                        contentDescription = "账号",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.size(32.dp)
+                                            .border(0.5.dp, MiuixTheme.colorScheme.outline.copy(alpha = 0.1f), CircleShape)
+                                            .clip(CircleShape),
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.AccountCircle,
+                                        contentDescription = "账号",
+                                        tint = MiuixTheme.colorScheme.onBackground,
+                                        modifier = Modifier.size(32.dp),
+                                    )
+                                }
                             }
-                        }
-                    },
-                )
+                        },
+                    )
+                }
             }
         },
     ) { padding ->
