@@ -370,6 +370,12 @@ open class SharedAndroidPaginationEnvironment(
 
     override fun answerNavigatorRepository(): AnswerNavigatorRepository = AndroidAnswerNavigatorRepository(context)
 
+    override suspend fun getContentDetail(article: com.github.zly2006.zhihu.navigation.Article): com.github.zly2006.zhihu.shared.data.DataHolder.Content? =
+        ContentDetailCache.getOrFetch(context, article)
+
+    override fun xsrfToken(): String = AccountData.data.cookies["_xsrf"] ?: ""
+
+
     override suspend fun fetchCollection(collectionId: String): Collection {
         val json = fetchJson("https://www.zhihu.com/api/v4/collections/$collectionId", "")
             ?: throw IllegalStateException("收藏夹信息加载失败")
