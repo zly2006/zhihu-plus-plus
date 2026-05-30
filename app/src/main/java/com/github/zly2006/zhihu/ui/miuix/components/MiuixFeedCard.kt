@@ -107,6 +107,9 @@ fun MiuixFeedCard(
     val duo3CardAppearance = remember { preferences.getBoolean("duo3_card_appearance", false) }
     val duo3CardLayout = remember { preferences.getBoolean("duo3_card_layout", false) }
     val duo3CardLargeTitle = remember { preferences.getBoolean(DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY, true) }
+    val fontSizePercent = remember { preferences.getInt("contentFontSize", 100) }
+    val titleFontSize = (15.sp * fontSizePercent / 100)
+    val bodyFontSize = (14.sp * fontSizePercent / 100)
 
     val resolvedOnClick: BaseFeedViewModel.FeedDisplayItem.() -> Unit = onClick ?: {
         val self = this
@@ -141,7 +144,7 @@ fun MiuixFeedCard(
                     .clickable { resolvedOnClick(item) }
                     .padding(horizontal = horizontalPadding, vertical = 12.dp),
             ) {
-                MiuixFeedCardContent(item, showFeedThumbnail, thumbnailUrl, duo3CardLayout, duo3CardLargeTitle)
+                MiuixFeedCardContent(item, showFeedThumbnail, thumbnailUrl, duo3CardLayout, duo3CardLargeTitle, titleFontSize, bodyFontSize)
             }
         }
     } else {
@@ -176,7 +179,7 @@ fun MiuixFeedCard(
                     },
             ) {
                 Column(modifier = Modifier.padding(if (duo3CardAppearance) 16.dp else 12.dp)) {
-                    MiuixFeedCardContent(item, showFeedThumbnail, thumbnailUrl, duo3CardLayout, duo3CardLargeTitle)
+                    MiuixFeedCardContent(item, showFeedThumbnail, thumbnailUrl, duo3CardLayout, duo3CardLargeTitle, titleFontSize, bodyFontSize)
                     // menu button row
                     Row(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End) {
                         MiuixFeedCardMenuBox(item, showMenu, { showMenu = it }, onBlockUser, onBlockByKeywords, onBlockTopic, navigator)
@@ -227,6 +230,8 @@ private fun MiuixFeedCardContent(
     thumbnailUrl: String?,
     duo3CardLayout: Boolean,
     duo3CardLargeTitle: Boolean,
+    titleFontSize: androidx.compose.ui.unit.TextUnit = 15.sp,
+    bodyFontSize: androidx.compose.ui.unit.TextUnit = 14.sp,
 ) {
     val colors = AppTokens.colors
     val text = AppTokens.text
@@ -275,21 +280,21 @@ private fun MiuixFeedCardContent(
         }
     } else {
         if (!item.title.isEmpty() && !item.isFiltered) {
-            Text(parseHtmlTextWithTheme(item.title), fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(parseHtmlTextWithTheme(item.title), fontSize = titleFontSize, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
         if (item.avatarSrc != null && item.authorName != null) {
             Spacer(Modifier.height(4.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 AsyncImage(item.avatarSrc, "头像", modifier = Modifier.clip(CircleShape).size(20.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(item.authorName, fontSize = 14.sp, color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                Text(item.authorName, fontSize = bodyFontSize, color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                 val badge = item.authorBadgeV2.officialBadge()
                 if (badge?.isUsefulInList == true) { Spacer(Modifier.width(4.dp)); AuthorBadge(badge, compact = true) }
             }
         }
         Row {
             Column(Modifier.weight(2f)) {
-                Text(parseHtmlTextWithTheme(item.summary ?: ""), fontSize = 14.sp, maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = if (item.isFiltered) 0.dp else 3.dp))
+                Text(parseHtmlTextWithTheme(item.summary ?: ""), fontSize = bodyFontSize, maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = if (item.isFiltered) 0.dp else 3.dp))
             }
             if (!thumbnailUrl.isNullOrEmpty() && showFeedThumbnail) {
                 Spacer(Modifier.width(8.dp))
