@@ -10,8 +10,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
+import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.updater.UpdateManager
-import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
@@ -30,6 +30,7 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
         RecommendationMode.MIXED -> viewModel<MixedHomeFeedViewModel>()
     }
     val localHomeViewModel = viewModel as? LocalHomeFeedViewModel
+    val openExternalUrl = rememberExternalUrlOpener()
     val installTime = remember {
         try {
             context.packageManager.getPackageInfo(context.packageName, 0).firstInstallTime
@@ -57,9 +58,7 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
             val intent = Intent().setClassName(context.packageName, "com.github.zly2006.zhihu.LoginActivity")
             context.startActivity(intent)
         },
-        openExternalUrl = { url ->
-            luoTianYiUrlLauncher(context, android.net.Uri.parse(url))
-        },
+        openExternalUrl = openExternalUrl,
         recordLocalItemOpened = { item ->
             localHomeViewModel?.onLocalItemOpened(item)
         },

@@ -2,7 +2,6 @@
 
 package com.github.zly2006.zhihu.ui
 
-import androidx.compose.runtime.Composable
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.shared.data.officialBadgeDetails
@@ -11,11 +10,6 @@ import com.github.zly2006.zhihu.shared.people.PeopleProfileUiState
 data class PeopleProfileLoadResult(
     val profile: PeopleProfileUiState,
     val urlToken: String?,
-)
-
-data class PeopleScreenRuntime(
-    val openWebUrl: (String) -> Unit,
-    val openImage: (String) -> Unit,
 )
 
 internal const val peopleProfileIncludePath =
@@ -41,6 +35,3 @@ internal fun toPeopleProfileLoadResult(
     ),
     urlToken = loadedPerson.urlToken,
 )
-
-@Composable
-expect fun rememberPeopleScreenRuntime(): PeopleScreenRuntime

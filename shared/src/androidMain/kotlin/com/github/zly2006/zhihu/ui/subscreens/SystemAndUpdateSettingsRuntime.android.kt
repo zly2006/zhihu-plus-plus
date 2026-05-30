@@ -4,10 +4,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.net.toUri
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
-import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -50,16 +48,6 @@ actual fun rememberSystemUpdateRuntime(): SystemUpdateRuntime {
             },
             supportsApkInstall = true,
         )
-    }
-}
-
-@Composable
-actual fun rememberExternalUrlOpener(): (String) -> Unit {
-    val context = LocalContext.current
-    return remember(context) {
-        { url ->
-            luoTianYiUrlLauncher(context, url.toUri())
-        }
     }
 }
 

@@ -2,6 +2,7 @@
 
 ## Completed
 
+- 2026-05-30：新增 shared/platform 通用打开能力：普通外链、知乎应用内 Web URL、图片预览分别由 common expect 表达，Android actual 保留 `luoTianYiUrlLauncher`、`WebviewActivity` 和 `OpenImageDialog + AccountData.httpClient(context)` 的原行为，JVM/native 退化为平台 URL 打开。`PeopleScreenRuntime` 只剩 `openWebUrl`/`openImage` 后已删除，People 页面直接调用通用 opener；`CommentScreenRuntime`、`MarkdownRuntime`、`PinScreenRuntime`、`HomeScreenRuntime`、`QuestionScreenRuntime` 和系统更新设置中同类打开动作改为内部复用通用 opener，保存/分享/字体/TTS/账号/更新/链接卡片预览等真实页面语义未合并。对照 master，本切片不改 People UI 布局、头像/话题/专栏点击入口、评论/Markdown 图片菜单、Pin/Home/Question 可见结构，只删除重复平台转发壳。
 - 2026-05-30：外观设置和系统与更新设置 runtime 删除通用 `SettingsStore` / `UserMessageSink` 字段，页面改为在 common 内直接调用 `rememberSettingsStore()` / `rememberUserMessageSink()`；runtime 只保留主题写入、系统更新和外链打开这类实际动作。对照 master，设置项读取/写入 key、提示文案、更新状态提示、外链入口和 UI 结构未改；本切片只删除 common runtime 对已有 shared 能力的重复包裹。
 - 2026-05-30：`AccountSettingsRuntime` 删除 `settings`、`userMessages`、`updateState` 三个通用能力字段，账户设置页改为在 common 页面内直接使用 `rememberSettingsStore()`、`rememberUserMessageSink()` 和 `rememberSystemUpdateRuntime()`；Android/JVM/native 平台 runtime 不再先填充这些字段再被 common `copy()` 覆盖，只保留账号状态、登录/扫码/退出、版本信息、复制、外链和主 Tab 选择等真实平台动作。对照 master，账户页设置项、开发者开关、检查更新提示、版本号复制、外链入口和登录/退出流程未改；本切片只删除页面 runtime 对已有 shared 能力的重复包裹。
 - 2026-05-30：`DeveloperSettingsRuntime.showShortMessage` 删除，开发者设置页登录验证、刷新 token、手动 Cookie 和签名请求提示改为在 common 页面内直接复用 `UserMessageSink`；Android/JVM/native runtime 不再包消息提示 lambda，只保留设置、账号、网络状态、签名请求和剪贴板复制等真实平台能力。对照 master，开发者设置页按钮、Cookie 对话框、签名请求对话框、提示文案和响应复制流程未改；本切片只删除消息提示转发壳。

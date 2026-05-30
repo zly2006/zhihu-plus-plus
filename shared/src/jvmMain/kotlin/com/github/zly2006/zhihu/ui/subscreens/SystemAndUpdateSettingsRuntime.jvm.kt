@@ -66,11 +66,6 @@ actual fun rememberSystemUpdateRuntime(): SystemUpdateRuntime {
     }
 }
 
-@Composable
-actual fun rememberExternalUrlOpener(): (String) -> Unit = remember {
-    { url -> openDesktopUrl(url) }
-}
-
 private const val PREF_AUTO_CHECK_UPDATES = "autoCheckUpdates"
 private const val PREF_SKIPPED_VERSION = "skippedVersion"
 

@@ -12,8 +12,9 @@ import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.unit.em
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
-import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
 import com.github.zly2006.zhihu.shared.desktop.saveImageToDownloads
+import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
+import com.github.zly2006.zhihu.shared.platform.rememberImagePreviewOpener
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
@@ -24,11 +25,13 @@ import javax.imageio.ImageIO
 actual fun rememberCommentScreenRuntime(): CommentScreenRuntime {
     val scope = rememberCoroutineScope()
     val userMessages = rememberUserMessageSink()
-    return remember(scope, userMessages) {
+    val openExternalUrl = rememberExternalUrlOpener()
+    val openImagePreview = rememberImagePreviewOpener()
+    return remember(scope, userMessages, openExternalUrl, openImagePreview) {
         val store = DesktopAccountStore()
         object : CommentScreenRuntime {
             override fun openImage(imageUrl: String) {
-                openExternalUrl(imageUrl)
+                openImagePreview(imageUrl)
             }
 
             override fun openImageInBrowser(imageUrl: String) {
@@ -57,9 +60,7 @@ actual fun rememberCommentScreenRuntime(): CommentScreenRuntime {
             }
 
             override fun openExternalUrl(url: String) {
-                runCatching {
-                    openDesktopExternalUrl(url)
-                }
+                openExternalUrl(url)
             }
         }
     }

@@ -2,14 +2,20 @@ package com.github.zly2006.zhihu.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import com.github.zly2006.zhihu.shared.platform.rememberZhihuWebUrlOpener
 
 // TODO: iOS 问题页面完整实现
 @Composable
-actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime = remember {
-    QuestionScreenRuntime(
-        openLog = { error("Question log not available on iOS yet") },
-        handleShareAction = { _, _ -> error("Question share not available on iOS yet") },
-    )
+actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {
+    val openZhihuWebUrl = rememberZhihuWebUrlOpener()
+    return remember(openZhihuWebUrl) {
+        QuestionScreenRuntime(
+            openLog = { question ->
+                openZhihuWebUrl("https://www.zhihu.com/question/${question.questionId}/log")
+            },
+            handleShareAction = { _, _ -> error("Question share not available on iOS yet") },
+        )
+    }
 }
 
 // TODO: iOS 问题 WebView 实现

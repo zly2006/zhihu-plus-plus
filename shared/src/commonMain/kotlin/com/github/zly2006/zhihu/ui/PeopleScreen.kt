@@ -82,7 +82,9 @@ import com.github.zly2006.zhihu.shared.people.PeopleListUiState
 import com.github.zly2006.zhihu.shared.people.PeopleProfileUiState
 import com.github.zly2006.zhihu.shared.people.PeopleScreenUiState
 import com.github.zly2006.zhihu.shared.people.PeopleSortedListUiState
+import com.github.zly2006.zhihu.shared.platform.rememberImagePreviewOpener
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.shared.platform.rememberZhihuWebUrlOpener
 import com.github.zly2006.zhihu.shared.util.raiseForStatus
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.FeedCard
@@ -652,7 +654,6 @@ private fun PeopleScreenContent(
     testOverrides: PeopleScreenTestOverrides? = null,
 ) {
     val navigator = LocalNavigator.current
-    val runtime = rememberPeopleScreenRuntime()
     val userMessages = rememberUserMessageSink()
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val viewModel = viewModel { PersonViewModel(person) }
@@ -1301,13 +1302,13 @@ private fun ColumnListItem(
     column: DataHolder.Column,
     itemTag: String? = null,
 ) {
-    val runtime = rememberPeopleScreenRuntime()
+    val openZhihuWebUrl = rememberZhihuWebUrlOpener()
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .then(if (itemTag != null) Modifier.testTag(itemTag) else Modifier)
             .clickable {
-                runtime.openWebUrl(column.webUrl())
+                openZhihuWebUrl(column.webUrl())
             }.padding(vertical = 8.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -1358,13 +1359,13 @@ private fun FollowedQuestionListItem(question: FollowedQuestion) {
 
 @Composable
 private fun FollowedTopicListItem(topic: FollowedTopic) {
-    val runtime = rememberPeopleScreenRuntime()
+    val openZhihuWebUrl = rememberZhihuWebUrlOpener()
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .testTag(peopleScreenFollowedTopicItemTag(topic.displayId))
             .clickable {
-                runtime.openWebUrl("https://www.zhihu.com/topic/${topic.displayId}")
+                openZhihuWebUrl("https://www.zhihu.com/topic/${topic.displayId}")
             }.padding(vertical = 8.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -1606,7 +1607,7 @@ private fun UserInfoHeader(
     onRecommendationBlockToggle: () -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
-    val runtime = rememberPeopleScreenRuntime()
+    val openImagePreview = rememberImagePreviewOpener()
     Column(
         modifier = modifier.padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1624,7 +1625,7 @@ private fun UserInfoHeader(
                     .size(80.dp)
                     .clip(CircleShape)
                     .clickable {
-                        runtime.openImage(profile.avatar.substringBefore("_") + ".jpg")
+                        openImagePreview(profile.avatar.substringBefore("_") + ".jpg")
                     },
             )
             Column(modifier = Modifier.weight(1f)) {
