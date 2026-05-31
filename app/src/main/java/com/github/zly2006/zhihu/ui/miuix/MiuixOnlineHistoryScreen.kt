@@ -117,7 +117,8 @@ fun MiuixOnlineHistoryScreen() {
                         }
                         WindowListPopup(
                             show = showActionsMenu,
-                            alignment = PopupPositionProvider.Align.BottomEnd,
+                            popupPositionProvider = com.github.zly2006.zhihu.ui.miuix.components.ListPopupDefaults.MenuPositionProvider,
+                            alignment = PopupPositionProvider.Align.TopEnd,
                             onDismissRequest = { showActionsMenu = false },
                         ) {
                             val dismissState = LocalDismissState.current
