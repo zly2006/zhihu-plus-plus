@@ -33,6 +33,7 @@ import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.ui.Collection
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
 import kotlin.reflect.typeOf
 
@@ -239,6 +240,7 @@ class CollectionContentViewModel(
     }
 }
 
+@Serializable
 class CollectionItem(
     val created: String,
     val content: Feed.Target,
