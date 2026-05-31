@@ -36,7 +36,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -216,9 +215,7 @@ fun SwipeToReplyContainer(
     var hasVibrated by remember { mutableStateOf(false) }
 
     Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(IntrinsicSize.Min),
+        modifier = modifier.fillMaxWidth(),
     ) {
         // --- 背景层 (图标) ---
         // 只有在发生位移时才计算显示逻辑
@@ -237,7 +234,7 @@ fun SwipeToReplyContainer(
 
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .matchParentSize()
                     .padding(horizontal = 16.dp),
                 contentAlignment = align,
             ) {

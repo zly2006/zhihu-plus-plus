@@ -275,6 +275,77 @@ class CommentScreenInstrumentedTest {
     }
 
     @Test
+    fun commentWithImageKeepsReplyAndLikeActionsVisible() {
+        /*
+         * Expected behavior:
+         * 1. A comment containing an inline image should still render the same bottom action row as
+         *    text-only comments.
+         * 2. The reply and like buttons must remain visible and clickable after the image content is
+         *    laid out.
+         */
+        val childEntryCommentIds = mutableListOf<String>()
+        val seededComments = seedRootComments(count = 4)
+        val viewModel = SeededRootCommentViewModel(
+            article = ROOT_ARTICLE,
+            seededComments = seededComments,
+        )
+
+        setCommentScreen(
+            viewModel = viewModel,
+            onChildCommentClick = { childEntryCommentIds += it.item.id },
+            testOverrides = CommentScreenTestOverrides(
+                viewModel = viewModel,
+                skipInitialLoad = true,
+            ),
+        )
+
+        composeRule
+            .onNodeWithTag(COMMENT_SCREEN_LIST_TAG)
+            .performScrollToNode(hasTestTag(commentImageTag("root-1")))
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            runCatching {
+                composeRule.onNodeWithTag(commentImageTag("root-1"), useUnmergedTree = true).assertIsDisplayed()
+            }.isSuccess
+        }
+
+        composeRule.onNodeWithTag(commentReplyButtonTag("root-1")).assertIsDisplayed()
+        composeRule.onNodeWithTag(commentLikeButtonTag("root-1")).assertIsDisplayed()
+        val rowBounds = composeRule
+            .onAllNodesWithTag(commentRowTag("root-1"))
+            .fetchSemanticsNodes()
+            .single()
+            .boundsInRoot
+        val imageBounds = composeRule
+            .onAllNodesWithTag(commentImageTag("root-1"), useUnmergedTree = true)
+            .fetchSemanticsNodes()
+            .single()
+            .boundsInRoot
+        val replyBounds = composeRule
+            .onAllNodesWithTag(commentReplyButtonTag("root-1"))
+            .fetchSemanticsNodes()
+            .single()
+            .boundsInRoot
+        val likeBounds = composeRule
+            .onAllNodesWithTag(commentLikeButtonTag("root-1"))
+            .fetchSemanticsNodes()
+            .single()
+            .boundsInRoot
+        val expectedBottom = maxOf(imageBounds.bottom, replyBounds.bottom, likeBounds.bottom)
+        assertTrue(
+            "Comment row should include image and action row bounds, but row bottom was " +
+                "${rowBounds.bottom} and content bottom was $expectedBottom",
+            rowBounds.bottom >= expectedBottom,
+        )
+        composeRule.onNodeWithTag(commentReplyButtonTag("root-1")).performClick()
+        composeRule.onNodeWithTag(commentLikeButtonTag("root-1")).performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            seededComments.first().likeCount == 6 && seededComments.first().liked
+        }
+
+        assertEquals(listOf("root-1"), childEntryCommentIds)
+    }
+
+    @Test
     fun childCommentViewSupportsReplyCancelAndOfflineSendFlow() {
         /*
          * Expected behavior:
