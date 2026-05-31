@@ -375,6 +375,8 @@ open class SharedAndroidPaginationEnvironment(
 
     override fun answerNavigatorRepository(): AnswerNavigatorRepository = AndroidAnswerNavigatorRepository(context)
 
+    override fun articleAnswerSwitchState() = context.articleHost()?.articleAnswerSwitchState
+
     override suspend fun exportCollectionItemsToHtmlZip(
         collectionTitle: String,
         items: List<CollectionItem>,

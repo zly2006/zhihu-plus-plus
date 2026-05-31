@@ -894,8 +894,8 @@ fun ArticleScreen(
                 ) {
                     navController.popBackStack()
                 }
-                navigator.onNavigate(prev.article)
             }
+            navigator.onNavigate(prev.article)
         } else {
             // 无历史时尝试从来源（如收藏夹）向前加载
             sharedData?.pendingInitialContent = sharedData.navigator?.previousAnswerPreview
@@ -913,8 +913,8 @@ fun ArticleScreen(
                         ) {
                             navController.popBackStack()
                         }
-                        navigator.onNavigate(prevCached.article)
                     }
+                    navigator.onNavigate(prevCached.article)
                 }
             }
         }
@@ -943,8 +943,8 @@ fun ArticleScreen(
                 ) {
                     navController.popBackStack()
                 }
-                navigator.onNavigate(historyNext.article)
             }
+            navigator.onNavigate(historyNext.article)
         } else {
             // 没有前向历史，从导航器加载
             sharedData?.pendingInitialContent = sharedData.navigator?.nextAnswer
@@ -961,8 +961,8 @@ fun ArticleScreen(
                         ) {
                             navController.popBackStack()
                         }
-                        navigator.onNavigate(nextArticle)
                     }
+                    navigator.onNavigate(nextArticle)
                 }
             }
         }
