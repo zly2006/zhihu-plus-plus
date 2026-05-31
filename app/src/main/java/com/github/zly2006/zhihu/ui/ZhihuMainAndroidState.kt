@@ -27,9 +27,7 @@ fun rememberAndroidZhihuMainPreferenceState(): ZhihuMainPreferenceState {
     val settings = remember(context) {
         androidSettingsStore(context)
     }
-    val allBottomBarItemKeys = remember {
-        listOf(Home.name, Follow.name, HotList.name, Daily.name, OnlineHistory.name, Account.name)
-    }
+    val allBottomBarItemKeys = remember { listOf(Home.name, Follow.name, HotList.name, Daily.name, OnlineHistory.name, Account.name) }
     return rememberZhihuMainPreferenceState {
         val duo3HomeAccount = settings.getBoolean("duo3_home_account", false)
         val selectedKeys = normalizeBottomBarSelection(

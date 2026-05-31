@@ -349,9 +349,7 @@ private fun chooseBlocklistImportFile(): File? {
 @Composable
 actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
     val store = remember { DesktopAccountStore() }
-    val accountState = remember {
-        mutableStateOf(store.load().toAccountSettingsAccountState())
-    }
+    val accountState = remember { mutableStateOf(store.load().toAccountSettingsAccountState()) }
     return AccountSettingsRuntime(
         accountState = accountState,
         refreshProfile = {
