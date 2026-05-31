@@ -135,75 +135,6 @@ fun MiuixPeopleScreen(
                     },
                     scrollBehavior = scrollBehavior,
                 )
-                // Profile Card inside topBar — blurs together with TopAppBar
-                Card(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            AsyncImage(
-                                model = viewModel.avatar,
-                                contentDescription = "用户头像",
-                                modifier = Modifier.size(56.dp).clip(CircleShape),
-                            )
-                            Spacer(Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(viewModel.name, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                                if (viewModel.headline.isNotEmpty()) {
-                                    Text(
-                                        viewModel.headline,
-                                        fontSize = 14.sp,
-                                        color = MiuixTheme.colorScheme.onSurfaceSecondary,
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                }
-                            }
-                        }
-                        Spacer(Modifier.height(12.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly,
-                        ) {
-                            StatItem("回答", viewModel.answerCount) { coroutineScope.launch { pagerState.animateScrollToPage(0) } }
-                            StatItem("文章", viewModel.articleCount) { coroutineScope.launch { pagerState.animateScrollToPage(1) } }
-                            StatItem("关注者", viewModel.followerCount) { coroutineScope.launch { pagerState.animateScrollToPage(7) } }
-                            StatItem("关注", viewModel.followingCount) { coroutineScope.launch { pagerState.animateScrollToPage(8) } }
-                        }
-                        Spacer(Modifier.height(12.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            val followText = if (viewModel.isFollowing) "已关注" else "关注"
-                            Card(
-                                modifier = Modifier.weight(1f).clickable {
-                                    coroutineScope.launch {
-                                        try { viewModel.toggleFollow(context) }
-                                        catch (e: Exception) { Toast.makeText(context, "操作失败: ${e.message}", Toast.LENGTH_SHORT).show() }
-                                    }
-                                },
-                            ) {
-                                Box(Modifier.fillMaxWidth().padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
-                                    Text(followText, fontSize = 14.sp, color = MiuixTheme.colorScheme.primary)
-                                }
-                            }
-                            val blockText = if (viewModel.isBlocking) "已屏蔽" else "屏蔽"
-                            Card(
-                                modifier = Modifier.weight(1f).clickable {
-                                    coroutineScope.launch {
-                                        try { viewModel.toggleBlock(context) }
-                                        catch (e: Exception) { Toast.makeText(context, "操作失败: ${e.message}", Toast.LENGTH_SHORT).show() }
-                                    }
-                                },
-                            ) {
-                                Box(Modifier.fillMaxWidth().padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
-                                    Text(blockText, fontSize = 14.sp, color = MiuixTheme.colorScheme.error)
-                                }
-                            }
-                        }
-                    }
-                }
                 // TabRow inside topBar, shared blur
                 TabRow(
                     tabs = PEOPLE_SCREEN_TITLES,
@@ -214,8 +145,53 @@ fun MiuixPeopleScreen(
             }
         },
     ) { padding ->
-        // Pager as direct content — same pattern as FollowScreen
-        HorizontalPager(
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            // Profile Card — scrolls with content, not fixed to TopAppBar
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        AsyncImage(
+                            model = viewModel.avatar,
+                            contentDescription = "用户头像",
+                            modifier = Modifier.size(56.dp).clip(CircleShape),
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(viewModel.name, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            if (viewModel.headline.isNotEmpty()) {
+                                Text(viewModel.headline, fontSize = 14.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        StatItem("回答", viewModel.answerCount) { coroutineScope.launch { pagerState.animateScrollToPage(0) } }
+                        StatItem("文章", viewModel.articleCount) { coroutineScope.launch { pagerState.animateScrollToPage(1) } }
+                        StatItem("关注者", viewModel.followerCount) { coroutineScope.launch { pagerState.animateScrollToPage(7) } }
+                        StatItem("关注", viewModel.followingCount) { coroutineScope.launch { pagerState.animateScrollToPage(8) } }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        val followText = if (viewModel.isFollowing) "已关注" else "关注"
+                        Card(modifier = Modifier.weight(1f).clickable {
+                            coroutineScope.launch { try { viewModel.toggleFollow(context) } catch (e: Exception) { Toast.makeText(context, "操作失败: ${e.message}", Toast.LENGTH_SHORT).show() } }
+                        }) {
+                            Box(Modifier.fillMaxWidth().padding(vertical = 10.dp), contentAlignment = Alignment.Center) { Text(followText, fontSize = 14.sp, color = MiuixTheme.colorScheme.primary) }
+                        }
+                        val blockText = if (viewModel.isBlocking) "已屏蔽" else "屏蔽"
+                        Card(modifier = Modifier.weight(1f).clickable {
+                            coroutineScope.launch { try { viewModel.toggleBlock(context) } catch (e: Exception) { Toast.makeText(context, "操作失败: ${e.message}", Toast.LENGTH_SHORT).show() } }
+                        }) {
+                            Box(Modifier.fillMaxWidth().padding(vertical = 10.dp), contentAlignment = Alignment.Center) { Text(blockText, fontSize = 14.sp, color = MiuixTheme.colorScheme.error) }
+                        }
+                    }
+                }
+            }
+
+            // Pager as direct content
+            HorizontalPager(
             state = pagerState,
             modifier = Modifier.fillMaxSize(),
         ) { page ->
@@ -272,6 +248,7 @@ fun MiuixPeopleScreen(
                         }
                     }
             }
+        }
         }
     }
 }
