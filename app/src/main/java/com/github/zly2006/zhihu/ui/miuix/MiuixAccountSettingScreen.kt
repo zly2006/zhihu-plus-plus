@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Login
@@ -109,7 +110,9 @@ fun MiuixAccountSettingScreen(
 
         // ── 用户信息 ──
         item {
-            Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
+            Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)
+                .clip(RoundedCornerShape(16.dp)),
+            ) {
                 if (data.login) {
                     ArrowPreference(
                         title = data.username,

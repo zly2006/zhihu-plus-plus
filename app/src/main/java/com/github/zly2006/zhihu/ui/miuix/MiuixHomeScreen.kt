@@ -186,10 +186,11 @@ fun MiuixHomeScreen(
                     scrollBehavior = scrollBehavior,
                     // 头像移到右上角 actions
                     actions = {
-                        IconButton(
-                            onClick = { showAccountSheet.value = true },
-                            modifier = Modifier.size(48.dp).padding(end = 8.dp),
-                        ) {
+                        Box(modifier = Modifier.padding(end = 8.dp)) {
+                            IconButton(
+                                onClick = { showAccountSheet.value = true },
+                                modifier = Modifier.size(48.dp),
+                            ) {
                             val avatarUrl = AccountData.data.self?.avatarUrl
                             if (avatarUrl != null) {
                                 AsyncImage(
@@ -208,6 +209,7 @@ fun MiuixHomeScreen(
                                     modifier = Modifier.size(32.dp),
                                 )
                             }
+                        }
                         }
                     },
                     // SearchBarFake 放 bottomContent，上报 offsetY 供真框对齐
