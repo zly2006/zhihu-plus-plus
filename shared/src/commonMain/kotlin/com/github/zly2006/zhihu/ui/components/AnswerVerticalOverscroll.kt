@@ -447,5 +447,5 @@ private fun AnswerPreviewCard(
 }
 
 private const val MAX_OVERSCROLL_DP = 200f
-private const val TRIGGER_THRESHOLD_DP = 56f
-private const val DAMPING_FACTOR = 0.85f
+private const val TRIGGER_THRESHOLD_DP = 80f
+private const val DAMPING_FACTOR = 1.2f
