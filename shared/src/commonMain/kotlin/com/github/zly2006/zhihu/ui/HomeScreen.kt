@@ -458,7 +458,7 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
                             content = "欢迎加入 Zhihu++ QQ 群。1 群已满，我们新建了 2 群。已加入 1 群的朋友请不要重复加群。",
                             accept = { Text("加入") },
                             onAccept = {
-                                openExternalUrl("https://qm.qq.com/q/A95uVsTTWM")
+                                openExternalUrl("https://qm.qq.com/q/trN5cJbWpk")
                             },
                             dismiss = { Text("关闭") },
                             onDismiss = {

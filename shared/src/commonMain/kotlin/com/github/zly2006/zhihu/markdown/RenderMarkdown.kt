@@ -263,21 +263,24 @@ fun RenderMarkdown(
         LocalSegmentCommentHost provides { target -> segmentCommentTarget = target },
         LocalSegmentActionSheetHost provides { state -> segmentActionSheetState = state },
     ) {
-        Markdown(
-            document = document,
-            modifier = modifier,
-            imageContent = ::RenderImage,
-            scrollState = scrollState,
-            enableScroll = enableScroll,
-            enableSelection = selectable,
-            onLinkClick = { url ->
-                resolveContent(url)?.let { navigator.onNavigate(it) }
-                    ?: openExternalUrl(url)
-            },
-            header = header,
-            footer = footer,
-            theme = theme,
-        )
+        Box(modifier = modifier) {
+            NoDoubleClickSelectionScope {
+                Markdown(
+                    document = document,
+                    imageContent = ::RenderImage,
+                    scrollState = scrollState,
+                    enableScroll = enableScroll,
+                    enableSelection = selectable,
+                    onLinkClick = { url ->
+                        resolveContent(url)?.let { navigator.onNavigate(it) }
+                            ?: openExternalUrl(url)
+                    },
+                    header = header,
+                    footer = footer,
+                    theme = theme,
+                )
+            }
+        }
     }
     segmentCommentTarget?.let { target ->
         CommentScreenComponent(
