@@ -213,9 +213,7 @@ actual fun rememberDeveloperSettingsRuntime(): DeveloperSettingsRuntime {
 }
 
 @Composable
-actual fun rememberOpenSourceLicensesLibraries(): Libs = remember {
-    loadDesktopOpenSourceLicenses()
-}
+actual fun rememberOpenSourceLicensesLibraries(): Libs = remember { loadDesktopOpenSourceLicenses() }
 
 @Composable
 actual fun rememberShowFullVariantLicenses(): Boolean = false

@@ -556,9 +556,7 @@ class ZhihuMainPreferenceState(
 @Composable
 fun rememberZhihuMainPreferenceState(
     readSnapshot: () -> ZhihuMainPreferenceSnapshot,
-): ZhihuMainPreferenceState = remember {
-    ZhihuMainPreferenceState(readSnapshot)
-}
+): ZhihuMainPreferenceState = remember { ZhihuMainPreferenceState(readSnapshot) }
 
 data class ZhihuMainNavigationState(
     val mainTabNavigationTarget: TopLevelDestination?,

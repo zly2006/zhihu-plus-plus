@@ -6,9 +6,7 @@ import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDataFile
 import java.util.Properties
 
 @Composable
-actual fun rememberNotificationSettingsStore(): NotificationSettingsStore = remember {
-    desktopNotificationSettingsStore()
-}
+actual fun rememberNotificationSettingsStore(): NotificationSettingsStore = remember { desktopNotificationSettingsStore() }
 
 fun desktopNotificationSettingsStore(): NotificationSettingsStore = DesktopNotificationSettingsStore()
 

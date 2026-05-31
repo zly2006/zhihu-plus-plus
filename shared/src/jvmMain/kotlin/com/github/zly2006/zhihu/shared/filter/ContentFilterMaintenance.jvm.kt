@@ -6,6 +6,5 @@ import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFil
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 
 @Composable
-actual fun rememberContentFilterMaintenance(): ContentFilterMaintenance = remember {
-    createContentFilterMaintenance(getContentFilterDatabase(desktopContentFilterDatabaseFile()).contentFilterDao())
-}
+actual fun rememberContentFilterMaintenance(): ContentFilterMaintenance =
+    remember { createContentFilterMaintenance(getContentFilterDatabase(desktopContentFilterDatabaseFile()).contentFilterDao()) }
