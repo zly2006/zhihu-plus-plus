@@ -69,6 +69,7 @@ import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import kotlinx.coroutines.launch
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -77,9 +78,12 @@ import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.TabRow
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.utils.overScrollVertical
+import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
 private val PEOPLE_SCREEN_TITLES = listOf(
     "回答", "文章", "动态", "收藏", "提问", "想法", "专栏", "粉丝", "关注", "关注订阅",
@@ -229,27 +233,40 @@ fun MiuixPeopleScreen(
                     } else {
                         subModel.allData
                     }
-                    LazyColumn(
-                        state = rememberLazyListState(),
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(vertical = 8.dp),
+                    // 模糊源：包在实际滚动的 LazyColumn 外层（四件套第 4 件）
+                    Box(
+                        modifier = if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier,
                     ) {
-                        if (items.isEmpty()) {
-                            item {
-                                Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                                    Text("暂无内容", color = MiuixTheme.colorScheme.onSurfaceSecondary)
+                        LazyColumn(
+                            state = rememberLazyListState(),
+                            modifier = Modifier.fillMaxSize()
+                                .overScrollVertical()
+                                .scrollEndHaptic()
+                                .nestedScroll(scrollBehavior.nestedScrollConnection),
+                            // 关键：把 topBar 高度（padding.calculateTopPadding）算进去，
+                            // 否则内容会被 topBar（标题+资料卡+TabRow）盖住，关模糊时尤其明显
+                            contentPadding = PaddingValues(
+                                top = padding.calculateTopPadding() + 8.dp,
+                                bottom = padding.calculateBottomPadding() + 8.dp,
+                            ),
+                        ) {
+                            if (items.isEmpty()) {
+                                item {
+                                    Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                                        Text("暂无内容", color = MiuixTheme.colorScheme.onSurfaceSecondary)
+                                    }
                                 }
-                            }
-                        } else {
-                            items(items.size, key = { items[it].hashCode() }) { index ->
-                                val item = items[index]
-                                val feedItem = coerceToFeedItem(item)
-                                MiuixFeedCard(
-                                    item = feedItem,
-                                    onClick = {
-                                        feedItem.navDestination?.let { navigator.onNavigate(it) }
-                                    },
-                                )
+                            } else {
+                                items(items.size, key = { items[it].hashCode() }) { index ->
+                                    val item = items[index]
+                                    val feedItem = coerceToFeedItem(item)
+                                    MiuixFeedCard(
+                                        item = feedItem,
+                                        onClick = {
+                                            feedItem.navDestination?.let { navigator.onNavigate(it) }
+                                        },
+                                    )
+                                }
                             }
                         }
                     }
