@@ -1,3 +1,17 @@
 {
     "java.configuration.updateBuildConfiguration": "interactive"
 }
+
+json
+{
+"claudeCode.environmentVariables": [
+{
+"name": "HTTP_PROXY",
+"value": "http://127.0.0.1:53599"
+},
+{
+"name": "HTTPS_PROXY",
+"value": "http://127.0.0.1:53599"
+}
+]
+}

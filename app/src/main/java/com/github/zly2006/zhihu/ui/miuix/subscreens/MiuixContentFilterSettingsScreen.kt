@@ -62,8 +62,7 @@ import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
-import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Back
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.preference.WindowSpinnerPreference
@@ -96,7 +95,7 @@ fun MiuixContentFilterSettingsScreen(
                 title = "推荐系统与内容过滤",
                 navigationIcon = {
                     IconButton(onClick = navigator.onNavigateBack) {
-                        Icon(MiuixIcons.Back, "返回", tint = MiuixTheme.colorScheme.onBackground)
+                        Icon(MiuixIconsEmbedded.Back, "返回", tint = MiuixTheme.colorScheme.onBackground)
                     }
                 },
                 scrollBehavior = scrollBehavior,

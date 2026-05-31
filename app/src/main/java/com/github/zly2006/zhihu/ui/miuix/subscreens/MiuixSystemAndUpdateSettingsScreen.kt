@@ -10,6 +10,10 @@ package com.github.zly2006.zhihu.ui.miuix.subscreens
 import android.content.Context
 import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -77,6 +81,7 @@ import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
@@ -243,20 +248,37 @@ fun MiuixSystemAndUpdateSettingsScreen() {
             item {
                 var githubToken by remember { mutableStateOf(preferences.getString("githubToken", "") ?: "") }
                 var showGithubToken by remember { mutableStateOf(false) }
+                var showPassword by remember { mutableStateOf(false) }
                 Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
-                    ArrowPreference(
-                        title = "GitHub Token",
-                        summary = if (githubToken.isNotEmpty()) "${githubToken.take(8)}..." else "用于访问 GitHub API 时解除限速",
-                        onClick = { showGithubToken = !showGithubToken },
-                    )
-                    if (showGithubToken) {
-                        androidx.compose.material3.OutlinedTextField(
-                            value = githubToken,
-                            onValueChange = { githubToken = it; preferences.edit { putString("githubToken", it) } },
-                            visualTransformation = if (false) PasswordVisualTransformation() else VisualTransformation.None,
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                            singleLine = true,
+                    Column {
+                        ArrowPreference(
+                            title = "GitHub Token",
+                            summary = if (githubToken.isNotEmpty()) "${githubToken.take(8)}..." else "用于访问 GitHub API 时解除限速",
+                            onClick = { showGithubToken = !showGithubToken },
                         )
+                        AnimatedVisibility(
+                            visible = showGithubToken,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut(),
+                        ) {
+                            TextField(
+                                value = githubToken,
+                                onValueChange = { githubToken = it; preferences.edit { putString("githubToken", it) } },
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 12.dp),
+                                singleLine = true,
+                                label = "Token",
+                                visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                                trailingIcon = {
+                                    IconButton(onClick = { showPassword = !showPassword }) {
+                                        Icon(
+                                            if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                            contentDescription = if (showPassword) "隐藏 Token" else "显示 Token",
+                                            tint = MiuixTheme.colorScheme.onSurfaceSecondary,
+                                        )
+                                    }
+                                },
+                            )
+                        }
                     }
                 }
             }

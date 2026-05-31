@@ -80,8 +80,7 @@ import top.yukonga.miuix.kmp.basic.TabRow
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.blur.layerBackdrop
-import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Back
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
@@ -132,7 +131,7 @@ fun MiuixPeopleScreen(
                     title = viewModel.name,
                     navigationIcon = {
                         IconButton(onClick = navigator.onNavigateBack) {
-                            Icon(MiuixIcons.Back, "返回", tint = MiuixTheme.colorScheme.onBackground)
+                            Icon(MiuixIconsEmbedded.Back, "返回", tint = MiuixTheme.colorScheme.onBackground)
                         }
                     },
                     scrollBehavior = scrollBehavior,

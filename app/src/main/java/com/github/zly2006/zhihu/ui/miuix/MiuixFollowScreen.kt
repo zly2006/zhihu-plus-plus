@@ -75,8 +75,7 @@ import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.TabRow
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
-import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Back
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect

@@ -272,6 +272,6 @@ dependencies {
     implementation("top.yukonga.miuix.kmp:miuix-core-android:$miuixVersion")
     implementation("top.yukonga.miuix.kmp:miuix-ui-android:$miuixVersion")
     implementation("top.yukonga.miuix.kmp:miuix-preference-android:$miuixVersion")
-    implementation("top.yukonga.miuix.kmp:miuix-icons-android:$miuixVersion")
+    // miuix-icons-android removed — icons embedded via MiuixIconsEmbedded.kt
     implementation("top.yukonga.miuix.kmp:miuix-blur:$miuixVersion")
 }

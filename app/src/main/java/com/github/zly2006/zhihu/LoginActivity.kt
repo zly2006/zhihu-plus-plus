@@ -77,8 +77,7 @@ import top.yukonga.miuix.kmp.basic.Scaffold as MiuixScaffold
 import top.yukonga.miuix.kmp.basic.TabRow
 import top.yukonga.miuix.kmp.basic.Text as MiuixText
 import top.yukonga.miuix.kmp.basic.TopAppBar as MiuixTopAppBar
-import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Back
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
@@ -301,7 +300,7 @@ private fun MiuixLoginModeScreen(
                 title = "登录知乎",
                 navigationIcon = {
                     MiuixIconButton(onClick = { activity.finish() }) {
-                        MiuixIcon(MiuixIcons.Back, "返回", tint = MiuixTheme.colorScheme.onBackground)
+                        MiuixIcon(MiuixIconsEmbedded.Back, "返回", tint = MiuixTheme.colorScheme.onBackground)
                     }
                 },
             )
@@ -594,7 +593,7 @@ private fun MiuixLoginNotice(
                 title = "登录须知",
                 navigationIcon = {
                     MiuixIconButton(onClick = { onConfirm() }) {
-                        MiuixIcon(MiuixIcons.Back, "返回", tint = MiuixTheme.colorScheme.onBackground)
+                        MiuixIcon(MiuixIconsEmbedded.Back, "返回", tint = MiuixTheme.colorScheme.onBackground)
                     }
                 },
             )

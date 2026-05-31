@@ -30,8 +30,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
-import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Back
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.runtime.Composable
@@ -167,7 +166,7 @@ fun MiuixBlocklistSettingsScreen(
                 navigationIcon = {
                     IconButton(onClick = { navigator.onNavigateBack() }) {
                         Icon(
-                            imageVector = MiuixIcons.Back,
+                            imageVector = MiuixIconsEmbedded.Back,
                             contentDescription = "返回",
                             tint = MiuixTheme.colorScheme.onBackground,
                         )
