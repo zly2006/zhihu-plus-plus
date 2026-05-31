@@ -191,5 +191,5 @@ fun AnswerHorizontalOverscroll(
 }
 
 private val MAX_HORIZONTAL_OVERSCROLL_DP = 300.dp
-private val HORIZONTAL_TRIGGER_THRESHOLD_DP = 60.dp
+private val HORIZONTAL_TRIGGER_THRESHOLD_DP = 46.dp
 private const val HORIZONTAL_DAMPING_FACTOR = 1.2f
