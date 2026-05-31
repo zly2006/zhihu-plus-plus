@@ -17,12 +17,8 @@ actual fun rememberMarkdownRuntime(): MarkdownRuntime {
     return object : MarkdownRuntime {
         override val mathFont: MathFont? = fontResult.downloaded?.mathFont
 
-        override suspend fun saveMarkdownImage(url: String) {
-            saveImageToGallery(context, httpClient, url)
-        }
+        override suspend fun saveMarkdownImage(url: String) = saveImageToGallery(context, httpClient, url)
 
-        override suspend fun shareMarkdownImage(url: String) {
-            shareImage(context, httpClient, url)
-        }
+        override suspend fun shareMarkdownImage(url: String) = shareImage(context, httpClient, url)
     }
 }
