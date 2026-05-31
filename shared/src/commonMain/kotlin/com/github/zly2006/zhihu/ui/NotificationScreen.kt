@@ -99,7 +99,7 @@ expect fun rememberNotificationScreenRuntime(
 fun NotificationScreen() {
     val navigator = LocalNavigator.current
     val settingsStore = rememberNotificationSettingsStore()
-    val viewModel = viewModel<NotificationViewModel>()
+    val viewModel = viewModel { NotificationViewModel() }
     val runtime = rememberNotificationScreenRuntime(viewModel, settingsStore)
     val coroutineScope = rememberCoroutineScope()
     val userMessages = rememberUserMessageSink()

@@ -59,7 +59,7 @@ fun HotListScreen(
     onTestRefreshClick: (() -> Unit)? = null,
     onTestLoadMore: (() -> Unit)? = null,
 ) {
-    val viewModel: HotListViewModel = viewModel()
+    val viewModel: HotListViewModel = viewModel { HotListViewModel() }
     val environment = rememberPaginationEnvironment(viewModel.allowGuestAccess)
     val userMessages = rememberUserMessageSink()
     val settings = rememberSettingsStore()

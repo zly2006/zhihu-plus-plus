@@ -58,7 +58,7 @@ const val ONLINE_HISTORY_OVERFLOW_TAG = "online_history_overflow"
 @Composable
 fun OnlineHistoryScreen() {
     val navigator = LocalNavigator.current
-    val viewModel: OnlineHistoryViewModel = viewModel()
+    val viewModel: OnlineHistoryViewModel = viewModel { OnlineHistoryViewModel() }
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()

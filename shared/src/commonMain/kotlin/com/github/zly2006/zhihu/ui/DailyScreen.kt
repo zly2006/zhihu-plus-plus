@@ -105,7 +105,7 @@ fun DailyScreen(
     val navigator = LocalNavigator.current
     val httpClient = rememberZhihuHttpClient()
     val uriHandler = LocalUriHandler.current
-    val viewModel = viewModel<DailyViewModel>()
+    val viewModel = viewModel { DailyViewModel() }
     val isTestMode = testState != null
     var isRefreshing by remember { mutableStateOf(false) }
     var currentViewingDate by remember { mutableStateOf("") }

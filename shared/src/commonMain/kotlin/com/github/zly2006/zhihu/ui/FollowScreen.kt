@@ -147,7 +147,7 @@ private fun FollowScreenContent(
     onTestDynamicRefreshClick: (() -> Unit)? = null,
     onTestDynamicLoadMore: (() -> Unit)? = null,
 ) {
-    val viewModel = viewModel<FollowScreenData>()
+    val viewModel = viewModel { FollowScreenData() }
     val titles = listOf("推荐", "动态")
     val pagerState = rememberPagerState(pageCount = { titles.size })
     val coroutineScope = rememberCoroutineScope()
@@ -258,7 +258,7 @@ private fun FollowTabRow(
 @Composable
 fun FollowingUsersRow() {
     val navigator = LocalNavigator.current
-    val viewModel: RecentMomentsViewModel = viewModel()
+    val viewModel: RecentMomentsViewModel = viewModel { RecentMomentsViewModel() }
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
 
     LaunchedEffect(Unit) {
@@ -340,7 +340,7 @@ fun FollowRecommendScreen(
     onTestRefreshClick: (() -> Unit)? = null,
     onTestLoadMore: (() -> Unit)? = null,
 ) {
-    val viewModel: FollowRecommendViewModel = viewModel()
+    val viewModel: FollowRecommendViewModel = viewModel { FollowRecommendViewModel() }
     val environment = rememberPaginationEnvironment(allowGuestAccess = viewModel.allowGuestAccess)
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()
@@ -450,7 +450,7 @@ fun FollowDynamicScreen(
     onTestRefreshClick: (() -> Unit)? = null,
     onTestLoadMore: (() -> Unit)? = null,
 ) {
-    val viewModel: FollowViewModel = viewModel()
+    val viewModel: FollowViewModel = viewModel { FollowViewModel() }
     val environment = rememberPaginationEnvironment(allowGuestAccess = viewModel.allowGuestAccess)
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()

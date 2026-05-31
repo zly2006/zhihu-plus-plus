@@ -33,7 +33,7 @@ import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 fun LegacyLocalHistoryScreen(
     innerPadding: PaddingValues,
 ) {
-    val viewModel: HistoryViewModel = viewModel()
+    val viewModel: HistoryViewModel = viewModel { HistoryViewModel() }
     val environment = rememberPaginationEnvironment(allowGuestAccess = true)
 
     LaunchedEffect(Unit) {
