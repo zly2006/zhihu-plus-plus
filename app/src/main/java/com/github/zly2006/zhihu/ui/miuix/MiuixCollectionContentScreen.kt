@@ -134,6 +134,7 @@ fun MiuixCollectionContentScreen(
                         }
                         WindowListPopup(
                             show = showActionsMenu,
+                            popupPositionProvider = com.github.zly2006.zhihu.ui.miuix.components.ListPopupDefaults.MenuPositionProvider,
                             alignment = PopupPositionProvider.Align.TopEnd,
                             onDismissRequest = { showActionsMenu = false },
                         ) {
