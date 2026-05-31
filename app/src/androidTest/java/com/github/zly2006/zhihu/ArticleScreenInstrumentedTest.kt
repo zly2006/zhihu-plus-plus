@@ -20,6 +20,8 @@ package com.github.zly2006.zhihu
 import android.content.Context
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.MutableState
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -39,6 +41,8 @@ import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.ArticleScreen
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.ui.TtsState
+import com.github.zly2006.zhihu.ui.rememberArticleActionsRuntime
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.CollectionItem
@@ -94,6 +98,20 @@ class ArticleScreenInstrumentedTest {
         composeRule.onNodeWithText("离线作者").assertIsDisplayed()
         composeRule.onNodeWithText("IP属地：上海").assertExists()
         composeRule.onNodeWithText("第 1 段离线正文", substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun articleActionsRuntime_readsTtsStateFromMainActivityHost() {
+        composeRule.activity.runOnUiThread {
+            composeRule.activity.forceTtsStateForTest(TtsState.Ready)
+        }
+
+        composeRule.setScreenContent {
+            val runtime = rememberArticleActionsRuntime()
+            Text("tts=${runtime.ttsState}")
+        }
+
+        composeRule.onNodeWithText("tts=Ready").assertIsDisplayed()
     }
 
     @Test
@@ -202,6 +220,13 @@ class ArticleScreenInstrumentedTest {
             viewModel.ipInfo = "上海"
         }
         return viewModel
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun MainActivity.forceTtsStateForTest(state: TtsState) {
+        val ttsStateField = MainActivity::class.java.getDeclaredField("_ttsState")
+        ttsStateField.isAccessible = true
+        (ttsStateField.get(this) as MutableState<TtsState>).value = state
     }
 
     private companion object {

@@ -172,11 +172,12 @@ private fun Context.findActivity(): android.app.Activity? = when (this) {
 
 @Composable
 actual fun rememberArticleActionsRuntime(): ArticleActionsRuntime {
-    val context = LocalContext.current.applicationContext
+    val activityContext = LocalContext.current
+    val context = activityContext.applicationContext
     val coroutineScope = rememberCoroutineScope()
     val userMessages = rememberUserMessageSink()
     val dialogShareRuntime = rememberShareDialogRuntime()
-    val articleHost = context.articleHost()
+    val articleHost = activityContext.articleHost()
     val ttsState = articleHost?.articleTtsState ?: TtsState.Uninitialized
     return remember(context, coroutineScope, userMessages, dialogShareRuntime, articleHost, ttsState) {
         object : ArticleActionsRuntime {
