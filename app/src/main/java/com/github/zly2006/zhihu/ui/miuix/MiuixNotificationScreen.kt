@@ -236,6 +236,7 @@ private fun NotificationItemCard(
 
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)
+            .clip(RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
             .background(bgColor, RoundedCornerShape(16.dp)),
     ) {
