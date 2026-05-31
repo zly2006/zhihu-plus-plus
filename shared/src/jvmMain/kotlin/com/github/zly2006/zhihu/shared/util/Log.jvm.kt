@@ -31,7 +31,6 @@ private fun printLog(
     tag: String,
     message: String,
     throwable: Throwable?,
-) {
-    println("[$level][$tag] $message")
+) = println("[$level][$tag] $message").also {
     throwable?.printStackTrace()
 }

@@ -59,9 +59,7 @@ fun desktopContentFilterDatabaseFile(): File =
 
 @Composable
 actual fun rememberBlocklistManager(): BlocklistManager = remember {
-    val databaseFile = desktopContentFilterDatabaseFile()
-    databaseFile.parentFile?.mkdirs()
-    getContentFilterDatabase(databaseFile).createBlocklistManager()
+    getContentFilterDatabase(desktopContentFilterDatabaseFile().also { it.parentFile?.mkdirs() }).createBlocklistManager()
 }
 
 fun getContentFilterDatabase(databaseFile: File): ContentFilterDatabase =

@@ -85,9 +85,7 @@ object AndroidContentFilterRuntime {
 @Composable
 actual fun rememberBlockedFeedRecordDao(): BlockedFeedRecordDao {
     val context = LocalContext.current
-    return remember(context) {
-        getContentFilterDatabase(context).blockedFeedRecordDao()
-    }
+    return remember(context) { getContentFilterDatabase(context).blockedFeedRecordDao() }
 }
 
 @Composable

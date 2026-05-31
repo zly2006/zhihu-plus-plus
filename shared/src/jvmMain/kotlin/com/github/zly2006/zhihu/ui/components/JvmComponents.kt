@@ -48,9 +48,7 @@ actual fun rememberFeedBlockActions(): FeedBlockActions {
     val blocklistManager = rememberBlocklistManager()
     val userMessages = rememberUserMessageSink()
     val store = remember { DesktopAccountStore() }
-    val contentDetailProvider = remember(store) {
-        desktopFeedBlockContentDetailProvider(store)
-    }
+    val contentDetailProvider = remember(store) { desktopFeedBlockContentDetailProvider(store) }
     return remember(blocklistManager, userMessages, contentDetailProvider) {
         FeedBlockActions(
             handleBlockUser = { viewModel, feedItem, onShowDialog ->
@@ -111,9 +109,7 @@ private fun desktopFeedBlockContentDetailProvider(
     store: DesktopAccountStore,
 ): ContentDetailProvider {
     val environment = DesktopPaginationEnvironment(store)
-    return ContentDetailProvider { destination ->
-        environment.getContentDetail(destination)
-    }
+    return ContentDetailProvider { destination -> environment.getContentDetail(destination) }
 }
 
 private fun extractDesktopKeywordsWithWeight(

@@ -26,6 +26,4 @@ actual object Log {
     ) = log { android.util.Log.e(tag, message, throwable) }
 }
 
-private inline fun log(action: () -> Int) {
-    action()
-}
+private inline fun log(action: () -> Int) = action().let {}

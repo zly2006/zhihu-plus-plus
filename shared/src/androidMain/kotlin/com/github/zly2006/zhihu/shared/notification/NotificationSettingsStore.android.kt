@@ -9,9 +9,7 @@ import androidx.core.content.edit
 @Composable
 actual fun rememberNotificationSettingsStore(): NotificationSettingsStore {
     val context = LocalContext.current
-    return remember(context) {
-        AndroidNotificationSettingsStore(context.applicationContext)
-    }
+    return remember(context) { AndroidNotificationSettingsStore(context.applicationContext) }
 }
 
 class AndroidNotificationSettingsStore(
@@ -22,23 +20,19 @@ class AndroidNotificationSettingsStore(
     override fun getSystemNotificationEnabled(type: NotificationType): Boolean =
         preferences.getBoolean("$KEY_SYSTEM_NOTIFICATION${type.name}", false)
 
-    override fun setSystemNotificationEnabled(type: NotificationType, enabled: Boolean) {
+    override fun setSystemNotificationEnabled(type: NotificationType, enabled: Boolean) =
         preferences.edit { putBoolean("$KEY_SYSTEM_NOTIFICATION${type.name}", enabled) }
-    }
 
     override fun getDisplayInAppEnabled(type: NotificationType): Boolean =
         preferences.getBoolean("$KEY_DISPLAY_IN_APP${type.name}", type.defaultValue)
 
-    override fun setDisplayInAppEnabled(type: NotificationType, enabled: Boolean) {
+    override fun setDisplayInAppEnabled(type: NotificationType, enabled: Boolean) =
         preferences.edit { putBoolean("$KEY_DISPLAY_IN_APP${type.name}", enabled) }
-    }
 
     override fun getAutoMarkAsReadEnabled(): Boolean =
         preferences.getBoolean(KEY_AUTO_MARK_AS_READ, true)
 
-    override fun setAutoMarkAsReadEnabled(enabled: Boolean) {
-        preferences.edit { putBoolean(KEY_AUTO_MARK_AS_READ, enabled) }
-    }
+    override fun setAutoMarkAsReadEnabled(enabled: Boolean) = preferences.edit { putBoolean(KEY_AUTO_MARK_AS_READ, enabled) }
 }
 
 private const val PREF_NAME = "notification_settings"

@@ -63,7 +63,5 @@ private class IosFileAccountSessionStore : ZhihuAccountSessionStore {
         fm.createFileAtPath(filePath, contents = nsString.dataUsingEncoding(NSUTF8StringEncoding), attributes = null)
     }
 
-    override fun delete() {
-        NSFileManager.defaultManager.removeItemAtPath(filePath, error = null)
-    }
+    override fun delete() = NSFileManager.defaultManager.removeItemAtPath(filePath, error = null).let {}
 }

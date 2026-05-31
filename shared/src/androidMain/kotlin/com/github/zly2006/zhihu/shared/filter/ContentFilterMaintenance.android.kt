@@ -8,7 +8,5 @@ import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 @Composable
 actual fun rememberContentFilterMaintenance(): ContentFilterMaintenance {
     val context = LocalContext.current.applicationContext
-    return remember(context) {
-        createContentFilterMaintenance(getContentFilterDatabase(context).contentFilterDao())
-    }
+    return remember(context) { createContentFilterMaintenance(getContentFilterDatabase(context).contentFilterDao()) }
 }

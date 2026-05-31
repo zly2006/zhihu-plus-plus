@@ -563,9 +563,7 @@ fun PaginationViewModel<*>.paginationEnvironment(context: Context): AndroidConte
 @Composable
 actual fun rememberPaginationEnvironment(allowGuestAccess: Boolean): PaginationEnvironment {
     val context = LocalContext.current
-    return remember(context, allowGuestAccess) {
-        SharedAndroidPaginationEnvironment(context, allowGuestAccess)
-    }
+    return remember(context, allowGuestAccess) { SharedAndroidPaginationEnvironment(context, allowGuestAccess) }
 }
 
 fun PaginationViewModel<*>.notificationPaginationEnvironment(

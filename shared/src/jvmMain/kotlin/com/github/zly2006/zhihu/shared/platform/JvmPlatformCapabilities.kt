@@ -103,9 +103,7 @@ fun desktopSettingsStore(): SettingsStore {
 }
 
 @Composable
-actual fun rememberExternalUrlOpener(): (String) -> Unit = remember {
-    { url -> openDesktopExternalUrl(url) }
-}
+actual fun rememberExternalUrlOpener(): (String) -> Unit = remember { { url -> openDesktopExternalUrl(url) } }
 
 @Composable
 actual fun rememberSystemUrlOpener(): (String) -> Unit = rememberExternalUrlOpener()
@@ -117,11 +115,8 @@ actual fun rememberZhihuWebUrlOpener(): (String) -> Unit = rememberExternalUrlOp
 actual fun rememberImagePreviewOpener(): (String) -> Unit = rememberExternalUrlOpener()
 
 @Composable
-actual fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit = remember {
-    { _, text ->
-        runCatching { copyDesktopPlainText(text) }
-    }
-}
+actual fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit =
+    remember { { _, text -> runCatching { copyDesktopPlainText(text) } } }
 
 @Composable
 actual fun rememberUserMessageSink(): UserMessageSink = remember { UserMessageSink(::showDesktopMessage) }

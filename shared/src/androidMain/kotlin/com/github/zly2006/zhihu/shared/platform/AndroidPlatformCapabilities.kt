@@ -38,65 +38,37 @@ private const val WEBVIEW_ACTIVITY_CLASS = "com.github.zly2006.zhihu.WebviewActi
 @Composable
 actual fun rememberExternalUrlOpener(): (String) -> Unit {
     val context = LocalContext.current
-    return remember(context) {
-        { url ->
-            luoTianYiUrlLauncher(context, url.toUri())
-        }
-    }
+    return remember(context) { { url -> luoTianYiUrlLauncher(context, url.toUri()) } }
 }
 
 @Composable
 actual fun rememberSystemUrlOpener(): (String) -> Unit {
     val context = LocalContext.current
-    return remember(context) {
-        { url ->
-            context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
-        }
-    }
+    return remember(context) { { url -> context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) } }
 }
 
 @Composable
 actual fun rememberZhihuWebUrlOpener(): (String) -> Unit {
     val context = LocalContext.current
-    return remember(context) {
-        { url ->
-            context.startActivity(
-                Intent(Intent.ACTION_VIEW, url.toUri()).setClassName(context, WEBVIEW_ACTIVITY_CLASS),
-            )
-        }
-    }
+    return remember(context) { { url -> context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()).setClassName(context, WEBVIEW_ACTIVITY_CLASS)) } }
 }
 
 @Composable
 actual fun rememberImagePreviewOpener(): (String) -> Unit {
     val context = LocalContext.current
-    return remember(context) {
-        { url ->
-            OpenImageDialog(
-                context,
-                AccountData.httpClient(context),
-                url,
-            ).show()
-        }
-    }
+    return remember(context) { { url -> OpenImageDialog(context, AccountData.httpClient(context), url).show() } }
 }
 
 @Composable
 actual fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit {
     val context = LocalContext.current
-    return remember(context) {
-        { label, text ->
-            context.clipboardManager.setPrimaryClip(ClipData.newPlainText(label, text))
-        }
-    }
+    return remember(context) { { label, text -> context.clipboardManager.setPrimaryClip(ClipData.newPlainText(label, text)) } }
 }
 
 @Composable
 actual fun rememberSettingsStore(): SettingsStore {
     val context = LocalContext.current.applicationContext
-    return remember(context) {
-        androidSettingsStore(context)
-    }
+    return remember(context) { androidSettingsStore(context) }
 }
 
 fun androidSettingsStore(context: Context): SettingsStore {
@@ -146,9 +118,7 @@ fun androidUserMessageSink(context: Context): UserMessageSink {
 @Composable
 actual fun rememberUserMessageSink(): UserMessageSink {
     val context = LocalContext.current.applicationContext
-    return remember(context) {
-        androidUserMessageSink(context)
-    }
+    return remember(context) { androidUserMessageSink(context) }
 }
 
 @Composable
@@ -172,6 +142,4 @@ actual fun rememberScreenSizeDp(): ScreenSizeDp {
 actual fun PlatformBackHandler(
     enabled: Boolean,
     onBack: () -> Unit,
-) {
-    BackHandler(enabled = enabled, onBack = onBack)
-}
+) = BackHandler(enabled = enabled, onBack = onBack)
