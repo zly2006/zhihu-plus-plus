@@ -65,6 +65,32 @@ class MdAstTest {
     }
 
     @Test
+    fun inline_equation_should_ignore_image_token_and_use_equation_src() {
+        val document = htmlToMdAst(
+            """
+            <p>函数 <img eeimg="1" src="https://www.zhihu.com/equation?tex=f%28x%29%3Dx%5E2" data-original-token="v2-token" alt="f(x)=x^2"/> 单调递增。</p>
+            """.trimIndent(),
+        )
+        val nodes = document.allNodes()
+
+        assertEquals(1, nodes.count { it is InlineMath && it.literal == "f(x)=x^2" })
+        assertFalse(nodes.any { it is Figure && it.imageUrl.contains("v2-token") })
+    }
+
+    @Test
+    fun inline_equation_should_read_actualsrc_when_src_is_placeholder() {
+        val document = htmlToMdAst(
+            """
+            <p>结论为 <img eeimg="1" src="data:image/svg+xml;utf8,%3Csvg%3E%3C/svg%3E" data-actualsrc="//www.zhihu.com/equation?tex=a%5E2%2Bb%5E2%3Dc%5E2" alt="a^2+b^2=c^2"/>。</p>
+            """.trimIndent(),
+        )
+        val nodes = document.allNodes()
+
+        assertEquals(1, nodes.count { it is InlineMath && it.literal == "a^2+b^2=c^2" })
+        assertFalse(nodes.any { it is Figure && it.imageUrl.startsWith("data:image") })
+    }
+
+    @Test
     fun paragraph_with_only_inline_equation_with_space_should_convert_to_math_block() {
         val document = htmlToMdAst(
             """

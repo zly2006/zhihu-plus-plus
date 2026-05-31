@@ -63,7 +63,15 @@ import com.fleeksoft.ksoup.nodes.Node as HtmlNode
 import com.hrm.markdown.parser.ast.Node as MarkdownNode
 
 private var parsingDocument: Document? = null
-private const val ZHIHU_EQUATION_URL_PREFIX = "https://www.zhihu.com/equation?tex="
+private const val ZHIHU_EQUATION_HOST = "www.zhihu.com"
+private const val ZHIHU_EQUATION_PATH = "/equation"
+private val equationImageUrlAttributes = listOf(
+    "src",
+    "data-actualsrc",
+    "data-original",
+    "data-thumbnail",
+    "data-default-watermark-src",
+)
 
 fun htmlToMdAst(html: String): Document {
     val document = Document()
@@ -452,10 +460,29 @@ private fun HtmlNode.hasInlineContent(): Boolean = when (this) {
     else -> false
 }
 
-private fun extractEquationTex(imgElement: Element): String? = extractImageUrl(imgElement::attr)
-    ?.takeIf { it.startsWith(ZHIHU_EQUATION_URL_PREFIX) }
-    ?.let { Url(it).parameters["tex"].orEmpty() }
-    ?.takeIf { it.isNotBlank() }
+private fun extractEquationTex(imgElement: Element): String? =
+    equationImageUrlAttributes
+        .asSequence()
+        .map { imgElement.attr(it) }
+        .mapNotNull(::extractEquationTexFromUrl)
+        .firstOrNull()
+
+private fun extractEquationTexFromUrl(url: String): String? {
+    val normalized = when {
+        url.isBlank() -> return null
+        url.startsWith("//") -> "https:$url"
+        url.startsWith("/") -> "https://$ZHIHU_EQUATION_HOST$url"
+        else -> url
+    }
+    return runCatching {
+        val parsed = Url(normalized)
+        parsed.host
+            .takeIf { it.equals(ZHIHU_EQUATION_HOST, ignoreCase = true) }
+            ?.takeIf { parsed.encodedPath == ZHIHU_EQUATION_PATH }
+            ?.let { parsed.parameters["tex"].orEmpty() }
+            ?.takeIf { it.isNotBlank() }
+    }.getOrNull()
+}
 
 /**
  * 将一个 HTML 节点转换为 Markdown 内联节点列表
