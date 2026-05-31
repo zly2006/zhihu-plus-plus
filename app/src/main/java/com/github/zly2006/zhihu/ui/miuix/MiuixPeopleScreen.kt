@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -123,7 +124,8 @@ fun MiuixPeopleScreen(
     Scaffold(
         topBar = {
             Column(
-                modifier = Modifier.installerMiuixBlurEffect(backdrop),
+                modifier = Modifier.installerMiuixBlurEffect(backdrop)
+                    .padding(bottom = 6.dp),
             ) {
                 TopAppBar(
                     color = backdrop.getMiuixAppBarColor(),
@@ -135,7 +137,7 @@ fun MiuixPeopleScreen(
                     },
                     scrollBehavior = scrollBehavior,
                 )
-                // TabRow inside topBar, shared blur
+                // TabRow inside topBar, shared blur — always visible
                 TabRow(
                     tabs = PEOPLE_SCREEN_TITLES,
                     selectedTabIndex = pagerState.currentPage,
@@ -145,110 +147,86 @@ fun MiuixPeopleScreen(
             }
         },
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            // Profile Card — scrolls with content, not fixed to TopAppBar
-            Card(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        AsyncImage(
-                            model = viewModel.avatar,
-                            contentDescription = "用户头像",
-                            modifier = Modifier.size(56.dp).clip(CircleShape),
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(viewModel.name, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                            if (viewModel.headline.isNotEmpty()) {
-                                Text(viewModel.headline, fontSize = 14.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize(),
+        ) { page ->
+            val subModel = viewModel.subFeedModels.getOrNull(page)
+            if (subModel != null) {
+                LaunchedEffect(page) {
+                    if (page == 2) {
+                        val vm = subModel as BaseFeedViewModel
+                        if (vm.displayItems.isEmpty()) vm.loadMore(context)
+                    } else {
+                        if (subModel.allData.isEmpty()) subModel.loadMore(context)
+                    }
+                }
+                val items = if (page == 2) {
+                    (subModel as BaseFeedViewModel).displayItems.takeIf { it.isNotEmpty() } ?: emptyList()
+                } else {
+                    subModel.allData
+                }
+                Box(
+                    modifier = if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier,
+                ) {
+                    LazyColumn(
+                        state = rememberLazyListState(),
+                        modifier = Modifier.fillMaxSize()
+                            .overScrollVertical()
+                            .scrollEndHaptic()
+                            .nestedScroll(scrollBehavior.nestedScrollConnection),
+                        contentPadding = PaddingValues(
+                            top = padding.calculateTopPadding() + 6.dp,
+                            bottom = padding.calculateBottomPadding() + 8.dp,
+                        ),
+                    ) {
+                        // Profile Card — LazyColumn 第一个 item，滚动时消失
+                        item(key = "profileCard") {
+                                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(bottom = 8.dp)) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            AsyncImage(model = viewModel.avatar, contentDescription = null, modifier = Modifier.size(48.dp).clip(CircleShape))
+                                            Spacer(Modifier.width(12.dp))
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(viewModel.name, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                                                if (viewModel.headline.isNotEmpty()) {
+                                                    Text(viewModel.headline, fontSize = 14.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                                }
+                                            }
+                                        }
+                                        Spacer(Modifier.height(8.dp))
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                                            StatItem("回答", viewModel.answerCount) { coroutineScope.launch { pagerState.animateScrollToPage(0) } }
+                                            StatItem("文章", viewModel.articleCount) { coroutineScope.launch { pagerState.animateScrollToPage(1) } }
+                                            StatItem("关注者", viewModel.followerCount) { coroutineScope.launch { pagerState.animateScrollToPage(7) } }
+                                            StatItem("关注", viewModel.followingCount) { coroutineScope.launch { pagerState.animateScrollToPage(8) } }
+                                        }
+                                        Spacer(Modifier.height(8.dp))
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            val followText = if (viewModel.isFollowing) "已关注" else "关注"
+                                            Card(modifier = Modifier.weight(1f).clickable { coroutineScope.launch { try { viewModel.toggleFollow(context) } catch (_: Exception) {} } }) {
+                                                Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) { Text(followText, fontSize = 14.sp, color = MiuixTheme.colorScheme.primary) }
+                                            }
+                                            val blockText = if (viewModel.isBlocking) "已屏蔽" else "屏蔽"
+                                            Card(modifier = Modifier.weight(1f).clickable { coroutineScope.launch { try { viewModel.toggleBlock(context) } catch (_: Exception) {} } }) {
+                                                Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) { Text(blockText, fontSize = 14.sp, color = MiuixTheme.colorScheme.error) }
+                                            }
+                                        }
+                                    }
                             }
                         }
-                    }
-                    Spacer(Modifier.height(12.dp))
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        StatItem("回答", viewModel.answerCount) { coroutineScope.launch { pagerState.animateScrollToPage(0) } }
-                        StatItem("文章", viewModel.articleCount) { coroutineScope.launch { pagerState.animateScrollToPage(1) } }
-                        StatItem("关注者", viewModel.followerCount) { coroutineScope.launch { pagerState.animateScrollToPage(7) } }
-                        StatItem("关注", viewModel.followingCount) { coroutineScope.launch { pagerState.animateScrollToPage(8) } }
-                    }
-                    Spacer(Modifier.height(12.dp))
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        val followText = if (viewModel.isFollowing) "已关注" else "关注"
-                        Card(modifier = Modifier.weight(1f).clickable {
-                            coroutineScope.launch { try { viewModel.toggleFollow(context) } catch (e: Exception) { Toast.makeText(context, "操作失败: ${e.message}", Toast.LENGTH_SHORT).show() } }
-                        }) {
-                            Box(Modifier.fillMaxWidth().padding(vertical = 10.dp), contentAlignment = Alignment.Center) { Text(followText, fontSize = 14.sp, color = MiuixTheme.colorScheme.primary) }
-                        }
-                        val blockText = if (viewModel.isBlocking) "已屏蔽" else "屏蔽"
-                        Card(modifier = Modifier.weight(1f).clickable {
-                            coroutineScope.launch { try { viewModel.toggleBlock(context) } catch (e: Exception) { Toast.makeText(context, "操作失败: ${e.message}", Toast.LENGTH_SHORT).show() } }
-                        }) {
-                            Box(Modifier.fillMaxWidth().padding(vertical = 10.dp), contentAlignment = Alignment.Center) { Text(blockText, fontSize = 14.sp, color = MiuixTheme.colorScheme.error) }
+
+                        if (items.isEmpty()) {
+                            item { Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { Text("暂无内容", color = MiuixTheme.colorScheme.onSurfaceSecondary) } }
+                        } else {
+                            items(items.size, key = { items[it].hashCode() }) { index ->
+                                val feedItem = coerceToFeedItem(items[index])
+                                MiuixFeedCard(item = feedItem, onClick = { feedItem.navDestination?.let { navigator.onNavigate(it) } })
+                            }
                         }
                     }
                 }
             }
-
-            // Pager as direct content
-            HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxSize(),
-        ) { page ->
-                val subModel = viewModel.subFeedModels.getOrNull(page)
-                if (subModel != null) {
-                    LaunchedEffect(page) {
-                        if (page == 2) {
-                            val vm = subModel as BaseFeedViewModel
-                            if (vm.displayItems.isEmpty()) vm.loadMore(context)
-                        } else {
-                            if (subModel.allData.isEmpty()) subModel.loadMore(context)
-                        }
-                    }
-                    val items = if (page == 2) {
-                        (subModel as BaseFeedViewModel).displayItems.takeIf { it.isNotEmpty() } ?: emptyList()
-                    } else {
-                        subModel.allData
-                    }
-                    // 模糊源：包在实际滚动的 LazyColumn 外层（四件套第 4 件）
-                    Box(
-                        modifier = if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier,
-                    ) {
-                        LazyColumn(
-                            state = rememberLazyListState(),
-                            modifier = Modifier.fillMaxSize()
-                                .overScrollVertical()
-                                .scrollEndHaptic()
-                                .nestedScroll(scrollBehavior.nestedScrollConnection),
-                            // 关键：把 topBar 高度（padding.calculateTopPadding）算进去，
-                            // 否则内容会被 topBar（标题+资料卡+TabRow）盖住，关模糊时尤其明显
-                            contentPadding = PaddingValues(
-                                top = padding.calculateTopPadding() + 8.dp,
-                                bottom = padding.calculateBottomPadding() + 8.dp,
-                            ),
-                        ) {
-                            if (items.isEmpty()) {
-                                item {
-                                    Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                                        Text("暂无内容", color = MiuixTheme.colorScheme.onSurfaceSecondary)
-                                    }
-                                }
-                            } else {
-                                items(items.size, key = { items[it].hashCode() }) { index ->
-                                    val item = items[index]
-                                    val feedItem = coerceToFeedItem(item)
-                                    MiuixFeedCard(
-                                        item = feedItem,
-                                        onClick = {
-                                            feedItem.navDestination?.let { navigator.onNavigate(it) }
-                                        },
-                                    )
-                                }
-                            }
-                        }
-                    }
-            }
-        }
         }
     }
 }
