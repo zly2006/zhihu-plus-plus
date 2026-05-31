@@ -140,6 +140,7 @@ fun MiuixNotificationScreen() {
         PullToRefresh(
             isRefreshing = viewModel.isLoading,
             onRefresh = { coroutineScope.launch { viewModel.refresh(context) } },
+            contentPadding = PaddingValues(top = padding.calculateTopPadding() + 6.dp),
             refreshTexts = listOf("下拉刷新", "释放刷新", "正在刷新...", "刷新完成"),
         ) {
             Box(
