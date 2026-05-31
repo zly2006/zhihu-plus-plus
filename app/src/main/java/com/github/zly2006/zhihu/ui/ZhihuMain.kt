@@ -119,7 +119,7 @@ import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ThemeStyle
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixAppearanceSettingsScreen
-import com.github.zly2006.zhihu.ui.miuix.MiuixAboutScreen
+import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixAboutScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixAccountSettingScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixBlocklistSettingsScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixCollectionScreen

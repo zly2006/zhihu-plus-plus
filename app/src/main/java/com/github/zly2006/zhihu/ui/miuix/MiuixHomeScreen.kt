@@ -60,6 +60,7 @@ import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
 import com.github.zly2006.zhihu.ui.miuix.components.SearchBarFake
 import com.github.zly2006.zhihu.ui.miuix.components.SearchBox
 import com.github.zly2006.zhihu.ui.miuix.components.SearchPager
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixAccountSheet
 import com.github.zly2006.zhihu.ui.miuix.components.SearchStatus
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel

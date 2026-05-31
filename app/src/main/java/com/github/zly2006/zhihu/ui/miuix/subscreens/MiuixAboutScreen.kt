@@ -12,7 +12,7 @@
  *   分阶段错峰淡出：版本号(0.05)→名称(0.20)→图标(0.35)，照抄官方阈值。
  */
  
-package com.github.zly2006.zhihu.ui.miuix
+package com.github.zly2006.zhihu.ui.miuix.subscreens
  
 import android.content.Intent
 import androidx.compose.animation.core.LinearEasing
