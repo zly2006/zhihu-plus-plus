@@ -30,6 +30,13 @@
             android:theme="@style/Theme.Zhihu"
             android:enableOnBackInvokedCallback="true"
             tools:targetApi="33">
+        <meta-data
+                android:name="com.github.zly2006.zhihu.BUILD_TYPE"
+                android:value="${zhihuBuildType}"/>
+        <meta-data
+                android:name="com.github.zly2006.zhihu.GIT_HASH"
+                android:value="${zhihuGitHash}"/>
+
         <activity
                 android:name=".CaptureActivity"
                 android:exported="false"

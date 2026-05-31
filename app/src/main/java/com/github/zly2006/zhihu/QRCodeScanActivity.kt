@@ -23,7 +23,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -64,6 +63,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.github.zly2006.zhihu.QRCodeScanActivity.Companion.LOGIN_PREFIX
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
@@ -111,6 +111,7 @@ private fun QRCodeScanScreen(
     var scanResult by remember { mutableStateOf("") }
 
     val context = LocalContext.current
+    val userMessages = rememberUserMessageSink()
 
     var hasCameraPermission by remember {
         mutableStateOf(
@@ -127,7 +128,7 @@ private fun QRCodeScanScreen(
     ) { isGranted ->
         hasCameraPermission = isGranted
         if (!isGranted) {
-            Toast.makeText(context, "需要相机权限才能扫描二维码", Toast.LENGTH_SHORT).show()
+            userMessages.showShortMessage("需要相机权限才能扫描二维码")
         }
     }
 
@@ -231,7 +232,7 @@ private fun QRCodeScanScreen(
             onDismiss = { showResultDialog = false },
             onCopy = { text ->
                 copyToClipboard(context, text)
-                Toast.makeText(context, "已复制到剪贴板", Toast.LENGTH_SHORT).show()
+                userMessages.showShortMessage("已复制到剪贴板")
             },
             onConfirm = { text ->
                 onScanResult(text)

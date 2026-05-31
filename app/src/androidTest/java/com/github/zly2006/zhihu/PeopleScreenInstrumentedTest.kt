@@ -25,8 +25,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.github.zly2006.zhihu.data.DataHolder
-import com.github.zly2006.zhihu.data.OfficialBadge
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionContent
@@ -34,13 +32,17 @@ import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.Search
+import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.FollowedQuestion
+import com.github.zly2006.zhihu.shared.data.FollowedTopic
+import com.github.zly2006.zhihu.shared.data.OfficialBadge
+import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
-import com.github.zly2006.zhihu.ui.FollowedQuestion
-import com.github.zly2006.zhihu.ui.FollowedTopic
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_ACTIVITIES_LIST_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_ANSWERS_LIST_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_ANSWER_COUNT_TAG
@@ -86,7 +88,6 @@ import com.github.zly2006.zhihu.ui.peopleScreenPinItemTag
 import com.github.zly2006.zhihu.ui.peopleScreenQuestionItemTag
 import com.github.zly2006.zhihu.ui.peopleScreenSubscriptionTabTag
 import com.github.zly2006.zhihu.ui.peopleScreenTabTag
-import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -390,12 +391,12 @@ class PeopleScreenInstrumentedTest {
         ),
         activities = PeopleListUiState(
             items = List(itemCount) { index ->
-                BaseFeedViewModel.FeedDisplayItem(
+                FeedDisplayItem(
                     title = "离线动态 ${index + 1}",
                     summary = "动态摘要 ${index + 1}",
                     details = "动态详情 ${index + 1}",
                     feed = null,
-                    navDestination = Search(query = "离线动态 ${index + 1}"),
+                    navDestinationJson = Search(query = "离线动态 ${index + 1}").toFeedDisplayItemNavDestinationJson(),
                     localFeedId = "activity-${index + 1}",
                 )
             },

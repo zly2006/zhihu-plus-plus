@@ -94,12 +94,16 @@ android {
         val gitHash = gitHash(rootProject.projectDir)
         debug {
             buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
+            manifestPlaceholders["zhihuBuildType"] = "debug"
+            manifestPlaceholders["zhihuGitHash"] = gitHash
         }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
+            manifestPlaceholders["zhihuBuildType"] = "release"
+            manifestPlaceholders["zhihuGitHash"] = gitHash
             if (System.getenv("signingKey") != null) {
                 signingConfig = signingConfigs["env"]
             }
@@ -193,7 +197,19 @@ val coil = "3.4.0"
 val aboutLibraries = "14.0.1"
 val composeVersion = "1.11.0"
 val lifecycleVersion = "2.10.0"
+
+// Force material3 to 1.10.0-alpha05，与 shared 模块保持一致。
+// 根因：shared 模块 commonMain 通过 material-kolor 的 strictly 约束解析到 1.10.0-alpha05，
+// 但平台配置和本模块如果没有 force，会各自解析到不同版本（1.9.0 或 1.11.0-alpha07），
+// 导致运行时类冲突或编译时 internal API 不可见。
+configurations.configureEach {
+    resolutionStrategy {
+        force("org.jetbrains.compose.material3:material3:1.10.0-alpha05")
+    }
+}
+
 dependencies {
+    implementation(project(":shared"))
     implementation("androidx.preference:preference:1.2.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
     implementation("io.ktor:ktor-client-core-jvm:$ktor")
@@ -235,11 +251,12 @@ dependencies {
     // Compose (core from JetBrains KMP)
     implementation("org.jetbrains.compose.runtime:runtime:$composeVersion")
     implementation("org.jetbrains.compose.foundation:foundation:$composeVersion")
-    implementation("org.jetbrains.compose.material3:material3:1.11.0-alpha07")
+    implementation("org.jetbrains.compose.material3:material3:1.10.0-alpha05")
     implementation("org.jetbrains.compose.ui:ui:$composeVersion")
     implementation("org.jetbrains.compose.ui:ui-graphics:$composeVersion")
     implementation("org.jetbrains.compose.animation:animation:$composeVersion")
     implementation("org.jetbrains.compose.animation:animation-core:$composeVersion")
+    implementation("org.jetbrains.compose.components:components-resources-android:$composeVersion")
     // Compose (AndroidX — icons, tooling, test not available from JetBrains yet)
     implementation(platform("androidx.compose:compose-bom:2026.05.00"))
     implementation("androidx.compose.material:material-icons-extended")
@@ -247,8 +264,6 @@ dependencies {
     implementation("com.mikepenz:aboutlibraries-compose-m3:$aboutLibraries")
     implementation("androidx.room:room-common-jvm:2.8.4")
     implementation("androidx.room:room-runtime-android:2.8.4")
-    annotationProcessor("androidx.room:room-compiler:2.8.4")
-    ksp("androidx.room:room-compiler:2.8.4")
     "fullImplementation"(project(":sentence_embeddings"))
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

@@ -34,7 +34,7 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Navigator
 import com.github.zly2006.zhihu.theme.ZhihuTheme
-import com.github.zly2006.zhihu.ui.ZhihuMain
+import com.github.zly2006.zhihu.ui.AndroidZhihuMain
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -89,7 +89,7 @@ fun MainActivityComposeRule.setZhihuMainContent() {
     waitForIdle()
     activity.setContent {
         ZhihuTheme {
-            ZhihuMain(navController = rememberNavController())
+            AndroidZhihuMain(navController = rememberNavController())
         }
     }
     waitForIdle()

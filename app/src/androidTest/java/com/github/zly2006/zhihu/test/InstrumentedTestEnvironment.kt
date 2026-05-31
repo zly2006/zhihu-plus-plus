@@ -21,7 +21,7 @@ import android.content.Context
 import android.os.Bundle
 import androidx.test.platform.app.InstrumentationRegistry
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.Person
+import com.github.zly2006.zhihu.shared.data.Person
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 
 object InstrumentedTestEnvironment {

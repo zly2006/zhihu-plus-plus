@@ -1,0 +1,145 @@
+/*
+ * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation (version 3 only).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package com.github.zly2006.zhihu.shared.platform
+import android.content.ClipData
+import android.content.Context
+import android.content.Intent
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.edit
+import androidx.core.net.toUri
+import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.ui.components.OpenImageDialog
+import com.github.zly2006.zhihu.util.clipboardManager
+import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
+
+private const val WEBVIEW_ACTIVITY_CLASS = "com.github.zly2006.zhihu.WebviewActivity"
+
+@Composable
+actual fun rememberExternalUrlOpener(): (String) -> Unit {
+    val context = LocalContext.current
+    return remember(context) { { url -> luoTianYiUrlLauncher(context, url.toUri()) } }
+}
+
+@Composable
+actual fun rememberSystemUrlOpener(): (String) -> Unit {
+    val context = LocalContext.current
+    return remember(context) { { url -> context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) } }
+}
+
+@Composable
+actual fun rememberZhihuWebUrlOpener(): (String) -> Unit {
+    val context = LocalContext.current
+    return remember(context) { { url -> context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()).setClassName(context, WEBVIEW_ACTIVITY_CLASS)) } }
+}
+
+@Composable
+actual fun rememberImagePreviewOpener(): (String) -> Unit {
+    val context = LocalContext.current
+    return remember(context) { { url -> OpenImageDialog(context, AccountData.httpClient(context), url).show() } }
+}
+
+@Composable
+actual fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit {
+    val context = LocalContext.current
+    return remember(context) { { label, text -> context.clipboardManager.setPrimaryClip(ClipData.newPlainText(label, text)) } }
+}
+
+@Composable
+actual fun rememberSettingsStore(): SettingsStore {
+    val context = LocalContext.current.applicationContext
+    return remember(context) { androidSettingsStore(context) }
+}
+
+fun androidSettingsStore(context: Context): SettingsStore {
+    val preferences = context.applicationContext.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+    return SettingsStore(
+        getBoolean = { key, defaultValue -> preferences.getBoolean(key, defaultValue) },
+        putBoolean = { key, value -> preferences.edit { putBoolean(key, value) } },
+        getString = { key, defaultValue -> preferences.getString(key, defaultValue) ?: defaultValue },
+        putString = { key, value -> preferences.edit { putString(key, value) } },
+        getStringOrNull = { key -> preferences.getString(key, null) },
+        putStringSet = { key, value -> preferences.edit { putStringSet(key, value) } },
+        getStringSet = { key, defaultValue -> preferences.getStringSet(key, defaultValue)?.toSet() ?: defaultValue },
+        getInt = { key, defaultValue -> preferences.getInt(key, defaultValue) },
+        putInt = { key, value -> preferences.edit { putInt(key, value) } },
+        getLong = { key, defaultValue -> preferences.getLong(key, defaultValue) },
+        putLong = { key, value -> preferences.edit { putLong(key, value) } },
+        getFloat = { key, defaultValue -> preferences.getFloat(key, defaultValue) },
+        putFloat = { key, value -> preferences.edit { putFloat(key, value) } },
+        remove = { key -> preferences.edit { remove(key) } },
+        observeKeyChanges = { onChanged ->
+            val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+                if (key != null) {
+                    onChanged(key)
+                }
+            }
+            preferences.registerOnSharedPreferenceChangeListener(listener)
+            val unregister = {
+                preferences.unregisterOnSharedPreferenceChangeListener(listener)
+            }
+            unregister
+        },
+    )
+}
+
+fun androidUserMessageSink(context: Context): UserMessageSink {
+    val appContext = context.applicationContext
+    return UserMessageSink(
+        showShortMessage = { message ->
+            Toast.makeText(appContext, message, Toast.LENGTH_SHORT).show()
+        },
+        showLongMessage = { message ->
+            Toast.makeText(appContext, message, Toast.LENGTH_LONG).show()
+        },
+    )
+}
+
+@Composable
+actual fun rememberUserMessageSink(): UserMessageSink {
+    val context = LocalContext.current.applicationContext
+    return remember(context) { androidUserMessageSink(context) }
+}
+
+@Composable
+actual fun rememberIsLiteVariant(): Boolean {
+    val context = LocalContext.current
+    return remember(context) { isAndroidLiteVariantPackageName(context.packageName) }
+}
+
+internal fun isAndroidLiteVariantPackageName(packageName: String): Boolean = packageName.endsWith(".lite")
+
+@Composable
+actual fun rememberScreenSizeDp(): ScreenSizeDp {
+    val configuration = LocalConfiguration.current
+    return ScreenSizeDp(
+        width = configuration.screenWidthDp.toFloat(),
+        height = configuration.screenHeightDp.toFloat(),
+    )
+}
+
+@Composable
+actual fun PlatformBackHandler(
+    enabled: Boolean,
+    onBack: () -> Unit,
+) = BackHandler(enabled = enabled, onBack = onBack)
