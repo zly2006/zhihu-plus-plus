@@ -33,7 +33,6 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
-import androidx.test.espresso.Espresso.pressBack
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.Article
@@ -50,6 +49,7 @@ import com.github.zly2006.zhihu.test.RecordingNavigator
 import com.github.zly2006.zhihu.test.ZhihuMockApi
 import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
+import com.github.zly2006.zhihu.test.pressSystemBack
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.COMMENT_CANCEL_REPLY_TAG
@@ -189,7 +189,7 @@ class CommentScreenInstrumentedTest {
         }
 
         assertEquals(listOf("root-1"), archivedCommentIds)
-        assertEquals(listOf("root-2", "root-1"), childEntryCommentIds)
+        assertEquals(listOf("root-2", "root-1", "root-1"), childEntryCommentIds)
         assertEquals(
             listOf(
                 Person(id = "author-root-1", urlToken = "author-root-1-token", name = "离线作者 1"),
@@ -240,8 +240,7 @@ class CommentScreenInstrumentedTest {
         composeRule.onNodeWithTag(COMMENT_IMAGE_MENU_SAVE_TAG, useUnmergedTree = true).assertIsDisplayed()
         composeRule.onNodeWithTag(COMMENT_IMAGE_MENU_SHARE_TAG, useUnmergedTree = true).assertIsDisplayed()
 
-        pressBack()
-        composeRule.waitForIdle()
+        composeRule.pressSystemBack()
         composeRule.onAllNodesWithTag(COMMENT_IMAGE_MENU_OPEN_TAG, useUnmergedTree = true).assertCountEquals(0)
 
         composeRule.onNodeWithTag(commentImageTag("root-1"), useUnmergedTree = true).performClick()

@@ -65,6 +65,7 @@ class HomeScreenInstrumentedTest {
 
     @Before
     fun setUp() {
+        composeRule.setScreenContent {}
         composeRule.resetAppPreferences()
         composeRule.activity.runOnUiThread {
             AccountData.delete(composeRule.activity)
@@ -187,6 +188,7 @@ class HomeScreenInstrumentedTest {
         showRefreshFab: Boolean,
         displayItems: List<FeedDisplayItem>,
     ): RecordingNavigator {
+        setScreenContent {}
         activity.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE).edit(commit = true) {
             putBoolean("duo3_home_account", duo3HomeAccount)
             putBoolean("showRefreshFab", showRefreshFab)
