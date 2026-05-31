@@ -41,6 +41,7 @@ import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
+import com.github.zly2006.zhihu.ui.QUESTION_BACK_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.QUESTION_COMMENTS_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.QUESTION_DETAIL_CONTENT_TAG
 import com.github.zly2006.zhihu.ui.QUESTION_DETAIL_PREVIEW_TAG
@@ -91,14 +92,15 @@ class QuestionScreenInstrumentedTest {
     fun headerActionsDetailToggleSortAndDialogEntrancesRemainOffline() {
         /*
          * Expected behavior:
-         * 1. The seeded title, statistics, and detail markdown must render entirely from injected
+         * 1. The top app bar back button must dispatch through LocalNavigator.
+         * 2. The seeded title, statistics, and detail markdown must render entirely from injected
          *    local state without loading question detail from the network.
-         * 2. Tapping the detail toggle should collapse the markdown body into the preview snippet,
+         * 3. Tapping the detail toggle should collapse the markdown body into the preview snippet,
          *    then allow expanding back to the full content.
-         * 3. Sort buttons must call the injected refresh callback whenever the order actually
+         * 4. Sort buttons must call the injected refresh callback whenever the order actually
          *    changes, and the follow button must toggle between follow and unfollow states through
          *    the injected follow callback.
-         * 4. View-log, share, and comments actions should all route through injected offline hooks
+         * 5. View-log, share, and comments actions should all route through injected offline hooks
          *    and custom test content rather than opening real webviews or bottom sheets.
          */
         val followStates = mutableListOf<Boolean>()
@@ -112,8 +114,10 @@ class QuestionScreenInstrumentedTest {
             onShareAction = { shareCount++ },
         )
 
-        setScreen(overrides)
+        val navigator = setScreen(overrides)
 
+        composeRule.onNodeWithTag(QUESTION_BACK_BUTTON_TAG).assertIsDisplayed().performClick()
+        assertEquals(1, navigator.backCount)
         composeRule.onNodeWithTag(QUESTION_TITLE_TAG).assertIsDisplayed()
         composeRule.onNodeWithText("离线问题标题").assertIsDisplayed()
         composeRule.onNodeWithTag(QUESTION_STATS_TAG).assertIsDisplayed()
