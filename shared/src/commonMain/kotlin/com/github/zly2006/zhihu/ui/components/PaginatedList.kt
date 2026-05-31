@@ -28,6 +28,7 @@ import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
@@ -52,6 +53,60 @@ val ProgressIndicatorFooter: @Composable (LazyListState) -> Unit = { state ->
         if (LocalPullToRefreshViewModel.current?.isPullToRefresh != true) {
             CircularProgressIndicator()
         }
+    }
+}
+
+private const val DUPLICATE_KEY_PREFIX = "PaginatedListDuplicateKey"
+
+internal fun <T> uniquePaginatedListKeys(
+    items: List<T>,
+    key: (T) -> Any,
+): List<Any> {
+    val originalKeys = items.map(key)
+    val reservedKeys = originalKeys.toSet()
+    val usedKeys = mutableSetOf<Any>()
+    val duplicateOccurrences = mutableMapOf<Any, Int>()
+
+    return originalKeys.map { original ->
+        if (usedKeys.add(original)) {
+            original
+        } else {
+            val occurrence = duplicateOccurrences.getOrElse(original) { 1 }
+            duplicateOccurrences[original] = occurrence + 1
+            uniqueDuplicatePaginatedListKey(original, occurrence, reservedKeys, usedKeys)
+        }
+    }
+}
+
+private fun uniqueDuplicatePaginatedListKey(
+    original: Any,
+    occurrence: Int,
+    reservedKeys: Set<Any>,
+    usedKeys: MutableSet<Any>,
+): Any {
+    var collision = 0
+    while (true) {
+        val candidate = "$DUPLICATE_KEY_PREFIX:$occurrence:$collision:$original"
+        if (candidate !in reservedKeys && usedKeys.add(candidate)) {
+            return candidate
+        }
+        collision++
+    }
+}
+
+@Composable
+private fun <T> LazyItemScope.PaginatedListItem(
+    item: T,
+    itemContent: @Composable LazyItemScope.(T) -> Unit,
+) {
+    Box(
+        modifier = Modifier.animateItem(
+            fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
+            fadeOutSpec = spring(stiffness = Spring.StiffnessMediumLow),
+            placementSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        ),
+    ) {
+        itemContent(item)
     }
 }
 
@@ -96,15 +151,14 @@ fun <T> PaginatedList(
     ) {
         topContent(this)
 
-        items(items, key = key) { item ->
-            Box(
-                modifier = Modifier.animateItem(
-                    fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                    fadeOutSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                    placementSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                ),
-            ) {
-                itemContent(item)
+        if (key != null) {
+            val itemKeys = uniquePaginatedListKeys(items, key)
+            itemsIndexed(items, key = { index, _ -> itemKeys[index] }) { _, item ->
+                PaginatedListItem(item, itemContent)
+            }
+        } else {
+            items(items) { item ->
+                PaginatedListItem(item, itemContent)
             }
         }
 
