@@ -25,7 +25,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.shared.account.IosAccountStore
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
@@ -45,31 +44,17 @@ import platform.UIKit.UIApplication
 @Composable
 actual fun rememberArticleActionsRuntime(): ArticleActionsRuntime {
     val userMessages = rememberUserMessageSink()
-    val shareRuntime = rememberShareDialogRuntime()
-    return remember(userMessages, shareRuntime) {
+    val dialogShareRuntime = rememberShareDialogRuntime()
+    return remember(userMessages, dialogShareRuntime) {
         object : ArticleActionsRuntime {
             override var ttsState: TtsState by mutableStateOf(TtsState.Ready)
                 private set // TODO: iOS TTS 实现
+            override val shareRuntime = dialogShareRuntime
 
-            override fun toggleSpeech(title: String, content: String) {
-                userMessages.showMessage("iOS TTS 暂未实现")
-            } // TODO: iOS TTS 实现
+            override fun toggleSpeech(title: String, content: String) =
+                userMessages.showMessage("iOS TTS 暂未实现") // TODO: iOS TTS 实现
 
-            override fun shareArticle(article: Article, questionId: Long, title: String, authorName: String) {
-                shareRuntime.share(article, articleActionText(article, questionId, title, authorName))
-            }
-
-            override fun copyArticleLink(article: Article, questionId: Long, title: String, authorName: String) {
-                shareRuntime.copyLink(article, articleActionText(article, questionId, title, authorName))
-            }
-
-            override fun openArticleInBrowser(article: Article) {
-                val url = when (article.type) {
-                    ArticleType.Answer -> "https://www.zhihu.com/answer/${article.id}"
-                    ArticleType.Article -> "https://zhuanlan.zhihu.com/p/${article.id}"
-                }
-                openIosUrl(url)
-            }
+            override fun openArticleInBrowser(article: Article) = openIosUrl(articleWebUrl(article))
         }
     }
 }
@@ -79,7 +64,6 @@ actual fun rememberNotificationScreenRuntime(
     viewModel: NotificationViewModel,
     settingsStore: NotificationSettingsStore,
 ): NotificationScreenRuntime = remember(settingsStore) {
-    // TODO: iOS 通知页面完整实现
     NotificationScreenRuntime(
         environment = IosNotificationPaginationEnvironment(settingsStore),
         showDebugCopy = false,
@@ -129,13 +113,11 @@ actual fun rememberCommentScreenRuntime(): CommentScreenRuntime {
     val userMessages = rememberUserMessageSink()
     return remember(userMessages) {
         object : CommentScreenRuntime {
-            override fun saveImage(imageUrl: String) { // TODO: iOS 图片保存
-                userMessages.showMessage("iOS 图片保存暂未实现")
-            }
+            override fun saveImage(imageUrl: String) =
+                userMessages.showMessage("iOS 图片保存暂未实现") // TODO: iOS 图片保存
 
-            override fun shareImage(imageUrl: String) { // TODO: iOS 图片分享
-                userMessages.showMessage("iOS 图片分享暂未实现")
-            }
+            override fun shareImage(imageUrl: String) =
+                userMessages.showMessage("iOS 图片分享暂未实现") // TODO: iOS 图片分享
         }
     }
 }
@@ -184,7 +166,6 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
 @Composable
 actual fun rememberPinScreenRuntime(): PinScreenRuntime =
     remember {
-        // TODO: iOS 想法页面完整实现
         PinScreenRuntime(
             fetchLinkCardPreview = { null },
         )
@@ -199,7 +180,6 @@ actual fun supportsPinHtmlWebView(): Boolean = false
 actual fun rememberBlocklistSettingsPlatformRuntime(
     userMessages: UserMessageSink,
 ): BlocklistSettingsRuntime = remember(userMessages) {
-    // TODO: iOS 屏蔽列表功能
     BlocklistSettingsRuntime(
         requestImport = { _ -> }, // TODO: iOS 导入规则
         exportRules = { "" }, // TODO: iOS 导出规则

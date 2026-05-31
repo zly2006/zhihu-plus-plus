@@ -55,6 +55,7 @@ import com.github.zly2006.zhihu.ui.PeopleProfileUiState
 import com.github.zly2006.zhihu.ui.PinLinkCardPreview
 import com.github.zly2006.zhihu.ui.QuestionScreenUiState
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
+import com.github.zly2006.zhihu.ui.components.ShareDialogRuntime
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
@@ -392,6 +393,7 @@ fun QuestionCommentsSheet(
 
 interface ArticleActionsRuntime {
     val ttsState: TtsState
+    val shareRuntime: ShareDialogRuntime
 
     fun toggleSpeech(
         title: String,
@@ -403,14 +405,18 @@ interface ArticleActionsRuntime {
         questionId: Long,
         title: String,
         authorName: String,
-    )
+    ) {
+        shareRuntime.share(article, articleActionText(article, questionId, title, authorName))
+    }
 
     fun copyArticleLink(
         article: Article,
         questionId: Long,
         title: String,
         authorName: String,
-    )
+    ) {
+        shareRuntime.copyLink(article, articleActionText(article, questionId, title, authorName))
+    }
 
     fun openArticleInBrowser(article: Article)
 }
@@ -431,6 +437,12 @@ fun articleActionText(
         ArticleType.Article -> {
             "https://zhuanlan.zhihu.com/p/${article.id}\n【$title - $authorName 的文章】"
         }
+    }
+
+fun articleWebUrl(article: Article): String =
+    when (article.type) {
+        ArticleType.Answer -> "https://www.zhihu.com/answer/${article.id}"
+        ArticleType.Article -> "https://zhuanlan.zhihu.com/p/${article.id}"
     }
 
 fun articleSpeechText(

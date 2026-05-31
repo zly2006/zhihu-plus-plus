@@ -52,9 +52,7 @@ actual fun rememberDeveloperSettingsRuntime(): DeveloperSettingsRuntime = rememb
 }
 
 @Composable
-actual fun rememberOpenSourceLicensesLibraries(): Libs = remember {
-    Libs(emptyList(), emptySet())
-} // TODO: iOS 开源许可证加载
+actual fun rememberOpenSourceLicensesLibraries(): Libs = remember { Libs(emptyList(), emptySet()) } // TODO: iOS 开源许可证加载
 
 @Composable
 actual fun rememberShowFullVariantLicenses(): Boolean = false

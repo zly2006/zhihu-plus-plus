@@ -36,7 +36,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
@@ -78,8 +77,8 @@ import javax.swing.filechooser.FileNameExtensionFilter
 actual fun rememberArticleActionsRuntime(): ArticleActionsRuntime {
     val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
-    val shareRuntime = rememberShareDialogRuntime()
-    return remember(userMessages, coroutineScope, shareRuntime) {
+    val dialogShareRuntime = rememberShareDialogRuntime()
+    return remember(userMessages, coroutineScope, dialogShareRuntime) {
         object : ArticleActionsRuntime {
             private var speechProcess: Process? = null
             private var currentTtsState by mutableStateOf(
@@ -87,6 +86,7 @@ actual fun rememberArticleActionsRuntime(): ArticleActionsRuntime {
             )
             override val ttsState: TtsState
                 get() = currentTtsState
+            override val shareRuntime = dialogShareRuntime
 
             override fun toggleSpeech(
                 title: String,
@@ -113,37 +113,11 @@ actual fun rememberArticleActionsRuntime(): ArticleActionsRuntime {
                 }
             }
 
-            override fun shareArticle(
-                article: Article,
-                questionId: Long,
-                title: String,
-                authorName: String,
-            ) {
-                val text = articleActionText(article, questionId, title, authorName)
-                shareRuntime.share(article, text)
-            }
-
-            override fun copyArticleLink(
-                article: Article,
-                questionId: Long,
-                title: String,
-                authorName: String,
-            ) {
-                val text = articleActionText(article, questionId, title, authorName)
-                shareRuntime.copyLink(article, text)
-            }
-
             override fun openArticleInBrowser(article: Article) {
-                if (openDesktopExternalUrl(articleUrl(article))) {
+                if (openDesktopExternalUrl(articleWebUrl(article))) {
                     userMessages.showMessage("已发送到浏览器")
                 }
             }
-
-            private fun articleUrl(article: Article): String =
-                when (article.type) {
-                    ArticleType.Answer -> "https://www.zhihu.com/answer/${article.id}"
-                    ArticleType.Article -> "https://zhuanlan.zhihu.com/p/${article.id}"
-                }
 
             private suspend fun speakText(
                 text: String,

@@ -26,9 +26,7 @@ import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
 import java.util.Properties
 
 @Composable
-actual fun rememberSettingsStore(): SettingsStore = remember {
-    desktopSettingsStore()
-}
+actual fun rememberSettingsStore(): SettingsStore = remember { desktopSettingsStore() }
 
 fun desktopSettingsStore(): SettingsStore {
     val settingsFile = desktopZhihuDataFile("settings.properties")
@@ -126,9 +124,7 @@ actual fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit =
 }
 
 @Composable
-actual fun rememberUserMessageSink(): UserMessageSink = remember {
-    UserMessageSink(::showDesktopMessage)
-}
+actual fun rememberUserMessageSink(): UserMessageSink = remember { UserMessageSink(::showDesktopMessage) }
 
 private fun showDesktopMessage(message: String) {
     println(message)

@@ -175,12 +175,13 @@ actual fun rememberArticleActionsRuntime(): ArticleActionsRuntime {
     val context = LocalContext.current.applicationContext
     val coroutineScope = rememberCoroutineScope()
     val userMessages = rememberUserMessageSink()
-    val shareRuntime = rememberShareDialogRuntime()
+    val dialogShareRuntime = rememberShareDialogRuntime()
     val articleHost = context.articleHost()
     val ttsState = articleHost?.articleTtsState ?: TtsState.Uninitialized
-    return remember(context, coroutineScope, userMessages, shareRuntime, articleHost, ttsState) {
+    return remember(context, coroutineScope, userMessages, dialogShareRuntime, articleHost, ttsState) {
         object : ArticleActionsRuntime {
             override val ttsState: TtsState = ttsState
+            override val shareRuntime = dialogShareRuntime
 
             override fun toggleSpeech(
                 title: String,
@@ -210,26 +211,6 @@ actual fun rememberArticleActionsRuntime(): ArticleActionsRuntime {
                         }
                     }
                 }
-            }
-
-            override fun shareArticle(
-                article: Article,
-                questionId: Long,
-                title: String,
-                authorName: String,
-            ) {
-                val text = articleActionText(article, questionId, title, authorName)
-                shareRuntime.share(article, text)
-            }
-
-            override fun copyArticleLink(
-                article: Article,
-                questionId: Long,
-                title: String,
-                authorName: String,
-            ) {
-                val text = articleActionText(article, questionId, title, authorName)
-                shareRuntime.copyLink(article, text)
             }
 
             override fun openArticleInBrowser(article: Article) {
@@ -511,7 +492,8 @@ interface ArticlePreviewWebViewStore {
     ): CustomWebView
 }
 
-fun Context.articleHost(): ArticleHost? = this as? ArticleHost
+fun Context.articleHost(): ArticleHost? =
+    (this as? ArticleHost) ?: (this as? ContextWrapper)?.baseContext?.takeIf { it !== this }?.articleHost()
 
 @Composable
 actual fun QuestionDetailWebViewContent(

@@ -22,9 +22,7 @@ import com.github.zly2006.zhihu.ui.noopSettingsStore
 import com.github.zly2006.zhihu.ui.openIosUrl
 
 @Composable
-actual fun rememberExternalUrlOpener(): (String) -> Unit = remember {
-    ::openIosUrl
-}
+actual fun rememberExternalUrlOpener(): (String) -> Unit = remember { ::openIosUrl }
 
 @Composable
 actual fun rememberSystemUrlOpener(): (String) -> Unit = rememberExternalUrlOpener()
@@ -55,6 +53,4 @@ actual fun rememberSettingsStore(): SettingsStore = noopSettingsStore() // TODO:
 actual fun rememberIsLiteVariant(): Boolean = false // TODO: iOS 变体判断
 
 @Composable
-actual fun rememberUserMessageSink(): UserMessageSink = remember {
-    UserMessageSink(showShortMessage = {})
-} // TODO: iOS 用户消息提示
+actual fun rememberUserMessageSink(): UserMessageSink = remember { UserMessageSink(showShortMessage = {}) } // TODO: iOS 用户消息提示
