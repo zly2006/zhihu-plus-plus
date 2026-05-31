@@ -49,6 +49,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.navigation.LocalNavigator
@@ -219,24 +220,24 @@ fun MiuixBlocklistSettingsScreen(
                 }
             }
 
-            // 导入/导出（跟 stats card 同 padding）
+            // 导入/导出（Card 按钮，跟关注/屏蔽按钮风格一致）
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                TextButton(
-                    text = "导入规则",
-                    modifier = Modifier.testTag(BlocklistSettingsTestTags.IMPORT_BUTTON),
-                    onClick = {
+                Card(
+                    modifier = Modifier.weight(1f).clickable {
                         val importAction = testConfig?.onImportRequested
                         if (importAction != null) importAction()
                         else importLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
                     },
-                )
-                TextButton(
-                    text = "导出规则",
-                    modifier = Modifier.testTag(BlocklistSettingsTestTags.EXPORT_BUTTON),
-                    onClick = {
+                ) {
+                    Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+                        Text("导入规则", fontSize = 14.sp)
+                    }
+                }
+                Card(
+                    modifier = Modifier.weight(1f).clickable {
                         val exportAction = testConfig?.onExportRequested
                         if (exportAction != null) exportAction()
                         else coroutineScope.launch {
@@ -246,9 +247,8 @@ fun MiuixBlocklistSettingsScreen(
                                 val intent = Intent().apply {
                                     action = Intent.ACTION_VIEW
                                     setDataAndType(
-                                        FileProvider.getUriForFile(
-                                            context, "${context.packageName}.provider", file,
-                                        ), "application/json",
+                                        FileProvider.getUriForFile(context, "${context.packageName}.provider", file),
+                                        "application/json",
                                     )
                                 }
                                 context.startActivity(Intent.createChooser(intent, "查看屏蔽规则"))
@@ -259,7 +259,11 @@ fun MiuixBlocklistSettingsScreen(
                             }
                         }
                     },
-                )
+                ) {
+                    Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+                        Text("导出规则", fontSize = 14.sp)
+                    }
+                }
             }
 
             // 标签页
@@ -267,7 +271,7 @@ fun MiuixBlocklistSettingsScreen(
                 tabs = tabs,
                 selectedTabIndex = selectedTab,
                 onTabSelected = { selectedTab = it },
-                modifier = Modifier.testTag(BlocklistSettingsTestTags.TAB_ROW),
+                modifier = Modifier.padding(horizontal = 12.dp).testTag(BlocklistSettingsTestTags.TAB_ROW),
             )
 
             // 内容区（仅此区域滚动）
