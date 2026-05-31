@@ -148,6 +148,7 @@ fun MiuixPeopleScreen(
                             )
                             Spacer(Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
+                                Text(viewModel.name, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                                 if (viewModel.headline.isNotEmpty()) {
                                     Text(
                                         viewModel.headline,
