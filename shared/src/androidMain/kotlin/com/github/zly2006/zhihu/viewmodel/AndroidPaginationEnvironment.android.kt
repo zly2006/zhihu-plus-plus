@@ -63,6 +63,7 @@ import com.github.zly2006.zhihu.util.buildArticleExportFileName
 import com.github.zly2006.zhihu.util.buildOfflineArticleExportHtml
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.exportCollectionItemsToZip
+import com.github.zly2006.zhihu.util.saveBitmapToGallery
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.CollectionItem
 import com.github.zly2006.zhihu.viewmodel.filter.AndroidContentFilterRuntime
@@ -98,6 +99,7 @@ import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import com.github.zly2006.zhihu.navigation.Article as ArticleDestination
+import com.github.zly2006.zhihu.util.buildArticleExportHtml as buildAndroidArticleExportHtml
 import io.ktor.http.ContentType as KtorContentType
 
 interface AndroidContextPaginationEnvironment : PaginationEnvironment {
@@ -519,6 +521,25 @@ open class SharedAndroidPaginationEnvironment(
     ) {
         context.clipboardManager.setPrimaryClip(ClipData.newPlainText(label, text))
     }
+
+    override fun buildArticleExportHtml(
+        content: DataHolder.Content,
+        includeAppAttribution: Boolean,
+        extraSectionsHtml: String,
+    ): String = buildAndroidArticleExportHtml(
+        context = context,
+        content = content,
+        includeAppAttribution = includeAppAttribution,
+        extraSectionsHtml = extraSectionsHtml,
+    )
+
+    override fun saveImageToMediaStore(
+        displayName: String,
+        bitmap: Any,
+    ) = saveBitmapToGallery(context, displayName, bitmap as android.graphics.Bitmap)
+
+    override fun articleImageExportRenderer(loadAssetText: (String) -> String): ArticleImageExportRenderer =
+        AndroidArticleExportRenderer(context, loadAssetText)
 
     override fun hasImageExportPermission(): Boolean = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED

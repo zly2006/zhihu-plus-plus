@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.util
 
+import com.github.zly2006.zhihu.shared.data.DataHolder
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -72,6 +73,53 @@ class ArticleExportCommonUtilsTest {
     }
 
     @Test
+    fun buildArticleExportHtmlCentralizesAssetLoadingAndContentMapping() {
+        val loadedAssets = mutableListOf<String>()
+        val html = buildArticleExportHtml(
+            loadAssetText = { fileName ->
+                loadedAssets += fileName
+                "<h1>{{title}}</h1><main>{{bodyHtml}}</main>{{extraSections}}"
+            },
+            content = sampleArticleContent(),
+            includeAppAttribution = true,
+            extraSectionsHtml = "<aside>comments</aside>",
+        )
+
+        assertEquals(listOf(ARTICLE_EXPORT_TEMPLATE_ASSET), loadedAssets)
+        assertContains(html, "<h1>导出公共路径</h1>")
+        assertContains(html, "<p>正文</p>")
+        assertContains(html, "<aside>comments</aside>")
+    }
+
+    @Test
+    fun resolveArticleExportImageMimeTypeUsesHeaderNameAndBytes() {
+        assertEquals(
+            "image/webp",
+            resolveArticleExportImageMimeType(
+                contentTypeHeader = "image/webp; charset=binary",
+                imageUrl = "https://pic.example/a",
+                imageBytes = byteArrayOf(),
+            ),
+        )
+        assertEquals(
+            "image/png",
+            resolveArticleExportImageMimeType(
+                contentTypeHeader = null,
+                imageUrl = "https://pic.example/a.png?x=1",
+                imageBytes = byteArrayOf(),
+            ),
+        )
+        assertEquals(
+            "image/jpeg",
+            resolveArticleExportImageMimeType(
+                contentTypeHeader = null,
+                imageUrl = "https://pic.example/a",
+                imageBytes = byteArrayOf(0xff.toByte(), 0xd8.toByte(), 0xff.toByte()),
+            ),
+        )
+    }
+
+    @Test
     fun prepareArticleExportContentHtmlRemovesNoscriptAndLazyImageAttrs() {
         val html = prepareArticleExportContentHtml(
             "<noscript>x</noscript><img class=\"lazy\" data-actualsrc=\"//pic.example/a.png\" srcset=\"a\" sizes=\"b\">",
@@ -105,4 +153,30 @@ class ArticleExportCommonUtilsTest {
             }
         }
     }
+
+    private fun sampleArticleContent(): DataHolder.Article = DataHolder.Article(
+        id = 1001L,
+        author = DataHolder.Author(
+            avatarUrl = "",
+            gender = 0,
+            headline = "作者简介",
+            id = "export-author",
+            isAdvertiser = false,
+            isOrg = false,
+            name = "作者",
+            type = "people",
+            url = "https://www.zhihu.com/people/export-author",
+            urlToken = "export-author",
+            userType = "people",
+        ),
+        canComment = DataHolder.CanComment(status = true, reason = ""),
+        title = "导出公共路径",
+        content = "<p>正文</p>",
+        excerpt = "正文",
+        type = "article",
+        created = 1_710_000_000L,
+        updated = 1_710_000_600L,
+        url = "https://zhuanlan.zhihu.com/p/1001",
+        voteupCount = 12,
+    )
 }

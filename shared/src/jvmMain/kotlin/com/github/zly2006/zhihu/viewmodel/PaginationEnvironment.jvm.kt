@@ -59,11 +59,7 @@ import com.github.zly2006.zhihu.shared.notification.desktopNotificationSettingsS
 import com.github.zly2006.zhihu.shared.platform.desktopSettingsStore
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
-import com.github.zly2006.zhihu.util.ARTICLE_EXPORT_TEMPLATE_ASSET
-import com.github.zly2006.zhihu.util.buildArticleExportData
 import com.github.zly2006.zhihu.util.buildArticleExportFileName
-import com.github.zly2006.zhihu.util.inlineArticleExportImagesInHtml
-import com.github.zly2006.zhihu.util.renderArticleExportHtml
 import com.github.zly2006.zhihu.util.sanitizeArticleExportFileNamePart
 import com.github.zly2006.zhihu.viewmodel.CollectionItem
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
@@ -83,13 +79,10 @@ import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.forms.MultiPartFormDataContent
 import io.ktor.client.request.forms.formData
-import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
-import io.ktor.client.statement.readRawBytes
-import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
@@ -101,11 +94,8 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import java.awt.image.BufferedImage
-import java.io.ByteArrayInputStream
 import java.io.File
-import java.net.URLConnection
 import java.text.SimpleDateFormat
-import java.util.Base64
 import java.util.Date
 import java.util.Locale
 import java.util.zip.ZipEntry
@@ -113,6 +103,8 @@ import java.util.zip.ZipOutputStream
 import javax.imageio.ImageIO
 import javax.swing.JEditorPane
 import javax.swing.SwingUtilities
+import com.github.zly2006.zhihu.util.buildArticleExportHtml as buildSharedArticleExportHtml
+import com.github.zly2006.zhihu.util.buildOfflineArticleExportHtml as buildSharedOfflineArticleExportHtml
 import io.ktor.http.ContentType as KtorContentType
 
 internal val desktopArticleAnswerSwitchState = ArticleAnswerSwitchData()
@@ -440,12 +432,10 @@ class DesktopPaginationEnvironment(
         content: DataHolder.Content,
         includeAppAttribution: Boolean,
         extraSectionsHtml: String,
-    ): String = renderArticleExportHtml(
-        template = loadExportAssetText(ARTICLE_EXPORT_TEMPLATE_ASSET),
-        exportData = buildArticleExportData(
-            content = content,
-            includeAppAttribution = includeAppAttribution,
-        ),
+    ): String = buildSharedArticleExportHtml(
+        loadAssetText = ::loadExportAssetText,
+        content = content,
+        includeAppAttribution = includeAppAttribution,
         extraSectionsHtml = extraSectionsHtml,
     )
 
@@ -453,16 +443,13 @@ class DesktopPaginationEnvironment(
         content: DataHolder.Content,
         includeAppAttribution: Boolean,
         httpClient: HttpClient,
-    ): String = inlineArticleExportImagesInHtml(
-        html = buildArticleExportHtml(
-            content = content,
-            includeAppAttribution = includeAppAttribution,
-            extraSectionsHtml = "",
-        ),
+    ): String = buildSharedOfflineArticleExportHtml(
+        loadAssetText = ::loadExportAssetText,
+        content = content,
+        includeAppAttribution = includeAppAttribution,
+        httpClient = httpClient,
         useOriginalOnImageFetchFailure = true,
-    ) { imageUrl ->
-        fetchArticleExportImageDataUrl(httpClient, imageUrl)
-    }
+    )
 
     override fun saveHtmlToDownloads(
         displayName: String,
@@ -536,19 +523,14 @@ class DesktopPaginationEnvironment(
                     if (content == null) {
                         skippedCount++
                     } else {
-                        val htmlContent = if (includeImages) {
-                            buildOfflineArticleExportHtml(
-                                content = content,
-                                includeAppAttribution = true,
-                                httpClient = exportHttpClient,
-                            )
-                        } else {
-                            buildArticleExportHtml(
-                                content = content,
-                                includeAppAttribution = true,
-                                extraSectionsHtml = "",
-                            )
-                        }
+                        val htmlContent = buildSharedOfflineArticleExportHtml(
+                            loadAssetText = ::loadExportAssetText,
+                            content = content,
+                            includeAppAttribution = true,
+                            httpClient = exportHttpClient,
+                            includeImages = includeImages,
+                            useOriginalOnImageFetchFailure = true,
+                        )
                         File(stagingDir, buildArticleExportFileName(content, "html")).writeText(htmlContent)
                         successCount++
                     }
@@ -634,47 +616,6 @@ class DesktopPaginationEnvironment(
             }
         }
     }
-}
-
-private suspend fun fetchArticleExportImageDataUrl(
-    httpClient: HttpClient,
-    imageUrl: String,
-): String {
-    val response = httpClient.get(imageUrl)
-    if (!response.status.isSuccess()) {
-        throw IllegalStateException("下载图片失败: ${response.status.value}")
-    }
-
-    val bytes = response.readRawBytes()
-    if (bytes.isEmpty()) {
-        throw IllegalStateException("图片内容为空")
-    }
-
-    val mimeType = resolveArticleExportImageMimeType(
-        contentTypeHeader = response.headers[HttpHeaders.ContentType],
-        imageUrl = imageUrl,
-        imageBytes = bytes,
-    )
-    return "data:$mimeType;base64,${Base64.getEncoder().encodeToString(bytes)}"
-}
-
-private fun resolveArticleExportImageMimeType(
-    contentTypeHeader: String?,
-    imageUrl: String,
-    imageBytes: ByteArray,
-): String {
-    contentTypeHeader
-        ?.substringBefore(';')
-        ?.trim()
-        ?.takeIf { it.startsWith("image/") }
-        ?.let { return it }
-
-    URLConnection.guessContentTypeFromName(imageUrl.substringBefore('?'))?.let { return it }
-    ByteArrayInputStream(imageBytes).use { stream ->
-        URLConnection.guessContentTypeFromStream(stream)?.let { return it }
-    }
-
-    return "image/jpeg"
 }
 
 private data class DesktopPreparedExportContent(

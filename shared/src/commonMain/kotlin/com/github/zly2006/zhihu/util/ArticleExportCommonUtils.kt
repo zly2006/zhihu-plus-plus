@@ -20,6 +20,11 @@ package com.github.zly2006.zhihu.util
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Element
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import io.ktor.client.HttpClient
+import io.ktor.client.request.get
+import io.ktor.client.statement.readRawBytes
+import io.ktor.http.HttpHeaders
+import io.ktor.http.isSuccess
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -27,6 +32,8 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
@@ -169,6 +176,69 @@ fun buildArticleExportData(
     else -> throw IllegalArgumentException("Unsupported export content type: ${content::class.simpleName}")
 }
 
+fun buildArticleExportHtml(
+    loadAssetText: (String) -> String,
+    exportData: ArticleExportData,
+    extraSectionsHtml: String = "",
+): String = renderArticleExportHtml(
+    template = loadAssetText(ARTICLE_EXPORT_TEMPLATE_ASSET),
+    exportData = exportData,
+    extraSectionsHtml = extraSectionsHtml,
+)
+
+fun buildArticleExportHtml(
+    loadAssetText: (String) -> String,
+    content: DataHolder.Content,
+    includeAppAttribution: Boolean,
+    extraSectionsHtml: String = "",
+): String = buildArticleExportHtml(
+    loadAssetText = loadAssetText,
+    exportData = buildArticleExportData(
+        content = content,
+        includeAppAttribution = includeAppAttribution,
+    ),
+    extraSectionsHtml = extraSectionsHtml,
+)
+
+suspend fun buildOfflineArticleExportHtml(
+    loadAssetText: (String) -> String,
+    exportData: ArticleExportData,
+    httpClient: HttpClient,
+    includeImages: Boolean = true,
+    extraSectionsHtml: String = "",
+    useOriginalOnImageFetchFailure: Boolean = false,
+): String = inlineArticleExportImagesInHtml(
+    html = buildArticleExportHtml(
+        loadAssetText = loadAssetText,
+        exportData = exportData,
+        extraSectionsHtml = extraSectionsHtml,
+    ),
+    includeImages = includeImages,
+    useOriginalOnImageFetchFailure = useOriginalOnImageFetchFailure,
+) { imageUrl ->
+    fetchArticleExportImageDataUrl(httpClient, imageUrl)
+}
+
+suspend fun buildOfflineArticleExportHtml(
+    loadAssetText: (String) -> String,
+    content: DataHolder.Content,
+    includeAppAttribution: Boolean,
+    httpClient: HttpClient,
+    includeImages: Boolean = true,
+    extraSectionsHtml: String = "",
+    useOriginalOnImageFetchFailure: Boolean = false,
+): String = buildOfflineArticleExportHtml(
+    loadAssetText = loadAssetText,
+    exportData = buildArticleExportData(
+        content = content,
+        includeAppAttribution = includeAppAttribution,
+    ),
+    httpClient = httpClient,
+    includeImages = includeImages,
+    extraSectionsHtml = extraSectionsHtml,
+    useOriginalOnImageFetchFailure = useOriginalOnImageFetchFailure,
+)
+
 fun renderArticleExportHtml(
     template: String,
     exportData: ArticleExportData,
@@ -214,6 +284,86 @@ fun renderArticleExportHtml(
             "{{githubUrl}}" to escapeArticleExportHtml(footerPlaceholders.githubUrl),
         ),
     )
+}
+
+@OptIn(ExperimentalEncodingApi::class)
+suspend fun fetchArticleExportImageDataUrl(
+    httpClient: HttpClient,
+    imageUrl: String,
+): String {
+    val response = httpClient.get(imageUrl)
+    if (!response.status.isSuccess()) {
+        throw IllegalStateException("下载图片失败: ${response.status.value}")
+    }
+
+    val bytes = response.readRawBytes()
+    if (bytes.isEmpty()) {
+        throw IllegalStateException("图片内容为空")
+    }
+
+    val mimeType = resolveArticleExportImageMimeType(
+        contentTypeHeader = response.headers[HttpHeaders.ContentType],
+        imageUrl = imageUrl,
+        imageBytes = bytes,
+    )
+    return "data:$mimeType;base64,${Base64.Default.encode(bytes)}"
+}
+
+fun resolveArticleExportImageMimeType(
+    contentTypeHeader: String?,
+    imageUrl: String,
+    imageBytes: ByteArray,
+): String {
+    contentTypeHeader
+        ?.substringBefore(';')
+        ?.trim()
+        ?.takeIf { it.startsWith("image/") }
+        ?.let { return it }
+
+    guessArticleExportImageMimeTypeFromName(imageUrl)?.let { return it }
+    guessArticleExportImageMimeTypeFromBytes(imageBytes)?.let { return it }
+    return "image/jpeg"
+}
+
+private fun guessArticleExportImageMimeTypeFromName(imageUrl: String): String? =
+    imageUrl
+        .substringBefore('?')
+        .substringBefore('#')
+        .substringAfterLast('.', missingDelimiterValue = "")
+        .lowercase()
+        .let { extension ->
+            when (extension) {
+                "jpg", "jpeg" -> "image/jpeg"
+                "png" -> "image/png"
+                "gif" -> "image/gif"
+                "webp" -> "image/webp"
+                "bmp" -> "image/bmp"
+                "svg", "svgz" -> "image/svg+xml"
+                "avif" -> "image/avif"
+                "heic" -> "image/heic"
+                "heif" -> "image/heif"
+                else -> null
+            }
+        }
+
+private fun guessArticleExportImageMimeTypeFromBytes(imageBytes: ByteArray): String? {
+    fun matches(vararg values: Int): Boolean =
+        imageBytes.size >= values.size &&
+            values.indices.all { index -> imageBytes[index].toInt() and 0xff == values[index] }
+
+    return when {
+        matches(0xff, 0xd8, 0xff) -> "image/jpeg"
+        matches(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a) -> "image/png"
+        matches(0x47, 0x49, 0x46, 0x38) -> "image/gif"
+        matches(0x42, 0x4d) -> "image/bmp"
+        imageBytes.size >= 12 &&
+            matches(0x52, 0x49, 0x46, 0x46) &&
+            imageBytes[8].toInt().toChar() == 'W' &&
+            imageBytes[9].toInt().toChar() == 'E' &&
+            imageBytes[10].toInt().toChar() == 'B' &&
+            imageBytes[11].toInt().toChar() == 'P' -> "image/webp"
+        else -> null
+    }
 }
 
 private fun buildArticleExportCommentImageHtml(imageSrc: String): String = imageSrc

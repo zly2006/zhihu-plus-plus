@@ -17,10 +17,13 @@
 
 package com.github.zly2006.zhihu.util
 
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
+import android.os.Environment
 import android.provider.MediaStore
 import android.provider.MediaStore.MediaColumns
 import androidx.compose.foundation.Image
@@ -37,19 +40,28 @@ import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.readRawBytes
-import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
-import io.ktor.http.isSuccess
-import java.io.ByteArrayInputStream
-import java.net.URLConnection
+import java.io.OutputStream
 
 fun buildArticleExportHtml(
     context: Context,
     exportData: ArticleExportData,
     extraSectionsHtml: String = "",
-): String = renderArticleExportHtml(
-    template = loadArticleExportTemplate(context),
+): String = buildArticleExportHtml(
+    loadAssetText = { fileName -> loadArticleExportAssetText(context, fileName) },
     exportData = exportData,
+    extraSectionsHtml = extraSectionsHtml,
+)
+
+fun buildArticleExportHtml(
+    context: Context,
+    content: DataHolder.Content,
+    includeAppAttribution: Boolean,
+    extraSectionsHtml: String = "",
+): String = buildArticleExportHtml(
+    loadAssetText = { fileName -> loadArticleExportAssetText(context, fileName) },
+    content = content,
+    includeAppAttribution = includeAppAttribution,
     extraSectionsHtml = extraSectionsHtml,
 )
 
@@ -59,20 +71,13 @@ suspend fun buildOfflineArticleExportHtml(
     httpClient: HttpClient,
     includeImages: Boolean = true,
     extraSectionsHtml: String = "",
-): String {
-    val htmlContent = buildArticleExportHtml(
-        context = context,
-        exportData = exportData,
-        extraSectionsHtml = extraSectionsHtml,
-    )
-    if (!includeImages) {
-        return htmlContent
-    }
-
-    return inlineArticleExportImagesInHtml(htmlContent) { imageUrl ->
-        fetchArticleExportImageDataUrl(httpClient, imageUrl)
-    }
-}
+): String = buildOfflineArticleExportHtml(
+    loadAssetText = { fileName -> loadArticleExportAssetText(context, fileName) },
+    exportData = exportData,
+    httpClient = httpClient,
+    includeImages = includeImages,
+    extraSectionsHtml = extraSectionsHtml,
+)
 
 suspend fun buildOfflineArticleExportHtml(
     context: Context,
@@ -82,62 +87,99 @@ suspend fun buildOfflineArticleExportHtml(
     includeImages: Boolean = true,
     extraSectionsHtml: String = "",
 ): String = buildOfflineArticleExportHtml(
-    context = context,
-    exportData = buildArticleExportData(
-        content = content,
-        includeAppAttribution = includeAppAttribution,
-    ),
+    loadAssetText = { fileName -> loadArticleExportAssetText(context, fileName) },
+    content = content,
+    includeAppAttribution = includeAppAttribution,
     httpClient = httpClient,
     includeImages = includeImages,
     extraSectionsHtml = extraSectionsHtml,
 )
 
-private fun loadArticleExportTemplate(context: Context): String = context.assets.open(ARTICLE_EXPORT_TEMPLATE_ASSET).use { inputStream ->
+private fun loadArticleExportAssetText(
+    context: Context,
+    fileName: String,
+): String = context.assets.open(fileName).use { inputStream ->
     inputStream.bufferedReader().use { reader ->
         reader.readText()
     }
 }
 
-suspend fun fetchArticleExportImageDataUrl(
-    httpClient: HttpClient,
-    imageUrl: String,
-): String {
-    val response = httpClient.get(imageUrl)
-    if (!response.status.isSuccess()) {
-        throw IllegalStateException("下载图片失败: ${response.status.value}")
+fun saveBitmapToGallery(
+    context: Context,
+    displayName: String,
+    bitmap: Bitmap,
+) {
+    saveImageToMediaStore(
+        context = context,
+        displayName = displayName,
+        mimeType = "image/png",
+        relativePath = Environment.DIRECTORY_PICTURES + "/Zhihu++",
+    ) { outputStream ->
+        if (!bitmap.compress(Bitmap.CompressFormat.PNG, 90, outputStream)) {
+            throw IllegalStateException("Failed to encode image")
+        }
     }
-
-    val bytes = response.readRawBytes()
-    if (bytes.isEmpty()) {
-        throw IllegalStateException("图片内容为空")
-    }
-
-    val mimeType = resolveArticleExportImageMimeType(
-        contentTypeHeader = response.headers[HttpHeaders.ContentType],
-        imageUrl = imageUrl,
-        imageBytes = bytes,
-    )
-
-    return "data:$mimeType;base64,${android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)}"
 }
 
-private fun resolveArticleExportImageMimeType(
-    contentTypeHeader: String?,
+private fun saveDownloadedImageToGallery(
+    context: Context,
     imageUrl: String,
-    imageBytes: ByteArray,
-): String {
-    contentTypeHeader
-        ?.substringBefore(';')
-        ?.trim()
-        ?.takeIf { it.startsWith("image/") }
-        ?.let { return it }
+    contentTypeHeader: String?,
+    displayName: String,
+    bytes: ByteArray,
+) {
+    saveImageToMediaStore(
+        context = context,
+        displayName = displayName,
+        mimeType = resolveArticleExportImageMimeType(
+            contentTypeHeader = contentTypeHeader,
+            imageUrl = imageUrl,
+            imageBytes = bytes,
+        ),
+        relativePath = Environment.DIRECTORY_PICTURES,
+    ) { outputStream ->
+        outputStream.write(bytes)
+    }
+}
 
-    URLConnection.guessContentTypeFromName(imageUrl.substringBefore('?'))?.let { return it }
-    ByteArrayInputStream(imageBytes).use { stream ->
-        URLConnection.guessContentTypeFromStream(stream)?.let { return it }
+private fun saveImageToMediaStore(
+    context: Context,
+    displayName: String,
+    mimeType: String,
+    relativePath: String,
+    writeImage: (OutputStream) -> Unit,
+) {
+    val contentValues = ContentValues().apply {
+        put(MediaColumns.DISPLAY_NAME, displayName)
+        put(MediaColumns.MIME_TYPE, mimeType)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            put(MediaColumns.RELATIVE_PATH, relativePath)
+            put(MediaColumns.IS_PENDING, 1)
+        }
     }
 
-    return "image/jpeg"
+    val resolver = context.contentResolver
+    val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+    } else {
+        MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+    }
+    val imageUri = resolver.insert(collection, contentValues)
+        ?: throw IllegalStateException("Failed to create MediaStore entry")
+
+    try {
+        resolver.openOutputStream(imageUri)?.use(writeImage)
+            ?: throw IllegalStateException("Failed to open MediaStore output stream")
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            contentValues.clear()
+            contentValues.put(MediaColumns.IS_PENDING, 0)
+            resolver.update(imageUri, contentValues, null, null)
+        }
+    } catch (e: Exception) {
+        resolver.delete(imageUri, null, null)
+        throw e
+    }
 }
 
 fun createEmojiInlineContent(emojiKeys: Set<String>): Map<String, InlineTextContent> {
@@ -179,38 +221,14 @@ suspend fun saveImageToGallery(
         val response = httpClient.get(imageUrl)
         val bytes = response.readRawBytes()
         val fileName = imageUrl.toUri().lastPathSegment ?: "downloaded_image.jpg"
-
-        val contentValues = android.content.ContentValues().apply {
-            put(MediaColumns.DISPLAY_NAME, fileName)
-            put(MediaColumns.MIME_TYPE, "image/jpeg")
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                put(MediaColumns.RELATIVE_PATH, android.os.Environment.DIRECTORY_PICTURES)
-                put(MediaColumns.IS_PENDING, 1)
-            }
-        }
-
-        val resolver = context.contentResolver
-        val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            MediaStore.Images.Media
-                .getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-        } else {
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-        }
-
-        val imageUri = resolver.insert(collection, contentValues)
-        if (imageUri != null) {
-            resolver.openOutputStream(imageUri).use { os ->
-                os?.write(bytes)
-            }
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                contentValues.clear()
-                contentValues.put(MediaColumns.IS_PENDING, 0)
-                resolver.update(imageUri, contentValues, null, null)
-            }
-
-            userMessages.showShortMessage("图片已保存到相册")
-        }
+        saveDownloadedImageToGallery(
+            context = context,
+            imageUrl = imageUrl,
+            contentTypeHeader = response.headers[HttpHeaders.ContentType],
+            displayName = fileName,
+            bytes = bytes,
+        )
+        userMessages.showShortMessage("图片已保存到相册")
     } catch (e: Exception) {
         userMessages.showShortMessage("保存失败: ${e.message}")
     }
