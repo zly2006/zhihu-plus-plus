@@ -27,7 +27,6 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.test.espresso.Espresso.pressBack
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.Feed
@@ -37,6 +36,7 @@ import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
 import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
+import com.github.zly2006.zhihu.test.pressSystemBack
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.Collection
@@ -105,8 +105,7 @@ class CollectionContentScreenInstrumentedTest {
         composeRule.onNodeWithTag(EXPORT_ACTION_TAG).assertIsDisplayed()
         composeRule.onNodeWithText("全部导出HTML").assertIsDisplayed()
 
-        pressBack()
-        composeRule.waitForIdle()
+        composeRule.pressSystemBack()
 
         composeRule.onAllNodesWithTag(EXPORT_ACTION_TAG).assertCountEquals(0)
         assertTrue(setup.navigator.destinations.isEmpty())
