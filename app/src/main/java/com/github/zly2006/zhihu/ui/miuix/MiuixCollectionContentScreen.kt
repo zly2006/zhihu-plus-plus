@@ -21,7 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
@@ -120,14 +120,14 @@ fun MiuixCollectionContentScreen(
                 title = screenViewModel.title,
                 navigationIcon = {
                     IconButton(onClick = navigator.onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回", tint = MiuixTheme.colorScheme.onBackground)
+                        Icon(MiuixIconsEmbedded.Back, "返回", tint = MiuixTheme.colorScheme.onBackground)
                     }
                 },
                 actions = {
                     val haptic = LocalHapticFeedback.current
                     Box(modifier = Modifier.padding(end = 2.dp)) {
                         IconButton(
-                            onClick = { showActionsMenu = true },
+                            onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); showActionsMenu = true },
                             enabled = screenViewModel.exportDialogState?.isCompleted != false,
                         ) {
                             Icon(Icons.Filled.MoreVert, "更多", tint = MiuixTheme.colorScheme.onBackground)

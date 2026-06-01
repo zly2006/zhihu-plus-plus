@@ -155,14 +155,14 @@ fun ZhihuMiuixTheme(
                 isDark = darkTheme,
             )
         } else {
-            // 标准模式：只传 mode，不传 keyColor 和 isDark。
-            // mode 本身已决定亮/暗，额外参数会干扰 miuix 内置 palette。
+            // 标准模式：传 keyColor 让 miuix 用自定义主题色生成调色板（与 M3 端自定义色对齐）。
             ThemeController(
                 colorSchemeMode = when (themeMode) {
                     ThemeMode.SYSTEM -> ColorSchemeMode.System
                     ThemeMode.LIGHT -> ColorSchemeMode.Light
                     ThemeMode.DARK -> ColorSchemeMode.Dark
                 },
+                keyColor = customColor,
             )
         }
     }
@@ -170,9 +170,9 @@ fun ZhihuMiuixTheme(
     MiuixTheme(
         controller = controller,
     ) {
-        // miuix 默认背景跟 M3 不一样，套一层 Box 给整个 app 一个 surface 底
-        // 深色模式用纯黑，避免 overscroll 露出灰色
-        val bgColor = if (darkTheme) Color.Black else MiuixTheme.colorScheme.background
+        // miuix 默认背景跟 M3 不一样，套一层 Box 给整个 app 一个 surface 底。
+        // 用自定义背景色（与 M3 端一致），让 overscroll 露出的底色也跟随主题设置。
+        val bgColor = ThemeManager.getBackgroundColor()
         Box(
             modifier = Modifier
                 .fillMaxSize()

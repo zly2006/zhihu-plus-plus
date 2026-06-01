@@ -9,11 +9,6 @@ package com.github.zly2006.zhihu.ui.miuix.subscreens
 
 import android.content.Context
 import android.content.Intent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,7 +24,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import androidx.compose.material.icons.filled.ArrowOutward
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -66,6 +61,7 @@ import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixExpandableArrowPreference
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
 import com.github.zly2006.zhihu.util.ContinuousUsageReminderManager
@@ -120,7 +116,7 @@ fun MiuixSystemAndUpdateSettingsScreen() {
                 title = "系统与更新",
                 navigationIcon = {
                     IconButton(onClick = navigator.onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回", tint = MiuixTheme.colorScheme.onBackground)
+                        Icon(MiuixIconsEmbedded.Back, "返回", tint = MiuixTheme.colorScheme.onBackground)
                     }
                 },
                 scrollBehavior = scrollBehavior,
@@ -250,35 +246,29 @@ fun MiuixSystemAndUpdateSettingsScreen() {
                 var showGithubToken by remember { mutableStateOf(false) }
                 var showPassword by remember { mutableStateOf(false) }
                 Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
-                    Column {
-                        ArrowPreference(
-                            title = "GitHub Token",
-                            summary = if (githubToken.isNotEmpty()) "${githubToken.take(8)}..." else "用于访问 GitHub API 时解除限速",
-                            onClick = { showGithubToken = !showGithubToken },
+                    MiuixExpandableArrowPreference(
+                        title = "GitHub Token",
+                        summary = if (githubToken.isNotEmpty()) "${githubToken.take(8)}..." else "用于访问 GitHub API 时解除限速",
+                        expanded = showGithubToken,
+                        onExpandedChange = { showGithubToken = !showGithubToken },
+                    ) {
+                        TextField(
+                            value = githubToken,
+                            onValueChange = { githubToken = it; preferences.edit { putString("githubToken", it) } },
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 12.dp),
+                            singleLine = true,
+                            label = "Token",
+                            visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                            trailingIcon = {
+                                IconButton(onClick = { showPassword = !showPassword }) {
+                                    Icon(
+                                        if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        contentDescription = if (showPassword) "隐藏 Token" else "显示 Token",
+                                        tint = MiuixTheme.colorScheme.onSurfaceSecondary,
+                                    )
+                                }
+                            },
                         )
-                        AnimatedVisibility(
-                            visible = showGithubToken,
-                            enter = expandVertically() + fadeIn(),
-                            exit = shrinkVertically() + fadeOut(),
-                        ) {
-                            TextField(
-                                value = githubToken,
-                                onValueChange = { githubToken = it; preferences.edit { putString("githubToken", it) } },
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 12.dp),
-                                singleLine = true,
-                                label = "Token",
-                                visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
-                                trailingIcon = {
-                                    IconButton(onClick = { showPassword = !showPassword }) {
-                                        Icon(
-                                            if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                            contentDescription = if (showPassword) "隐藏 Token" else "显示 Token",
-                                            tint = MiuixTheme.colorScheme.onSurfaceSecondary,
-                                        )
-                                    }
-                                },
-                            )
-                        }
                     }
                 }
             }

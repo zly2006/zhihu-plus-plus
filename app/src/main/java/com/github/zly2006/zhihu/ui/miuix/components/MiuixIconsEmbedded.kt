@@ -3,8 +3,8 @@
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  * Licensed under AGPL-3.0-only.
  *
- * 内嵌三个 miuix 图标，替代 miuix-icons-android 1.8MB 依赖。
- * PathData 提取自 miuix-icons 0.9.1 BackKt/SearchKt/CloseKt (Apache-2.0)。
+ * 内嵌 Search/Close 两个 miuix 图标（PathData 提取自 miuix-icons 0.9.1，Apache-2.0）。
+ * Back 改为委托官方 MiuixIcons.Back —— 之前手写内嵌的样式与官方不一致。
  */
 package com.github.zly2006.zhihu.ui.miuix.components
 
@@ -14,32 +14,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.group
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.unit.dp
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Back as OfficialBack
 
 @Suppress("MagicNumber")
 object MiuixIconsEmbedded {
-    val Back: ImageVector by lazy {
-        ImageVector.Builder("Back", 24.0.dp, 24.0.dp, 24.0f, 24.0f).apply {
-            group(scaleX = 1.0f, scaleY = 1.0f, translationX = 3.35f, translationY = 3.117f) {
-                path(fill = SolidColor(androidx.compose.ui.graphics.Color.Black), pathFillType = PathFillType.NonZero) {
-                    moveTo(1.75f, 9.633f)
-                    lineTo(1.0f, 8.883f)
-                    lineTo(0.25f, 9.633f)
-                    verticalLineToRelative(0.75f)
-                    horizontalLineTo(1.0f)
-                    close()
-                    moveTo(13.75f, 16.133f)
-                    arcToRelative(0.75f, 0.75f, 0.0f, false, false, -0.53f, 1.28f)
-                    lineTo(5.279f, 9.633f)
-                    horizontalLineTo(1.0f)
-                    verticalLineTo(8.133f)
-                    horizontalLineTo(5.279f)
-                    lineTo(13.22f, 0.413f)
-                    arcToRelative(0.75f, 0.75f, 0.0f, false, false, 0.53f, 1.28f)
-                    close()
-                }
-            }
-        }.build()
-    }
+    val Back: ImageVector get() = MiuixIcons.OfficialBack
 
     val Search: ImageVector by lazy {
         ImageVector.Builder("Search", 24.0.dp, 24.0.dp, 24.0f, 24.0f).apply {

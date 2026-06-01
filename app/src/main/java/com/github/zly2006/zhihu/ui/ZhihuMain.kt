@@ -242,9 +242,11 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     val bottomBarScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                // 只在状态真正变化时赋值，避免每帧 set 触发顶层重组；
+                // miuix overScroll 回弹会产生正负交替的微小 available.y，无条件 set 会导致底栏抽搐
                 when {
-                    available.y < -3f -> isBottomBarVisible = false
-                    available.y > 3f -> isBottomBarVisible = true
+                    available.y < -3f -> if (isBottomBarVisible) isBottomBarVisible = false
+                    available.y > 3f -> if (!isBottomBarVisible) isBottomBarVisible = true
                 }
                 return Offset.Zero
             }

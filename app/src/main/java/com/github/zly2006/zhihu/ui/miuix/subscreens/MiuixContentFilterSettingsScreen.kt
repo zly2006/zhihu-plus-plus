@@ -23,9 +23,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.TextButton
 import top.yukonga.miuix.kmp.window.WindowBottomSheet
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -61,6 +58,8 @@ import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import top.yukonga.miuix.kmp.preference.ArrowPreference
@@ -82,6 +81,8 @@ fun MiuixContentFilterSettingsScreen(
     val scrollBehavior = MiuixScrollBehavior()
     var filterStats by remember { mutableStateOf<FilterStats?>(null) }
     val showStatsSheet = remember { mutableStateOf(false) }
+    var topicThreshold by remember { mutableStateOf(preferences.getInt("topicBlockingThreshold", 1)) }
+    val showThresholdSheet = remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         try { filterStats = ContentFilterManager.getInstance(context).getFilterStats() } catch (_: Exception) {}
@@ -209,49 +210,11 @@ fun MiuixContentFilterSettingsScreen(
                     )
 
                     if (enableTopicBlocking.value) {
-                        val topicThreshold = remember { mutableStateOf(preferences.getInt("topicBlockingThreshold", 1)) }
-                        var showThresholdDialog by remember { mutableStateOf(false) }
-
                         ArrowPreference(
                             title = "主题屏蔽阈值",
-                            summary = "当回答的问题包含 >= ${topicThreshold.value} 个被屏蔽主题时屏蔽该内容",
-                            onClick = { showThresholdDialog = true },
+                            summary = "当回答的问题包含 >= $topicThreshold 个被屏蔽主题时屏蔽该内容",
+                            onClick = { showThresholdSheet.value = true },
                         )
-
-                        if (showThresholdDialog) {
-                            var inputValue by remember { mutableStateOf(topicThreshold.value.toString()) }
-                            AlertDialog(
-                                onDismissRequest = { showThresholdDialog = false },
-                                title = { Text("设置主题屏蔽阈值") },
-                                text = {
-                                    Column {
-                                        Text("当内容包含的被屏蔽主题数量达到或超过此阈值时，该内容将被屏蔽。")
-                                        Spacer(modifier = Modifier.height(16.dp))
-                                        OutlinedTextField(
-                                            value = inputValue,
-                                            onValueChange = { inputValue = it },
-                                            label = { Text("阈值") },
-                                            singleLine = true,
-                                        )
-                                    }
-                                },
-                                confirmButton = {
-                                    TextButton(onClick = {
-                                        val newThreshold = inputValue.toIntOrNull()
-                                        if (newThreshold != null && newThreshold > 0) {
-                                            topicThreshold.value = newThreshold
-                                            preferences.edit { putInt("topicBlockingThreshold", newThreshold) }
-                                            showThresholdDialog = false
-                                        } else {
-                                            Toast.makeText(context, "请输入大于0的整数", Toast.LENGTH_SHORT).show()
-                                        }
-                                    }) { Text("确定") }
-                                },
-                                dismissButton = {
-                                    TextButton(onClick = { showThresholdDialog = false }) { Text("取消") }
-                                },
-                            )
-                        }
                     }
                 }
             }
@@ -395,6 +358,44 @@ fun MiuixContentFilterSettingsScreen(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
             ) {
                 Text("重置所有数据")
+            }
+        }
+    }
+
+    WindowBottomSheet(
+        show = showThresholdSheet.value,
+        onDismissRequest = { showThresholdSheet.value = false },
+        title = "设置主题屏蔽阈值",
+    ) {
+        var inputValue by remember(showThresholdSheet.value) { mutableStateOf(topicThreshold.toString()) }
+        Column(modifier = Modifier.padding(horizontal = 24.dp).padding(bottom = 16.dp)) {
+            Text(
+                "当内容包含的被屏蔽主题数量达到或超过此阈值时，该内容将被屏蔽。",
+                color = MiuixTheme.colorScheme.onSurfaceSecondary,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            TextField(
+                value = inputValue,
+                onValueChange = { inputValue = it },
+                label = "阈值",
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                TextButton(text = "取消", onClick = { showThresholdSheet.value = false }, modifier = Modifier.weight(1f))
+                Button(
+                    onClick = {
+                        val n = inputValue.toIntOrNull()
+                        if (n != null && n > 0) {
+                            topicThreshold = n
+                            preferences.edit { putInt("topicBlockingThreshold", n) }
+                            showThresholdSheet.value = false
+                        } else {
+                            Toast.makeText(context, "请输入大于0的整数", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                ) { Text("确定") }
             }
         }
     }

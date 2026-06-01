@@ -83,7 +83,12 @@ import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
+import com.github.zly2006.zhihu.theme.LocalThemeStyle
+import com.github.zly2006.zhihu.theme.ThemeStyle
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
+import com.github.zly2006.zhihu.ui.components.FeedCard
+import com.github.zly2006.zhihu.ui.miuix.MiuixFollowingUsersRow
+import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.viewmodel.feed.FollowRecommendViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.FollowViewModel
@@ -306,6 +311,29 @@ fun FollowingUsersRow() {
     }
 }
 
+// 关注页卡片按主题分流：miuix 用 MiuixFeedCard，M3 用 FeedCard（避免 miuix 卡片在 M3 主题下取色反色）
+@Composable
+private fun ThemedFeedCard(
+    item: BaseFeedViewModel.FeedDisplayItem,
+    modifier: Modifier = Modifier,
+    onLike: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
+    onDislike: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
+    onBlockUser: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
+    onBlockTopic: ((topicId: String, topicName: String) -> Unit)? = null,
+) {
+    if (LocalThemeStyle.current == ThemeStyle.Miuix) {
+        com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard(
+            item = item, modifier = modifier,
+            onLike = onLike, onDislike = onDislike, onBlockUser = onBlockUser, onBlockTopic = onBlockTopic,
+        )
+    } else {
+        FeedCard(
+            item = item, modifier = modifier,
+            onLike = onLike, onDislike = onDislike, onBlockUser = onBlockUser, onBlockTopic = onBlockTopic,
+        )
+    }
+}
+
 @Composable
 fun FollowRecommendScreen(
     scrollToTopTrigger: Int = 0,
@@ -374,10 +402,14 @@ fun FollowRecommendScreen(
                             .then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier)
                             .testTag(FOLLOW_RECOMMEND_LIST_TAG),
                         contentPadding = PaddingValues(top = contentTopPadding + 6.dp),
-                        topContent = { item { FollowingUsersRow() } },
+                        topContent = {
+                            item {
+                                if (LocalThemeStyle.current == ThemeStyle.Miuix) MiuixFollowingUsersRow() else FollowingUsersRow()
+                            }
+                        },
                         onLoadMore = { onTestLoadMore?.invoke() ?: viewModel.loadMore(context) },
                     ) { item ->
-                        com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard(
+                        ThemedFeedCard(
                             item = item,
                             modifier = Modifier.testTag(followRecommendItemTag(item.stableKey)),
                             onBlockUser = { feedItem ->
@@ -493,7 +525,7 @@ fun FollowDynamicScreen(
                         topContent = { item { Spacer(modifier = Modifier.height(8.dp)) } },
                         onLoadMore = { onTestLoadMore?.invoke() ?: viewModel.loadMore(context) },
                     ) { item ->
-                        com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard(
+                        ThemedFeedCard(
                             item = item,
                             modifier = Modifier.testTag(followDynamicItemTag(item.stableKey)),
                             onLike = { Toast.makeText(context, "收到喜欢，功能正在优化", Toast.LENGTH_SHORT).show() },

@@ -7,11 +7,6 @@
 package com.github.zly2006.zhihu.ui.miuix.components
 
 import android.widget.Toast
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -30,7 +25,6 @@ import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.basic.Checkbox
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable
@@ -53,54 +47,49 @@ fun <T> MiuixMultiSelectExpandable(
         options.filter { it in selectedOptions }.joinToString("、") { optionLabel(it) }
     }
 
-    Column {
-        ArrowPreference(
-            title = title,
-            summary = summary,
-            onClick = { expanded.value = !expanded.value },
-        )
-        AnimatedVisibility(
-            visible = expanded.value,
-            enter = expandVertically() + fadeIn(),
-            exit = shrinkVertically() + fadeOut(),
-        ) {
-            Column {
-                options.forEach { option ->
-                    HorizontalDivider(
-                        thickness = 0.5.dp,
-                        color = MiuixTheme.colorScheme.onBackground.copy(alpha = 0.08f),
-                    )
-                    val isLocked = option in lockedOptions
-                    val isChecked = isLocked || option in selectedOptions
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth()
-                            .clickable(enabled = !isLocked) {
-                                val newSet = if (isChecked) selectedOptions - option
-                                else selectedOptions + option
-                                if (newSet.size >= minSelection) {
-                                    onSelectionChange(newSet)
-                                } else {
-                                    Toast.makeText(context, "至少保留 $minSelection 项", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                            .padding(horizontal = 24.dp, vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = optionLabel(option),
-                            modifier = Modifier.weight(1f),
-                            style = MiuixTheme.textStyles.body1,
-                            color = if (isLocked) MiuixTheme.colorScheme.onBackground.copy(alpha = 0.4f)
-                            else MiuixTheme.colorScheme.onBackground,
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Checkbox(
-                            state = if (isChecked) ToggleableState.On else ToggleableState.Off,
-                            onClick = {},
-                            enabled = !isLocked,
-                        )
+    MiuixExpandableArrowPreference(
+        title = title,
+        summary = summary,
+        expanded = expanded.value,
+        onExpandedChange = { expanded.value = !expanded.value },
+    ) {
+        Column {
+            options.forEach { option ->
+                HorizontalDivider(
+                    thickness = 0.5.dp,
+                    color = MiuixTheme.colorScheme.onBackground.copy(alpha = 0.08f),
+                )
+                val isLocked = option in lockedOptions
+                val isChecked = isLocked || option in selectedOptions
+                // Row 与 Checkbox 共用同一切换逻辑：点击整行或直接点右侧复选框都生效
+                val onToggle: () -> Unit = {
+                    val newSet = if (isChecked) selectedOptions - option else selectedOptions + option
+                    if (newSet.size >= minSelection) {
+                        onSelectionChange(newSet)
+                    } else {
+                        Toast.makeText(context, "至少保留 $minSelection 项", Toast.LENGTH_SHORT).show()
                     }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth()
+                        .clickable(enabled = !isLocked) { onToggle() }
+                        .padding(horizontal = 24.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = optionLabel(option),
+                        modifier = Modifier.weight(1f),
+                        style = MiuixTheme.textStyles.body1,
+                        color = if (isLocked) MiuixTheme.colorScheme.onBackground.copy(alpha = 0.4f)
+                        else MiuixTheme.colorScheme.onBackground,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Checkbox(
+                        state = if (isChecked) ToggleableState.On else ToggleableState.Off,
+                        onClick = { onToggle() },
+                        enabled = !isLocked,
+                    )
                 }
             }
         }

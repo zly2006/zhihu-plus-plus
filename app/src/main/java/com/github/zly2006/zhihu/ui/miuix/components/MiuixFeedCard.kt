@@ -71,11 +71,13 @@ import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.DropdownItem
+import top.yukonga.miuix.kmp.basic.ListPopupColumn
+import top.yukonga.miuix.kmp.basic.PopupPositionProvider
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.menu.WindowDropdownMenu
+import top.yukonga.miuix.kmp.theme.LocalDismissState
+import top.yukonga.miuix.kmp.window.WindowListPopup
 
 @Composable
 fun MiuixFeedCard(
@@ -151,9 +153,11 @@ fun MiuixFeedCard(
             modifier = modifier.fillMaxWidth().heightIn(max = maxHeight)
                 .padding(horizontal = horizontalPadding, vertical = 6.dp),
         ) {
-            // miuix Card — NO clickable, NO internal padding (caller controls both)
+            // miuix Card — 点击进入详情；swipe 反应手势与点击共存
             Card(
                 modifier = Modifier.fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .clickable { resolvedOnClick(item) }
                     .alpha(1 - kotlin.math.min(actionAlpha, 0.5f))
                     .offset(x = with(density) { animatedOffsetX.toDp() })
                     .let { mod ->
@@ -314,29 +318,52 @@ private fun MiuixFeedCardMenuBox(
     onBlockTopic: ((topicId: String, topicName: String) -> Unit)?,
     navigator: Navigator,
 ) {
-    val context = LocalContext.current
-    val entries = buildList {
+    // 菜单项 (标题, 动作)，与 M3 FeedCardMenuBox 完全对齐
+    val topics = if (onBlockTopic != null && item.raw != null) {
+        when (val raw = item.raw) {
+            is com.github.zly2006.zhihu.data.DataHolder.Answer -> raw.question.topics
+            is com.github.zly2006.zhihu.data.DataHolder.Question -> raw.topics
+            is com.github.zly2006.zhihu.data.DataHolder.Article -> raw.topics ?: emptyList()
+            else -> emptyList()
+        }
+    } else {
+        emptyList()
+    }
+    val entries = buildList<Pair<String, () -> Unit>> {
         if (onBlockByKeywords != null && !BuildConfig.IS_LITE) {
-            add(DropdownItem(title = "按关键词屏蔽"))
+            add("按关键词屏蔽" to { onBlockByKeywords(item) })
         }
-        add(DropdownItem(title = "屏蔽用户"))
-        if (onBlockTopic != null && item.raw != null) {
-            val topics = when (val raw = item.raw) {
-                is com.github.zly2006.zhihu.data.DataHolder.Answer -> raw.question.topics
-                is com.github.zly2006.zhihu.data.DataHolder.Question -> raw.topics
-                is com.github.zly2006.zhihu.data.DataHolder.Article -> raw.topics ?: emptyList()
-                else -> emptyList()
-            }
-            topics.forEach { topic -> add(DropdownItem(title = "屏蔽「${topic.name}」")) }
+        add("屏蔽用户" to { onBlockUser?.invoke(item) })
+        topics.forEach { topic -> add("屏蔽「${topic.name}」" to { onBlockTopic!!(topic.id, topic.name) }) }
+        add("外观设置" to { navigator.onNavigate(Account.AppearanceSettings()) })
+        if (item.isFiltered) {
+            add("不再屏蔽低赞内容" to { navigator.onNavigate(Account.RecommendSettings("enableQualityFilter")) })
         }
-        add(DropdownItem(title = "外观设置"))
-        if (item.isFiltered) add(DropdownItem(title = "不再屏蔽低赞内容"))
     }
 
     Box {
         IconButton(onClick = { onShowMenuChange(true) }, modifier = Modifier.size(24.dp)) {
             Icon(Icons.Default.MoreVert, "更多选项", tint = AppTokens.colors.onSurfaceVariant, modifier = Modifier.size(16.dp))
         }
-        // More 菜单暂未实现，端口时参考 InstallerX WindowListPopup / WindowDropdownMenu
+        WindowListPopup(
+            show = showMenu,
+            popupPositionProvider = ListPopupDefaults.MenuPositionProvider,
+            alignment = PopupPositionProvider.Align.TopEnd,
+            onDismissRequest = { onShowMenuChange(false) },
+        ) {
+            val dismissState = LocalDismissState.current
+            ListPopupColumn {
+                entries.forEach { (title, action) ->
+                    Text(
+                        text = title,
+                        modifier = Modifier
+                            .clickable { dismissState?.invoke(); onShowMenuChange(false); action() }
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        color = AppTokens.colors.onSurface,
+                        fontSize = 15.sp,
+                    )
+                }
+            }
+        }
     }
 }

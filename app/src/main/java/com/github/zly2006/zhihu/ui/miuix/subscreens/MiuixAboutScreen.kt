@@ -37,7 +37,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
@@ -51,12 +51,16 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -140,7 +144,7 @@ fun MiuixAboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
                 navigationIcon = {
                     IconButton(onClick = { navigator.onNavigateBack() }) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            imageVector = MiuixIconsEmbedded.Back,
                             contentDescription = "返回",
                             tint = MiuixTheme.colorScheme.onBackground,
                         )
@@ -238,14 +242,47 @@ private fun AboutContent(
             ) {
                 Image(bitmap = appIcon, contentDescription = "知乎++", modifier = Modifier.size(74.dp))
             }
+            // 知乎++ 流光：照抄 miuix 官方 AboutPage 的 HyperOS shimmer 扫光（drawWithCache + drawText + 横向渐变平移）
+            val nameShimmer by infinite.animateFloat(
+                initialValue = 0f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(tween(6000, easing = LinearEasing), RepeatMode.Restart),
+                label = "nameShimmer",
+            )
+            val nameStops = remember {
+                arrayOf(
+                    0.0f to Color(0xFF4286F4),
+                    0.25f to Color(0xFF8E54E9),
+                    0.5f to Color(0xFFFF6B6B),
+                    0.75f to Color(0xFF8E54E9),
+                    1.0f to Color(0xFF4286F4),
+                )
+            }
+            val nameMeasurer = rememberTextMeasurer()
             Text(
                 text = "知乎++",
-                modifier = Modifier.padding(top = 12.dp, bottom = 5.dp).graphicsLayer {
-                    alpha = 1f - projectNameProgress
-                    scaleX = 1f - projectNameProgress * 0.05f
-                    scaleY = 1f - projectNameProgress * 0.05f
-                },
-                color = MiuixTheme.colorScheme.onBackground,
+                modifier = Modifier
+                    .padding(top = 12.dp, bottom = 5.dp)
+                    .graphicsLayer {
+                        alpha = 1f - projectNameProgress
+                        scaleX = 1f - projectNameProgress * 0.05f
+                        scaleY = 1f - projectNameProgress * 0.05f
+                    }
+                    .drawWithCache {
+                        val layout = nameMeasurer.measure("知乎++", TextStyle(fontSize = 35.sp, fontWeight = FontWeight.Bold))
+                        val tw = layout.size.width.toFloat()
+                        val th = layout.size.height.toFloat()
+                        onDrawWithContent {
+                            val gw = tw * 2f
+                            val startX = -gw + nameShimmer * (gw + tw + gw)
+                            drawText(
+                                textLayoutResult = layout,
+                                brush = Brush.horizontalGradient(colorStops = nameStops, startX = startX, endX = startX + gw),
+                                topLeft = Offset((size.width - tw) / 2f, (size.height - th) / 2f),
+                            )
+                        }
+                    },
+                color = Color.Transparent,
                 fontWeight = FontWeight.Bold,
                 fontSize = 35.sp,
             )

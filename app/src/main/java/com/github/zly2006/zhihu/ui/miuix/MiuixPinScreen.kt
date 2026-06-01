@@ -7,50 +7,96 @@
 package com.github.zly2006.zhihu.ui.miuix
 
 import android.content.Context
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material.icons.automirrored.filled.Comment
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
+import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
+import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.PIN_SCREEN_AUTHOR_TAG
+import com.github.zly2006.zhihu.ui.PIN_SCREEN_COMMENT_BUTTON_TAG
+import com.github.zly2006.zhihu.ui.PIN_SCREEN_ERROR_TAG
+import com.github.zly2006.zhihu.ui.PIN_SCREEN_LIKE_BUTTON_TAG
+import com.github.zly2006.zhihu.ui.PIN_SCREEN_LINK_CARD_TAG
+import com.github.zly2006.zhihu.ui.PIN_SCREEN_LOADING_TAG
+import com.github.zly2006.zhihu.ui.PIN_SCREEN_SCROLL_TAG
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.ui.PinLinkCardPreview
 import com.github.zly2006.zhihu.ui.PinScreenTestOverrides
+import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
+import com.github.zly2006.zhihu.ui.components.ShareDialog
+import com.github.zly2006.zhihu.ui.components.WebviewComp
+import com.github.zly2006.zhihu.ui.components.getShareText
+import com.github.zly2006.zhihu.ui.components.handleShareAction
+import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
+import com.github.zly2006.zhihu.ui.fetchLinkCardPreview
+import com.github.zly2006.zhihu.ui.linkCardTypeLabel
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
+import com.github.zly2006.zhihu.util.fuckHonorService
+import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.viewmodel.PinViewModel
-import top.yukonga.miuix.kmp.blur.layerBackdrop
+import org.jsoup.Jsoup
+import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CardDefaults
+import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun MiuixPinScreen(
@@ -65,25 +111,47 @@ fun MiuixPinScreen(
     val blurEnabled = remember { mutableStateOf(preferences.getBoolean("blurEnabled", true)) }
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
     val scrollBehavior = MiuixScrollBehavior()
-    var isLoading by remember { mutableStateOf(true) }
 
     LaunchedEffect(pin.id, testOverrides) {
         if (testOverrides == null) {
             viewModel?.loadPinDetail(context)
             AccountData.addReadHistory(context, pin.id.toString(), "pin")
         }
-        isLoading = false
     }
+
+    val state = testOverrides?.state
+    val isLoading = state?.isLoading ?: viewModel?.isLoading ?: false
+    val errorMessage = state?.errorMessage ?: viewModel?.errorMessage
+    val pinContent = state?.pinContent ?: viewModel?.pinContent
+    val isLiked = state?.isLiked ?: viewModel?.isLiked ?: false
+    val likeCount = state?.likeCount ?: viewModel?.likeCount ?: 0
+
+    var showShareDialog by remember { mutableStateOf(false) }
+    var showComments by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 modifier = Modifier.installerMiuixBlurEffect(backdrop),
                 color = backdrop.getMiuixAppBarColor(),
-                title = "想法",
+                title = buildString {
+                    pinContent?.author?.let { append(it.name).append("的") }
+                    append("想法")
+                },
                 navigationIcon = {
                     IconButton(onClick = navigator.onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回", tint = MiuixTheme.colorScheme.onBackground)
+                        Icon(MiuixIconsEmbedded.Back, "返回", tint = MiuixTheme.colorScheme.onBackground)
+                    }
+                },
+                actions = {
+                    IconButton(onClick = {
+                        val shareText = getShareText(pin)
+                        if (shareText != null) {
+                            testOverrides?.onShareAction?.invoke { showShareDialog = true }
+                                ?: handleShareAction(context, pin) { showShareDialog = true }
+                        }
+                    }) {
+                        Icon(Icons.Default.Share, "分享", tint = MiuixTheme.colorScheme.onBackground)
                     }
                 },
                 scrollBehavior = scrollBehavior,
@@ -97,23 +165,222 @@ fun MiuixPinScreen(
                 .overScrollVertical()
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
         ) {
-            if (isLoading) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            when {
+                isLoading -> Box(Modifier.fillMaxSize().testTag(PIN_SCREEN_LOADING_TAG), Alignment.Center) {
                     CircularProgressIndicator()
                 }
-            } else {
-                Column(
-                    modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
+
+                errorMessage != null -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                    Text("加载失败: $errorMessage", color = MiuixTheme.colorScheme.onBackground, modifier = Modifier.testTag(PIN_SCREEN_ERROR_TAG))
+                }
+
+                pinContent != null -> MiuixPinContent(
+                    pin = pinContent,
+                    isLiked = isLiked,
+                    likeCount = likeCount,
+                    onLikeClick = { testOverrides?.onLikeClick?.invoke() ?: viewModel?.toggleLike(context) },
+                    onCommentClick = { showComments = true },
+                    linkCardPreviewOverride = testOverrides?.linkCardPreview,
+                )
+            }
+        }
+    }
+
+    if (pinContent != null) {
+        // TODO: 评论区尚未 miuix 化，暂复用 M3 CommentScreenComponent（与问题页一致）
+        testOverrides?.commentScreenContent?.invoke(showComments, { showComments = false }, pin)
+            ?: CommentScreenComponent(showComments = showComments, onDismiss = { showComments = false }, content = pin)
+
+        val shareText = getShareText(pin)
+        if (shareText != null) {
+            testOverrides?.shareDialogContent?.invoke(showShareDialog, { showShareDialog = false }, pin, shareText)
+                ?: ShareDialog(
+                    content = pin,
+                    shareText = shareText,
+                    showDialog = showShareDialog,
+                    onDismissRequest = { showShareDialog = false },
+                    context = context,
+                )
+        }
+    }
+}
+
+@Composable
+private fun MiuixPinContent(
+    pin: DataHolder.Pin,
+    isLiked: Boolean,
+    likeCount: Int,
+    onLikeClick: () -> Unit,
+    onCommentClick: () -> Unit,
+    linkCardPreviewOverride: PinLinkCardPreview? = null,
+) {
+    val navigator = LocalNavigator.current
+    val context = LocalContext.current
+    val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE) }
+    val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .testTag(PIN_SCREEN_SCROLL_TAG)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+    ) {
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                // 作者信息
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag(PIN_SCREEN_AUTHOR_TAG)
+                        .clickable {
+                            navigator.onNavigate(Person(id = pin.author.id, urlToken = pin.author.urlToken, name = pin.author.name))
+                        },
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text("想法 #${pin.id}", fontSize = 18.sp)
-                            Spacer(Modifier.height(12.dp))
-                            Text("内容加载中...", fontSize = 15.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary)
+                    AsyncImage(pin.author.avatarUrl, "头像", modifier = Modifier.size(48.dp).clip(CircleShape))
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text(pin.author.name, style = MiuixTheme.textStyles.title4, fontWeight = FontWeight.Bold)
+                        if (pin.author.headline.isNotEmpty()) {
+                            Text(pin.author.headline, style = MiuixTheme.textStyles.footnote1, color = MiuixTheme.colorScheme.onSurfaceSecondary)
                         }
                     }
                 }
+
+                Spacer(Modifier.height(12.dp))
+                Text(dateFormat.format(Date(pin.created * 1000)), style = MiuixTheme.textStyles.footnote1, color = MiuixTheme.colorScheme.onSurfaceSecondary)
+                Spacer(Modifier.height(12.dp))
+
+                // 正文
+                if (preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)) {
+                    WebviewComp {
+                        it.isVerticalScrollBarEnabled = false
+                        it.setupUpWebviewClient()
+                        it.loadZhihu("https://www.zhihu.com", Jsoup.parse(pin.contentHtml))
+                    }
+                } else {
+                    RenderMarkdown(
+                        html = pin.contentHtml,
+                        modifier = Modifier.fuckHonorService(),
+                        selectable = true,
+                        enableScroll = false,
+                    )
+                }
+            }
+        }
+
+        // 关联内容卡片
+        val linkCard = pin.content.firstOrNull { it is DataHolder.Pin.ContentLinkCard } as? DataHolder.Pin.ContentLinkCard
+        if (linkCard != null) {
+            Spacer(Modifier.height(12.dp))
+            MiuixPinLinkCard(linkCard, linkCardPreviewOverride)
+        }
+
+        // 操作栏
+        Spacer(Modifier.height(16.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Button(onClick = onLikeClick, modifier = Modifier.weight(1f).testTag(PIN_SCREEN_LIKE_BUTTON_TAG), colors = ButtonDefaults.buttonColorsPrimary()) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                    Icon(
+                        if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        "赞",
+                        modifier = Modifier.size(18.dp),
+                        tint = MiuixTheme.colorScheme.onPrimary,
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text("$likeCount", color = MiuixTheme.colorScheme.onPrimary)
+                }
+            }
+            Button(onClick = onCommentClick, modifier = Modifier.weight(1f).testTag(PIN_SCREEN_COMMENT_BUTTON_TAG), colors = ButtonDefaults.buttonColorsPrimary()) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                    Icon(Icons.AutoMirrored.Filled.Comment, "评论", modifier = Modifier.size(18.dp), tint = MiuixTheme.colorScheme.onPrimary)
+                    Spacer(Modifier.width(6.dp))
+                    Text("${pin.commentCount}", color = MiuixTheme.colorScheme.onPrimary)
+                }
+            }
+        }
+
+        // 话题
+        if (pin.topics?.isNotEmpty() == true) {
+            Spacer(Modifier.height(16.dp))
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("话题", style = MiuixTheme.textStyles.title4, fontWeight = FontWeight.Bold)
+                    pin.topics.forEach { topic ->
+                        Text(
+                            "# ${topic.name}",
+                            style = MiuixTheme.textStyles.body2,
+                            color = MiuixTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(16.dp))
+    }
+}
+
+@Composable
+private fun MiuixPinLinkCard(
+    linkCard: DataHolder.Pin.ContentLinkCard,
+    linkCardPreviewOverride: PinLinkCardPreview?,
+) {
+    val navigator = LocalNavigator.current
+    val context = LocalContext.current
+    var relatedTitle by remember(linkCard, linkCardPreviewOverride) { mutableStateOf(linkCardPreviewOverride?.title) }
+    var relatedPreview by remember(linkCard, linkCardPreviewOverride) { mutableStateOf(linkCardPreviewOverride?.preview) }
+    var isRelatedLoading by remember(linkCard, linkCardPreviewOverride) { mutableStateOf(linkCardPreviewOverride == null) }
+
+    LaunchedEffect(linkCard, linkCardPreviewOverride) {
+        if (linkCardPreviewOverride != null) {
+            isRelatedLoading = false
+            return@LaunchedEffect
+        }
+        isRelatedLoading = true
+        val preview = fetchLinkCardPreview(context, linkCard)
+        relatedTitle = preview?.title
+        relatedPreview = preview?.preview
+        isRelatedLoading = false
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(PIN_SCREEN_LINK_CARD_TAG)
+            .clickable {
+                val targetUrl = linkCard.url.takeIf { it.isNotBlank() }
+                val destination = targetUrl?.let(::resolveContent)
+                if (destination != null) {
+                    navigator.onNavigate(destination)
+                } else {
+                    targetUrl?.let { luoTianYiUrlLauncher(context, it.toUri()) }
+                }
+            },
+        colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.secondaryContainer),
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text("关联内容", style = MiuixTheme.textStyles.subtitle, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+            when {
+                isRelatedLoading -> Text("正在加载关联内容...", style = MiuixTheme.textStyles.body2, color = MiuixTheme.colorScheme.onSurfaceSecondary)
+                !relatedTitle.isNullOrBlank() -> {
+                    Text(relatedTitle!!, style = MiuixTheme.textStyles.title4, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    if (!relatedPreview.isNullOrBlank()) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(relatedPreview!!, style = MiuixTheme.textStyles.body2, color = MiuixTheme.colorScheme.onSurfaceSecondary, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+
+                else -> Text("${linkCardTypeLabel(linkCard.dataContentType)} · ${linkCard.dataContentId}", style = MiuixTheme.textStyles.body2)
+            }
+            if (relatedTitle.isNullOrBlank() && linkCard.url.isNotBlank()) {
+                Spacer(Modifier.height(4.dp))
+                Text(linkCard.url, fontSize = 12.sp, color = MiuixTheme.colorScheme.primary)
             }
         }
     }

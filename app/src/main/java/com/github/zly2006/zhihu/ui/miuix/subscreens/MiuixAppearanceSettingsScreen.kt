@@ -43,11 +43,14 @@ import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ThemeMode
 import com.github.zly2006.zhihu.theme.ThemeStyle
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixColorPickerSheet
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixExpandableArrowPreference
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixMultiSelectExpandable
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarSelection
+import com.github.zly2006.zhihu.ui.subscreens.resolveValidStartDestinationKey
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Checkbox
@@ -146,6 +149,20 @@ fun MiuixAppearanceSettingsScreen(
     val showColorPicker = remember { mutableStateOf(false) }
     val showBgPicker = remember { mutableStateOf(false) }
 
+    // 底栏选择规范化（对齐 M3 persistBottomBarSelection）：
+    // duo3_home_account 关闭时强制保留「账号」入口，否则账号设置无处可进。
+    fun persistBottomBar(currentSet: Set<String>, duo3Enabled: Boolean) {
+        val normalized = normalizeBottomBarSelection(currentSet, duo3Enabled, enforceMinimumSelection = true)
+        val available = listOf("Home", "Follow", "HotList", "Daily", "OnlineHistory", "Account").filter { it in normalized }
+        val resolvedStart = resolveValidStartDestinationKey(startDestinationKey.value, available)
+        selectedBottomBarKeys.value = normalized
+        startDestinationKey.value = resolvedStart
+        preferences.edit {
+            putStringSet(BOTTOM_BAR_ITEMS_PREFERENCE_KEY, normalized)
+            putString(START_DESTINATION_PREFERENCE_KEY, resolvedStart)
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -213,16 +230,20 @@ fun MiuixAppearanceSettingsScreen(
             item { SmallTitle(text = "阅读") }
             item {
                 Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
-                    ArrowPreference(
+                    MiuixExpandableArrowPreference(
                         title = "字号", summary = "调整内容文字大小 ($fontSize%)",
-                        onClick = { showFontSlider = !showFontSlider },
-                    )
-                    if (showFontSlider) SliderRow(fontSize.toFloat(), 50f..200f, 14) { fontSize = it; preferences.edit { putInt(PREF_FONT_SIZE, it) } }
-                    ArrowPreference(
+                        expanded = showFontSlider,
+                        onExpandedChange = { showFontSlider = !showFontSlider },
+                    ) {
+                        SliderRow(fontSize.toFloat(), 50f..200f, 14) { fontSize = it; preferences.edit { putInt(PREF_FONT_SIZE, it) } }
+                    }
+                    MiuixExpandableArrowPreference(
                         title = "行高", summary = "调整内容行间距 (${lineHeight / 100f})",
-                        onClick = { showLineSlider = !showLineSlider },
-                    )
-                    if (showLineSlider) SliderRow(lineHeight.toFloat(), 100f..300f, 19) { lineHeight = it; preferences.edit { putInt(PREF_LINE_HEIGHT, it) } }
+                        expanded = showLineSlider,
+                        onExpandedChange = { showLineSlider = !showLineSlider },
+                    ) {
+                        SliderRow(lineHeight.toFloat(), 100f..300f, 19) { lineHeight = it; preferences.edit { putInt(PREF_LINE_HEIGHT, it) } }
+                    }
                 }
             }
 
@@ -290,7 +311,7 @@ fun MiuixAppearanceSettingsScreen(
                         options = listOf("Home", "Follow", "HotList", "Daily", "OnlineHistory", "Account"),
                         optionLabel = { mapOf("Home" to "主页", "Follow" to "关注", "HotList" to "热榜", "Daily" to "日报", "OnlineHistory" to "历史", "Account" to "账号设置")[it] ?: it },
                         selectedOptions = selectedBottomBarKeys.value,
-                        onSelectionChange = { selectedBottomBarKeys.value = it; preferences.edit { putStringSet(BOTTOM_BAR_ITEMS_PREFERENCE_KEY, it) } },
+                        onSelectionChange = { persistBottomBar(it, duo3HomeAccount.value) },
                     )
                     SwitchPreference(
                         checked = tapToRefresh.value, onCheckedChange = { tapToRefresh.value = it; preferences.edit { putBoolean("bottomBarTapScrollToTop", it) } },
@@ -342,10 +363,21 @@ fun MiuixAppearanceSettingsScreen(
                             duo3All.value = all; preferences.edit { putBoolean("duo3_all", all) }
                             listOf(duo3HomeAccount, duo3NavStyle, duo3CardAppearance, duo3CardLayout, duo3ArticleBar, duo3ArticleActions).forEach { it.value = all }
                             preferences.edit { putBoolean("duo3_home_account", all); putBoolean("duo3_nav_style", all); putBoolean("duo3_card_appearance", all); putBoolean("duo3_card_layout", all); putBoolean("duo3_article_bar", all); putBoolean("duo3_article_actions", all) }
+                            val updated = if (all && "Home" !in selectedBottomBarKeys.value) selectedBottomBarKeys.value + "Account" else selectedBottomBarKeys.value
+                            persistBottomBar(updated, all)
                         },
                         title = "启用所有修改并关闭浮动按钮", summary = "一键开关所有 123Duo3 改进",
                     )
-                    SwitchPreference(checked = duo3HomeAccount.value, onCheckedChange = { duo3HomeAccount.value = it; preferences.edit { putBoolean("duo3_home_account", it) } }, title = "主页：账号入口迁移至顶部头像", summary = "搜索栏样式变更，点击头像弹出账号与设置")
+                    SwitchPreference(
+                        checked = duo3HomeAccount.value,
+                        onCheckedChange = {
+                            duo3HomeAccount.value = it
+                            preferences.edit { putBoolean("duo3_home_account", it) }
+                            val updated = if (it && "Home" !in selectedBottomBarKeys.value) selectedBottomBarKeys.value + "Account" else selectedBottomBarKeys.value
+                            persistBottomBar(updated, it)
+                        },
+                        title = "主页：账号入口迁移至顶部头像", summary = "搜索栏样式变更，点击头像弹出账号与设置",
+                    )
                     SwitchPreference(checked = duo3NavStyle.value, onCheckedChange = { duo3NavStyle.value = it; preferences.edit { putBoolean("duo3_nav_style", it) } }, title = "底部导航栏：改为 Material 样式", summary = "移除自定义样式，更改关注图标")
                     SwitchPreference(checked = duo3CardAppearance.value, onCheckedChange = { duo3CardAppearance.value = it; preferences.edit { putBoolean("duo3_card_appearance", it) } }, title = "信息流卡片：外观更改", summary = "圆角增大，移除阴影")
                     SwitchPreference(checked = duo3CardLayout.value, onCheckedChange = { duo3CardLayout.value = it; preferences.edit { putBoolean("duo3_card_layout", it) } }, title = "信息流卡片：更改内容排版", summary = "作者移至底部，摘要最多4行")

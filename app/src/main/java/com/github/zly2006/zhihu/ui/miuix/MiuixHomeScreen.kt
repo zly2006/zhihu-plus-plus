@@ -15,6 +15,7 @@ package com.github.zly2006.zhihu.ui.miuix
 import android.content.Context.MODE_PRIVATE
 import androidx.activity.compose.LocalActivity
 import androidx.activity.viewModels
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -26,9 +27,11 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -50,11 +53,14 @@ import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.RecommendationMode
+import com.github.zly2006.zhihu.data.ZhihuMeNotifications
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
 import com.github.zly2006.zhihu.ui.miuix.components.SearchBarFake
@@ -90,6 +96,7 @@ fun MiuixHomeScreen(
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
     val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE) }
+    val duo3HomeAccount = remember { preferences.getBoolean("duo3_home_account", false) }
 
     val currentRecommendationMode = RecommendationMode.entries.find {
         it.key == preferences.getString("recommendationMode", RecommendationMode.MIXED.key)
@@ -104,6 +111,7 @@ fun MiuixHomeScreen(
     val listState = rememberLazyListState()
     var searchStatus by remember { mutableStateOf(SearchStatus(label = "搜索知乎")) }
     val showAccountSheet = remember { mutableStateOf(false) }
+    var unreadCount by remember { mutableIntStateOf(0) }
 
     // 本地推荐 VM（like/dislike 反馈、本地内容打开）
     val localHomeViewModel = viewModel as? LocalHomeFeedViewModel
@@ -117,6 +125,17 @@ fun MiuixHomeScreen(
     LaunchedEffect(currentRecommendationMode, AccountData.data.login) {
         if (viewModel.displayItems.isEmpty()) {
             viewModel.refresh(context)
+        }
+    }
+
+    // 拉取未读通知数（与 M3 HomeScreen 行为一致）
+    LaunchedEffect(Unit) {
+        try {
+            val jojo = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/me") {
+                signFetchRequest()
+            }!!
+            unreadCount = AccountData.decodeJson<ZhihuMeNotifications>(jojo).totalCount
+        } catch (_: Exception) {
         }
     }
 
@@ -186,30 +205,53 @@ fun MiuixHomeScreen(
                     scrollBehavior = scrollBehavior,
                     // 头像移到右上角 actions
                     actions = {
+                        // duo3_home_account 开启时显示头像（弹账号面板），关闭时显示通知入口（与 M3 HomeScreen 对齐）
                         Box(modifier = Modifier.padding(end = 8.dp)) {
                             IconButton(
-                                onClick = { showAccountSheet.value = true },
+                                onClick = {
+                                    if (duo3HomeAccount) showAccountSheet.value = true
+                                    else navigator.onNavigate(Notification)
+                                },
                                 modifier = Modifier.size(48.dp),
                             ) {
-                            val avatarUrl = AccountData.data.self?.avatarUrl
-                            if (avatarUrl != null) {
-                                AsyncImage(
-                                    model = avatarUrl,
-                                    contentDescription = "账号",
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.size(32.dp)
-                                        .border(0.5.dp, MiuixTheme.colorScheme.outline.copy(alpha = 0.1f), CircleShape)
-                                        .clip(CircleShape),
-                                )
-                            } else {
-                                Icon(
-                                    imageVector = Icons.Default.AccountCircle,
-                                    contentDescription = "账号",
-                                    tint = MiuixTheme.colorScheme.onBackground,
-                                    modifier = Modifier.size(32.dp),
+                                if (duo3HomeAccount) {
+                                    val avatarUrl = AccountData.data.self?.avatarUrl
+                                    if (avatarUrl != null) {
+                                        AsyncImage(
+                                            model = avatarUrl,
+                                            contentDescription = "账号",
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.size(32.dp)
+                                                .border(0.5.dp, MiuixTheme.colorScheme.outline.copy(alpha = 0.1f), CircleShape)
+                                                .clip(CircleShape),
+                                        )
+                                    } else {
+                                        Icon(
+                                            imageVector = Icons.Default.AccountCircle,
+                                            contentDescription = "账号",
+                                            tint = MiuixTheme.colorScheme.onBackground,
+                                            modifier = Modifier.size(32.dp),
+                                        )
+                                    }
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.Notifications,
+                                        contentDescription = "通知",
+                                        tint = MiuixTheme.colorScheme.onBackground,
+                                        modifier = Modifier.size(28.dp),
+                                    )
+                                }
+                            }
+                            if (unreadCount > 0) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(10.dp)
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(MiuixTheme.colorScheme.error),
                                 )
                             }
-                        }
                         }
                     },
                     // SearchBarFake 放 bottomContent，上报 offsetY 供真框对齐
@@ -408,6 +450,7 @@ fun MiuixHomeScreen(
 
     MiuixAccountSheet(
         show = showAccountSheet.value,
+        unreadCount = unreadCount,
         onDismiss = { showAccountSheet.value = false },
     )
 }
