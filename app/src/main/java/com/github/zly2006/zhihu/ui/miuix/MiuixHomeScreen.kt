@@ -61,7 +61,12 @@ import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.util.signFetchRequest
+import com.github.zly2006.zhihu.ui.SEARCH_HISTORY_MAX_SIZE
+import com.github.zly2006.zhihu.ui.components.AutoHideTopBar
 import com.github.zly2006.zhihu.ui.components.PaginatedList
+import com.github.zly2006.zhihu.ui.loadSearchHistory
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixSearchSuggestions
+import com.github.zly2006.zhihu.ui.saveSearchHistory
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
 import com.github.zly2006.zhihu.ui.miuix.components.SearchBarFake
 import com.github.zly2006.zhihu.ui.miuix.components.SearchBox
@@ -90,6 +95,7 @@ import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 fun MiuixHomeScreen(
     scrollToTopTrigger: Int = 0,
     innerPadding: PaddingValues = PaddingValues(0.dp),
+    topBarVisible: Boolean = true,
 ) {
     val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
@@ -175,12 +181,21 @@ fun MiuixHomeScreen(
         }
     }
     // 搜索结果加载完成后切换 SHOW / EMPTY
+    val showSearchHistory = remember { preferences.getBoolean("showSearchHistory", true) }
     LaunchedEffect(searchViewModel?.displayItems?.size, searchViewModel?.isLoading) {
         val vm = searchViewModel ?: return@LaunchedEffect
         if (!vm.isLoading) {
+            val hasResult = vm.displayItems.isNotEmpty()
+            // 出结果即写入历史；defaultResult 重挂载会自动重读
+            if (hasResult && showSearchHistory && debouncedQuery.isNotBlank()) {
+                val history = loadSearchHistory(preferences).toMutableList()
+                history.remove(debouncedQuery)
+                history.add(0, debouncedQuery)
+                while (history.size > SEARCH_HISTORY_MAX_SIZE) history.removeAt(history.lastIndex)
+                saveSearchHistory(preferences, history)
+            }
             searchStatus = searchStatus.copy(
-                resultStatus = if (vm.displayItems.isEmpty()) SearchStatus.ResultStatus.EMPTY
-                               else SearchStatus.ResultStatus.SHOW,
+                resultStatus = if (hasResult) SearchStatus.ResultStatus.SHOW else SearchStatus.ResultStatus.EMPTY,
             )
         }
     }
@@ -194,6 +209,7 @@ fun MiuixHomeScreen(
     Box(Modifier.fillMaxSize()) {
     Scaffold(
         topBar = {
+          AutoHideTopBar(topBarVisible) {
             // TopAppBarAnim：消失回弹（alpha 切换 + 背景层）
             searchStatus.TopAppBarAnim(
                 modifier = Modifier.installerMiuixBlurEffect(backdrop),
@@ -292,6 +308,7 @@ fun MiuixHomeScreen(
                     },
                 )
             }
+          }
         },
     ) { padding ->
         // Scaffold 内容区：feed + 下拉刷新
@@ -373,9 +390,10 @@ fun MiuixHomeScreen(
         // 这里再加 statusBar 会双重 padding，导致收起时搜索框偏下
         searchBarTopPadding = 12.dp,
         defaultResult = {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("输入关键词搜索", color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
-            }
+            // 重挂载时自动从 prefs 重读历史（搜索完成会写入），无需共享 state
+            MiuixSearchSuggestions(
+                onQueryClick = { q -> searchStatus = searchStatus.copy(searchText = q) },
+            )
         },
         loadingResult = {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

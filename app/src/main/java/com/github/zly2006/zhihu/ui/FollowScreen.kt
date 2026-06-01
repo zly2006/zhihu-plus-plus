@@ -82,6 +82,7 @@ import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.ui.components.AutoHideTopBar
 import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
 import com.github.zly2006.zhihu.theme.LocalThemeStyle
 import com.github.zly2006.zhihu.theme.ThemeStyle
@@ -187,17 +188,20 @@ fun FollowTopLevelPage(
     scrollToTopTrigger: Int = 0,
     innerPadding: PaddingValues = PaddingValues(0.dp),
     isActive: Boolean = true,
+    topBarVisible: Boolean = true,
 ) {
     Column(
         modifier = Modifier
             .padding(bottom = innerPadding.calculateBottomPadding())
             .then(if (isActive) Modifier else Modifier.clearAndSetSemantics {}),
     ) {
-        FollowTabRow(
-            selectedTabIndex = selectedTabIndex,
-            onTabSelected = onTabSelected,
-            modifier = Modifier.padding(top = innerPadding.calculateTopPadding()),
-        )
+        AutoHideTopBar(topBarVisible) {
+            FollowTabRow(
+                selectedTabIndex = selectedTabIndex,
+                onTabSelected = onTabSelected,
+                modifier = Modifier.padding(top = innerPadding.calculateTopPadding()),
+            )
+        }
         when (selectedTabIndex) {
             0 -> FollowRecommendScreen(
                 scrollToTopTrigger = scrollToTopTrigger,

@@ -48,6 +48,7 @@ import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.History
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.ui.components.AutoHideTopBar
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
@@ -65,7 +66,7 @@ internal const val ONLINE_HISTORY_OVERFLOW_TAG = "online_history_overflow"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun OnlineHistoryScreen() {
+fun OnlineHistoryScreen(topBarVisible: Boolean = true) {
     val navigator = LocalNavigator.current
     val viewModel: OnlineHistoryViewModel = viewModel()
     val context = LocalContext.current
@@ -81,44 +82,46 @@ fun OnlineHistoryScreen() {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            TopAppBar(
-                title = { Text("历史记录") },
-                actions = {
-                    var showActionsMenu by remember { mutableStateOf(false) }
-                    BackHandler(enabled = showActionsMenu) {
-                        showActionsMenu = false
-                    }
-                    IconButton(
-                        modifier = Modifier.testTag(ONLINE_HISTORY_OVERFLOW_TAG),
-                        onClick = { showActionsMenu = true },
-                    ) {
-                        Icon(
-                            Icons.Filled.MoreVert,
-                            contentDescription = "更多选项",
-                        )
-
-                        DropdownMenu(
-                            expanded = showActionsMenu,
-                            onDismissRequest = { showActionsMenu = false },
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("查看本地历史记录") },
-                                onClick = {
-                                    showActionsMenu = false
-                                    navigator.onNavigate(History)
-                                },
-                            )
-                            DropdownMenuItem(
-                                text = { Text("清除历史记录") },
-                                onClick = {
-                                    showActionsMenu = false
-                                    showClearHistoryDialog = true
-                                },
-                            )
+            AutoHideTopBar(topBarVisible) {
+                TopAppBar(
+                    title = { Text("历史记录") },
+                    actions = {
+                        var showActionsMenu by remember { mutableStateOf(false) }
+                        BackHandler(enabled = showActionsMenu) {
+                            showActionsMenu = false
                         }
-                    }
-                },
-            )
+                        IconButton(
+                            modifier = Modifier.testTag(ONLINE_HISTORY_OVERFLOW_TAG),
+                            onClick = { showActionsMenu = true },
+                        ) {
+                            Icon(
+                                Icons.Filled.MoreVert,
+                                contentDescription = "更多选项",
+                            )
+
+                            DropdownMenu(
+                                expanded = showActionsMenu,
+                                onDismissRequest = { showActionsMenu = false },
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("查看本地历史记录") },
+                                    onClick = {
+                                        showActionsMenu = false
+                                        navigator.onNavigate(History)
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("清除历史记录") },
+                                    onClick = {
+                                        showActionsMenu = false
+                                        showClearHistoryDialog = true
+                                    },
+                                )
+                            }
+                        }
+                    },
+                )
+            }
         },
     ) { innerPadding ->
         if (showClearHistoryDialog) {

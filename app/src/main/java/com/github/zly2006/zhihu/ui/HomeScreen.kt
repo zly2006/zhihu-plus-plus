@@ -94,6 +94,7 @@ import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ThemeStyle
 import com.github.zly2006.zhihu.ui.components.AnnouncementCard
 import com.github.zly2006.zhihu.ui.components.AnnouncementCardDefaults
+import com.github.zly2006.zhihu.ui.components.AutoHideTopBar
 import com.github.zly2006.zhihu.ui.components.BlockByKeywordsDialog
 import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
@@ -196,7 +197,7 @@ interface IHomeFeedViewModel {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
+fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues, topBarVisible: Boolean = true) {
     val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     val preferences = remember {
@@ -320,6 +321,7 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                 .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
         },
         topBar = {
+            AutoHideTopBar(topBarVisible) {
             if (duo3HomeAccount) {
                 Box {
                     Surface(
@@ -470,6 +472,7 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                         }
                     }
                 }
+            }
             }
         },
     ) { scaffoldPadding ->

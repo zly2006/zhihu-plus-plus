@@ -63,6 +63,7 @@ import com.github.zly2006.zhihu.ui.FollowScreenData
 import com.github.zly2006.zhihu.ui.FollowDynamicScreen
 import com.github.zly2006.zhihu.ui.FollowRecommendScreen
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.ui.components.AutoHideTopBar
 import com.github.zly2006.zhihu.ui.followDynamicItemTag
 import com.github.zly2006.zhihu.ui.followRecommendItemTag
 import com.github.zly2006.zhihu.ui.followScreenTabTag
@@ -161,6 +162,7 @@ fun MiuixFollowTopLevelPage(
     selectedTabIndex: Int, onTabSelected: (Int) -> Unit,
     scrollToTopTrigger: Int = 0, innerPadding: PaddingValues = PaddingValues(0.dp),
     isActive: Boolean = true,
+    topBarVisible: Boolean = true,
 ) {
     val context = LocalActivity.current as MainActivity
     val blurEnabled = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE).getBoolean("blurEnabled", true) }
@@ -168,17 +170,19 @@ fun MiuixFollowTopLevelPage(
     val scrollBehavior = MiuixScrollBehavior()
     Scaffold(
         topBar = {
-            Column(
-                modifier = Modifier
-                    .installerMiuixBlurEffect(backdrop)
-                    .padding(bottom = 8.dp),
-            ) {
-                TopAppBar(
-                    color = backdrop.getMiuixAppBarColor(),
-                    title = "关注",
-                    scrollBehavior = scrollBehavior,
-                )
-                MiuixFollowTabRow(selectedTabIndex = selectedTabIndex, onTabSelected = onTabSelected)
+            AutoHideTopBar(topBarVisible) {
+                Column(
+                    modifier = Modifier
+                        .installerMiuixBlurEffect(backdrop)
+                        .padding(bottom = 8.dp),
+                ) {
+                    TopAppBar(
+                        color = backdrop.getMiuixAppBarColor(),
+                        title = "关注",
+                        scrollBehavior = scrollBehavior,
+                    )
+                    MiuixFollowTabRow(selectedTabIndex = selectedTabIndex, onTabSelected = onTabSelected)
+                }
             }
         },
     ) { padding ->

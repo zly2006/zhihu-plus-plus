@@ -22,6 +22,7 @@ import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.HotListScreen
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.ui.components.AutoHideTopBar
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.TopAppBar
@@ -29,6 +30,7 @@ import top.yukonga.miuix.kmp.basic.TopAppBar
 @Composable
 fun MiuixHotListScreen(
     innerPadding: PaddingValues = PaddingValues(0.dp),
+    topBarVisible: Boolean = true,
     onTestRefreshClick: (() -> Unit)? = null,
     onTestLoadMore: (() -> Unit)? = null,
 ) {
@@ -40,12 +42,14 @@ fun MiuixHotListScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                modifier = Modifier.installerMiuixBlurEffect(backdrop),
-                color = backdrop.getMiuixAppBarColor(),
-                title = "热榜",
-                scrollBehavior = scrollBehavior,
-            )
+            AutoHideTopBar(topBarVisible) {
+                TopAppBar(
+                    modifier = Modifier.installerMiuixBlurEffect(backdrop),
+                    color = backdrop.getMiuixAppBarColor(),
+                    title = "热榜",
+                    scrollBehavior = scrollBehavior,
+                )
+            }
         },
     ) { padding ->
         HotListScreen(

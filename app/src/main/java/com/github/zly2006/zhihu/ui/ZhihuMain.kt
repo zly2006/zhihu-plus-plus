@@ -242,11 +242,14 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     val bottomBarScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                // 只在状态真正变化时赋值，避免每帧 set 触发顶层重组；
-                // miuix overScroll 回弹会产生正负交替的微小 available.y，无条件 set 会导致底栏抽搐
-                when {
-                    available.y < -3f -> if (isBottomBarVisible) isBottomBarVisible = false
-                    available.y > 3f -> if (!isBottomBarVisible) isBottomBarVisible = true
+                // 只响应用户拖动：fling 惯性与 miuix overScroll 回弹会产生正负交替的 available.y，
+                // 松手后会把顶栏/底栏又弹回来跳变，必须忽略这些 SideEffect 来源。
+                // 且只在状态真正变化时赋值，避免每帧 set 触发顶层重组。
+                if (source == NestedScrollSource.UserInput) {
+                    when {
+                        available.y < -3f -> if (isBottomBarVisible) isBottomBarVisible = false
+                        available.y > 3f -> if (!isBottomBarVisible) isBottomBarVisible = true
+                    }
                 }
                 return Offset.Zero
             }
@@ -491,6 +494,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                         scrollToTopTrigger = scrollToTopTrigger,
                         innerPadding = innerPadding,
                         bottomBarBackdrop = bottomBarBackdrop,
+                        topBarVisible = isBottomBarVisible,
                         onFollowTabSelected = { followTabIndex ->
                             val page = if (followTabIndex == 0) {
                                 MainTabPage.FollowRecommendPage
@@ -594,7 +598,11 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     }
                 }
                 composable<OnlineHistory> {
-                    OnlineHistoryScreen()
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixOnlineHistoryScreen()
+                    } else {
+                        OnlineHistoryScreen()
+                    }
                 }
                 composable<Account> {
                     val style = ThemeManager.getThemeStyle()
@@ -738,6 +746,7 @@ private fun MainTabsPager(
     scrollToTopTrigger: Int,
     innerPadding: androidx.compose.foundation.layout.PaddingValues,
     bottomBarBackdrop: LayerBackdrop? = null,
+    topBarVisible: Boolean = true,
     onFollowTabSelected: (Int) -> Unit,
 ) {
     HorizontalPager(
@@ -751,11 +760,13 @@ private fun MainTabsPager(
                 MiuixHomeScreen(
                     scrollToTopTrigger = scrollToTopTrigger,
                     innerPadding = innerPadding,
+                    topBarVisible = topBarVisible,
                 )
             } else {
                 HomeScreen(
                     scrollToTopTrigger = scrollToTopTrigger,
                     innerPadding = innerPadding,
+                    topBarVisible = topBarVisible,
                 )
             }
             MainTabPage.FollowRecommendPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
@@ -763,12 +774,14 @@ private fun MainTabsPager(
                     selectedTabIndex = 0, onTabSelected = onFollowTabSelected,
                     scrollToTopTrigger = scrollToTopTrigger, innerPadding = innerPadding,
                     isActive = pagerState.currentPage == pageIndex,
+                    topBarVisible = topBarVisible,
                 )
             } else {
                 FollowTopLevelPage(
                     selectedTabIndex = 0, onTabSelected = onFollowTabSelected,
                     scrollToTopTrigger = scrollToTopTrigger, innerPadding = innerPadding,
                     isActive = pagerState.currentPage == pageIndex,
+                    topBarVisible = topBarVisible,
                 )
             }
             MainTabPage.FollowDynamicPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
@@ -776,28 +789,30 @@ private fun MainTabsPager(
                     selectedTabIndex = 1, onTabSelected = onFollowTabSelected,
                     scrollToTopTrigger = scrollToTopTrigger, innerPadding = innerPadding,
                     isActive = pagerState.currentPage == pageIndex,
+                    topBarVisible = topBarVisible,
                 )
             } else {
                 FollowTopLevelPage(
                     selectedTabIndex = 1, onTabSelected = onFollowTabSelected,
                     scrollToTopTrigger = scrollToTopTrigger, innerPadding = innerPadding,
                     isActive = pagerState.currentPage == pageIndex,
+                    topBarVisible = topBarVisible,
                 )
             }
             MainTabPage.HotListPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
-                MiuixHotListScreen(innerPadding)
+                MiuixHotListScreen(innerPadding, topBarVisible = topBarVisible)
             } else {
                 HotListScreen(innerPadding)
             }
             MainTabPage.DailyPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
-                MiuixDailyScreen()
+                MiuixDailyScreen(topBarVisible = topBarVisible)
             } else {
-                DailyScreen()
+                DailyScreen(topBarVisible = topBarVisible)
             }
             MainTabPage.OnlineHistoryPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
-                MiuixOnlineHistoryScreen()
+                MiuixOnlineHistoryScreen(topBarVisible = topBarVisible)
             } else {
-                OnlineHistoryScreen()
+                OnlineHistoryScreen(topBarVisible = topBarVisible)
             }
             MainTabPage.AccountPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
                 MiuixAccountSettingScreen(innerPadding)

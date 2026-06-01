@@ -126,6 +126,7 @@ fun MiuixAppearanceSettingsScreen(
         )
     }
     val tapToRefresh = remember { mutableStateOf(preferences.getBoolean("bottomBarTapScrollToTop", true)) }
+    val autoHideTopBar = remember { mutableStateOf(preferences.getBoolean("autoHideTopBar", false)) }
     val autoHideNavBar = remember { mutableStateOf(preferences.getBoolean("autoHideBottomBar", false)) }
 
     // 搜索
@@ -316,6 +317,10 @@ fun MiuixAppearanceSettingsScreen(
                     SwitchPreference(
                         checked = tapToRefresh.value, onCheckedChange = { tapToRefresh.value = it; preferences.edit { putBoolean("bottomBarTapScrollToTop", it) } },
                         title = "点击导航栏回到顶部/刷新", summary = "点击当前页按钮回到顶部，已在顶部则刷新",
+                    )
+                    SwitchPreference(
+                        checked = autoHideTopBar.value, onCheckedChange = { autoHideTopBar.value = it; preferences.edit { putBoolean("autoHideTopBar", it) } },
+                        title = "滚动时自动隐藏顶栏", summary = "浏览首页/关注/热榜/日报/历史时上划隐藏，下划重新显示",
                     )
                     SwitchPreference(
                         checked = autoHideNavBar.value, onCheckedChange = { autoHideNavBar.value = it; preferences.edit { putBoolean("autoHideBottomBar", it) } },

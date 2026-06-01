@@ -50,6 +50,7 @@ object SettingsKeys {
     const val START_DESTINATION = "startDestination"
     const val BOTTOM_BAR_ITEMS = "bottom_bar_items"
     const val BOTTOM_BAR_TAP_SCROLL_TO_TOP = "bottomBarTapScrollToTop"
+    const val AUTO_HIDE_TOP_BAR = "autoHideTopBar"
     const val AUTO_HIDE_BOTTOM_BAR = "autoHideBottomBar"
     val BOTTOM_BAR_ITEMS_DEFAULT = setOf("Home", "Follow", "Daily", "OnlineHistory", "Account")
     val START_DESTINATION_DEFAULT = "Home"

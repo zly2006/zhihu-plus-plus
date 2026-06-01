@@ -71,6 +71,7 @@ import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.DailyScreenUiState
 import com.github.zly2006.zhihu.ui.DailySection
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.ui.components.AutoHideTopBar
 import com.github.zly2006.zhihu.viewmodel.DailyViewModel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.jsonPrimitive
@@ -94,6 +95,7 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MiuixDailyScreen(
+    topBarVisible: Boolean = true,
     testState: DailyScreenUiState? = null,
     onTestDateSelected: ((String) -> Unit)? = null,
     onTestLoadMore: (() -> Unit)? = null,
@@ -171,20 +173,22 @@ fun MiuixDailyScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                modifier = Modifier.installerMiuixBlurEffect(backdrop),
-                color = backdrop.getMiuixAppBarColor(),
-                title = "知乎日报",
-                actions = {
-                    IconButton(
-                        onClick = { showDatePicker = true },
-                        modifier = Modifier.testTag(DAILY_SCREEN_DATE_PICKER_BUTTON_TAG),
-                    ) {
-                        Icon(Icons.Filled.DateRange, contentDescription = "选择日期")
-                    }
-                },
-                scrollBehavior = scrollBehavior,
-            )
+            AutoHideTopBar(topBarVisible) {
+                TopAppBar(
+                    modifier = Modifier.installerMiuixBlurEffect(backdrop),
+                    color = backdrop.getMiuixAppBarColor(),
+                    title = "知乎日报",
+                    actions = {
+                        IconButton(
+                            onClick = { showDatePicker = true },
+                            modifier = Modifier.testTag(DAILY_SCREEN_DATE_PICKER_BUTTON_TAG),
+                        ) {
+                            Icon(Icons.Filled.DateRange, contentDescription = "选择日期")
+                        }
+                    },
+                    scrollBehavior = scrollBehavior,
+                )
+            }
         },
     ) { padding ->
         PullToRefresh(

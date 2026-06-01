@@ -56,6 +56,7 @@ import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.ui.components.AutoHideTopBar
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.feed.OnlineHistoryViewModel
@@ -76,7 +77,7 @@ import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
 @Composable
-fun MiuixOnlineHistoryScreen() {
+fun MiuixOnlineHistoryScreen(topBarVisible: Boolean = true) {
     val navigator = LocalNavigator.current
     val viewModel: OnlineHistoryViewModel = viewModel()
     val context = LocalContext.current
@@ -96,6 +97,7 @@ fun MiuixOnlineHistoryScreen() {
 
     Scaffold(
         topBar = {
+          AutoHideTopBar(topBarVisible) {
             TopAppBar(
                 modifier = Modifier.installerMiuixBlurEffect(backdrop),
                 color = backdrop.getMiuixAppBarColor(),
@@ -158,6 +160,7 @@ fun MiuixOnlineHistoryScreen() {
                     }
                 },
             )
+          }
         },
     ) { padding ->
         if (showClearHistoryDialog) {

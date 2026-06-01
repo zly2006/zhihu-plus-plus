@@ -1041,6 +1041,17 @@ fun AppearanceSettingsScreen(
                     },
                 )
 
+                val autoHideTopBar = remember { mutableStateOf(preferences.getBoolean("autoHideTopBar", false)) }
+                SettingItemWithSwitch(
+                    title = { Text("滚动时自动隐藏顶栏") },
+                    description = { Text("浏览首页及关注、热榜、日报、历史时，上划隐藏顶栏，下划重新显示。") },
+                    checked = autoHideTopBar.value,
+                    onCheckedChange = {
+                        autoHideTopBar.value = it
+                        preferences.edit { putBoolean("autoHideTopBar", it) }
+                    },
+                )
+
                 val autoHideBottomBar = remember { mutableStateOf(preferences.getBoolean("autoHideBottomBar", false)) }
                 SettingItemWithSwitch(
                     title = { Text("滚动时自动隐藏底部导航栏") },

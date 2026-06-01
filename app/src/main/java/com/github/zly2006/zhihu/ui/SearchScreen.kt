@@ -94,17 +94,17 @@ private data class HotSearchItem(
     val label: String = "",
 )
 
-private const val SEARCH_HISTORY_KEY = "searchHistoryQueries"
-private const val SEARCH_HISTORY_MAX_SIZE = 20
+internal const val SEARCH_HISTORY_KEY = "searchHistoryQueries"
+internal const val SEARCH_HISTORY_MAX_SIZE = 20
 
-private fun loadSearchHistory(preferences: SharedPreferences): List<String> =
+internal fun loadSearchHistory(preferences: SharedPreferences): List<String> =
     preferences
         .getString(SEARCH_HISTORY_KEY, null)
         ?.let { json ->
             runCatching { Json.decodeFromString<List<String>>(json) }.getOrNull()
         }.orEmpty()
 
-private fun saveSearchHistory(
+internal fun saveSearchHistory(
     preferences: SharedPreferences,
     history: List<String>,
 ) {
