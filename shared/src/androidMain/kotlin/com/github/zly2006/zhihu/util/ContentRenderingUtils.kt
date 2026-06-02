@@ -112,10 +112,10 @@ fun saveBitmapToGallery(
     saveImageToMediaStore(
         context = context,
         displayName = displayName,
-        mimeType = "image/png",
+        mimeType = "image/jpeg",
         relativePath = Environment.DIRECTORY_PICTURES + "/Zhihu++",
     ) { outputStream ->
-        if (!bitmap.compress(Bitmap.CompressFormat.PNG, 90, outputStream)) {
+        if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 70, outputStream)) {
             throw IllegalStateException("Failed to encode image")
         }
     }

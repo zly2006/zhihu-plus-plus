@@ -100,7 +100,9 @@ import java.util.Date
 import java.util.Locale
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
+import javax.imageio.IIOImage
 import javax.imageio.ImageIO
+import javax.imageio.ImageWriteParam
 import javax.swing.JEditorPane
 import javax.swing.SwingUtilities
 import com.github.zly2006.zhihu.util.buildArticleExportHtml as buildSharedArticleExportHtml
@@ -467,7 +469,7 @@ class DesktopPaginationEnvironment(
     ) {
         val downloadsDir = desktopZhihuDownloadsDir()
         val file = File(downloadsDir, displayName)
-        ImageIO.write(bitmap as BufferedImage, "png", file)
+        writeJpegImage(file, (bitmap as BufferedImage).toJpegImage())
     }
 
     override fun articleImageExportRenderer(loadAssetText: (String) -> String): ArticleImageExportRenderer =
@@ -663,6 +665,43 @@ private class DesktopArticleExportRenderer : ArticleImageExportRenderer {
             } finally {
                 graphics.dispose()
             }
+        }
+    }
+}
+
+private fun BufferedImage.toJpegImage(): BufferedImage {
+    if (type == BufferedImage.TYPE_INT_RGB) {
+        return this
+    }
+    return BufferedImage(width, height, BufferedImage.TYPE_INT_RGB).also { image ->
+        val graphics = image.createGraphics()
+        try {
+            graphics.color = java.awt.Color.WHITE
+            graphics.fillRect(0, 0, width, height)
+            graphics.drawImage(this, 0, 0, null)
+        } finally {
+            graphics.dispose()
+        }
+    }
+}
+
+private fun writeJpegImage(file: File, image: BufferedImage) {
+    val writers = ImageIO.getImageWritersByFormatName("jpg")
+    if (!writers.hasNext()) {
+        throw IllegalStateException("No JPEG writer available")
+    }
+    val writer = writers.next()
+    ImageIO.createImageOutputStream(file).use { output ->
+        writer.output = output
+        try {
+            val params = writer.defaultWriteParam
+            if (params.canWriteCompressed()) {
+                params.compressionMode = ImageWriteParam.MODE_EXPLICIT
+                params.compressionQuality = 0.70f
+            }
+            writer.write(null, IIOImage(image, null, null), params)
+        } finally {
+            writer.dispose()
         }
     }
 }
