@@ -790,7 +790,7 @@ class ArticleViewModel(
 
     // 使用MediaStore保存图片到公共目录
     private fun saveImageToMediaStore(environment: PaginationEnvironment, bitmap: Any) {
-        val displayName = buildExportFileName("png")
+        val displayName = buildExportFileName("jpg")
         environment.saveImageToMediaStore(displayName, bitmap)
     }
 

@@ -36,13 +36,14 @@ import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.math.roundToInt
-import kotlin.math.sqrt
 
 data class AndroidPreparedExportWebView(
     val webView: WebView,
     val viewportWidthPx: Int,
     val contentHeightPx: Int,
 ) : PreparedArticleExportContent
+
+private const val ARTICLE_EXPORT_DPI = 200f
 
 class AndroidArticleExportRenderer(
     private val context: Context,
@@ -222,9 +223,9 @@ class AndroidArticleExportRenderer(
         preparedWebView as AndroidPreparedExportWebView
         val rawWidth = preparedWebView.viewportWidthPx.coerceAtLeast(1)
         val rawHeight = preparedWebView.contentHeightPx.coerceAtLeast(1)
-        val maxPixels = 24_000_000.0
-        val rawPixels = rawWidth.toDouble() * rawHeight.toDouble()
-        val scale = if (rawPixels > maxPixels) sqrt(maxPixels / rawPixels) else 1.0
+        val scale = ARTICLE_EXPORT_DPI / context.resources.displayMetrics.densityDpi
+            .coerceAtLeast(1)
+            .toFloat()
         val bitmapWidth = (rawWidth * scale).roundToInt().coerceAtLeast(1)
         val bitmapHeight = (rawHeight * scale).roundToInt().coerceAtLeast(1)
 

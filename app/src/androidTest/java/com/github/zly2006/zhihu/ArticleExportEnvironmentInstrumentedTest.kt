@@ -47,7 +47,7 @@ class ArticleExportEnvironmentInstrumentedTest {
         assertTrue(html.contains("导出环境回归"))
 
         val bitmap = Bitmap.createBitmap(2, 2, Bitmap.Config.ARGB_8888)
-        val displayName = "zhihu-export-regression-${System.currentTimeMillis()}.png"
+        val displayName = "zhihu-export-regression-${System.currentTimeMillis()}.jpg"
         try {
             environment.saveImageToMediaStore(displayName, bitmap)
             assertTrue(context.savedImageExists(displayName))

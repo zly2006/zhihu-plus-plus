@@ -52,6 +52,10 @@ compose.desktop {
     application {
         mainClass = "com.github.zly2006.zhihu.desktop.MainKt"
 
+        buildTypes.release.proguard {
+            isEnabled.set(false)
+        }
+
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "com.github.zly2006.zhihu"
