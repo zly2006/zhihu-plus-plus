@@ -1,0 +1,1 @@
+-dontwarn com.hrm.latex.parser.tokenizer.LatexTokenizer$Companion

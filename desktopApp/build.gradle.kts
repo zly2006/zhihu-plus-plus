@@ -53,7 +53,9 @@ compose.desktop {
         mainClass = "com.github.zly2006.zhihu.desktop.MainKt"
 
         buildTypes.release.proguard {
-            isEnabled.set(false)
+            isEnabled.set(true)
+            optimize.set(false)
+            configurationFiles.from(project.file("proguard-release.pro"))
         }
 
         nativeDistributions {
