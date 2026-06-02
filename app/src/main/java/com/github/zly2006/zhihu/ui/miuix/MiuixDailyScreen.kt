@@ -95,7 +95,6 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MiuixDailyScreen(
-    topBarVisible: Boolean = true,
     testState: DailyScreenUiState? = null,
     onTestDateSelected: ((String) -> Unit)? = null,
     onTestLoadMore: (() -> Unit)? = null,
@@ -173,7 +172,7 @@ fun MiuixDailyScreen(
 
     Scaffold(
         topBar = {
-            AutoHideTopBar(topBarVisible) {
+            AutoHideTopBar {
                 TopAppBar(
                     modifier = Modifier.installerMiuixBlurEffect(backdrop),
                     color = backdrop.getMiuixAppBarColor(),

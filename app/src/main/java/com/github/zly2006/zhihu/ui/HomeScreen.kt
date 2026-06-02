@@ -197,7 +197,7 @@ interface IHomeFeedViewModel {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues, topBarVisible: Boolean = true) {
+fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
     val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     val preferences = remember {
@@ -321,7 +321,7 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues, topBarV
                 .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
         },
         topBar = {
-            AutoHideTopBar(topBarVisible) {
+            AutoHideTopBar {
             if (duo3HomeAccount) {
                 Box {
                     Surface(

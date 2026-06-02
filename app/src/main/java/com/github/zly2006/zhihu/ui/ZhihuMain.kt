@@ -118,6 +118,7 @@ import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ThemeStyle
 import com.github.zly2006.zhihu.theme.ZhihuTheme
+import com.github.zly2006.zhihu.ui.components.LocalAutoHideTopBarVisible
 import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixAppearanceSettingsScreen
 import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixAboutScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixAccountSettingScreen
@@ -201,6 +202,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     var duo3NavStyle by remember { mutableStateOf(preferences.getBoolean("duo3_nav_style", false)) }
     var tapToScrollToTopEnabled by remember { mutableStateOf(preferences.getBoolean("bottomBarTapScrollToTop", true)) }
     var autoHideBottomBar by remember { mutableStateOf(preferences.getBoolean("autoHideBottomBar", false)) }
+    var autoHideTopBar by remember { mutableStateOf(preferences.getBoolean(SettingsKeys.AUTO_HIDE_TOP_BAR, false)) }
     val allBottomBarItemKeys = remember {
         listOf(Home.name, Follow.name, HotList.name, Daily.name, OnlineHistory.name, Account.name)
     }
@@ -230,6 +232,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         duo3NavStyle = preferences.getBoolean("duo3_nav_style", false)
         tapToScrollToTopEnabled = preferences.getBoolean("bottomBarTapScrollToTop", true)
         autoHideBottomBar = preferences.getBoolean("autoHideBottomBar", false)
+        autoHideTopBar = preferences.getBoolean(SettingsKeys.AUTO_HIDE_TOP_BAR, false)
         selectedBottomBarItemKeys = updatedSelectedBottomBarItemKeys
         startDestination = computeStartDestination(updatedSelectedBottomBarItemKeys)
     }
@@ -237,7 +240,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     val navEntry by navController.currentBackStackEntryAsState()
 
     var scrollToTopTrigger by remember { mutableIntStateOf(0) }
-    // 滚动时自动隐藏底部导航栏
+    // 滚动时自动隐藏底部导航栏（顶栏自动隐藏复用同一信号，见 LocalAutoHideTopBarVisible）
     var isBottomBarVisible by remember { mutableStateOf(true) }
     val bottomBarScrollConnection = remember {
         object : NestedScrollConnection {
@@ -362,7 +365,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
             .semantics { testTagsAsResourceId = true },
         bottomBar = {
             if (navEntry != null) {
-                // 页面切换时重置底部导航栏可见状态
+                // 页面切换时重置底部导航栏可见状态（顶栏复用此信号，一并恢复）
                 LaunchedEffect(navEntry) { isBottomBarVisible = true }
                 val currentBottomDestination = mainTabPages
                     .getOrNull(mainPagerState.targetPage)
@@ -488,13 +491,15 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 },
             ) {
                 composable<MainTabs> {
+                    CompositionLocalProvider(
+                        LocalAutoHideTopBarVisible provides (!autoHideTopBar || isBottomBarVisible),
+                    ) {
                     MainTabsPager(
                         pagerState = mainPagerState,
                         pages = mainTabPages,
                         scrollToTopTrigger = scrollToTopTrigger,
                         innerPadding = innerPadding,
                         bottomBarBackdrop = bottomBarBackdrop,
-                        topBarVisible = isBottomBarVisible,
                         onFollowTabSelected = { followTabIndex ->
                             val page = if (followTabIndex == 0) {
                                 MainTabPage.FollowRecommendPage
@@ -509,6 +514,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                             }
                         },
                     )
+                    }
                 }
                 composable<Question> { navEntry ->
                     val question: Question = navEntry.toRoute()
@@ -746,7 +752,6 @@ private fun MainTabsPager(
     scrollToTopTrigger: Int,
     innerPadding: androidx.compose.foundation.layout.PaddingValues,
     bottomBarBackdrop: LayerBackdrop? = null,
-    topBarVisible: Boolean = true,
     onFollowTabSelected: (Int) -> Unit,
 ) {
     HorizontalPager(
@@ -760,13 +765,11 @@ private fun MainTabsPager(
                 MiuixHomeScreen(
                     scrollToTopTrigger = scrollToTopTrigger,
                     innerPadding = innerPadding,
-                    topBarVisible = topBarVisible,
                 )
             } else {
                 HomeScreen(
                     scrollToTopTrigger = scrollToTopTrigger,
                     innerPadding = innerPadding,
-                    topBarVisible = topBarVisible,
                 )
             }
             MainTabPage.FollowRecommendPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
@@ -774,14 +777,12 @@ private fun MainTabsPager(
                     selectedTabIndex = 0, onTabSelected = onFollowTabSelected,
                     scrollToTopTrigger = scrollToTopTrigger, innerPadding = innerPadding,
                     isActive = pagerState.currentPage == pageIndex,
-                    topBarVisible = topBarVisible,
                 )
             } else {
                 FollowTopLevelPage(
                     selectedTabIndex = 0, onTabSelected = onFollowTabSelected,
                     scrollToTopTrigger = scrollToTopTrigger, innerPadding = innerPadding,
                     isActive = pagerState.currentPage == pageIndex,
-                    topBarVisible = topBarVisible,
                 )
             }
             MainTabPage.FollowDynamicPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
@@ -789,30 +790,28 @@ private fun MainTabsPager(
                     selectedTabIndex = 1, onTabSelected = onFollowTabSelected,
                     scrollToTopTrigger = scrollToTopTrigger, innerPadding = innerPadding,
                     isActive = pagerState.currentPage == pageIndex,
-                    topBarVisible = topBarVisible,
                 )
             } else {
                 FollowTopLevelPage(
                     selectedTabIndex = 1, onTabSelected = onFollowTabSelected,
                     scrollToTopTrigger = scrollToTopTrigger, innerPadding = innerPadding,
                     isActive = pagerState.currentPage == pageIndex,
-                    topBarVisible = topBarVisible,
                 )
             }
             MainTabPage.HotListPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
-                MiuixHotListScreen(innerPadding, topBarVisible = topBarVisible)
+                MiuixHotListScreen(innerPadding)
             } else {
                 HotListScreen(innerPadding)
             }
             MainTabPage.DailyPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
-                MiuixDailyScreen(topBarVisible = topBarVisible)
+                MiuixDailyScreen()
             } else {
-                DailyScreen(topBarVisible = topBarVisible)
+                DailyScreen()
             }
             MainTabPage.OnlineHistoryPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
-                MiuixOnlineHistoryScreen(topBarVisible = topBarVisible)
+                MiuixOnlineHistoryScreen()
             } else {
-                OnlineHistoryScreen(topBarVisible = topBarVisible)
+                OnlineHistoryScreen()
             }
             MainTabPage.AccountPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
                 MiuixAccountSettingScreen(innerPadding)

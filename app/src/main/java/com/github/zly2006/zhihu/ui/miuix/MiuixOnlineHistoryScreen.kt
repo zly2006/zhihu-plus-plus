@@ -77,7 +77,7 @@ import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
 @Composable
-fun MiuixOnlineHistoryScreen(topBarVisible: Boolean = true) {
+fun MiuixOnlineHistoryScreen() {
     val navigator = LocalNavigator.current
     val viewModel: OnlineHistoryViewModel = viewModel()
     val context = LocalContext.current
@@ -97,7 +97,7 @@ fun MiuixOnlineHistoryScreen(topBarVisible: Boolean = true) {
 
     Scaffold(
         topBar = {
-          AutoHideTopBar(topBarVisible) {
+          AutoHideTopBar {
             TopAppBar(
                 modifier = Modifier.installerMiuixBlurEffect(backdrop),
                 color = backdrop.getMiuixAppBarColor(),

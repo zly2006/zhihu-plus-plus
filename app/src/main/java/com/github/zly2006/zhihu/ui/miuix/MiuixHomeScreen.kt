@@ -95,7 +95,6 @@ import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 fun MiuixHomeScreen(
     scrollToTopTrigger: Int = 0,
     innerPadding: PaddingValues = PaddingValues(0.dp),
-    topBarVisible: Boolean = true,
 ) {
     val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
@@ -209,7 +208,7 @@ fun MiuixHomeScreen(
     Box(Modifier.fillMaxSize()) {
     Scaffold(
         topBar = {
-          AutoHideTopBar(topBarVisible) {
+          AutoHideTopBar {
             // TopAppBarAnim：消失回弹（alpha 切换 + 背景层）
             searchStatus.TopAppBarAnim(
                 modifier = Modifier.installerMiuixBlurEffect(backdrop),

@@ -162,7 +162,6 @@ fun MiuixFollowTopLevelPage(
     selectedTabIndex: Int, onTabSelected: (Int) -> Unit,
     scrollToTopTrigger: Int = 0, innerPadding: PaddingValues = PaddingValues(0.dp),
     isActive: Boolean = true,
-    topBarVisible: Boolean = true,
 ) {
     val context = LocalActivity.current as MainActivity
     val blurEnabled = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE).getBoolean("blurEnabled", true) }
@@ -170,7 +169,7 @@ fun MiuixFollowTopLevelPage(
     val scrollBehavior = MiuixScrollBehavior()
     Scaffold(
         topBar = {
-            AutoHideTopBar(topBarVisible) {
+            AutoHideTopBar {
                 Column(
                     modifier = Modifier
                         .installerMiuixBlurEffect(backdrop)

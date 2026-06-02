@@ -66,7 +66,7 @@ internal const val ONLINE_HISTORY_OVERFLOW_TAG = "online_history_overflow"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun OnlineHistoryScreen(topBarVisible: Boolean = true) {
+fun OnlineHistoryScreen() {
     val navigator = LocalNavigator.current
     val viewModel: OnlineHistoryViewModel = viewModel()
     val context = LocalContext.current
@@ -82,7 +82,7 @@ fun OnlineHistoryScreen(topBarVisible: Boolean = true) {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            AutoHideTopBar(topBarVisible) {
+            AutoHideTopBar {
                 TopAppBar(
                     title = { Text("历史记录") },
                     actions = {

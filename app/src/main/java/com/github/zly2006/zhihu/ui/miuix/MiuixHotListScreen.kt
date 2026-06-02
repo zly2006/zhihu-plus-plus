@@ -30,7 +30,6 @@ import top.yukonga.miuix.kmp.basic.TopAppBar
 @Composable
 fun MiuixHotListScreen(
     innerPadding: PaddingValues = PaddingValues(0.dp),
-    topBarVisible: Boolean = true,
     onTestRefreshClick: (() -> Unit)? = null,
     onTestLoadMore: (() -> Unit)? = null,
 ) {
@@ -42,7 +41,7 @@ fun MiuixHotListScreen(
 
     Scaffold(
         topBar = {
-            AutoHideTopBar(topBarVisible) {
+            AutoHideTopBar {
                 TopAppBar(
                     modifier = Modifier.installerMiuixBlurEffect(backdrop),
                     color = backdrop.getMiuixAppBarColor(),

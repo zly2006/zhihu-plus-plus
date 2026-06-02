@@ -188,14 +188,13 @@ fun FollowTopLevelPage(
     scrollToTopTrigger: Int = 0,
     innerPadding: PaddingValues = PaddingValues(0.dp),
     isActive: Boolean = true,
-    topBarVisible: Boolean = true,
 ) {
     Column(
         modifier = Modifier
             .padding(bottom = innerPadding.calculateBottomPadding())
             .then(if (isActive) Modifier else Modifier.clearAndSetSemantics {}),
     ) {
-        AutoHideTopBar(topBarVisible) {
+        AutoHideTopBar {
             FollowTabRow(
                 selectedTabIndex = selectedTabIndex,
                 onTabSelected = onTabSelected,

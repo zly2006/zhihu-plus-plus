@@ -108,7 +108,6 @@ data class DailyScreenUiState(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DailyScreen(
-    topBarVisible: Boolean = true,
     testState: DailyScreenUiState? = null,
     onTestDateSelected: ((String) -> Unit)? = null,
     onTestLoadMore: (() -> Unit)? = null,
@@ -209,7 +208,7 @@ fun DailyScreen(
 
     Scaffold(
         topBar = {
-            AutoHideTopBar(topBarVisible) {
+            AutoHideTopBar {
                 TopAppBar(
                     title = {
                         Column {
