@@ -541,26 +541,22 @@ open class SharedAndroidPaginationEnvironment(
     override fun articleImageExportRenderer(loadAssetText: (String) -> String): ArticleImageExportRenderer =
         AndroidArticleExportRenderer(context, loadAssetText)
 
-    override fun hasImageExportPermission(): Boolean = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED
-    } else {
-        ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
-    }
+    override fun hasImageExportPermission(): Boolean =
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) ==
+            PackageManager.PERMISSION_GRANTED
 
     override fun requiresHtmlExportPermission(): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.Q
 
     override fun requestImageExportPermission() {
-        val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            arrayOf(Manifest.permission.READ_MEDIA_IMAGES)
-        } else {
-            arrayOf(
-                Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                Manifest.permission.READ_EXTERNAL_STORAGE,
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            ActivityCompat.requestPermissions(
+                context as Activity,
+                arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
+                1001,
             )
         }
-        ActivityCompat.requestPermissions(context as Activity, permissions, 1001)
     }
 
     override fun loadExportAssetText(fileName: String): String =

@@ -17,7 +17,6 @@
 
 package com.github.zly2006.zhihu.test
 
-import android.view.KeyEvent
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -29,8 +28,8 @@ import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.test.swipeUp
 import androidx.navigation.compose.rememberNavController
+import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.rules.ActivityScenarioRule
-import androidx.test.platform.app.InstrumentationRegistry
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
@@ -103,7 +102,7 @@ fun SemanticsNodeInteraction.performVerticalSwipeCycle() {
 }
 
 fun MainActivityComposeRule.pressSystemBack() {
-    InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+    Espresso.pressBack()
     waitForIdle()
 }
 
