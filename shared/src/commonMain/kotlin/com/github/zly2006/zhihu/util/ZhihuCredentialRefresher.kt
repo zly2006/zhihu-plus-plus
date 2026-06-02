@@ -1,0 +1,103 @@
+/*
+ * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation (version 3 only).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package com.github.zly2006.zhihu.util
+
+import com.github.zly2006.zhihu.shared.util.Log
+import com.github.zly2006.zhihu.shared.util.ZseSigner
+import com.github.zly2006.zhihu.shared.util.raiseForStatus
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.plugins.cookies.HttpCookies
+import io.ktor.client.plugins.cookies.get
+import io.ktor.client.plugins.pluginOrNull
+import io.ktor.client.request.header
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.http.Url
+import io.ktor.http.encodeURLParameter
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlin.time.Clock
+
+/**
+ * 知乎 Token 刷新业务逻辑
+ */
+object ZhihuCredentialRefresher {
+    private const val CLIENT_ID = "c3cef7c66a1843f8b3a9e6a1e3160e20"
+    private const val CLIENT_SECRET = "d1b964811afb40118a12068ff74a12f4"
+    private const val GRANT_TYPE = "refresh_token"
+    private const val SOURCE = "com.zhihu.web"
+
+    private fun generateRefreshPayload(refreshToken: String, timestamp: Long): Map<String, String> {
+        val message = "$GRANT_TYPE$CLIENT_ID$SOURCE$timestamp"
+        val signature = hmacSha1Hex(CLIENT_SECRET, message)
+
+        return mapOf(
+            "client_id" to CLIENT_ID,
+            "grant_type" to GRANT_TYPE,
+            "timestamp" to timestamp.toString(),
+            "source" to SOURCE,
+            "signature" to signature,
+            "refresh_token" to refreshToken,
+        )
+    }
+
+    suspend fun fetchRefreshToken(httpClient: HttpClient): String {
+        val jojo = httpClient
+            .post("https://www.zhihu.com/api/account/prod/token/refresh") {
+                header("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8")
+                header("Origin", "https://www.zhihu.com")
+                header("Referer", "https://www.zhihu.com/signin")
+                header("x-requested-with", "fetch")
+            }.raiseForStatus()
+            .body<JsonObject>()
+        return jojo["refresh_token"]!!.jsonPrimitive.content
+    }
+
+    /**
+     * 执行刷新 Token 操作
+     */
+    suspend fun refreshZhihuToken(refreshToken: String, httpClient: HttpClient): String {
+        httpClient.pluginOrNull(HttpCookies)?.get(Url("https://www.zhihu.com/"))?.get("z_c0")
+            ?: throw IllegalArgumentException("刷新失败：缺失关键 cookie z_c0，请重新登录")
+
+        val timestamp = Clock.System.now().toEpochMilliseconds()
+        val payloadMap = generateRefreshPayload(refreshToken, timestamp)
+        Log.d("ZhihuCredentialRefresher", "请求原始数据: $payloadMap")
+
+        val formData = payloadMap.entries.joinToString("&") {
+            "${it.key.encodeURLParameter(spaceToPlus = true)}=${it.value.encodeURLParameter(spaceToPlus = true)}"
+        }
+        val encryptedData = ZseSigner.encryptZseV4(formData)
+
+        val jojo = httpClient
+            .post("https://www.zhihu.com/api/v3/oauth/sign_in") {
+                header("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8")
+                header("Origin", "https://www.zhihu.com")
+                header("Referer", "https://www.zhihu.com/signin")
+                header("x-zse-83", "3_3.0")
+                header("x-requested-with", "fetch")
+                setBody(encryptedData.encodeToByteArray())
+            }.raiseForStatus()
+            .body<JsonObject>()
+
+        return jojo["access_token"]!!.jsonPrimitive.content
+    }
+}
+
+expect fun hmacSha1Hex(key: String, message: String): String

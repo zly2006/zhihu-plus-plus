@@ -20,22 +20,32 @@ package com.github.zly2006.zhihu
 import android.content.Context
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.MutableState
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.github.zly2006.zhihu.navigation.AnswerNavigator
+import com.github.zly2006.zhihu.navigation.AnswerNavigatorPage
+import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.data.Feed
+import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
-import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.ui.ArticleScreen
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.ui.TtsState
+import com.github.zly2006.zhihu.ui.rememberArticleActionsRuntime
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
+import com.github.zly2006.zhihu.viewmodel.CollectionItem
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -90,11 +100,76 @@ class ArticleScreenInstrumentedTest {
         composeRule.onNodeWithText("第 1 段离线正文", substring = true).assertIsDisplayed()
     }
 
+    @Test
+    fun articleActionsRuntime_readsTtsStateFromMainActivityHost() {
+        composeRule.activity.runOnUiThread {
+            composeRule.activity.forceTtsStateForTest(TtsState.Ready)
+        }
+
+        composeRule.setScreenContent {
+            val runtime = rememberArticleActionsRuntime()
+            Text("tts=${runtime.ttsState}")
+        }
+
+        composeRule.onNodeWithText("tts=Ready").assertIsDisplayed()
+    }
+
+    @Test
+    fun skipAnswerButtonNavigatesToPrefetchedNextAnswerOffline() {
+        val viewModel = seededAnswerViewModel(ANSWER)
+        val nextAnswer = ArticleViewModel.CachedAnswerContent(
+            article = NEXT_ANSWER,
+            title = "下一个离线回答",
+            authorName = "下一个作者",
+            authorBio = "下一个签名",
+            authorAvatarUrl = "",
+            content = "下一个离线回答正文",
+            voteUpCount = 7,
+            commentCount = 3,
+        )
+        composeRule.activity.runOnUiThread {
+            composeRule.activity.articleAnswerSwitchState.pendingNavigator = object : AnswerNavigator(
+                sourceName = "此问题",
+                repository = NO_OP_ANSWER_REPOSITORY,
+            ) {
+                init {
+                    nextAnswerContent = nextAnswer
+                }
+
+                override suspend fun loadNext(): Article? {
+                    nextAnswerContent = null
+                    return nextAnswer.article
+                }
+
+                override suspend fun prefetchNext(currentArticleId: Long) = Unit
+            }
+        }
+        val recordingNavigator = composeRule.setScreenContent {
+            Scaffold(
+                modifier = androidx.compose.ui.Modifier
+                    .fillMaxSize(),
+            ) { _ ->
+                ArticleScreen(
+                    article = ANSWER,
+                    viewModel = viewModel,
+                )
+            }
+        }
+
+        composeRule
+            .onNodeWithContentDescription("下一个回答")
+            .assertIsDisplayed()
+            .performClick()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            recordingNavigator.destinations.contains(NEXT_ANSWER)
+        }
+    }
+
     private fun setArticleScreen() {
         val viewModel = ArticleViewModel(
             article = ARTICLE,
             httpClient = null,
-            navBackStackEntry = null,
         )
         composeRule.activity.runOnUiThread {
             viewModel.title = "离线 Article 标题"
@@ -124,11 +199,65 @@ class ArticleScreenInstrumentedTest {
         }
     }
 
+    private fun seededAnswerViewModel(article: Article): ArticleViewModel {
+        val viewModel = ArticleViewModel(
+            article = article,
+            httpClient = null,
+        )
+        composeRule.activity.runOnUiThread {
+            viewModel.title = "离线 Answer 标题"
+            viewModel.authorName = "离线答主"
+            viewModel.authorId = "offline-answer-author-id"
+            viewModel.authorUrlToken = "offline-answer-author"
+            viewModel.content = (1..20).joinToString("\n\n") { index ->
+                "第 $index 段离线回答正文，用于 ArticleScreen instrumented test。"
+            }
+            viewModel.voteUpCount = 42
+            viewModel.commentCount = 7
+            viewModel.questionId = 123456L
+            viewModel.createdAt = 1_710_000_000L
+            viewModel.updatedAt = 1_710_000_600L
+            viewModel.ipInfo = "上海"
+        }
+        return viewModel
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun MainActivity.forceTtsStateForTest(state: TtsState) {
+        val ttsStateField = MainActivity::class.java.getDeclaredField("_ttsState")
+        ttsStateField.isAccessible = true
+        (ttsStateField.get(this) as MutableState<TtsState>).value = state
+    }
+
     private companion object {
         val ARTICLE = Article(
             type = ArticleType.Article,
             id = 777L,
             title = "离线 Article 标题",
         )
+        val ANSWER = Article(
+            type = ArticleType.Answer,
+            id = 777L,
+            title = "离线 Answer 标题",
+        )
+        val NEXT_ANSWER = Article(
+            type = ArticleType.Answer,
+            id = 778L,
+            title = "下一个离线回答",
+        )
+
+        val NO_OP_ANSWER_REPOSITORY = object : AnswerNavigatorRepository {
+            override suspend fun fetchAnswerContent(article: Article): DataHolder.Answer? = null
+
+            override suspend fun fetchQuestionFeeds(
+                questionId: Long,
+                pageUrl: String?,
+            ): AnswerNavigatorPage<Feed> = AnswerNavigatorPage(emptyList(), "")
+
+            override suspend fun fetchCollectionItems(pageUrl: String): AnswerNavigatorPage<CollectionItem> =
+                AnswerNavigatorPage(emptyList(), "")
+
+            override suspend fun getAlreadyOpenedAnswerIds(answerIds: List<Long>): Set<Long> = emptySet()
+        }
     }
 }

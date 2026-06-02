@@ -25,11 +25,11 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.github.zly2006.zhihu.data.NotificationActor
-import com.github.zly2006.zhihu.data.NotificationContent
-import com.github.zly2006.zhihu.data.NotificationItem
-import com.github.zly2006.zhihu.data.NotificationLink
 import com.github.zly2006.zhihu.navigation.Notification
+import com.github.zly2006.zhihu.shared.data.NotificationActor
+import com.github.zly2006.zhihu.shared.data.NotificationContent
+import com.github.zly2006.zhihu.shared.data.NotificationItem
+import com.github.zly2006.zhihu.shared.data.NotificationLink
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
 import com.github.zly2006.zhihu.test.resetAppPreferences

@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.test
 
+import android.view.KeyEvent
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -29,12 +30,13 @@ import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.test.swipeUp
 import androidx.navigation.compose.rememberNavController
 import androidx.test.ext.junit.rules.ActivityScenarioRule
+import androidx.test.platform.app.InstrumentationRegistry
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Navigator
 import com.github.zly2006.zhihu.theme.ZhihuTheme
-import com.github.zly2006.zhihu.ui.ZhihuMain
+import com.github.zly2006.zhihu.ui.AndroidZhihuMain
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -89,7 +91,7 @@ fun MainActivityComposeRule.setZhihuMainContent() {
     waitForIdle()
     activity.setContent {
         ZhihuTheme {
-            ZhihuMain(navController = rememberNavController())
+            AndroidZhihuMain(navController = rememberNavController())
         }
     }
     waitForIdle()
@@ -98,6 +100,11 @@ fun MainActivityComposeRule.setZhihuMainContent() {
 fun SemanticsNodeInteraction.performVerticalSwipeCycle() {
     performTouchInput { swipeUp() }
     performTouchInput { swipeDown() }
+}
+
+fun MainActivityComposeRule.pressSystemBack() {
+    InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+    waitForIdle()
 }
 
 fun SemanticsNodeInteraction.performHorizontalSwipeCycle() {

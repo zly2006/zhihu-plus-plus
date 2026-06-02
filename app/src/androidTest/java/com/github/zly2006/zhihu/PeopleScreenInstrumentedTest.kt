@@ -17,16 +17,16 @@
 
 package com.github.zly2006.zhihu
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.github.zly2006.zhihu.data.DataHolder
-import com.github.zly2006.zhihu.data.OfficialBadge
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionContent
@@ -34,13 +34,17 @@ import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.Search
+import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.FollowedQuestion
+import com.github.zly2006.zhihu.shared.data.FollowedTopic
+import com.github.zly2006.zhihu.shared.data.OfficialBadge
+import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
-import com.github.zly2006.zhihu.ui.FollowedQuestion
-import com.github.zly2006.zhihu.ui.FollowedTopic
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_ACTIVITIES_LIST_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_ANSWERS_LIST_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_ANSWER_COUNT_TAG
@@ -86,7 +90,6 @@ import com.github.zly2006.zhihu.ui.peopleScreenPinItemTag
 import com.github.zly2006.zhihu.ui.peopleScreenQuestionItemTag
 import com.github.zly2006.zhihu.ui.peopleScreenSubscriptionTabTag
 import com.github.zly2006.zhihu.ui.peopleScreenTabTag
-import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -310,6 +313,40 @@ class PeopleScreenInstrumentedTest {
     }
 
     @Test
+    fun duplicatedAuthorAnswerKeysDoNotCrashAnswerListOffline() {
+        val duplicatedAnswerId = 2_544_209_984L
+        setPeopleScreen(
+            overrides = PeopleScreenTestOverrides(
+                initialUiState = seededUiState(itemCount = 0).copy(
+                    answers = PeopleSortedListUiState(
+                        sortBy = "voteups",
+                        items = listOf(
+                            seededAnswer(
+                                id = duplicatedAnswerId,
+                                questionId = 1001L,
+                                questionTitle = "重复 key 问题 A",
+                                excerpt = "重复 key 回答 A",
+                            ),
+                            seededAnswer(
+                                id = duplicatedAnswerId,
+                                questionId = 1002L,
+                                questionTitle = "重复 key 问题 B",
+                                excerpt = "重复 key 回答 B",
+                            ),
+                        ),
+                        isEnd = true,
+                    ),
+                ),
+            ),
+        )
+
+        composeRule.onNodeWithTag(PEOPLE_SCREEN_ANSWERS_LIST_TAG).assertIsDisplayed()
+        composeRule.onNodeWithText("重复 key 问题 A").assertIsDisplayed()
+        composeRule.onNodeWithText("重复 key 问题 B").assertIsDisplayed()
+        composeRule.onAllNodesWithTag(peopleScreenAnswerItemTag(duplicatedAnswerId)).assertCountEquals(2)
+    }
+
+    @Test
     fun followingSubscriptionsTabMatchesOfficialEntryPointsOffline() {
         /*
          * Expected behavior:
@@ -390,12 +427,12 @@ class PeopleScreenInstrumentedTest {
         ),
         activities = PeopleListUiState(
             items = List(itemCount) { index ->
-                BaseFeedViewModel.FeedDisplayItem(
+                FeedDisplayItem(
                     title = "离线动态 ${index + 1}",
                     summary = "动态摘要 ${index + 1}",
                     details = "动态详情 ${index + 1}",
                     feed = null,
-                    navDestination = Search(query = "离线动态 ${index + 1}"),
+                    navDestinationJson = Search(query = "离线动态 ${index + 1}").toFeedDisplayItemNavDestinationJson(),
                     localFeedId = "activity-${index + 1}",
                 )
             },
@@ -443,27 +480,32 @@ class PeopleScreenInstrumentedTest {
         ),
     )
 
-    private fun seededAnswer(id: Long) = DataHolder.Answer(
+    private fun seededAnswer(
+        id: Long,
+        questionId: Long = id,
+        questionTitle: String = "离线提问 $id",
+        excerpt: String = "离线回答摘要 $id",
+    ) = DataHolder.Answer(
         answerType = "answer",
         author = seededAuthor("answer-author-$id", "回答作者 $id"),
         canComment = DataHolder.CanComment(status = true, reason = ""),
         content = "<p>离线回答正文 $id</p>",
         createdTime = 1_713_500_000L,
-        excerpt = "离线回答摘要 $id",
+        excerpt = excerpt,
         id = id,
         question = DataHolder.AnswerModelQuestion(
             created = 1_713_400_000L,
-            id = id,
+            id = questionId,
             questionType = "normal",
-            title = "离线提问 $id",
+            title = questionTitle,
             type = "question",
             updatedTime = 1_713_500_100L,
-            url = "https://www.zhihu.com/question/$id",
+            url = "https://www.zhihu.com/question/$questionId",
         ),
         thanksCount = 0,
         type = "answer",
         updatedTime = 1_713_500_100L,
-        url = "https://www.zhihu.com/question/$id/answer/$id",
+        url = "https://www.zhihu.com/question/$questionId/answer/$id",
         voteupCount = id.toInt(),
     )
 

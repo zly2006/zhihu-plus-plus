@@ -1,0 +1,768 @@
+/*
+ * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation (version 3 only).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package com.github.zly2006.zhihu.ui
+
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.ManageAccounts
+import androidx.compose.material.icons.filled.Newspaper
+import androidx.compose.material.icons.filled.PersonAddAlt1
+import androidx.compose.material.icons.filled.Whatshot
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import top.yukonga.miuix.kmp.basic.NavigationBar as MiuixNavigationBar
+import top.yukonga.miuix.kmp.basic.NavigationBarItem as MiuixNavigationBarItem
+import top.yukonga.miuix.kmp.basic.NavigationBarDisplayMode
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavDestination.Companion.hasRoute
+import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.toRoute
+import com.github.zly2006.zhihu.navigation.Account
+import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.navigation.ArticleTypeNavType
+import com.github.zly2006.zhihu.navigation.CollectionContent
+import com.github.zly2006.zhihu.navigation.Collections
+import com.github.zly2006.zhihu.navigation.Daily
+import com.github.zly2006.zhihu.navigation.Follow
+import com.github.zly2006.zhihu.navigation.History
+import com.github.zly2006.zhihu.navigation.Home
+import com.github.zly2006.zhihu.navigation.HotList
+import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.navigation.MainTabs
+import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.navigation.Navigator
+import com.github.zly2006.zhihu.navigation.Notification
+import com.github.zly2006.zhihu.navigation.OnlineHistory
+import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.navigation.Pin
+import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.navigation.Search
+import com.github.zly2006.zhihu.navigation.SentenceSimilarityTest
+import com.github.zly2006.zhihu.navigation.TopLevelDestination
+import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
+import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.theme.ThemeStyle
+import com.github.zly2006.zhihu.theme.ZhihuTheme
+import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
+import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
+import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
+import com.github.zly2006.zhihu.ui.components.LocalAutoHideTopBarVisible
+import com.github.zly2006.zhihu.ui.miuix.MiuixAccountSettingScreen
+import com.github.zly2006.zhihu.ui.miuix.MiuixBlocklistSettingsScreen
+import com.github.zly2006.zhihu.ui.miuix.MiuixCollectionContentScreen
+import com.github.zly2006.zhihu.ui.miuix.MiuixCollectionScreen
+import com.github.zly2006.zhihu.ui.miuix.MiuixDailyScreen
+import com.github.zly2006.zhihu.ui.miuix.MiuixFollowScreen
+import com.github.zly2006.zhihu.ui.miuix.MiuixFollowTopLevelPage
+import com.github.zly2006.zhihu.ui.miuix.MiuixHomeScreen
+import com.github.zly2006.zhihu.ui.miuix.MiuixHotListScreen
+import com.github.zly2006.zhihu.ui.miuix.MiuixLocalHistoryScreen
+import com.github.zly2006.zhihu.ui.miuix.MiuixNotificationScreen
+import com.github.zly2006.zhihu.ui.miuix.MiuixOnlineHistoryScreen
+import com.github.zly2006.zhihu.ui.miuix.MiuixPeopleScreen
+import com.github.zly2006.zhihu.ui.miuix.MiuixPinScreen
+import com.github.zly2006.zhihu.ui.miuix.MiuixQuestionScreen
+import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixAboutScreen
+import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixAppearanceSettingsScreen
+import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixBlockedFeedHistoryScreen
+import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixContentFilterSettingsScreen
+import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixDeveloperSettingsScreen
+import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixNotificationSettingsScreen
+import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixOpenSourceLicensesScreen
+import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixSystemAndUpdateSettingsScreen
+import com.github.zly2006.zhihu.ui.subscreens.AboutScreen
+import top.yukonga.miuix.kmp.blur.LayerBackdrop
+import top.yukonga.miuix.kmp.blur.layerBackdrop
+import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
+import com.github.zly2006.zhihu.ui.subscreens.BlockedFeedHistoryScreen
+import com.github.zly2006.zhihu.ui.subscreens.ColorSchemeScreen
+import com.github.zly2006.zhihu.ui.subscreens.ContentFilterSettingsScreen
+import com.github.zly2006.zhihu.ui.subscreens.DeveloperSettingsScreen
+import com.github.zly2006.zhihu.ui.subscreens.OpenSourceLicensesScreen
+import com.github.zly2006.zhihu.ui.subscreens.SystemAndUpdateSettingsScreen
+import kotlinx.coroutines.launch
+import kotlin.reflect.KClass
+import kotlin.reflect.typeOf
+
+const val SURVEY_URL = "https://v.wjx.cn/vm/Ppfw2R4.aspx#"
+
+private sealed class MainTabPage(
+    val bottomDestination: TopLevelDestination,
+    val key: String,
+) {
+    data object HomePage : MainTabPage(Home, "home")
+
+    data object FollowRecommendPage : MainTabPage(Follow, "follow_recommend")
+
+    data object FollowDynamicPage : MainTabPage(Follow, "follow_dynamic")
+
+    data object HotListPage : MainTabPage(HotList, "hotlist")
+
+    data object DailyPage : MainTabPage(Daily, "daily")
+
+    data object OnlineHistoryPage : MainTabPage(OnlineHistory, "online_history")
+
+    data object AccountPage : MainTabPage(Account, "account")
+}
+
+data class ZhihuMainPlatformAdapter(
+    val article: @Composable (Article, NavBackStackEntry) -> Unit,
+    val sentenceSimilarityTest: @Composable () -> Unit = {
+        Text("Sentence similarity test is not available on this platform.")
+    },
+    val blocklistSettingsNlpContent: BlocklistSettingsNlpContent? = null,
+    val articleEnterTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition?)? = null,
+    val articleExitTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition?)? = null,
+)
+
+@OptIn(ExperimentalFoundationApi::class)
+@Suppress("RestrictedApi")
+@Composable
+fun ZhihuMain(
+    modifier: Modifier = Modifier,
+    navController: NavHostController,
+    navigationState: ZhihuMainNavigationState,
+    preferenceState: ZhihuMainPreferenceState,
+    isDarkTheme: Boolean,
+    platformAdapter: ZhihuMainPlatformAdapter,
+) {
+    val bottomPadding = ScaffoldDefaults.contentWindowInsets.asPaddingValues().calculateBottomPadding()
+    val duo3HomeAccount = preferenceState.duo3HomeAccount
+    val duo3NavStyle = preferenceState.duo3NavStyle
+    val tapToScrollToTopEnabled = preferenceState.tapToScrollToTopEnabled
+    val autoHideBottomBar = preferenceState.autoHideBottomBar
+    val autoHideTopBar = preferenceState.autoHideTopBar
+    val selectedBottomBarItemKeys = preferenceState.selectedBottomBarItemKeys
+    val startDestination = preferenceState.startDestination
+    val reloadBottomBarPreferences = preferenceState::reload
+
+    val navEntry by navController.currentBackStackEntryAsState()
+
+    var scrollToTopTrigger by remember { mutableIntStateOf(0) }
+    // 滚动时自动隐藏底部导航栏（顶栏自动隐藏复用同一信号，见 LocalAutoHideTopBarVisible）
+    var isBottomBarVisible by remember { mutableStateOf(true) }
+    val bottomBarScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                // 只响应用户拖动：fling 惯性与 miuix overScroll 回弹会产生正负交替的 available.y，
+                // 松手后会把顶栏/底栏又弹回来跳变，必须忽略这些 SideEffect 来源。
+                // 且只在状态真正变化时赋值，避免每帧 set 触发顶层重组。
+                if (source == NestedScrollSource.UserInput) {
+                    when {
+                        available.y < -3f -> if (isBottomBarVisible) isBottomBarVisible = false
+                        available.y > 3f -> if (!isBottomBarVisible) isBottomBarVisible = true
+                    }
+                }
+                return Offset.Zero
+            }
+        }
+    }
+
+    val useMiuix = ThemeManager.getThemeStyle() == ThemeStyle.Miuix
+    val blurEnabled = preferences.getBoolean("blurEnabled", true)
+    val bottomBarBackdrop = rememberMiuixBlurBackdrop(useMiuix && blurEnabled)
+
+    val allBottomBarItems = listOf(
+        Triple(Home, "主页", Icons.Filled.Home),
+        Triple(Follow, "关注", if (duo3NavStyle) Icons.Filled.Group else Icons.Filled.PersonAddAlt1),
+        Triple(HotList, "热榜", Icons.Filled.Whatshot),
+        Triple(Daily, "日报", Icons.Filled.Newspaper),
+        Triple(OnlineHistory, "历史", Icons.Filled.History),
+        Triple(Account, "账号", Icons.Filled.ManageAccounts),
+    )
+    val bottomBarItems = allBottomBarItems.filter { it.first.name in selectedBottomBarItemKeys }
+
+    val mainTabPages = remember(bottomBarItems) {
+        bottomBarItems.flatMap { item ->
+            when (item.first) {
+                Home -> listOf(MainTabPage.HomePage)
+                Follow -> listOf(MainTabPage.FollowRecommendPage, MainTabPage.FollowDynamicPage)
+                HotList -> listOf(MainTabPage.HotListPage)
+                Daily -> listOf(MainTabPage.DailyPage)
+                OnlineHistory -> listOf(MainTabPage.OnlineHistoryPage)
+                Account -> listOf(MainTabPage.AccountPage)
+                else -> emptyList()
+            }
+        }
+    }
+
+    fun pageIndexForDestination(destination: TopLevelDestination): Int = mainTabPages
+        .indexOfFirst {
+            it.bottomDestination::class == destination::class
+        }.takeIf { it >= 0 } ?: mainTabPages
+        .indexOfFirst {
+            it.bottomDestination::class == startDestination::class
+        }.takeIf { it >= 0 } ?: 0
+
+    var lastFollowPageKey by rememberSaveable { mutableStateOf(MainTabPage.FollowRecommendPage.key) }
+    val mainPagerState = rememberPagerState(
+        initialPage = pageIndexForDestination(startDestination),
+        pageCount = { mainTabPages.size },
+    )
+    val coroutineScope = rememberCoroutineScope()
+
+    fun currentMainTabPage(): MainTabPage? = mainTabPages.getOrNull(mainPagerState.currentPage)
+    var currentMainTabDestination by remember { mutableStateOf(startDestination) }
+
+    fun pageIndexForBottomDestination(destination: TopLevelDestination): Int {
+        if (destination == Follow) {
+            val rememberedFollowPage = mainTabPages.indexOfFirst { it.key == lastFollowPageKey }
+            if (rememberedFollowPage >= 0) return rememberedFollowPage
+        }
+        return pageIndexForDestination(destination)
+    }
+
+    fun navigateTopLevel(destination: TopLevelDestination) {
+        val targetPage = pageIndexForBottomDestination(destination)
+        coroutineScope.launch {
+            mainPagerState.animateScrollToPage(targetPage)
+        }
+    }
+
+    LaunchedEffect(mainPagerState.currentPage, mainTabPages) {
+        when (val page = currentMainTabPage()) {
+            MainTabPage.FollowRecommendPage, MainTabPage.FollowDynamicPage -> lastFollowPageKey = page.key
+            else -> {}
+        }
+        currentMainTabPage()?.bottomDestination?.let { destination ->
+            currentMainTabDestination = destination
+            navigationState.setCurrentMainTabOpenFrom(destination.openFrom)
+        }
+    }
+
+    val mainTabNavigationTarget = navigationState.mainTabNavigationTarget
+    LaunchedEffect(mainTabNavigationTarget, mainTabPages) {
+        mainTabNavigationTarget?.let { destination ->
+            // Platform adapters map legacy top-level route requests onto MainTabs. Consume that request
+            // here so callers such as deeplinks can still select Home/Follow/etc. without pushing
+            // those old routes onto the back stack.
+            mainPagerState.scrollToPage(pageIndexForBottomDestination(destination))
+            navigationState.consumeMainTabNavigationTarget(destination)
+        }
+    }
+
+    LaunchedEffect(mainTabPages) {
+        if (mainTabPages.isNotEmpty()) {
+            val currentDestinationStillVisible = mainTabPages.any {
+                it.bottomDestination::class == currentMainTabDestination::class
+            }
+            val targetDestination = if (currentDestinationStillVisible) {
+                currentMainTabDestination
+            } else {
+                startDestination
+            }
+            val targetPage = pageIndexForDestination(targetDestination)
+            if (mainPagerState.currentPage != targetPage || mainPagerState.currentPage !in mainTabPages.indices) {
+                mainPagerState.scrollToPage(targetPage)
+            }
+        }
+    }
+
+    Scaffold(
+        modifier = modifier
+            .nestedScroll(bottomBarScrollConnection),
+        bottomBar = {
+            if (navEntry != null) {
+                // 页面切换时重置底部导航栏可见状态（顶栏复用此信号，一并恢复）
+                LaunchedEffect(navEntry) { isBottomBarVisible = true }
+                val currentBottomDestination = mainTabPages
+                    .getOrNull(mainPagerState.targetPage)
+                    ?.bottomDestination
+                AnimatedVisibility(
+                    visible = (!autoHideBottomBar || isBottomBarVisible) && isTopLevelDest(navEntry),
+                    enter = slideInVertically(tween(200)) { it },
+                    exit = slideOutVertically(tween(200)) { it },
+                ) {
+                    if (useMiuix) {
+                        MiuixNavigationBar(
+                            modifier = Modifier
+                                .height(64.dp + bottomPadding)
+                                .installerMiuixBlurEffect(bottomBarBackdrop),
+                            color = bottomBarBackdrop.getMiuixAppBarColor(),
+                        ) {
+                            bottomBarItems.forEach { item ->
+                                val selected = currentBottomDestination?.let { it::class == item.first::class } == true
+                                MiuixNavigationBarItem(
+                                    selected = selected,
+                                    onClick = {
+                                        if (!selected) navigateTopLevel(item.first)
+                                        else if (tapToScrollToTopEnabled) scrollToTopTrigger++
+                                    },
+                                    icon = item.third,
+                                    label = item.second,
+                                )
+                            }
+                        }
+                    } else {
+                        NavigationBar(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            modifier = Modifier.height(
+                                (if (duo3NavStyle) 64.dp else 56.dp) + bottomPadding,
+                            ),
+                        ) {
+                            @Composable
+                            fun Item(
+                                destination: TopLevelDestination,
+                                label: String,
+                                icon: ImageVector,
+                            ) {
+                                val tag = "nav_tab_${destination.name.lowercase()}"
+                                NavigationBarItem(
+                                    currentBottomDestination?.let { it::class == destination::class } == true,
+                                    onClick = {
+                                        if (currentBottomDestination?.let { it::class == destination::class } != true) {
+                                            navigateTopLevel(destination)
+                                        } else if (tapToScrollToTopEnabled) {
+                                            scrollToTopTrigger++
+                                        }
+                                    },
+                                    label = {
+                                        if (duo3NavStyle) {
+                                            Text(label)
+                                        } else {
+                                            Text(
+                                                label,
+                                                style = TextStyle(
+                                                    fontSize = 9.sp,
+                                                    color = LocalContentColor.current.copy(alpha = 0.6f),
+                                                ),
+                                            )
+                                        }
+                                    },
+                                    alwaysShowLabel = duo3NavStyle,
+                                    colors = if (duo3NavStyle) {
+                                        if (!ThemeManager.isDarkTheme()) {
+                                            NavigationBarItemDefaults.colors().copy(
+                                                selectedIndicatorColor =
+                                                    MaterialTheme.colorScheme.secondaryContainer
+                                                        .copy(alpha = 0.92f)
+                                                        .compositeOver(MaterialTheme.colorScheme.secondary),
+                                            )
+                                        } else {
+                                            NavigationBarItemDefaults.colors()
+                                        }
+                                    } else {
+                                        NavigationBarItemDefaults.colors(
+                                            selectedIconColor = Color(0xff66ccff),
+                                            indicatorColor = Color.Transparent,
+                                        )
+                                    },
+                                    icon = {
+                                        Icon(icon, contentDescription = label)
+                                    },
+                                    modifier = (if (duo3NavStyle) Modifier.padding(top = 4.dp) else Modifier).testTag(tag),
+                                )
+                            }
+
+                            bottomBarItems.forEach { item ->
+                                Item(item.first, item.second, item.third)
+                            }
+                        }
+                    }
+                }
+            }
+        },
+    ) { innerPadding ->
+        CompositionLocalProvider(
+            LocalNavigator provides Navigator(
+                onNavigate = { destination ->
+                    navigationState.navigate(destination)
+                },
+                onNavigateBack = navController::popBackStack,
+            ),
+        ) {
+            NavHost(
+                navController,
+                modifier = Modifier,
+                startDestination = MainTabs,
+                enterTransition = {
+                    slideInHorizontally(tween(300)) { it }
+                },
+                exitTransition = {
+                    ExitTransition.None
+                },
+                popEnterTransition = {
+                    EnterTransition.None
+                },
+                popExitTransition = {
+                    slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
+                },
+            ) {
+                composable<MainTabs> {
+                    CompositionLocalProvider(
+                        LocalAutoHideTopBarVisible provides (!autoHideTopBar || isBottomBarVisible),
+                    ) {
+                    MainTabsPager(
+                        pagerState = mainPagerState,
+                        pages = mainTabPages,
+                        scrollToTopTrigger = scrollToTopTrigger,
+                        innerPadding = innerPadding,
+                        bottomBarBackdrop = bottomBarBackdrop,
+                        onFollowTabSelected = { followTabIndex ->
+                            val page = if (followTabIndex == 0) {
+                                MainTabPage.FollowRecommendPage
+                            } else {
+                                MainTabPage.FollowDynamicPage
+                            }
+                            val index = mainTabPages.indexOfFirst { it.key == page.key }
+                            if (index >= 0) {
+                                coroutineScope.launch {
+                                    mainPagerState.animateScrollToPage(index)
+                                }
+                            }
+                        },
+                    )
+                    }
+                }
+                composable<Question> { navEntry ->
+                    val question: Question = navEntry.toRoute()
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixQuestionScreen(question)
+                    } else {
+                        QuestionScreen(question)
+                    }
+                }
+                composable<Article>(
+                    typeMap = mapOf(typeOf<ArticleType>() to ArticleTypeNavType),
+                    enterTransition = platformAdapter.articleEnterTransition,
+                    exitTransition = platformAdapter.articleExitTransition,
+                ) { navEntry ->
+                    val article: Article = navEntry.toRoute()
+                    platformAdapter.article(article, navEntry)
+                }
+                composable<HotList> {
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixHotListScreen(innerPadding)
+                    } else {
+                        HotListScreen(innerPadding)
+                    }
+                }
+                composable<Follow> {
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixFollowScreen(
+                            scrollToTopTrigger = scrollToTopTrigger,
+                            innerPadding = innerPadding,
+                        )
+                    } else {
+                        FollowScreen(
+                            scrollToTopTrigger = scrollToTopTrigger,
+                            innerPadding = innerPadding,
+                        )
+                    }
+                }
+                composable<Daily> {
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixDailyScreen()
+                    } else {
+                        DailyScreen()
+                    }
+                }
+                composable<History> {
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixLocalHistoryScreen(innerPadding)
+                    } else {
+                        LegacyLocalHistoryScreen(innerPadding)
+                    }
+                }
+                composable<OnlineHistory> {
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixOnlineHistoryScreen()
+                    } else {
+                        OnlineHistoryScreen()
+                    }
+                }
+                composable<Account> {
+                    val style = ThemeManager.getThemeStyle()
+                    if (style == ThemeStyle.Miuix) {
+                        MiuixAccountSettingScreen(innerPadding)
+                    } else {
+                        AccountSettingScreen(innerPadding)
+                    }
+                }
+                composable<Search> { navEntry ->
+                    val search: Search = navEntry.toRoute()
+                    SearchScreen(search)
+                }
+                composable<Collections> {
+                    val data: Collections = it.toRoute()
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixCollectionScreen(data.userToken)
+                    } else {
+                        CollectionScreen(data.userToken)
+                    }
+                }
+                composable<CollectionContent> {
+                    val content: CollectionContent = it.toRoute()
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixCollectionContentScreen(content.collectionId)
+                    } else {
+                        CollectionContentScreen(content.collectionId)
+                    }
+                }
+                composable<Person> {
+                    val person: Person = it.toRoute()
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixPeopleScreen(person)
+                    } else {
+                        PeopleScreen(person)
+                    }
+                }
+                composable<Pin> {
+                    val pin = it.toRoute<Pin>()
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixPinScreen(pin)
+                    } else {
+                        PinScreen(pin)
+                    }
+                }
+                composable<Account.RecommendSettings.Blocklist> {
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixBlocklistSettingsScreen()
+                    } else {
+                        BlocklistSettingsScreen(platformAdapter.blocklistSettingsNlpContent)
+                    }
+                }
+                composable<Account.RecommendSettings.BlockedFeedHistory> {
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixBlockedFeedHistoryScreen()
+                    } else {
+                        BlockedFeedHistoryScreen()
+                    }
+                }
+                composable<Notification> {
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixNotificationScreen()
+                    } else {
+                        NotificationScreen()
+                    }
+                }
+                composable<Notification.NotificationSettings> {
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixNotificationSettingsScreen()
+                    } else {
+                        NotificationSettingsScreen()
+                    }
+                }
+                composable<SentenceSimilarityTest> {
+                    platformAdapter.sentenceSimilarityTest()
+                }
+                composable<Account.AppearanceSettings> {
+                    val args = it.toRoute<Account.AppearanceSettings>()
+                    val useMiuix = ThemeManager.getThemeStyle() == ThemeStyle.Miuix
+                    if (useMiuix) {
+                        MiuixAppearanceSettingsScreen(
+                            setting = args.setting,
+                            onExit = reloadBottomBarPreferences,
+                        )
+                    } else {
+                        AppearanceSettingsScreen(
+                            setting = args.setting,
+                            onExit = reloadBottomBarPreferences,
+                        )
+                    }
+                }
+                composable<Account.RecommendSettings> {
+                    val args = it.toRoute<Account.RecommendSettings>()
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixContentFilterSettingsScreen(args.setting)
+                    } else {
+                        ContentFilterSettingsScreen(args.setting)
+                    }
+                }
+                composable<Account.SystemAndUpdateSettings> {
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixSystemAndUpdateSettingsScreen()
+                    } else {
+                        SystemAndUpdateSettingsScreen()
+                    }
+                }
+                composable<Account.About> {
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixAboutScreen(innerPadding)
+                    } else {
+                        AboutScreen(innerPadding)
+                    }
+                }
+                composable<Account.OpenSourceLicenses> {
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixOpenSourceLicensesScreen()
+                    } else {
+                        OpenSourceLicensesScreen()
+                    }
+                }
+                composable<Account.DeveloperSettings> {
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixDeveloperSettingsScreen()
+                    } else {
+                        DeveloperSettingsScreen()
+                    }
+                }
+                composable<Account.DeveloperSettings.ColorScheme> {
+                    ColorSchemeScreen()
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun MainTabsPager(
+    pagerState: PagerState,
+    pages: List<MainTabPage>,
+    scrollToTopTrigger: Int,
+    innerPadding: PaddingValues,
+    bottomBarBackdrop: LayerBackdrop? = null,
+    onFollowTabSelected: (Int) -> Unit,
+) {
+    HorizontalPager(
+        state = pagerState,
+        modifier = Modifier.fillMaxSize()
+            .then(if (bottomBarBackdrop != null) Modifier.layerBackdrop(bottomBarBackdrop) else Modifier),
+    ) { pageIndex ->
+        val page = pages.getOrNull(pageIndex) ?: return@HorizontalPager
+        when (page) {
+            MainTabPage.HomePage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                MiuixHomeScreen(
+                    scrollToTopTrigger = scrollToTopTrigger,
+                    innerPadding = innerPadding,
+                )
+            } else {
+                HomeScreen(
+                    scrollToTopTrigger = scrollToTopTrigger,
+                    innerPadding = innerPadding,
+                )
+            }
+            MainTabPage.FollowRecommendPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                MiuixFollowTopLevelPage(
+                    selectedTabIndex = 0, onTabSelected = onFollowTabSelected,
+                    scrollToTopTrigger = scrollToTopTrigger, innerPadding = innerPadding,
+                    isActive = pagerState.currentPage == pageIndex,
+                )
+            } else {
+                FollowTopLevelPage(
+                    selectedTabIndex = 0, onTabSelected = onFollowTabSelected,
+                    scrollToTopTrigger = scrollToTopTrigger, innerPadding = innerPadding,
+                    isActive = pagerState.currentPage == pageIndex,
+                )
+            }
+            MainTabPage.FollowDynamicPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                MiuixFollowTopLevelPage(
+                    selectedTabIndex = 1, onTabSelected = onFollowTabSelected,
+                    scrollToTopTrigger = scrollToTopTrigger, innerPadding = innerPadding,
+                    isActive = pagerState.currentPage == pageIndex,
+                )
+            } else {
+                FollowTopLevelPage(
+                    selectedTabIndex = 1, onTabSelected = onFollowTabSelected,
+                    scrollToTopTrigger = scrollToTopTrigger, innerPadding = innerPadding,
+                    isActive = pagerState.currentPage == pageIndex,
+                )
+            }
+            MainTabPage.HotListPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                MiuixHotListScreen(innerPadding)
+            } else {
+                HotListScreen(innerPadding)
+            }
+            MainTabPage.DailyPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                MiuixDailyScreen()
+            } else {
+                DailyScreen()
+            }
+            MainTabPage.OnlineHistoryPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                MiuixOnlineHistoryScreen()
+            } else {
+                OnlineHistoryScreen()
+            }
+            MainTabPage.AccountPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                MiuixAccountSettingScreen(innerPadding)
+            } else {
+                AccountSettingScreen(innerPadding)
+            }
+        }
+    }
+}
+
+private fun isTopLevelDest(navEntry: NavBackStackEntry?): Boolean = navEntry.hasRoute(MainTabs::class)
+
+private val TopLevelDestination.openFrom: String?
+    get() = when (this) {
+        Home -> ContentOpenFrom.HOME_FEED
+        OnlineHistory -> ContentOpenFrom.HISTORY
+        else -> null
+    }
+
+internal fun NavBackStackEntry?.hasRoute(cls: KClass<out NavDestination>): Boolean {
+    val dest = this?.destination ?: return false
+    return dest.hierarchy.any { it.hasRoute(cls) }
+}

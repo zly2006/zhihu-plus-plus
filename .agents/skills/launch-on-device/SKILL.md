@@ -74,6 +74,54 @@ adb shell am start -n com.github.zly2006.zhplus.lite/com.github.zly2006.zhihu.Ma
 
 Expected output: `Starting: Intent { cmp=com.github.zly2006.zhplus.lite/com.github.zly2006.zhihu.MainActivity }`
 
+## Login JSON Backup and Restore
+
+When Android or JVM verification is blocked by repeated login, first try restoring the saved account JSON instead of logging in again.
+
+### Backup After a Successful Android Login
+
+```bash
+mkdir -p ~/.zhihu-plus-plus/backups
+adb exec-out run-as com.github.zly2006.zhplus.lite cat files/account.json \
+  > ~/.zhihu-plus-plus/backups/android-lite-account-$(date +%Y%m%d-%H%M%S).json
+python3 - <<'PY'
+import json, pathlib
+p = max(pathlib.Path.home().joinpath(".zhihu-plus-plus/backups").glob("android-lite-account-*.json"))
+data = json.loads(p.read_text())
+print("valid_json=true")
+print("login=", data.get("login"))
+print("has_z_c0=", "z_c0" in data.get("cookies", {}))
+print("has_d_c0=", "d_c0" in data.get("cookies", {}))
+PY
+```
+
+Do not print cookie values. Only verify that the JSON parses and contains the required keys.
+
+### Restore Android Login State
+
+```bash
+BACKUP=~/.zhihu-plus-plus/backups/android-lite-account-YYYYMMDD-HHMMSS.json
+adb push "$BACKUP" /data/local/tmp/zhihu-account.json
+adb shell run-as com.github.zly2006.zhplus.lite sh -c 'cp /data/local/tmp/zhihu-account.json files/account.json && chmod 600 files/account.json'
+adb shell am force-stop com.github.zly2006.zhplus.lite
+adb shell monkey -p com.github.zly2006.zhplus.lite -c android.intent.category.LAUNCHER 1
+```
+
+### Reuse Android Login for JVM/Desktop
+
+The JVM desktop account store is `~/.zhihu-plus-plus/account.json`. If the desktop app keeps asking for QR login while Android is already logged in, back up the old desktop file and copy the latest Android backup over it:
+
+```bash
+cp ~/.zhihu-plus-plus/account.json ~/.zhihu-plus-plus/backups/desktop-account-before-android-sync-$(date +%Y%m%d-%H%M%S).json 2>/dev/null || true
+cp ~/.zhihu-plus-plus/backups/android-lite-account-YYYYMMDD-HHMMSS.json ~/.zhihu-plus-plus/account.json
+```
+
+If a fresh JVM QR login is still necessary, notify the user before waiting:
+
+```bash
+terminal-notifier -message "需要扫码登录 JVM 端" -sound default
+```
+
 ## App Variants
 
 The project has two build variants:

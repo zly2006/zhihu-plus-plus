@@ -1,0 +1,87 @@
+/*
+ * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation (version 3 only).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+@file:Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE")
+
+package com.github.zly2006.zhihu.ui
+
+import androidx.activity.compose.LocalActivity
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.navigation.Account
+import com.github.zly2006.zhihu.navigation.Daily
+import com.github.zly2006.zhihu.navigation.Follow
+import com.github.zly2006.zhihu.navigation.Home
+import com.github.zly2006.zhihu.navigation.HotList
+import com.github.zly2006.zhihu.navigation.OnlineHistory
+import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
+import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.subscreens.START_DESTINATION_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.subscreens.defaultBottomBarSelectionKeys
+import com.github.zly2006.zhihu.ui.subscreens.navDestinationFromName
+import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarSelection
+import com.github.zly2006.zhihu.ui.subscreens.resolveValidStartDestinationKey
+
+@Composable
+fun rememberAndroidZhihuMainPreferenceState(): ZhihuMainPreferenceState {
+    val context = LocalContext.current
+    val settings = remember(context) {
+        androidSettingsStore(context)
+    }
+    val allBottomBarItemKeys = remember { listOf(Home.name, Follow.name, HotList.name, Daily.name, OnlineHistory.name, Account.name) }
+    return rememberZhihuMainPreferenceState {
+        val duo3HomeAccount = settings.getBoolean("duo3_home_account", false)
+        val selectedKeys = normalizeBottomBarSelection(
+            settings.getStringSet(
+                BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
+                defaultBottomBarSelectionKeys(duo3HomeAccount),
+            ),
+            duo3HomeAccount,
+            enforceMinimumSelection = true,
+        )
+        ZhihuMainPreferenceSnapshot(
+            duo3HomeAccount = duo3HomeAccount,
+            duo3NavStyle = settings.getBoolean("duo3_nav_style", false),
+            tapToScrollToTopEnabled = settings.getBoolean("bottomBarTapScrollToTop", true),
+            autoHideBottomBar = settings.getBoolean("autoHideBottomBar", false),
+            autoHideTopBar = settings.getBoolean("autoHideTopBar", false),
+            selectedBottomBarItemKeys = selectedKeys,
+            startDestination = navDestinationFromName(
+                resolveValidStartDestinationKey(
+                    settings.getString(START_DESTINATION_PREFERENCE_KEY, Home.name),
+                    allBottomBarItemKeys.filter { it in selectedKeys },
+                ),
+            ),
+        )
+    }
+}
+
+@Composable
+fun rememberAndroidZhihuMainNavigationState(): ZhihuMainNavigationState {
+    val activity = LocalActivity.current as MainActivity
+    return ZhihuMainNavigationState(
+        mainTabNavigationTarget = activity.mainTabNavigationTarget,
+        navigate = activity::navigate,
+        setCurrentMainTabOpenFrom = activity::setCurrentMainTabOpenFrom,
+        consumeMainTabNavigationTarget = activity::consumeMainTabNavigationTarget,
+    )
+}
+
+@Composable
+fun rememberAndroidZhihuMainActivity(): MainActivity = LocalActivity.current as MainActivity

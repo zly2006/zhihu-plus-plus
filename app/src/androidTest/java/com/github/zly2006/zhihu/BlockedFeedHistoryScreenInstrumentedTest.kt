@@ -17,8 +17,10 @@
 
 package com.github.zly2006.zhihu
 
+import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -31,10 +33,11 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
+import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.subscreens.BlockedFeedHistoryScreen
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedFeedRecord
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedFeedRecordDao
-import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterDatabase
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -51,11 +54,20 @@ class BlockedFeedHistoryScreenInstrumentedTest {
     val composeRule: MainActivityComposeRule = createAndroidComposeRule<MainActivity>()
 
     private val blockedFeedRecordDao: BlockedFeedRecordDao
-        get() = ContentFilterDatabase.getDatabase(composeRule.activity).blockedFeedRecordDao()
+        get() = getContentFilterDatabase(composeRule.activity).blockedFeedRecordDao()
 
     @Before
     fun setUp() = runBlocking {
         composeRule.resetAppPreferences()
+        // Disable content filter to prevent background feed-loading pipelines from inserting
+        // blocked_feed_records between setUp and the test body. The Activity's onCreate renders
+        // AndroidZhihuMain which starts HomeScreen feed loading; the FeedDisplayFilterPipeline
+        // then calls saveBlockedFeedRecords. Disabling the filter prevents those insertions.
+        composeRule.activity
+            .getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("enableContentFilter", false)
+            .commit()
         blockedFeedRecordDao.clearAll()
     }
 
@@ -91,6 +103,12 @@ class BlockedFeedHistoryScreenInstrumentedTest {
         val seededHistory = seedHistory()
         val navigator = composeRule.setScreenContent {
             BlockedFeedHistoryScreen()
+        }
+
+        // Room Flow emits asynchronously after collectAsState(initial = emptyList()).
+        // Wait until the seeded data actually appears in the UI before interacting.
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodes(hasText("（无标题）")).fetchSemanticsNodes().isNotEmpty()
         }
 
         // The newest record intentionally has a blank title and no navigation target. The screen

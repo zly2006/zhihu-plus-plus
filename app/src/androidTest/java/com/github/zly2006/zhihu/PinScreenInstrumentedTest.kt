@@ -22,14 +22,15 @@ import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
@@ -73,7 +74,7 @@ class PinScreenInstrumentedTest {
          * 2. An error-only injected state should render the visible error message contract exactly
          *    where PinScreen normally reports load failures.
          * 3. Switching between those injected states inside tests must remain completely offline and
-         *    deterministic because the screen never instantiates the production PinViewModel path.
+         *    deterministic because the screen never enters the production runtime loading path.
          */
         composeRule.setScreenContent {
             PinScreen(
@@ -151,6 +152,8 @@ class PinScreenInstrumentedTest {
         }
 
         composeRule.onNodeWithTag(PIN_SCREEN_SCROLL_TAG).assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("离线优秀答主").assertIsDisplayed()
+        composeRule.onNodeWithText("离线点赞者 等 9 人赞同了该想法").assertIsDisplayed()
         composeRule.onNodeWithTag(PIN_SCREEN_SCROLL_TAG).performVerticalSwipeCycle()
         composeRule.onNodeWithTag(PIN_SCREEN_SCROLL_TAG).performHorizontalSwipeCycle()
         composeRule.onNodeWithTag(PIN_SCREEN_AUTHOR_TAG).assertIsDisplayed().performClick()
@@ -196,6 +199,20 @@ class PinScreenInstrumentedTest {
             url = "https://www.zhihu.com/people/pin-author-token",
             urlToken = "pin-author-token",
             userType = "people",
+            badgeV2 = DataHolder.BadgeV2(
+                title = "离线优秀答主",
+                icon = DataHolder.ZH_PLUS_AUTHOR_BADGE_ICON,
+                detailBadges = listOf(
+                    DataHolder.BadgeV2.Badge(
+                        type = "best",
+                        detailType = "best_answerer",
+                        title = "优秀答主",
+                        description = "离线优秀答主",
+                        icon = DataHolder.ZH_PLUS_AUTHOR_BADGE_ICON,
+                        badgeStatus = "passed",
+                    ),
+                ),
+            ),
         ),
         content = listOf(
             DataHolder.Pin.ContentText(
@@ -212,6 +229,21 @@ class PinScreenInstrumentedTest {
         likeCount = 9,
         commentCount = 3,
         created = 1_713_456_789L,
+        likers = listOf(
+            DataHolder.Author(
+                avatarUrl = "",
+                gender = 0,
+                headline = "",
+                id = "pin-liker-id",
+                isAdvertiser = false,
+                isOrg = false,
+                name = "离线点赞者",
+                type = "people",
+                url = "https://www.zhihu.com/people/pin-liker-token",
+                urlToken = "pin-liker-token",
+                userType = "people",
+            ),
+        ),
         topics = listOf(
             DataHolder.Topic(
                 id = "topic-1",
