@@ -28,7 +28,7 @@ import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
-import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import io.ktor.client.call.body
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -119,7 +119,7 @@ class RootCommentViewModel(
     override fun submitComment(
         content: NavDestination,
         commentText: String,
-        environment: PaginationEnvironment,
+        environment: ZhihuApiEnvironment,
         replyToCommentId: String?,
         onSuccess: () -> Unit,
     ) {

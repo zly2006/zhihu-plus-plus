@@ -23,7 +23,7 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
-import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.comment.RootCommentViewModel.Companion.submitCommentUrl
 import io.ktor.client.call.body
 import io.ktor.client.request.post
@@ -58,7 +58,7 @@ class ChildCommentViewModel(
     override fun submitComment(
         content: NavDestination,
         commentText: String,
-        environment: PaginationEnvironment,
+        environment: ZhihuApiEnvironment,
         replyToCommentId: String?,
         onSuccess: () -> Unit,
     ) {

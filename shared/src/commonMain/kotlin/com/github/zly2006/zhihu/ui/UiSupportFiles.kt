@@ -57,6 +57,7 @@ import com.github.zly2006.zhihu.ui.QuestionScreenUiState
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.ShareDialogRuntime
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
+import com.github.zly2006.zhihu.viewmodel.HistoryEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import io.ktor.client.HttpClient
@@ -760,7 +761,7 @@ fun interface ArticleReadHistoryRecorder {
 
 @Composable
 fun rememberArticleReadHistoryRecorder(): ArticleReadHistoryRecorder {
-    val environment = rememberPaginationEnvironment(false)
+    val environment: HistoryEnvironment = rememberPaginationEnvironment(false)
     return remember(environment) {
         ArticleReadHistoryRecorder { article ->
             environment.addReadHistory(

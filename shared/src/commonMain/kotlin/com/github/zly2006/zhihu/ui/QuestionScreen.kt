@@ -86,7 +86,7 @@ import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
-import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.ContentLoadEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import io.ktor.client.call.body
@@ -129,7 +129,7 @@ const val QUESTION_STATS_TAG = "question_stats"
 fun questionFeedItemTag(stableKey: String) = "question_feed_item_$stableKey"
 
 private suspend fun loadQuestion(
-    environment: PaginationEnvironment,
+    environment: ContentLoadEnvironment,
     question: Question,
 ): LoadedQuestionScreenData? {
     environment.addReadHistory(question.questionId.toString(), "question")

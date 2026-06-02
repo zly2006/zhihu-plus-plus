@@ -24,6 +24,7 @@ import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
+import com.github.zly2006.zhihu.viewmodel.ContentInteractionEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
@@ -47,11 +48,9 @@ class AndroidHomeFeedViewModel :
     override val initialUrl: String
         get() = "https://api.zhihu.com/topstory/recommend"
 
-    override fun httpClient(environment: PaginationEnvironment) = environment.mobileHomeFeedHttpClient()
-
     public override suspend fun fetchFeeds(environment: PaginationEnvironment) {
         try {
-            val response = httpClient(environment).get(lastPaging?.next ?: initialUrl)
+            val response = environment.mobileHomeFeedHttpClient().get(lastPaging?.next ?: initialUrl)
             if (response.status.isSuccess()) {
                 val jojo = response.body<JsonObject>()
                 val data = jojo["data"]?.jsonArray ?: throw IllegalStateException("No data found in response")
@@ -112,11 +111,11 @@ class AndroidHomeFeedViewModel :
         }
     }
 
-    override suspend fun recordContentInteraction(environment: PaginationEnvironment, feed: Feed) {
+    override suspend fun recordContentInteraction(environment: ContentInteractionEnvironment, feed: Feed) {
         // Android 版本暂不记录交互
     }
 
-    override fun onUiContentClick(environment: PaginationEnvironment, feed: Feed, item: FeedDisplayItem) {
+    override fun onUiContentClick(environment: ContentInteractionEnvironment, feed: Feed, item: FeedDisplayItem) {
         viewModelScope.launch(Dispatchers.Default) {
             environment.sendFeedReadStatus(feed)
         }

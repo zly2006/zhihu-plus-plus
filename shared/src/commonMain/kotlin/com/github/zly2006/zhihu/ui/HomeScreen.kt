@@ -72,14 +72,10 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.shared.data.Feed
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
-import com.github.zly2006.zhihu.shared.data.ZHIHU_LAST_READ_TOUCH_URL
-import com.github.zly2006.zhihu.shared.data.encodeZhihuLastReadTouchItems
 import com.github.zly2006.zhihu.shared.data.fetchZhihuUnreadNotificationCount
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
-import com.github.zly2006.zhihu.shared.data.zhihuLastReadTouchItem
 import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
 import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
@@ -97,15 +93,9 @@ import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.components.rememberFeedBlockActions
-import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
-import io.ktor.client.request.forms.MultiPartFormDataContent
-import io.ktor.client.request.forms.formData
-import io.ktor.client.request.header
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
 import kotlinx.serialization.json.Json
 
 const val PREFERENCE_NAME = "com.github.zly2006.zhihu_preferences"
@@ -117,36 +107,6 @@ const val HOME_NOTIFICATION_BUTTON_TAG = "home_notification_button"
 const val HOME_ACCOUNT_BUTTON_TAG = "home_account_button"
 const val HOME_FEED_LIST_TAG = "home_feed_list"
 const val HOME_REFRESH_BUTTON_TAG = "home_refresh_button"
-
-interface IHomeFeedViewModel {
-    suspend fun recordContentInteraction(environment: PaginationEnvironment, feed: Feed)
-
-    fun onUiContentClick(environment: PaginationEnvironment, feed: Feed, item: FeedDisplayItem)
-
-    /**
-     * 发送"已读"状态到知乎服务器的通用实现
-     */
-    suspend fun sendReadStatusToServer(environment: PaginationEnvironment, feed: Feed) {
-        try {
-            val payloadItem = zhihuLastReadTouchItem(feed, "read") ?: return
-            environment.httpClient().post(ZHIHU_LAST_READ_TOUCH_URL) {
-                environment.configureSignedRequest(this)
-                header("x-requested-with", "fetch")
-                setBody(
-                    MultiPartFormDataContent(
-                        formData {
-                            append(
-                                "items",
-                                encodeZhihuLastReadTouchItems(listOf(payloadItem)),
-                            )
-                        },
-                    ),
-                )
-            }
-        } catch (_: Exception) {
-        }
-    }
-}
 
 /**
  * 首页信息流页面。
@@ -530,7 +490,7 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
                     val destination = navDestination
                     if (feed != null) {
 //                            DataHolder.putFeed(feed)
-                        (viewModel as HomeFeedInteractionViewModel).onUiContentClick(paginationEnvironment, feed, item)
+                        (viewModel as? HomeFeedInteractionViewModel)?.onUiContentClick(paginationEnvironment, feed, item)
                     } else if (item.localContentId != null) {
                         runtime.recordLocalItemOpened(item)
                     }

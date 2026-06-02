@@ -567,12 +567,12 @@ open class SharedAndroidPaginationEnvironment(
         }
 }
 
-class SharedAndroidNotificationPaginationEnvironment(
+class SharedAndroidNotificationEnvironment(
     context: Context,
     allowGuestAccess: Boolean,
     override val notificationSettingsStore: NotificationSettingsStore,
 ) : SharedAndroidPaginationEnvironment(context, allowGuestAccess),
-    NotificationPaginationEnvironment
+    NotificationEnvironment
 
 fun PaginationViewModel<*>.paginationEnvironment(context: Context): AndroidContextPaginationEnvironment =
     SharedAndroidPaginationEnvironment(context, allowGuestAccess)
@@ -583,11 +583,11 @@ actual fun rememberPaginationEnvironment(allowGuestAccess: Boolean): PaginationE
     return remember(context, allowGuestAccess) { SharedAndroidPaginationEnvironment(context, allowGuestAccess) }
 }
 
-fun PaginationViewModel<*>.notificationPaginationEnvironment(
+fun PaginationViewModel<*>.notificationEnvironment(
     context: Context,
     notificationSettingsStore: NotificationSettingsStore,
-): NotificationPaginationEnvironment =
-    SharedAndroidNotificationPaginationEnvironment(context, allowGuestAccess, notificationSettingsStore)
+): NotificationEnvironment =
+    SharedAndroidNotificationEnvironment(context, allowGuestAccess, notificationSettingsStore)
 
 fun PaginationEnvironment.androidContext(): Context =
     (this as? AndroidContextPaginationEnvironment)?.context
@@ -602,7 +602,7 @@ fun PaginationViewModel<*>.loadMore(context: Context) {
 }
 
 fun PaginationViewModel<*>.httpClient(context: Context): HttpClient =
-    httpClient(paginationEnvironment(context))
+    paginationEnvironment(context).httpClient()
 
 private fun HttpRequestBuilder.addIncludeAndSign(include: String) {
     url {

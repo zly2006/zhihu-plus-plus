@@ -27,7 +27,7 @@ import kotlinx.serialization.json.JsonObject
 
 suspend fun loadVotersPage(
     client: HttpClient,
-    environment: PaginationEnvironment,
+    environment: ZhihuApiEnvironment,
     initialUrl: String,
     nextUrl: String?,
     reset: Boolean,

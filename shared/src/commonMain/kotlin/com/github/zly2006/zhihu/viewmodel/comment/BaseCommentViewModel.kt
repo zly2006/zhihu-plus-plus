@@ -24,8 +24,10 @@ import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
+import com.github.zly2006.zhihu.viewmodel.ContentBlocklistEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
+import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.filter.fetchBlockedUserIds
 import io.ktor.client.request.delete
 import io.ktor.client.request.post
@@ -63,7 +65,7 @@ abstract class BaseCommentViewModel(
     }
 
     private fun filterBlockedComments(
-        environment: PaginationEnvironment,
+        environment: ContentBlocklistEnvironment,
         comments: List<DataHolder.Comment>,
     ): List<DataHolder.Comment> {
         val blockedUserIds = environment.fetchBlockedUserIds()
@@ -93,7 +95,7 @@ abstract class BaseCommentViewModel(
     abstract fun submitComment(
         content: NavDestination,
         commentText: String,
-        environment: PaginationEnvironment,
+        environment: ZhihuApiEnvironment,
         replyToCommentId: String? = null,
         onSuccess: () -> Unit,
     )
@@ -102,7 +104,7 @@ abstract class BaseCommentViewModel(
 
     fun toggleLikeComment(
         commentData: DataHolder.Comment,
-        environment: PaginationEnvironment,
+        environment: ZhihuApiEnvironment,
         onSuccess: () -> Unit,
     ) {
         if (isLikeLoading) return
