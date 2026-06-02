@@ -9,6 +9,8 @@ package com.github.zly2006.zhihu.ui.miuix
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -28,6 +30,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.Groups
@@ -42,8 +45,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import coil3.compose.AsyncImage
+import io.ktor.http.Url
 import com.github.zly2006.zhihu.LoginActivity
+import com.github.zly2006.zhihu.QRCodeScanActivity
+import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Collections
@@ -113,11 +120,34 @@ fun MiuixAccountSettingScreen(
                 .clip(RoundedCornerShape(16.dp)),
             ) {
                 if (data.login) {
-                    ArrowPreference(
-                        title = data.username,
-                        startAction = { AsyncImage(data.self?.avatarUrl, "头像", modifier = Modifier.size(56.dp).clip(CircleShape)) },
-                        onClick = { navigator.onNavigate(Person(id = data.self?.id ?: "", urlToken = data.self?.urlToken ?: "", name = data.username)) },
-                    )
+                    // 扫码登录：协助电脑端登录，扫到知乎登录二维码后打开 WebView 确认（与 M3 账号页一致）
+                    val scanLauncher = rememberLauncherForActivityResult(
+                        contract = ActivityResultContracts.StartActivityForResult(),
+                    ) scan@{ result ->
+                        if (result.resultCode == android.app.Activity.RESULT_OK) {
+                            val scanResult = result.data?.getStringExtra(QRCodeScanActivity.EXTRA_SCAN_RESULT) ?: return@scan
+                            if (Url(scanResult).rawSegments.dropLast(1).lastOrNull() != "login") {
+                                Toast.makeText(context, "二维码内容不正确", Toast.LENGTH_SHORT).show()
+                                return@scan
+                            }
+                            Toast.makeText(context, "扫描成功，正在处理登录请求...", Toast.LENGTH_SHORT).show()
+                            context.startActivity(Intent(context, WebviewActivity::class.java).also { it.data = scanResult.toUri() })
+                        }
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { navigator.onNavigate(Person(id = data.self?.id ?: "", urlToken = data.self?.urlToken ?: "", name = data.username)) }
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        AsyncImage(data.self?.avatarUrl, "头像", modifier = Modifier.size(56.dp).clip(CircleShape))
+                        Spacer(Modifier.width(12.dp))
+                        Text(data.username, style = MiuixTheme.textStyles.title3, modifier = Modifier.weight(1f))
+                        IconButton(onClick = { scanLauncher.launch(Intent(context, QRCodeScanActivity::class.java)) }) {
+                            Icon(Icons.Default.QrCodeScanner, contentDescription = "扫码登录", tint = MiuixTheme.colorScheme.onSurface)
+                        }
+                    }
                 } else {
                     ArrowPreference(
                         title = "登录知乎",
