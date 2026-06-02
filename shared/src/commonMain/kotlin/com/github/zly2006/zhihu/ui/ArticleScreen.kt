@@ -15,8 +15,6 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-@file:Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE")
-
 package com.github.zly2006.zhihu.ui
 
 import androidx.compose.animation.AnimatedVisibility
@@ -83,7 +81,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TwoRowsTopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -140,6 +137,8 @@ import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
+import com.github.zly2006.zhihu.ui.components.ZhihuTwoRowsTopAppBar
+import com.github.zly2006.zhihu.ui.components.rememberPreferCollapsedExitUntilCollapsedScrollBehavior
 import com.github.zly2006.zhihu.util.smoothGradient
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
@@ -971,7 +970,7 @@ fun ArticleScreen(
 
     @OptIn(ExperimentalMaterial3Api::class)
     val answerSwitchContent: @Composable () -> Unit = {
-        val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+        val scrollBehavior = rememberPreferCollapsedExitUntilCollapsedScrollBehavior()
         // 不受到是否收起影响，在topbar最大时是否可以滚动？
         var scrollStateMaxValue by remember { mutableIntStateOf(0) }
         LaunchedEffect(scrollState.maxValue) {
@@ -994,7 +993,7 @@ fun ArticleScreen(
                             }
                         },
                 ) {
-                    TwoRowsTopAppBar(
+                    ZhihuTwoRowsTopAppBar(
                         navigationIcon = {
                             IconButton(
                                 onClick = {
