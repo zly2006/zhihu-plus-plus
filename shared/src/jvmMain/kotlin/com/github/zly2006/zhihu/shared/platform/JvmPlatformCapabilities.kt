@@ -119,6 +119,32 @@ actual fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit =
     remember { { _, text -> runCatching { copyDesktopPlainText(text) } } }
 
 @Composable
+actual fun rememberDeveloperDiagnostics(): DeveloperDiagnostics = remember {
+    DeveloperDiagnostics(
+        appInfo = "desktop",
+        deviceInfo = "${System.getProperty("os.name")} ${System.getProperty("os.version")}",
+        networkStatus = "未知",
+        readClipboardText = {
+            runCatching {
+                java.awt.Toolkit.getDefaultToolkit().systemClipboard
+                    .getData(java.awt.datatransfer.DataFlavor.stringFlavor) as? String
+            }.getOrNull()
+        },
+        exportAllSettings = {
+            runCatching {
+                val file = desktopZhihuDataFile("settings.properties")
+                if (file.isFile) {
+                    Properties().apply { file.inputStream().use(::load) }
+                        .entries.joinToString("\n") { "${it.key}: ${it.value}" }
+                } else {
+                    "(空)"
+                }
+            }.getOrDefault("(空)")
+        },
+    )
+}
+
+@Composable
 actual fun rememberUserMessageSink(): UserMessageSink = remember { UserMessageSink(::showDesktopMessage) }
 
 private fun showDesktopMessage(message: String) {

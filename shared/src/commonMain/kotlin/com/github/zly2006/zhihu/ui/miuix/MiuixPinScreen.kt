@@ -6,7 +6,6 @@
 
 package com.github.zly2006.zhihu.ui.miuix
 
-import android.content.Context
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,31 +31,29 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.net.toUri
-import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.DataHolder
-import com.github.zly2006.zhihu.markdown.RenderMarkdown
+import com.github.zly2006.zhihu.data.decodePinContentDetail
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.resolveContent
+import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
-import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_AUTHOR_TAG
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_COMMENT_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_ERROR_TAG
@@ -64,22 +61,33 @@ import com.github.zly2006.zhihu.ui.PIN_SCREEN_LIKE_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_LINK_CARD_TAG
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_LOADING_TAG
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_SCROLL_TAG
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.ui.PinHtmlContent
+import com.github.zly2006.zhihu.ui.PinLikeResult
 import com.github.zly2006.zhihu.ui.PinLinkCardPreview
 import com.github.zly2006.zhihu.ui.PinScreenTestOverrides
+import com.github.zly2006.zhihu.ui.PinScreenUiState
+import com.github.zly2006.zhihu.ui.booleanCompat
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.ShareDialog
-import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.ui.components.handleShareAction
-import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
-import com.github.zly2006.zhihu.ui.fetchLinkCardPreview
+import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.ui.linkCardTypeLabel
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
-import com.github.zly2006.zhihu.util.fuckHonorService
-import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
-import com.github.zly2006.zhihu.viewmodel.PinViewModel
-import org.jsoup.Jsoup
+import com.github.zly2006.zhihu.ui.rememberPinScreenRuntime
+import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import io.ktor.client.call.body
+import io.ktor.client.request.delete
+import io.ktor.client.request.get
+import io.ktor.client.request.post
+import kotlinx.coroutines.launch
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
@@ -94,9 +102,45 @@ import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+
+private suspend fun loadPinDetail(
+    environment: PaginationEnvironment,
+    pin: Pin,
+): PinScreenUiState {
+    environment.addReadHistory(pin.id.toString(), "pin")
+    val jsonObject = environment
+        .httpClient()
+        .get("https://www.zhihu.com/api/v4/pins/${pin.id}") {
+            environment.configureSignedRequest(this)
+        }.body<JsonObject>()
+    val content = decodePinContentDetail(jsonObject)
+    environment.postHistoryDestination(pin)
+    environment.recordContentOpenEvent(destination = pin)
+    return PinScreenUiState(
+        isLoading = false,
+        pinContent = content,
+        isLiked = content.virtuals.booleanCompat("isLiked", "is_liked"),
+        likeCount = content.likeCount,
+    )
+}
+
+private suspend fun togglePinLike(
+    environment: PaginationEnvironment,
+    pin: Pin,
+    isLiked: Boolean,
+): PinLikeResult {
+    val endpoint = "https://www.zhihu.com/api/v4/pins/${pin.id}/voters/up"
+    val client = environment.httpClient()
+    val jojo = if (isLiked) {
+        client.delete(endpoint) { environment.configureSignedRequest(this) }.body<JsonObject>()
+    } else {
+        client.post(endpoint) { environment.configureSignedRequest(this) }.body<JsonObject>()
+    }
+    return PinLikeResult(
+        isLiked = !isLiked,
+        likeCount = jojo["liked_count"]?.jsonPrimitive?.intOrNull ?: -1,
+    )
+}
 
 @Composable
 fun MiuixPinScreen(
@@ -104,27 +148,28 @@ fun MiuixPinScreen(
     testOverrides: PinScreenTestOverrides? = null,
 ) {
     val navigator = LocalNavigator.current
-    val context = LocalContext.current
-    val httpClient = remember { AccountData.httpClient(context) }
-    val viewModel = if (testOverrides == null) viewModel<PinViewModel> { PinViewModel(pin, httpClient) } else null
-    val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE) }
-    val blurEnabled = remember { mutableStateOf(preferences.getBoolean("blurEnabled", true)) }
+    val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
+    val settings = rememberSettingsStore()
+    val shareRuntime = rememberShareDialogRuntime()
+    val coroutineScope = rememberCoroutineScope()
+    val blurEnabled = remember { mutableStateOf(settings.getBoolean("blurEnabled", true)) }
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
     val scrollBehavior = MiuixScrollBehavior()
 
-    LaunchedEffect(pin.id, testOverrides) {
-        if (testOverrides == null) {
-            viewModel?.loadPinDetail(context)
-            AccountData.addReadHistory(context, pin.id.toString(), "pin")
-        }
+    var screenState by remember(pin.id, testOverrides) {
+        mutableStateOf(testOverrides?.state ?: PinScreenUiState(isLoading = true))
     }
 
-    val state = testOverrides?.state
-    val isLoading = state?.isLoading ?: viewModel?.isLoading ?: false
-    val errorMessage = state?.errorMessage ?: viewModel?.errorMessage
-    val pinContent = state?.pinContent ?: viewModel?.pinContent
-    val isLiked = state?.isLiked ?: viewModel?.isLiked ?: false
-    val likeCount = state?.likeCount ?: viewModel?.likeCount ?: 0
+    LaunchedEffect(pin.id, testOverrides) {
+        if (testOverrides == null) {
+            screenState = PinScreenUiState(isLoading = true)
+            screenState = try {
+                loadPinDetail(paginationEnvironment, pin)
+            } catch (e: Exception) {
+                PinScreenUiState(isLoading = false, errorMessage = e.message ?: "未知错误")
+            }
+        }
+    }
 
     var showShareDialog by remember { mutableStateOf(false) }
     var showComments by remember { mutableStateOf(false) }
@@ -135,7 +180,7 @@ fun MiuixPinScreen(
                 modifier = Modifier.installerMiuixBlurEffect(backdrop),
                 color = backdrop.getMiuixAppBarColor(),
                 title = buildString {
-                    pinContent?.author?.let { append(it.name).append("的") }
+                    screenState.pinContent?.author?.let { append(it.name).append("的") }
                     append("想法")
                 },
                 navigationIcon = {
@@ -148,7 +193,7 @@ fun MiuixPinScreen(
                         val shareText = getShareText(pin)
                         if (shareText != null) {
                             testOverrides?.onShareAction?.invoke { showShareDialog = true }
-                                ?: handleShareAction(context, pin) { showShareDialog = true }
+                                ?: handleShareAction(pin, settings, shareRuntime) { showShareDialog = true }
                         }
                     }) {
                         Icon(Icons.Default.Share, "分享", tint = MiuixTheme.colorScheme.onBackground)
@@ -166,19 +211,24 @@ fun MiuixPinScreen(
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
         ) {
             when {
-                isLoading -> Box(Modifier.fillMaxSize().testTag(PIN_SCREEN_LOADING_TAG), Alignment.Center) {
+                screenState.isLoading -> Box(Modifier.fillMaxSize().testTag(PIN_SCREEN_LOADING_TAG), Alignment.Center) {
                     CircularProgressIndicator()
                 }
 
-                errorMessage != null -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                    Text("加载失败: $errorMessage", color = MiuixTheme.colorScheme.onBackground, modifier = Modifier.testTag(PIN_SCREEN_ERROR_TAG))
+                screenState.errorMessage != null -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                    Text("加载失败: ${screenState.errorMessage}", color = MiuixTheme.colorScheme.onBackground, modifier = Modifier.testTag(PIN_SCREEN_ERROR_TAG))
                 }
 
-                pinContent != null -> MiuixPinContent(
-                    pin = pinContent,
-                    isLiked = isLiked,
-                    likeCount = likeCount,
-                    onLikeClick = { testOverrides?.onLikeClick?.invoke() ?: viewModel?.toggleLike(context) },
+                screenState.pinContent != null -> MiuixPinContent(
+                    pin = screenState.pinContent ?: return@Box,
+                    isLiked = screenState.isLiked,
+                    likeCount = screenState.likeCount,
+                    onLikeClick = {
+                        testOverrides?.onLikeClick?.invoke() ?: coroutineScope.launch {
+                            val result = togglePinLike(paginationEnvironment, pin, screenState.isLiked)
+                            screenState = screenState.copy(isLiked = result.isLiked, likeCount = result.likeCount)
+                        }
+                    },
                     onCommentClick = { showComments = true },
                     linkCardPreviewOverride = testOverrides?.linkCardPreview,
                 )
@@ -186,7 +236,7 @@ fun MiuixPinScreen(
         }
     }
 
-    if (pinContent != null) {
+    if (screenState.pinContent != null) {
         // TODO: 评论区尚未 miuix 化，暂复用 M3 CommentScreenComponent（与问题页一致）
         testOverrides?.commentScreenContent?.invoke(showComments, { showComments = false }, pin)
             ?: CommentScreenComponent(showComments = showComments, onDismiss = { showComments = false }, content = pin)
@@ -199,7 +249,6 @@ fun MiuixPinScreen(
                     shareText = shareText,
                     showDialog = showShareDialog,
                     onDismissRequest = { showShareDialog = false },
-                    context = context,
                 )
         }
     }
@@ -215,9 +264,12 @@ private fun MiuixPinContent(
     linkCardPreviewOverride: PinLinkCardPreview? = null,
 ) {
     val navigator = LocalNavigator.current
-    val context = LocalContext.current
-    val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE) }
-    val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
+    val formattedDate = remember(pin.created) {
+        Instant.fromEpochSeconds(pin.created).toLocalDateTime(TimeZone.currentSystemDefault()).run {
+            "$year-${(month.ordinal + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')} " +
+                "${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}"
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -249,24 +301,11 @@ private fun MiuixPinContent(
                 }
 
                 Spacer(Modifier.height(12.dp))
-                Text(dateFormat.format(Date(pin.created * 1000)), style = MiuixTheme.textStyles.footnote1, color = MiuixTheme.colorScheme.onSurfaceSecondary)
+                Text(formattedDate, style = MiuixTheme.textStyles.footnote1, color = MiuixTheme.colorScheme.onSurfaceSecondary)
                 Spacer(Modifier.height(12.dp))
 
                 // 正文
-                if (preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)) {
-                    WebviewComp {
-                        it.isVerticalScrollBarEnabled = false
-                        it.setupUpWebviewClient()
-                        it.loadZhihu("https://www.zhihu.com", Jsoup.parse(pin.contentHtml))
-                    }
-                } else {
-                    RenderMarkdown(
-                        html = pin.contentHtml,
-                        modifier = Modifier.fuckHonorService(),
-                        selectable = true,
-                        enableScroll = false,
-                    )
-                }
+                PinHtmlContent(pin.contentHtml)
             }
         }
 
@@ -331,7 +370,8 @@ private fun MiuixPinLinkCard(
     linkCardPreviewOverride: PinLinkCardPreview?,
 ) {
     val navigator = LocalNavigator.current
-    val context = LocalContext.current
+    val runtime = rememberPinScreenRuntime()
+    val openExternalUrl = rememberExternalUrlOpener()
     var relatedTitle by remember(linkCard, linkCardPreviewOverride) { mutableStateOf(linkCardPreviewOverride?.title) }
     var relatedPreview by remember(linkCard, linkCardPreviewOverride) { mutableStateOf(linkCardPreviewOverride?.preview) }
     var isRelatedLoading by remember(linkCard, linkCardPreviewOverride) { mutableStateOf(linkCardPreviewOverride == null) }
@@ -342,7 +382,7 @@ private fun MiuixPinLinkCard(
             return@LaunchedEffect
         }
         isRelatedLoading = true
-        val preview = fetchLinkCardPreview(context, linkCard)
+        val preview = runtime.fetchLinkCardPreview(linkCard)
         relatedTitle = preview?.title
         relatedPreview = preview?.preview
         isRelatedLoading = false
@@ -358,7 +398,7 @@ private fun MiuixPinLinkCard(
                 if (destination != null) {
                     navigator.onNavigate(destination)
                 } else {
-                    targetUrl?.let { luoTianYiUrlLauncher(context, it.toUri()) }
+                    targetUrl?.let { openExternalUrl(it) }
                 }
             },
         colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.secondaryContainer),

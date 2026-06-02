@@ -7,9 +7,6 @@
 
 package com.github.zly2006.zhihu.ui.miuix
 
-import android.content.Context
-import androidx.activity.compose.BackHandler
-import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -42,28 +39,30 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastJoinToString
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionAnswerNavigator
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.shared.data.navDestination
+import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.CollectionContentScreenTestOverrides
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
+import com.github.zly2006.zhihu.ui.formatCollectionUpdatedTime
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
-import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
+import com.github.zly2006.zhihu.viewmodel.CollectionContentEnvironment
 import com.github.zly2006.zhihu.viewmodel.CollectionContentViewModel
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -73,11 +72,6 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-
-private val YMDHMS = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ENGLISH)
 
 @Composable
 fun MiuixCollectionContentScreen(
@@ -85,32 +79,31 @@ fun MiuixCollectionContentScreen(
     testOverrides: CollectionContentScreenTestOverrides? = null,
 ) {
     val navigator = LocalNavigator.current
-    val context = LocalContext.current
     val screenViewModel = testOverrides?.viewModel ?: viewModel { CollectionContentViewModel(collectionId) }
+    val collectionEnvironment = rememberPaginationEnvironment(allowGuestAccess = false) as CollectionContentEnvironment
     val listState = rememberLazyListState()
     var showActionsMenu by remember { mutableStateOf(false) }
     var showExportOptionsDialog by remember { mutableStateOf(false) }
     val isEnd = testOverrides?.let { { it.isEnd } } ?: { screenViewModel.isEnd }
-    val onLoadMore = testOverrides?.onLoadMore ?: { screenViewModel.loadMore(context) }
+    val onLoadMore = testOverrides?.onLoadMore ?: { screenViewModel.loadMore(collectionEnvironment) }
     val onExportAllToHtmlZip = testOverrides?.onExportAllToHtmlZip ?: { includeImages ->
-        screenViewModel.exportAllToHtmlZip(context = context, includeImages = includeImages)
+        screenViewModel.exportAllToHtmlZip(environment = collectionEnvironment, includeImages = includeImages)
     }
-    val sharedData = if (context is MainActivity) {
-        val sd by context.viewModels<ArticleViewModel.ArticlesSharedData>(); sd
-    } else null
-    val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE) }
-    val blurEnabled = remember { mutableStateOf(preferences.getBoolean("blurEnabled", true)) }
+    val environment = rememberPaginationEnvironment(allowGuestAccess = false)
+    val sharedData = environment.articleAnswerSwitchState()
+    val settings = rememberSettingsStore()
+    val blurEnabled = remember { mutableStateOf(settings.getBoolean("blurEnabled", true)) }
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
     val scrollBehavior = MiuixScrollBehavior()
 
     LaunchedEffect(testOverrides) {
         if (testOverrides == null && screenViewModel.allData.isEmpty()) {
-            screenViewModel.refresh(context)
+            screenViewModel.refresh(collectionEnvironment)
         }
     }
 
-    BackHandler(enabled = showActionsMenu) { showActionsMenu = false }
-    BackHandler(enabled = showExportOptionsDialog) { showExportOptionsDialog = false }
+    PlatformBackHandler(enabled = showActionsMenu) { showActionsMenu = false }
+    PlatformBackHandler(enabled = showExportOptionsDialog) { showExportOptionsDialog = false }
 
     Scaffold(
         topBar = {
@@ -228,7 +221,7 @@ fun MiuixCollectionContentScreen(
                                 "${screenViewModel.collection?.itemCount} 条收藏",
                                 "${screenViewModel.collection?.likeCount} 个赞同",
                                 "${screenViewModel.collection?.commentCount} 条评论",
-                                screenViewModel.collection?.updatedTime?.let { "${YMDHMS.format(Date(it * 1000))} 更新" },
+                                screenViewModel.collection?.updatedTime?.let { "${formatCollectionUpdatedTime(it)} 更新" },
                             ).fastJoinToString(" · "),
                         )
                     }
@@ -239,13 +232,15 @@ fun MiuixCollectionContentScreen(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                 ) {
                     val dest = navDestination
-                    if (dest is Article && dest.type == ArticleType.Answer && sharedData != null) {
+                    val repository = collectionEnvironment.answerNavigatorRepository()
+                    if (dest is Article && dest.type == ArticleType.Answer && sharedData != null && repository != null) {
                         val idx = screenViewModel.displayItems.indexOf(item)
                         val nextItems = if (idx >= 0) screenViewModel.allData.drop(idx + 1) else emptyList()
                         val prevItems = if (idx > 0) screenViewModel.allData.take(idx).reversed() else emptyList()
                         sharedData.pendingNavigator = CollectionAnswerNavigator(
                             collectionId = collectionId, collectionTitle = screenViewModel.title,
                             initialNextItems = nextItems, initialPreviousItems = prevItems,
+                            repository = repository,
                         )
                     }
                     dest?.let { navigator.onNavigate(it) }

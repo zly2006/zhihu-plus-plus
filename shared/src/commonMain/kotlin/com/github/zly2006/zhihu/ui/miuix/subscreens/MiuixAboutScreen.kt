@@ -14,7 +14,6 @@
  
 package com.github.zly2006.zhihu.ui.miuix.subscreens
  
-import android.content.Intent
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -50,12 +49,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -65,13 +62,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.graphics.drawable.toBitmap
-import androidx.core.net.toUri
-import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Navigator
+import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.ui.rememberAccountSettingsPlatformRuntime
+import org.jetbrains.compose.resources.painterResource
+import zhihu.shared.generated.resources.Res
+import zhihu.shared.generated.resources.ic_launcher_foreground
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
@@ -92,17 +91,14 @@ private val DarkFlowColors = listOf(Color(0xFF3D2A52), Color(0xFF2A3A5C), Color(
 @Composable
 fun MiuixAboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
     val navigator = LocalNavigator.current
-    val context = LocalContext.current
+    val openUrl = rememberExternalUrlOpener()
+    val runtime = rememberAccountSettingsPlatformRuntime()
+    val versionInfo = remember(runtime) { runtime.appVersionInfo() }
     val density = LocalDensity.current
     val darkTheme = ThemeManager.isDarkTheme()
     val lazyListState = rememberLazyListState()
     val scrollBehavior = MiuixScrollBehavior()
     val backdrop = rememberMiuixBlurBackdrop(true)
- 
-    val appIcon = remember {
-        context.packageManager.getApplicationIcon(context.packageName)
-            .toBitmap(width = 200, height = 200).asImageBitmap()
-    }
  
     val scrollProgress by remember {
         derivedStateOf {
@@ -163,10 +159,10 @@ fun MiuixAboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
             iconProgress = iconProgress,
             projectNameProgress = projectNameProgress,
             versionCodeProgress = versionCodeProgress,
-            appIcon = appIcon,
+            versionInfo = versionInfo,
             darkTheme = darkTheme,
             navigator = navigator,
-            context = context,
+            openUrl = openUrl,
             density = density,
             backdrop = backdrop,
         )
@@ -181,10 +177,10 @@ private fun AboutContent(
     iconProgress: Float,
     projectNameProgress: Float,
     versionCodeProgress: Float,
-    appIcon: androidx.compose.ui.graphics.ImageBitmap,
+    versionInfo: String,
     darkTheme: Boolean,
     navigator: Navigator,
-    context: android.content.Context,
+    openUrl: (String) -> Unit,
     density: Density,
     backdrop: top.yukonga.miuix.kmp.blur.LayerBackdrop?,
 ) {
@@ -240,7 +236,11 @@ private fun AboutContent(
                     }
                     .background(logoBoxColor, RoundedCornerShape(24.dp)),
             ) {
-                Image(bitmap = appIcon, contentDescription = "知乎++", modifier = Modifier.size(74.dp))
+                Image(
+                    painter = painterResource(Res.drawable.ic_launcher_foreground),
+                    contentDescription = "知乎++",
+                    modifier = Modifier.size(74.dp),
+                )
             }
             // 知乎++ 流光：照抄 miuix 官方 AboutPage 的 HyperOS shimmer 扫光（drawWithCache + drawText + 横向渐变平移）
             val nameShimmer by infinite.animateFloat(
@@ -287,7 +287,7 @@ private fun AboutContent(
                 fontSize = 35.sp,
             )
             Text(
-                text = "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+                text = versionInfo,
                 modifier = Modifier.fillMaxWidth().graphicsLayer {
                     alpha = 1f - versionCodeProgress
                     scaleX = 1f - versionCodeProgress * 0.05f
@@ -314,17 +314,17 @@ private fun AboutContent(
                     Card(modifier = Modifier.padding(horizontal = 12.dp)) {
                         ArrowPreference(
                             title = "View Source", summary = "GitHub",
-                            onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, "https://github.com/zly2006/zhihu-plus-plus".toUri())) },
+                            onClick = { openUrl("https://github.com/zly2006/zhihu-plus-plus") },
                         )
                         ArrowPreference(
                             title = "Join Group", summary = "Telegram",
-                            onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, "https://t.me/+_A1Yto6EpyIyODA1".toUri())) },
+                            onClick = { openUrl("https://t.me/+_A1Yto6EpyIyODA1") },
                         )
                     }
                     Card(modifier = Modifier.padding(horizontal = 12.dp).padding(top = 12.dp)) {
                         ArrowPreference(
                             title = "License", summary = "AGPL-3.0",
-                            onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, "https://www.gnu.org/licenses/agpl-3.0.html".toUri())) },
+                            onClick = { openUrl("https://www.gnu.org/licenses/agpl-3.0.html") },
                         )
                         ArrowPreference(
                             title = "Third Party Licenses",

@@ -77,6 +77,21 @@ expect fun rememberImagePreviewOpener(): (String) -> Unit
 @Composable
 expect fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit
 
+/**
+ * 开发者诊断信息：包名/版本/网络状态等只读快照，以及剪贴板读取、全量配置导出
+ * 这些动作依赖各平台原生 API（Android ConnectivityManager/PackageManager/ClipboardManager/SharedPreferences.all）。
+ */
+data class DeveloperDiagnostics(
+    val appInfo: String,
+    val deviceInfo: String,
+    val networkStatus: String,
+    val readClipboardText: () -> String?,
+    val exportAllSettings: () -> String,
+)
+
+@Composable
+expect fun rememberDeveloperDiagnostics(): DeveloperDiagnostics
+
 data class ScreenSizeDp(
     val width: Float,
     val height: Float,

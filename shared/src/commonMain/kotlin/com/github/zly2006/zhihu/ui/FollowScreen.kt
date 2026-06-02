@@ -89,7 +89,7 @@ import com.github.zly2006.zhihu.theme.ThemeStyle
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.miuix.MiuixFollowingUsersRow
-import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
+import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.components.rememberFeedBlockActions
@@ -351,11 +351,11 @@ fun FollowingUsersRow() {
 // 关注页卡片按主题分流：miuix 用 MiuixFeedCard，M3 用 FeedCard（避免 miuix 卡片在 M3 主题下取色反色）
 @Composable
 private fun ThemedFeedCard(
-    item: BaseFeedViewModel.FeedDisplayItem,
+    item: FeedDisplayItem,
     modifier: Modifier = Modifier,
-    onLike: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
-    onDislike: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
-    onBlockUser: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
+    onLike: ((FeedDisplayItem) -> Unit)? = null,
+    onDislike: ((FeedDisplayItem) -> Unit)? = null,
+    onBlockUser: ((FeedDisplayItem) -> Unit)? = null,
     onBlockTopic: ((topicId: String, topicName: String) -> Unit)? = null,
 ) {
     if (LocalThemeStyle.current == ThemeStyle.Miuix) {

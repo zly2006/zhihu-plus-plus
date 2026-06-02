@@ -6,7 +6,6 @@
 
 package com.github.zly2006.zhihu.ui.subscreens
 
-import android.content.Intent
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -22,11 +21,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 
@@ -34,7 +32,7 @@ import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 @Composable
 fun AboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
     val navigator = LocalNavigator.current
-    val context = LocalContext.current
+    val openUrl = rememberExternalUrlOpener()
 
     Scaffold(
         topBar = {
@@ -56,12 +54,12 @@ fun AboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
                     SettingItem(
                         title = { Text("View Source") },
                         description = { Text("GitHub") },
-                        onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, "https://github.com/zly2006/zhihu-plus-plus".toUri())) },
+                        onClick = { openUrl("https://github.com/zly2006/zhihu-plus-plus") },
                     )
                     SettingItem(
                         title = { Text("Join Group") },
                         description = { Text("Telegram") },
-                        onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, "https://t.me/+_A1Yto6EpyIyODA1".toUri())) },
+                        onClick = { openUrl("https://t.me/+_A1Yto6EpyIyODA1") },
                     )
                 }
             }
@@ -70,7 +68,7 @@ fun AboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
                     SettingItem(
                         title = { Text("License") },
                         description = { Text("AGPL-3.0") },
-                        onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, "https://www.gnu.org/licenses/agpl-3.0.html".toUri())) },
+                        onClick = { openUrl("https://www.gnu.org/licenses/agpl-3.0.html") },
                     )
                     SettingItem(
                         title = { Text("Third Party Licenses") },

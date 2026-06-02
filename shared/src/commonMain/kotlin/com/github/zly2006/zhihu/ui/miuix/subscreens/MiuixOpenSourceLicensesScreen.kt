@@ -7,8 +7,6 @@
 
 package com.github.zly2006.zhihu.ui.miuix.subscreens
 
-import android.content.Context
-import android.content.Intent
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,17 +24,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
-import com.github.zly2006.zhihu.BuildConfig
-import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
-import com.mikepenz.aboutlibraries.ui.compose.android.produceLibraries
+import com.github.zly2006.zhihu.ui.subscreens.rememberOpenSourceLicensesLibraries
+import com.github.zly2006.zhihu.ui.subscreens.rememberShowFullVariantLicenses
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
@@ -78,12 +74,12 @@ private val fullVariantManualLibraries = listOf(
 
 @Composable
 fun MiuixOpenSourceLicensesScreen() {
-    val context = LocalContext.current
     val navigator = LocalNavigator.current
-    val libraries by produceLibraries(R.raw.aboutlibraries)
-    val manualLibraries = if (BuildConfig.IS_LITE) emptyList() else fullVariantManualLibraries
-    val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE) }
-    val blurEnabled = remember { mutableStateOf(preferences.getBoolean("blurEnabled", true)) }
+    val openUrl = rememberExternalUrlOpener()
+    val settings = rememberSettingsStore()
+    val libraries = rememberOpenSourceLicensesLibraries()
+    val manualLibraries = if (rememberShowFullVariantLicenses()) fullVariantManualLibraries else emptyList()
+    val blurEnabled = remember { mutableStateOf(settings.getBoolean("blurEnabled", true)) }
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
     val scrollBehavior = MiuixScrollBehavior()
     val body2FontSize = MiuixTheme.textStyles.body2.fontSize
@@ -117,24 +113,18 @@ fun MiuixOpenSourceLicensesScreen() {
             item { Spacer(Modifier.height(12.dp)) }
 
             // Auto-generated libraries — each as Card{ArrowPreference} (no M3 LibrariesContainer)
-            libraries?.libraries?.let { autoLibs ->
-                item {
-                    Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
-                        autoLibs.forEach { lib ->
+            item {
+                Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
+                    libraries.libraries.forEach { lib ->
                         val licenseNames = lib.licenses.joinToString(", ") { it.name }
                         ArrowPreference(
                             title = lib.name,
                             summary = "${lib.artifactVersion}, $licenseNames",
-                            onClick = {
-                                lib.website?.let { url ->
-                                    context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
-                                }
-                            },
+                            onClick = { lib.website?.let { url -> openUrl(url) } },
                         )
                     }
                 }
             }
-            }  // end let
 
             // Manual license entries (full variant only)
             if (manualLibraries.isNotEmpty()) {
@@ -147,7 +137,7 @@ fun MiuixOpenSourceLicensesScreen() {
                                 title = entry.name,
                                 summary = "${entry.license} · ${entry.summary}",
                                 startAction = entry.icon,
-                                onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, entry.url.toUri())) },
+                                onClick = { openUrl(entry.url) },
                             )
                         }
                     }

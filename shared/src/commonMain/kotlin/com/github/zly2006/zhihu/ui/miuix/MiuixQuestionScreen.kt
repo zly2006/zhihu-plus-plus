@@ -7,9 +7,6 @@
 
 package com.github.zly2006.zhihu.ui.miuix
 
-import android.content.Context
-import android.content.Intent
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -42,24 +39,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.github.zly2006.zhihu.MainActivity
-import com.github.zly2006.zhihu.WebviewActivity
-import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.DataHolder
-import com.github.zly2006.zhihu.markdown.RenderMarkdown
+import com.github.zly2006.zhihu.data.decodeQuestionContentDetail
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.shared.platform.rememberZhihuWebUrlOpener
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
-import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.ui.LoadedQuestionScreenData
 import com.github.zly2006.zhihu.ui.QUESTION_COMMENTS_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.QUESTION_DETAIL_TOGGLE_TAG
 import com.github.zly2006.zhihu.ui.QUESTION_FOLLOW_BUTTON_TAG
@@ -69,25 +62,27 @@ import com.github.zly2006.zhihu.ui.QUESTION_SORT_DEFAULT_TAG
 import com.github.zly2006.zhihu.ui.QUESTION_SORT_UPDATED_TAG
 import com.github.zly2006.zhihu.ui.QUESTION_STATS_TAG
 import com.github.zly2006.zhihu.ui.QUESTION_VIEW_LOG_BUTTON_TAG
+import com.github.zly2006.zhihu.ui.QuestionDetailContent
 import com.github.zly2006.zhihu.ui.QuestionScreenTestOverrides
 import com.github.zly2006.zhihu.ui.QuestionScreenUiState
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.components.ShareDialog
-import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.ui.components.handleShareAction
+import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
+import com.github.zly2006.zhihu.ui.loadedQuestionScreenData
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
-import com.github.zly2006.zhihu.util.fuckHonorService
+import com.github.zly2006.zhihu.ui.questionDetailPreview
+import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenEventSupport
-import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenFrom
-import kotlinx.coroutines.Dispatchers
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import io.ktor.client.call.body
+import io.ktor.client.request.get
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import org.jsoup.Jsoup
+import kotlinx.serialization.json.JsonObject
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
@@ -109,14 +104,17 @@ fun MiuixQuestionScreen(
     testOverrides: QuestionScreenTestOverrides? = null,
 ) {
     val navigator = LocalNavigator.current
-    val context = LocalContext.current
-    val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+    val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
+    val settings = rememberSettingsStore()
+    val userMessages = rememberUserMessageSink()
+    val shareRuntime = rememberShareDialogRuntime()
+    val openZhihuWebUrl = rememberZhihuWebUrlOpener()
     val viewModel: QuestionFeedViewModel = testOverrides?.viewModel ?: viewModel(key = "question_${question.questionId}") {
         QuestionFeedViewModel(question.questionId)
     }
     val initialUiState = testOverrides?.initialUiState ?: QuestionScreenUiState(title = question.title)
-    val onRefreshAnswers = testOverrides?.onRefreshAnswers ?: { viewModel.refresh(context) }
-    val onLoadMore = testOverrides?.onLoadMore ?: { viewModel.loadMore(context) }
+    val onRefreshAnswers = testOverrides?.onRefreshAnswers ?: { viewModel.refresh(paginationEnvironment) }
+    val onLoadMore = testOverrides?.onLoadMore ?: { viewModel.loadMore(paginationEnvironment) }
     val isEnd = testOverrides?.let { { it.isEnd } } ?: { viewModel.isEnd }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -131,42 +129,32 @@ fun MiuixQuestionScreen(
     var showComments by remember { mutableStateOf(false) }
     var showShareDialog by remember { mutableStateOf(false) }
     var isQuestionDetailExpanded by rememberSaveable(question.questionId) { mutableStateOf(initialUiState.isQuestionDetailExpanded) }
-    val questionContentPreview = remember(questionContent) { Jsoup.parse(questionContent).text().trim() }
+    val questionContentPreview = remember(questionContent) { questionDetailPreview(questionContent) }
     val shareText = getShareText(question, title)
 
-    val blurEnabled = remember { mutableStateOf(preferences.getBoolean("blurEnabled", true)) }
+    val blurEnabled = remember { mutableStateOf(settings.getBoolean("blurEnabled", true)) }
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
     val scrollBehavior = MiuixScrollBehavior()
 
     LaunchedEffect(question.questionId, testOverrides) {
         if (testOverrides != null) return@LaunchedEffect
-        launch { AccountData.addReadHistory(context, question.questionId.toString(), "question") }
-        val activity = context as? MainActivity
-        withContext(Dispatchers.IO) {
-            try {
-                if (viewModel.displayItems.isEmpty()) launch { viewModel.refresh(context) }
-                val questionData = DataHolder.getContentDetail(context, question)
-                if (questionData != null) {
-                    questionContent = questionData.detail
-                    title = questionData.title
-                    answerCount = questionData.answerCount
-                    visitCount = questionData.visitCount
-                    commentCount = questionData.commentCount
-                    followerCount = questionData.followerCount
-                    isFollowing = questionData.relationship.isFollowing
-                    activity?.postHistory(Question(question.questionId, title))
-                    ContentOpenEventSupport.recordOpenEvent(
-                        context = context,
-                        destination = question,
-                        questionId = question.questionId,
-                        openFrom = activity?.consumePendingContentOpenFrom(question) ?: ContentOpenFrom.UNKNOWN,
-                    )
-                } else {
-                    context.mainExecutor.execute { Toast.makeText(context, "获取问题详情失败", Toast.LENGTH_SHORT).show() }
-                }
-            } catch (e: Exception) {
-                context.mainExecutor.execute { Toast.makeText(context, "加载失败: ${e.message}", Toast.LENGTH_SHORT).show() }
+        if (viewModel.displayItems.isEmpty()) launch { viewModel.refresh(paginationEnvironment) }
+        try {
+            val loaded = loadQuestionData(paginationEnvironment, question)
+            if (loaded != null) {
+                val questionData = loaded.uiState
+                questionContent = questionData.questionContent
+                title = questionData.title
+                answerCount = questionData.answerCount
+                visitCount = questionData.visitCount
+                commentCount = questionData.commentCount
+                followerCount = questionData.followerCount
+                isFollowing = questionData.isFollowing
+            } else {
+                userMessages.showShortMessage("获取问题详情失败")
             }
+        } catch (e: Exception) {
+            userMessages.showShortMessage("加载失败: ${e.message}")
         }
     }
 
@@ -188,7 +176,7 @@ fun MiuixQuestionScreen(
         Box(modifier = if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier) {
             PullToRefresh(
                 isRefreshing = viewModel.isPullToRefresh && viewModel.isLoading,
-                onRefresh = { scope.launch { viewModel.pullToRefresh(context) } },
+                onRefresh = { scope.launch { viewModel.pullToRefresh(paginationEnvironment) } },
                 contentPadding = PaddingValues(top = padding.calculateTopPadding() + 6.dp),
                 refreshTexts = listOf("下拉刷新", "释放刷新", "正在刷新...", "刷新完成"),
             ) {
@@ -232,21 +220,10 @@ fun MiuixQuestionScreen(
                                         ) {
                                             Column {
                                                 Spacer(Modifier.height(10.dp))
-                                                if (preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)) {
-                                                    WebviewComp {
-                                                        it.loadZhihu(
-                                                            "https://www.zhihu.com/question/${question.questionId}",
-                                                            Jsoup.parse(questionContent),
-                                                        )
-                                                    }
-                                                } else {
-                                                    RenderMarkdown(
-                                                        html = questionContent,
-                                                        modifier = Modifier.fuckHonorService(),
-                                                        selectable = true,
-                                                        enableScroll = false,
-                                                    )
-                                                }
+                                                QuestionDetailContent(
+                                                    questionId = question.questionId,
+                                                    html = questionContent,
+                                                )
                                             }
                                         }
                                         AnimatedVisibility(
@@ -290,11 +267,11 @@ fun MiuixQuestionScreen(
                                                 scope.launch {
                                                     val next = !isFollowing
                                                     testOverrides?.onFollowQuestion?.invoke(next)
-                                                        ?: viewModel.followQuestion(context, question.questionId, next)
+                                                        ?: viewModel.followQuestion(paginationEnvironment, question.questionId, next)
                                                     isFollowing = next
                                                     followerCount += if (next) 1 else -1
                                                     if (testOverrides == null) {
-                                                        Toast.makeText(context, if (next) "已关注问题" else "已取消关注问题", Toast.LENGTH_SHORT).show()
+                                                        userMessages.showShortMessage(if (next) "已关注问题" else "已取消关注问题")
                                                     }
                                                 }
                                             },
@@ -320,14 +297,9 @@ fun MiuixQuestionScreen(
                                             modifier = Modifier.weight(1f).testTag(QUESTION_VIEW_LOG_BUTTON_TAG),
                                             onClick = {
                                                 testOverrides?.onOpenLog?.invoke() ?: try {
-                                                    context.startActivity(
-                                                        Intent(Intent.ACTION_VIEW).apply {
-                                                            data = "https://www.zhihu.com/question/${question.questionId}/log".toUri()
-                                                            setClass(context, WebviewActivity::class.java)
-                                                        },
-                                                    )
+                                                    openZhihuWebUrl("https://www.zhihu.com/question/${question.questionId}/log")
                                                 } catch (e: Exception) {
-                                                    Toast.makeText(context, "打开日志失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                    userMessages.showShortMessage("打开日志失败: ${e.message}")
                                                 }
                                             },
                                         )
@@ -339,7 +311,7 @@ fun MiuixQuestionScreen(
                                                     if (testOverrides != null) {
                                                         testOverrides.onShareAction?.invoke(); showShareDialog = true
                                                     } else {
-                                                        handleShareAction(context, question) { showShareDialog = true }
+                                                        handleShareAction(question, settings, shareRuntime) { showShareDialog = true }
                                                     }
                                                 }
                                             },
@@ -385,9 +357,26 @@ fun MiuixQuestionScreen(
             shareText = shareText,
             showDialog = showShareDialog,
             onDismissRequest = { showShareDialog = false },
-            context = context,
         )
     }
+}
+
+private suspend fun loadQuestionData(
+    environment: PaginationEnvironment,
+    question: Question,
+): LoadedQuestionScreenData? {
+    environment.addReadHistory(question.questionId.toString(), "question")
+    val include = "read_count,visit_count,answer_count,voteup_count,comment_count,follower_count,detail,excerpt,author,relationship.is_following,topics"
+    val url = "https://www.zhihu.com/api/v4/questions/${question.questionId}?include=$include"
+    val jsonObject = environment
+        .httpClient()
+        .get(url) { environment.configureSignedRequest(this) }
+        .body<JsonObject>()
+    val questionData = decodeQuestionContentDetail(jsonObject)
+    val loadedData = loadedQuestionScreenData(question, questionData)
+    environment.postHistoryDestination(loadedData.historyDestination)
+    environment.recordContentOpenEvent(destination = question, questionId = question.questionId)
+    return loadedData
 }
 
 /** 排序按钮：选中态用实心 Button（primary），未选中用 TextButton */

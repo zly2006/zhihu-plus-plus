@@ -7,9 +7,6 @@
 
 package com.github.zly2006.zhihu.ui.miuix
 
-import android.content.Context
-import android.util.Log
-import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -43,32 +40,33 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.MainActivity
-import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionContent
 import com.github.zly2006.zhihu.navigation.LocalNavigator
-import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin as PinNav
 import com.github.zly2006.zhihu.navigation.Question as QuestionNav
+import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.navDestination
+import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
+import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.PeopleScreenTestOverrides
 import com.github.zly2006.zhihu.ui.PersonViewModel
-import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import top.yukonga.miuix.kmp.basic.Card
@@ -96,11 +94,11 @@ fun MiuixPeopleScreen(
     testOverrides: PeopleScreenTestOverrides? = null,
 ) {
     val navigator = LocalNavigator.current
-    val context = LocalContext.current
+    val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val viewModel = viewModel { PersonViewModel(person) }
     val coroutineScope = rememberCoroutineScope()
-    val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE) }
-    val blurEnabled = remember { mutableStateOf(preferences.getBoolean("blurEnabled", true)) }
+    val settings = rememberSettingsStore()
+    val blurEnabled = remember { mutableStateOf(settings.getBoolean("blurEnabled", true)) }
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
     val scrollBehavior = MiuixScrollBehavior()
 
@@ -113,8 +111,7 @@ fun MiuixPeopleScreen(
     LaunchedEffect(viewModel, testOverrides) {
         if (testOverrides != null) return@LaunchedEffect
         try {
-            viewModel.load(context)
-            AccountData.addReadHistory(context, person.id, "profile")
+            viewModel.load(paginationEnvironment)
         } catch (e: Exception) {
             Log.e("MiuixPeopleScreen", "Error loading person data", e)
         }
@@ -155,9 +152,9 @@ fun MiuixPeopleScreen(
                 LaunchedEffect(page) {
                     if (page == 2) {
                         val vm = subModel as BaseFeedViewModel
-                        if (vm.displayItems.isEmpty()) vm.loadMore(context)
+                        if (vm.displayItems.isEmpty()) vm.loadMore(paginationEnvironment)
                     } else {
-                        if (subModel.allData.isEmpty()) subModel.loadMore(context)
+                        if (subModel.allData.isEmpty()) subModel.loadMore(paginationEnvironment)
                     }
                 }
                 val items = if (page == 2) {
@@ -203,11 +200,11 @@ fun MiuixPeopleScreen(
                                         Spacer(Modifier.height(8.dp))
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                             val followText = if (viewModel.isFollowing) "已关注" else "关注"
-                                            Card(modifier = Modifier.weight(1f).clickable { coroutineScope.launch { try { viewModel.toggleFollow(context) } catch (_: Exception) {} } }) {
+                                            Card(modifier = Modifier.weight(1f).clickable { coroutineScope.launch { try { viewModel.toggleFollow(paginationEnvironment) } catch (_: Exception) {} } }) {
                                                 Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) { Text(followText, fontSize = 14.sp, color = MiuixTheme.colorScheme.primary) }
                                             }
                                             val blockText = if (viewModel.isBlocking) "已屏蔽" else "屏蔽"
-                                            Card(modifier = Modifier.weight(1f).clickable { coroutineScope.launch { try { viewModel.toggleBlock(context) } catch (_: Exception) {} } }) {
+                                            Card(modifier = Modifier.weight(1f).clickable { coroutineScope.launch { try { viewModel.toggleBlock(paginationEnvironment) } catch (_: Exception) {} } }) {
                                                 Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) { Text(blockText, fontSize = 14.sp, color = MiuixTheme.colorScheme.error) }
                                             }
                                         }
@@ -230,52 +227,56 @@ fun MiuixPeopleScreen(
     }
 }
 
-private fun coerceToFeedItem(item: Any): BaseFeedViewModel.FeedDisplayItem = when (item) {
-    is BaseFeedViewModel.FeedDisplayItem -> item
-    is DataHolder.Answer -> BaseFeedViewModel.FeedDisplayItem(
+private fun coerceToFeedItem(item: Any): FeedDisplayItem = when (item) {
+    is FeedDisplayItem -> item
+    is DataHolder.Answer -> FeedDisplayItem(
         title = item.question.title,
         summary = item.excerpt,
         details = "",
         feed = null,
         localFeedId = item.id.toString(),
-        navDestination = Article(id = item.id, type = ArticleType.Answer, title = item.question.title),
+        navDestinationJson = Article(id = item.id, type = ArticleType.Answer, title = item.question.title)
+            .toFeedDisplayItemNavDestinationJson(),
     )
-    is DataHolder.Article -> BaseFeedViewModel.FeedDisplayItem(
+    is DataHolder.Article -> FeedDisplayItem(
         title = item.title,
         summary = item.excerpt,
         details = "",
         feed = null,
         localFeedId = item.id.toString(),
-        navDestination = Article(id = item.id, type = ArticleType.Article, title = item.title),
+        navDestinationJson = Article(id = item.id, type = ArticleType.Article, title = item.title)
+            .toFeedDisplayItemNavDestinationJson(),
     )
-    is DataHolder.Collection -> BaseFeedViewModel.FeedDisplayItem(
+    is DataHolder.Collection -> FeedDisplayItem(
         title = item.title,
         summary = null,
         details = "",
         feed = null,
         localFeedId = item.id,
-        navDestination = CollectionContent(collectionId = item.id),
+        navDestinationJson = CollectionContent(collectionId = item.id)
+            .toFeedDisplayItemNavDestinationJson(),
     )
-    is DataHolder.Question -> BaseFeedViewModel.FeedDisplayItem(
+    is DataHolder.Question -> FeedDisplayItem(
         title = item.title,
         summary = null,
         details = "",
         feed = null,
         localFeedId = item.id.toString(),
-        navDestination = QuestionNav(questionId = item.id, title = item.title),
+        navDestinationJson = QuestionNav(questionId = item.id, title = item.title)
+            .toFeedDisplayItemNavDestinationJson(),
     )
     is DataHolder.Pin -> {
         val pinId = item.id.toLongOrNull() ?: 0L
-        BaseFeedViewModel.FeedDisplayItem(
+        FeedDisplayItem(
             title = item.content.joinToString("") { it.toString() }.take(80),
             summary = null,
             details = "",
             feed = null,
             localFeedId = item.id,
-            navDestination = PinNav(id = pinId),
+            navDestinationJson = PinNav(id = pinId).toFeedDisplayItemNavDestinationJson(),
         )
     }
-    else -> BaseFeedViewModel.FeedDisplayItem(
+    else -> FeedDisplayItem(
         title = item.toString().take(80),
         summary = null,
         details = "",

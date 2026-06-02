@@ -6,7 +6,6 @@
 
 package com.github.zly2006.zhihu.ui.miuix.subscreens
 
-import android.content.Context
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -21,15 +20,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.shared.notification.NotificationType
+import com.github.zly2006.zhihu.shared.notification.rememberNotificationSettingsStore
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
-import com.github.zly2006.zhihu.ui.NotificationPreferences
-import com.github.zly2006.zhihu.ui.NotificationType
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
@@ -45,27 +43,19 @@ import top.yukonga.miuix.kmp.utils.overScrollVertical
 @Composable
 fun MiuixNotificationSettingsScreen() {
     val navigator = LocalNavigator.current
-    val context = LocalContext.current
-    val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE) }
-    val blurEnabled = remember { mutableStateOf(preferences.getBoolean("blurEnabled", true)) }
+    val settings = rememberSettingsStore()
+    val store = rememberNotificationSettingsStore()
+    val blurEnabled = remember { mutableStateOf(settings.getBoolean("blurEnabled", true)) }
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
     val scrollBehavior = MiuixScrollBehavior()
 
     var systemNotificationSettings by remember {
-        mutableStateOf(
-            NotificationType.entries.associateWith {
-                NotificationPreferences.getSystemNotificationEnabled(context, it)
-            },
-        )
+        mutableStateOf(NotificationType.entries.associateWith { store.getSystemNotificationEnabled(it) })
     }
     var displayInAppSettings by remember {
-        mutableStateOf(
-            NotificationType.entries.associateWith {
-                NotificationPreferences.getDisplayInAppEnabled(context, it)
-            },
-        )
+        mutableStateOf(NotificationType.entries.associateWith { store.getDisplayInAppEnabled(it) })
     }
-    var autoMarkAsRead by remember { mutableStateOf(NotificationPreferences.getAutoMarkAsReadEnabled(context)) }
+    var autoMarkAsRead by remember { mutableStateOf(store.getAutoMarkAsReadEnabled()) }
 
     Scaffold(
         topBar = {
@@ -99,7 +89,7 @@ fun MiuixNotificationSettingsScreen() {
                         checked = autoMarkAsRead,
                         onCheckedChange = { checked ->
                             autoMarkAsRead = checked
-                            NotificationPreferences.setAutoMarkAsReadEnabled(context, checked)
+                            store.setAutoMarkAsReadEnabled(checked)
                         },
                         title = "打开通知自动已读",
                         summary = "进入通知页后，自动把当前通知批次标记为已读",
@@ -116,7 +106,7 @@ fun MiuixNotificationSettingsScreen() {
                             checked = systemNotificationSettings[type] ?: false,
                             onCheckedChange = { checked ->
                                 systemNotificationSettings = systemNotificationSettings.toMutableMap().apply { put(type, checked) }
-                                NotificationPreferences.setSystemNotificationEnabled(context, type, checked)
+                                store.setSystemNotificationEnabled(type, checked)
                             },
                             title = type.displayName,
                         )
@@ -133,7 +123,7 @@ fun MiuixNotificationSettingsScreen() {
                             checked = displayInAppSettings[type] ?: true,
                             onCheckedChange = { checked ->
                                 displayInAppSettings = displayInAppSettings.toMutableMap().apply { put(type, checked) }
-                                NotificationPreferences.setDisplayInAppEnabled(context, type, checked)
+                                store.setDisplayInAppEnabled(type, checked)
                             },
                             title = type.displayName,
                         )

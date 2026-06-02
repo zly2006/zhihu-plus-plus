@@ -7,8 +7,6 @@
 
 package com.github.zly2006.zhihu.ui.miuix.subscreens
 
-import android.content.Context
-import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,8 +42,6 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -53,21 +49,23 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import androidx.core.content.edit
-import androidx.core.net.toUri
-import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.shared.util.ContinuousUsageReminderPolicy
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixExpandableArrowPreference
-import com.github.zly2006.zhihu.updater.UpdateManager
-import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
-import com.github.zly2006.zhihu.util.ContinuousUsageReminderManager
-import com.github.zly2006.zhihu.util.ContinuousUsageReminderPolicy
-import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
+import com.github.zly2006.zhihu.ui.subscreens.CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES_KEY
+import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
+import com.github.zly2006.zhihu.ui.subscreens.rememberSystemUpdateRuntime
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
+import zhihu.shared.generated.resources.Res
+import zhihu.shared.generated.resources.ic_discord_24dp
+import zhihu.shared.generated.resources.ic_github_24dp
+import zhihu.shared.generated.resources.ic_telegram_24dp
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.DropdownItem
@@ -87,23 +85,24 @@ import top.yukonga.miuix.kmp.utils.overScrollVertical
 
 @Composable
 fun MiuixSystemAndUpdateSettingsScreen() {
-    val context = LocalContext.current
     val navigator = LocalNavigator.current
-    val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE) }
-    val blurEnabled = remember { mutableStateOf(preferences.getBoolean("blurEnabled", true)) }
+    val settings = rememberSettingsStore()
+    val updates = rememberSystemUpdateRuntime()
+    val openExternalUrl = rememberExternalUrlOpener()
+    val blurEnabled = remember { mutableStateOf(settings.getBoolean("blurEnabled", true)) }
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
     val scrollBehavior = MiuixScrollBehavior()
-    val updateState by UpdateManager.updateState.collectAsState()
+    val updateState by updates.state.collectAsState()
     val coroutineScope = rememberCoroutineScope()
-    val showUpdateBanner = updateState is UpdateState.UpdateAvailable ||
-        updateState is UpdateState.Downloading || updateState is UpdateState.Downloaded
+    val showUpdateBanner = updateState is SystemUpdateState.UpdateAvailable ||
+        updateState is SystemUpdateState.Downloading || updateState is SystemUpdateState.Downloaded
 
     var updateVersion: String by remember { mutableStateOf("") }
     var releaseNotes: String? by remember { mutableStateOf(null) }
     LaunchedEffect(updateState) {
         val state = updateState
-        if (state is UpdateState.UpdateAvailable) {
-            updateVersion = state.version.toString()
+        if (state is SystemUpdateState.UpdateAvailable) {
+            updateVersion = state.version
             releaseNotes = state.releaseNotes
         }
     }
@@ -178,12 +177,12 @@ fun MiuixSystemAndUpdateSettingsScreen() {
                             }
 
                             Spacer(Modifier.height(12.dp))
-                            val cnDownloadUrl = (updateState as? UpdateState.UpdateAvailable)?.cnDownloadUrl
+                            val cnDownloadUrl = (updateState as? SystemUpdateState.UpdateAvailable)?.cnDownloadUrl
                             if (!cnDownloadUrl.isNullOrBlank()) {
                                 Card(
                                     modifier = Modifier.fillMaxWidth().clickable {
-                                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, cnDownloadUrl.toUri())) }
-                                            .onFailure { UpdateManager.updateState.value = UpdateState.Error(it.message ?: "无法打开浏览器") }
+                                        runCatching { openExternalUrl(cnDownloadUrl) }
+                                            .onFailure { updates.setError(it.message ?: "无法打开浏览器") }
                                     },
                                 ) {
                                     Box(Modifier.fillMaxWidth().padding(14.dp), contentAlignment = Alignment.Center) {
@@ -199,9 +198,8 @@ fun MiuixSystemAndUpdateSettingsScreen() {
                                 Card(
                                     modifier = Modifier.weight(1f).clickable {
                                         val state = updateState
-                                        if (state is UpdateState.UpdateAvailable) {
-                                            UpdateManager.skipVersion(context, state.version.toString())
-                                            UpdateManager.updateState.value = UpdateState.Latest
+                                        if (state is SystemUpdateState.UpdateAvailable) {
+                                            updates.skipVersion(state.version)
                                         }
                                     },
                                 ) {
@@ -213,8 +211,8 @@ fun MiuixSystemAndUpdateSettingsScreen() {
                                     modifier = Modifier.weight(1f).clickable {
                                         coroutineScope.launch {
                                             when (val state = updateState) {
-                                                is UpdateState.UpdateAvailable -> UpdateManager.downloadUpdate(context, state.downloadUrl)
-                                                is UpdateState.Downloaded -> UpdateManager.installUpdate(context, state.file)
+                                                is SystemUpdateState.UpdateAvailable -> updates.downloadUpdate(state.downloadUrl)
+                                                is SystemUpdateState.Downloaded -> updates.installDownloadedUpdate()
                                                 else -> {}
                                             }
                                         }
@@ -223,9 +221,9 @@ fun MiuixSystemAndUpdateSettingsScreen() {
                                     Box(Modifier.fillMaxWidth().padding(12.dp), contentAlignment = Alignment.Center) {
                                         Text(
                                             when (updateState) {
-                                                is UpdateState.UpdateAvailable -> "下载更新"
-                                                is UpdateState.Downloading -> "下载中..."
-                                                is UpdateState.Downloaded -> "安装更新"
+                                                is SystemUpdateState.UpdateAvailable -> "下载更新"
+                                                is SystemUpdateState.Downloading -> "下载中..."
+                                                is SystemUpdateState.Downloaded -> "安装更新"
                                                 else -> "下载更新"
                                             },
                                             fontSize = 14.sp,
@@ -242,7 +240,7 @@ fun MiuixSystemAndUpdateSettingsScreen() {
             // GitHub Token
             item { SmallTitle(text = "GitHub") }
             item {
-                var githubToken by remember { mutableStateOf(preferences.getString("githubToken", "") ?: "") }
+                var githubToken by remember { mutableStateOf(settings.getString("githubToken", "") ?: "") }
                 var showGithubToken by remember { mutableStateOf(false) }
                 var showPassword by remember { mutableStateOf(false) }
                 Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
@@ -254,7 +252,7 @@ fun MiuixSystemAndUpdateSettingsScreen() {
                     ) {
                         TextField(
                             value = githubToken,
-                            onValueChange = { githubToken = it; preferences.edit { putString("githubToken", it) } },
+                            onValueChange = { githubToken = it; settings.putString("githubToken", it) },
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 12.dp),
                             singleLine = true,
                             label = "Token",
@@ -277,35 +275,34 @@ fun MiuixSystemAndUpdateSettingsScreen() {
             item { SmallTitle(text = "更新设置") }
             item {
                 Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
-                    var autoCheckUpdates by remember { mutableStateOf(UpdateManager.isAutoCheckEnabled(context)) }
+                    var autoCheckUpdates by remember { mutableStateOf(updates.autoCheckEnabled()) }
                     SwitchPreference(
                         title = "自动检查更新",
                         summary = "应用启动后后台检查新版本，并在首页显示更新提醒",
                         checked = autoCheckUpdates,
                         onCheckedChange = {
                             autoCheckUpdates = it
-                            UpdateManager.setAutoCheckEnabled(context, it)
-                            if (!it) UpdateManager.updateState.value = UpdateState.NoUpdate
+                            updates.setAutoCheckEnabled(it)
                         },
                     )
-                    var checkNightlyUpdates by remember { mutableStateOf(preferences.getBoolean("checkNightlyUpdates", false)) }
+                    var checkNightlyUpdates by remember { mutableStateOf(settings.getBoolean("checkNightlyUpdates", false)) }
                     SwitchPreference(
                         title = "检查 Nightly 版本更新",
                         summary = "检查每日构建版本 (可能不稳定)",
                         checked = checkNightlyUpdates,
                         onCheckedChange = {
                             checkNightlyUpdates = it
-                            preferences.edit { putBoolean("checkNightlyUpdates", it) }
+                            settings.putBoolean("checkNightlyUpdates", it)
                         },
                     )
-                    var allowTelemetry by remember { mutableStateOf(preferences.getBoolean("allowTelemetry", true)) }
+                    var allowTelemetry by remember { mutableStateOf(settings.getBoolean("allowTelemetry", true)) }
                     SwitchPreference(
                         title = "允许发送遥测统计数据",
                         summary = "仅用于统计使用人数，不包含个人隐私",
                         checked = allowTelemetry,
                         onCheckedChange = {
                             allowTelemetry = it
-                            preferences.edit { putBoolean("allowTelemetry", it) }
+                            settings.putBoolean("allowTelemetry", it)
                         },
                     )
                 }
@@ -319,8 +316,8 @@ fun MiuixSystemAndUpdateSettingsScreen() {
                             .clickable {
                                 coroutineScope.launch {
                                     when (updateState) {
-                                        is UpdateState.NoUpdate, is UpdateState.Error -> UpdateManager.checkForUpdate(context)
-                                        UpdateState.Latest -> UpdateManager.updateState.value = UpdateState.NoUpdate
+                                        is SystemUpdateState.NoUpdate, is SystemUpdateState.Error -> updates.checkForUpdate()
+                                        SystemUpdateState.Latest -> updates.resetToNoUpdate()
                                         else -> {}
                                     }
                                 }
@@ -329,10 +326,10 @@ fun MiuixSystemAndUpdateSettingsScreen() {
                         Box(Modifier.fillMaxWidth().padding(14.dp), contentAlignment = Alignment.Center) {
                             Text(
                                 when (updateState) {
-                                    is UpdateState.NoUpdate -> "检查更新"
-                                    is UpdateState.Checking -> "检查中..."
-                                    is UpdateState.Latest -> "已经是最新版本"
-                                    is UpdateState.Error -> "检查更新失败，点击重试"
+                                    is SystemUpdateState.NoUpdate -> "检查更新"
+                                    is SystemUpdateState.Checking -> "检查中..."
+                                    is SystemUpdateState.Latest -> "已经是最新版本"
+                                    is SystemUpdateState.Error -> "检查更新失败，点击重试"
                                     else -> ""
                                 },
                                 fontSize = 15.sp,
@@ -349,7 +346,7 @@ fun MiuixSystemAndUpdateSettingsScreen() {
                     var reminderIntervalMinutes by remember {
                         mutableIntStateOf(
                             ContinuousUsageReminderPolicy.normalizeIntervalMinutes(
-                                preferences.getInt(ContinuousUsageReminderManager.KEY_CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES, 0),
+                                settings.getInt(CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES_KEY, 0),
                             ),
                         )
                     }
@@ -366,7 +363,7 @@ fun MiuixSystemAndUpdateSettingsScreen() {
                         onSelectedIndexChange = { newIdx ->
                             val minutes = reminderOptions[newIdx].first
                             reminderIntervalMinutes = minutes
-                            preferences.edit { putInt(ContinuousUsageReminderManager.KEY_CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES, minutes) }
+                            settings.putInt(CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES_KEY, minutes)
                         },
                     )
                 }
@@ -379,20 +376,20 @@ fun MiuixSystemAndUpdateSettingsScreen() {
                     ArrowPreference(
                         title = "Discord 频道",
                         summary = "请在 my-other-apps/zhihu-plus-plus 频道讨论",
-                        startAction = { Icon(painterResource(R.drawable.ic_discord_24dp), null) },
-                        onClick = { luoTianYiUrlLauncher(context, "https://discord.gg/YCPFZV5XSA".toUri()) },
+                        startAction = { Icon(painterResource(Res.drawable.ic_discord_24dp), null) },
+                        onClick = { openExternalUrl("https://discord.gg/YCPFZV5XSA") },
                     )
                     ArrowPreference(
                         title = "Telegram 群组 (Hydrogen)",
                         summary = "另一个知乎客户端 Hydrogen 的群组，也可以在里面讨论知乎++哦",
-                        startAction = { Icon(painterResource(R.drawable.ic_telegram_24dp), null) },
-                        onClick = { luoTianYiUrlLauncher(context, "https://t.me/+_A1Yto6EpyIyODA1".toUri()) },
+                        startAction = { Icon(painterResource(Res.drawable.ic_telegram_24dp), null) },
+                        onClick = { openExternalUrl("https://t.me/+_A1Yto6EpyIyODA1") },
                     )
                     ArrowPreference(
                         title = "GitHub Issue",
                         summary = "欢迎提交 issue 讨论功能和反馈问题",
-                        startAction = { Icon(painterResource(R.drawable.ic_github_24dp), null) },
-                        onClick = { luoTianYiUrlLauncher(context, "https://github.com/zly2006/zhihu-plus-plus/issues".toUri()) },
+                        startAction = { Icon(painterResource(Res.drawable.ic_github_24dp), null) },
+                        onClick = { openExternalUrl("https://github.com/zly2006/zhihu-plus-plus/issues") },
                     )
                 }
             }

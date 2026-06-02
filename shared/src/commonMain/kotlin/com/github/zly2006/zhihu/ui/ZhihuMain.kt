@@ -110,6 +110,7 @@ import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.navigation.SentenceSimilarityTest
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ThemeStyle
 import com.github.zly2006.zhihu.theme.ZhihuTheme
@@ -229,7 +230,7 @@ fun ZhihuMain(
     }
 
     val useMiuix = ThemeManager.getThemeStyle() == ThemeStyle.Miuix
-    val blurEnabled = preferences.getBoolean("blurEnabled", true)
+    val blurEnabled = rememberSettingsStore().getBoolean("blurEnabled", true)
     val bottomBarBackdrop = rememberMiuixBlurBackdrop(useMiuix && blurEnabled)
 
     val allBottomBarItems = listOf(
@@ -587,7 +588,7 @@ fun ZhihuMain(
                 }
                 composable<Account.RecommendSettings.Blocklist> {
                     if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
-                        MiuixBlocklistSettingsScreen()
+                        MiuixBlocklistSettingsScreen(platformAdapter.blocklistSettingsNlpContent)
                     } else {
                         BlocklistSettingsScreen(platformAdapter.blocklistSettingsNlpContent)
                     }

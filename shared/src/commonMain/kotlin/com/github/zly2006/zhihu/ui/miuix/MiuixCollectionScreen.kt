@@ -18,7 +18,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.navigation.CollectionContent
@@ -27,6 +26,7 @@ import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.viewmodel.CollectionsViewModel
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
@@ -45,7 +45,7 @@ fun MiuixCollectionScreen(
     testCollections: List<Collection>? = null,
 ) {
     val navigator = LocalNavigator.current
-    val context = LocalContext.current
+    val environment = rememberPaginationEnvironment(allowGuestAccess = false)
     val viewModel = viewModel { CollectionsViewModel(urlToken) }
     val listState = rememberLazyListState()
     val useTestCollections = testCollections != null
@@ -55,7 +55,7 @@ fun MiuixCollectionScreen(
 
     LaunchedEffect(useTestCollections) {
         if (!useTestCollections && viewModel.allData.isEmpty()) {
-            viewModel.refresh(context)
+            viewModel.refresh(environment)
         }
     }
 
@@ -93,7 +93,7 @@ fun MiuixCollectionScreen(
             }
             if (!useTestCollections && !viewModel.isEnd) {
                 item {
-                    LaunchedEffect(Unit) { viewModel.loadMore(context) }
+                    LaunchedEffect(Unit) { viewModel.loadMore(environment) }
                 }
             }
         }

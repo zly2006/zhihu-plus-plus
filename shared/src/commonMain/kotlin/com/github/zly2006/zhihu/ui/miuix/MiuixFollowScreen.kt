@@ -7,10 +7,6 @@
 
 package com.github.zly2006.zhihu.ui.miuix
 
-import android.content.Context
-import android.widget.Toast
-import androidx.activity.compose.LocalActivity
-import androidx.activity.viewModels
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -51,9 +47,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.FOLLOW_DYNAMIC_LIST_TAG
 import com.github.zly2006.zhihu.ui.FOLLOW_RECOMMEND_LIST_TAG
 import com.github.zly2006.zhihu.ui.FOLLOW_SCREEN_PAGER_TAG
@@ -62,13 +58,13 @@ import com.github.zly2006.zhihu.ui.FOLLOWING_USERS_ROW_TAG
 import com.github.zly2006.zhihu.ui.FollowScreenData
 import com.github.zly2006.zhihu.ui.FollowDynamicScreen
 import com.github.zly2006.zhihu.ui.FollowRecommendScreen
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.AutoHideTopBar
 import com.github.zly2006.zhihu.ui.followDynamicItemTag
 import com.github.zly2006.zhihu.ui.followRecommendItemTag
 import com.github.zly2006.zhihu.ui.followScreenTabTag
 import com.github.zly2006.zhihu.ui.followingUserItemTag
 import com.github.zly2006.zhihu.viewmodel.feed.RecentMomentsViewModel
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -92,13 +88,13 @@ fun MiuixFollowScreen(
     onTestDynamicRefreshClick: (() -> Unit)? = null,
     onTestDynamicLoadMore: (() -> Unit)? = null,
 ) {
-    val context = LocalActivity.current as MainActivity
     val viewModel = viewModel<FollowScreenData>()
     val pagerState = rememberPagerState(pageCount = { 2 })
     val coroutineScope = rememberCoroutineScope()
+    val settings = rememberSettingsStore()
     // 模糊开关只在这里用一次：blurEnabled=false 时 backdrop 为 null，
     // 之后 getMiuixAppBarColor()/installerMiuixBlurEffect() 自动按 null 处理，调用处不再判 blurEnabled
-    val blurEnabled = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE).getBoolean("blurEnabled", true) }
+    val blurEnabled = remember { settings.getBoolean("blurEnabled", true) }
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
 
@@ -163,8 +159,8 @@ fun MiuixFollowTopLevelPage(
     scrollToTopTrigger: Int = 0, innerPadding: PaddingValues = PaddingValues(0.dp),
     isActive: Boolean = true,
 ) {
-    val context = LocalActivity.current as MainActivity
-    val blurEnabled = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE).getBoolean("blurEnabled", true) }
+    val settings = rememberSettingsStore()
+    val blurEnabled = remember { settings.getBoolean("blurEnabled", true) }
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
     Scaffold(
@@ -218,11 +214,11 @@ private fun MiuixFollowTabRow(selectedTabIndex: Int, onTabSelected: (Int) -> Uni
 
 @Composable
 fun MiuixFollowingUsersRow() {
-    val context = LocalActivity.current as MainActivity
     val navigator = LocalNavigator.current
     val viewModel: RecentMomentsViewModel = viewModel()
+    val environment = rememberPaginationEnvironment(allowGuestAccess = false)
 
-    LaunchedEffect(Unit) { viewModel.load(context) }
+    LaunchedEffect(Unit) { viewModel.load(environment) }
 
     when {
         viewModel.errorMessage != null -> {

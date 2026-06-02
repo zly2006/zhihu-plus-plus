@@ -6,11 +6,6 @@
 
 package com.github.zly2006.zhihu.ui.miuix.subscreens
 
-import android.content.ClipData
-import android.content.Context
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
-import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -37,23 +32,23 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.edit
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.SentenceSimilarityTest
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Box
+import com.github.zly2006.zhihu.shared.platform.rememberDeveloperDiagnostics
+import com.github.zly2006.zhihu.shared.platform.rememberPlainTextClipboard
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
-import com.github.zly2006.zhihu.util.clipboardManager
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
@@ -70,10 +65,12 @@ import top.yukonga.miuix.kmp.utils.overScrollVertical
 
 @Composable
 fun MiuixDeveloperSettingsScreen() {
-    val context = LocalContext.current
     val navigator = LocalNavigator.current
-    val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE) }
-    val blurEnabled = remember { mutableStateOf(preferences.getBoolean("blurEnabled", true)) }
+    val settings = rememberSettingsStore()
+    val diagnostics = rememberDeveloperDiagnostics()
+    val copyPlainText = rememberPlainTextClipboard()
+    val userMessages = rememberUserMessageSink()
+    val blurEnabled = remember { mutableStateOf(settings.getBoolean("blurEnabled", true)) }
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
     val scrollBehavior = MiuixScrollBehavior()
 
@@ -105,20 +102,20 @@ fun MiuixDeveloperSettingsScreen() {
             item { SmallTitle(text = "行为开关") }
             item {
                 Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
-                    var useCustomNavHost by remember { mutableStateOf(preferences.getBoolean("use_custom_nav_host", true)) }
-                    SwitchPreference(title = "自定义导航宿主", summary = "用自定义 NavHost 替代系统导航", checked = useCustomNavHost, onCheckedChange = { useCustomNavHost = it; preferences.edit { putBoolean("use_custom_nav_host", it) } })
-                    var enablePredictiveBack by remember { mutableStateOf(preferences.getBoolean("enable_predictive_back", true)) }
-                    SwitchPreference(title = "预测性返回手势", summary = "Android 14+", checked = enablePredictiveBack, onCheckedChange = { enablePredictiveBack = it; preferences.edit { putBoolean("enable_predictive_back", it) } })
-                    var enableScrollEndHaptic by remember { mutableStateOf(preferences.getBoolean("enableScrollEndHaptic", true)) }
-                    SwitchPreference(title = "滚动到底震动反馈", checked = enableScrollEndHaptic, onCheckedChange = { enableScrollEndHaptic = it; preferences.edit { putBoolean("enableScrollEndHaptic", it) } })
-                    var enableSwipeReaction by remember { mutableStateOf(preferences.getBoolean("enableSwipeReaction", false)) }
-                    SwitchPreference(title = "滑动反馈 (Like/Dislike)", summary = "左右滑动卡片触发喜欢/不喜欢", checked = enableSwipeReaction, onCheckedChange = { enableSwipeReaction = it; preferences.edit { putBoolean("enableSwipeReaction", it) } })
-                    var openSourceLicenses by remember { mutableStateOf(preferences.getBoolean("open_source_licenses", true)) }
-                    SwitchPreference(title = "开源许可页面", checked = openSourceLicenses, onCheckedChange = { openSourceLicenses = it; preferences.edit { putBoolean("open_source_licenses", it) } })
-                    var showSearchHotSearch by remember { mutableStateOf(preferences.getBoolean("showSearchHotSearch", true)) }
-                    SwitchPreference(title = "搜索页展示热搜", checked = showSearchHotSearch, onCheckedChange = { showSearchHotSearch = it; preferences.edit { putBoolean("showSearchHotSearch", it) } })
-                    var showSearchHistory by remember { mutableStateOf(preferences.getBoolean("showSearchHistory", true)) }
-                    SwitchPreference(title = "搜索页展示历史", checked = showSearchHistory, onCheckedChange = { showSearchHistory = it; preferences.edit { putBoolean("showSearchHistory", it) } })
+                    var useCustomNavHost by remember { mutableStateOf(settings.getBoolean("use_custom_nav_host", true)) }
+                    SwitchPreference(title = "自定义导航宿主", summary = "用自定义 NavHost 替代系统导航", checked = useCustomNavHost, onCheckedChange = { useCustomNavHost = it; settings.putBoolean("use_custom_nav_host", it) })
+                    var enablePredictiveBack by remember { mutableStateOf(settings.getBoolean("enable_predictive_back", true)) }
+                    SwitchPreference(title = "预测性返回手势", summary = "Android 14+", checked = enablePredictiveBack, onCheckedChange = { enablePredictiveBack = it; settings.putBoolean("enable_predictive_back", it) })
+                    var enableScrollEndHaptic by remember { mutableStateOf(settings.getBoolean("enableScrollEndHaptic", true)) }
+                    SwitchPreference(title = "滚动到底震动反馈", checked = enableScrollEndHaptic, onCheckedChange = { enableScrollEndHaptic = it; settings.putBoolean("enableScrollEndHaptic", it) })
+                    var enableSwipeReaction by remember { mutableStateOf(settings.getBoolean("enableSwipeReaction", false)) }
+                    SwitchPreference(title = "滑动反馈 (Like/Dislike)", summary = "左右滑动卡片触发喜欢/不喜欢", checked = enableSwipeReaction, onCheckedChange = { enableSwipeReaction = it; settings.putBoolean("enableSwipeReaction", it) })
+                    var openSourceLicenses by remember { mutableStateOf(settings.getBoolean("open_source_licenses", true)) }
+                    SwitchPreference(title = "开源许可页面", checked = openSourceLicenses, onCheckedChange = { openSourceLicenses = it; settings.putBoolean("open_source_licenses", it) })
+                    var showSearchHotSearch by remember { mutableStateOf(settings.getBoolean("showSearchHotSearch", true)) }
+                    SwitchPreference(title = "搜索页展示热搜", checked = showSearchHotSearch, onCheckedChange = { showSearchHotSearch = it; settings.putBoolean("showSearchHotSearch", it) })
+                    var showSearchHistory by remember { mutableStateOf(settings.getBoolean("showSearchHistory", true)) }
+                    SwitchPreference(title = "搜索页展示历史", checked = showSearchHistory, onCheckedChange = { showSearchHistory = it; settings.putBoolean("showSearchHistory", it) })
                 }
             }
 
@@ -126,33 +123,24 @@ fun MiuixDeveloperSettingsScreen() {
             item { SmallTitle(text = "诊断工具") }
             item {
                 Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
-                    ArrowPreference(title = "App 信息", summary = context.packageName, onClick = {})
+                    ArrowPreference(title = "App 信息", summary = diagnostics.appInfo, onClick = {})
                     ArrowPreference(
                         title = "网络状态",
-                        summary = run {
-                            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
-                            val nc = cm?.getNetworkCapabilities(cm.activeNetwork)
-                            when {
-                                nc == null -> "无网络"
-                                nc.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "WiFi"
-                                nc.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "蜂窝网络"
-                                else -> "其他"
-                            }
-                        },
+                        summary = diagnostics.networkStatus,
                         onClick = {},
                     )
                     ArrowPreference(title = "句子相似度测试", summary = "NLP 模型测试", onClick = { navigator.onNavigate(SentenceSimilarityTest) })
                     ArrowPreference(title = "配色方案查看器", summary = "查看 M3 ColorScheme token", onClick = { navigator.onNavigate(Account.DeveloperSettings.ColorScheme) })
 
-                    var showDebugOverlay by remember { mutableStateOf(preferences.getBoolean("showDebugOverlay", false)) }
-                    SwitchPreference(title = "调试悬浮窗", summary = "显示当前 Feed 详情", checked = showDebugOverlay, onCheckedChange = { showDebugOverlay = it; preferences.edit { putBoolean("showDebugOverlay", it) } })
+                    var showDebugOverlay by remember { mutableStateOf(settings.getBoolean("showDebugOverlay", false)) }
+                    SwitchPreference(title = "调试悬浮窗", summary = "显示当前 Feed 详情", checked = showDebugOverlay, onCheckedChange = { showDebugOverlay = it; settings.putBoolean("showDebugOverlay", it) })
                 }
             }
 
             // GitHub Token
             item { SmallTitle(text = "GitHub Token") }
             item {
-                var githubToken by remember { mutableStateOf(preferences.getString("githubToken", "") ?: "") }
+                var githubToken by remember { mutableStateOf(settings.getString("githubToken", "") ?: "") }
                 var showGithubToken by remember { mutableStateOf(false) }
                 Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
                     ArrowPreference(
@@ -163,7 +151,7 @@ fun MiuixDeveloperSettingsScreen() {
                     if (showGithubToken) {
                         OutlinedTextField(
                             value = githubToken,
-                            onValueChange = { githubToken = it; preferences.edit { putString("githubToken", it) } },
+                            onValueChange = { githubToken = it; settings.putString("githubToken", it) },
                             visualTransformation = if (showGithubToken) VisualTransformation.None else PasswordVisualTransformation(),
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                             singleLine = true,
@@ -176,8 +164,7 @@ fun MiuixDeveloperSettingsScreen() {
             item { SmallTitle(text = "设备标识") }
             item {
                 Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
-                    val clipboard = context.clipboardManager
-                    var zse96Key by remember { mutableStateOf(preferences.getString("zse96_key", "") ?: "") }
+                    var zse96Key by remember { mutableStateOf(settings.getString("zse96_key", "") ?: "") }
                     var showZse96 by remember { mutableStateOf(false) }
                     ArrowPreference(
                         title = "ZSE-96 签名密钥",
@@ -187,7 +174,7 @@ fun MiuixDeveloperSettingsScreen() {
                     if (showZse96) {
                         OutlinedTextField(
                             value = zse96Key,
-                            onValueChange = { zse96Key = it; preferences.edit { putString("zse96_key", it) } },
+                            onValueChange = { zse96Key = it; settings.putString("zse96_key", it) },
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                             singleLine = true,
                         )
@@ -195,15 +182,9 @@ fun MiuixDeveloperSettingsScreen() {
 
                     var showDeviceInfo by remember { mutableStateOf(false) }
                     if (showDeviceInfo) {
-                        val info = run {
-                            val pkg = context.packageName
-                            val pm = context.packageManager
-                            try { "versionName=${pm.getPackageInfo(pkg, 0).versionName}, versionCode=${pm.getPackageInfo(pkg, 0).longVersionCode}" }
-                            catch (_: Exception) { "unknown" }
-                        }
                         Card(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
                             SelectionContainer {
-                                Text(info, fontSize = 12.sp, modifier = Modifier.padding(12.dp))
+                                Text(diagnostics.deviceInfo, fontSize = 12.sp, modifier = Modifier.padding(12.dp))
                             }
                         }
                     }
@@ -218,7 +199,7 @@ fun MiuixDeveloperSettingsScreen() {
                                 Column {
                                     Text("当前剪贴板内容：")
                                     Spacer(Modifier.height(8.dp))
-                                    Text(clipboard.primaryClip?.getItemAt(0)?.text?.toString() ?: "(空)", color = MiuixTheme.colorScheme.onSurface)
+                                    Text(diagnostics.readClipboardText() ?: "(空)", color = MiuixTheme.colorScheme.onSurface)
                                 }
                             },
                             confirmButton = { TextButton(onClick = { showClipboardDebug = false }) { Text("关闭") } },
@@ -229,9 +210,8 @@ fun MiuixDeveloperSettingsScreen() {
                     var exportDevConfig by remember { mutableStateOf(false) }
                     if (exportDevConfig) {
                         exportDevConfig = false
-                        val allPrefs = preferences.all.map { "${it.key}: ${it.value}" }.joinToString("\n")
-                        clipboard.setPrimaryClip(ClipData.newPlainText("dev_config", allPrefs))
-                        Toast.makeText(context, "已复制所有配置到剪贴板", Toast.LENGTH_SHORT).show()
+                        copyPlainText("dev_config", diagnostics.exportAllSettings())
+                        userMessages.showShortMessage("已复制所有配置到剪贴板")
                     }
                     ArrowPreference(title = "导出所有配置", summary = "复制 SharedPreferences 到剪贴板", onClick = { exportDevConfig = true })
                 }

@@ -7,9 +7,6 @@
 
 package com.github.zly2006.zhihu.ui.miuix
 
-import android.content.ClipData
-import android.content.Context
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -47,7 +44,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -57,20 +53,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.BuildConfig
-import com.github.zly2006.zhihu.data.NotificationItem
-import com.github.zly2006.zhihu.data.NotificationTarget
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.shared.data.NotificationItem
+import com.github.zly2006.zhihu.shared.data.NotificationTarget
+import com.github.zly2006.zhihu.shared.data.navDestination
+import com.github.zly2006.zhihu.shared.notification.rememberNotificationSettingsStore
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.shared.util.formatRelativeTime
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
-import com.github.zly2006.zhihu.util.clipboardManager
+import com.github.zly2006.zhihu.ui.rememberNotificationScreenRuntime
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
@@ -85,25 +84,24 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @Composable
 fun MiuixNotificationScreen() {
     val navigator = LocalNavigator.current
-    val context = LocalContext.current
-    val viewModel = viewModel<NotificationViewModel>()
+    val settings = rememberSettingsStore()
+    val settingsStore = rememberNotificationSettingsStore()
+    val viewModel = viewModel { NotificationViewModel() }
+    val runtime = rememberNotificationScreenRuntime(viewModel, settingsStore)
+    val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
-    val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE) }
-    val blurEnabled = remember { mutableStateOf(preferences.getBoolean("blurEnabled", true)) }
+    val blurEnabled = remember { mutableStateOf(settings.getBoolean("blurEnabled", true)) }
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
     val scrollBehavior = MiuixScrollBehavior()
     val listState = rememberLazyListState()
 
     LaunchedEffect(Unit) {
         if (viewModel.allData.isEmpty()) {
-            viewModel.refresh(context)
+            viewModel.refresh(runtime.environment)
         }
     }
 
@@ -122,8 +120,8 @@ fun MiuixNotificationScreen() {
                     if (viewModel.unreadCount > 0) {
                         IconButton(onClick = {
                             coroutineScope.launch {
-                                viewModel.markAllAsRead(context)
-                                Toast.makeText(context, "已全部标记为已读", Toast.LENGTH_SHORT).show()
+                                viewModel.markAllAsRead(runtime.environment)
+                                userMessages.showMessage("已全部标记为已读")
                             }
                         }) {
                             Icon(Icons.Default.MarkChatRead, "已读", tint = MiuixTheme.colorScheme.onBackground)
@@ -139,7 +137,7 @@ fun MiuixNotificationScreen() {
     ) { padding ->
         PullToRefresh(
             isRefreshing = viewModel.isLoading,
-            onRefresh = { coroutineScope.launch { viewModel.refresh(context) } },
+            onRefresh = { coroutineScope.launch { viewModel.refresh(runtime.environment) } },
             contentPadding = PaddingValues(top = padding.calculateTopPadding() + 6.dp),
             refreshTexts = listOf("下拉刷新", "释放刷新", "正在刷新...", "刷新完成"),
         ) {
@@ -157,17 +155,17 @@ fun MiuixNotificationScreen() {
                     ),
                 ) {
                     items(viewModel.allData, key = { it.id }) { notification ->
-                        if (viewModel.shouldShowNotification(context, notification)) {
+                        if (viewModel.shouldShowNotification(settingsStore, notification)) {
                             NotificationItemCard(
                                 notification = notification,
                                 onClick = {
-                                    viewModel.markAsRead(context, notification.id)
+                                    viewModel.markAsRead(notification.id)
                                     when (notification.target) {
                                         is NotificationTarget.Comment -> {
-                                            Toast.makeText(context, "暂不支持跳转到评论，将跳转到对应回答。", Toast.LENGTH_LONG).show()
+                                            userMessages.showMessage("暂不支持跳转到评论，将跳转到对应回答。")
                                             notification.target.target?.navDestination?.let {
                                                 navigator.onNavigate(it)
-                                            } ?: Toast.makeText(context, "导航失败", Toast.LENGTH_LONG).show()
+                                            } ?: userMessages.showMessage("导航失败")
                                         }
                                         is NotificationTarget.Question -> {
                                             navigator.onNavigate(Question(notification.target.id.toLong(), notification.target.title))
@@ -199,12 +197,12 @@ fun MiuixNotificationScreen() {
                     }
                     if (!viewModel.isEnd) {
                         item {
-                            LaunchedEffect(Unit) { viewModel.loadMore(context) }
+                            LaunchedEffect(Unit) { viewModel.loadMore(runtime.environment) }
                         }
                     }
                 }
 
-                if (BuildConfig.DEBUG) {
+                if (runtime.showDebugCopy) {
                     androidx.compose.foundation.layout.Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.BottomEnd,
@@ -212,9 +210,8 @@ fun MiuixNotificationScreen() {
                         IconButton(
                             onClick = {
                                 val data = Json.encodeToString(viewModel.debugData)
-                                val clip = ClipData.newPlainText("data", data)
-                                context.clipboardManager.setPrimaryClip(clip)
-                                Toast.makeText(context, "已复制调试数据", Toast.LENGTH_SHORT).show()
+                                runtime.environment.setPlainTextClipboard("data", data)
+                                userMessages.showMessage("已复制调试数据")
                             },
                         ) {
                             Icon(Icons.Default.CopyAll, "复制", tint = MiuixTheme.colorScheme.onBackground)
@@ -297,7 +294,7 @@ private fun NotificationItemCard(
             }
 
             Spacer(modifier = Modifier.height(6.dp))
-            Text(formatTime(notification.createTime), fontSize = 12.sp, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+            Text(formatRelativeTime(notification.createTime), fontSize = 12.sp, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
         }
     }
 }
@@ -322,14 +319,3 @@ private fun buildNotificationText(notification: NotificationItem) = buildAnnotat
     }
 }
 
-private fun formatTime(timestamp: Long): String {
-    val now = System.currentTimeMillis() / 1000
-    val diff = now - timestamp
-    return when {
-        diff < 60 -> "刚刚"
-        diff < 3600 -> "${diff / 60}分钟前"
-        diff < 86400 -> "${diff / 3600}小时前"
-        diff < 604800 -> "${diff / 86400}天前"
-        else -> SimpleDateFormat("MM-dd HH:mm", Locale.CHINA).format(Date(timestamp * 1000))
-    }
-}

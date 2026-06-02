@@ -7,7 +7,6 @@
 
 package com.github.zly2006.zhihu.ui.miuix.subscreens
 
-import android.content.Context
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,7 +35,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -48,8 +46,9 @@ import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedFeedRecord
-import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterDatabase
+import com.github.zly2006.zhihu.viewmodel.filter.rememberBlockedFeedRecordDao
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import top.yukonga.miuix.kmp.blur.layerBackdrop
@@ -62,22 +61,29 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Instant
 
-private val dateFormat = SimpleDateFormat("MM-dd HH:mm", Locale.getDefault())
+private fun formatBlockedTime(timestampMillis: Long): String {
+    val dateTime = Instant
+        .fromEpochMilliseconds(timestampMillis)
+        .toLocalDateTime(TimeZone.currentSystemDefault())
+    return "${(dateTime.month.ordinal + 1).toString().padStart(2, '0')}-" +
+        "${dateTime.day.toString().padStart(2, '0')} " +
+        "${dateTime.hour.toString().padStart(2, '0')}:" +
+        dateTime.minute.toString().padStart(2, '0')
+}
 
 @Composable
 fun MiuixBlockedFeedHistoryScreen() {
     val navigator = LocalNavigator.current
-    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val dao = remember { ContentFilterDatabase.getDatabase(context).blockedFeedRecordDao() }
+    val dao = rememberBlockedFeedRecordDao()
     val records by dao.observeAll().collectAsState(initial = emptyList())
     var showClearDialog by remember { mutableStateOf(false) }
-    val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE) }
-    val blurEnabled = remember { mutableStateOf(preferences.getBoolean("blurEnabled", true)) }
+    val settings = rememberSettingsStore()
+    val blurEnabled = remember { mutableStateOf(settings.getBoolean("blurEnabled", true)) }
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
     val scrollBehavior = MiuixScrollBehavior()
 
@@ -159,7 +165,7 @@ fun MiuixBlockedFeedHistoryScreen() {
                                     color = MiuixTheme.colorScheme.error,
                                 )
                                 Text(
-                                    text = dateFormat.format(Date(record.blockedTime)),
+                                    text = formatBlockedTime(record.blockedTime),
                                     fontSize = 11.sp,
                                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                                 )

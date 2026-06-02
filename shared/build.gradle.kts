@@ -129,6 +129,14 @@ kotlin {
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
             implementation("androidx.room:room-runtime:2.8.4")
             implementation("com.mikepenz:aboutlibraries-compose-m3:14.0.1")
+            // miuix (KMP) —— Maven Central 发布，含 android/jvm/ios 变体。
+            // 用基础坐标（不带 -android），由 Gradle 按 target 解析对应变体。
+            val miuixVersion = "0.9.1"
+            implementation("top.yukonga.miuix.kmp:miuix-core:$miuixVersion")
+            implementation("top.yukonga.miuix.kmp:miuix-ui:$miuixVersion")
+            implementation("top.yukonga.miuix.kmp:miuix-preference:$miuixVersion")
+            implementation("top.yukonga.miuix.kmp:miuix-icons:$miuixVersion")
+            implementation("top.yukonga.miuix.kmp:miuix-blur:$miuixVersion")
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

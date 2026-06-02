@@ -6,7 +6,6 @@
 
 package com.github.zly2006.zhihu.ui.miuix.components
 
-import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,8 +18,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.state.ToggleableState
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.basic.Checkbox
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
@@ -38,7 +37,7 @@ fun <T> MiuixMultiSelectExpandable(
     minSelection: Int = 1,
     emptySummary: String = "未选择",
 ) {
-    val context = LocalContext.current
+    val userMessages = rememberUserMessageSink()
     val expanded = rememberSaveable { mutableStateOf(false) }
 
     val summary = if (selectedOptions.isEmpty()) {
@@ -67,7 +66,7 @@ fun <T> MiuixMultiSelectExpandable(
                     if (newSet.size >= minSelection) {
                         onSelectionChange(newSet)
                     } else {
-                        Toast.makeText(context, "至少保留 $minSelection 项", Toast.LENGTH_SHORT).show()
+                        userMessages.showShortMessage("至少保留 $minSelection 项")
                     }
                 }
 

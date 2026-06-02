@@ -7,7 +7,6 @@
 
 package com.github.zly2006.zhihu.ui.miuix.components
 
-import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -30,12 +29,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.loadSearchHistory
+import com.github.zly2006.zhihu.viewmodel.feed.ZHIHU_HOT_SEARCH_URL
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
@@ -57,17 +56,17 @@ fun MiuixSearchSuggestions(
     onQueryClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
-    val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE) }
-    val showHistory = remember { preferences.getBoolean("showSearchHistory", true) }
-    val showHotSearch = remember { preferences.getBoolean("showSearchHotSearch", true) }
-    val historyItems = remember { if (showHistory) loadSearchHistory(preferences) else emptyList() }
+    val settings = rememberSettingsStore()
+    val environment = rememberPaginationEnvironment(allowGuestAccess = false)
+    val showHistory = remember { settings.getBoolean("showSearchHistory", true) }
+    val showHotSearch = remember { settings.getBoolean("showSearchHotSearch", true) }
+    val historyItems = remember { if (showHistory) loadSearchHistory(settings) else emptyList() }
     val hotItems = remember { mutableStateListOf<MiuixHotQuery>() }
 
     LaunchedEffect(showHotSearch) {
         if (!showHotSearch) return@LaunchedEffect
         runCatching {
-            val json = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/search/hot_search") ?: return@runCatching
+            val json = environment.fetchJson(ZHIHU_HOT_SEARCH_URL, "") ?: return@runCatching
             val queries = json["hot_search_queries"] as? JsonArray ?: return@runCatching
             hotItems.clear()
             queries.take(15).forEach { item ->

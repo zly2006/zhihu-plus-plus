@@ -7,8 +7,6 @@
 
 package com.github.zly2006.zhihu.ui.miuix.subscreens
 
-import android.content.Context
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -33,20 +31,20 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.edit
-import com.github.zly2006.zhihu.data.RecommendationMode
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.shared.data.RecommendationMode
+import com.github.zly2006.zhihu.shared.filter.ContentFilterStats
+import com.github.zly2006.zhihu.shared.filter.rememberContentFilterMaintenance
+import com.github.zly2006.zhihu.shared.platform.SettingsStore
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
-import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterManager
-import com.github.zly2006.zhihu.viewmodel.filter.FilterStats
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.basic.Button
@@ -73,19 +71,20 @@ fun MiuixContentFilterSettingsScreen(
     setting: String = "",
 ) {
     val navigator = LocalNavigator.current
-    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE) }
-    val blurEnabled = remember { mutableStateOf(preferences.getBoolean("blurEnabled", true)) }
+    val settings = rememberSettingsStore()
+    val userMessages = rememberUserMessageSink()
+    val filterMaintenance = rememberContentFilterMaintenance()
+    val blurEnabled = remember { mutableStateOf(settings.getBoolean("blurEnabled", true)) }
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
     val scrollBehavior = MiuixScrollBehavior()
-    var filterStats by remember { mutableStateOf<FilterStats?>(null) }
+    var filterStats by remember { mutableStateOf<ContentFilterStats?>(null) }
     val showStatsSheet = remember { mutableStateOf(false) }
-    var topicThreshold by remember { mutableStateOf(preferences.getInt("topicBlockingThreshold", 1)) }
+    var topicThreshold by remember { mutableStateOf(settings.getInt("topicBlockingThreshold", 1)) }
     val showThresholdSheet = remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        try { filterStats = ContentFilterManager.getInstance(context).getFilterStats() } catch (_: Exception) {}
+        try { filterStats = filterMaintenance.loadFilterStats() } catch (_: Exception) {}
     }
 
     Scaffold(
@@ -119,15 +118,15 @@ fun MiuixContentFilterSettingsScreen(
             item { SmallTitle(text = "推荐算法") }
             item {
                 Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
-                    RecommendationModeSpinner(preferences)
-                    val isLoginForRecommendation = remember { mutableStateOf(preferences.getBoolean("loginForRecommendation", true)) }
+                    RecommendationModeSpinner(settings)
+                    val isLoginForRecommendation = remember { mutableStateOf(settings.getBoolean("loginForRecommendation", true)) }
                     SwitchPreference(
                         title = "推荐内容时登录",
                         summary = "获取推荐内容时携带登录凭证",
                         checked = isLoginForRecommendation.value,
                         onCheckedChange = {
                             isLoginForRecommendation.value = it
-                            preferences.edit { putBoolean("loginForRecommendation", it) }
+                            settings.putBoolean("loginForRecommendation", it)
                         },
                     )
                 }
@@ -137,36 +136,36 @@ fun MiuixContentFilterSettingsScreen(
             item { SmallTitle(text = "内容过滤") }
             item {
                 Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
-                    val enableQualityFilter = remember { mutableStateOf(preferences.getBoolean("enableQualityFilter", true)) }
+                    val enableQualityFilter = remember { mutableStateOf(settings.getBoolean("enableQualityFilter", true)) }
                     SwitchPreference(
                         title = "启用质量过滤规则",
                         summary = "根据赞同数、关注数等指标过滤低质量内容",
                         checked = enableQualityFilter.value,
                         onCheckedChange = {
                             enableQualityFilter.value = it
-                            preferences.edit { putBoolean("enableQualityFilter", it) }
+                            settings.putBoolean("enableQualityFilter", it)
                         },
                     )
 
-                    val enableContentFilter = remember { mutableStateOf(preferences.getBoolean("enableContentFilter", true)) }
+                    val enableContentFilter = remember { mutableStateOf(settings.getBoolean("enableContentFilter", true)) }
                     SwitchPreference(
                         title = "启用智能内容过滤",
                         summary = "自动过滤首页展示超过2次但用户未点击的内容，减少重复推荐",
                         checked = enableContentFilter.value,
                         onCheckedChange = {
                             enableContentFilter.value = it
-                            preferences.edit { putBoolean("enableContentFilter", it) }
+                            settings.putBoolean("enableContentFilter", it)
                         },
                     )
 
-                    val filterFollowedUserContent = remember { mutableStateOf(preferences.getBoolean("filterFollowedUserContent", false)) }
+                    val filterFollowedUserContent = remember { mutableStateOf(settings.getBoolean("filterFollowedUserContent", false)) }
                     SwitchPreference(
                         title = "过滤已关注用户内容",
                         summary = "是否对已关注用户的内容也应用过滤规则",
                         checked = filterFollowedUserContent.value,
                         onCheckedChange = {
                             filterFollowedUserContent.value = it
-                            preferences.edit { putBoolean("filterFollowedUserContent", it) }
+                            settings.putBoolean("filterFollowedUserContent", it)
                         },
                     )
                 }
@@ -176,36 +175,36 @@ fun MiuixContentFilterSettingsScreen(
             item { SmallTitle(text = "屏蔽设置") }
             item {
                 Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
-                    val enableKeywordBlocking = remember { mutableStateOf(preferences.getBoolean("enableKeywordBlocking", true)) }
+                    val enableKeywordBlocking = remember { mutableStateOf(settings.getBoolean("enableKeywordBlocking", true)) }
                     SwitchPreference(
                         title = "启用关键词屏蔽",
                         summary = "屏蔽包含特定关键词的内容",
                         checked = enableKeywordBlocking.value,
                         onCheckedChange = {
                             enableKeywordBlocking.value = it
-                            preferences.edit { putBoolean("enableKeywordBlocking", it) }
+                            settings.putBoolean("enableKeywordBlocking", it)
                         },
                     )
 
-                    val enableUserBlocking = remember { mutableStateOf(preferences.getBoolean("enableUserBlocking", true)) }
+                    val enableUserBlocking = remember { mutableStateOf(settings.getBoolean("enableUserBlocking", true)) }
                     SwitchPreference(
                         title = "启用用户屏蔽",
                         summary = "屏蔽特定用户发布的内容",
                         checked = enableUserBlocking.value,
                         onCheckedChange = {
                             enableUserBlocking.value = it
-                            preferences.edit { putBoolean("enableUserBlocking", it) }
+                            settings.putBoolean("enableUserBlocking", it)
                         },
                     )
 
-                    val enableTopicBlocking = remember { mutableStateOf(preferences.getBoolean("enableTopicBlocking", true)) }
+                    val enableTopicBlocking = remember { mutableStateOf(settings.getBoolean("enableTopicBlocking", true)) }
                     SwitchPreference(
                         title = "启用主题屏蔽",
                         summary = "屏蔽包含特定主题的内容",
                         checked = enableTopicBlocking.value,
                         onCheckedChange = {
                             enableTopicBlocking.value = it
-                            preferences.edit { putBoolean("enableTopicBlocking", it) }
+                            settings.putBoolean("enableTopicBlocking", it)
                         },
                     )
 
@@ -223,58 +222,58 @@ fun MiuixContentFilterSettingsScreen(
             item { SmallTitle(text = "内容类型屏蔽") }
             item {
                 Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
-                    val blockZhihuAdPlatform = remember { mutableStateOf(preferences.getBoolean("blockZhihuAdPlatform", true)) }
+                    val blockZhihuAdPlatform = remember { mutableStateOf(settings.getBoolean("blockZhihuAdPlatform", true)) }
                     SwitchPreference(
                         title = "屏蔽知乎广告平台内容",
                         summary = "匹配并屏蔽包含 xg.zhihu.com 的推广内容",
                         checked = blockZhihuAdPlatform.value,
                         onCheckedChange = {
                             blockZhihuAdPlatform.value = it
-                            preferences.edit { putBoolean("blockZhihuAdPlatform", it) }
+                            settings.putBoolean("blockZhihuAdPlatform", it)
                         },
                     )
 
-                    val blockZhihuSchool = remember { mutableStateOf(preferences.getBoolean("blockZhihuSchool", true)) }
+                    val blockZhihuSchool = remember { mutableStateOf(settings.getBoolean("blockZhihuSchool", true)) }
                     SwitchPreference(
                         title = "屏蔽知乎学堂内容",
                         summary = "匹配并屏蔽包含 d.zhihu.com 或 data-edu-card-id 的内容",
                         checked = blockZhihuSchool.value,
                         onCheckedChange = {
                             blockZhihuSchool.value = it
-                            preferences.edit { putBoolean("blockZhihuSchool", it) }
+                            settings.putBoolean("blockZhihuSchool", it)
                         },
                     )
 
-                    val blockWeChatOfficialAccount = remember { mutableStateOf(preferences.getBoolean("blockWeChatOfficialAccount", true)) }
+                    val blockWeChatOfficialAccount = remember { mutableStateOf(settings.getBoolean("blockWeChatOfficialAccount", true)) }
                     SwitchPreference(
                         title = "屏蔽微信公众号文章",
                         summary = "匹配并屏蔽包含 mp.weixin.qq.com 的外链文章",
                         checked = blockWeChatOfficialAccount.value,
                         onCheckedChange = {
                             blockWeChatOfficialAccount.value = it
-                            preferences.edit { putBoolean("blockWeChatOfficialAccount", it) }
+                            settings.putBoolean("blockWeChatOfficialAccount", it)
                         },
                     )
 
-                    val blockPaidContent = remember { mutableStateOf(preferences.getBoolean("blockPaidContent", true)) }
+                    val blockPaidContent = remember { mutableStateOf(settings.getBoolean("blockPaidContent", true)) }
                     SwitchPreference(
                         title = "屏蔽知乎盐选付费内容",
                         summary = "屏蔽知乎盐选会员专享的付费回答和文章",
                         checked = blockPaidContent.value,
                         onCheckedChange = {
                             blockPaidContent.value = it
-                            preferences.edit { putBoolean("blockPaidContent", it) }
+                            settings.putBoolean("blockPaidContent", it)
                         },
                     )
 
-                    val reverseBlock = remember { mutableStateOf(preferences.getBoolean("reverseBlock", false)) }
+                    val reverseBlock = remember { mutableStateOf(settings.getBoolean("reverseBlock", false)) }
                     SwitchPreference(
                         title = "反向屏蔽（吃💩模式）",
                         summary = "开启后，首页将只保留广告和付费内容，屏蔽其余所有内容",
                         checked = reverseBlock.value,
                         onCheckedChange = {
                             reverseBlock.value = it
-                            preferences.edit { putBoolean("reverseBlock", it) }
+                            settings.putBoolean("reverseBlock", it)
                         },
                     )
                 }
@@ -300,7 +299,7 @@ fun MiuixContentFilterSettingsScreen(
             }
 
             // ── 过滤统计 ──
-            val enableContentFilter = preferences.getBoolean("enableContentFilter", true)
+            val enableContentFilter = settings.getBoolean("enableContentFilter", true)
             if (enableContentFilter && filterStats != null) {
                 item {
                     Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
@@ -333,9 +332,8 @@ fun MiuixContentFilterSettingsScreen(
                 onClick = {
                     coroutineScope.launch {
                         try {
-                            ContentFilterManager.getInstance(context).cleanupOldData()
-                            filterStats = ContentFilterManager.getInstance(context).getFilterStats()
-                            Toast.makeText(context, "已清理过期数据", Toast.LENGTH_SHORT).show()
+                            filterStats = filterMaintenance.cleanupOldData()
+                            userMessages.showShortMessage("已清理过期数据")
                         } catch (_: Exception) {}
                     }
                 },
@@ -348,9 +346,8 @@ fun MiuixContentFilterSettingsScreen(
                 onClick = {
                     coroutineScope.launch {
                         try {
-                            ContentFilterManager.getInstance(context).clearAllData()
-                            filterStats = ContentFilterManager.getInstance(context).getFilterStats()
-                            Toast.makeText(context, "已重置所有数据", Toast.LENGTH_SHORT).show()
+                            filterStats = filterMaintenance.clearAllData()
+                            userMessages.showShortMessage("已重置所有数据")
                             showStatsSheet.value = false
                         } catch (_: Exception) {}
                     }
@@ -388,10 +385,10 @@ fun MiuixContentFilterSettingsScreen(
                         val n = inputValue.toIntOrNull()
                         if (n != null && n > 0) {
                             topicThreshold = n
-                            preferences.edit { putInt("topicBlockingThreshold", n) }
+                            settings.putInt("topicBlockingThreshold", n)
                             showThresholdSheet.value = false
                         } else {
-                            Toast.makeText(context, "请输入大于0的整数", Toast.LENGTH_SHORT).show()
+                            userMessages.showShortMessage("请输入大于0的整数")
                         }
                     },
                     modifier = Modifier.weight(1f),
@@ -402,10 +399,10 @@ fun MiuixContentFilterSettingsScreen(
 }
 
 @Composable
-private fun RecommendationModeSpinner(preferences: android.content.SharedPreferences) {
+private fun RecommendationModeSpinner(settings: SettingsStore) {
     val currentMode = remember {
         mutableStateOf(
-            RecommendationMode.entries.find { it.key == preferences.getString("recommendationMode", RecommendationMode.MIXED.key) }
+            RecommendationMode.entries.find { it.key == settings.getString("recommendationMode", RecommendationMode.MIXED.key) }
                 ?: RecommendationMode.MIXED,
         )
     }
@@ -419,7 +416,7 @@ private fun RecommendationModeSpinner(preferences: android.content.SharedPrefere
         onSelectedIndexChange = { newIdx ->
             val mode = RecommendationMode.entries[newIdx]
             currentMode.value = mode
-            preferences.edit { putString("recommendationMode", mode.key) }
+            settings.putString("recommendationMode", mode.key)
         },
     )
 }

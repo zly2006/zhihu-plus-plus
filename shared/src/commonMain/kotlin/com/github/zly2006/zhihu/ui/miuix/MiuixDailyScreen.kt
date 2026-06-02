@@ -7,9 +7,6 @@
 
 package com.github.zly2006.zhihu.ui.miuix
 
-import android.content.Context
-import android.content.Intent
-import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -52,30 +49,38 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.MainActivity
-import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.DailyStory
+import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.resolveContent
+import com.github.zly2006.zhihu.shared.data.DailyStory
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.shared.util.formatDailyDate
+import com.github.zly2006.zhihu.shared.viewmodel.DailyViewModel
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.DailyScreenUiState
-import com.github.zly2006.zhihu.ui.DailySection
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.AutoHideTopBar
-import com.github.zly2006.zhihu.viewmodel.DailyViewModel
+import com.github.zly2006.zhihu.ui.rememberZhihuHttpClient
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.request.get
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import org.jsoup.Jsoup
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
@@ -88,11 +93,10 @@ import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalTime::class)
 @Composable
 fun MiuixDailyScreen(
     testState: DailyScreenUiState? = null,
@@ -100,8 +104,9 @@ fun MiuixDailyScreen(
     onTestLoadMore: (() -> Unit)? = null,
 ) {
     val navigator = LocalNavigator.current
-    val context = LocalActivity.current as MainActivity
-    val viewModel = viewModel<DailyViewModel>()
+    val httpClient = rememberZhihuHttpClient()
+    val uriHandler = LocalUriHandler.current
+    val viewModel = viewModel { DailyViewModel() }
     val isTestMode = testState != null
     var isRefreshing by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
@@ -113,8 +118,8 @@ fun MiuixDailyScreen(
         isLoadingMore = viewModel.isLoadingMore,
         error = viewModel.error,
     )
-    val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE) }
-    val blurEnabled = remember { mutableStateOf(preferences.getBoolean("blurEnabled", true)) }
+    val settings = rememberSettingsStore()
+    val blurEnabled = remember { mutableStateOf(settings.getBoolean("blurEnabled", true)) }
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
     val scrollBehavior = MiuixScrollBehavior()
 
@@ -127,7 +132,7 @@ fun MiuixDailyScreen(
                 if (isTestMode) {
                     onTestLoadMore?.invoke()
                 } else {
-                    viewModel.loadMore(context.httpClient)
+                    viewModel.loadMore(httpClient)
                 }
             }
         }
@@ -135,13 +140,13 @@ fun MiuixDailyScreen(
 
     LaunchedEffect(isTestMode) {
         if (!isTestMode && viewModel.sections.isEmpty()) {
-            viewModel.loadLatest(context.httpClient)
+            viewModel.loadLatest(httpClient)
         }
     }
 
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = System.currentTimeMillis(),
+            initialSelectedDateMillis = Clock.System.now().toEpochMilliseconds(),
         )
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
@@ -149,13 +154,12 @@ fun MiuixDailyScreen(
                 TextButton(onClick = {
                     showDatePicker = false
                     datePickerState.selectedDateMillis?.let { millis ->
-                        val sdf = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
-                        val dateStr = sdf.format(Date(millis))
+                        val dateStr = formatDailyDatePickerSelection(millis)
                         scope.launch {
                             if (isTestMode) {
                                 onTestDateSelected?.invoke(dateStr)
                             } else {
-                                viewModel.loadDate(context.httpClient, dateStr)
+                                viewModel.loadDate(httpClient, dateStr)
                                 listState.scrollToItem(0)
                             }
                         }
@@ -196,7 +200,7 @@ fun MiuixDailyScreen(
                 scope.launch {
                     isRefreshing = true
                     if (!isTestMode) {
-                        viewModel.loadLatest(context.httpClient)
+                        viewModel.loadLatest(httpClient)
                         listState.scrollToItem(0)
                     }
                     isRefreshing = false
@@ -257,7 +261,7 @@ fun MiuixDailyScreen(
                             uiState.sections.forEach { section ->
                                 item(key = "header_${section.date}") {
                                     MiuixDateHeader(
-                                        date = formatDate(section.date),
+                                        date = formatDailyDate(section.date),
                                         modifier = Modifier.testTag(dailySectionHeaderTag(section.date)),
                                     )
                                 }
@@ -268,15 +272,11 @@ fun MiuixDailyScreen(
                                         onClick = {
                                             if (!isTestMode) {
                                                 scope.launch {
-                                                    val jojo = AccountData.fetchGet(context, "https://daily.zhihu.com/api/7/story/${story.id}")!!
-                                                    val body = Jsoup.parse(jojo["body"]!!.jsonPrimitive.content)
-                                                    val url = body.selectFirst("a")?.attr("href")
-                                                    val destination = url?.let(::resolveContent)
+                                                    val destination = fetchDailyStoryDestination(httpClient, story.id)
                                                     if (destination != null) {
                                                         navigator.onNavigate(destination)
                                                     } else {
-                                                        val intent = Intent(Intent.ACTION_VIEW, story.url.toUri())
-                                                        context.startActivity(intent)
+                                                        uriHandler.openUri(story.url)
                                                     }
                                                 }
                                             }
@@ -386,13 +386,27 @@ private fun MiuixDailyStoryCard(
     }
 }
 
-private fun formatDate(dateString: String): String = try {
-    val inputFormat = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
-    val outputFormat = SimpleDateFormat("yyyy年MM月dd日", Locale.getDefault())
-    val date = inputFormat.parse(dateString)
-    outputFormat.format(date ?: Date())
-} catch (e: Exception) {
-    dateString
+@OptIn(ExperimentalTime::class)
+private fun formatDailyDatePickerSelection(millis: Long): String {
+    val date = kotlin.time.Instant
+        .fromEpochMilliseconds(millis)
+        .toLocalDateTime(TimeZone.currentSystemDefault())
+        .date
+    return date.year.toString().padStart(4, '0') +
+        (date.month.ordinal + 1).toString().padStart(2, '0') +
+        date.day.toString().padStart(2, '0')
+}
+
+private suspend fun fetchDailyStoryDestination(
+    httpClient: HttpClient,
+    storyId: Long,
+): NavDestination? = withContext(Dispatchers.Default) {
+    val response: JsonObject = httpClient
+        .get("https://daily.zhihu.com/api/7/story/$storyId")
+        .body()
+    val body = response["body"]?.jsonPrimitive?.content ?: return@withContext null
+    val url = Ksoup.parse(body).selectFirst("a")?.attr("href")
+    url?.let(::resolveContent)
 }
 
 private fun dailySectionHeaderTag(date: String) = "daily_screen_section_$date"

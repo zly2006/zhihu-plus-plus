@@ -7,10 +7,6 @@
 
 package com.github.zly2006.zhihu.ui.miuix
 
-import android.content.Intent
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -44,23 +40,25 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.FileProvider
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.shared.util.Log
+import com.github.zly2006.zhihu.ui.BlocklistSettingsNlpContent
 import com.github.zly2006.zhihu.ui.BlocklistSettingsTestConfig
 import com.github.zly2006.zhihu.ui.BlocklistSettingsTestTags
-import com.github.zly2006.zhihu.ui.NLPKeywordManagementScreen
+import com.github.zly2006.zhihu.ui.rememberBlocklistSettingsPlatformRuntime
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeyword
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedTopic
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedUser
-import com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.BlocklistStats
+import com.github.zly2006.zhihu.viewmodel.filter.KeywordType
+import com.github.zly2006.zhihu.viewmodel.filter.rememberBlocklistManager
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
@@ -94,10 +92,13 @@ import top.yukonga.miuix.kmp.utils.overScrollVertical
  */
 @Composable
 fun MiuixBlocklistSettingsScreen(
+    nlpContent: BlocklistSettingsNlpContent? = null,
     testConfig: BlocklistSettingsTestConfig? = null,
 ) {
     val navigator = LocalNavigator.current
-    val context = LocalContext.current
+    val userMessages = rememberUserMessageSink()
+    val runtime = rememberBlocklistSettingsPlatformRuntime(userMessages)
+    val blocklistManager = rememberBlocklistManager()
     val coroutineScope = rememberCoroutineScope()
 
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -121,32 +122,14 @@ fun MiuixBlocklistSettingsScreen(
     fun loadData() {
         coroutineScope.launch {
             try {
-                val mgr = BlocklistManager.getInstance(context)
-                loadedKeywords = mgr.getAllBlockedKeywords()
-                    .filter { it.getKeywordTypeEnum() == com.github.zly2006.zhihu.viewmodel.filter.KeywordType.EXACT_MATCH }
-                loadedUsers = mgr.getAllBlockedUsers()
-                loadedTopics = mgr.getAllBlockedTopics()
-                loadedStats = mgr.getBlocklistStats()
+                loadedKeywords = blocklistManager.getAllBlockedKeywords()
+                    .filter { it.getKeywordTypeEnum() == KeywordType.EXACT_MATCH }
+                loadedUsers = blocklistManager.getAllBlockedUsers()
+                loadedTopics = blocklistManager.getAllBlockedTopics()
+                loadedStats = blocklistManager.getBlocklistStats()
             } catch (e: Exception) {
-                e.printStackTrace()
-                Toast.makeText(context, "加载数据失败: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    val importLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument(),
-    ) { uri ->
-        if (uri != null) {
-            coroutineScope.launch {
-                try {
-                    val summary = BlocklistManager.getInstance(context).importAllBlocklistFromJson(context, uri)
-                    Toast.makeText(context, "导入成功：$summary", Toast.LENGTH_LONG).show()
-                    loadData()
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    Toast.makeText(context, "导入失败: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
+                Log.e("MiuixBlocklistSettingsScreen", "加载数据失败", e)
+                userMessages.showShortMessage("加载数据失败: ${e.message}")
             }
         }
     }
@@ -227,8 +210,14 @@ fun MiuixBlocklistSettingsScreen(
                 Card(
                     modifier = Modifier.weight(1f).clickable {
                         val importAction = testConfig?.onImportRequested
-                        if (importAction != null) importAction()
-                        else importLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
+                        if (importAction != null) {
+                            importAction()
+                        } else {
+                            runtime.requestImport { summary ->
+                                userMessages.showLongMessage("导入成功：$summary")
+                                loadData()
+                            }
+                        }
                     },
                 ) {
                     Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
@@ -241,20 +230,10 @@ fun MiuixBlocklistSettingsScreen(
                         if (exportAction != null) exportAction()
                         else coroutineScope.launch {
                             try {
-                                val mgr = BlocklistManager.getInstance(context)
-                                val file = mgr.exportAllBlocklistToJson(context)
-                                val intent = Intent().apply {
-                                    action = Intent.ACTION_VIEW
-                                    setDataAndType(
-                                        FileProvider.getUriForFile(context, "${context.packageName}.provider", file),
-                                        "application/json",
-                                    )
-                                }
-                                context.startActivity(Intent.createChooser(intent, "查看屏蔽规则"))
-                                Toast.makeText(context, "已导出", Toast.LENGTH_LONG).show()
+                                userMessages.showLongMessage(runtime.exportRules())
                             } catch (e: Exception) {
-                                e.printStackTrace()
-                                Toast.makeText(context, "导出失败", Toast.LENGTH_SHORT).show()
+                                Log.e("MiuixBlocklistSettingsScreen", "导出失败", e)
+                                userMessages.showShortMessage("导出失败: ${e.message}")
                             }
                         }
                     },
@@ -288,12 +267,12 @@ fun MiuixBlocklistSettingsScreen(
                         onDismissForm = { showAddKeywordForm = false },
                     )
                     1 -> {
-                        val nlp = testConfig?.nlpContent
-                        if (nlp != null) nlp(navigator.onNavigateBack)
-                        else NLPKeywordManagementScreen(
-                            innerPadding = PaddingValues(0.dp),
-                            onNavigateBack = navigator.onNavigateBack,
-                        )
+                        val actualNlpContent = testConfig?.nlpContent ?: nlpContent
+                        if (actualNlpContent != null) {
+                            actualNlpContent(navigator.onNavigateBack)
+                        } else {
+                            Text("AI features are not available on this platform.")
+                        }
                     }
                     2 -> UsersTab(
                         users = users,
@@ -338,7 +317,8 @@ private fun KeywordsTab(
     showAddForm: Boolean,
     onDismissForm: () -> Unit,
 ) {
-    val context = LocalContext.current
+    val blocklistManager = rememberBlocklistManager()
+    val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -349,7 +329,7 @@ private fun KeywordsTab(
                         onClick = {
                             testConfig?.onClearKeywords?.let { it(); return@Button }
                             coroutineScope.launch {
-                                try { BlocklistManager.getInstance(context).clearAllBlockedKeywords(); onReload() }
+                                try { blocklistManager.clearAllBlockedKeywords(); onReload() }
                                 catch (e: Exception) { e.printStackTrace() }
                             }
                         },
@@ -369,7 +349,7 @@ private fun KeywordsTab(
                             onClick = {
                                 testConfig?.onDeleteKeyword?.let { it(kw); return@IconButton }
                                 coroutineScope.launch {
-                                    try { BlocklistManager.getInstance(context).removeBlockedKeyword(kw.id); onReload() }
+                                    try { blocklistManager.removeBlockedKeyword(kw.id); onReload() }
                                     catch (e: Exception) { e.printStackTrace() }
                                 }
                             },
@@ -397,8 +377,8 @@ private fun KeywordsTab(
                         testConfig?.onAddKeyword?.let { it(kw, cs, rx); onDismissForm(); return@AddKeywordForm }
                         coroutineScope.launch {
                             try {
-                                BlocklistManager.getInstance(context).addBlockedKeyword(kw, cs, rx)
-                                Toast.makeText(context, "已添加", Toast.LENGTH_SHORT).show()
+                                blocklistManager.addBlockedKeyword(kw, cs, rx)
+                                userMessages.showShortMessage("已添加")
                                 onReload(); onDismissForm()
                             } catch (e: Exception) { e.printStackTrace() }
                         }
@@ -418,7 +398,8 @@ private fun UsersTab(
     showAddForm: Boolean,
     onDismissForm: () -> Unit,
 ) {
-    val context = LocalContext.current
+    val blocklistManager = rememberBlocklistManager()
+    val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -429,7 +410,7 @@ private fun UsersTab(
                         onClick = {
                             testConfig?.onClearUsers?.let { it(); return@Button }
                             coroutineScope.launch {
-                                try { BlocklistManager.getInstance(context).clearAllBlockedUsers(); onReload() }
+                                try { blocklistManager.clearAllBlockedUsers(); onReload() }
                                 catch (e: Exception) { e.printStackTrace() }
                             }
                         },
@@ -454,7 +435,7 @@ private fun UsersTab(
                             onClick = {
                                 testConfig?.onDeleteUser?.let { it(user); return@IconButton }
                                 coroutineScope.launch {
-                                    try { BlocklistManager.getInstance(context).removeBlockedUser(user.userId); onReload() }
+                                    try { blocklistManager.removeBlockedUser(user.userId); onReload() }
                                     catch (e: Exception) { e.printStackTrace() }
                                 }
                             },
@@ -482,8 +463,8 @@ private fun UsersTab(
                         testConfig?.onAddUser?.let { it(id, name); onDismissForm(); return@AddUserForm }
                         coroutineScope.launch {
                             try {
-                                BlocklistManager.getInstance(context).addBlockedUser(id, name)
-                                Toast.makeText(context, "已添加", Toast.LENGTH_SHORT).show()
+                                blocklistManager.addBlockedUser(id, name)
+                                userMessages.showShortMessage("已添加")
                                 onReload(); onDismissForm()
                             } catch (e: Exception) { e.printStackTrace() }
                         }
@@ -504,7 +485,8 @@ private fun TopicsTab(
     showClearConfirm: Boolean,
     onShowClearConfirm: (Boolean) -> Unit,
 ) {
-    val context = LocalContext.current
+    val blocklistManager = rememberBlocklistManager()
+    val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
 
     Box(Modifier.fillMaxSize()) {
@@ -538,7 +520,7 @@ private fun TopicsTab(
                                 onClick = {
                                     testConfig?.onDeleteTopic?.let { it(topic); return@IconButton }
                                     coroutineScope.launch {
-                                        try { BlocklistManager.getInstance(context).removeBlockedTopic(topic.topicId); onReload() }
+                                        try { blocklistManager.removeBlockedTopic(topic.topicId); onReload() }
                                         catch (e: Exception) { e.printStackTrace() }
                                     }
                                 },
@@ -558,8 +540,8 @@ private fun TopicsTab(
                             testConfig?.onAddTopic?.let { it(id, name); onDismissForm(); return@AddTopicForm }
                             coroutineScope.launch {
                                 try {
-                                    BlocklistManager.getInstance(context).addBlockedTopic(id, name)
-                                    Toast.makeText(context, "已添加", Toast.LENGTH_SHORT).show()
+                                    blocklistManager.addBlockedTopic(id, name)
+                                    userMessages.showShortMessage("已添加")
                                     onReload(); onDismissForm()
                                 } catch (e: Exception) { e.printStackTrace() }
                             }
@@ -578,7 +560,7 @@ private fun TopicsTab(
                 onConfirm = {
                     testConfig?.onClearTopics?.let { it(); onShowClearConfirm(false); return@ConfirmDialog }
                     coroutineScope.launch {
-                        try { BlocklistManager.getInstance(context).clearAllBlockedTopics(); onReload() }
+                        try { blocklistManager.clearAllBlockedTopics(); onReload() }
                         catch (e: Exception) { e.printStackTrace() }
                     }
                     onShowClearConfirm(false)

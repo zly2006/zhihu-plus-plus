@@ -357,7 +357,7 @@ fun AppearanceSettingsScreen(
                         )
                     },
                     settingKey = "themeStyle",
-                    highlightedKey = setting,
+                    highlightedKey = settingKey,
                     bringIntoViewRequester = requesterFor("themeStyle"),
                 )
 

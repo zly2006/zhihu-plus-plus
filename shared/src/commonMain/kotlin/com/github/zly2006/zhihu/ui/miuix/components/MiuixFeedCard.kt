@@ -7,9 +7,6 @@
 
 package com.github.zly2006.zhihu.ui.miuix.components
 
-import android.content.Context.MODE_PRIVATE
-import android.content.Intent
-import android.widget.Toast
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -49,7 +46,6 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -57,17 +53,21 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.BuildConfig
-import com.github.zly2006.zhihu.data.officialBadge
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Navigator
+import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.navDestination
+import com.github.zly2006.zhihu.shared.data.officialBadge
+import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
+import com.github.zly2006.zhihu.shared.platform.rememberIsLiteVariant
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.AppTokens
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.subscreens.DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY
 import com.github.zly2006.zhihu.util.parseHtmlTextWithTheme
-import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import top.yukonga.miuix.kmp.basic.Card
@@ -81,45 +81,44 @@ import top.yukonga.miuix.kmp.window.WindowListPopup
 
 @Composable
 fun MiuixFeedCard(
-    item: BaseFeedViewModel.FeedDisplayItem,
+    item: FeedDisplayItem,
     modifier: Modifier = Modifier,
     maxHeight: Dp = 240.dp,
     thumbnailUrl: String? = null,
     horizontalPadding: Dp = 16.dp,
-    onLike: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
-    onDislike: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
-    onBlockUser: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
-    onBlockByKeywords: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
+    onLike: ((FeedDisplayItem) -> Unit)? = null,
+    onDislike: ((FeedDisplayItem) -> Unit)? = null,
+    onBlockUser: ((FeedDisplayItem) -> Unit)? = null,
+    onBlockByKeywords: ((FeedDisplayItem) -> Unit)? = null,
     onBlockTopic: ((topicId: String, topicName: String) -> Unit)? = null,
-    onClick: (BaseFeedViewModel.FeedDisplayItem.() -> Unit)? = null,
+    onClick: (FeedDisplayItem.() -> Unit)? = null,
 ) {
     val density = LocalDensity.current
-    val context = LocalContext.current
     val navigator = LocalNavigator.current
+    val settings = rememberSettingsStore()
+    val openUrl = rememberExternalUrlOpener()
+    val userMessages = rememberUserMessageSink()
     var offsetX by remember { mutableFloatStateOf(0f) }
     var currentY by remember { mutableFloatStateOf(0f) }
     var startY by remember { mutableFloatStateOf(0f) }
     var isDragging by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     val coroutineScope = remember { kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main) }
-    val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE) }
-    val enableSwipeReaction = remember { preferences.getBoolean("enableSwipeReaction", false) } && onLike != null && onDislike != null
-    val showFeedThumbnail = remember { preferences.getBoolean("showFeedThumbnail", true) }
-    val feedCardStyle = remember { preferences.getString("feedCardStyle", "card") }
-    val duo3CardAppearance = remember { preferences.getBoolean("duo3_card_appearance", false) }
-    val duo3CardLayout = remember { preferences.getBoolean("duo3_card_layout", false) }
-    val duo3CardLargeTitle = remember { preferences.getBoolean(DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY, true) }
-    val fontSizePercent = preferences.getInt("contentFontSize", 100)
+    val enableSwipeReaction = remember { settings.getBoolean("enableSwipeReaction", false) } && onLike != null && onDislike != null
+    val showFeedThumbnail = remember { settings.getBoolean("showFeedThumbnail", true) }
+    val feedCardStyle = remember { settings.getString("feedCardStyle", "card") }
+    val duo3CardAppearance = remember { settings.getBoolean("duo3_card_appearance", false) }
+    val duo3CardLayout = remember { settings.getBoolean("duo3_card_layout", false) }
+    val duo3CardLargeTitle = remember { settings.getBoolean(DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY, true) }
+    val fontSizePercent = settings.getInt("contentFontSize", 100)
     val titleFontSize = (15.sp * fontSizePercent / 100)
 
-    val resolvedOnClick: BaseFeedViewModel.FeedDisplayItem.() -> Unit = onClick ?: {
+    val resolvedOnClick: FeedDisplayItem.() -> Unit = onClick ?: {
         val self = this
         self.navDestination?.let { navigator.onNavigate(it) }
             ?: if (self.content?.startsWith("http") == true) {
-                context.startActivity(Intent(Intent.ACTION_VIEW).apply {
-                    data = android.net.Uri.parse(self.content)
-                })
-            } else { Toast.makeText(context, "暂不支持打开该内容", Toast.LENGTH_SHORT).show() }
+                openUrl(self.content!!)
+            } else { userMessages.showShortMessage("暂不支持打开该内容") }
     }
 
     val animatedOffsetX by animateFloatAsState(
@@ -228,7 +227,7 @@ fun MiuixFeedCard(
 
 @Composable
 private fun MiuixFeedCardContent(
-    item: BaseFeedViewModel.FeedDisplayItem,
+    item: FeedDisplayItem,
     showFeedThumbnail: Boolean,
     thumbnailUrl: String?,
     duo3CardLayout: Boolean,
@@ -310,27 +309,28 @@ private fun MiuixFeedCardContent(
 
 @Composable
 private fun MiuixFeedCardMenuBox(
-    item: BaseFeedViewModel.FeedDisplayItem,
+    item: FeedDisplayItem,
     showMenu: Boolean,
     onShowMenuChange: (Boolean) -> Unit,
-    onBlockUser: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)?,
-    onBlockByKeywords: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)?,
+    onBlockUser: ((FeedDisplayItem) -> Unit)?,
+    onBlockByKeywords: ((FeedDisplayItem) -> Unit)?,
     onBlockTopic: ((topicId: String, topicName: String) -> Unit)?,
     navigator: Navigator,
 ) {
     // 菜单项 (标题, 动作)，与 M3 FeedCardMenuBox 完全对齐
+    val isLiteVariant = rememberIsLiteVariant()
     val topics = if (onBlockTopic != null && item.raw != null) {
         when (val raw = item.raw) {
-            is com.github.zly2006.zhihu.data.DataHolder.Answer -> raw.question.topics
-            is com.github.zly2006.zhihu.data.DataHolder.Question -> raw.topics
-            is com.github.zly2006.zhihu.data.DataHolder.Article -> raw.topics ?: emptyList()
+            is DataHolder.Answer -> raw.question.topics
+            is DataHolder.Question -> raw.topics
+            is DataHolder.Article -> raw.topics ?: emptyList()
             else -> emptyList()
         }
     } else {
         emptyList()
     }
     val entries = buildList<Pair<String, () -> Unit>> {
-        if (onBlockByKeywords != null && !BuildConfig.IS_LITE) {
+        if (onBlockByKeywords != null && !isLiteVariant) {
             add("按关键词屏蔽" to { onBlockByKeywords(item) })
         }
         add("屏蔽用户" to { onBlockUser?.invoke(item) })

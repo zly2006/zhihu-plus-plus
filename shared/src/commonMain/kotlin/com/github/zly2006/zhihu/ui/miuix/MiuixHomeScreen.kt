@@ -12,9 +12,6 @@
 
 package com.github.zly2006.zhihu.ui.miuix
 
-import android.content.Context.MODE_PRIVATE
-import androidx.activity.compose.LocalActivity
-import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -49,21 +46,19 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
-import com.github.zly2006.zhihu.MainActivity
-import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.Feed
-import com.github.zly2006.zhihu.data.RecommendationMode
-import com.github.zly2006.zhihu.data.ZhihuMeNotifications
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
+import com.github.zly2006.zhihu.shared.data.RecommendationMode
+import com.github.zly2006.zhihu.shared.data.fetchZhihuUnreadNotificationCount
+import com.github.zly2006.zhihu.shared.data.navDestination
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
-import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.ui.SEARCH_HISTORY_MAX_SIZE
 import com.github.zly2006.zhihu.ui.components.AutoHideTopBar
 import com.github.zly2006.zhihu.ui.components.PaginatedList
+import com.github.zly2006.zhihu.ui.components.rememberFeedBlockActions
 import com.github.zly2006.zhihu.ui.loadSearchHistory
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixSearchSuggestions
 import com.github.zly2006.zhihu.ui.saveSearchHistory
@@ -73,12 +68,11 @@ import com.github.zly2006.zhihu.ui.miuix.components.SearchBox
 import com.github.zly2006.zhihu.ui.miuix.components.SearchPager
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixAccountSheet
 import com.github.zly2006.zhihu.ui.miuix.components.SearchStatus
+import com.github.zly2006.zhihu.ui.rememberHomeScreenRuntime
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
-import com.github.zly2006.zhihu.ui.IHomeFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.za.MixedHomeFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
+import com.github.zly2006.zhihu.viewmodel.feed.SearchViewModel
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -97,29 +91,23 @@ fun MiuixHomeScreen(
     innerPadding: PaddingValues = PaddingValues(0.dp),
 ) {
     val navigator = LocalNavigator.current
-    val context = LocalActivity.current as MainActivity
+    val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = true)
+    val settings = rememberSettingsStore()
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
-    val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE) }
-    val duo3HomeAccount = remember { preferences.getBoolean("duo3_home_account", false) }
+    val duo3HomeAccount = remember { settings.getBoolean("duo3_home_account", false) }
 
     val currentRecommendationMode = RecommendationMode.entries.find {
-        it.key == preferences.getString("recommendationMode", RecommendationMode.MIXED.key)
+        it.key == settings.getString("recommendationMode", RecommendationMode.MIXED.key)
     } ?: RecommendationMode.MIXED
-    val viewModel: BaseFeedViewModel by when (currentRecommendationMode) {
-        RecommendationMode.WEB -> context.viewModels<HomeFeedViewModel>()
-        RecommendationMode.ANDROID -> context.viewModels<AndroidHomeFeedViewModel>()
-        RecommendationMode.LOCAL -> context.viewModels<LocalHomeFeedViewModel>()
-        RecommendationMode.MIXED -> context.viewModels<MixedHomeFeedViewModel>()
-    }
+    val runtime = rememberHomeScreenRuntime(currentRecommendationMode)
+    val feedBlockActions = rememberFeedBlockActions()
+    val viewModel: BaseFeedViewModel = runtime.viewModel
 
     val listState = rememberLazyListState()
     var searchStatus by remember { mutableStateOf(SearchStatus(label = "搜索知乎")) }
     val showAccountSheet = remember { mutableStateOf(false) }
     var unreadCount by remember { mutableIntStateOf(0) }
-
-    // 本地推荐 VM（like/dislike 反馈、本地内容打开）
-    val localHomeViewModel = viewModel as? LocalHomeFeedViewModel
 
     // 屏蔽相关 state（沿用 HomeScreen 逻辑）
     var showBlockUserDialog by remember { mutableStateOf(false) }
@@ -127,19 +115,18 @@ fun MiuixHomeScreen(
     var showBlockByKeywordsDialog by remember { mutableStateOf(false) }
     var feedToBlockByKeywords by remember { mutableStateOf<Pair<String, String?>?>(null) }
 
-    LaunchedEffect(currentRecommendationMode, AccountData.data.login) {
+    LaunchedEffect(currentRecommendationMode, runtime.account.isLoggedIn) {
         if (viewModel.displayItems.isEmpty()) {
-            viewModel.refresh(context)
+            viewModel.refresh(paginationEnvironment)
         }
     }
 
     // 拉取未读通知数（与 M3 HomeScreen 行为一致）
     LaunchedEffect(Unit) {
         try {
-            val jojo = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/me") {
-                signFetchRequest()
-            }!!
-            unreadCount = AccountData.decodeJson<ZhihuMeNotifications>(jojo).totalCount
+            unreadCount = fetchZhihuUnreadNotificationCount(paginationEnvironment.httpClient()) {
+                paginationEnvironment.configureSignedRequest(this)
+            }
         } catch (_: Exception) {
         }
     }
@@ -166,7 +153,7 @@ fun MiuixHomeScreen(
     // query 变化时重建 SearchViewModel（SearchViewModel 的 query 是构造参数，不可变）
     val searchViewModel = remember(debouncedQuery) {
         if (debouncedQuery.isEmpty()) null
-        else com.github.zly2006.zhihu.viewmodel.feed.SearchViewModel(debouncedQuery)
+        else SearchViewModel(debouncedQuery)
     }
     val searchListState = rememberLazyListState()
     // 触发搜索 + 驱动 resultStatus
@@ -176,22 +163,22 @@ fun MiuixHomeScreen(
             searchStatus = searchStatus.copy(resultStatus = SearchStatus.ResultStatus.DEFAULT)
         } else {
             searchStatus = searchStatus.copy(resultStatus = SearchStatus.ResultStatus.LOAD)
-            vm.refresh(context)
+            vm.refresh(paginationEnvironment)
         }
     }
     // 搜索结果加载完成后切换 SHOW / EMPTY
-    val showSearchHistory = remember { preferences.getBoolean("showSearchHistory", true) }
+    val showSearchHistory = remember { settings.getBoolean("showSearchHistory", true) }
     LaunchedEffect(searchViewModel?.displayItems?.size, searchViewModel?.isLoading) {
         val vm = searchViewModel ?: return@LaunchedEffect
         if (!vm.isLoading) {
             val hasResult = vm.displayItems.isNotEmpty()
             // 出结果即写入历史；defaultResult 重挂载会自动重读
             if (hasResult && showSearchHistory && debouncedQuery.isNotBlank()) {
-                val history = loadSearchHistory(preferences).toMutableList()
+                val history = loadSearchHistory(settings).toMutableList()
                 history.remove(debouncedQuery)
                 history.add(0, debouncedQuery)
                 while (history.size > SEARCH_HISTORY_MAX_SIZE) history.removeAt(history.lastIndex)
-                saveSearchHistory(preferences, history)
+                saveSearchHistory(settings, history)
             }
             searchStatus = searchStatus.copy(
                 resultStatus = if (hasResult) SearchStatus.ResultStatus.SHOW else SearchStatus.ResultStatus.EMPTY,
@@ -199,7 +186,7 @@ fun MiuixHomeScreen(
         }
     }
 
-    val blurEnabled = remember { preferences.getBoolean("blurEnabled", true) }
+    val blurEnabled = remember { settings.getBoolean("blurEnabled", true) }
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
 
@@ -230,7 +217,7 @@ fun MiuixHomeScreen(
                                 modifier = Modifier.size(48.dp),
                             ) {
                                 if (duo3HomeAccount) {
-                                    val avatarUrl = AccountData.data.self?.avatarUrl
+                                    val avatarUrl = runtime.account.avatarUrl
                                     if (avatarUrl != null) {
                                         AsyncImage(
                                             model = avatarUrl,
@@ -314,7 +301,7 @@ fun MiuixHomeScreen(
         searchStatus.SearchBox {
             PullToRefresh(
                 isRefreshing = viewModel.isPullToRefresh && viewModel.isLoading,
-                onRefresh = { coroutineScope.launch { viewModel.pullToRefresh(context) } },
+                onRefresh = { coroutineScope.launch { viewModel.pullToRefresh(paginationEnvironment) } },
                 contentPadding = PaddingValues(top = padding.calculateTopPadding() + 6.dp),
                 refreshTexts = listOf("下拉刷新", "释放刷新", "正在刷新...", "刷新完成"),
             ) {
@@ -333,44 +320,36 @@ fun MiuixHomeScreen(
                             top = padding.calculateTopPadding() + 6.dp,
                             bottom = innerPadding.calculateBottomPadding() + 12.dp,
                         ),
-                        onLoadMore = { viewModel.loadMore(context) },
+                        onLoadMore = { viewModel.loadMore(paginationEnvironment) },
                         key = { item -> item.stableKey },
                     ) { item ->
                         MiuixFeedCard(
                             item = item,
-                            onLike = {
-                                if (localHomeViewModel != null && it.localContentId != null) {
-                                    localHomeViewModel.onLocalItemFeedback(context, it, 1.0)
-                                }
-                            },
-                            onDislike = {
-                                if (localHomeViewModel != null && it.localContentId != null) {
-                                    localHomeViewModel.onLocalItemFeedback(context, it, -1.0)
-                                }
-                            },
+                            onLike = { runtime.recordLocalItemFeedback(it, 1.0) },
+                            onDislike = { runtime.recordLocalItemFeedback(it, -1.0) },
                             onBlockUser = { feedItem ->
-                                viewModel.handleBlockUser(context, feedItem) { authorInfo ->
+                                feedBlockActions.handleBlockUser(viewModel, feedItem) { authorInfo ->
                                     userToBlock = authorInfo
                                     showBlockUserDialog = true
                                 }
                             },
                             onBlockByKeywords = { feedItem ->
-                                viewModel.handleBlockByKeywords(context, feedItem) { (_, contentInfo) ->
+                                feedBlockActions.handleBlockByKeywords(viewModel, feedItem) { (_, contentInfo) ->
                                     feedToBlockByKeywords = contentInfo.first to contentInfo.second
                                     showBlockByKeywordsDialog = true
                                 }
                             },
                             onBlockTopic = { topicId, topicName ->
-                                viewModel.handleBlockTopic(context, topicId, topicName)
+                                feedBlockActions.handleBlockTopic(viewModel, topicId, topicName)
                             },
                             onClick = {
                                 // 默认跳转逻辑：本地内容回调 + navDestination
                                 val feed = this.feed
                                 if (feed != null) {
-                                    (viewModel as? IHomeFeedViewModel)
-                                        ?.onUiContentClick(context, feed, this)
-                                } else if (localHomeViewModel != null && this.localContentId != null) {
-                                    localHomeViewModel.onLocalItemOpened(context, this)
+                                    (viewModel as HomeFeedInteractionViewModel)
+                                        .onUiContentClick(paginationEnvironment, feed, this)
+                                } else if (this.localContentId != null) {
+                                    runtime.recordLocalItemOpened(this)
                                 }
                                 this.navDestination?.let { navigator.onNavigate(it) }
                             },
@@ -415,7 +394,7 @@ fun MiuixHomeScreen(
                         top = 6.dp,
                         bottom = innerPadding.calculateBottomPadding() + 12.dp,
                     ),
-                    onLoadMore = { vm.loadMore(context) },
+                    onLoadMore = { vm.loadMore(paginationEnvironment) },
                     key = { item -> item.stableKey },
                 ) { item ->
                     MiuixFeedCard(
@@ -435,13 +414,12 @@ fun MiuixHomeScreen(
         showDialog = showBlockUserDialog,
         userToBlock = userToBlock,
         displayItems = viewModel.displayItems,
-        context = context,
         onDismiss = {
             showBlockUserDialog = false
             userToBlock = null
         },
         onConfirm = {
-            viewModel.refresh(context)
+            viewModel.refresh(paginationEnvironment)
             showBlockUserDialog = false
             userToBlock = null
         },
@@ -458,7 +436,7 @@ fun MiuixHomeScreen(
                 feedToBlockByKeywords = null
             },
             onConfirm = {
-                viewModel.refresh(context)
+                viewModel.refresh(paginationEnvironment)
                 showBlockByKeywordsDialog = false
                 feedToBlockByKeywords = null
             },

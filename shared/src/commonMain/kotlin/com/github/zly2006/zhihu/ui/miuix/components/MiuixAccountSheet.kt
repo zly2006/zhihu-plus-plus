@@ -6,11 +6,6 @@
 
 package com.github.zly2006.zhihu.ui.miuix.components
 
-import android.content.Context
-import android.content.Intent
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -45,22 +40,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.LoginActivity
-import com.github.zly2006.zhihu.QRCodeScanActivity
-import com.github.zly2006.zhihu.WebviewActivity
-import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Collections
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.theme.AppTokens
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
-import io.ktor.http.Url
+import com.github.zly2006.zhihu.ui.AccountSettingsAccountState
+import com.github.zly2006.zhihu.ui.rememberAccountSettingsPlatformRuntime
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Icon
@@ -78,15 +68,16 @@ fun MiuixAccountSheet(
     show: Boolean,
     unreadCount: Int = 0,
     onDismiss: () -> Unit,
-    testAccountData: AccountData.Data? = null,
+    testAccountData: AccountSettingsAccountState? = null,
 ) {
     // Only mount WindowBottomSheet when show is true, clean up on dispose
     if (!show) return
 
     val navigator = LocalNavigator.current
-    val context = LocalContext.current
-    val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE) }
-    val data = testAccountData ?: AccountData.asState().let { val v by it; v }
+    val runtime = rememberAccountSettingsPlatformRuntime()
+    val settings = rememberSettingsStore()
+    val accountState by runtime.accountState
+    val data = testAccountData ?: accountState
 
     WindowBottomSheet(
         show = true,
@@ -99,20 +90,6 @@ fun MiuixAccountSheet(
             // ── 用户信息 ──
             if (data.login) {
                 item {
-                    // 扫码登录：协助电脑端登录，扫到知乎登录二维码后打开 WebView 确认（与 M3 账号页一致）
-                    val scanLauncher = rememberLauncherForActivityResult(
-                        contract = ActivityResultContracts.StartActivityForResult(),
-                    ) scan@{ result ->
-                        if (result.resultCode == android.app.Activity.RESULT_OK) {
-                            val scanResult = result.data?.getStringExtra(QRCodeScanActivity.EXTRA_SCAN_RESULT) ?: return@scan
-                            if (Url(scanResult).rawSegments.dropLast(1).lastOrNull() != "login") {
-                                Toast.makeText(context, "二维码内容不正确", Toast.LENGTH_SHORT).show()
-                                return@scan
-                            }
-                            Toast.makeText(context, "扫描成功，正在处理登录请求...", Toast.LENGTH_SHORT).show()
-                            context.startActivity(Intent(context, WebviewActivity::class.java).also { it.data = scanResult.toUri() })
-                        }
-                    }
                     Card(
                         modifier = Modifier.padding(bottom = 12.dp),
                         colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.secondaryContainer),
@@ -120,14 +97,15 @@ fun MiuixAccountSheet(
                         Row(
                             Modifier.fillMaxWidth().clickable {
                                 onDismiss()
-                                navigator.onNavigate(Person(id = data.self?.id ?: "", urlToken = data.self?.urlToken ?: "", name = data.username))
+                                navigator.onNavigate(Person(id = data.id, urlToken = data.urlToken ?: "", name = data.username))
                             }.padding(horizontal = 16.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            AsyncImage(data.self?.avatarUrl, "头像", modifier = Modifier.size(56.dp).clip(CircleShape))
+                            AsyncImage(data.avatarUrl, "头像", modifier = Modifier.size(56.dp).clip(CircleShape))
                             Spacer(Modifier.width(12.dp))
                             Text(data.username, style = AppTokens.text.titleMedium, modifier = Modifier.weight(1f))
-                            IconButton(onClick = { scanLauncher.launch(Intent(context, QRCodeScanActivity::class.java)) }) {
+                            // 扫码登录：协助电脑端登录，扫到知乎登录二维码后打开 WebView 确认（与 M3 账号页一致）
+                            IconButton(onClick = { runtime.requestQrLoginScan() }) {
                                 Icon(Icons.Default.QrCodeScanner, contentDescription = "扫码登录", tint = MiuixTheme.colorScheme.onSurface)
                             }
                         }
@@ -142,7 +120,7 @@ fun MiuixAccountSheet(
                     ) {
                         ArrowPreference(
                             title = "登录知乎",
-                            onClick = { onDismiss(); context.startActivity(Intent(context, LoginActivity::class.java)) },
+                            onClick = { onDismiss(); runtime.requestLogin() },
                             startAction = { Icon(Icons.AutoMirrored.Filled.Login, null) },
                         )
                     }
@@ -157,8 +135,8 @@ fun MiuixAccountSheet(
                         modifier = Modifier.padding(bottom = 12.dp),
                         colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.secondaryContainer),
                     ) {
-                        ArrowPreference(title = "收藏夹", onClick = { onDismiss(); data.self?.urlToken?.let { navigator.onNavigate(Collections(it)) } }, startAction = { Icon(Icons.Default.BookmarkBorder, null) })
-                        ArrowPreference(title = "关注订阅", onClick = { onDismiss(); navigator.onNavigate(Person(id = data.self?.id ?: "", urlToken = data.self?.urlToken ?: "", name = data.username, jumpTo = "关注订阅")) }, startAction = { Icon(Icons.Default.Groups, null) })
+                        ArrowPreference(title = "收藏夹", onClick = { onDismiss(); data.urlToken?.let { navigator.onNavigate(Collections(it)) } }, startAction = { Icon(Icons.Default.BookmarkBorder, null) })
+                        ArrowPreference(title = "关注订阅", onClick = { onDismiss(); navigator.onNavigate(Person(id = data.id, urlToken = data.urlToken ?: "", name = data.username, jumpTo = "关注订阅")) }, startAction = { Icon(Icons.Default.Groups, null) })
                         ArrowPreference(title = "通知", summary = if (unreadCount > 0) "$unreadCount 条未读" else null, onClick = { onDismiss(); navigator.onNavigate(Notification) }, startAction = { Icon(Icons.Default.Notifications, null) })
                     }
                 }
@@ -173,7 +151,7 @@ fun MiuixAccountSheet(
                 ) {
                     ArrowPreference(title = "外观与阅读体验", summary = "主题颜色、字体大小等", onClick = { onDismiss(); navigator.onNavigate(Account.AppearanceSettings()) }, startAction = { Icon(Icons.Default.Palette, null) })
                     ArrowPreference(title = "推荐系统与内容过滤", summary = "推荐、智能过滤、关键词屏蔽等", onClick = { onDismiss(); navigator.onNavigate(Account.RecommendSettings()) }, startAction = { Icon(Icons.Default.FilterAlt, null) })
-                    if (preferences.getBoolean("developer", false)) {
+                    if (settings.getBoolean("developer", false)) {
                         ArrowPreference(title = "开发者选项", onClick = { onDismiss(); navigator.onNavigate(Account.DeveloperSettings) }, startAction = { Icon(Icons.Default.Code, null) })
                     }
                 }
@@ -198,7 +176,7 @@ fun MiuixAccountSheet(
                     ) {
                         ArrowPreference(
                             title = "退出登录",
-                            onClick = { onDismiss(); AccountData.delete(context); Toast.makeText(context, "已退出登录", Toast.LENGTH_SHORT).show() },
+                            onClick = { onDismiss(); runtime.logout() },
                             startAction = { Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MiuixTheme.colorScheme.error) },
                         )
                     }

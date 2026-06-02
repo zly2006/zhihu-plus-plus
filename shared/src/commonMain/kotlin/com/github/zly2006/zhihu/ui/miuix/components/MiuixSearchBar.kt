@@ -11,7 +11,7 @@
 
 package com.github.zly2006.zhihu.ui.miuix.components
 
-import androidx.activity.compose.BackHandler
+import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -153,7 +153,7 @@ fun SearchStatus.SearchPager(
     val surfaceColor = colorScheme.surface
 
     // 展开时按返回先收起搜索（替代 KernelSU 的 navigationevent）
-    BackHandler(enabled = searchStatus.shouldExpand()) {
+    PlatformBackHandler(enabled = searchStatus.shouldExpand()) {
         onSearchStatusChange(searchStatus.copy(searchText = "", current = SearchStatus.Status.COLLAPSING))
     }
 

@@ -19,6 +19,8 @@ package com.github.zly2006.zhihu.shared.platform
 import android.content.ClipData
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
@@ -63,6 +65,35 @@ actual fun rememberImagePreviewOpener(): (String) -> Unit {
 actual fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit {
     val context = LocalContext.current
     return remember(context) { { label, text -> context.clipboardManager.setPrimaryClip(ClipData.newPlainText(label, text)) } }
+}
+
+@Composable
+actual fun rememberDeveloperDiagnostics(): DeveloperDiagnostics {
+    val context = LocalContext.current.applicationContext
+    return remember(context) {
+        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        val pm = context.packageManager
+        val deviceInfo = runCatching {
+            val info = pm.getPackageInfo(context.packageName, 0)
+            "versionName=${info.versionName}, versionCode=${info.longVersionCode}"
+        }.getOrDefault("unknown")
+        DeveloperDiagnostics(
+            appInfo = context.packageName,
+            deviceInfo = deviceInfo,
+            networkStatus = run {
+                val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+                val nc = cm?.getNetworkCapabilities(cm.activeNetwork)
+                when {
+                    nc == null -> "无网络"
+                    nc.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "WiFi"
+                    nc.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "蜂窝网络"
+                    else -> "其他"
+                }
+            },
+            readClipboardText = { context.clipboardManager.primaryClip?.getItemAt(0)?.text?.toString() },
+            exportAllSettings = { preferences.all.entries.joinToString("\n") { "${it.key}: ${it.value}" } },
+        )
+    }
 }
 
 @Composable
