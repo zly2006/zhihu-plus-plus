@@ -108,7 +108,10 @@ fun HotListScreen(
                     PaginatedList(
                         items = viewModel.displayItems,
                         onLoadMore = { onTestLoadMore?.invoke() ?: viewModel.loadMore(environment) },
-                        modifier = Modifier.fillMaxHeight().overScrollVertical().scrollEndHaptic()
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .overScrollVertical()
+                            .scrollEndHaptic()
                             .then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier)
                             .testTag(HOT_LIST_LIST_TAG),
                         contentPadding = PaddingValues(top = contentTopPadding + 6.dp),
@@ -126,8 +129,11 @@ fun HotListScreen(
                         modifier = Modifier.testTag(HOT_LIST_REFRESH_BUTTON_TAG),
                         onClick = { onTestRefreshClick?.invoke() ?: viewModel.refresh(environment) },
                     ) {
-                        if (viewModel.isLoading) CircularProgressIndicator(modifier = Modifier.size(36.dp))
-                        else Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                        if (viewModel.isLoading) {
+                            CircularProgressIndicator(modifier = Modifier.size(36.dp))
+                        } else {
+                            Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                        }
                     }
                 }
             }
@@ -153,8 +159,11 @@ fun HotListScreen(
                         modifier = Modifier.testTag(HOT_LIST_REFRESH_BUTTON_TAG),
                         onClick = { onTestRefreshClick?.invoke() ?: viewModel.refresh(environment) },
                     ) {
-                        if (viewModel.isLoading) CircularProgressIndicator(modifier = Modifier.size(36.dp))
-                        else Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                        if (viewModel.isLoading) {
+                            CircularProgressIndicator(modifier = Modifier.size(36.dp))
+                        } else {
+                            Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                        }
                     }
                 }
             }

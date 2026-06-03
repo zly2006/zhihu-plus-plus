@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,8 +24,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -40,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -51,24 +49,22 @@ import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionContent
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
-import com.github.zly2006.zhihu.navigation.Pin as PinNav
-import com.github.zly2006.zhihu.navigation.Question as QuestionNav
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.PeopleScreenTestOverrides
 import com.github.zly2006.zhihu.ui.PersonViewModel
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -78,13 +74,23 @@ import top.yukonga.miuix.kmp.basic.TabRow
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.blur.layerBackdrop
-import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
+import com.github.zly2006.zhihu.navigation.Pin as PinNav
+import com.github.zly2006.zhihu.navigation.Question as QuestionNav
 
 private val PEOPLE_SCREEN_TITLES = listOf(
-    "回答", "文章", "动态", "收藏", "提问", "想法", "专栏", "粉丝", "关注", "关注订阅",
+    "回答",
+    "文章",
+    "动态",
+    "收藏",
+    "提问",
+    "想法",
+    "专栏",
+    "粉丝",
+    "关注",
+    "关注订阅",
 )
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -120,7 +126,8 @@ fun MiuixPeopleScreen(
     Scaffold(
         topBar = {
             Column(
-                modifier = Modifier.installerMiuixBlurEffect(backdrop)
+                modifier = Modifier
+                    .installerMiuixBlurEffect(backdrop)
                     .padding(bottom = 6.dp),
             ) {
                 TopAppBar(
@@ -167,7 +174,8 @@ fun MiuixPeopleScreen(
                 ) {
                     LazyColumn(
                         state = rememberLazyListState(),
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier
+                            .fillMaxSize()
                             .overScrollVertical()
                             .scrollEndHaptic()
                             .nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -178,37 +186,55 @@ fun MiuixPeopleScreen(
                     ) {
                         // Profile Card — LazyColumn 第一个 item，滚动时消失
                         item(key = "profileCard") {
-                                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(bottom = 8.dp)) {
-                                    Column(modifier = Modifier.padding(12.dp)) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            AsyncImage(model = viewModel.avatar, contentDescription = null, modifier = Modifier.size(48.dp).clip(CircleShape))
-                                            Spacer(Modifier.width(12.dp))
-                                            Column(modifier = Modifier.weight(1f)) {
-                                                Text(viewModel.name, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                                                if (viewModel.headline.isNotEmpty()) {
-                                                    Text(viewModel.headline, fontSize = 14.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                                }
-                                            }
-                                        }
-                                        Spacer(Modifier.height(8.dp))
-                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                                            StatItem("回答", viewModel.answerCount) { coroutineScope.launch { pagerState.animateScrollToPage(0) } }
-                                            StatItem("文章", viewModel.articleCount) { coroutineScope.launch { pagerState.animateScrollToPage(1) } }
-                                            StatItem("关注者", viewModel.followerCount) { coroutineScope.launch { pagerState.animateScrollToPage(7) } }
-                                            StatItem("关注", viewModel.followingCount) { coroutineScope.launch { pagerState.animateScrollToPage(8) } }
-                                        }
-                                        Spacer(Modifier.height(8.dp))
-                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            val followText = if (viewModel.isFollowing) "已关注" else "关注"
-                                            Card(modifier = Modifier.weight(1f).clickable { coroutineScope.launch { try { viewModel.toggleFollow(paginationEnvironment) } catch (_: Exception) {} } }) {
-                                                Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) { Text(followText, fontSize = 14.sp, color = MiuixTheme.colorScheme.primary) }
-                                            }
-                                            val blockText = if (viewModel.isBlocking) "已屏蔽" else "屏蔽"
-                                            Card(modifier = Modifier.weight(1f).clickable { coroutineScope.launch { try { viewModel.toggleBlock(paginationEnvironment) } catch (_: Exception) {} } }) {
-                                                Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) { Text(blockText, fontSize = 14.sp, color = MiuixTheme.colorScheme.error) }
+                            Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(bottom = 8.dp)) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        AsyncImage(model = viewModel.avatar, contentDescription = null, modifier = Modifier.size(48.dp).clip(CircleShape))
+                                        Spacer(Modifier.width(12.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(viewModel.name, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                                            if (viewModel.headline.isNotEmpty()) {
+                                                Text(viewModel.headline, fontSize = 14.sp, color = MiuixTheme.colorScheme.onSurfaceSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                             }
                                         }
                                     }
+                                    Spacer(Modifier.height(8.dp))
+                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                                        StatItem("回答", viewModel.answerCount) { coroutineScope.launch { pagerState.animateScrollToPage(0) } }
+                                        StatItem("文章", viewModel.articleCount) { coroutineScope.launch { pagerState.animateScrollToPage(1) } }
+                                        StatItem("关注者", viewModel.followerCount) { coroutineScope.launch { pagerState.animateScrollToPage(7) } }
+                                        StatItem("关注", viewModel.followingCount) { coroutineScope.launch { pagerState.animateScrollToPage(8) } }
+                                    }
+                                    Spacer(Modifier.height(8.dp))
+                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        val followText = if (viewModel.isFollowing) "已关注" else "关注"
+                                        Card(
+                                            modifier = Modifier.weight(1f).clickable {
+                                                coroutineScope.launch {
+                                                    try {
+                                                        viewModel.toggleFollow(paginationEnvironment)
+                                                    } catch (_: Exception) {
+                                                    }
+                                                }
+                                            },
+                                        ) {
+                                            Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) { Text(followText, fontSize = 14.sp, color = MiuixTheme.colorScheme.primary) }
+                                        }
+                                        val blockText = if (viewModel.isBlocking) "已屏蔽" else "屏蔽"
+                                        Card(
+                                            modifier = Modifier.weight(1f).clickable {
+                                                coroutineScope.launch {
+                                                    try {
+                                                        viewModel.toggleBlock(paginationEnvironment)
+                                                    } catch (_: Exception) {
+                                                    }
+                                                }
+                                            },
+                                        ) {
+                                            Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) { Text(blockText, fontSize = 14.sp, color = MiuixTheme.colorScheme.error) }
+                                        }
+                                    }
+                                }
                             }
                         }
 

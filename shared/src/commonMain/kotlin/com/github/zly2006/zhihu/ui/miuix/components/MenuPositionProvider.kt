@@ -8,6 +8,8 @@
  * 必须传这个 provider 才能贴边。
  */
 
+@file:Suppress("ktlint:standard:filename")
+
 package com.github.zly2006.zhihu.ui.miuix.components
 
 import androidx.compose.foundation.layout.PaddingValues

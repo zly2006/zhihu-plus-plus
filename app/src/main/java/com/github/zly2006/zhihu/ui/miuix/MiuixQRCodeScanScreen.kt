@@ -223,7 +223,10 @@ private fun MiuixQRResultSheet(
             ) {
                 TextButton(text = "复制", onClick = onCopy, modifier = Modifier.weight(1f))
                 Button(
-                    onClick = { show.value = false; onConfirm() },
+                    onClick = {
+                        show.value = false
+                        onConfirm()
+                    },
                     colors = ButtonDefaults.buttonColorsPrimary(),
                     modifier = Modifier.weight(1f),
                 ) {

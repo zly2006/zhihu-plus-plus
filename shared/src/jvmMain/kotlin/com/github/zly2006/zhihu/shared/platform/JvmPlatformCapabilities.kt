@@ -126,7 +126,9 @@ actual fun rememberDeveloperDiagnostics(): DeveloperDiagnostics = remember {
         networkStatus = "未知",
         readClipboardText = {
             runCatching {
-                java.awt.Toolkit.getDefaultToolkit().systemClipboard
+                java.awt.Toolkit
+                    .getDefaultToolkit()
+                    .systemClipboard
                     .getData(java.awt.datatransfer.DataFlavor.stringFlavor) as? String
             }.getOrNull()
         },
@@ -134,8 +136,10 @@ actual fun rememberDeveloperDiagnostics(): DeveloperDiagnostics = remember {
             runCatching {
                 val file = desktopZhihuDataFile("settings.properties")
                 if (file.isFile) {
-                    Properties().apply { file.inputStream().use(::load) }
-                        .entries.joinToString("\n") { "${it.key}: ${it.value}" }
+                    Properties()
+                        .apply { file.inputStream().use(::load) }
+                        .entries
+                        .joinToString("\n") { "${it.key}: ${it.value}" }
                 } else {
                     "(空)"
                 }

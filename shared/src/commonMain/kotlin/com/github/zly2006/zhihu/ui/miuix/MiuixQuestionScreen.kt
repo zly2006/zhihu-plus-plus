@@ -183,7 +183,8 @@ fun MiuixQuestionScreen(
                 PaginatedList(
                     items = viewModel.displayItems,
                     listState = listState,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .fillMaxSize()
                         .overScrollVertical()
                         .nestedScroll(scrollBehavior.nestedScrollConnection)
                         .testTag(QUESTION_SCREEN_LIST_TAG),
@@ -255,11 +256,13 @@ fun MiuixQuestionScreen(
                                     ) {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             SortButton("默认", viewModel.sortOrder == "default", QUESTION_SORT_DEFAULT_TAG) {
-                                                viewModel.updateSortOrder("default"); onRefreshAnswers()
+                                                viewModel.updateSortOrder("default")
+                                                onRefreshAnswers()
                                             }
                                             Spacer(Modifier.width(8.dp))
                                             SortButton("最新", viewModel.sortOrder == "updated", QUESTION_SORT_UPDATED_TAG) {
-                                                viewModel.updateSortOrder("updated"); onRefreshAnswers()
+                                                viewModel.updateSortOrder("updated")
+                                                onRefreshAnswers()
                                             }
                                         }
                                         Button(
@@ -309,7 +312,8 @@ fun MiuixQuestionScreen(
                                             onClick = {
                                                 if (shareText != null) {
                                                     if (testOverrides != null) {
-                                                        testOverrides.onShareAction?.invoke(); showShareDialog = true
+                                                        testOverrides.onShareAction?.invoke()
+                                                        showShareDialog = true
                                                     } else {
                                                         handleShareAction(question, settings, shareRuntime) { showShareDialog = true }
                                                     }

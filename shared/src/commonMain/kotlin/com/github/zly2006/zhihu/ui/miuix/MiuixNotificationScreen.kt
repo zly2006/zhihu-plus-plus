@@ -27,7 +27,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.CopyAll
 import androidx.compose.material.icons.filled.MarkChatRead
@@ -69,11 +68,11 @@ import com.github.zly2006.zhihu.shared.util.formatRelativeTime
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.ui.rememberNotificationScreenRuntime
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -82,6 +81,7 @@ import top.yukonga.miuix.kmp.basic.PullToRefresh
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 
@@ -146,7 +146,8 @@ fun MiuixNotificationScreen() {
             ) {
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .fillMaxSize()
                         .overScrollVertical()
                         .nestedScroll(scrollBehavior.nestedScrollConnection),
                     contentPadding = PaddingValues(
@@ -174,20 +175,24 @@ fun MiuixNotificationScreen() {
                                             navigator.onNavigate(Person(notification.target.id, notification.target.urlToken, name = notification.target.name))
                                         }
                                         is NotificationTarget.Answer -> {
-                                            navigator.onNavigate(Article(
-                                                title = notification.target.title,
-                                                type = ArticleType.Answer,
-                                                id = notification.target.id.toLong(),
-                                                excerpt = notification.target.excerpt,
-                                            ))
+                                            navigator.onNavigate(
+                                                Article(
+                                                    title = notification.target.title,
+                                                    type = ArticleType.Answer,
+                                                    id = notification.target.id.toLong(),
+                                                    excerpt = notification.target.excerpt,
+                                                ),
+                                            )
                                         }
                                         is NotificationTarget.Article -> {
-                                            navigator.onNavigate(Article(
-                                                title = notification.target.title,
-                                                type = ArticleType.Article,
-                                                id = notification.target.id.toLong(),
-                                                excerpt = notification.target.excerpt,
-                                            ))
+                                            navigator.onNavigate(
+                                                Article(
+                                                    title = notification.target.title,
+                                                    type = ArticleType.Article,
+                                                    id = notification.target.id.toLong(),
+                                                    excerpt = notification.target.excerpt,
+                                                ),
+                                            )
                                         }
                                         null -> {}
                                     }
@@ -228,11 +233,16 @@ private fun NotificationItemCard(
     notification: NotificationItem,
     onClick: () -> Unit,
 ) {
-    val bgColor = if (notification.isRead) Color.Transparent
-    else MiuixTheme.colorScheme.primary.copy(alpha = 0.08f)
+    val bgColor = if (notification.isRead) {
+        Color.Transparent
+    } else {
+        MiuixTheme.colorScheme.primary.copy(alpha = 0.08f)
+    }
 
     Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp)
             .clip(RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
             .background(bgColor, RoundedCornerShape(16.dp)),
@@ -251,7 +261,9 @@ private fun NotificationItemCard(
                         AsyncImage(
                             model = notification.content.extend.icon,
                             contentDescription = "",
-                            modifier = Modifier.size(36.dp).clip(CircleShape)
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
                                 .background(MiuixTheme.colorScheme.surface),
                         )
                         Spacer(modifier = Modifier.width(10.dp))
@@ -318,4 +330,3 @@ private fun buildNotificationText(notification: NotificationItem) = buildAnnotat
         withStyle(style = SpanStyle(color = MiuixTheme.colorScheme.primary)) { append(target.text) }
     }
 }
-

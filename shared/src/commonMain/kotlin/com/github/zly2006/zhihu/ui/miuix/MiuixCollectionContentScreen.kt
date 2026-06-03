@@ -7,6 +7,7 @@
 
 package com.github.zly2006.zhihu.ui.miuix
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -18,17 +19,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
-import top.yukonga.miuix.kmp.basic.ListPopupColumn
-import top.yukonga.miuix.kmp.basic.PopupPositionProvider
-import top.yukonga.miuix.kmp.theme.LocalDismissState
-import top.yukonga.miuix.kmp.window.WindowListPopup
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -38,10 +32,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.clickable
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastJoinToString
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -60,18 +55,23 @@ import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.formatCollectionUpdatedTime
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.viewmodel.CollectionContentEnvironment
 import com.github.zly2006.zhihu.viewmodel.CollectionContentViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
-import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.ListPopupColumn
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.basic.PopupPositionProvider
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.blur.layerBackdrop
+import top.yukonga.miuix.kmp.theme.LocalDismissState
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
+import top.yukonga.miuix.kmp.window.WindowListPopup
 
 @Composable
 fun MiuixCollectionContentScreen(
@@ -120,7 +120,10 @@ fun MiuixCollectionContentScreen(
                     val haptic = LocalHapticFeedback.current
                     Box(modifier = Modifier.padding(end = 2.dp)) {
                         IconButton(
-                            onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); showActionsMenu = true },
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                showActionsMenu = true
+                            },
                             enabled = screenViewModel.exportDialogState?.isCompleted != false,
                         ) {
                             Icon(Icons.Filled.MoreVert, "更多", tint = MiuixTheme.colorScheme.onBackground)
@@ -140,8 +143,7 @@ fun MiuixCollectionContentScreen(
                                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                             dismissState?.invoke()
                                             showExportOptionsDialog = true
-                                        }
-                                        .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 14.dp),
+                                        }.padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 14.dp),
                                     color = MiuixTheme.colorScheme.onSurface,
                                     fontSize = 15.sp,
                                 )
@@ -171,7 +173,12 @@ fun MiuixCollectionContentScreen(
                         }
                     }
                 },
-                confirmButton = { TextButton(onClick = { showExportOptionsDialog = false; onExportAllToHtmlZip(includeImages) }) { Text("开始导出") } },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showExportOptionsDialog = false
+                        onExportAllToHtmlZip(includeImages)
+                    }) { Text("开始导出") }
+                },
                 dismissButton = { TextButton(onClick = { showExportOptionsDialog = false }) { Text("取消") } },
             )
         }
@@ -182,10 +189,15 @@ fun MiuixCollectionContentScreen(
                 text = {
                     Column {
                         Text(state.phaseText)
-                        if (state.currentTitle.isNotBlank()) { Text("当前：${state.currentTitle}") }
+                        if (state.currentTitle.isNotBlank()) {
+                            Text("当前：${state.currentTitle}")
+                        }
                         Spacer(modifier = Modifier.height(12.dp))
-                        if (state.isIndeterminate) LinearProgressIndicator(Modifier.fillMaxWidth())
-                        else LinearProgressIndicator(progress = { state.progress }, modifier = Modifier.fillMaxWidth())
+                        if (state.isIndeterminate) {
+                            LinearProgressIndicator(Modifier.fillMaxWidth())
+                        } else {
+                            LinearProgressIndicator(progress = { state.progress }, modifier = Modifier.fillMaxWidth())
+                        }
                         Spacer(modifier = Modifier.height(12.dp))
                         Text("成功 ${state.successCount} · 跳过 ${state.skippedCount} · 失败 ${state.failedCount}")
                         state.resultMessage?.takeIf { it.isNotBlank() }?.let { Text(it) }
@@ -204,14 +216,16 @@ fun MiuixCollectionContentScreen(
                 onLoadMore = onLoadMore,
                 isEnd = isEnd,
                 listState = listState,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
                     .overScrollVertical()
                     .nestedScroll(scrollBehavior.nestedScrollConnection)
                     .testTag("collection_content_list"),
                 contentPadding = PaddingValues(
                     top = innerPadding.calculateTopPadding() + 8.dp,
                     bottom = innerPadding.calculateBottomPadding(),
-                    start = 12.dp, end = 12.dp,
+                    start = 12.dp,
+                    end = 12.dp,
                 ),
                 footer = ProgressIndicatorFooter,
                 topContent = {
@@ -238,8 +252,10 @@ fun MiuixCollectionContentScreen(
                         val nextItems = if (idx >= 0) screenViewModel.allData.drop(idx + 1) else emptyList()
                         val prevItems = if (idx > 0) screenViewModel.allData.take(idx).reversed() else emptyList()
                         sharedData.pendingNavigator = CollectionAnswerNavigator(
-                            collectionId = collectionId, collectionTitle = screenViewModel.title,
-                            initialNextItems = nextItems, initialPreviousItems = prevItems,
+                            collectionId = collectionId,
+                            collectionTitle = screenViewModel.title,
+                            initialNextItems = nextItems,
+                            initialPreviousItems = prevItems,
                             repository = repository,
                         )
                     }

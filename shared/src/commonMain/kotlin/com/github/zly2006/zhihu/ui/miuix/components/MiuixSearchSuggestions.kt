@@ -43,7 +43,10 @@ import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
-private data class MiuixHotQuery(val query: String, val hotShow: String)
+private data class MiuixHotQuery(
+    val query: String,
+    val hotShow: String,
+)
 
 /**
  * miuix 首页搜索默认页：搜索历史（chip）+ 热搜榜。数据层与 M3 SearchScreen 互通

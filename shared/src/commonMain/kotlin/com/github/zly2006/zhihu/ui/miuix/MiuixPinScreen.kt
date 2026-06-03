@@ -204,7 +204,8 @@ fun MiuixPinScreen(
         },
     ) { innerPadding ->
         Box(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
                 .padding(innerPadding)
                 .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
                 .overScrollVertical()

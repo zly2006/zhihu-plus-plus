@@ -11,11 +11,10 @@
 
 package com.github.zly2006.zhihu.ui.miuix.components
 
-import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -71,10 +70,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.InputField
 import top.yukonga.miuix.kmp.basic.Text
-import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme
 
 /* ============================================================
@@ -138,8 +138,11 @@ fun SearchStatus.SearchPager(
 
     // 效果 B-1：搜索框上移到顶的位移动画，动画完成时推进状态机
     val topPadding by animateDpAsState(
-        targetValue = if (searchStatus.shouldExpand()) systemBarsPadding + 5.dp
-                      else (searchStatus.offsetY - 12.dp).coerceAtLeast(0.dp),
+        targetValue = if (searchStatus.shouldExpand()) {
+            systemBarsPadding + 5.dp
+        } else {
+            (searchStatus.offsetY - 12.dp).coerceAtLeast(0.dp)
+        },
         animationSpec = tween(300, easing = LinearOutSlowInEasing),
         label = "SearchPagerTopPadding",
         finishedListener = { onSearchStatusChange(searchStatus.onAnimationComplete()) },
@@ -205,7 +208,7 @@ fun SearchStatus.SearchPager(
                             indication = null,
                         ) {
                             onSearchStatusChange(
-                                searchStatus.copy(searchText = "", current = SearchStatus.Status.COLLAPSING)
+                                searchStatus.copy(searchText = "", current = SearchStatus.Status.COLLAPSING),
                             )
                         },
                 )
@@ -333,7 +336,7 @@ fun SearchBarFake(
                 .weight(1f)
                 .padding(start = 12.dp, end = if (trailingContent != null) 4.dp else 12.dp)
                 .padding(top = searchBarTopPadding, bottom = 6.dp)
-                .pressScale(interactionSource)                       // 效果 A：按下缩放
+                .pressScale(interactionSource) // 效果 A：按下缩放
                 .clickable(
                     interactionSource = interactionSource,
                     indication = null,

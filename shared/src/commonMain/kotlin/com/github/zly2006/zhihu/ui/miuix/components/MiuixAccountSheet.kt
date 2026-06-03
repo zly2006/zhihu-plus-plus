@@ -7,12 +7,10 @@
 package com.github.zly2006.zhihu.ui.miuix.components
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -30,12 +28,7 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -95,10 +88,12 @@ fun MiuixAccountSheet(
                         colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.secondaryContainer),
                     ) {
                         Row(
-                            Modifier.fillMaxWidth().clickable {
-                                onDismiss()
-                                navigator.onNavigate(Person(id = data.id, urlToken = data.urlToken ?: "", name = data.username))
-                            }.padding(horizontal = 16.dp, vertical = 12.dp),
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onDismiss()
+                                    navigator.onNavigate(Person(id = data.id, urlToken = data.urlToken ?: "", name = data.username))
+                                }.padding(horizontal = 16.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             AsyncImage(data.avatarUrl, "头像", modifier = Modifier.size(56.dp).clip(CircleShape))
@@ -120,7 +115,10 @@ fun MiuixAccountSheet(
                     ) {
                         ArrowPreference(
                             title = "登录知乎",
-                            onClick = { onDismiss(); runtime.requestLogin() },
+                            onClick = {
+                                onDismiss()
+                                runtime.requestLogin()
+                            },
                             startAction = { Icon(Icons.AutoMirrored.Filled.Login, null) },
                         )
                     }
@@ -135,9 +133,18 @@ fun MiuixAccountSheet(
                         modifier = Modifier.padding(bottom = 12.dp),
                         colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.secondaryContainer),
                     ) {
-                        ArrowPreference(title = "收藏夹", onClick = { onDismiss(); data.urlToken?.let { navigator.onNavigate(Collections(it)) } }, startAction = { Icon(Icons.Default.BookmarkBorder, null) })
-                        ArrowPreference(title = "关注订阅", onClick = { onDismiss(); navigator.onNavigate(Person(id = data.id, urlToken = data.urlToken ?: "", name = data.username, jumpTo = "关注订阅")) }, startAction = { Icon(Icons.Default.Groups, null) })
-                        ArrowPreference(title = "通知", summary = if (unreadCount > 0) "$unreadCount 条未读" else null, onClick = { onDismiss(); navigator.onNavigate(Notification) }, startAction = { Icon(Icons.Default.Notifications, null) })
+                        ArrowPreference(title = "收藏夹", onClick = {
+                            onDismiss()
+                            data.urlToken?.let { navigator.onNavigate(Collections(it)) }
+                        }, startAction = { Icon(Icons.Default.BookmarkBorder, null) })
+                        ArrowPreference(title = "关注订阅", onClick = {
+                            onDismiss()
+                            navigator.onNavigate(Person(id = data.id, urlToken = data.urlToken ?: "", name = data.username, jumpTo = "关注订阅"))
+                        }, startAction = { Icon(Icons.Default.Groups, null) })
+                        ArrowPreference(title = "通知", summary = if (unreadCount > 0) "$unreadCount 条未读" else null, onClick = {
+                            onDismiss()
+                            navigator.onNavigate(Notification)
+                        }, startAction = { Icon(Icons.Default.Notifications, null) })
                     }
                 }
             }
@@ -149,10 +156,19 @@ fun MiuixAccountSheet(
                     modifier = Modifier.padding(bottom = 12.dp),
                     colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.secondaryContainer),
                 ) {
-                    ArrowPreference(title = "外观与阅读体验", summary = "主题颜色、字体大小等", onClick = { onDismiss(); navigator.onNavigate(Account.AppearanceSettings()) }, startAction = { Icon(Icons.Default.Palette, null) })
-                    ArrowPreference(title = "推荐系统与内容过滤", summary = "推荐、智能过滤、关键词屏蔽等", onClick = { onDismiss(); navigator.onNavigate(Account.RecommendSettings()) }, startAction = { Icon(Icons.Default.FilterAlt, null) })
+                    ArrowPreference(title = "外观与阅读体验", summary = "主题颜色、字体大小等", onClick = {
+                        onDismiss()
+                        navigator.onNavigate(Account.AppearanceSettings())
+                    }, startAction = { Icon(Icons.Default.Palette, null) })
+                    ArrowPreference(title = "推荐系统与内容过滤", summary = "推荐、智能过滤、关键词屏蔽等", onClick = {
+                        onDismiss()
+                        navigator.onNavigate(Account.RecommendSettings())
+                    }, startAction = { Icon(Icons.Default.FilterAlt, null) })
                     if (settings.getBoolean("developer", false)) {
-                        ArrowPreference(title = "开发者选项", onClick = { onDismiss(); navigator.onNavigate(Account.DeveloperSettings) }, startAction = { Icon(Icons.Default.Code, null) })
+                        ArrowPreference(title = "开发者选项", onClick = {
+                            onDismiss()
+                            navigator.onNavigate(Account.DeveloperSettings)
+                        }, startAction = { Icon(Icons.Default.Code, null) })
                     }
                 }
             }
@@ -163,7 +179,10 @@ fun MiuixAccountSheet(
                     modifier = Modifier.padding(bottom = 12.dp),
                     colors = CardDefaults.defaultColors(color = MiuixTheme.colorScheme.secondaryContainer),
                 ) {
-                    ArrowPreference(title = "关于", onClick = { onDismiss(); navigator.onNavigate(Account.About) }, startAction = { Icon(Icons.Default.Info, null) })
+                    ArrowPreference(title = "关于", onClick = {
+                        onDismiss()
+                        navigator.onNavigate(Account.About)
+                    }, startAction = { Icon(Icons.Default.Info, null) })
                 }
             }
 
@@ -176,7 +195,10 @@ fun MiuixAccountSheet(
                     ) {
                         ArrowPreference(
                             title = "退出登录",
-                            onClick = { onDismiss(); runtime.logout() },
+                            onClick = {
+                                onDismiss()
+                                runtime.logout()
+                            },
                             startAction = { Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MiuixTheme.colorScheme.error) },
                         )
                     }

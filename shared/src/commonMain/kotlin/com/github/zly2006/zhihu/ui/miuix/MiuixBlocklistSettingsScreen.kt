@@ -11,7 +11,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,10 +22,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
-import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.runtime.Composable
@@ -40,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.unit.dp
@@ -49,9 +46,13 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
+import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
+import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
+import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.BlocklistSettingsNlpContent
 import com.github.zly2006.zhihu.ui.BlocklistSettingsTestConfig
 import com.github.zly2006.zhihu.ui.BlocklistSettingsTestTags
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.ui.rememberBlocklistSettingsPlatformRuntime
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeyword
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedTopic
@@ -66,6 +67,7 @@ import top.yukonga.miuix.kmp.basic.Checkbox
 import top.yukonga.miuix.kmp.basic.FloatingActionButton
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Surface
@@ -74,14 +76,9 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
-import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
-import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
-import top.yukonga.miuix.kmp.blur.layerBackdrop
-import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 
 /**
@@ -122,7 +119,8 @@ fun MiuixBlocklistSettingsScreen(
     fun loadData() {
         coroutineScope.launch {
             try {
-                loadedKeywords = blocklistManager.getAllBlockedKeywords()
+                loadedKeywords = blocklistManager
+                    .getAllBlockedKeywords()
                     .filter { it.getKeywordTypeEnum() == KeywordType.EXACT_MATCH }
                 loadedUsers = blocklistManager.getAllBlockedUsers()
                 loadedTopics = blocklistManager.getAllBlockedTopics()
@@ -227,13 +225,16 @@ fun MiuixBlocklistSettingsScreen(
                 Card(
                     modifier = Modifier.weight(1f).clickable {
                         val exportAction = testConfig?.onExportRequested
-                        if (exportAction != null) exportAction()
-                        else coroutineScope.launch {
-                            try {
-                                userMessages.showLongMessage(runtime.exportRules())
-                            } catch (e: Exception) {
-                                Log.e("MiuixBlocklistSettingsScreen", "导出失败", e)
-                                userMessages.showShortMessage("导出失败: ${e.message}")
+                        if (exportAction != null) {
+                            exportAction()
+                        } else {
+                            coroutineScope.launch {
+                                try {
+                                    userMessages.showLongMessage(runtime.exportRules())
+                                } catch (e: Exception) {
+                                    Log.e("MiuixBlocklistSettingsScreen", "导出失败", e)
+                                    userMessages.showShortMessage("导出失败: ${e.message}")
+                                }
                             }
                         }
                     },
@@ -254,7 +255,9 @@ fun MiuixBlocklistSettingsScreen(
 
             // 内容区（仅此区域滚动）
             Box(
-                modifier = Modifier.weight(1f).fillMaxWidth()
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
                     .overScrollVertical()
                     .nestedScroll(scrollBehavior.nestedScrollConnection),
             ) {
@@ -327,10 +330,17 @@ private fun KeywordsTab(
                 Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.End) {
                     Button(
                         onClick = {
-                            testConfig?.onClearKeywords?.let { it(); return@Button }
+                            testConfig?.onClearKeywords?.let {
+                                it()
+                                return@Button
+                            }
                             coroutineScope.launch {
-                                try { blocklistManager.clearAllBlockedKeywords(); onReload() }
-                                catch (e: Exception) { e.printStackTrace() }
+                                try {
+                                    blocklistManager.clearAllBlockedKeywords()
+                                    onReload()
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                }
                             }
                         },
                         modifier = Modifier.testTag(BlocklistSettingsTestTags.KEYWORD_CLEAR_BUTTON),
@@ -347,10 +357,17 @@ private fun KeywordsTab(
                         IconButton(
                             modifier = Modifier.testTag(BlocklistSettingsTestTags.keywordDelete(kw.id)),
                             onClick = {
-                                testConfig?.onDeleteKeyword?.let { it(kw); return@IconButton }
+                                testConfig?.onDeleteKeyword?.let {
+                                    it(kw)
+                                    return@IconButton
+                                }
                                 coroutineScope.launch {
-                                    try { blocklistManager.removeBlockedKeyword(kw.id); onReload() }
-                                    catch (e: Exception) { e.printStackTrace() }
+                                    try {
+                                        blocklistManager.removeBlockedKeyword(kw.id)
+                                        onReload()
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                    }
                                 }
                             },
                         ) {
@@ -374,13 +391,20 @@ private fun KeywordsTab(
                 AddKeywordForm(
                     onDismiss = onDismissForm,
                     onConfirm = { kw, cs, rx ->
-                        testConfig?.onAddKeyword?.let { it(kw, cs, rx); onDismissForm(); return@AddKeywordForm }
+                        testConfig?.onAddKeyword?.let {
+                            it(kw, cs, rx)
+                            onDismissForm()
+                            return@AddKeywordForm
+                        }
                         coroutineScope.launch {
                             try {
                                 blocklistManager.addBlockedKeyword(kw, cs, rx)
                                 userMessages.showShortMessage("已添加")
-                                onReload(); onDismissForm()
-                            } catch (e: Exception) { e.printStackTrace() }
+                                onReload()
+                                onDismissForm()
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
                         }
                     },
                 )
@@ -408,10 +432,17 @@ private fun UsersTab(
                 Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.End) {
                     Button(
                         onClick = {
-                            testConfig?.onClearUsers?.let { it(); return@Button }
+                            testConfig?.onClearUsers?.let {
+                                it()
+                                return@Button
+                            }
                             coroutineScope.launch {
-                                try { blocklistManager.clearAllBlockedUsers(); onReload() }
-                                catch (e: Exception) { e.printStackTrace() }
+                                try {
+                                    blocklistManager.clearAllBlockedUsers()
+                                    onReload()
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                }
                             }
                         },
                         modifier = Modifier.testTag(BlocklistSettingsTestTags.USER_CLEAR_BUTTON),
@@ -433,10 +464,17 @@ private fun UsersTab(
                         IconButton(
                             modifier = Modifier.testTag(BlocklistSettingsTestTags.userDelete(user.userId)),
                             onClick = {
-                                testConfig?.onDeleteUser?.let { it(user); return@IconButton }
+                                testConfig?.onDeleteUser?.let {
+                                    it(user)
+                                    return@IconButton
+                                }
                                 coroutineScope.launch {
-                                    try { blocklistManager.removeBlockedUser(user.userId); onReload() }
-                                    catch (e: Exception) { e.printStackTrace() }
+                                    try {
+                                        blocklistManager.removeBlockedUser(user.userId)
+                                        onReload()
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                    }
                                 }
                             },
                         ) {
@@ -460,13 +498,20 @@ private fun UsersTab(
                 AddUserForm(
                     onDismiss = onDismissForm,
                     onConfirm = { id, name ->
-                        testConfig?.onAddUser?.let { it(id, name); onDismissForm(); return@AddUserForm }
+                        testConfig?.onAddUser?.let {
+                            it(id, name)
+                            onDismissForm()
+                            return@AddUserForm
+                        }
                         coroutineScope.launch {
                             try {
                                 blocklistManager.addBlockedUser(id, name)
                                 userMessages.showShortMessage("已添加")
-                                onReload(); onDismissForm()
-                            } catch (e: Exception) { e.printStackTrace() }
+                                onReload()
+                                onDismissForm()
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
                         }
                     },
                 )
@@ -518,10 +563,17 @@ private fun TopicsTab(
                             IconButton(
                                 modifier = Modifier.testTag(BlocklistSettingsTestTags.topicDelete(topic.topicId)),
                                 onClick = {
-                                    testConfig?.onDeleteTopic?.let { it(topic); return@IconButton }
+                                    testConfig?.onDeleteTopic?.let {
+                                        it(topic)
+                                        return@IconButton
+                                    }
                                     coroutineScope.launch {
-                                        try { blocklistManager.removeBlockedTopic(topic.topicId); onReload() }
-                                        catch (e: Exception) { e.printStackTrace() }
+                                        try {
+                                            blocklistManager.removeBlockedTopic(topic.topicId)
+                                            onReload()
+                                        } catch (e: Exception) {
+                                            e.printStackTrace()
+                                        }
                                     }
                                 },
                             ) {
@@ -537,13 +589,20 @@ private fun TopicsTab(
                     AddTopicForm(
                         onDismiss = onDismissForm,
                         onConfirm = { id, name ->
-                            testConfig?.onAddTopic?.let { it(id, name); onDismissForm(); return@AddTopicForm }
+                            testConfig?.onAddTopic?.let {
+                                it(id, name)
+                                onDismissForm()
+                                return@AddTopicForm
+                            }
                             coroutineScope.launch {
                                 try {
                                     blocklistManager.addBlockedTopic(id, name)
                                     userMessages.showShortMessage("已添加")
-                                    onReload(); onDismissForm()
-                                } catch (e: Exception) { e.printStackTrace() }
+                                    onReload()
+                                    onDismissForm()
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                }
                             }
                         },
                     )
@@ -558,10 +617,18 @@ private fun TopicsTab(
                 confirmTag = BlocklistSettingsTestTags.TOPIC_CLEAR_CONFIRM,
                 dismissTag = BlocklistSettingsTestTags.TOPIC_CLEAR_DISMISS,
                 onConfirm = {
-                    testConfig?.onClearTopics?.let { it(); onShowClearConfirm(false); return@ConfirmDialog }
+                    testConfig?.onClearTopics?.let {
+                        it()
+                        onShowClearConfirm(false)
+                        return@ConfirmDialog
+                    }
                     coroutineScope.launch {
-                        try { blocklistManager.clearAllBlockedTopics(); onReload() }
-                        catch (e: Exception) { e.printStackTrace() }
+                        try {
+                            blocklistManager.clearAllBlockedTopics()
+                            onReload()
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
                     }
                     onShowClearConfirm(false)
                 },
@@ -582,8 +649,14 @@ private fun AddKeywordForm(onDismiss: () -> Unit, onConfirm: (String, Boolean, B
         Column(Modifier.padding(16.dp)) {
             SmallTitle(text = "添加屏蔽关键词")
             Spacer(Modifier.height(8.dp))
-            TextField(kw, { kw = it }, modifier = Modifier.fillMaxWidth()
-                .testTag(BlocklistSettingsTestTags.KEYWORD_DIALOG_INPUT), label = "关键词")
+            TextField(
+                kw,
+                { kw = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(BlocklistSettingsTestTags.KEYWORD_DIALOG_INPUT),
+                label = "关键词",
+            )
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(
@@ -603,8 +676,13 @@ private fun AddKeywordForm(onDismiss: () -> Unit, onConfirm: (String, Boolean, B
                 Spacer(Modifier.width(8.dp))
                 Text("正则表达式")
             }
-            if (isRegex) Text("语法错误会导致该关键词无效",
-                style = MiuixTheme.textStyles.footnote1, color = MiuixTheme.colorScheme.onSurfaceSecondary)
+            if (isRegex) {
+                Text(
+                    "语法错误会导致该关键词无效",
+                    style = MiuixTheme.textStyles.footnote1,
+                    color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                )
+            }
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
                 TextButton(text = "取消", modifier = Modifier.testTag(BlocklistSettingsTestTags.KEYWORD_DIALOG_DISMISS), onClick = onDismiss)
@@ -626,14 +704,29 @@ private fun AddUserForm(onDismiss: () -> Unit, onConfirm: (String, String) -> Un
         Column(Modifier.padding(16.dp)) {
             SmallTitle(text = "添加屏蔽用户")
             Spacer(Modifier.height(8.dp))
-            TextField(userId, { userId = it }, modifier = Modifier.fillMaxWidth()
-                .testTag(BlocklistSettingsTestTags.USER_DIALOG_ID_INPUT), label = "用户ID")
+            TextField(
+                userId,
+                { userId = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(BlocklistSettingsTestTags.USER_DIALOG_ID_INPUT),
+                label = "用户ID",
+            )
             Spacer(Modifier.height(8.dp))
-            TextField(userName, { userName = it }, modifier = Modifier.fillMaxWidth()
-                .testTag(BlocklistSettingsTestTags.USER_DIALOG_NAME_INPUT), label = "用户名（可选）")
+            TextField(
+                userName,
+                { userName = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(BlocklistSettingsTestTags.USER_DIALOG_NAME_INPUT),
+                label = "用户名（可选）",
+            )
             Spacer(Modifier.height(8.dp))
-            Text("可从用户主页URL获取用户ID", style = MiuixTheme.textStyles.footnote1,
-                color = MiuixTheme.colorScheme.onSurfaceSecondary)
+            Text(
+                "可从用户主页URL获取用户ID",
+                style = MiuixTheme.textStyles.footnote1,
+                color = MiuixTheme.colorScheme.onSurfaceSecondary,
+            )
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
                 TextButton(text = "取消", modifier = Modifier.testTag(BlocklistSettingsTestTags.USER_DIALOG_DISMISS), onClick = onDismiss)
@@ -655,14 +748,29 @@ private fun AddTopicForm(onDismiss: () -> Unit, onConfirm: (String, String) -> U
         Column(Modifier.padding(16.dp)) {
             SmallTitle(text = "添加屏蔽主题")
             Spacer(Modifier.height(8.dp))
-            Text("从知乎网页版主题链接中获取ID和名称",
-                style = MiuixTheme.textStyles.footnote1, color = MiuixTheme.colorScheme.onSurfaceSecondary)
+            Text(
+                "从知乎网页版主题链接中获取ID和名称",
+                style = MiuixTheme.textStyles.footnote1,
+                color = MiuixTheme.colorScheme.onSurfaceSecondary,
+            )
             Spacer(Modifier.height(8.dp))
-            TextField(topicId, { topicId = it }, modifier = Modifier.fillMaxWidth()
-                .testTag(BlocklistSettingsTestTags.TOPIC_DIALOG_ID_INPUT), label = "主题ID")
+            TextField(
+                topicId,
+                { topicId = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(BlocklistSettingsTestTags.TOPIC_DIALOG_ID_INPUT),
+                label = "主题ID",
+            )
             Spacer(Modifier.height(8.dp))
-            TextField(topicName, { topicName = it }, modifier = Modifier.fillMaxWidth()
-                .testTag(BlocklistSettingsTestTags.TOPIC_DIALOG_NAME_INPUT), label = "主题名称")
+            TextField(
+                topicName,
+                { topicName = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(BlocklistSettingsTestTags.TOPIC_DIALOG_NAME_INPUT),
+                label = "主题名称",
+            )
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
                 TextButton(text = "取消", modifier = Modifier.testTag(BlocklistSettingsTestTags.TOPIC_DIALOG_DISMISS), onClick = onDismiss)
@@ -680,9 +788,12 @@ private fun AddTopicForm(onDismiss: () -> Unit, onConfirm: (String, String) -> U
 
 @Composable
 private fun ConfirmDialog(
-    title: String, text: String,
-    confirmTag: String, dismissTag: String,
-    onConfirm: () -> Unit, onDismiss: () -> Unit,
+    title: String,
+    text: String,
+    confirmTag: String,
+    dismissTag: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
 ) {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Surface(modifier = Modifier.padding(32.dp)) {

@@ -68,16 +68,15 @@ import com.github.zly2006.zhihu.theme.AppTokens
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.subscreens.DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY
 import com.github.zly2006.zhihu.util.parseHtmlTextWithTheme
-import kotlinx.coroutines.launch
-import kotlin.math.abs
 import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.ListPopupColumn
-import top.yukonga.miuix.kmp.basic.PopupPositionProvider
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.ListPopupColumn
+import top.yukonga.miuix.kmp.basic.PopupPositionProvider
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.LocalDismissState
 import top.yukonga.miuix.kmp.window.WindowListPopup
+import kotlin.math.abs
 
 @Composable
 fun MiuixFeedCard(
@@ -118,7 +117,9 @@ fun MiuixFeedCard(
         self.navDestination?.let { navigator.onNavigate(it) }
             ?: if (self.content?.startsWith("http") == true) {
                 openUrl(self.content!!)
-            } else { userMessages.showShortMessage("暂不支持打开该内容") }
+            } else {
+                userMessages.showShortMessage("暂不支持打开该内容")
+            }
     }
 
     val animatedOffsetX by animateFloatAsState(
@@ -128,7 +129,8 @@ fun MiuixFeedCard(
     )
     val actionAlpha by animateFloatAsState(
         targetValue = if (abs(animatedOffsetX) > 50f) (abs(animatedOffsetX) - 50f) / 100f else 0f,
-        animationSpec = tween(150), label = "actionAlpha",
+        animationSpec = tween(150),
+        label = "actionAlpha",
     )
     val currentAction = when {
         abs(animatedOffsetX) < 75f -> "none"
@@ -140,7 +142,8 @@ fun MiuixFeedCard(
     if (feedCardStyle == "divider") {
         Column(modifier = modifier.fillMaxWidth().heightIn(max = maxHeight)) {
             Column(
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
                     .clickable { resolvedOnClick(item) }
                     .padding(horizontal = horizontalPadding, vertical = 12.dp),
             ) {
@@ -149,12 +152,15 @@ fun MiuixFeedCard(
         }
     } else {
         Box(
-            modifier = modifier.fillMaxWidth().heightIn(max = maxHeight)
+            modifier = modifier
+                .fillMaxWidth()
+                .heightIn(max = maxHeight)
                 .padding(horizontal = horizontalPadding, vertical = 6.dp),
         ) {
             // miuix Card — 点击进入详情；swipe 反应手势与点击共存
             Card(
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
                     .clickable { resolvedOnClick(item) }
                     .alpha(1 - kotlin.math.min(actionAlpha, 0.5f))
@@ -163,21 +169,31 @@ fun MiuixFeedCard(
                         if (enableSwipeReaction) {
                             mod.pointerInput(Unit) {
                                 detectHorizontalDragGestures(
-                                    onDragStart = { offset -> isDragging = true; startY = offset.y; currentY = offset.y },
+                                    onDragStart = { offset ->
+                                        isDragging = true
+                                        startY = offset.y
+                                        currentY = offset.y
+                                    },
                                     onDragEnd = {
                                         isDragging = false
                                         when {
                                             abs(offsetX) >= 75f && currentY - startY < -30f -> onLike?.invoke(item)
                                             abs(offsetX) >= 75f && currentY - startY > 30f -> onDislike?.invoke(item)
                                         }
-                                        kotlinx.coroutines.runBlocking { offsetX = 0f; currentY = 0f; startY = 0f }
+                                        kotlinx.coroutines.runBlocking {
+                                            offsetX = 0f
+                                            currentY = 0f
+                                            startY = 0f
+                                        }
                                     },
                                 ) { change, dragAmount ->
                                     currentY = change.position.y
                                     offsetX = kotlin.math.max(offsetX + dragAmount, -250f).coerceAtMost(0f)
                                 }
                             }
-                        } else mod
+                        } else {
+                            mod
+                        }
                     },
             ) {
                 Column(modifier = Modifier.padding(if (duo3CardAppearance) 16.dp else 12.dp)) {
@@ -197,9 +213,13 @@ fun MiuixFeedCard(
                             "dislike" -> Color(0xFFFF5722).copy(alpha = actionAlpha * 0.2f)
                             "neutral" -> Color(0xFF9E9E9E).copy(alpha = actionAlpha * 0.1f)
                             else -> Color.Transparent
-                        }, shape = RoundedCornerShape(12.dp),
-                    ), contentAlignment = when (currentAction) {
-                        "like" -> Alignment.TopStart; "dislike" -> Alignment.BottomStart; else -> Alignment.CenterStart
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                    ),
+                    contentAlignment = when (currentAction) {
+                        "like" -> Alignment.TopStart
+                        "dislike" -> Alignment.BottomStart
+                        else -> Alignment.CenterStart
                     },
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
@@ -244,7 +264,9 @@ private fun MiuixFeedCardContent(
                 text = parseHtmlTextWithTheme(item.title),
                 fontSize = titleFontSize,
                 fontWeight = FontWeight.Bold,
-                maxLines = 2, color = colors.onSurface, overflow = TextOverflow.Ellipsis,
+                maxLines = 2,
+                color = colors.onSurface,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(bottom = 8.dp),
             )
         }
@@ -252,15 +274,20 @@ private fun MiuixFeedCardContent(
             Row {
                 Text(
                     text = parseHtmlTextWithTheme(item.summary ?: ""),
-                    style = text.bodyMedium, color = colors.onSurfaceVariant,
-                    maxLines = 4, overflow = TextOverflow.Ellipsis,
+                    style = text.bodyMedium,
+                    color = colors.onSurfaceVariant,
+                    maxLines = 4,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
                 if (!thumbnailUrl.isNullOrEmpty() && showFeedThumbnail && !item.isFiltered) {
                     Spacer(Modifier.width(8.dp))
-                    AsyncImage(thumbnailUrl, "缩略图",
+                    AsyncImage(
+                        thumbnailUrl,
+                        "缩略图",
                         modifier = Modifier.padding(top = 8.dp).sizeIn(maxHeight = 80.dp, maxWidth = 128.dp).clip(RoundedCornerShape(8.dp)),
-                        contentScale = ContentScale.FillHeight)
+                        contentScale = ContentScale.FillHeight,
+                    )
                 }
             }
             if (item.details.isNotEmpty() || (item.avatarSrc != null && item.authorName != null)) {
@@ -271,7 +298,10 @@ private fun MiuixFeedCardContent(
                             Spacer(Modifier.width(8.dp))
                             Text(item.authorName, style = text.labelMedium, color = colors.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                             val badge = item.authorBadgeV2.officialBadge()
-                            if (badge?.isUsefulInList == true) { Spacer(Modifier.width(4.dp)); AuthorBadge(badge, compact = true) }
+                            if (badge?.isUsefulInList == true) {
+                                Spacer(Modifier.width(4.dp))
+                                AuthorBadge(badge, compact = true)
+                            }
                         }
                         Spacer(Modifier.width(6.dp))
                     }
@@ -292,7 +322,10 @@ private fun MiuixFeedCardContent(
                 Spacer(Modifier.width(8.dp))
                 Text(item.authorName, fontSize = 13.sp, color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                 val badge = item.authorBadgeV2.officialBadge()
-                if (badge?.isUsefulInList == true) { Spacer(Modifier.width(4.dp)); AuthorBadge(badge, compact = true) }
+                if (badge?.isUsefulInList == true) {
+                    Spacer(Modifier.width(4.dp))
+                    AuthorBadge(badge, compact = true)
+                }
             }
         }
         Row {
@@ -357,8 +390,11 @@ private fun MiuixFeedCardMenuBox(
                     Text(
                         text = title,
                         modifier = Modifier
-                            .clickable { dismissState?.invoke(); onShowMenuChange(false); action() }
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                            .clickable {
+                                dismissState?.invoke()
+                                onShowMenuChange(false)
+                                action()
+                            }.padding(horizontal = 16.dp, vertical = 14.dp),
                         color = AppTokens.colors.onSurface,
                         fontSize = 15.sp,
                     )

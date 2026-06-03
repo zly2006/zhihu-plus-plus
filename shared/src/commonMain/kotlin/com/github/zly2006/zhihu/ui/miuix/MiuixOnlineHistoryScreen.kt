@@ -7,27 +7,19 @@
 
 package com.github.zly2006.zhihu.ui.miuix
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.ListPopupColumn
-import top.yukonga.miuix.kmp.basic.PopupPositionProvider
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.theme.LocalDismissState
-import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.window.WindowListPopup
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -39,7 +31,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -56,14 +47,21 @@ import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
 import com.github.zly2006.zhihu.viewmodel.feed.OnlineHistoryViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
-import top.yukonga.miuix.kmp.blur.layerBackdrop
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.ListPopupColumn
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.basic.PopupPositionProvider
 import top.yukonga.miuix.kmp.basic.PullToRefresh
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.blur.layerBackdrop
+import top.yukonga.miuix.kmp.theme.LocalDismissState
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
+import top.yukonga.miuix.kmp.window.WindowListPopup
 
 @Composable
 fun MiuixOnlineHistoryScreen() {
@@ -87,70 +85,68 @@ fun MiuixOnlineHistoryScreen() {
 
     Scaffold(
         topBar = {
-          AutoHideTopBar {
-            TopAppBar(
-                modifier = Modifier.installerMiuixBlurEffect(backdrop),
-                color = backdrop.getMiuixAppBarColor(),
-                title = "历史记录",
-                scrollBehavior = scrollBehavior,
-                actions = {
-                    var showActionsMenu by remember { mutableStateOf(false) }
-                    val haptic = LocalHapticFeedback.current
-                    PlatformBackHandler(enabled = showActionsMenu) {
-                        showActionsMenu = false
-                    }
-                    Box(modifier = Modifier.padding(end = 4.dp)) {
-                        IconButton(onClick = { showActionsMenu = true }) {
-                            Icon(
-                                Icons.Filled.MoreVert,
-                                contentDescription = "更多选项",
-                                tint = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onBackground,
-                            )
+            AutoHideTopBar {
+                TopAppBar(
+                    modifier = Modifier.installerMiuixBlurEffect(backdrop),
+                    color = backdrop.getMiuixAppBarColor(),
+                    title = "历史记录",
+                    scrollBehavior = scrollBehavior,
+                    actions = {
+                        var showActionsMenu by remember { mutableStateOf(false) }
+                        val haptic = LocalHapticFeedback.current
+                        PlatformBackHandler(enabled = showActionsMenu) {
+                            showActionsMenu = false
                         }
-                        WindowListPopup(
-                            show = showActionsMenu,
-                            popupPositionProvider = com.github.zly2006.zhihu.ui.miuix.components.ListPopupDefaults.MenuPositionProvider,
-                            alignment = PopupPositionProvider.Align.TopEnd,
-                            onDismissRequest = { showActionsMenu = false },
-                        ) {
-                            val dismissState = LocalDismissState.current
-                            ListPopupColumn {
-                                // 照抄官方 DropdownDefaults：横向 20dp，首尾 20dp、中间 12dp。
-                                // 无勾位、左对齐、fillMaxWidth 撑满（ListPopupColumn 最小宽 200dp）。
-                                Text(
-                                    text = "查看本地历史记录",
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable(interactionSource = null, indication = null) {
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            dismissState?.invoke()
-                                            navigator.onNavigate(History)
-                                        }
-                                        .padding(horizontal = 20.dp)
-                                        .padding(top = 20.dp, bottom = 12.dp),
-                                    color = MiuixTheme.colorScheme.onSurface,
-                                    fontSize = 16.sp,
-                                )
-                                Text(
-                                    text = "清除历史记录",
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable(interactionSource = null, indication = null) {
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            dismissState?.invoke()
-                                            showClearHistoryDialog = true
-                                        }
-                                        .padding(horizontal = 20.dp)
-                                        .padding(top = 12.dp, bottom = 20.dp),
-                                    color = MiuixTheme.colorScheme.onSurface,
-                                    fontSize = 16.sp,
+                        Box(modifier = Modifier.padding(end = 4.dp)) {
+                            IconButton(onClick = { showActionsMenu = true }) {
+                                Icon(
+                                    Icons.Filled.MoreVert,
+                                    contentDescription = "更多选项",
+                                    tint = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onBackground,
                                 )
                             }
+                            WindowListPopup(
+                                show = showActionsMenu,
+                                popupPositionProvider = com.github.zly2006.zhihu.ui.miuix.components.ListPopupDefaults.MenuPositionProvider,
+                                alignment = PopupPositionProvider.Align.TopEnd,
+                                onDismissRequest = { showActionsMenu = false },
+                            ) {
+                                val dismissState = LocalDismissState.current
+                                ListPopupColumn {
+                                    // 照抄官方 DropdownDefaults：横向 20dp，首尾 20dp、中间 12dp。
+                                    // 无勾位、左对齐、fillMaxWidth 撑满（ListPopupColumn 最小宽 200dp）。
+                                    Text(
+                                        text = "查看本地历史记录",
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable(interactionSource = null, indication = null) {
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                dismissState?.invoke()
+                                                navigator.onNavigate(History)
+                                            }.padding(horizontal = 20.dp)
+                                            .padding(top = 20.dp, bottom = 12.dp),
+                                        color = MiuixTheme.colorScheme.onSurface,
+                                        fontSize = 16.sp,
+                                    )
+                                    Text(
+                                        text = "清除历史记录",
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable(interactionSource = null, indication = null) {
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                dismissState?.invoke()
+                                                showClearHistoryDialog = true
+                                            }.padding(horizontal = 20.dp)
+                                            .padding(top = 12.dp, bottom = 20.dp),
+                                        color = MiuixTheme.colorScheme.onSurface,
+                                        fontSize = 16.sp,
+                                    )
+                                }
+                            }
                         }
-                    }
-                },
-            )
-          }
+                    },
+                )
+            }
         },
     ) { padding ->
         if (showClearHistoryDialog) {
@@ -189,7 +185,8 @@ fun MiuixOnlineHistoryScreen() {
             ) {
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .fillMaxSize()
                         .fillMaxHeight()
                         .overScrollVertical()
                         .scrollEndHaptic()

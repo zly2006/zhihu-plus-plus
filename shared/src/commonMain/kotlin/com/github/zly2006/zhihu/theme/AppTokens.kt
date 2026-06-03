@@ -18,53 +18,54 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 @Immutable
 data class AppColors(
     // 24 actually-used tokens (grep-verified), sorted by usage frequency
-    val onSurfaceVariant: Color,       // 107 uses → miuix: onSurfaceSecondary
-    val primary: Color,                 // 40 uses
-    val onSurface: Color,               // 36 uses
-    val surfaceVariant: Color,          // 25 uses
-    val surfaceContainer: Color,        // 25 uses
-    val onPrimaryContainer: Color,      // 20 uses
-    val primaryContainer: Color,        // 17 uses
-    val onSecondaryContainer: Color,    // 17 uses
-    val error: Color,                   // 16 uses
-    val secondaryContainer: Color,      // 13 uses
-    val surfaceContainerHigh: Color,    // 9 uses
-    val outlineVariant: Color,          // 8 uses → miuix: outline
-    val onTertiaryContainer: Color,     // 8 uses
-    val onPrimary: Color,               // 8 uses
-    val surface: Color,                 // 7 uses
-    val tertiaryContainer: Color,       // 5 uses
-    val surfaceBright: Color,           // 4 uses → miuix: surface
-    val outline: Color,                 // 4 uses
-    val background: Color,              // 4 uses
-    val surfaceContainerLow: Color,     // 3 uses → miuix: surface
+    val onSurfaceVariant: Color, // 107 uses → miuix: onSurfaceSecondary
+    val primary: Color, // 40 uses
+    val onSurface: Color, // 36 uses
+    val surfaceVariant: Color, // 25 uses
+    val surfaceContainer: Color, // 25 uses
+    val onPrimaryContainer: Color, // 20 uses
+    val primaryContainer: Color, // 17 uses
+    val onSecondaryContainer: Color, // 17 uses
+    val error: Color, // 16 uses
+    val secondaryContainer: Color, // 13 uses
+    val surfaceContainerHigh: Color, // 9 uses
+    val outlineVariant: Color, // 8 uses → miuix: outline
+    val onTertiaryContainer: Color, // 8 uses
+    val onPrimary: Color, // 8 uses
+    val surface: Color, // 7 uses
+    val tertiaryContainer: Color, // 5 uses
+    val surfaceBright: Color, // 4 uses → miuix: surface
+    val outline: Color, // 4 uses
+    val background: Color, // 4 uses
+    val surfaceContainerLow: Color, // 3 uses → miuix: surface
     val surfaceContainerHighest: Color, // 3 uses
-    val tertiary: Color,                // 2 uses → miuix: primary (fallback)
-    val onErrorContainer: Color,        // 2 uses
-    val errorContainer: Color,          // 2 uses
-    val secondary: Color,               // 1 use
-    val inversePrimary: Color,          // 1 use → miuix: primary (fallback)
+    val tertiary: Color, // 2 uses → miuix: primary (fallback)
+    val onErrorContainer: Color, // 2 uses
+    val errorContainer: Color, // 2 uses
+    val secondary: Color, // 1 use
+    val inversePrimary: Color, // 1 use → miuix: primary (fallback)
 )
 
 @Immutable
 data class AppText(
     // 11 actually-used typography levels (grep-verified)
-    val bodyMedium: TextStyle,   // 49 uses → miuix: body1
-    val bodySmall: TextStyle,    // 48 uses → miuix: footnote1
-    val titleMedium: TextStyle,  // 26 uses → miuix: title2
-    val bodyLarge: TextStyle,    // 26 uses → miuix: body1
-    val labelMedium: TextStyle,  // 8 uses  → miuix: body2
-    val titleSmall: TextStyle,   // 7 uses  → miuix: title3
-    val titleLarge: TextStyle,   // 7 uses  → miuix: title1
-    val labelLarge: TextStyle,   // 5 uses  → miuix: body2
-    val headlineSmall: TextStyle,// 4 uses  → miuix: title3
-    val labelSmall: TextStyle,   // 3 uses  → miuix: footnote2
-    val headlineMedium: TextStyle,// 3 uses → miuix: title1
+    val bodyMedium: TextStyle, // 49 uses → miuix: body1
+    val bodySmall: TextStyle, // 48 uses → miuix: footnote1
+    val titleMedium: TextStyle, // 26 uses → miuix: title2
+    val bodyLarge: TextStyle, // 26 uses → miuix: body1
+    val labelMedium: TextStyle, // 8 uses  → miuix: body2
+    val titleSmall: TextStyle, // 7 uses  → miuix: title3
+    val titleLarge: TextStyle, // 7 uses  → miuix: title1
+    val labelLarge: TextStyle, // 5 uses  → miuix: body2
+    val headlineSmall: TextStyle, // 4 uses  → miuix: title3
+    val labelSmall: TextStyle, // 3 uses  → miuix: footnote2
+    val headlineMedium: TextStyle, // 3 uses → miuix: title1
 )
 
 object AppTokens {
     val colors: AppColors
-        @Composable @ReadOnlyComposable get() = when (LocalThemeStyle.current) {
+        @Composable @ReadOnlyComposable
+        get() = when (LocalThemeStyle.current) {
             ThemeStyle.Miuix -> AppColors(
                 onSurfaceVariant = MiuixTheme.colorScheme.onSurfaceSecondary,
                 primary = MiuixTheme.colorScheme.primary,
@@ -124,7 +125,8 @@ object AppTokens {
         }
 
     val text: AppText
-        @Composable @ReadOnlyComposable get() = when (LocalThemeStyle.current) {
+        @Composable @ReadOnlyComposable
+        get() = when (LocalThemeStyle.current) {
             ThemeStyle.Miuix -> AppText(
                 bodyMedium = MiuixTheme.textStyles.body1,
                 bodySmall = MiuixTheme.textStyles.footnote1,

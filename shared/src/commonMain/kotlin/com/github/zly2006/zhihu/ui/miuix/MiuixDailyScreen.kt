@@ -46,7 +46,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
@@ -81,7 +80,6 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -90,6 +88,7 @@ import top.yukonga.miuix.kmp.basic.PullToRefresh
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
@@ -247,7 +246,8 @@ fun MiuixDailyScreen(
                     else -> {
                         LazyColumn(
                             state = listState,
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier
+                                .fillMaxSize()
                                 .fillMaxHeight()
                                 .overScrollVertical()
                                 .scrollEndHaptic()
@@ -313,7 +313,9 @@ private fun MiuixDateHeader(date: String, modifier: Modifier = Modifier) {
             modifier = Modifier.fillMaxWidth(),
         ) {
             Box(
-                modifier = Modifier.weight(1f).height(1.dp)
+                modifier = Modifier
+                    .weight(1f)
+                    .height(1.dp)
                     .background(MiuixTheme.colorScheme.onSurface.copy(alpha = 0.2f)),
             )
             Text(
@@ -324,7 +326,9 @@ private fun MiuixDateHeader(date: String, modifier: Modifier = Modifier) {
                 modifier = Modifier.padding(horizontal = 16.dp),
             )
             Box(
-                modifier = Modifier.weight(1f).height(1.dp)
+                modifier = Modifier
+                    .weight(1f)
+                    .height(1.dp)
                     .background(MiuixTheme.colorScheme.onSurface.copy(alpha = 0.2f)),
             )
         }
@@ -338,7 +342,9 @@ private fun MiuixDailyStoryCard(
     onClick: () -> Unit,
 ) {
     Card(
-        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
             .clickable(onClick = onClick),
     ) {
         Row(

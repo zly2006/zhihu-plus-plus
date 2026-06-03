@@ -50,9 +50,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
-import top.yukonga.miuix.kmp.basic.NavigationBar as MiuixNavigationBar
-import top.yukonga.miuix.kmp.basic.NavigationBarItem as MiuixNavigationBarItem
-import top.yukonga.miuix.kmp.basic.NavigationBarDisplayMode
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
@@ -113,7 +110,6 @@ import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ThemeStyle
-import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
@@ -142,8 +138,6 @@ import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixNotificationSettingsScr
 import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixOpenSourceLicensesScreen
 import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixSystemAndUpdateSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.AboutScreen
-import top.yukonga.miuix.kmp.blur.LayerBackdrop
-import top.yukonga.miuix.kmp.blur.layerBackdrop
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.BlockedFeedHistoryScreen
 import com.github.zly2006.zhihu.ui.subscreens.ColorSchemeScreen
@@ -152,8 +146,12 @@ import com.github.zly2006.zhihu.ui.subscreens.DeveloperSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.OpenSourceLicensesScreen
 import com.github.zly2006.zhihu.ui.subscreens.SystemAndUpdateSettingsScreen
 import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.blur.LayerBackdrop
+import top.yukonga.miuix.kmp.blur.layerBackdrop
 import kotlin.reflect.KClass
 import kotlin.reflect.typeOf
+import top.yukonga.miuix.kmp.basic.NavigationBar as MiuixNavigationBar
+import top.yukonga.miuix.kmp.basic.NavigationBarItem as MiuixNavigationBarItem
 
 const val SURVEY_URL = "https://v.wjx.cn/vm/Ppfw2R4.aspx#"
 
@@ -356,8 +354,11 @@ fun ZhihuMain(
                                 MiuixNavigationBarItem(
                                     selected = selected,
                                     onClick = {
-                                        if (!selected) navigateTopLevel(item.first)
-                                        else if (tapToScrollToTopEnabled) scrollToTopTrigger++
+                                        if (!selected) {
+                                            navigateTopLevel(item.first)
+                                        } else if (tapToScrollToTopEnabled) {
+                                            scrollToTopTrigger++
+                                        }
                                     },
                                     icon = item.third,
                                     label = item.second,
@@ -463,26 +464,26 @@ fun ZhihuMain(
                     CompositionLocalProvider(
                         LocalAutoHideTopBarVisible provides (!autoHideTopBar || isBottomBarVisible),
                     ) {
-                    MainTabsPager(
-                        pagerState = mainPagerState,
-                        pages = mainTabPages,
-                        scrollToTopTrigger = scrollToTopTrigger,
-                        innerPadding = innerPadding,
-                        bottomBarBackdrop = bottomBarBackdrop,
-                        onFollowTabSelected = { followTabIndex ->
-                            val page = if (followTabIndex == 0) {
-                                MainTabPage.FollowRecommendPage
-                            } else {
-                                MainTabPage.FollowDynamicPage
-                            }
-                            val index = mainTabPages.indexOfFirst { it.key == page.key }
-                            if (index >= 0) {
-                                coroutineScope.launch {
-                                    mainPagerState.animateScrollToPage(index)
+                        MainTabsPager(
+                            pagerState = mainPagerState,
+                            pages = mainTabPages,
+                            scrollToTopTrigger = scrollToTopTrigger,
+                            innerPadding = innerPadding,
+                            bottomBarBackdrop = bottomBarBackdrop,
+                            onFollowTabSelected = { followTabIndex ->
+                                val page = if (followTabIndex == 0) {
+                                    MainTabPage.FollowRecommendPage
+                                } else {
+                                    MainTabPage.FollowDynamicPage
                                 }
-                            }
-                        },
-                    )
+                                val index = mainTabPages.indexOfFirst { it.key == page.key }
+                                if (index >= 0) {
+                                    coroutineScope.launch {
+                                        mainPagerState.animateScrollToPage(index)
+                                    }
+                                }
+                            },
+                        )
                     }
                 }
                 composable<Question> { navEntry ->
@@ -688,7 +689,8 @@ private fun MainTabsPager(
 ) {
     HorizontalPager(
         state = pagerState,
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
             .then(if (bottomBarBackdrop != null) Modifier.layerBackdrop(bottomBarBackdrop) else Modifier),
     ) { pageIndex ->
         val page = pages.getOrNull(pageIndex) ?: return@HorizontalPager
@@ -706,27 +708,35 @@ private fun MainTabsPager(
             }
             MainTabPage.FollowRecommendPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
                 MiuixFollowTopLevelPage(
-                    selectedTabIndex = 0, onTabSelected = onFollowTabSelected,
-                    scrollToTopTrigger = scrollToTopTrigger, innerPadding = innerPadding,
+                    selectedTabIndex = 0,
+                    onTabSelected = onFollowTabSelected,
+                    scrollToTopTrigger = scrollToTopTrigger,
+                    innerPadding = innerPadding,
                     isActive = pagerState.currentPage == pageIndex,
                 )
             } else {
                 FollowTopLevelPage(
-                    selectedTabIndex = 0, onTabSelected = onFollowTabSelected,
-                    scrollToTopTrigger = scrollToTopTrigger, innerPadding = innerPadding,
+                    selectedTabIndex = 0,
+                    onTabSelected = onFollowTabSelected,
+                    scrollToTopTrigger = scrollToTopTrigger,
+                    innerPadding = innerPadding,
                     isActive = pagerState.currentPage == pageIndex,
                 )
             }
             MainTabPage.FollowDynamicPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
                 MiuixFollowTopLevelPage(
-                    selectedTabIndex = 1, onTabSelected = onFollowTabSelected,
-                    scrollToTopTrigger = scrollToTopTrigger, innerPadding = innerPadding,
+                    selectedTabIndex = 1,
+                    onTabSelected = onFollowTabSelected,
+                    scrollToTopTrigger = scrollToTopTrigger,
+                    innerPadding = innerPadding,
                     isActive = pagerState.currentPage == pageIndex,
                 )
             } else {
                 FollowTopLevelPage(
-                    selectedTabIndex = 1, onTabSelected = onFollowTabSelected,
-                    scrollToTopTrigger = scrollToTopTrigger, innerPadding = innerPadding,
+                    selectedTabIndex = 1,
+                    onTabSelected = onFollowTabSelected,
+                    scrollToTopTrigger = scrollToTopTrigger,
+                    innerPadding = innerPadding,
                     isActive = pagerState.currentPage == pageIndex,
                 )
             }

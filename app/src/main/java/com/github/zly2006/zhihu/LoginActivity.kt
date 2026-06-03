@@ -65,21 +65,21 @@ import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ThemeStyle
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.components.WebviewComp
+import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
+import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
+import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
+import com.github.zly2006.zhihu.util.telemetry
+import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.basic.TabRow
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Button as MiuixButton
 import top.yukonga.miuix.kmp.basic.ButtonDefaults as MiuixButtonDefaults
 import top.yukonga.miuix.kmp.basic.Icon as MiuixIcon
 import top.yukonga.miuix.kmp.basic.IconButton as MiuixIconButton
 import top.yukonga.miuix.kmp.basic.Scaffold as MiuixScaffold
-import top.yukonga.miuix.kmp.basic.TabRow
 import top.yukonga.miuix.kmp.basic.Text as MiuixText
 import top.yukonga.miuix.kmp.basic.TopAppBar as MiuixTopAppBar
-import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
-import top.yukonga.miuix.kmp.theme.MiuixTheme
-import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
-import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
-import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
-import com.github.zly2006.zhihu.util.telemetry
-import kotlinx.coroutines.launch
 
 private const val LOGIN_MODE_WEB = 0
 private const val LOGIN_MODE_QR = 1
@@ -117,32 +117,44 @@ class LoginActivity : ComponentActivity() {
                     when (currentNoticeStep) {
                         0 -> MiuixLoginNotice(
                             "我清楚，本应用由开源社区开发和维护，不由知乎官方开发并运营，也不受到知乎官方的承认或支持，使用本应用的一切后果由我本人承担。我可以在 https://www.zhihu.com/app/ 下载官方应用。",
-                            step = "1/3", onConfirm = { currentNoticeStep = 1 })
+                            step = "1/3",
+                            onConfirm = { currentNoticeStep = 1 },
+                        )
                         1 -> MiuixLoginNotice(
                             "在使用本应用的过程中，我承诺遵守知乎使用协议 https://www.zhihu.com/term/zhihu-terms 。我保证在使用过程中不侵犯知乎及其他作者的著作权，使用本应用产生的一切输出仅用于个人浏览和备份，不会进行传播等其他影响作者著作权的行为。",
-                            step = "2/3", onConfirm = { currentNoticeStep = 2 })
+                            step = "2/3",
+                            onConfirm = { currentNoticeStep = 2 },
+                        )
                         else -> MiuixLoginNotice(
                             "我知晓，本应用可能会收集部分匿名化的使用信息来确定使用人数，我可以在设置中随时关闭此项遥测。",
-                            step = "3/3", onConfirm = { currentNoticeStep = 3 })
+                            step = "3/3",
+                            onConfirm = { currentNoticeStep = 3 },
+                        )
                     }
                 } else {
                     Surface(modifier = Modifier.fillMaxSize().systemBarsPadding()) {
                         when (currentNoticeStep) {
-                            0 -> LoginNoticeScreen(stepTag = "login_notice_step_1",
+                            0 -> LoginNoticeScreen(
+                                stepTag = "login_notice_step_1",
                                 message = "我清楚，本应用由开源社区开发和维护，不由知乎官方开发并运营，也不受到知乎官方的承认或支持，使用本应用的一切后果由我本人承担。我可以在 https://www.zhihu.com/app/ 下载官方应用。",
                                 secondaryButtonText = "下载官方App",
                                 onSecondaryAction = { luoTianYiUrlLauncher(this@LoginActivity, "https://www.zhihu.com/app/".toUri()) },
-                                onConfirm = { currentNoticeStep = 1 })
-                            1 -> LoginNoticeScreen(stepTag = "login_notice_step_2",
+                                onConfirm = { currentNoticeStep = 1 },
+                            )
+                            1 -> LoginNoticeScreen(
+                                stepTag = "login_notice_step_2",
                                 message = "在使用本应用的过程中，我承诺遵守知乎使用协议 https://www.zhihu.com/term/zhihu-terms 。我保证在使用过程中不侵犯知乎及其他作者的著作权，使用本应用产生的一切输出仅用于个人浏览和备份，不会进行传播等其他影响作者著作权的行为。",
                                 secondaryButtonText = "查看协议",
                                 onSecondaryAction = { luoTianYiUrlLauncher(this@LoginActivity, "https://www.zhihu.com/term/zhihu-terms".toUri()) },
-                                onConfirm = { currentNoticeStep = 2 })
-                            else -> LoginNoticeScreen(stepTag = "login_notice_step_3",
+                                onConfirm = { currentNoticeStep = 2 },
+                            )
+                            else -> LoginNoticeScreen(
+                                stepTag = "login_notice_step_3",
                                 message = "我知晓，本应用可能会收集部分匿名化的使用信息来确定使用人数，我可以在设置中随时关闭此项遥测。",
                                 secondaryButtonText = "查看设置",
                                 onSecondaryAction = { startActivity(Intent(this@LoginActivity, MainActivity::class.java)) },
-                                onConfirm = { currentNoticeStep = 3 })
+                                onConfirm = { currentNoticeStep = 3 },
+                            )
                         }
                     }
                 }
@@ -433,8 +445,11 @@ private fun MiuixLoginNotice(
                     MiuixText(step, color = MiuixTheme.colorScheme.onSurfaceVariantSummary, style = MiuixTheme.textStyles.body2)
                 }
             }
-            MiuixButton(onClick = onConfirm, modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
-                colors = MiuixButtonDefaults.buttonColorsPrimary()) {
+            MiuixButton(
+                onClick = onConfirm,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
+                colors = MiuixButtonDefaults.buttonColorsPrimary(),
+            ) {
                 MiuixText("确认并继续")
             }
         }

@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import androidx.compose.material.icons.filled.DataObject
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.runtime.Composable
@@ -31,45 +30,72 @@ import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.ui.subscreens.rememberOpenSourceLicensesLibraries
 import com.github.zly2006.zhihu.ui.subscreens.rememberShowFullVariantLicenses
-import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
-import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 
 private data class ManualLicenseEntry(
-    val name: String, val license: String, val summary: String,
-    val url: String, val icon: @Composable () -> Unit,
+    val name: String,
+    val license: String,
+    val summary: String,
+    val url: String,
+    val icon: @Composable () -> Unit,
 )
 
 private val fullVariantManualLibraries = listOf(
-    ManualLicenseEntry("Sentence-Embeddings-Android", "Apache-2.0", "用于执行句子嵌入。",
+    ManualLicenseEntry(
+        "Sentence-Embeddings-Android",
+        "Apache-2.0",
+        "用于执行句子嵌入。",
         "https://github.com/shubham0204/Sentence-Embeddings-Android",
-        { Icon(Icons.Default.Memory, null) }),
-    ManualLicenseEntry("huggingface/tokenizers 0.22.2", "Apache-2.0", "huggingface tokenizer",
+        { Icon(Icons.Default.Memory, null) },
+    ),
+    ManualLicenseEntry(
+        "huggingface/tokenizers 0.22.2",
+        "Apache-2.0",
+        "huggingface tokenizer",
         "https://github.com/huggingface/tokenizers",
-        { Icon(Icons.Default.DataObject, null) }),
-    ManualLicenseEntry("jni 0.21.1", "MIT/Apache-2.0", "Rust JNI 绑定。",
+        { Icon(Icons.Default.DataObject, null) },
+    ),
+    ManualLicenseEntry(
+        "jni 0.21.1",
+        "MIT/Apache-2.0",
+        "Rust JNI 绑定。",
         "https://github.com/jni-rs/jni-rs",
-        { Icon(Icons.Default.DataObject, null) }),
-    ManualLicenseEntry("bytes 1.11.1", "MIT", "Rust bytes 缓冲区库。",
+        { Icon(Icons.Default.DataObject, null) },
+    ),
+    ManualLicenseEntry(
+        "bytes 1.11.1",
+        "MIT",
+        "Rust bytes 缓冲区库。",
         "https://github.com/tokio-rs/bytes",
-        { Icon(Icons.Default.DataObject, null) }),
-    ManualLicenseEntry("serde 1.0.228", "MIT OR Apache-2.0", "Rust 序列化框架。",
+        { Icon(Icons.Default.DataObject, null) },
+    ),
+    ManualLicenseEntry(
+        "serde 1.0.228",
+        "MIT OR Apache-2.0",
+        "Rust 序列化框架。",
         "https://github.com/serde-rs/serde",
-        { Icon(Icons.Default.DataObject, null) }),
-    ManualLicenseEntry("serde_json 1.0.149", "MIT OR Apache-2.0", "Rust JSON 序列化实现。",
+        { Icon(Icons.Default.DataObject, null) },
+    ),
+    ManualLicenseEntry(
+        "serde_json 1.0.149",
+        "MIT OR Apache-2.0",
+        "Rust JSON 序列化实现。",
         "https://github.com/serde-rs/json",
-        { Icon(Icons.Default.DataObject, null) }),
+        { Icon(Icons.Default.DataObject, null) },
+    ),
 )
 
 @Composable
@@ -101,7 +127,8 @@ fun MiuixOpenSourceLicensesScreen() {
         },
     ) { innerPadding ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
                 .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
                 .overScrollVertical()
                 .nestedScroll(scrollBehavior.nestedScrollConnection),

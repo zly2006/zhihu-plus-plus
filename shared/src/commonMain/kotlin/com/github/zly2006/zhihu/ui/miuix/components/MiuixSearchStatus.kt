@@ -4,6 +4,8 @@
  * Adapted for zhihu-plus-plus under AGPL-3.0-only.
  */
 
+@file:Suppress("ktlint:standard:filename")
+
 package com.github.zly2006.zhihu.ui.miuix.components
 
 import androidx.compose.foundation.background
@@ -33,9 +35,13 @@ data class SearchStatus(
     val resultStatus: ResultStatus = ResultStatus.DEFAULT,
 ) {
     fun isExpand() = current == Status.EXPANDED
+
     fun isCollapsed() = current == Status.COLLAPSED
+
     fun shouldExpand() = current == Status.EXPANDED || current == Status.EXPANDING
+
     fun shouldCollapsed() = current == Status.COLLAPSED || current == Status.COLLAPSING
+
     fun isAnimatingExpand() = current == Status.EXPANDING
 
     fun onAnimationComplete(): SearchStatus = when (current) {
@@ -69,5 +75,6 @@ data class SearchStatus(
     }
 
     enum class Status { EXPANDED, EXPANDING, COLLAPSED, COLLAPSING }
+
     enum class ResultStatus { DEFAULT, EMPTY, LOAD, SHOW }
 }

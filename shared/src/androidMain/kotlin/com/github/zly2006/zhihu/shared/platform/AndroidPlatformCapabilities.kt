@@ -90,7 +90,12 @@ actual fun rememberDeveloperDiagnostics(): DeveloperDiagnostics {
                     else -> "其他"
                 }
             },
-            readClipboardText = { context.clipboardManager.primaryClip?.getItemAt(0)?.text?.toString() },
+            readClipboardText = {
+                context.clipboardManager.primaryClip
+                    ?.getItemAt(0)
+                    ?.text
+                    ?.toString()
+            },
             exportAllSettings = { preferences.all.entries.joinToString("\n") { "${it.key}: ${it.value}" } },
         )
     }

@@ -7,21 +7,16 @@
 
 package com.github.zly2006.zhihu.ui.miuix.subscreens
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.ui.Alignment
 import androidx.compose.foundation.lazy.LazyColumn
-import top.yukonga.miuix.kmp.window.WindowBottomSheet
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -31,9 +26,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
@@ -45,8 +38,8 @@ import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import kotlinx.coroutines.launch
-import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.DropdownItem
@@ -59,12 +52,13 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.TopAppBar
-import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
+import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.preference.WindowSpinnerPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
+import top.yukonga.miuix.kmp.window.WindowBottomSheet
 
 @Composable
 fun MiuixContentFilterSettingsScreen(
@@ -84,7 +78,10 @@ fun MiuixContentFilterSettingsScreen(
     val showThresholdSheet = remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        try { filterStats = filterMaintenance.loadFilterStats() } catch (_: Exception) {}
+        try {
+            filterStats = filterMaintenance.loadFilterStats()
+        } catch (_: Exception) {
+        }
     }
 
     Scaffold(
@@ -103,7 +100,8 @@ fun MiuixContentFilterSettingsScreen(
         },
     ) { innerPadding ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
                 .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
                 .overScrollVertical()
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -334,7 +332,8 @@ fun MiuixContentFilterSettingsScreen(
                         try {
                             filterStats = filterMaintenance.cleanupOldData()
                             userMessages.showShortMessage("已清理过期数据")
-                        } catch (_: Exception) {}
+                        } catch (_: Exception) {
+                        }
                     }
                 },
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
@@ -349,7 +348,8 @@ fun MiuixContentFilterSettingsScreen(
                             filterStats = filterMaintenance.clearAllData()
                             userMessages.showShortMessage("已重置所有数据")
                             showStatsSheet.value = false
-                        } catch (_: Exception) {}
+                        } catch (_: Exception) {
+                        }
                     }
                 },
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),

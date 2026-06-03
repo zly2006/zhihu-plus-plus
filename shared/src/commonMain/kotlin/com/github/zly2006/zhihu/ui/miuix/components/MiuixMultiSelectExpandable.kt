@@ -19,8 +19,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.state.ToggleableState
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import top.yukonga.miuix.kmp.basic.Checkbox
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Text
@@ -71,7 +71,8 @@ fun <T> MiuixMultiSelectExpandable(
                 }
 
                 Row(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
                         .clickable(enabled = !isLocked) { onToggle() }
                         .padding(horizontal = 24.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -80,8 +81,11 @@ fun <T> MiuixMultiSelectExpandable(
                         text = optionLabel(option),
                         modifier = Modifier.weight(1f),
                         style = MiuixTheme.textStyles.body1,
-                        color = if (isLocked) MiuixTheme.colorScheme.onBackground.copy(alpha = 0.4f)
-                        else MiuixTheme.colorScheme.onBackground,
+                        color = if (isLocked) {
+                            MiuixTheme.colorScheme.onBackground.copy(alpha = 0.4f)
+                        } else {
+                            MiuixTheme.colorScheme.onBackground
+                        },
                     )
                     Spacer(Modifier.width(8.dp))
                     Checkbox(

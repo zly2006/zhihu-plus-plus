@@ -9,6 +9,7 @@
 
 package com.github.zly2006.zhihu.theme
 
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -20,7 +21,6 @@ import top.yukonga.miuix.kmp.blur.isRenderEffectSupported
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
 import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import androidx.compose.runtime.Composable
 
 @Composable
 fun rememberMiuixBlurBackdrop(enableBlur: Boolean): LayerBackdrop? {
@@ -45,8 +45,12 @@ fun Modifier.installerMiuixBlurEffect(
 ): Modifier {
     if (!enabled || backdrop == null) return this
     val blendColor = MiuixTheme.colorScheme.surface.copy(alpha = 0.8f)
-    return this.then(Modifier.textureBlur(
-        backdrop = backdrop, shape = shape, blurRadius = blurRadius,
-        colors = BlurColors(blendColors = listOf(BlendColorEntry(color = blendColor))),
-    ))
+    return this.then(
+        Modifier.textureBlur(
+            backdrop = backdrop,
+            shape = shape,
+            blurRadius = blurRadius,
+            colors = BlurColors(blendColors = listOf(BlendColorEntry(color = blendColor))),
+        ),
+    )
 }

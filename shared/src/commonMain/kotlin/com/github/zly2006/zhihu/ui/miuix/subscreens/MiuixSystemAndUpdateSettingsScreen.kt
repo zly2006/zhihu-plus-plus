@@ -7,6 +7,7 @@
 
 package com.github.zly2006.zhihu.ui.miuix.subscreens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,13 +18,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
-import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
-import androidx.compose.material.icons.filled.ArrowOutward
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.runtime.Composable
@@ -34,21 +31,19 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.foundation.clickable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
@@ -57,16 +52,12 @@ import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixExpandableArrowPreference
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.ui.subscreens.CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES_KEY
 import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
 import com.github.zly2006.zhihu.ui.subscreens.rememberSystemUpdateRuntime
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
-import zhihu.shared.generated.resources.Res
-import zhihu.shared.generated.resources.ic_discord_24dp
-import zhihu.shared.generated.resources.ic_github_24dp
-import zhihu.shared.generated.resources.ic_telegram_24dp
-import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.DropdownItem
 import top.yukonga.miuix.kmp.basic.Icon
@@ -77,11 +68,16 @@ import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.preference.WindowSpinnerPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
+import zhihu.shared.generated.resources.Res
+import zhihu.shared.generated.resources.ic_discord_24dp
+import zhihu.shared.generated.resources.ic_github_24dp
+import zhihu.shared.generated.resources.ic_telegram_24dp
 
 @Composable
 fun MiuixSystemAndUpdateSettingsScreen() {
@@ -95,7 +91,8 @@ fun MiuixSystemAndUpdateSettingsScreen() {
     val updateState by updates.state.collectAsState()
     val coroutineScope = rememberCoroutineScope()
     val showUpdateBanner = updateState is SystemUpdateState.UpdateAvailable ||
-        updateState is SystemUpdateState.Downloading || updateState is SystemUpdateState.Downloaded
+        updateState is SystemUpdateState.Downloading ||
+        updateState is SystemUpdateState.Downloaded
 
     var updateVersion: String by remember { mutableStateOf("") }
     var releaseNotes: String? by remember { mutableStateOf(null) }
@@ -123,7 +120,8 @@ fun MiuixSystemAndUpdateSettingsScreen() {
         },
     ) { innerPadding ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
                 .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
                 .overScrollVertical()
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -252,7 +250,10 @@ fun MiuixSystemAndUpdateSettingsScreen() {
                     ) {
                         TextField(
                             value = githubToken,
-                            onValueChange = { githubToken = it; settings.putString("githubToken", it) },
+                            onValueChange = {
+                                githubToken = it
+                                settings.putString("githubToken", it)
+                            },
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 12.dp),
                             singleLine = true,
                             label = "Token",
@@ -312,7 +313,9 @@ fun MiuixSystemAndUpdateSettingsScreen() {
             if (!showUpdateBanner) {
                 item {
                     Card(
-                        modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)
+                        modifier = Modifier
+                            .padding(horizontal = 12.dp)
+                            .padding(bottom = 12.dp)
                             .clickable {
                                 coroutineScope.launch {
                                     when (updateState) {
@@ -351,7 +354,10 @@ fun MiuixSystemAndUpdateSettingsScreen() {
                         )
                     }
                     val reminderOptions = listOf(
-                        0 to "关闭", 15 to "每 15 分钟", 30 to "每 30 分钟", 60 to "每 1 小时",
+                        0 to "关闭",
+                        15 to "每 15 分钟",
+                        30 to "每 30 分钟",
+                        60 to "每 1 小时",
                     )
                     val items = reminderOptions.map { DropdownItem(title = it.second) }
                     val idx = reminderOptions.indexOfFirst { it.first == reminderIntervalMinutes }.coerceAtLeast(0)

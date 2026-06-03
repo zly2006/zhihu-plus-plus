@@ -17,7 +17,8 @@ package com.github.zly2006.zhihu.theme
  */
 enum class ThemeStyle {
     Material3,
-    Miuix;
+    Miuix,
+    ;
 
     companion object {
         fun fromValueOrDefault(value: String?): ThemeStyle =

@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -57,47 +58,45 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.shared.ui.TopLevelReselectAction
+import com.github.zly2006.zhihu.shared.ui.topLevelReselectAction
+import com.github.zly2006.zhihu.theme.LocalThemeStyle
+import com.github.zly2006.zhihu.theme.ThemeStyle
+import com.github.zly2006.zhihu.ui.components.AutoHideTopBar
+import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
+import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
+import com.github.zly2006.zhihu.ui.components.FeedCard
+import com.github.zly2006.zhihu.ui.components.PaginatedList
+import com.github.zly2006.zhihu.ui.components.rememberFeedBlockActions
+import com.github.zly2006.zhihu.ui.miuix.MiuixFollowingUsersRow
+import com.github.zly2006.zhihu.viewmodel.feed.FollowRecommendViewModel
+import com.github.zly2006.zhihu.viewmodel.feed.FollowViewModel
+import com.github.zly2006.zhihu.viewmodel.feed.RecentMomentsViewModel
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.PullToRefresh
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
-import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.navigation.LocalNavigator
-import com.github.zly2006.zhihu.navigation.Person
-import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.shared.ui.TopLevelReselectAction
-import com.github.zly2006.zhihu.shared.ui.topLevelReselectAction
-import com.github.zly2006.zhihu.ui.components.AutoHideTopBar
-import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
-import com.github.zly2006.zhihu.theme.LocalThemeStyle
-import com.github.zly2006.zhihu.theme.ThemeStyle
-import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
-import com.github.zly2006.zhihu.ui.components.FeedCard
-import com.github.zly2006.zhihu.ui.miuix.MiuixFollowingUsersRow
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.ui.components.PaginatedList
-import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
-import com.github.zly2006.zhihu.ui.components.rememberFeedBlockActions
-import com.github.zly2006.zhihu.viewmodel.feed.FollowRecommendViewModel
-import com.github.zly2006.zhihu.viewmodel.feed.FollowViewModel
-import com.github.zly2006.zhihu.viewmodel.feed.RecentMomentsViewModel
-import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
-import kotlinx.coroutines.launch
 
 class FollowScreenData : ViewModel() {
     var selectedTabIndex by mutableIntStateOf(0)
@@ -360,13 +359,21 @@ private fun ThemedFeedCard(
 ) {
     if (LocalThemeStyle.current == ThemeStyle.Miuix) {
         com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard(
-            item = item, modifier = modifier,
-            onLike = onLike, onDislike = onDislike, onBlockUser = onBlockUser, onBlockTopic = onBlockTopic,
+            item = item,
+            modifier = modifier,
+            onLike = onLike,
+            onDislike = onDislike,
+            onBlockUser = onBlockUser,
+            onBlockTopic = onBlockTopic,
         )
     } else {
         FeedCard(
-            item = item, modifier = modifier,
-            onLike = onLike, onDislike = onDislike, onBlockUser = onBlockUser, onBlockTopic = onBlockTopic,
+            item = item,
+            modifier = modifier,
+            onLike = onLike,
+            onDislike = onDislike,
+            onBlockUser = onBlockUser,
+            onBlockTopic = onBlockTopic,
         )
     }
 }
@@ -435,7 +442,10 @@ fun FollowRecommendScreen(
                     PaginatedList(
                         items = viewModel.displayItems,
                         listState = listState,
-                        modifier = Modifier.fillMaxHeight().overScrollVertical().scrollEndHaptic()
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .overScrollVertical()
+                            .scrollEndHaptic()
                             .then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier)
                             .testTag(FOLLOW_RECOMMEND_LIST_TAG),
                         contentPadding = PaddingValues(top = contentTopPadding + 6.dp),
@@ -466,8 +476,11 @@ fun FollowRecommendScreen(
                         modifier = Modifier.testTag(FOLLOW_RECOMMEND_REFRESH_BUTTON_TAG),
                         onClick = { onTestRefreshClick?.invoke() ?: viewModel.refresh(environment) },
                     ) {
-                        if (viewModel.isLoading) CircularProgressIndicator(modifier = Modifier.size(36.dp))
-                        else Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                        if (viewModel.isLoading) {
+                            CircularProgressIndicator(modifier = Modifier.size(36.dp))
+                        } else {
+                            Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                        }
                     }
                 }
             }
@@ -554,7 +567,10 @@ fun FollowDynamicScreen(
                     PaginatedList(
                         items = viewModel.displayItems,
                         listState = listState,
-                        modifier = Modifier.fillMaxHeight().overScrollVertical().scrollEndHaptic()
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .overScrollVertical()
+                            .scrollEndHaptic()
                             .then(if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier)
                             .testTag(FOLLOW_DYNAMIC_LIST_TAG),
                         contentPadding = PaddingValues(top = contentTopPadding + 6.dp),
@@ -583,8 +599,11 @@ fun FollowDynamicScreen(
                         modifier = Modifier.testTag(FOLLOW_DYNAMIC_REFRESH_BUTTON_TAG),
                         onClick = { onTestRefreshClick?.invoke() ?: viewModel.refresh(environment) },
                     ) {
-                        if (viewModel.isLoading) CircularProgressIndicator(modifier = Modifier.size(36.dp))
-                        else Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                        if (viewModel.isLoading) {
+                            CircularProgressIndicator(modifier = Modifier.size(36.dp))
+                        } else {
+                            Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                        }
                     }
                 }
             }
