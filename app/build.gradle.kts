@@ -137,6 +137,11 @@ android {
 //                    "META-INF/*.kotlin_module",
                 )
         }
+        dex {
+            // minSdk≥28 时 AGP 默认不压缩 dex（设备上可 mmap，但 APK 体积翻倍）。
+            // 本应用走 Telegram 侧载分发，下载体积优先 → 强制压缩 dex（APK 减半，仅首次安装略慢）。
+            useLegacyPackaging = true
+        }
     }
 
     androidComponents {
