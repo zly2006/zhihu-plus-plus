@@ -229,13 +229,14 @@ fun MiuixDeveloperSettingsScreen() {
                     }
                     ArrowPreference(title = "剪贴板调试", onClick = { showClipboardDebug = true })
 
-                    var exportDevConfig by remember { mutableStateOf(false) }
-                    if (exportDevConfig) {
-                        exportDevConfig = false
-                        copyPlainText("dev_config", diagnostics.exportAllSettings())
-                        userMessages.showShortMessage("已复制所有配置到剪贴板")
-                    }
-                    ArrowPreference(title = "导出所有配置", summary = "复制 SharedPreferences 到剪贴板", onClick = { exportDevConfig = true })
+                    ArrowPreference(
+                        title = "导出所有配置",
+                        summary = "复制 SharedPreferences 到剪贴板",
+                        onClick = {
+                            copyPlainText("dev_config", diagnostics.exportAllSettings())
+                            userMessages.showShortMessage("已复制所有配置到剪贴板")
+                        },
+                    )
                 }
             }
         }

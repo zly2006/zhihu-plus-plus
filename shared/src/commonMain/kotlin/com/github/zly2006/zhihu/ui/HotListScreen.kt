@@ -45,6 +45,8 @@ import com.github.zly2006.zhihu.shared.data.HotListFeed
 import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.theme.ThemeStyle
 import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedCard
@@ -96,7 +98,9 @@ fun HotListScreen(
     var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) }
 
     Column {
-        if (backdrop != null) {
+        // 按主题分流，而非 backdrop 是否为空：miuix 主题下关闭模糊或低版本系统不支持
+        // RenderEffect 时 backdrop 也为 null，但仍应渲染 miuix 内容样式。
+        if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
             // miuix path
             PullToRefresh(
                 isRefreshing = viewModel.isPullToRefresh && viewModel.isLoading,
@@ -104,7 +108,7 @@ fun HotListScreen(
                 contentPadding = PaddingValues(top = contentTopPadding + 6.dp),
                 refreshTexts = listOf("下拉刷新", "释放刷新", "正在刷新...", "刷新完成"),
             ) {
-                Box(modifier = Modifier.layerBackdrop(backdrop)) {
+                Box(modifier = if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier) {
                     PaginatedList(
                         items = viewModel.displayItems,
                         onLoadMore = { onTestLoadMore?.invoke() ?: viewModel.loadMore(environment) },

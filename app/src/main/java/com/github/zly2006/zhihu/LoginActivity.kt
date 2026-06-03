@@ -119,16 +119,19 @@ class LoginActivity : ComponentActivity() {
                             "我清楚，本应用由开源社区开发和维护，不由知乎官方开发并运营，也不受到知乎官方的承认或支持，使用本应用的一切后果由我本人承担。我可以在 https://www.zhihu.com/app/ 下载官方应用。",
                             step = "1/3",
                             onConfirm = { currentNoticeStep = 1 },
+                            onBack = { finish() },
                         )
                         1 -> MiuixLoginNotice(
                             "在使用本应用的过程中，我承诺遵守知乎使用协议 https://www.zhihu.com/term/zhihu-terms 。我保证在使用过程中不侵犯知乎及其他作者的著作权，使用本应用产生的一切输出仅用于个人浏览和备份，不会进行传播等其他影响作者著作权的行为。",
                             step = "2/3",
                             onConfirm = { currentNoticeStep = 2 },
+                            onBack = { currentNoticeStep = 0 },
                         )
                         else -> MiuixLoginNotice(
                             "我知晓，本应用可能会收集部分匿名化的使用信息来确定使用人数，我可以在设置中随时关闭此项遥测。",
                             step = "3/3",
                             onConfirm = { currentNoticeStep = 3 },
+                            onBack = { currentNoticeStep = 1 },
                         )
                     }
                 } else {
@@ -416,13 +419,14 @@ private fun MiuixLoginNotice(
     message: String,
     step: String,
     onConfirm: () -> Unit,
+    onBack: () -> Unit,
 ) {
     MiuixScaffold(
         topBar = {
             MiuixTopAppBar(
                 title = "登录须知",
                 navigationIcon = {
-                    MiuixIconButton(onClick = { onConfirm() }) {
+                    MiuixIconButton(onClick = onBack) {
                         MiuixIcon(MiuixIconsEmbedded.Back, "返回", tint = MiuixTheme.colorScheme.onBackground)
                     }
                 },
