@@ -18,8 +18,10 @@
 package com.github.zly2006.zhihu.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -38,16 +40,17 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.ArrowOutward
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -92,6 +95,11 @@ import com.github.zly2006.zhihu.ui.subscreens.defaultBottomBarSelectionKeys
 import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarSelection
 import com.github.zly2006.zhihu.ui.subscreens.rememberSystemUpdateRuntime
 import com.github.zly2006.zhihu.ui.subscreens.shouldShowAccountHistoryShortcut
+import org.jetbrains.compose.resources.painterResource
+import zhihu.shared.generated.resources.Res
+import zhihu.shared.generated.resources.ic_github_24dp
+import zhihu.shared.generated.resources.ic_launcher_foreground
+import zhihu.shared.generated.resources.ic_license_24dp
 
 const val ACCOUNT_SETTINGS_SCROLL_TAG = "accountSettings.scroll"
 const val ACCOUNT_SETTINGS_LOGIN_ITEM_TAG = "accountSettings.loginItem"
@@ -416,6 +424,14 @@ fun AccountSettingScreen(
                     onClick = { navigator.onNavigate(Account.RecommendSettings()) },
                 )
 
+                SettingItem(
+                    title = { Text("系统与更新") },
+                    description = { Text("GitHub、更新设置等") },
+                    icon = { Icon(Icons.Default.Settings, null) },
+                    modifier = Modifier.testTag(ACCOUNT_SETTINGS_SYSTEM_TAG),
+                    onClick = { navigator.onNavigate(Account.SystemAndUpdateSettings) },
+                )
+
                 AnimatedVisibility(isDeveloper) {
                     SettingItem(
                         title = { Text("开发者选项") },
@@ -443,10 +459,70 @@ fun AccountSettingScreen(
                 footer = { Text("本软件仅供学习交流使用，应用内内容由知乎网站提供，著作权归其对应作者所有。") },
             ) {
                 SettingItem(
-                    title = { Text("关于") },
-                    description = { Text("版本信息、许可证、开源许可") },
-                    icon = { Icon(Icons.Default.Info, null) },
-                    onClick = { navigator.onNavigate(Account.About) },
+                    title = { Text("知乎++") },
+                    description = { Text("版本号：$versionInfo") },
+                    icon = {
+                        Image(
+                            painterResource(Res.drawable.ic_launcher_foreground),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .size(32.dp),
+                        )
+                    },
+                    modifier = Modifier.combinedClickable(
+                        enabled = true,
+                        onClick = {
+                            clickTimes++
+                            if (clickTimes == 5) {
+                                clickTimes = 0
+                                isDeveloper = true
+                                userMessages.showShortMessage("You are now a developer")
+                            }
+                        },
+                        onLongClick = {
+                            copyPlainText("version", versionInfo)
+                            userMessages.showShortMessage("已复制版本号")
+                        },
+                    ),
+                )
+                SettingItem(
+                    title = { Text("GitHub 项目地址") },
+                    description = { Text("https://github.com/zly2006/zhihu-plus-plus") },
+                    icon = { Icon(painterResource(Res.drawable.ic_github_24dp), null) },
+                    onClick = {
+                        openSystemUrl("https://github.com/zly2006/zhihu-plus-plus")
+                    },
+                    endAction = {
+                        Icon(
+                            Icons.Default.ArrowOutward,
+                            null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                )
+
+                SettingItem(
+                    title = { Text("项目协议") },
+                    description = { Text("AGPL-3.0-only") },
+                    icon = { Icon(painterResource(Res.drawable.ic_license_24dp), null) },
+                    onClick = {
+                        openSystemUrl("https://github.com/zly2006/zhihu-plus-plus/blob/master/LICENSE")
+                    },
+                    endAction = {
+                        Icon(
+                            Icons.Default.ArrowOutward,
+                            null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                )
+                SettingItem(
+                    title = { Text("开源许可") },
+                    description = { Text("查看第三方组件许可证") },
+                    icon = { Icon(painterResource(Res.drawable.ic_license_24dp), null) },
+                    modifier = Modifier.testTag(ACCOUNT_SETTINGS_LICENSES_TAG),
+                    onClick = { navigator.onNavigate(Account.OpenSourceLicenses) },
                 )
             }
         }
