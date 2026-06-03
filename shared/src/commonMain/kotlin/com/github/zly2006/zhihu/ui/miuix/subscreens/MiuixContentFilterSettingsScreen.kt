@@ -59,6 +59,7 @@ import top.yukonga.miuix.kmp.preference.WindowSpinnerPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.window.WindowBottomSheet
+import kotlin.math.roundToInt
 
 @Composable
 fun MiuixContentFilterSettingsScreen(
@@ -323,7 +324,7 @@ fun MiuixContentFilterSettingsScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text("总记录数: ${filterStats?.totalRecords ?: 0}", fontSize = MiuixTheme.textStyles.body1.fontSize)
-                Text("过滤率: %.1f%%".format((filterStats?.filterRate ?: 0f) * 100), fontSize = MiuixTheme.textStyles.body1.fontSize)
+                Text("过滤率: ${((filterStats?.filterRate ?: 0f) * 1000).roundToInt() / 10.0}%", fontSize = MiuixTheme.textStyles.body1.fontSize)
             }
             Spacer(modifier = Modifier.height(12.dp))
             Button(
