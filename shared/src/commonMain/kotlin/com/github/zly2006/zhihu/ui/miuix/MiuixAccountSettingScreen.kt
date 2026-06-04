@@ -26,11 +26,13 @@ import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -43,8 +45,10 @@ import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Collections
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
+import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
@@ -74,9 +78,21 @@ fun MiuixAccountSettingScreen(
     val settings = rememberSettingsStore()
     val accountState by runtime.accountState
     val data = testAccountData ?: accountState
+    val userMessages = rememberUserMessageSink()
     val blurEnabled = remember { settings.getBoolean("blurEnabled", true) }
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
+
+    // 登录后拉取 /me 资料（头像、用户名等），对齐 M3 账号页。否则登录后头像为空。
+    LaunchedEffect(data.login) {
+        if (testAccountData == null && data.login) {
+            try {
+                runtime.refreshProfile()
+            } catch (e: Exception) {
+                userMessages.showShortMessage("获取用户信息失败")
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -158,6 +174,11 @@ fun MiuixAccountSettingScreen(
                             summary = if (unreadCount > 0) "$unreadCount 条未读" else null,
                             onClick = { navigator.onNavigate(Notification) },
                             startAction = { Icon(Icons.Default.Notifications, null) },
+                        )
+                        ArrowPreference(
+                            title = "浏览历史",
+                            onClick = { navigator.onNavigate(OnlineHistory) },
+                            startAction = { Icon(Icons.Default.History, null) },
                         )
                     }
                 }

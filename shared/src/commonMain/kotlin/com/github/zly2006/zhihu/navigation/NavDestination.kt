@@ -96,7 +96,12 @@ data object History : NavDestination, TopLevelDestination {
  * Legacy top-level tab target for the main pager.
  */
 @Serializable
-data object OnlineHistory : TopLevelDestination {
+data object OnlineHistory :
+    TopLevelDestination,
+    // 同时实现 NavDestination：既能作底栏 tab，也能被 navigator.onNavigate 作为独立页面 push
+    // （composable<OnlineHistory> 路由已注册）。这样账号页/面板的"浏览历史"入口在
+    // OnlineHistory 不在底栏时也能打开，而不是 selectMainTab 回退到首页。
+    NavDestination {
     override val name: String
         get() = "OnlineHistory"
 }

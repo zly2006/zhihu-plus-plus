@@ -124,6 +124,9 @@ fun HotListScreen(
                         com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard(
                             item = item,
                             thumbnailUrl = (item.feed as? HotListFeed)?.children?.firstOrNull()?.thumbnail,
+                            // 热榜标题即正文，放宽到 4 行；同时抬高 maxHeight 给多行标题留空间，避免卡片裁掉底部。
+                            titleMaxLines = 4,
+                            maxHeight = 320.dp,
                         )
                     }
                 }

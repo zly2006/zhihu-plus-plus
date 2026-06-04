@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
@@ -39,6 +40,7 @@ import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Collections
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
+import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.theme.AppTokens
@@ -145,6 +147,10 @@ fun MiuixAccountSheet(
                             onDismiss()
                             navigator.onNavigate(Notification)
                         }, startAction = { Icon(Icons.Default.Notifications, null) })
+                        ArrowPreference(title = "浏览历史", onClick = {
+                            onDismiss()
+                            navigator.onNavigate(OnlineHistory)
+                        }, startAction = { Icon(Icons.Default.History, null) })
                     }
                 }
             }

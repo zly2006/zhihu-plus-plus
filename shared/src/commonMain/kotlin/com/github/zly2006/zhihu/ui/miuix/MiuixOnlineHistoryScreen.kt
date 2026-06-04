@@ -47,6 +47,7 @@ import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
 import com.github.zly2006.zhihu.viewmodel.feed.OnlineHistoryViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.ListPopupColumn
@@ -64,7 +65,7 @@ import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 import top.yukonga.miuix.kmp.window.WindowListPopup
 
 @Composable
-fun MiuixOnlineHistoryScreen() {
+fun MiuixOnlineHistoryScreen(showBackButton: Boolean = false) {
     val navigator = LocalNavigator.current
     val viewModel: OnlineHistoryViewModel = viewModel()
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
@@ -91,6 +92,19 @@ fun MiuixOnlineHistoryScreen() {
                     color = backdrop.getMiuixAppBarColor(),
                     title = "历史记录",
                     scrollBehavior = scrollBehavior,
+                    navigationIcon = {
+                        // 作为独立页面被 push 进来时（如账号页"浏览历史"入口）显示返回箭头；
+                        // 作为底栏 tab 时不显示。
+                        if (showBackButton) {
+                            IconButton(onClick = { navigator.onNavigateBack() }) {
+                                Icon(
+                                    MiuixIconsEmbedded.Back,
+                                    contentDescription = "返回",
+                                    tint = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onBackground,
+                                )
+                            }
+                        }
+                    },
                     actions = {
                         var showActionsMenu by remember { mutableStateOf(false) }
                         val haptic = LocalHapticFeedback.current

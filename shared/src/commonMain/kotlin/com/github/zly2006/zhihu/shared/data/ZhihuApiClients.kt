@@ -283,8 +283,15 @@ suspend fun executeZhihuAuthenticatedRequest(
     if (nowMillis() - lastRefreshMillis < 10_000) {
         return response
     }
-    val refreshToken = ZhihuCredentialRefresher.fetchRefreshToken(client)
-    ZhihuCredentialRefresher.refreshZhihuToken(refreshToken, client)
+    try {
+        val refreshToken = ZhihuCredentialRefresher.fetchRefreshToken(client)
+        ZhihuCredentialRefresher.refreshZhihuToken(refreshToken, client)
+    } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        // token 刷新失败（过期/响应异常/缺字段等），给出明确提示而非崩溃或 NPE。
+        throw IllegalStateException("登录状态已失效，请重新登录", e)
+    }
     val refreshedAt = nowMillis()
     updateLastRefreshMillis(refreshedAt)
     return client

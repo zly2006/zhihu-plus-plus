@@ -17,6 +17,17 @@
 -keepattributes SourceFile,LineNumberTable
 
 ##
+## 共享模块通过反射按方法名调用 MainActivity 的这些方法（shared 不能直接依赖 app 模块）。
+## release 下 R8 会重命名方法，导致反射 method.name=="navigateMainTab" / getMethod("navigate")
+## 失效（表现：账号页"浏览历史"点击无反应、部分页内跳转失效）。保留这些方法名。
+## 见 AndroidUiRuntimes.navigateMainTab、WebviewComp.navigateInMainActivity。
+##
+-keepclassmembers class com.github.zly2006.zhihu.MainActivity {
+    public void navigateMainTab(...);
+    public void navigate(...);
+}
+
+##
 ## Kotlin Serialization
 ##
 # Keep `Companion` object fields of serializable classes.

@@ -537,8 +537,9 @@ fun ZhihuMain(
                     }
                 }
                 composable<OnlineHistory> {
+                    // 作为独立路由 push 进来（如账号页/面板"浏览历史"入口），显示返回箭头。
                     if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
-                        MiuixOnlineHistoryScreen()
+                        MiuixOnlineHistoryScreen(showBackButton = true)
                     } else {
                         OnlineHistoryScreen()
                     }

@@ -84,7 +84,10 @@ fun MiuixFeedCard(
     modifier: Modifier = Modifier,
     maxHeight: Dp = 240.dp,
     thumbnailUrl: String? = null,
-    horizontalPadding: Dp = 16.dp,
+    // 与 miuix 设置页 Card 的 horizontal=12.dp 对齐，让信息流卡片左右边缘与设置卡片一致。
+    horizontalPadding: Dp = 12.dp,
+    // 标题最大行数。热榜等标题即正文的场景可调大，避免长标题被截断。
+    titleMaxLines: Int = 2,
     onLike: ((FeedDisplayItem) -> Unit)? = null,
     onDislike: ((FeedDisplayItem) -> Unit)? = null,
     onBlockUser: ((FeedDisplayItem) -> Unit)? = null,
@@ -147,7 +150,10 @@ fun MiuixFeedCard(
                     .clickable { resolvedOnClick(item) }
                     .padding(horizontal = horizontalPadding, vertical = 12.dp),
             ) {
-                MiuixFeedCardContent(item, showFeedThumbnail, thumbnailUrl, duo3CardLayout, duo3CardLargeTitle, titleFontSize)
+                MiuixFeedCardContent(
+                    item, showFeedThumbnail, thumbnailUrl, duo3CardLayout, duo3CardLargeTitle, titleFontSize, titleMaxLines,
+                    showMenu, { showMenu = it }, onBlockUser, onBlockByKeywords, onBlockTopic, navigator,
+                )
             }
         }
     } else {
@@ -197,11 +203,10 @@ fun MiuixFeedCard(
                     },
             ) {
                 Column(modifier = Modifier.padding(if (duo3CardAppearance) 16.dp else 12.dp)) {
-                    MiuixFeedCardContent(item, showFeedThumbnail, thumbnailUrl, duo3CardLayout, duo3CardLargeTitle, titleFontSize)
-                    // menu button row
-                    Row(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End) {
-                        MiuixFeedCardMenuBox(item, showMenu, { showMenu = it }, onBlockUser, onBlockByKeywords, onBlockTopic, navigator)
-                    }
+                    MiuixFeedCardContent(
+                        item, showFeedThumbnail, thumbnailUrl, duo3CardLayout, duo3CardLargeTitle, titleFontSize, titleMaxLines,
+                        showMenu, { showMenu = it }, onBlockUser, onBlockByKeywords, onBlockTopic, navigator,
+                    )
                 }
             }
 
@@ -252,11 +257,37 @@ private fun MiuixFeedCardContent(
     thumbnailUrl: String?,
     duo3CardLayout: Boolean,
     duo3CardLargeTitle: Boolean,
-    titleFontSize: androidx.compose.ui.unit.TextUnit = 15.sp,
-    bodyFontSize: androidx.compose.ui.unit.TextUnit = 14.sp,
+    titleFontSize: androidx.compose.ui.unit.TextUnit,
+    titleMaxLines: Int,
+    showMenu: Boolean,
+    onShowMenuChange: (Boolean) -> Unit,
+    onBlockUser: ((FeedDisplayItem) -> Unit)?,
+    onBlockByKeywords: ((FeedDisplayItem) -> Unit)?,
+    onBlockTopic: ((topicId: String, topicName: String) -> Unit)?,
+    navigator: Navigator,
 ) {
     val colors = AppTokens.colors
     val text = AppTokens.text
+
+    // 赞同数（details）+ 「更多」菜单按钮内联一行，对齐 M3 FeedCard。
+    // details 允许换行（不设 maxLines），避免长文案被截断。
+    @Composable
+    fun DetailsWithMenuRow() {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            if (item.details.isNotEmpty()) {
+                Text(
+                    item.details,
+                    fontSize = 12.sp,
+                    lineHeight = 14.sp,
+                    color = colors.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+            } else {
+                Spacer(Modifier.weight(1f))
+            }
+            MiuixFeedCardMenuBox(item, showMenu, onShowMenuChange, onBlockUser, onBlockByKeywords, onBlockTopic, navigator)
+        }
+    }
 
     if (duo3CardLayout) {
         if (!item.title.isEmpty()) {
@@ -264,7 +295,7 @@ private fun MiuixFeedCardContent(
                 text = parseHtmlTextWithTheme(item.title),
                 fontSize = titleFontSize,
                 fontWeight = FontWeight.Bold,
-                maxLines = 2,
+                maxLines = titleMaxLines,
                 color = colors.onSurface,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(bottom = 8.dp),
@@ -290,30 +321,31 @@ private fun MiuixFeedCardContent(
                     )
                 }
             }
-            if (item.details.isNotEmpty() || (item.avatarSrc != null && item.authorName != null)) {
-                Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    if (item.avatarSrc != null && item.authorName != null) {
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f, fill = false)) {
-                            AsyncImage(item.avatarSrc, "头像", modifier = Modifier.clip(CircleShape).size(24.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text(item.authorName, style = text.labelMedium, color = colors.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-                            val badge = item.authorBadgeV2.officialBadge()
-                            if (badge?.isUsefulInList == true) {
-                                Spacer(Modifier.width(4.dp))
-                                AuthorBadge(badge, compact = true)
-                            }
+            Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (item.avatarSrc != null && item.authorName != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f, fill = false)) {
+                        AsyncImage(item.avatarSrc, "头像", modifier = Modifier.clip(CircleShape).size(24.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(item.authorName, style = text.labelMedium, color = colors.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                        val badge = item.authorBadgeV2.officialBadge()
+                        if (badge?.isUsefulInList == true) {
+                            Spacer(Modifier.width(4.dp))
+                            AuthorBadge(badge, compact = true)
                         }
-                        Spacer(Modifier.width(6.dp))
                     }
-                    if (item.details.isNotEmpty()) {
-                        Text(item.details, style = text.labelMedium, color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                    }
+                    Spacer(Modifier.width(6.dp))
                 }
+                if (item.details.isNotEmpty()) {
+                    Text(item.details, style = text.labelMedium, color = colors.onSurfaceVariant, maxLines = 2, modifier = Modifier.weight(1f))
+                } else {
+                    Spacer(Modifier.weight(1f))
+                }
+                MiuixFeedCardMenuBox(item, showMenu, onShowMenuChange, onBlockUser, onBlockByKeywords, onBlockTopic, navigator)
             }
         }
     } else {
         if (!item.title.isEmpty() && !item.isFiltered) {
-            Text(parseHtmlTextWithTheme(item.title), fontSize = titleFontSize, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(parseHtmlTextWithTheme(item.title), fontSize = titleFontSize, fontWeight = FontWeight.Bold, maxLines = titleMaxLines, overflow = TextOverflow.Ellipsis)
         }
         if (item.avatarSrc != null && item.authorName != null) {
             Spacer(Modifier.height(4.dp))
@@ -331,6 +363,7 @@ private fun MiuixFeedCardContent(
         Row {
             Column(Modifier.weight(2f)) {
                 Text(parseHtmlTextWithTheme(item.summary ?: ""), fontSize = 13.sp, maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = if (item.isFiltered) 0.dp else 3.dp))
+                DetailsWithMenuRow()
             }
             if (!thumbnailUrl.isNullOrEmpty() && showFeedThumbnail) {
                 Spacer(Modifier.width(8.dp))
