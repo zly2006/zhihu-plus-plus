@@ -67,6 +67,7 @@ import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberImagePreviewOpener
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.theme.AppTokens
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.LocalSegmentActionSheetHost
 import com.github.zly2006.zhihu.ui.components.LocalSegmentCommentHost
@@ -249,11 +250,26 @@ fun RenderMarkdown(
     val lineHeight = settings.getInt(PREF_LINE_HEIGHT, 160)
     val defaultTheme = MarkdownTheme.material3()
 
+    // MarkdownTheme.material3() 的各色取自 MaterialTheme.colorScheme，但 miuix 主题下它未初始化，
+    // 深色模式正文/标题/链接都会反色。用主题自适应的 AppTokens（miuix→miuix 色，M3→不变）覆盖。
+    val mdTextColor = AppTokens.colors.onSurface
     val theme = defaultTheme.copy(
         bodyStyle = defaultTheme.bodyStyle.copy(
+            color = mdTextColor,
             fontSize = 16.sp * fontSize / 100,
             lineHeight = 16.sp * fontSize / 100 * lineHeight / 100,
         ),
+        headingStyles = defaultTheme.headingStyles.map { it.copy(color = mdTextColor) },
+        linkColor = AppTokens.colors.primary,
+        blockQuoteTextColor = AppTokens.colors.onSurfaceVariant,
+        // 删除线/插入(下划线)/行内代码/代码块/列表/公式 等文字色同样取自 M3，miuix 深色下反色，一并覆盖。
+        strikethroughStyle = defaultTheme.strikethroughStyle.copy(color = mdTextColor),
+        insertedTextStyle = defaultTheme.insertedTextStyle.copy(color = mdTextColor),
+        inlineCodeStyle = defaultTheme.inlineCodeStyle.copy(color = mdTextColor),
+        codeBlockStyle = defaultTheme.codeBlockStyle.copy(color = mdTextColor),
+        listBulletColor = mdTextColor,
+        mathColor = mdTextColor,
+        dividerColor = AppTokens.colors.outlineVariant,
         mathFontSize = 18f * fontSize / 100,
         mathFont = runtime.mathFont ?: defaultTheme.mathFont,
     )

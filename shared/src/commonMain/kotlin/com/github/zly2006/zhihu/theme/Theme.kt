@@ -167,12 +167,46 @@ fun ZhihuMiuixTheme(
         // miuix 默认背景跟 M3 不一样，套一层 Box 给整个 app 一个 surface 底。
         // 用自定义背景色（与 M3 端一致），让 overscroll 露出的底色也跟随主题设置。
         val bgColor = ThemeManager.getBackgroundColor()
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(bgColor),
+        // miuix 页面里仍复用一批 M3 组件（overscroll、评论、答案预览卡、markdown 渲染等），
+        // 它们取 MaterialTheme.colorScheme。若不显式提供，就会落到 M3 baseline 的紫/粉默认色，
+        // 导致转场/overscroll 露底、预览卡等处发粉。这里把 miuix 调色板映射成一套 M3 colorScheme 兜底。
+        val mc = MiuixTheme.colorScheme
+        val m3Base = if (darkTheme) darkColorScheme() else lightColorScheme()
+        val m3Scheme = m3Base.copy(
+            primary = mc.primary,
+            onPrimary = mc.onPrimary,
+            primaryContainer = mc.primaryContainer,
+            onPrimaryContainer = mc.onPrimaryContainer,
+            secondary = mc.secondary,
+            secondaryContainer = mc.secondaryContainer,
+            onSecondaryContainer = mc.onSecondaryContainer,
+            tertiaryContainer = mc.tertiaryContainer,
+            onTertiaryContainer = mc.onTertiaryContainer,
+            background = bgColor,
+            onBackground = mc.onBackground,
+            surface = bgColor,
+            onSurface = mc.onSurface,
+            surfaceVariant = mc.surfaceVariant,
+            onSurfaceVariant = mc.onSurfaceSecondary,
+            surfaceContainer = mc.surfaceContainer,
+            surfaceContainerHigh = mc.surfaceContainerHigh,
+            surfaceContainerHighest = mc.surfaceContainerHighest,
+            outline = mc.outline,
+            error = mc.error,
+            errorContainer = mc.errorContainer,
+            onErrorContainer = mc.onErrorContainer,
+        )
+        MaterialTheme(
+            colorScheme = m3Scheme,
+            typography = Typography,
         ) {
-            content()
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(bgColor),
+            ) {
+                content()
+            }
         }
     }
 }
