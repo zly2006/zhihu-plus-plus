@@ -96,6 +96,20 @@ fun AnswerVerticalOverscroll(
     isAtBottom: () -> Boolean,
     scrollState: ScrollState,
     isContentNonScrollable: Boolean = scrollState.maxValue == 0,
+    // 预览卡片可定制（miuix 主题传入 miuix 样式版本）；默认走 M3 AnswerPreviewCard。
+    previewCard: @Composable (
+        authorName: String,
+        excerpt: String,
+        avatarUrl: String,
+        label: String,
+        icon: androidx.compose.ui.graphics.vector.ImageVector,
+        isTriggered: Boolean,
+        progress: Float,
+        reverseLayout: Boolean,
+        modifier: Modifier,
+    ) -> Unit = { authorName, excerpt, avatarUrl, label, icon, isTriggered, progress, reverseLayout, modifier ->
+        AnswerPreviewCard(authorName, excerpt, avatarUrl, label, icon, isTriggered, progress, reverseLayout, modifier)
+    },
     content: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current
@@ -305,15 +319,16 @@ fun AnswerVerticalOverscroll(
         // 上方预览卡片（上一个回答）—— 固定在顶部
         if (overscrollOffset.value > 0 && previousAnswer != null) {
             val progress = (overscrollOffset.value / triggerThresholdPx).coerceIn(0f, 1.5f)
-            AnswerPreviewCard(
-                authorName = previousAnswer.authorName,
-                excerpt = previousAnswer.title,
-                avatarUrl = previousAnswer.authorAvatarUrl,
-                label = "${previousAnswer.sourceLabel}的上一个回答",
-                icon = Icons.Filled.ArrowUpward,
-                isTriggered = overscrollOffset.value >= triggerThresholdPx,
-                progress = progress,
-                modifier = Modifier
+            previewCard(
+                previousAnswer.authorName,
+                previousAnswer.title,
+                previousAnswer.authorAvatarUrl,
+                "${previousAnswer.sourceLabel}的上一个回答",
+                Icons.Filled.ArrowUpward,
+                overscrollOffset.value >= triggerThresholdPx,
+                progress,
+                false,
+                Modifier
                     .fillMaxWidth()
                     .align(Alignment.TopCenter)
                     .padding(top = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()),
@@ -323,16 +338,16 @@ fun AnswerVerticalOverscroll(
         // 下方预览卡片（下一个回答）—— 固定在底部，内容顺序反转
         if (overscrollOffset.value < 0 && nextAnswer != null) {
             val progress = (abs(overscrollOffset.value) / triggerThresholdPx).coerceIn(0f, 1.5f)
-            AnswerPreviewCard(
-                authorName = nextAnswer.authorName,
-                excerpt = nextAnswer.title,
-                avatarUrl = nextAnswer.authorAvatarUrl,
-                label = "${nextAnswer.sourceLabel}的下一个回答",
-                icon = Icons.Filled.ArrowDownward,
-                isTriggered = abs(overscrollOffset.value) >= triggerThresholdPx,
-                progress = progress,
-                reverseLayout = true,
-                modifier = Modifier
+            previewCard(
+                nextAnswer.authorName,
+                nextAnswer.title,
+                nextAnswer.authorAvatarUrl,
+                "${nextAnswer.sourceLabel}的下一个回答",
+                Icons.Filled.ArrowDownward,
+                abs(overscrollOffset.value) >= triggerThresholdPx,
+                progress,
+                true,
+                Modifier
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 8.dp + WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()),

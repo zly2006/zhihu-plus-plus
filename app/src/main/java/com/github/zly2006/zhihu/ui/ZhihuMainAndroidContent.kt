@@ -34,7 +34,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
+import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.theme.ThemeStyle
 import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
+import com.github.zly2006.zhihu.ui.miuix.MiuixArticleScreen
 import com.github.zly2006.zhihu.viewmodel.AndroidArticlesSharedData
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 
@@ -97,7 +100,11 @@ private fun androidZhihuMainPlatformAdapter(activity: MainActivity) = ZhihuMainP
                 })
             }
         }
-        ArticleScreen(article, viewModel)
+        if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+            MiuixArticleScreen(article, viewModel)
+        } else {
+            ArticleScreen(article, viewModel)
+        }
     },
     sentenceSimilarityTest = {
         SentenceSimilarityTestScreen()
