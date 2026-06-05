@@ -139,7 +139,7 @@ fun <T> PaginatedList(
     LaunchedEffect(shouldLoadMore, items.size, isEnd()) {
         if (shouldLoadMore && items.isNotEmpty() && !isEnd()) {
             onLoadMore()
-            // Give the caller a frame to publish new items or mark the list as finished.
+            // 留一帧给调用方发布新数据或标记列表结束。
             delay(50)
         }
     }

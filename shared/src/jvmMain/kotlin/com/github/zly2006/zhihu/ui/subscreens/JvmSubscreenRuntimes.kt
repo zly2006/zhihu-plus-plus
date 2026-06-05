@@ -257,4 +257,4 @@ private fun loadDesktopAboutLibrariesJson(): String? {
 actual fun WebViewCustomFontSettings(
     customFontName: String?,
     onCustomFontNameChange: (String?) -> Unit,
-) = Unit // TODO: desktop WebView custom font settings
+) = Unit // TODO: 桌面端 WebView 自定义字体设置

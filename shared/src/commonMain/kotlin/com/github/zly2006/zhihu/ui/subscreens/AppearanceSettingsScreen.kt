@@ -258,6 +258,15 @@ internal fun shouldShowAccountHistoryShortcut(
     selectedKeys: Set<String>,
 ): Boolean = duo3HomeAccount && OnlineHistory.name !in selectedKeys
 
+/**
+ * 外观与阅读体验设置页。
+ *
+ * 这里集中管理主题、字号/行高、信息流样式、文章页行为、底部导航栏、分享、搜索和技术性导航开关。页面支持通过 [setting]
+ * 跳入指定设置项并高亮滚动到位，因此新增设置时应提供稳定的 `settingKey`，必要时也补充 test tag。
+ *
+ * 底部导航栏相关设置会影响 [com.github.zly2006.zhihu.ui.ZhihuMain] 的主壳状态；页面退出时必须通过 [onExit]
+ * 触发上层重新读取设置，而不是直接重建 NavHost。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppearanceSettingsScreen(
@@ -1251,7 +1260,7 @@ fun AppearanceSettingsScreen(
                 duo3CardLayout.value = true
                 duo3ArticleBar.value = true
                 duo3ArticleActions.value = true
-                // in 123duo3 changes, FABs are removed.
+                // 123duo3 改动中会移除 FAB。
                 showRefreshFab.value = false
                 buttonSkipAnswer.value = false
                 val updatedSelection = if (Home.name !in selectedBottomBarItemKeys.value) {

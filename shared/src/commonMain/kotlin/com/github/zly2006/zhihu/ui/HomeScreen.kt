@@ -148,6 +148,13 @@ interface IHomeFeedViewModel {
     }
 }
 
+/**
+ * 首页信息流页面。
+ *
+ * 页面顶部承载搜索、通知、账号入口等高频操作，主体是可分页的推荐信息流，底部可按设置显示可拖动刷新 FAB。
+ * 设计上首页同时响应推荐算法、Duo3 账号入口迁移、更新公告、问卷提示和未读通知等状态，因此 UI 改动时要同时检查
+ * `recommendationMode`、`duo3_home_account`、`showRefreshFab` 和账号面板相关路径。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
@@ -237,11 +244,11 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
 
     // 屏蔽用户确认对话框
     var showBlockUserDialog by remember { mutableStateOf(false) }
-    var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) } // Pair of userId and userName
+    var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) } // 二元组内容为 userId 和 userName。
 
     // 按关键词屏蔽对话框
     var showBlockByKeywordsDialog by remember { mutableStateOf(false) }
-    var feedToBlockByKeywords by remember { mutableStateOf<Pair<String, String?>?>(null) } // Pair of title and excerpt
+    var feedToBlockByKeywords by remember { mutableStateOf<Pair<String, String?>?>(null) } // 二元组内容为标题和摘要。
 
     Scaffold(
         modifier = if (duo3HomeAccount) {

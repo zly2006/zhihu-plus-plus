@@ -175,6 +175,12 @@ fun BlockByKeywordsDialog(
     )
 }
 
+/**
+ * 全屏图片预览内容。
+ *
+ * 调用方负责提供实际图片渲染，[OpenImagePreviewContent] 负责黑色沉浸背景、点击关闭、长按弹出菜单，以及保存、分享、浏览器打开三个动作。
+ * 长按菜单使用触点位置作为偏移，保持大图查看时的上下文感。
+ */
 @Composable
 fun OpenImagePreviewContent(
     url: String,
@@ -245,6 +251,6 @@ fun OpenImagePreviewContent(
 
 private object NoopHapticFeedback : HapticFeedback {
     override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) {
-        // noop
+        // 无操作。
     }
 }

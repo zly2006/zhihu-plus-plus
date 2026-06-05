@@ -37,12 +37,13 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 
 /**
- * Wraps a settings item so it can be scrolled into view and briefly highlighted
- * when navigated to via [highlightedKey].
+ * 包裹一个可被导航直达的设置项。
  *
- * @param settingKey     The preference key that identifies this item.
- * @param highlightedKey The key received from the nav destination (empty means no target).
- * @param onPositioned   Callback reporting this item's root-Y coordinate for scroll math.
+ * 当外部页面携带 [highlightedKey] 跳入设置页时，匹配 [settingKey] 的条目会被滚动到视野内并短暂高亮。
+ *
+ * @param settingKey 标识当前设置项的 preference key。
+ * @param highlightedKey 从导航参数收到的目标 key，空字符串表示没有目标。
+ * @param onPositioned 回报当前条目在根布局中的 Y 坐标，用于计算滚动位置。
  */
 @Composable
 fun HighlightableSettingContainer(

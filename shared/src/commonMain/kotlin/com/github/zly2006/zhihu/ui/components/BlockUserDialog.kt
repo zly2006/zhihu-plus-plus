@@ -31,10 +31,16 @@ import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.target
 
+/**
+ * 屏蔽用户确认弹窗。
+ *
+ * 弹窗向用户确认即将屏蔽的作者，并在确认时从当前信息流条目中提取完整作者信息。它只处理确认 UI，
+ * 真正写入屏蔽列表由 [onConfirmBlock] 完成。
+ */
 @Composable
 fun BlockUserConfirmDialogContent(
     showDialog: Boolean,
-    userToBlock: Pair<String, String>?, // Pair of userId and userName
+    userToBlock: Pair<String, String>?, // userId 和 userName
     displayItems: List<FeedDisplayItem>,
     onDismiss: () -> Unit,
     onConfirmBlock: (BlockedFeedAuthor) -> Unit,

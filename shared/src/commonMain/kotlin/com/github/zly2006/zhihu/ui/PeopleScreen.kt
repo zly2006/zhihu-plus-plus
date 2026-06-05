@@ -549,8 +549,9 @@ internal fun peopleProfileUrl(person: Person): String {
 }
 
 /**
- * Instrumented tests inject a fixed profile snapshot, seeded tab contents, and offline callbacks
- * here so PeopleScreen can be exercised without touching remote profile fetches or mutations.
+ * 用户主页的测试替身配置。
+ *
+ * instrumentation 测试通过这里注入固定资料快照、预置 tab 内容和离线回调，避免触碰远程资料拉取或关注状态变更。
  */
 data class PeopleScreenTestOverrides(
     val initialUiState: PeopleScreenUiState,
@@ -646,18 +647,34 @@ private fun PersonViewModel.toUiState(): PeopleScreenUiState = PeopleScreenUiSta
     ),
 )
 
+/**
+ * 用户主页的生产入口。
+ *
+ * 用户页展示资料头部、关注/屏蔽状态、回答、文章、想法、收藏等内容 tab，并支持从 `Person.jumpTo` 跳到指定子区域。
+ */
 @OptIn(ExperimentalFoundationApi::class, ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun PeopleScreen(
     person: Person,
 ): Unit = PeopleScreenContent(person, testOverrides = null)
 
+/**
+ * 用户主页的测试入口。
+ *
+ * 与生产入口复用同一套内容布局，但允许测试注入资料状态和各 tab 的分页模型，避免 UI 测试依赖真实用户数据。
+ */
 @Composable
 fun PeopleScreen(
     person: Person,
     testOverrides: PeopleScreenTestOverrides,
 ): Unit = PeopleScreenContent(person, testOverrides)
 
+/**
+ * 用户主页的实际布局实现。
+ *
+ * 这里统一处理资料头部、关注/屏蔽操作、顶部 tab、各类用户内容列表、分享和跳转逻辑。新增 tab 或快捷跳转时，要同步处理
+ * [Person.jumpTo]、测试 override 和可访问的 tab 文案。
+ */
 @OptIn(ExperimentalFoundationApi::class, ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun PeopleScreenContent(

@@ -26,32 +26,29 @@ import kotlinx.serialization.Serializable
 sealed interface NavDestination
 
 /**
- * Bottom-bar and main-pager tab target.
+ * 底部栏和主 pager 使用的 tab 目标。
  *
- * Tab targets can still be historical [NavDestination] values for compatibility. Code that needs to
- * navigate to the main shell should use [MainTabs].
+ * 为了兼容旧调用，tab 目标仍可能同时是历史遗留的 [NavDestination] 值。需要进入主壳时应使用 [MainTabs]，
+ * 再由主壳选择对应 tab。
  */
 interface TopLevelDestination {
     val name: String
 }
 
 /**
- * Real navigation destination for the main shell.
+ * 主壳真实使用的导航目的地。
  *
- * Older top-level destinations such as [Home], [Follow] and [Daily] are still kept as
- * serializable destination values because deeplinks, clipboard parsing, settings, persisted history
- * and older call sites may resolve to them. Top-level targets should be treated as tab-selection
- * targets, not as routes that are pushed into the main NavHost.
+ * [Home]、[Follow]、[Daily] 等旧顶层目的地仍保留为可序列化值，因为 deeplink、剪贴板解析、设置、持久化历史和旧调用点
+ * 仍可能解析到它们。顶层目标应视为 tab 选择目标，而不是直接 push 到主 NavHost 的页面 route。
  */
 @Serializable
 data object MainTabs : NavDestination
 
 /**
- * Legacy top-level tab target for the main pager.
+ * 主 pager 的历史顶层 tab 目标。
  *
- * Keep this value for deeplinks, settings, tests and old navigation call sites. Do not add it back
- * to the main NavHost as a standalone page; navigate to [MainTabs] and select the matching pager
- * page instead.
+ * 该值服务 deeplink、设置、测试和旧导航调用点。不要把它重新注册成主 NavHost 的独立页面；
+ * 应导航到 [MainTabs] 后选择对应 pager 页。
  */
 @Serializable
 data object Home : TopLevelDestination {
@@ -60,10 +57,9 @@ data object Home : TopLevelDestination {
 }
 
 /**
- * Legacy top-level tab target for the main pager.
+ * 主 pager 的历史顶层 tab 目标。
  *
- * [Follow] maps to two adjacent pager pages, "推荐" and "动态"; the last selected one is remembered
- * by ZhihuMain.
+ * [Follow] 会映射到“推荐”和“动态”两个相邻 pager 页；上次选择由 ZhihuMain 记住。
  */
 @Serializable
 data object Follow : TopLevelDestination {
@@ -72,7 +68,7 @@ data object Follow : TopLevelDestination {
 }
 
 /**
- * Legacy top-level tab target for the main pager.
+ * 主 pager 的历史顶层 tab 目标。
  */
 @Serializable
 data object HotList : TopLevelDestination {
@@ -81,10 +77,10 @@ data object HotList : TopLevelDestination {
 }
 
 /**
- * Legacy local-history route.
+ * 历史遗留的本地浏览历史 route。
  *
- * This is still a standalone NavHost page because the current bottom tab uses [OnlineHistory]. Keep
- * it separate from the main pager tab list unless local history is restored as a configured tab.
+ * 当前底部栏使用的是 [OnlineHistory]，所以这里仍是独立 NavHost 页面。除非本地历史重新变成可配置 tab，
+ * 否则不要把它混进主 pager tab 列表。
  */
 @Serializable
 data object History : NavDestination, TopLevelDestination {
@@ -93,7 +89,7 @@ data object History : NavDestination, TopLevelDestination {
 }
 
 /**
- * Legacy top-level tab target for the main pager.
+ * 主 pager 的历史顶层 tab 目标。
  */
 @Serializable
 data object OnlineHistory : TopLevelDestination {
@@ -102,7 +98,7 @@ data object OnlineHistory : TopLevelDestination {
 }
 
 /**
- * Legacy top-level tab target for the main pager.
+ * 主 pager 的历史顶层 tab 目标。
  */
 @Serializable
 data object MyCollections : TopLevelDestination {
@@ -148,7 +144,7 @@ data object Account : TopLevelDestination {
 }
 
 /**
- * Legacy top-level tab target for the main pager.
+ * 主 pager 的历史顶层 tab 目标。
  */
 @Serializable
 data object Daily : TopLevelDestination {
@@ -239,11 +235,11 @@ data class Question(
 @Serializable
 data class Person(
     /**
-     * 32 hex characters
+     * 32 位十六进制字符。
      */
     var id: String,
     /**
-     * human-readable token, used in URL.
+     * 用在 URL 中的可读 token。
      */
     var urlToken: String,
     val name: String = "loading...",
@@ -251,7 +247,7 @@ data class Person(
 ) : NavDestination {
     override fun hashCode(): Int {
         if (id != EMPTY_ID) {
-            // 32 hex characters, likely a user ID
+            // 32 位十六进制字符，通常是用户 ID。
             return id.hashCode()
         }
         return urlToken.hashCode()
@@ -319,15 +315,15 @@ fun resolveContent(url: Url): NavDestination? {
             } else if (segments.size == 2 && segments[0] == "people") {
                 val urlToken = segments[1]
                 if (urlToken.length == 32 && urlToken.all { it in '0'..'9' || it in 'a'..'f' }) {
-                    // 32 hex characters, likely a user ID
+                    // 32 位十六进制字符，通常是用户 ID。
                     return Person(id = urlToken, urlToken = urlToken)
                 } else {
-                    // human-readable token
+                    // 可读 token。
                     return Person(id = Person.EMPTY_ID, urlToken = urlToken)
                 }
             } else if (segments.size == 2 && segments[0] == "video") {
                 val videoId = segments[1].toLongOrNull() ?: return null
-                return Video(id = videoId) // todo
+                return Video(id = videoId) // TODO: 视频详情页待完善。
             } else if (segments.size == 2 && segments[0] == "pin") {
                 val pinId = segments[1].toLongOrNull() ?: return null
                 return Pin(id = pinId)

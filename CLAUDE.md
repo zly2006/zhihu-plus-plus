@@ -68,6 +68,7 @@
 - 使用 Jetpack Navigation Compose
 - 定义 sealed interface `NavDestination` 表示不同页面，包含 route 和参数
 - 在编写导航代码前必须检查 NavDestination.kt
+- UI、导航、按钮或设置项设计改动前，先读 `docs/ai-ui-design-guide.md`，按其中的入口、preference key 和验证点检查影响范围。
 
 ## Android 调试标准流程
 

@@ -57,6 +57,12 @@ import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.shared.nlp.KeywordWithWeight
 import kotlin.math.roundToInt
 
+/**
+ * 按关键词屏蔽的信息流辅助弹窗。
+ *
+ * 弹窗展示从标题和摘要中提取的关键词，默认选择前三个，允许用户组合成一个 NLP 屏蔽短语。它用于把 Feed 卡片上的一次性“屏蔽”
+ * 操作转化为可维护的规则，因此需要同时展示加载态、添加态和关键词权重详情。
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun BlockByKeywordsDialogContent(

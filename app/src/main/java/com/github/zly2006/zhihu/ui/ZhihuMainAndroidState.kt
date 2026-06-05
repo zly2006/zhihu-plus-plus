@@ -41,6 +41,12 @@ import com.github.zly2006.zhihu.ui.subscreens.navDestinationFromName
 import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarSelection
 import com.github.zly2006.zhihu.ui.subscreens.resolveValidStartDestinationKey
 
+/**
+ * 读取 Android SharedPreferences 中会影响主壳的设置快照。
+ *
+ * 这些设置决定底部栏项目、启动页、Duo3 底栏样式和自动隐藏行为。设置页退出后会重新读取这份快照，
+ * 因此新增主壳设置时要同步这里和 Desktop 的读取逻辑。
+ */
 @Composable
 fun rememberAndroidZhihuMainPreferenceState(): ZhihuMainPreferenceState {
     val context = LocalContext.current
@@ -80,6 +86,12 @@ fun rememberAndroidZhihuMainPreferenceState(): ZhihuMainPreferenceState {
     }
 }
 
+/**
+ * 把 [MainActivity] 的导航能力包装成 common 主壳可消费的状态。
+ *
+ * Android 侧负责处理 deep link、剪贴板跳转、历史记录、视频打开和内容来源归因；common UI 只通过返回的
+ * [ZhihuMainNavigationState] 发起导航。
+ */
 @Composable
 fun rememberAndroidZhihuMainNavigationState(): ZhihuMainNavigationState {
     val activity = LocalActivity.current as MainActivity

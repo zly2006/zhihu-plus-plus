@@ -143,6 +143,13 @@ private sealed class MainTabPage(
     data object AccountPage : MainTabPage(Account, "account")
 }
 
+/**
+ * 共享主壳使用的平台适配层。
+ *
+ * [ZhihuMain] 负责导航图、底部栏、主 pager 和通用页面路由；Android 和 Desktop 只在这里注入依赖平台服务的内容，
+ * 例如文章页 ViewModel、回答切换转场、NLP 管理页和不可用功能的兜底展示。把适配面收窄后，共享 UI 可以专注描述产品结构，
+ * 平台代码则继续处理生命周期、浏览器、模型加载等细节。
+ */
 data class ZhihuMainPlatformAdapter(
     val article: @Composable (Article, NavBackStackEntry) -> Unit,
     val sentenceSimilarityTest: @Composable () -> Unit = {
@@ -153,6 +160,16 @@ data class ZhihuMainPlatformAdapter(
     val articleExitTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition?)? = null,
 )
 
+/**
+ * Zhihu++ 的共享应用主壳。
+ *
+ * 这个 composable 是顶层体验的唯一所有者：渲染可配置底部导航栏，承载横向主 tab pager，向子页面提供 [LocalNavigator]，
+ * 并注册跨平台共享的 typed [NavDestination] route。设计上把顶层 tab 收在 [MainTabs] 内部，而不是把每个 tab
+ * 都作为独立 NavHost 页面 push，这样 tab 重选、回到顶部、顶/底栏自动隐藏和持久化 tab 选择都能使用同一套状态模型。
+ *
+ * 用户可见的主壳设置通过 [preferenceState] 流入。设置页退出时只 reload 这份状态，不重建 NavHost，从而在应用底栏和主题相关变更时
+ * 保留已加载页面、返回栈和滚动位置。
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Suppress("RestrictedApi")
 @Composable
@@ -265,9 +282,8 @@ fun ZhihuMain(
     val mainTabNavigationTarget = navigationState.mainTabNavigationTarget
     LaunchedEffect(mainTabNavigationTarget, mainTabPages) {
         mainTabNavigationTarget?.let { destination ->
-            // Platform adapters map legacy top-level route requests onto MainTabs. Consume that request
-            // here so callers such as deeplinks can still select Home/Follow/etc. without pushing
-            // those old routes onto the back stack.
+            // 平台适配层会把旧的顶层 route 请求映射到 MainTabs。这里消费该请求，
+            // 让 deeplink 等调用方仍能选中 Home/Follow 等 tab，而不是把旧 route 压入返回栈。
             mainPagerState.scrollToPage(pageIndexForBottomDestination(destination))
             navigationState.consumeMainTabNavigationTarget(destination)
         }
@@ -515,6 +531,12 @@ fun ZhihuMain(
     }
 }
 
+/**
+ * 渲染可配置底部导航主壳内的页面。
+ *
+ * pager 的页数可以多于底部栏项，因为 [Follow] 会拆成“推荐”和“动态”两个页面。这样横向滑动仍然自然，而底部栏仍只展示一个“关注”入口。
+ * 每个页面都接收主壳给出的 [innerPadding]，保证系统栏、底部栏和子页面之间的留白一致。
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun MainTabsPager(

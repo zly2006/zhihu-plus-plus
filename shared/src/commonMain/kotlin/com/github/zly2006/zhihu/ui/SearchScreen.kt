@@ -118,6 +118,12 @@ private fun saveSearchHistory(
     settings.putString(SEARCH_HISTORY_KEY, ZhihuJson.json.encodeToString(history))
 }
 
+/**
+ * 搜索页。
+ *
+ * 页面由搜索输入框、热搜/历史建议和结果列表组成。空查询时是否显示热搜、是否记录并展示搜索历史分别由
+ * `showSearchHotSearch` 和 `showSearchHistory` 控制；执行搜索后会进入分页结果模式，并通过 [LocalNavigator] 打开条目详情。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
@@ -230,7 +236,7 @@ fun SearchScreen(
         }
     }
 
-    // Load search results when query is not empty
+    // 查询非空时加载搜索结果。
     LaunchedEffect(search.query) {
         if (search.query.isNotEmpty() && viewModel.displayItems.isEmpty()) {
             viewModel.refresh(paginationEnvironment)

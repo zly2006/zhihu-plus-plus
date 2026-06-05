@@ -411,6 +411,12 @@ private fun ClickableImageWithMenu(
     }
 }
 
+/**
+ * 评论列表与回复页面。
+ *
+ * 页面根据 [content] 指向的文章、问题、想法或片段选择对应评论 ViewModel，展示父评论和子评论层级，并提供发送回复、图片预览、
+ * 长按图片菜单等交互。因为评论页经常以底部弹窗形式被其他页面嵌入，布局和状态不能假设自己拥有完整 NavHost。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommentScreen(
@@ -531,7 +537,7 @@ fun CommentScreen(
                         }
 
                         activeCommentItem == null && viewModel.allData.isEmpty() -> {
-                            // Note: see LazyColumn below for activeCommentItem != null
+                            // activeCommentItem != null 的空态在下面的 LazyColumn 中处理。
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 Text("暂无评论")
                             }
@@ -664,7 +670,7 @@ fun CommentScreen(
                                             if (viewModel.allData.isEmpty()) {
                                                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                                     Text(
-                                                        // Note: activeCommentItem != null, so this is a child comment view
+                                                        // activeCommentItem 非空时这里展示的是子评论回复列表。
                                                         "暂无回复",
                                                     )
                                                 }
@@ -756,7 +762,7 @@ fun CommentScreen(
                                                     onChildCommentClick(commentItem)
                                                 }
                                             } else {
-                                                // Set reply target when swiping to reply
+                                                // 滑动回复时设置回复目标。
                                                 replyToComment = commentItem
                                             }
                                         },
@@ -777,7 +783,7 @@ fun CommentScreen(
                                                     onChildCommentClick(commentItem)
                                                 }
                                             } else {
-                                                // Set reply target when swiping to reply
+                                                // 滑动回复时设置回复目标。
                                                 replyToComment = commentItem
                                             }
                                         }
@@ -808,7 +814,7 @@ fun CommentScreen(
                     color = commentInputBarColor,
                 ) {
                     Column {
-                        // Reply indicator bar
+                        // 回复目标提示栏。
                         AnimatedVisibility(
                             visible = replyToComment != null,
                             enter = expandVertically() + fadeIn(),

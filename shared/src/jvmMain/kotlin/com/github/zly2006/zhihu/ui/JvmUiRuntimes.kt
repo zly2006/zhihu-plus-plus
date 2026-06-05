@@ -434,7 +434,7 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
 }
 
 @Composable
-actual fun PinHtmlWebViewContent(html: String) = Unit // TODO: desktop Pin WebView
+actual fun PinHtmlWebViewContent(html: String) = Unit // TODO: 桌面端想法 WebView
 
 actual fun supportsPinHtmlWebView(): Boolean = false
 
@@ -480,7 +480,7 @@ actual fun rememberZhihuHttpClient(): HttpClient {
 actual fun QuestionDetailWebViewContent(
     questionId: Long,
     html: String,
-) = Unit // TODO: desktop question WebView
+) = Unit // TODO: 桌面端问题 WebView
 
 actual fun supportsQuestionDetailWebView(): Boolean = false
 
