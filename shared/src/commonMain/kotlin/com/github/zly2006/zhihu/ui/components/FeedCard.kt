@@ -80,6 +80,7 @@ import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Navigator
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.mcnCompany
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
@@ -87,10 +88,8 @@ import com.github.zly2006.zhihu.shared.platform.rememberIsLiteVariant
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.util.parseHtmlTextWithTheme
-import com.github.zly2006.zhihu.viewmodel.filter.ZhihuMcnCompanyProvider
 import com.github.zly2006.zhihu.viewmodel.filter.normalizeMcnCompany
 import com.github.zly2006.zhihu.viewmodel.filter.rememberBlocklistManager
-import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.max
@@ -119,13 +118,7 @@ fun FeedCard(
     val uriHandler = LocalUriHandler.current
     val userMessages = rememberUserMessageSink()
     val settings = rememberSettingsStore()
-    val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val blocklistManager = rememberBlocklistManager()
-    val mcnProvider = remember(paginationEnvironment) {
-        ZhihuMcnCompanyProvider(paginationEnvironment.httpClient()) { request ->
-            paginationEnvironment.configureSignedRequest(request)
-        }
-    }
     val isLiteVariant = rememberIsLiteVariant()
     var mcnCompany by remember(item.authorUrlToken) { mutableStateOf<String?>(null) }
     var offsetX by remember { mutableFloatStateOf(0f) }
@@ -161,6 +154,10 @@ fun FeedCard(
     }
 
     LaunchedEffect(item.authorUrlToken, item.authorName) {
+        item.authorBadgeV2.mcnCompany().normalizeMcnCompany()?.let {
+            mcnCompany = it
+            return@LaunchedEffect
+        }
         val urlToken = item.authorUrlToken
         if (urlToken.isNullOrBlank()) {
             mcnCompany = null
@@ -168,13 +165,6 @@ fun FeedCard(
         }
         blocklistManager.getCachedMcnAuthor(urlToken)?.let { cachedAuthor ->
             mcnCompany = cachedAuthor.mcnCompany.normalizeMcnCompany()
-            return@LaunchedEffect
-        }
-        runCatching {
-            mcnProvider.getMcnCompany(urlToken).normalizeMcnCompany()
-        }.onSuccess { resolvedMcn ->
-            blocklistManager.cacheMcnCompany(urlToken, item.authorName, resolvedMcn)
-            mcnCompany = resolvedMcn
         }
     }
 
