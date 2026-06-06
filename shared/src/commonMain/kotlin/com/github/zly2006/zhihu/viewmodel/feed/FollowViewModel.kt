@@ -23,7 +23,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.github.zly2006.zhihu.shared.data.Feed
+import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
+import com.github.zly2006.zhihu.shared.data.sourceLabel
+import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -32,6 +36,18 @@ import kotlinx.serialization.json.jsonArray
 class FollowViewModel : BaseFeedViewModel() {
     override val initialUrl: String
         get() = "https://www.zhihu.com/api/v3/moments?limit=10&desktop=true"
+
+    override fun createDisplayItem(environment: PaginationEnvironment, feed: Feed): FeedDisplayItem =
+        super.createDisplayItem(environment, feed).withFollowSourceLabel(feed)
+}
+
+internal fun FeedDisplayItem.withFollowSourceLabel(feed: Feed): FeedDisplayItem {
+    if (isFiltered) return this
+    val label = feed.sourceLabel ?: return this
+    return copy(
+        sourceLabel = label,
+        details = feed.target?.detailsText ?: details,
+    )
 }
 
 class FollowRecommendViewModel : BaseFeedViewModel() {
