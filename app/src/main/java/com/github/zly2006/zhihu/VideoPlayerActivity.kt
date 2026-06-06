@@ -41,7 +41,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -55,6 +54,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Pause
@@ -149,8 +149,11 @@ class VideoPlayerActivity : ComponentActivity() {
                     isFastForwardingState = isFastForwardingState,
                     onPlayerReady = { p -> player = p },
                 )
-                if (isLandscape) LandscapeOverlay(onBack = { finish() })
-                else PortraitOverlay(toolbarColor, onBack = { finish() })
+                if (isLandscape) {
+                    LandscapeOverlay(onBack = { finish() })
+                } else {
+                    PortraitOverlay(toolbarColor, onBack = { finish() })
+                }
 
                 AnimatedVisibility(
                     visible = isFastForwardingState.value,
@@ -164,8 +167,10 @@ class VideoPlayerActivity : ComponentActivity() {
                         color = Color.Black.copy(alpha = 0.35f),
                     ) {
                         Text(
-                            "2x", color = Color.White.copy(alpha = 0.85f),
-                            fontSize = 14.sp, fontWeight = FontWeight.Medium,
+                            "2x",
+                            color = Color.White.copy(alpha = 0.85f),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
                         )
                     }
@@ -176,8 +181,17 @@ class VideoPlayerActivity : ComponentActivity() {
         }
     }
 
-    override fun onPause() { super.onPause(); saveCurrentProgress() }
-    override fun onDestroy() { super.onDestroy(); saveCurrentProgress(); player?.release(); player = null }
+    override fun onPause() {
+        super.onPause()
+        saveCurrentProgress()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        saveCurrentProgress()
+        player?.release()
+        player = null
+    }
 
     private fun saveCurrentProgress() {
         val p = player ?: return
@@ -186,8 +200,11 @@ class VideoPlayerActivity : ComponentActivity() {
         val d = p.duration
         if (pos > 1000 && d > 0 && p.playbackState == Player.STATE_READY) {
             val store = androidSettingsStore(this)
-            if (d - pos > 3000) store.putLong("video_progress_$videoId", pos)
-            else store.remove("video_progress_$videoId")
+            if (d - pos > 3000) {
+                store.putLong("video_progress_$videoId", pos)
+            } else {
+                store.remove("video_progress_$videoId")
+            }
         }
     }
 }
@@ -242,7 +259,10 @@ private fun VideoPlayerView(
 
     fun resumeOrRestart() {
         val p = exoPlayer ?: return
-        if (videoEnded) { p.seekTo(0); videoEnded = false }
+        if (videoEnded) {
+            p.seekTo(0)
+            videoEnded = false
+        }
         p.play()
     }
 
@@ -255,8 +275,18 @@ private fun VideoPlayerView(
         }
     }
     LaunchedEffect(isPlayingState.value) { if (!isPlayingState.value) controlsVisible = true }
-    LaunchedEffect(controlsVisible, isPlayingState.value) { if (controlsVisible && isPlayingState.value) { delay(3000); controlsVisible = false } }
-    LaunchedEffect(lockHintVisible) { if (lockHintVisible) { delay(3000); lockHintVisible = false } }
+    LaunchedEffect(controlsVisible, isPlayingState.value) {
+        if (controlsVisible && isPlayingState.value) {
+            delay(3000)
+            controlsVisible = false
+        }
+    }
+    LaunchedEffect(lockHintVisible) {
+        if (lockHintVisible) {
+            delay(3000)
+            lockHintVisible = false
+        }
+    }
 
     Box(Modifier.fillMaxSize()) {
         // 视频层
@@ -268,72 +298,111 @@ private fun VideoPlayerView(
                     if (savedPosition > 0) seekTo(savedPosition)
                     playWhenReady = true
                     addListener(object : Player.Listener {
-                        override fun onIsPlayingChanged(playing: Boolean) { isPlayingState.value = playing }
-                        override fun onPlaybackStateChanged(state: Int) { if (state == Player.STATE_ENDED) videoEnded = true }
+                        override fun onIsPlayingChanged(playing: Boolean) {
+                            isPlayingState.value = playing
+                        }
+
+                        override fun onPlaybackStateChanged(state: Int) {
+                            if (state == Player.STATE_ENDED) videoEnded = true
+                        }
                     })
                     onPlayerReady(this)
                 }
                 exoPlayer = player
-                PlayerView(_ctx).apply { this.player = player; useController = false }
+                PlayerView(_ctx).apply {
+                    this.player = player
+                    useController = false
+                }
             },
             modifier = Modifier.fillMaxSize(),
         )
 
         // 手势层
-        val screenW = LocalContext.current.resources.displayMetrics.widthPixels.toFloat()
+        val screenW = LocalContext.current.resources.displayMetrics.widthPixels
+            .toFloat()
         val viewCfg = LocalViewConfiguration.current
         var fingerDown by remember { mutableStateOf(false) }
 
         LaunchedEffect(fingerDown) {
             if (!fingerDown) return@LaunchedEffect
             delay(viewCfg.longPressTimeoutMillis + 150L)
-            if (fingerDown && !screenLocked) { exoPlayer?.setPlaybackSpeed(2f); isFastForwardingState.value = true }
+            if (fingerDown && !screenLocked) {
+                exoPlayer?.setPlaybackSpeed(2f)
+                isFastForwardingState.value = true
+            }
         }
         LaunchedEffect(fingerDown, isFastForwardingState.value) {
-            if (!fingerDown && isFastForwardingState.value) { exoPlayer?.setPlaybackSpeed(playbackSpeed); isFastForwardingState.value = false }
+            if (!fingerDown && isFastForwardingState.value) {
+                exoPlayer?.setPlaybackSpeed(playbackSpeed)
+                isFastForwardingState.value = false
+            }
         }
 
         Box(
             Modifier.fillMaxSize().pointerInput(screenLocked, duration) {
-                var lastTapTime = 0L; var tapCount = 0
+                var lastTapTime = 0L
+                var tapCount = 0
                 awaitPointerEventScope {
                     while (true) {
                         var down: PointerInputChange? = null
-                        while (down == null) { val e = awaitPointerEvent(PointerEventPass.Main); down = e.changes.firstOrNull { it.pressed } }
+                        while (down == null) {
+                            val e = awaitPointerEvent(PointerEventPass.Main)
+                            down = e.changes.firstOrNull { it.pressed }
+                        }
                         val downPos = down.position
-                        var totalDragX = 0f; var isDragging = false
+                        var totalDragX = 0f
+                        var isDragging = false
                         if (!screenLocked) fingerDown = true
                         var done = false
                         while (!done) {
                             val ev = awaitPointerEvent(PointerEventPass.Main)
                             val ch = ev.changes.firstOrNull() ?: break
                             if (ch.changedToUp()) {
-                                done = true; fingerDown = false
-                                if (screenLocked) lockHintVisible = true
-                                else if (isDragging) {
+                                done = true
+                                fingerDown = false
+                                if (screenLocked) {
+                                    lockHintVisible = true
+                                } else if (isDragging) {
                                     val ms = (totalDragX / screenW * 15 * 1000).toLong()
                                     exoPlayer?.seekTo((currentPosition + ms).coerceIn(0, duration))
                                     currentPosition = exoPlayer?.currentPosition ?: currentPosition
-                                    dragSeekPreview = 0; controlsVisible = true
+                                    dragSeekPreview = 0
+                                    controlsVisible = true
                                 } else {
                                     val now = System.currentTimeMillis()
                                     if (now - lastTapTime < 300) tapCount++ else tapCount = 1
                                     lastTapTime = now
-                                    if (tapCount >= 2) { val pl = exoPlayer ?: return@awaitPointerEventScope; if (pl.isPlaying) pl.pause() else resumeOrRestart(); tapCount = 0 }
-                                    else controlsVisible = !controlsVisible
+                                    if (tapCount >= 2) {
+                                        val pl = exoPlayer ?: return@awaitPointerEventScope
+                                        if (pl.isPlaying) pl.pause() else resumeOrRestart()
+                                        tapCount = 0
+                                    } else {
+                                        controlsVisible = !controlsVisible
+                                    }
                                 }
-                            } else if (!ch.pressed) { done = true; fingerDown = false }
-                            else {
+                            } else if (!ch.pressed) {
+                                done = true
+                                fingerDown = false
+                            } else {
                                 if (!isDragging && !isFastForwardingState.value && !screenLocked) {
-                                    val dx = ch.position.x - downPos.x; totalDragX = dx
-                                    if (abs(dx) > viewConfiguration.touchSlop) { isDragging = true; fingerDown = false; ch.consume() }
+                                    val dx = ch.position.x - downPos.x
+                                    totalDragX = dx
+                                    if (abs(dx) > viewConfiguration.touchSlop) {
+                                        isDragging = true
+                                        fingerDown = false
+                                        ch.consume()
+                                    }
                                 }
-                                if (isDragging) { ch.consume(); totalDragX = ch.position.x - downPos.x; dragSeekPreview = (totalDragX / screenW * 15 * 1000).toLong() }
+                                if (isDragging) {
+                                    ch.consume()
+                                    totalDragX = ch.position.x - downPos.x
+                                    dragSeekPreview = (totalDragX / screenW * 15 * 1000).toLong()
+                                }
                             }
                         }
                     }
                 }
-            }
+            },
         )
 
         // 底部控制栏（最多 23%，自适应不挤压）
@@ -342,51 +411,84 @@ private fun VideoPlayerView(
                 Column(Modifier.fillMaxHeight().padding(horizontal = 12.dp, vertical = 4.dp), verticalArrangement = Arrangement.Center) {
                     Slider(
                         value = if (duration > 0) currentPosition.toFloat() / duration else 0f,
-                        onValueChange = { val pos = (it * duration).toLong(); exoPlayer?.seekTo(pos); currentPosition = pos },
+                        onValueChange = {
+                            val pos = (it * duration).toLong()
+                            exoPlayer?.seekTo(pos)
+                            currentPosition = pos
+                        },
                         modifier = Modifier.fillMaxWidth().height(20.dp),
                         track = {
                             val frac = if (duration > 0) currentPosition.toFloat() / duration else 0f
                             Canvas(Modifier.fillMaxWidth().height(8.dp)) {
-                                val y = size.height / 2f; val sw = 2.dp.toPx(); val pe = size.width * frac
+                                val y = size.height / 2f
+                                val sw = 2.dp.toPx()
+                                val pe = size.width * frac
                                 drawLine(Color.White.copy(alpha = 0.2f), Offset(pe, y), Offset(size.width, y), sw, cap = StrokeCap.Round)
                                 drawLine(Color.White, Offset(0f, y), Offset(pe, y), sw, cap = StrokeCap.Round)
                             }
                         },
-
-
                     )
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         // 左侧：播放/暂停
-                        IconButton(onClick = { val p = exoPlayer ?: return@IconButton; if (p.isPlaying) p.pause() else resumeOrRestart() }, modifier = Modifier.size(36.dp)) {
+                        IconButton(onClick = {
+                            val p = exoPlayer ?: return@IconButton
+                            if (p.isPlaying) p.pause() else resumeOrRestart()
+                        }, modifier = Modifier.size(36.dp)) {
                             Icon(if (isPlayingState.value) Icons.Default.Pause else Icons.Default.PlayArrow, if (isPlayingState.value) "暂停" else "播放", tint = Color.White, modifier = Modifier.size(20.dp))
                         }
                         // 中间：时间
                         Text("${formatTime(currentPosition)} / ${formatTime(duration)}", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
                         // 截图
                         IconButton(onClick = {
-                            val url = videoUrl; val pos = currentPosition
+                            val url = videoUrl
+                            val pos = currentPosition
                             Thread {
                                 try {
-                                    val r = MediaMetadataRetriever(); r.setDataSource(url, HashMap<String, String>())
-                                    val bmp = r.getFrameAtTime(pos * 1000L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC); r.release()
-                                    if (bmp == null) { Handler(Looper.getMainLooper()).post { Toast.makeText(ctx, "截图失败", Toast.LENGTH_SHORT).show() }; return@Thread }
+                                    val r = MediaMetadataRetriever()
+                                    r.setDataSource(url, HashMap<String, String>())
+                                    val bmp = r.getFrameAtTime(pos * 1000L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                                    r.release()
+                                    if (bmp == null) {
+                                        Handler(Looper.getMainLooper()).post { Toast.makeText(ctx, "截图失败", Toast.LENGTH_SHORT).show() }
+                                        return@Thread
+                                    }
                                     val v = ContentValues().apply {
                                         put(MediaStore.Images.Media.DISPLAY_NAME, "zhihu_${System.currentTimeMillis()}.jpg")
                                         put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
                                         put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Zhihu")
                                     }
                                     val uri = ctx.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, v)
-                                    if (uri != null) { ctx.contentResolver.openOutputStream(uri)?.use { bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, it) }; Handler(Looper.getMainLooper()).post { Toast.makeText(ctx, "截图已保存", Toast.LENGTH_SHORT).show() } }
-                                } catch (e: Exception) { Handler(Looper.getMainLooper()).post { Toast.makeText(ctx, "截图失败: ${e.message}", Toast.LENGTH_SHORT).show() } }
+                                    if (uri != null) {
+                                        ctx.contentResolver.openOutputStream(uri)?.use { bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, it) }
+                                        Handler(Looper.getMainLooper()).post { Toast.makeText(ctx, "截图已保存", Toast.LENGTH_SHORT).show() }
+                                    }
+                                } catch (e: Exception) {
+                                    Handler(Looper.getMainLooper()).post { Toast.makeText(ctx, "截图失败: ${e.message}", Toast.LENGTH_SHORT).show() }
+                                }
                             }.start()
                         }, modifier = Modifier.size(36.dp)) {
                             Icon(Icons.Default.CameraAlt, "截图", tint = Color.White, modifier = Modifier.size(20.dp))
                         }
                         // 锁定（进度条区域，仅未锁定状态）
                         IconButton(onClick = {
-                            screenLocked = true; controlsVisible = false; lockHintVisible = true
+                            screenLocked = true
+                            controlsVisible = false
+                            lockHintVisible = true
                         }, modifier = Modifier.size(36.dp)) {
                             Icon(Icons.Default.LockOpen, "锁定", tint = Color.White, modifier = Modifier.size(20.dp))
+                        }
+                        // 下载
+                        IconButton(onClick = {
+                            val dm = ctx.getSystemService(android.content.Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
+                            dm.enqueue(
+                                android.app.DownloadManager.Request(android.net.Uri.parse(videoUrl)).apply {
+                                    setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "zhihu_video_${System.currentTimeMillis()}.mp4")
+                                    setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                                },
+                            )
+                            Toast.makeText(ctx, "开始下载", Toast.LENGTH_SHORT).show()
+                        }, modifier = Modifier.size(36.dp)) {
+                            Icon(Icons.Default.Download, "下载", tint = Color.White, modifier = Modifier.size(20.dp))
                         }
                         // 右侧：倍速选择
                         var speedMenuExpanded by remember { mutableStateOf(false) }
@@ -394,7 +496,8 @@ private fun VideoPlayerView(
                             Text(
                                 "${playbackSpeed}x",
                                 color = if (playbackSpeed != 1f) Color.White else Color.White.copy(alpha = 0.6f),
-                                fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
                                 modifier = Modifier.padding(8.dp).clickable { speedMenuExpanded = true },
                             )
                             DropdownMenu(expanded = speedMenuExpanded, onDismissRequest = { speedMenuExpanded = false }, modifier = Modifier.background(Color(0xFF2D2D2D), RoundedCornerShape(8.dp))) {
@@ -402,7 +505,11 @@ private fun VideoPlayerView(
                                     val sel = sp == playbackSpeed
                                     DropdownMenuItem(
                                         text = { Text("${sp}x", color = if (sel) Color(0xFFA78BFA) else Color.White.copy(alpha = 0.75f), fontSize = 13.sp, fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal) },
-                                        onClick = { playbackSpeed = sp; exoPlayer?.setPlaybackSpeed(sp); speedMenuExpanded = false },
+                                        onClick = {
+                                            playbackSpeed = sp
+                                            exoPlayer?.setPlaybackSpeed(sp)
+                                            speedMenuExpanded = false
+                                        },
                                     )
                                 }
                             }
@@ -415,7 +522,9 @@ private fun VideoPlayerView(
         // 锁按钮（锁定后右侧居中悬浮，点击屏幕唤出）
         AnimatedVisibility(visible = screenLocked && lockHintVisible, enter = EnterTransition.None, exit = ExitTransition.None, modifier = Modifier.align(Alignment.CenterEnd).padding(end = 8.dp)) {
             Surface(onClick = {
-                screenLocked = false; controlsVisible = true; lockHintVisible = false
+                screenLocked = false
+                controlsVisible = true
+                lockHintVisible = false
             }, shape = CircleShape, color = Color.Black.copy(alpha = 0.45f), modifier = Modifier.size(40.dp)) {
                 Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Lock, "解锁", tint = Color(0xFF4CAF50), modifier = Modifier.size(20.dp)) }
             }
