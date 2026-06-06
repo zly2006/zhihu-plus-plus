@@ -35,8 +35,12 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.PrimaryScrollableTabRow
@@ -109,6 +113,7 @@ import org.jetbrains.compose.resources.painterResource
 import zhihu.shared.generated.resources.Res
 import zhihu.shared.generated.resources.ic_zh_plus_author_badge
 import kotlin.reflect.typeOf
+import com.github.zly2006.zhihu.navigation.Search as SearchDestination
 
 class PeopleAnswersViewModel(
     val person: Person,
@@ -325,6 +330,7 @@ class PersonViewModel(
     var isFollowing by mutableStateOf(false)
     var isBlocking by mutableStateOf(false)
     var isBlockedInRecommendations by mutableStateOf(false)
+    var memberHashId by mutableStateOf(person.id)
 
     // 只实现已有数据类型的 ViewModel
     val answersFeedModel = PeopleAnswersViewModel(person)
@@ -443,6 +449,8 @@ class PersonViewModel(
         this.isFollowing = profile.isFollowing
         this.isBlocking = profile.isBlocking
         this.isBlockedInRecommendations = profile.isBlockedInRecommendations
+        this.memberHashId = loadedPerson.id
+        this.person.id = loadedPerson.id
         if (urlToken != null) {
             this.person.urlToken = urlToken
         }
@@ -492,6 +500,7 @@ const val PEOPLE_SCREEN_FOLLOWING_COUNT_TAG = "people_screen_stat_following"
 const val PEOPLE_SCREEN_FOLLOW_BUTTON_TAG = "people_screen_follow_button"
 const val PEOPLE_SCREEN_BLOCK_BUTTON_TAG = "people_screen_block_button"
 const val PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG = "people_screen_recommendation_block_button"
+const val PEOPLE_SCREEN_SEARCH_BUTTON_TAG = "people_screen_search_button"
 const val PEOPLE_SCREEN_ANSWER_SORT_HOT_TAG = "people_screen_answer_sort_voteups"
 const val PEOPLE_SCREEN_ANSWER_SORT_TIME_TAG = "people_screen_answer_sort_created"
 const val PEOPLE_SCREEN_ARTICLE_SORT_HOT_TAG = "people_screen_article_sort_voteups"
@@ -691,6 +700,8 @@ private fun PeopleScreenContent(
     }
 
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    val searchMemberHashId = viewModel.memberHashId
+        .takeUnless { it.isBlank() || it == Person.EMPTY_ID }
 
     fun updateAnswersSort(newSort: String) {
         if (testOverrides != null) {
@@ -786,6 +797,23 @@ private fun PeopleScreenContent(
                 colors = TopAppBarDefaults.topAppBarColors().copy(
                     scrolledContainerColor = MaterialTheme.colorScheme.surface,
                 ),
+                actions = {
+                    IconButton(
+                        onClick = {
+                            val memberName = uiState.profile.name.takeIf { it.isNotBlank() } ?: person.name
+                            navigator.onNavigate(
+                                SearchDestination(
+                                    restrictedMemberHashId = searchMemberHashId.orEmpty(),
+                                    restrictedMemberName = memberName,
+                                ),
+                            )
+                        },
+                        enabled = searchMemberHashId != null,
+                        modifier = Modifier.testTag(PEOPLE_SCREEN_SEARCH_BUTTON_TAG),
+                    ) {
+                        Icon(Icons.Default.Search, contentDescription = "搜索 TA 的创作")
+                    }
+                },
                 scrollBehavior = scrollBehavior,
                 expandedHeight = 200.dp,
             )

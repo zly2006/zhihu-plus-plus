@@ -69,6 +69,7 @@ import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_PINS_LIST_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_QUESTIONS_LIST_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_ROOT_TAG
+import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_SEARCH_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_SUBSCRIPTIONS_LIST_TAG
 import com.github.zly2006.zhihu.ui.PeopleListUiState
 import com.github.zly2006.zhihu.ui.PeopleProfileUiState
@@ -344,6 +345,28 @@ class PeopleScreenInstrumentedTest {
         composeRule.onNodeWithText("重复 key 问题 A").assertIsDisplayed()
         composeRule.onNodeWithText("重复 key 问题 B").assertIsDisplayed()
         composeRule.onAllNodesWithTag(peopleScreenAnswerItemTag(duplicatedAnswerId)).assertCountEquals(2)
+    }
+
+    @Test
+    fun headerSearchActionNavigatesToMemberScopedSearchOffline() {
+        val navigator = setPeopleScreen(
+            overrides = PeopleScreenTestOverrides(
+                initialUiState = seededUiState(),
+            ),
+        )
+
+        composeRule.onNodeWithTag(PEOPLE_SCREEN_SEARCH_BUTTON_TAG).assertIsDisplayed().performClick()
+        composeRule.waitForIdle()
+
+        assertEquals(
+            listOf(
+                Search(
+                    restrictedMemberHashId = ROOT_PERSON.id,
+                    restrictedMemberName = "离线用户",
+                ),
+            ),
+            navigator.destinations,
+        )
     }
 
     @Test
