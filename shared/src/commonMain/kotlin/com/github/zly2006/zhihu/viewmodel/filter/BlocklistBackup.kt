@@ -28,6 +28,7 @@ data class BlocklistBackup(
     val nlpKeywords: List<NlpKeywordBackup> = emptyList(),
     val users: List<UserBackup> = emptyList(),
     val topics: List<TopicBackup> = emptyList(),
+    val mcnOrganizations: List<McnOrganizationBackup> = emptyList(),
 )
 
 @Serializable
@@ -54,4 +55,9 @@ data class UserBackup(
 data class TopicBackup(
     val topicId: String,
     val topicName: String,
+)
+
+@Serializable
+data class McnOrganizationBackup(
+    val organizationName: String,
 )

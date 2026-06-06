@@ -33,6 +33,8 @@ class FeedContentFilterPipelineTest {
             keywordDao = database.blockedKeywordDao(),
             userDao = database.blockedUserDao(),
             topicDao = database.blockedTopicDao(),
+            mcnOrganizationDao = database.blockedMcnOrganizationDao(),
+            mcnAuthorCacheDao = database.mcnAuthorCacheDao(),
         )
         blocklistService.addBlockedUser(userId = "blocked-user", userName = "Blocked")
         blocklistService.addBlockedKeyword("blocked keyword")
@@ -100,6 +102,8 @@ class FeedContentFilterPipelineTest {
                 keywordDao = database.blockedKeywordDao(),
                 userDao = database.blockedUserDao(),
                 topicDao = database.blockedTopicDao(),
+                mcnOrganizationDao = database.blockedMcnOrganizationDao(),
+                mcnAuthorCacheDao = database.mcnAuthorCacheDao(),
             ),
             blockedKeywordService = keywordService,
         ).filter(
@@ -117,10 +121,276 @@ class FeedContentFilterPipelineTest {
         database.close()
     }
 
+    @Test
+    fun filtersByBlockedMcnOrganization() = runTest {
+        val database = getContentFilterDatabase(
+            createTempDirectory("feed-content-filter-mcn").resolve("content-filter.db").toFile(),
+        )
+        val blocklistService = BlocklistService(
+            keywordDao = database.blockedKeywordDao(),
+            userDao = database.blockedUserDao(),
+            topicDao = database.blockedTopicDao(),
+            mcnOrganizationDao = database.blockedMcnOrganizationDao(),
+            mcnAuthorCacheDao = database.mcnAuthorCacheDao(),
+        )
+        blocklistService.addBlockedMcnOrganization("杭州亚序")
+
+        val result = FeedContentFilterPipeline(
+            settings = FeedFilterSettings(),
+            blocklistService = blocklistService,
+            blockedKeywordService = BlockedKeywordService(
+                keywordDao = database.blockedKeywordDao(),
+                recordDao = database.blockedContentRecordDao(),
+                semanticMatcher = KeywordSemanticMatcher { _, _, _ -> emptyList() },
+            ),
+            mcnCompanyProvider = McnCompanyProvider { token ->
+                when (token) {
+                    "blocked-token" -> "杭州亚序"
+                    "ok-token" -> "其他机构"
+                    else -> null
+                }
+            },
+        ).filter(
+            listOf(
+                filterable("blocked mcn", authorId = "blocked-user", authorUrlToken = "blocked-token"),
+                filterable("other mcn", authorId = "ok-user", authorUrlToken = "ok-token"),
+                filterable("no token", authorId = "missing-token", authorUrlToken = null),
+            ),
+        )
+
+        assertEquals(listOf("other mcn", "no token"), result.kept.map { it.title })
+        assertEquals(listOf("屏蔽MCN机构：杭州亚序"), result.blocked.map { it.second })
+        database.close()
+    }
+
+    @Test
+    fun keepsBlockedMcnOrganizationWhenMcnBlockingDisabled() = runTest {
+        val database = getContentFilterDatabase(
+            createTempDirectory("feed-content-filter-mcn-disabled").resolve("content-filter.db").toFile(),
+        )
+        val blocklistService = BlocklistService(
+            keywordDao = database.blockedKeywordDao(),
+            userDao = database.blockedUserDao(),
+            topicDao = database.blockedTopicDao(),
+            mcnOrganizationDao = database.blockedMcnOrganizationDao(),
+            mcnAuthorCacheDao = database.mcnAuthorCacheDao(),
+        )
+        blocklistService.addBlockedMcnOrganization("杭州亚序")
+
+        val result = FeedContentFilterPipeline(
+            settings = FeedFilterSettings(enableMcnBlocking = false),
+            blocklistService = blocklistService,
+            blockedKeywordService = BlockedKeywordService(
+                keywordDao = database.blockedKeywordDao(),
+                recordDao = database.blockedContentRecordDao(),
+                semanticMatcher = KeywordSemanticMatcher { _, _, _ -> emptyList() },
+            ),
+            mcnCompanyProvider = McnCompanyProvider { "杭州亚序" },
+        ).filter(
+            listOf(
+                filterable("blocked mcn", authorId = "blocked-user", authorUrlToken = "blocked-token"),
+            ),
+        )
+
+        assertEquals(listOf("blocked mcn"), result.kept.map { it.title })
+        assertEquals(emptyList(), result.blocked)
+        database.close()
+    }
+
+    @Test
+    fun skipsMcnLookupWhenNoMcnRuleIsEnabled() = runTest {
+        val database = getContentFilterDatabase(
+            createTempDirectory("feed-content-filter-no-mcn-rules").resolve("content-filter.db").toFile(),
+        )
+        var calls = 0
+        val result = FeedContentFilterPipeline(
+            settings = FeedFilterSettings(),
+            blocklistService = BlocklistService(
+                keywordDao = database.blockedKeywordDao(),
+                userDao = database.blockedUserDao(),
+                topicDao = database.blockedTopicDao(),
+                mcnOrganizationDao = database.blockedMcnOrganizationDao(),
+                mcnAuthorCacheDao = database.mcnAuthorCacheDao(),
+            ),
+            blockedKeywordService = BlockedKeywordService(
+                keywordDao = database.blockedKeywordDao(),
+                recordDao = database.blockedContentRecordDao(),
+                semanticMatcher = KeywordSemanticMatcher { _, _, _ -> emptyList() },
+            ),
+            mcnCompanyProvider = McnCompanyProvider {
+                calls += 1
+                "杭州亚序"
+            },
+        ).filter(
+            listOf(filterable("normal", authorId = "normal-user", authorUrlToken = "normal-token")),
+        )
+
+        assertEquals(listOf("normal"), result.kept.map { it.title })
+        assertEquals(emptyList(), result.blocked)
+        assertEquals(0, calls)
+        database.close()
+    }
+
+    @Test
+    fun filtersKnownMcnAuthorsByTheirOrganizations() = runTest {
+        val knownAuthors = mapOf(
+            "jiang-nan-mao-mao-chong" to "知加传媒（深圳）有限公司",
+            "lihuawei" to "杭州亚序科技有限公司",
+            "qbtu-zi" to "杭州亚序科技有限公司",
+            "allen-xu-3" to "杭州亚序科技有限公司",
+            "dao-shu-43" to "杭州亚序科技有限公司",
+            "wang-yu-ting-29-74" to "杭州亚序科技有限公司",
+            "xin-yuan-jia-de-xiao-ling-lai" to "杭州亚序科技有限公司",
+            "duncanzhang" to "杭州亚序科技有限公司",
+            "dream-boy-60-5" to "杭州亚序科技有限公司",
+            "ju-bei-yao-jiu-jing-gu-du-81-39" to "知加传媒（深圳）有限公司",
+            "yuan-bei-bei-14" to "杭州含章文化传播有限公司",
+            "yang-xi-yu-25-5" to "知加传媒（深圳）有限公司",
+            "jin-xiao-cun-wei-yi-bao-49" to "上海友芝士文化传播有限公司",
+            "allen-63-88" to "深圳知外文化传播有限公司",
+            "mu-cun-shang-chun-shu" to "极合（北京）科技有限公司",
+            "lee-lee-1998" to "杭州亚序科技有限公司",
+        )
+        val database = getContentFilterDatabase(
+            createTempDirectory("feed-content-filter-known-mcn").resolve("content-filter.db").toFile(),
+        )
+        val blocklistService = BlocklistService(
+            keywordDao = database.blockedKeywordDao(),
+            userDao = database.blockedUserDao(),
+            topicDao = database.blockedTopicDao(),
+            mcnOrganizationDao = database.blockedMcnOrganizationDao(),
+            mcnAuthorCacheDao = database.mcnAuthorCacheDao(),
+        )
+        knownAuthors.values.distinct().forEach { organization ->
+            blocklistService.addBlockedMcnOrganization(organization)
+        }
+
+        val result = FeedContentFilterPipeline(
+            settings = FeedFilterSettings(),
+            blocklistService = blocklistService,
+            blockedKeywordService = BlockedKeywordService(
+                keywordDao = database.blockedKeywordDao(),
+                recordDao = database.blockedContentRecordDao(),
+                semanticMatcher = KeywordSemanticMatcher { _, _, _ -> emptyList() },
+            ),
+            mcnCompanyProvider = McnCompanyProvider { token -> knownAuthors[token] },
+        ).filter(
+            knownAuthors.keys.map { token ->
+                filterable(token, authorId = token, authorUrlToken = token)
+            },
+        )
+
+        assertEquals(emptyList(), result.kept)
+        assertEquals(knownAuthors.size, result.blocked.size)
+        assertEquals(
+            knownAuthors.values.map { organization -> "屏蔽MCN机构：$organization" }.toSet(),
+            result.blocked.map { it.second }.toSet(),
+        )
+        database.close()
+    }
+
+    @Test
+    fun filtersAllMcnAuthorsWhenEnabled() = runTest {
+        val database = getContentFilterDatabase(
+            createTempDirectory("feed-content-filter-all-mcn").resolve("content-filter.db").toFile(),
+        )
+        val result = FeedContentFilterPipeline(
+            settings = FeedFilterSettings(blockAllMcnAuthors = true),
+            blocklistService = BlocklistService(
+                keywordDao = database.blockedKeywordDao(),
+                userDao = database.blockedUserDao(),
+                topicDao = database.blockedTopicDao(),
+                mcnOrganizationDao = database.blockedMcnOrganizationDao(),
+                mcnAuthorCacheDao = database.mcnAuthorCacheDao(),
+            ),
+            blockedKeywordService = BlockedKeywordService(
+                keywordDao = database.blockedKeywordDao(),
+                recordDao = database.blockedContentRecordDao(),
+                semanticMatcher = KeywordSemanticMatcher { _, _, _ -> emptyList() },
+            ),
+            mcnCompanyProvider = McnCompanyProvider { token ->
+                if (token == "mcn-token") "任意机构" else null
+            },
+        ).filter(
+            listOf(
+                filterable("mcn", authorId = "mcn-user", authorUrlToken = "mcn-token"),
+                filterable("normal", authorId = "normal-user", authorUrlToken = "normal-token"),
+            ),
+        )
+
+        assertEquals(listOf("normal"), result.kept.map { it.title })
+        assertEquals(listOf("屏蔽MCN机构：任意机构"), result.blocked.map { it.second })
+        database.close()
+    }
+
+    @Test
+    fun ignoresInvalidMcnCompanyValues() = runTest {
+        val database = getContentFilterDatabase(
+            createTempDirectory("feed-content-filter-invalid-mcn").resolve("content-filter.db").toFile(),
+        )
+        val result = FeedContentFilterPipeline(
+            settings = FeedFilterSettings(blockAllMcnAuthors = true),
+            blocklistService = BlocklistService(
+                keywordDao = database.blockedKeywordDao(),
+                userDao = database.blockedUserDao(),
+                topicDao = database.blockedTopicDao(),
+                mcnOrganizationDao = database.blockedMcnOrganizationDao(),
+                mcnAuthorCacheDao = database.mcnAuthorCacheDao(),
+            ),
+            blockedKeywordService = BlockedKeywordService(
+                keywordDao = database.blockedKeywordDao(),
+                recordDao = database.blockedContentRecordDao(),
+                semanticMatcher = KeywordSemanticMatcher { _, _, _ -> emptyList() },
+            ),
+            mcnCompanyProvider = McnCompanyProvider { "false" },
+        ).filter(
+            listOf(filterable("normal", authorId = "normal-user", authorUrlToken = "normal-token")),
+        )
+
+        assertEquals(listOf("normal"), result.kept.map { it.title })
+        assertEquals(emptyList(), result.blocked)
+        database.close()
+    }
+
+    @Test
+    fun cachesAuthorsWithoutMcnCompany() = runTest {
+        val database = getContentFilterDatabase(
+            createTempDirectory("feed-content-filter-no-mcn-cache").resolve("content-filter.db").toFile(),
+        )
+        var calls = 0
+        val blocklistService = BlocklistService(
+            keywordDao = database.blockedKeywordDao(),
+            userDao = database.blockedUserDao(),
+            topicDao = database.blockedTopicDao(),
+            mcnOrganizationDao = database.blockedMcnOrganizationDao(),
+            mcnAuthorCacheDao = database.mcnAuthorCacheDao(),
+        )
+        val pipeline = FeedContentFilterPipeline(
+            settings = FeedFilterSettings(blockAllMcnAuthors = true),
+            blocklistService = blocklistService,
+            blockedKeywordService = BlockedKeywordService(
+                keywordDao = database.blockedKeywordDao(),
+                recordDao = database.blockedContentRecordDao(),
+                semanticMatcher = KeywordSemanticMatcher { _, _, _ -> emptyList() },
+            ),
+            mcnCompanyProvider = McnCompanyProvider {
+                calls += 1
+                null
+            },
+        )
+
+        pipeline.filter(listOf(filterable("first", authorId = "normal-user", authorUrlToken = "normal-token")))
+        pipeline.filter(listOf(filterable("second", authorId = "normal-user", authorUrlToken = "normal-token")))
+
+        assertEquals(1, calls)
+        database.close()
+    }
+
     private fun filterable(
         title: String,
         content: String = title,
         authorId: String,
+        authorUrlToken: String? = "author",
         topicId: String? = null,
     ): FilterableContent = FilterableContent(
         title = title,
@@ -128,6 +398,7 @@ class FeedContentFilterPipelineTest {
         content = content,
         authorName = "author",
         authorId = authorId,
+        authorUrlToken = authorUrlToken,
         contentId = title,
         contentType = "article",
         raw = article(title, content, topicId),

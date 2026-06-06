@@ -17,6 +17,12 @@
 
 package com.github.zly2006.zhihu.shared.filter
 
+import com.github.zly2006.zhihu.viewmodel.filter.BlocklistBackup
+import com.github.zly2006.zhihu.viewmodel.filter.KeywordBackup
+import com.github.zly2006.zhihu.viewmodel.filter.McnOrganizationBackup
+import com.github.zly2006.zhihu.viewmodel.filter.NlpKeywordBackup
+import com.github.zly2006.zhihu.viewmodel.filter.TopicBackup
+import com.github.zly2006.zhihu.viewmodel.filter.UserBackup
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlin.test.Test
@@ -51,6 +57,7 @@ class BlocklistBackupTest {
                 ),
             ),
             topics = listOf(TopicBackup(topicId = "topic-1", topicName = "主题")),
+            mcnOrganizations = listOf(McnOrganizationBackup("杭州亚序科技有限公司")),
         )
 
         val encoded = json.encodeToString(BlocklistBackup.serializer(), backup)
@@ -58,6 +65,7 @@ class BlocklistBackupTest {
         val element = json.parseToJsonElement(encoded).jsonObject
 
         assertTrue("keywords" in element)
+        assertTrue("mcnOrganizations" in element)
         assertEquals(backup, decoded)
     }
 

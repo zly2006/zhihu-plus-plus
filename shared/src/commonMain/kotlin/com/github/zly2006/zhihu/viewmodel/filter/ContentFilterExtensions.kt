@@ -147,6 +147,7 @@ class FeedContentFilterPipeline(
     private val blockedKeywordService: BlockedKeywordService,
     private val htmlToText: (String) -> String = ::htmlToPlainText,
     private val onNlpBlocked: suspend (List<FilterableContent>) -> Unit = {},
+    private val mcnCompanyProvider: McnCompanyProvider = NoopMcnCompanyProvider,
 ) {
     suspend fun filter(contents: List<FilterableContent>): FeedContentFilterResult {
         val blocked = mutableListOf<Pair<FilterableContent, String>>()
@@ -205,6 +206,38 @@ class FeedContentFilterPipeline(
             filteredContents = finalFilteredContents
         }
 
+        if (settings.enableMcnBlocking && (settings.blockAllMcnAuthors || blocklistService.hasBlockedMcnOrganizations())) {
+            val kept = mutableListOf<FilterableContent>()
+            for (content in filteredContents) {
+                val urlToken = content.authorUrlToken
+                val mcnCompany = if (urlToken.isNullOrBlank()) {
+                    null
+                } else {
+                    val cachedAuthor = blocklistService.getCachedMcnAuthor(urlToken)
+                    if (cachedAuthor != null) {
+                        cachedAuthor.mcnCompany.normalizeMcnCompany()
+                    } else {
+                        runCatching {
+                            mcnCompanyProvider
+                                .getMcnCompany(urlToken)
+                                .normalizeMcnCompany()
+                                .also { company ->
+                                    blocklistService.cacheMcnCompany(urlToken, content.authorName, company)
+                                }
+                        }.getOrNull()
+                    }
+                }
+                val shouldBlock = !mcnCompany.isNullOrBlank() &&
+                    (settings.blockAllMcnAuthors || blocklistService.isMcnOrganizationBlocked(mcnCompany))
+                if (shouldBlock) {
+                    blocked.add(content to "屏蔽MCN机构：$mcnCompany")
+                } else {
+                    kept.add(content)
+                }
+            }
+            filteredContents = kept
+        }
+
         if (settings.enableTopicBlocking) {
             filteredContents = filteredContents.filter { content ->
                 val topicIds = extractTopicIds(content.raw)
@@ -254,6 +287,7 @@ fun ContentFilterDatabase.createFeedDisplayFilterPipeline(
     onNlpBlocked: suspend (List<FilterableContent>) -> Unit = {},
     onDetailFetchFailed: (FeedDisplayItem) -> Unit = {},
     onDetailsKeywordFiltered: (FeedDisplayItem, String) -> Unit = { _, _ -> },
+    mcnCompanyProvider: McnCompanyProvider = NoopMcnCompanyProvider,
 ): FeedDisplayFilterPipeline = FeedDisplayFilterPipeline(
     settings = settings,
     contentDetailProvider = contentDetailProvider,
@@ -263,6 +297,8 @@ fun ContentFilterDatabase.createFeedDisplayFilterPipeline(
             keywordDao = blockedKeywordDao(),
             userDao = blockedUserDao(),
             topicDao = blockedTopicDao(),
+            mcnOrganizationDao = blockedMcnOrganizationDao(),
+            mcnAuthorCacheDao = mcnAuthorCacheDao(),
         ),
         blockedKeywordService = BlockedKeywordService(
             keywordDao = blockedKeywordDao(),
@@ -270,6 +306,7 @@ fun ContentFilterDatabase.createFeedDisplayFilterPipeline(
             semanticMatcher = semanticMatcher,
         ),
         onNlpBlocked = onNlpBlocked,
+        mcnCompanyProvider = mcnCompanyProvider,
     ),
     blockedFeedRecordDao = blockedFeedRecordDao(),
     onDetailFetchFailed = onDetailFetchFailed,
@@ -284,6 +321,7 @@ suspend fun ContentFilterDatabase.filterFeedDisplayItems(
     onNlpBlocked: suspend (List<FilterableContent>) -> Unit = {},
     onDetailFetchFailed: (FeedDisplayItem) -> Unit = {},
     onDetailsKeywordFiltered: (FeedDisplayItem, String) -> Unit = { _, _ -> },
+    mcnCompanyProvider: McnCompanyProvider = NoopMcnCompanyProvider,
 ): List<FeedDisplayItem> = createFeedDisplayFilterPipeline(
     settings = settings,
     contentDetailProvider = contentDetailProvider,
@@ -291,6 +329,7 @@ suspend fun ContentFilterDatabase.filterFeedDisplayItems(
     onNlpBlocked = onNlpBlocked,
     onDetailFetchFailed = onDetailFetchFailed,
     onDetailsKeywordFiltered = onDetailsKeywordFiltered,
+    mcnCompanyProvider = mcnCompanyProvider,
 ).filter(items)
 
 class FeedDisplayFilterPipeline(
@@ -435,6 +474,7 @@ data class FilterableContent(
     val content: String?,
     val authorName: String?,
     val authorId: String?,
+    val authorUrlToken: String? = null,
     val contentId: String,
     val contentType: String,
     val raw: DataHolder.Content,
@@ -473,6 +513,7 @@ fun FeedDisplayItem.toFilterableContent(
     } ?: content ?: summary,
     authorName = authorName,
     authorId = rawContent.author?.id,
+    authorUrlToken = rawContent.author?.urlToken,
     contentId = identity.id,
     contentType = identity.type,
     raw = rawContent,
@@ -554,6 +595,8 @@ data class FeedFilterSettings(
     val enableNlpBlocking: Boolean = true,
     val nlpSimilarityThreshold: Double = 0.8,
     val enableUserBlocking: Boolean = true,
+    val enableMcnBlocking: Boolean = true,
+    val blockAllMcnAuthors: Boolean = false,
     val enableTopicBlocking: Boolean = true,
     val topicBlockingThreshold: Int = 1,
     val adBlockSettings: FeedAdBlockSettings = FeedAdBlockSettings(),
@@ -567,6 +610,8 @@ fun SettingsStore.toFeedFilterSettings(): FeedFilterSettings = FeedFilterSetting
     enableNlpBlocking = getBoolean("enableNLPBlocking", true),
     nlpSimilarityThreshold = getFloat("nlpSimilarityThreshold", 0.8f).toDouble(),
     enableUserBlocking = getBoolean("enableUserBlocking", true),
+    enableMcnBlocking = getBoolean("enableMcnBlocking", true),
+    blockAllMcnAuthors = getBoolean("blockAllMcnAuthors", false),
     enableTopicBlocking = getBoolean("enableTopicBlocking", true),
     topicBlockingThreshold = getInt("topicBlockingThreshold", 1),
     adBlockSettings = FeedAdBlockSettings(
@@ -639,6 +684,7 @@ suspend fun applyContentFilterToDisplayItems(
     onNlpBlocked: suspend (List<FilterableContent>) -> Unit = {},
     onDetailFetchFailed: (FeedDisplayItem) -> Unit = {},
     onDetailsKeywordFiltered: (FeedDisplayItem, String) -> Unit = { _, _ -> },
+    mcnCompanyProvider: McnCompanyProvider = NoopMcnCompanyProvider,
 ): List<FeedDisplayItem> = database.filterFeedDisplayItems(
     settings = settings,
     items = items,
@@ -647,6 +693,7 @@ suspend fun applyContentFilterToDisplayItems(
     onNlpBlocked = onNlpBlocked,
     onDetailFetchFailed = onDetailFetchFailed,
     onDetailsKeywordFiltered = onDetailsKeywordFiltered,
+    mcnCompanyProvider = mcnCompanyProvider,
 )
 
 fun isContentFilterEnabled(settings: FeedFilterSettings): Boolean = settings.enableContentFilter
@@ -800,6 +847,7 @@ object ContentFilterExtensions {
         onNlpBlocked: suspend (List<FilterableContent>) -> Unit = {},
         onDetailFetchFailed: (FeedDisplayItem) -> Unit = {},
         onDetailsKeywordFiltered: (FeedDisplayItem, String) -> Unit = { _, _ -> },
+        mcnCompanyProvider: McnCompanyProvider = NoopMcnCompanyProvider,
     ): List<FeedDisplayItem> = database.filterFeedDisplayItems(
         settings = settings,
         items = items,
@@ -808,5 +856,6 @@ object ContentFilterExtensions {
         onNlpBlocked = onNlpBlocked,
         onDetailFetchFailed = onDetailFetchFailed,
         onDetailsKeywordFiltered = onDetailsKeywordFiltered,
+        mcnCompanyProvider = mcnCompanyProvider,
     )
 }

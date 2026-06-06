@@ -88,12 +88,16 @@ import com.github.zly2006.zhihu.ui.PeopleListUiState
 import com.github.zly2006.zhihu.ui.PeopleProfileUiState
 import com.github.zly2006.zhihu.ui.PeopleSortedListUiState
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
+import com.github.zly2006.zhihu.ui.components.BlockRecommendationSourceDialog
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.filter.ZhihuMcnCompanyProvider
+import com.github.zly2006.zhihu.viewmodel.filter.normalizeMcnCompany
+import com.github.zly2006.zhihu.viewmodel.filter.rememberBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import io.ktor.client.call.body
 import io.ktor.client.request.delete
@@ -659,6 +663,13 @@ private fun PeopleScreenContent(
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val viewModel = viewModel { PersonViewModel(person) }
     val coroutineScope = rememberCoroutineScope()
+    val blocklistManager = rememberBlocklistManager()
+    val mcnCompanyProvider = remember(paginationEnvironment) {
+        ZhihuMcnCompanyProvider(paginationEnvironment.httpClient()) { request ->
+            paginationEnvironment.configureSignedRequest(request)
+        }
+    }
+    var mcnCompanyToBlock by remember(person.urlToken) { mutableStateOf<String?>(null) }
     var testUiState by remember(person.id, person.urlToken, testOverrides?.initialUiState) {
         mutableStateOf(testOverrides?.initialUiState ?: PeopleScreenUiState())
     }
@@ -773,8 +784,21 @@ private fun PeopleScreenContent(
                             } else {
                                 coroutineScope.launch {
                                     try {
-                                        viewModel.toggleRecommendationBlock(paginationEnvironment)
-                                        userMessages.showShortMessage(if (viewModel.isBlockedInRecommendations) "已屏蔽推荐" else "已取消屏蔽推荐")
+                                        if (viewModel.isBlockedInRecommendations) {
+                                            viewModel.toggleRecommendationBlock(paginationEnvironment)
+                                            userMessages.showShortMessage("已取消屏蔽推荐")
+                                            return@launch
+                                        }
+
+                                        val resolvedMcn = mcnCompanyProvider.getMcnCompany(person.urlToken).normalizeMcnCompany().also { company ->
+                                            blocklistManager.cacheMcnCompany(person.urlToken, viewModel.name, company)
+                                        }
+                                        if (resolvedMcn.isNullOrBlank()) {
+                                            viewModel.toggleRecommendationBlock(paginationEnvironment)
+                                            userMessages.showShortMessage("已屏蔽推荐")
+                                        } else {
+                                            mcnCompanyToBlock = resolvedMcn
+                                        }
                                     } catch (e: Exception) {
                                         userMessages.showShortMessage("操作失败: ${e.message}")
                                     }
@@ -1106,6 +1130,37 @@ private fun PeopleScreenContent(
                 }
             }
         }
+    }
+
+    val resolvedMcnCompanyToBlock = mcnCompanyToBlock
+    if (resolvedMcnCompanyToBlock != null) {
+        BlockRecommendationSourceDialog(
+            authorName = viewModel.name.ifBlank { person.name },
+            mcnCompany = resolvedMcnCompanyToBlock,
+            onDismiss = { mcnCompanyToBlock = null },
+            onBlockUser = {
+                coroutineScope.launch {
+                    try {
+                        viewModel.toggleRecommendationBlock(paginationEnvironment)
+                        mcnCompanyToBlock = null
+                        userMessages.showShortMessage("已屏蔽推荐")
+                    } catch (e: Exception) {
+                        userMessages.showShortMessage("操作失败: ${e.message}")
+                    }
+                }
+            },
+            onBlockMcn = {
+                coroutineScope.launch {
+                    try {
+                        blocklistManager.addBlockedMcnOrganization(resolvedMcnCompanyToBlock)
+                        mcnCompanyToBlock = null
+                        userMessages.showShortMessage("已屏蔽MCN机构：$resolvedMcnCompanyToBlock")
+                    } catch (e: Exception) {
+                        userMessages.showShortMessage("操作失败: ${e.message}")
+                    }
+                }
+            },
+        )
     }
 }
 

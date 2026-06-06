@@ -112,6 +112,18 @@ fun BlockUserConfirmDialog(
                 }
             }
         },
+        onConfirmBlockMcn = { organizationName ->
+            coroutineScope.launch {
+                try {
+                    blocklistManager.addBlockedMcnOrganization(organizationName)
+                    onConfirm()
+                    userMessages.showShortMessage("已屏蔽MCN机构：$organizationName")
+                } catch (e: Exception) {
+                    Log.e("FeedBlockActions", "Failed to block MCN organization", e)
+                    userMessages.showShortMessage("屏蔽MCN机构失败: ${e.message}")
+                }
+            }
+        },
     )
 }
 

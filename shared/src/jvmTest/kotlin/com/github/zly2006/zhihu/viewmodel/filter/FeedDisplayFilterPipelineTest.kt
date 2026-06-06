@@ -194,6 +194,8 @@ class FeedDisplayFilterPipelineTest {
                     keywordDao = database.blockedKeywordDao(),
                     userDao = database.blockedUserDao(),
                     topicDao = database.blockedTopicDao(),
+                    mcnOrganizationDao = database.blockedMcnOrganizationDao(),
+                    mcnAuthorCacheDao = database.mcnAuthorCacheDao(),
                 ),
                 blockedKeywordService = BlockedKeywordService(
                     keywordDao = database.blockedKeywordDao(),

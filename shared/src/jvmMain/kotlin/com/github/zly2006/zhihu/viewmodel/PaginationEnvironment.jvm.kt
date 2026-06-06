@@ -64,6 +64,7 @@ import com.github.zly2006.zhihu.util.sanitizeArticleExportFileNamePart
 import com.github.zly2006.zhihu.viewmodel.CollectionItem
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
 import com.github.zly2006.zhihu.viewmodel.filter.ContentType
+import com.github.zly2006.zhihu.viewmodel.filter.ZhihuMcnCompanyProvider
 import com.github.zly2006.zhihu.viewmodel.filter.applyContentFilterToDisplayItems
 import com.github.zly2006.zhihu.viewmodel.filter.applyForegroundReadFilterToDisplayItems
 import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
@@ -337,6 +338,9 @@ class DesktopPaginationEnvironment(
             items = foregroundItems,
             contentDetailProvider = ContentDetailProvider(::fetchContentDetail),
             semanticMatcher = desktopKeywordSemanticMatcher,
+            mcnCompanyProvider = ZhihuMcnCompanyProvider(httpClient()) { request ->
+                configureSignedRequest(request)
+            },
         )
         return HomeFeedFilterResult(
             foregroundItems = foregroundItems,
