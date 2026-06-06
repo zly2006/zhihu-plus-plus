@@ -105,6 +105,15 @@ data object OnlineHistory : TopLevelDestination {
  * Legacy top-level tab target for the main pager.
  */
 @Serializable
+data object MyCollections : TopLevelDestination {
+    override val name: String
+        get() = "MyCollections"
+}
+
+/**
+ * Legacy top-level tab target for the main pager.
+ */
+@Serializable
 data object Account : TopLevelDestination {
     override val name: String
         get() = "Account"

@@ -520,7 +520,7 @@ data class ZhihuMainPreferenceSnapshot(
     val duo3NavStyle: Boolean,
     val tapToScrollToTopEnabled: Boolean,
     val autoHideBottomBar: Boolean,
-    val selectedBottomBarItemKeys: Set<String>,
+    val selectedBottomBarItemKeys: List<String>,
     val startDestination: TopLevelDestination,
 )
 
