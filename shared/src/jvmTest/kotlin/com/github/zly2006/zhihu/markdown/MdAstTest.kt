@@ -106,6 +106,27 @@ class MdAstTest {
     }
 
     @Test
+    fun preview_image_urls_should_keep_document_order_and_drop_duplicates() {
+        val document = htmlToMdAst(
+            """
+            <p>第一张</p>
+            <figure><img src="https://pic1.zhimg.com/v2-a.jpg" /></figure>
+            <p>第二张 <img src="https://pic1.zhimg.com/v2-b.jpg" /></p>
+            <figure><img src="https://pic1.zhimg.com/v2-a.jpg" /></figure>
+            <img src="data:image/png;base64,abc" />
+            """.trimIndent(),
+        )
+
+        assertEquals(
+            listOf(
+                "https://pic1.zhimg.com/v2-a.jpg",
+                "https://pic1.zhimg.com/v2-b.jpg",
+            ),
+            document.previewImageUrls(),
+        )
+    }
+
+    @Test
     fun extracted_answer_content_should_keep_equation_as_math_not_figure() {
         val htmlFile = File(
             requireNotNull(javaClass.classLoader?.getResource("zhihu_answer_2035661632110585441_content.html")).toURI(),

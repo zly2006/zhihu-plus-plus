@@ -75,6 +75,9 @@ expect fun rememberZhihuWebUrlOpener(): (String) -> Unit
 expect fun rememberImagePreviewOpener(): (String) -> Unit
 
 @Composable
+expect fun rememberImageGalleryPreviewOpener(): (List<String>, Int) -> Unit
+
+@Composable
 expect fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit
 
 data class ScreenSizeDp(

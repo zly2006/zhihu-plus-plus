@@ -16,6 +16,7 @@
  */
 
 package com.github.zly2006.zhihu.ui.components
+
 import android.content.ClipData
 import android.content.Context
 import android.content.Intent
@@ -26,8 +27,10 @@ import android.view.Window
 import androidx.activity.ComponentDialog
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
@@ -61,12 +64,24 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import me.saket.telephoto.zoomable.coil3.ZoomableAsyncImage
+import me.saket.telephoto.zoomable.rememberZoomableImageState
+import me.saket.telephoto.zoomable.rememberZoomableState
 
 class OpenImageDialog(
     context: Context,
     private val httpClient: HttpClient,
-    private val url: String,
+    urls: List<String>,
+    initialIndex: Int = 0,
 ) : ComponentDialog(context) {
+    constructor(
+        context: Context,
+        httpClient: HttpClient,
+        url: String,
+    ) : this(context, httpClient, listOf(url), 0)
+
+    private val imageUrls = normalizeImagePreviewUrls(urls).ifEmpty { listOf("") }
+    private val initialPage = imagePreviewInitialPage(imageUrls, initialIndex)
+
     init {
         requestWindowFeature(Window.FEATURE_NO_TITLE)
         setCanceledOnTouchOutside(true)
@@ -76,26 +91,35 @@ class OpenImageDialog(
                     val scope = rememberCoroutineScope()
 
                     OpenImagePreviewContent(
-                        url = url,
+                        urls = imageUrls,
+                        initialIndex = initialPage,
                         onDismiss = { dismiss() },
-                        onSaveImage = {
+                        onSaveImage = { imageUrl ->
                             scope.launch {
-                                saveImageToGallery(context, httpClient, url)
+                                saveImageToGallery(context, httpClient, imageUrl)
                             }
                         },
-                        onShareImage = {
+                        onShareImage = { imageUrl ->
                             scope.launch {
-                                shareImage(context, httpClient, url)
+                                shareImage(context, httpClient, imageUrl)
                             }
                         },
-                        onOpenInBrowser = {
-                            luoTianYiUrlLauncher(context, url.toUri())
+                        onOpenInBrowser = { imageUrl ->
+                            luoTianYiUrlLauncher(context, imageUrl.toUri())
                         },
-                    ) { imageUrl, onClick, onLongClick ->
+                    ) { imageUrl, onClick, onLongClick, onPageSwipeEnabledChange ->
+                        val imageState = rememberZoomableImageState(rememberZoomableState())
+                        LaunchedEffect(imageState) {
+                            snapshotFlow { imageState.zoomableState.zoomFraction }
+                                .collect { zoomFraction ->
+                                    onPageSwipeEnabledChange((zoomFraction ?: 0f) <= 0.01f)
+                                }
+                        }
                         ZoomableAsyncImage(
                             model = imageUrl,
                             contentDescription = null,
                             modifier = Modifier.fillMaxSize(),
+                            state = imageState,
                             onClick = { onClick() },
                             onLongClick = onLongClick,
                         )

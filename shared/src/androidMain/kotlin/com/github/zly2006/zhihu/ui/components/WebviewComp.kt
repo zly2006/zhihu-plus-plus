@@ -95,6 +95,12 @@ fun interface HtmlClickListener {
     fun onElementClick(element: Element)
 }
 
+private fun Document.previewImageUrls(): List<String> =
+    normalizeImagePreviewUrls(
+        select("img")
+            .mapNotNull { image -> extractImageUrl(image::attr) },
+    )
+
 private tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
     is ContextWrapper -> baseContext.findActivity()
@@ -368,7 +374,12 @@ class CustomWebView : WebView {
     }
 
     fun openImage(httpClient: HttpClient, url: String) {
-        OpenImageDialog(context, httpClient, url).show()
+        val imageUrls = imagePreviewUrlsForClicked(
+            documentImageUrls = document?.previewImageUrls().orEmpty(),
+            clickedUrl = url,
+        )
+        val initialIndex = imageUrls.indexOf(url).takeIf { it >= 0 } ?: 0
+        OpenImageDialog(context, httpClient, imageUrls, initialIndex).show()
     }
 
     fun loadZhihu(

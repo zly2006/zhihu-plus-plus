@@ -25,6 +25,7 @@ import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.util.extractImageUrl
 import com.github.zly2006.zhihu.shared.util.parseSegmentTextParagraph
 import com.github.zly2006.zhihu.ui.components.SegmentedText
+import com.github.zly2006.zhihu.ui.components.normalizeImagePreviewUrls
 import com.github.zly2006.zhihu.ui.components.segmentedTextStyle
 import com.hrm.markdown.parser.ast.BlockQuote
 import com.hrm.markdown.parser.ast.ContainerNode
@@ -78,6 +79,16 @@ fun htmlToMdAst(html: String): Document {
     }
     parsingDocument = null
     return document
+}
+
+internal fun Document.previewImageUrls(): List<String> =
+    normalizeImagePreviewUrls(collectPreviewImageUrls())
+
+private fun MarkdownNode.collectPreviewImageUrls(): List<String> = when (this) {
+    is Figure -> listOf(imageUrl)
+    is Image -> listOf(destination)
+    is ContainerNode -> children.flatMap { it.collectPreviewImageUrls() }
+    else -> emptyList()
 }
 
 private fun List<HtmlNode>.appendBlocksTo(parent: ContainerNode) {

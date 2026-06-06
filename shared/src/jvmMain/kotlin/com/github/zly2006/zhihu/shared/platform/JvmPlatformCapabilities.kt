@@ -115,6 +115,18 @@ actual fun rememberZhihuWebUrlOpener(): (String) -> Unit = rememberExternalUrlOp
 actual fun rememberImagePreviewOpener(): (String) -> Unit = rememberExternalUrlOpener()
 
 @Composable
+actual fun rememberImageGalleryPreviewOpener(): (List<String>, Int) -> Unit {
+    val openExternalUrl = rememberExternalUrlOpener()
+    return remember(openExternalUrl) {
+        { urls, initialIndex ->
+            if (urls.isNotEmpty()) {
+                urls[initialIndex.coerceIn(0, urls.lastIndex)].let(openExternalUrl)
+            }
+        }
+    }
+}
+
+@Composable
 actual fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit =
     remember { { _, text -> runCatching { copyDesktopPlainText(text) } } }
 
