@@ -197,6 +197,7 @@ val coil = "3.4.0"
 val aboutLibraries = "14.0.1"
 val composeVersion = "1.11.0"
 val lifecycleVersion = "2.10.0"
+val media3Version = "1.6.1"
 
 // Force material3 to 1.10.0-alpha05，与 shared 模块保持一致。
 // 根因：shared 模块 commonMain 通过 material-kolor 的 strictly 约束解析到 1.10.0-alpha05，
@@ -246,6 +247,8 @@ dependencies {
     // Navigation (JetBrains KMP version)
     //noinspection GradleDependency
     implementation("org.jetbrains.androidx.navigation:navigation-compose:2.9.2")
+    implementation("androidx.media3:media3-exoplayer:$media3Version")
+    implementation("androidx.media3:media3-ui:$media3Version")
     implementation("androidx.webkit:webkit:1.16.0")
     implementation("androidx.activity:activity-compose:1.13.0")
     // Compose (core from JetBrains KMP)
