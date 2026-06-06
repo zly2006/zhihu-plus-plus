@@ -53,6 +53,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -86,6 +87,10 @@ import com.github.zly2006.zhihu.shared.platform.rememberIsLiteVariant
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.util.parseHtmlTextWithTheme
+import com.github.zly2006.zhihu.viewmodel.filter.ZhihuMcnCompanyProvider
+import com.github.zly2006.zhihu.viewmodel.filter.normalizeMcnCompany
+import com.github.zly2006.zhihu.viewmodel.filter.rememberBlocklistManager
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.max
@@ -114,7 +119,15 @@ fun FeedCard(
     val uriHandler = LocalUriHandler.current
     val userMessages = rememberUserMessageSink()
     val settings = rememberSettingsStore()
+    val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
+    val blocklistManager = rememberBlocklistManager()
+    val mcnProvider = remember(paginationEnvironment) {
+        ZhihuMcnCompanyProvider(paginationEnvironment.httpClient()) { request ->
+            paginationEnvironment.configureSignedRequest(request)
+        }
+    }
     val isLiteVariant = rememberIsLiteVariant()
+    var mcnCompany by remember(item.authorUrlToken) { mutableStateOf<String?>(null) }
     var offsetX by remember { mutableFloatStateOf(0f) }
     var currentY by remember { mutableFloatStateOf(0f) } // 当前手指Y位置
     var startY by remember { mutableFloatStateOf(0f) } // 开始滑动时的Y位置
@@ -144,6 +157,24 @@ fun FeedCard(
             } else {
                 userMessages.showMessage("暂不支持打开该内容", UserMessageDuration.Short)
             }
+        }
+    }
+
+    LaunchedEffect(item.authorUrlToken, item.authorName) {
+        val urlToken = item.authorUrlToken
+        if (urlToken.isNullOrBlank()) {
+            mcnCompany = null
+            return@LaunchedEffect
+        }
+        blocklistManager.getCachedMcnAuthor(urlToken)?.mcnCompany.normalizeMcnCompany()?.let {
+            mcnCompany = it
+            return@LaunchedEffect
+        }
+        runCatching {
+            mcnProvider.getMcnCompany(urlToken).normalizeMcnCompany()
+        }.onSuccess { resolvedMcn ->
+            blocklistManager.cacheMcnCompany(urlToken, item.authorName, resolvedMcn)
+            mcnCompany = resolvedMcn
         }
     }
 
@@ -186,6 +217,7 @@ fun FeedCard(
             ) {
                 FeedCardContent(
                     item = item,
+                    mcnCompany = mcnCompany,
                     showFeedThumbnail = showFeedThumbnail,
                     thumbnailUrl = thumbnailUrl,
                     showMenu = showMenu,
@@ -274,6 +306,7 @@ fun FeedCard(
                 ) {
                     FeedCardContent(
                         item = item,
+                        mcnCompany = mcnCompany,
                         showFeedThumbnail = showFeedThumbnail,
                         thumbnailUrl = thumbnailUrl,
                         showMenu = showMenu,
@@ -446,6 +479,7 @@ private fun FeedCardMenuBox(
 @Composable
 private fun FeedCardContent(
     item: FeedDisplayItem,
+    mcnCompany: String?,
     showFeedThumbnail: Boolean,
     thumbnailUrl: String?,
     showMenu: Boolean,
@@ -536,6 +570,11 @@ private fun FeedCardContent(
                                 Spacer(Modifier.width(4.dp))
                                 AuthorBadge(authorBadge, compact = true)
                             }
+                            val resolvedMcnCompany = mcnCompany
+                            if (resolvedMcnCompany != null) {
+                                Spacer(Modifier.width(4.dp))
+                                McnBadge(mcnCompany = resolvedMcnCompany)
+                            }
                         }
                         Spacer(Modifier.width(6.dp))
                     }
@@ -594,6 +633,11 @@ private fun FeedCardContent(
                 if (authorBadge?.isUsefulInList == true) {
                     Spacer(Modifier.width(4.dp))
                     AuthorBadge(authorBadge, compact = true)
+                }
+                val resolvedMcnCompany = mcnCompany
+                if (resolvedMcnCompany != null) {
+                    Spacer(Modifier.width(4.dp))
+                    McnBadge(mcnCompany = resolvedMcnCompany)
                 }
             }
         }

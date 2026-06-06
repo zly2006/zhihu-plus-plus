@@ -25,6 +25,7 @@ data class FeedDisplayItem(
     val navDestinationJson: String? = null,
     val avatarSrc: String? = null,
     val authorName: String? = null,
+    val authorUrlToken: String? = null,
     val authorBadgeV2: DataHolder.BadgeV2? = null,
     val isFiltered: Boolean = false,
     val content: String? = null,
@@ -95,6 +96,7 @@ fun Feed.toDisplayItem(
         details = listOfNotNull(target.detailsText, actionText).joinToString(" · "),
         avatarSrc = target.author?.avatarUrl,
         authorName = target.author?.name,
+        authorUrlToken = target.author?.urlToken,
         authorBadgeV2 = target.author?.badgeV2,
         feed = this,
     )
@@ -127,6 +129,7 @@ private fun Feed.toTargetDisplayItem(
             details = listOfNotNull(target.detailsText, actionText).joinToString(" · "),
             avatarSrc = target.author?.avatarUrl,
             authorName = target.author?.name,
+            authorUrlToken = target.author?.urlToken,
             authorBadgeV2 = target.author?.badgeV2,
             feed = this,
             segmentInfos = when (target) {
@@ -147,6 +150,7 @@ private fun Feed.toTargetDisplayItem(
             details = target.detailsText,
             avatarSrc = target.author.avatarUrl,
             authorName = target.author.name,
+            authorUrlToken = target.author.urlToken,
             authorBadgeV2 = target.author.badgeV2,
             feed = this,
         )
