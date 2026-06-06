@@ -37,6 +37,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
@@ -44,9 +45,11 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -79,6 +82,10 @@ import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
+import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.feed.SearchContentType
+import com.github.zly2006.zhihu.viewmodel.feed.SearchSortOption
+import com.github.zly2006.zhihu.viewmodel.feed.SearchTimeRange
 import com.github.zly2006.zhihu.viewmodel.feed.SearchViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.ZHIHU_HOT_SEARCH_URL
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
@@ -135,6 +142,7 @@ fun SearchScreen(
     }
     var hotSearchMoreMenuExpanded by remember { mutableStateOf(false) }
     var historyMoreMenuExpanded by remember { mutableStateOf(false) }
+    var filterMenuExpanded by remember { mutableStateOf(false) }
     val useTestHotSearchQueries = testHotSearchQueries != null
     val showSearchHistory = remember { mutableStateOf(settings.getBoolean("showSearchHistory", true)) }
     val searchHistoryItems = remember {
@@ -314,6 +322,21 @@ fun SearchScreen(
                     ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
+                },
+                actions = {
+                    IconButton(
+                        onClick = { filterMenuExpanded = true },
+                        enabled = search.query.isNotEmpty(),
+                        modifier = Modifier.testTag("search_filter_button"),
+                    ) {
+                        Icon(Icons.Default.FilterList, contentDescription = "筛选搜索结果")
+                    }
+                    SearchFilterMenu(
+                        expanded = filterMenuExpanded,
+                        onDismissRequest = { filterMenuExpanded = false },
+                        viewModel = viewModel,
+                        paginationEnvironment = paginationEnvironment,
+                    )
                 },
             )
         },
@@ -512,4 +535,86 @@ fun SearchScreen(
             }
         }
     }
+}
+
+@Composable
+private fun SearchFilterMenu(
+    expanded: Boolean,
+    onDismissRequest: () -> Unit,
+    viewModel: SearchViewModel,
+    paginationEnvironment: PaginationEnvironment,
+) {
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismissRequest,
+    ) {
+        SearchFilterHeader("排序")
+        SearchSortOption.entries.forEach { option ->
+            SearchFilterMenuItem(
+                text = option.label,
+                selected = viewModel.sortOption == option,
+                testTag = "search_filter_sort_${option.name}",
+                onClick = {
+                    onDismissRequest()
+                    viewModel.updateSortOption(paginationEnvironment, option)
+                },
+            )
+        }
+        HorizontalDivider()
+        SearchFilterHeader("内容类型")
+        SearchContentType.entries.forEach { type ->
+            SearchFilterMenuItem(
+                text = type.label,
+                selected = viewModel.contentType == type,
+                testTag = "search_filter_type_${type.name}",
+                onClick = {
+                    onDismissRequest()
+                    viewModel.updateContentType(paginationEnvironment, type)
+                },
+            )
+        }
+        HorizontalDivider()
+        SearchFilterHeader("时间范围")
+        SearchTimeRange.entries.forEach { range ->
+            SearchFilterMenuItem(
+                text = range.label,
+                selected = viewModel.timeRange == range,
+                testTag = "search_filter_time_${range.name}",
+                onClick = {
+                    onDismissRequest()
+                    viewModel.updateTimeRange(paginationEnvironment, range)
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun SearchFilterHeader(text: String) {
+    Text(
+        text = text,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+@Composable
+private fun SearchFilterMenuItem(
+    text: String,
+    selected: Boolean,
+    testTag: String,
+    onClick: () -> Unit,
+) {
+    DropdownMenuItem(
+        text = { Text(text) },
+        leadingIcon = {
+            RadioButton(
+                selected = selected,
+                onClick = onClick,
+            )
+        },
+        onClick = onClick,
+        modifier = Modifier.testTag(testTag),
+    )
 }
