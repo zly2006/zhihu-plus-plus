@@ -50,6 +50,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -416,6 +417,7 @@ fun CommentScreen(
     content: () -> NavDestination,
     activeCommentItem: CommentModel? = null,
     onChildCommentClick: (CommentModel) -> Unit,
+    listState: LazyListState = rememberLazyListState(),
     testOverrides: CommentScreenTestOverrides? = null,
 ) {
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
@@ -445,8 +447,6 @@ fun CommentScreen(
     val commentInputBarColor = MaterialTheme.colorScheme.surfaceContainer
     val actionChipColor = MaterialTheme.colorScheme.surfaceContainerHigh
     val actionChipIconColor = MaterialTheme.colorScheme.onSurfaceVariant
-
-    val listState = rememberLazyListState()
 
     // 监控滚动位置以实现加载更多
     val loadMore = remember {
