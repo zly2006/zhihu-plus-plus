@@ -226,8 +226,13 @@ fun OpenImagePreviewContent(
     var menuOffset by remember { mutableStateOf(Offset.Zero) }
     val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
-    val imageUrls = remember(urls) { normalizeImagePreviewUrls(urls).ifEmpty { listOf("") } }
-    val initialPage = imagePreviewInitialPage(imageUrls, initialIndex)
+    val imageUrls = remember(urls) {
+        urls
+            .filter { it.isNotBlank() && !it.startsWith("data") }
+            .distinct()
+            .ifEmpty { listOf("") }
+    }
+    val initialPage = initialIndex.coerceIn(0, imageUrls.lastIndex)
     val pagerState = rememberPagerState(initialPage = initialPage) { imageUrls.size }
     val pageSwipeEnabled = remember(imageUrls) {
         mutableStateMapOf<String, Boolean>().apply {

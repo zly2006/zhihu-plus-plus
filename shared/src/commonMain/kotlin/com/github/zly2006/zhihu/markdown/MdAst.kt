@@ -25,7 +25,6 @@ import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.util.extractImageUrl
 import com.github.zly2006.zhihu.shared.util.parseSegmentTextParagraph
 import com.github.zly2006.zhihu.ui.components.SegmentedText
-import com.github.zly2006.zhihu.ui.components.normalizeImagePreviewUrls
 import com.github.zly2006.zhihu.ui.components.segmentedTextStyle
 import com.hrm.markdown.parser.ast.BlockQuote
 import com.hrm.markdown.parser.ast.ContainerNode
@@ -82,7 +81,9 @@ fun htmlToMdAst(html: String): Document {
 }
 
 internal fun Document.previewImageUrls(): List<String> =
-    normalizeImagePreviewUrls(collectPreviewImageUrls())
+    collectPreviewImageUrls()
+        .filter { it.isNotBlank() && !it.startsWith("data") }
+        .distinct()
 
 private fun MarkdownNode.collectPreviewImageUrls(): List<String> = when (this) {
     is Figure -> listOf(imageUrl)

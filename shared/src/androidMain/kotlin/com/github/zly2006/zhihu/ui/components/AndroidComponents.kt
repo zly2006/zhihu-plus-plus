@@ -79,8 +79,11 @@ class OpenImageDialog(
         url: String,
     ) : this(context, httpClient, listOf(url), 0)
 
-    private val imageUrls = normalizeImagePreviewUrls(urls).ifEmpty { listOf("") }
-    private val initialPage = imagePreviewInitialPage(imageUrls, initialIndex)
+    private val imageUrls = urls
+        .filter { it.isNotBlank() && !it.startsWith("data") }
+        .distinct()
+        .ifEmpty { listOf("") }
+    private val initialPage = initialIndex.coerceIn(0, imageUrls.lastIndex)
 
     init {
         requestWindowFeature(Window.FEATURE_NO_TITLE)
