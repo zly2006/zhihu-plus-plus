@@ -322,8 +322,8 @@ class BlocklistService(
         backup.topics.filter { it.topicId.isNotBlank() }.forEach { t ->
             topicDao.insertTopic(BlockedTopic(topicId = t.topicId, topicName = t.topicName))
         }
-        backup.mcnOrganizations.filter { it.organizationName.isNotBlank() }.forEach { mcn ->
-            mcnOrganizationDao.insertOrganization(BlockedMcnOrganization(mcn.organizationName))
+        backup.mcnOrganizations.map { it.organizationName.trim() }.filter { it.isNotBlank() }.forEach { organizationName ->
+            mcnOrganizationDao.insertOrganization(BlockedMcnOrganization(organizationName))
         }
 
         return "关键词 ${backup.keywords.size} · NLP ${backup.nlpKeywords.size} · 用户 ${backup.users.size} · 主题 ${backup.topics.size} · MCN ${backup.mcnOrganizations.size}"

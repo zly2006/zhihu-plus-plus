@@ -700,6 +700,10 @@ private fun PeopleScreenContent(
         if (testOverrides != null || person.urlToken.isBlank()) {
             return@LaunchedEffect
         }
+        blocklistManager.getCachedMcnAuthor(person.urlToken)?.let { cachedAuthor ->
+            viewModel.mcnCompany = cachedAuthor.mcnCompany.normalizeMcnCompany()
+            return@LaunchedEffect
+        }
         runCatching {
             mcnCompanyProvider.getMcnCompany(person.urlToken).normalizeMcnCompany()
         }.onSuccess { resolvedMcn ->
@@ -807,9 +811,14 @@ private fun PeopleScreenContent(
                                             return@launch
                                         }
 
-                                        val resolvedMcn = mcnCompanyProvider.getMcnCompany(person.urlToken).normalizeMcnCompany().also { company ->
-                                            blocklistManager.cacheMcnCompany(person.urlToken, viewModel.name, company)
-                                        }
+                                        val resolvedMcn = blocklistManager.getCachedMcnAuthor(person.urlToken)
+                                            ?.mcnCompany
+                                            .normalizeMcnCompany()
+                                            ?: runCatching {
+                                                mcnCompanyProvider.getMcnCompany(person.urlToken).normalizeMcnCompany()
+                                            }.onSuccess { company ->
+                                                blocklistManager.cacheMcnCompany(person.urlToken, viewModel.name, company)
+                                            }.getOrNull()
                                         if (resolvedMcn.isNullOrBlank()) {
                                             viewModel.toggleRecommendationBlock(paginationEnvironment)
                                             userMessages.showShortMessage("已屏蔽推荐")

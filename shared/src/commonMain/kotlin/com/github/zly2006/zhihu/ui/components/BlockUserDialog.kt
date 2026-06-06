@@ -101,6 +101,11 @@ fun BlockUserConfirmDialogContent(
                 isResolvingMcn = false
                 return@LaunchedEffect
             }
+            blocklistManager.getCachedMcnAuthor(urlToken)?.let { cachedAuthor ->
+                mcnCompany = cachedAuthor.mcnCompany.normalizeMcnCompany()
+                isResolvingMcn = false
+                return@LaunchedEffect
+            }
             val lookupResult = runCatching { mcnProvider.getMcnCompany(urlToken).normalizeMcnCompany() }
             val resolvedCompany = lookupResult.getOrNull()
             if (lookupResult.isSuccess) {
