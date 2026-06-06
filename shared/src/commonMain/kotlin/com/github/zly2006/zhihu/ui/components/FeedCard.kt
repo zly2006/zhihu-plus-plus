@@ -166,8 +166,8 @@ fun FeedCard(
             mcnCompany = null
             return@LaunchedEffect
         }
-        blocklistManager.getCachedMcnAuthor(urlToken)?.mcnCompany.normalizeMcnCompany()?.let {
-            mcnCompany = it
+        blocklistManager.getCachedMcnAuthor(urlToken)?.let { cachedAuthor ->
+            mcnCompany = cachedAuthor.mcnCompany.normalizeMcnCompany()
             return@LaunchedEffect
         }
         runCatching {

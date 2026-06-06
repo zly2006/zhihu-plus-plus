@@ -634,8 +634,8 @@ fun ArticleScreen(
             authorMcnCompany = null
             return@LaunchedEffect
         }
-        blocklistManager.getCachedMcnAuthor(urlToken)?.mcnCompany.normalizeMcnCompany()?.let {
-            authorMcnCompany = it
+        blocklistManager.getCachedMcnAuthor(urlToken)?.let { cachedAuthor ->
+            authorMcnCompany = cachedAuthor.mcnCompany.normalizeMcnCompany()
             return@LaunchedEffect
         }
         runCatching {

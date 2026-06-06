@@ -43,11 +43,11 @@ fun McnBadge(
             .padding(horizontal = 2.dp, vertical = 3.dp)
             .border(
                 width = 1.dp,
-                color = Color(0xFFD6A11D),
+                color = Color(0xFFD84B45),
                 shape = RoundedCornerShape(3.dp),
             )
             .background(
-                color = Color(0xFFFFF4D6),
+                color = Color(0xFFFFE6E5),
                 shape = RoundedCornerShape(3.dp),
             )
             .padding(horizontal = 4.dp, vertical = 1.dp)
@@ -56,7 +56,7 @@ fun McnBadge(
     ) {
         Text(
             text = "MCN",
-            color = Color(0xFF7A5200),
+            color = Color(0xFF9F221D),
             fontSize = 9.sp,
             lineHeight = 9.sp,
             fontWeight = FontWeight.Bold,
