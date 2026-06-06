@@ -57,6 +57,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -197,7 +198,7 @@ fun PinScreen(
     }
 
     var showShareDialog by remember { mutableStateOf(false) }
-    var showComments by remember { mutableStateOf(false) }
+    var showComments by rememberSaveable(pin.id) { mutableStateOf(false) }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
