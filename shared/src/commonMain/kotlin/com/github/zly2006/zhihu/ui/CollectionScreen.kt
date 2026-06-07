@@ -52,6 +52,7 @@ import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 fun CollectionScreen(
     urlToken: String?,
     testCollections: List<Collection>? = null,
+    showBackButton: Boolean = true,
 ) {
     val navigator = LocalNavigator.current
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
@@ -79,11 +80,13 @@ fun CollectionScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(
-                        onClick = navigator.onNavigateBack,
-                        modifier = Modifier.testTag(COLLECTION_SCREEN_BACK_BUTTON_TAG),
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    if (showBackButton) {
+                        IconButton(
+                            onClick = navigator.onNavigateBack,
+                            modifier = Modifier.testTag(COLLECTION_SCREEN_BACK_BUTTON_TAG),
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        }
                     }
                 },
             )

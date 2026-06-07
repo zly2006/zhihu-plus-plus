@@ -52,8 +52,10 @@ import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_START_DESTINAT
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_USE_WEBVIEW_TAG
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.START_DESTINATION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.appearanceSettingsBottomBarItemTag
+import com.github.zly2006.zhihu.ui.subscreens.appearanceSettingsBottomBarMoveDownTag
 import com.github.zly2006.zhihu.ui.subscreens.appearanceSettingsStartDestinationOptionTag
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -154,6 +156,27 @@ class AppearanceSettingsScreenInstrumentedTest {
         )
     }
 
+    @Test
+    fun bottomBarRowsKeepUniformHeightAndMoveOrderPersists() {
+        // The bottom-bar editor mixes selected rows, unselected rows, and the non-removable account
+        // row. They should keep the same touch target height while reorder actions still persist.
+        setUpScreen(setting = APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY)
+
+        scrollUntilTagDisplayed(appearanceSettingsBottomBarItemTag(HotList.name))
+        val selectedHeight = boundsHeightForTag(appearanceSettingsBottomBarItemTag(Daily.name))
+        val unselectedHeight = boundsHeightForTag(appearanceSettingsBottomBarItemTag(HotList.name))
+        val lockedHeight = boundsHeightForTag(appearanceSettingsBottomBarItemTag(Account.name))
+
+        assertEquals(selectedHeight.toDouble(), unselectedHeight.toDouble(), 0.5)
+        assertEquals(selectedHeight.toDouble(), lockedHeight.toDouble(), 0.5)
+
+        composeRule.onNodeWithTag(appearanceSettingsBottomBarMoveDownTag(Daily.name)).performClick()
+        waitUntilStringPreference(
+            BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY,
+            expected = listOf(Home.name, Follow.name, OnlineHistory.name, Daily.name, Account.name).joinToString(","),
+        )
+    }
+
     private fun setUpScreen(setting: String = "", resetPreferences: Boolean = true) {
         if (resetPreferences) {
             composeRule.resetAppPreferences()
@@ -222,6 +245,12 @@ class AppearanceSettingsScreenInstrumentedTest {
                     .isNotEmpty()
         }
     }
+
+    private fun boundsHeightForTag(tag: String): Float = composeRule
+        .onNodeWithTag(tag)
+        .fetchSemanticsNode()
+        .boundsInRoot
+        .height
 
     private fun waitUntilNodeDoesNotExist(matcher: SemanticsMatcher, timeoutMillis: Long = 5_000) {
         composeRule.waitUntil(timeoutMillis) {
