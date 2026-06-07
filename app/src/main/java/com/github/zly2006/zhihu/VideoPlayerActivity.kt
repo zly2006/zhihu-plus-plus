@@ -19,12 +19,18 @@ package com.github.zly2006.zhihu
 
 import android.content.ContentValues
 import android.content.res.Configuration
+import android.graphics.SurfaceTexture
 import android.media.MediaMetadataRetriever
+import android.media.MediaPlayer
+import android.media.PlaybackParams
+import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
+import android.view.Surface
+import android.view.TextureView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -41,6 +47,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -48,7 +55,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -97,17 +103,13 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.media3.common.MediaItem
-import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.ui.PlayerView
 import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 
 class VideoPlayerActivity : ComponentActivity() {
-    private var player: ExoPlayer? = null
+    private var player: MediaPlayer? = null
     private var videoId: Long = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -127,7 +129,6 @@ class VideoPlayerActivity : ComponentActivity() {
 
         enableEdgeToEdgeCompat()
         setContent {
-            val context = LocalContext.current
             val toolbarColor = Color(0xFF1A1A2E).copy(alpha = 0.85f)
             val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
             val isFastForwardingState = remember { mutableStateOf(false) }
@@ -196,15 +197,18 @@ class VideoPlayerActivity : ComponentActivity() {
     private fun saveCurrentProgress() {
         val p = player ?: return
         if (videoId == 0L) return
-        val pos = p.currentPosition
-        val d = p.duration
-        if (pos > 1000 && d > 0 && p.playbackState == Player.STATE_READY) {
-            val store = androidSettingsStore(this)
-            if (d - pos > 3000) {
-                store.putLong("video_progress_$videoId", pos)
-            } else {
-                store.remove("video_progress_$videoId")
+        try {
+            val pos = p.currentPosition.toLong()
+            val d = p.duration.toLong()
+            if (pos > 1000 && d > 0) {
+                val store = androidSettingsStore(this)
+                if (d - pos > 3000) {
+                    store.putLong("video_progress_$videoId", pos)
+                } else {
+                    store.remove("video_progress_$videoId")
+                }
             }
+        } catch (_: IllegalStateException) {
         }
     }
 }
@@ -243,11 +247,11 @@ private fun VideoPlayerView(
     videoUrl: String,
     savedPosition: Long,
     isFastForwardingState: MutableState<Boolean>,
-    onPlayerReady: (ExoPlayer) -> Unit,
+    onPlayerReady: (MediaPlayer) -> Unit,
 ) {
     val isPlayingState = remember { mutableStateOf(true) }
     var videoEnded by remember { mutableStateOf(false) }
-    var exoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
+    var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
     var controlsVisible by remember { mutableStateOf(false) }
     var screenLocked by remember { mutableStateOf(false) }
     var lockHintVisible by remember { mutableStateOf(false) }
@@ -255,22 +259,53 @@ private fun VideoPlayerView(
     var duration by remember { mutableLongStateOf(0L) }
     var playbackSpeed by remember { mutableFloatStateOf(1f) }
     var dragSeekPreview by remember { mutableLongStateOf(0L) }
+    var videoAspectRatio by remember { mutableFloatStateOf(16f / 9f) }
     val ctx = LocalContext.current
 
     fun resumeOrRestart() {
-        val p = exoPlayer ?: return
+        val p = mediaPlayer ?: return
         if (videoEnded) {
             p.seekTo(0)
             videoEnded = false
         }
-        p.play()
+        p.start()
+        isPlayingState.value = true
+    }
+
+    fun safeSetSpeed(speed: Float) {
+        try {
+            mediaPlayer?.playbackParams = PlaybackParams().setSpeed(speed)
+        } catch (_: Exception) {
+        }
+    }
+
+    fun safeSeekTo(posMs: Long) {
+        try {
+            val dur = duration.coerceAtLeast(0)
+            if (dur > 0) {
+                val target = posMs.coerceIn(0, dur)
+                mediaPlayer?.seekTo(target, MediaPlayer.SEEK_CLOSEST)
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    fun safeGetPosition(): Long = try {
+        mediaPlayer?.currentPosition?.toLong()?.coerceAtLeast(0) ?: 0
+    } catch (_: Exception) {
+        currentPosition
+    }
+
+    fun safeGetDuration(): Long = try {
+        mediaPlayer?.duration?.toLong()?.coerceAtLeast(0) ?: 0
+    } catch (_: Exception) {
+        duration
     }
 
     LaunchedEffect(controlsVisible, isPlayingState.value) {
-        val p = exoPlayer ?: return@LaunchedEffect
         while (controlsVisible || isPlayingState.value) {
-            currentPosition = p.currentPosition.coerceAtLeast(0)
-            duration = p.duration.coerceAtLeast(0)
+            currentPosition = safeGetPosition()
+            duration = safeGetDuration()
             delay(200)
         }
     }
@@ -289,123 +324,152 @@ private fun VideoPlayerView(
     }
 
     Box(Modifier.fillMaxSize()) {
-        // 视频层
-        AndroidView(
-            factory = { _ctx ->
-                val player = ExoPlayer.Builder(_ctx).build().apply {
-                    setMediaItem(MediaItem.fromUri(videoUrl))
-                    prepare()
-                    if (savedPosition > 0) seekTo(savedPosition)
-                    playWhenReady = true
-                    addListener(object : Player.Listener {
-                        override fun onIsPlayingChanged(playing: Boolean) {
-                            isPlayingState.value = playing
-                        }
+        Box(Modifier.fillMaxSize().aspectRatio(videoAspectRatio)) {
+            AndroidView(
+                factory = { viewCtx ->
+                    TextureView(viewCtx).apply {
+                        surfaceTextureListener = object : TextureView.SurfaceTextureListener {
+                            override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
+                                val existing = mediaPlayer
+                                if (existing != null) {
+                                    existing.setSurface(Surface(surface))
+                                    return
+                                }
+                                val player = MediaPlayer().apply {
+                                    setDataSource(viewCtx, Uri.parse(videoUrl))
+                                    setSurface(Surface(surface))
+                                    setOnPreparedListener {
+                                        if (savedPosition > 0) seekTo(savedPosition.toInt())
+                                        start()
+                                        isPlayingState.value = true
+                                    }
+                                    setOnVideoSizeChangedListener { _, w, h ->
+                                        if (w > 0 && h > 0) videoAspectRatio = w.toFloat() / h.toFloat()
+                                    }
+                                    setOnCompletionListener {
+                                        videoEnded = true
+                                        isPlayingState.value = false
+                                    }
+                                    setOnErrorListener { _, _, _ -> true }
+                                    prepareAsync()
+                                }
+                                mediaPlayer = player
+                                onPlayerReady(player)
+                            }
 
-                        override fun onPlaybackStateChanged(state: Int) {
-                            if (state == Player.STATE_ENDED) videoEnded = true
+                            override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {}
+
+                            override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
+                                mediaPlayer?.setSurface(null)
+                                return true
+                            }
+
+                            override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {}
                         }
-                    })
-                    onPlayerReady(this)
+                    }
+                },
+                modifier = Modifier.fillMaxSize(),
+            )
+
+            val screenW = LocalContext.current.resources.displayMetrics.widthPixels
+                .toFloat()
+            val viewCfg = LocalViewConfiguration.current
+            var fingerDown by remember { mutableStateOf(false) }
+
+            LaunchedEffect(fingerDown) {
+                if (!fingerDown) return@LaunchedEffect
+                delay(viewCfg.longPressTimeoutMillis + 150L)
+                if (fingerDown && !screenLocked) {
+                    safeSetSpeed(2f)
+                    isFastForwardingState.value = true
                 }
-                exoPlayer = player
-                PlayerView(_ctx).apply {
-                    this.player = player
-                    useController = false
+            }
+            LaunchedEffect(fingerDown, isFastForwardingState.value) {
+                if (!fingerDown && isFastForwardingState.value) {
+                    safeSetSpeed(playbackSpeed)
+                    isFastForwardingState.value = false
                 }
-            },
-            modifier = Modifier.fillMaxSize(),
-        )
-
-        // 手势层
-        val screenW = LocalContext.current.resources.displayMetrics.widthPixels
-            .toFloat()
-        val viewCfg = LocalViewConfiguration.current
-        var fingerDown by remember { mutableStateOf(false) }
-
-        LaunchedEffect(fingerDown) {
-            if (!fingerDown) return@LaunchedEffect
-            delay(viewCfg.longPressTimeoutMillis + 150L)
-            if (fingerDown && !screenLocked) {
-                exoPlayer?.setPlaybackSpeed(2f)
-                isFastForwardingState.value = true
             }
-        }
-        LaunchedEffect(fingerDown, isFastForwardingState.value) {
-            if (!fingerDown && isFastForwardingState.value) {
-                exoPlayer?.setPlaybackSpeed(playbackSpeed)
-                isFastForwardingState.value = false
-            }
-        }
 
-        Box(
-            Modifier.fillMaxSize().pointerInput(screenLocked, duration) {
-                var lastTapTime = 0L
-                var tapCount = 0
-                awaitPointerEventScope {
-                    while (true) {
-                        var down: PointerInputChange? = null
-                        while (down == null) {
-                            val e = awaitPointerEvent(PointerEventPass.Main)
-                            down = e.changes.firstOrNull { it.pressed }
-                        }
-                        val downPos = down.position
-                        var totalDragX = 0f
-                        var isDragging = false
-                        if (!screenLocked) fingerDown = true
-                        var done = false
-                        while (!done) {
-                            val ev = awaitPointerEvent(PointerEventPass.Main)
-                            val ch = ev.changes.firstOrNull() ?: break
-                            if (ch.changedToUp()) {
-                                done = true
-                                fingerDown = false
-                                if (screenLocked) {
-                                    lockHintVisible = true
-                                } else if (isDragging) {
-                                    val ms = (totalDragX / screenW * 15 * 1000).toLong()
-                                    exoPlayer?.seekTo((currentPosition + ms).coerceIn(0, duration))
-                                    currentPosition = exoPlayer?.currentPosition ?: currentPosition
-                                    dragSeekPreview = 0
-                                    controlsVisible = true
-                                } else {
-                                    val now = System.currentTimeMillis()
-                                    if (now - lastTapTime < 300) tapCount++ else tapCount = 1
-                                    lastTapTime = now
-                                    if (tapCount >= 2) {
-                                        val pl = exoPlayer ?: return@awaitPointerEventScope
-                                        if (pl.isPlaying) pl.pause() else resumeOrRestart()
-                                        tapCount = 0
+            Box(
+                Modifier.fillMaxSize().pointerInput(screenLocked) {
+                    var lastTapTime = 0L
+                    var tapCount = 0
+                    awaitPointerEventScope {
+                        while (true) {
+                            var down: PointerInputChange? = null
+                            while (down == null) {
+                                val e = awaitPointerEvent(PointerEventPass.Main)
+                                down = e.changes.firstOrNull { it.pressed }
+                            }
+                            val downPos = down.position
+                            var totalDragX = 0f
+                            var isDragging = false
+                            if (!screenLocked) fingerDown = true
+                            var done = false
+                            while (!done) {
+                                val ev = awaitPointerEvent(PointerEventPass.Main)
+                                val ch = ev.changes.firstOrNull() ?: break
+                                if (ch.changedToUp()) {
+                                    done = true
+                                    fingerDown = false
+                                    if (screenLocked) {
+                                        lockHintVisible = true
+                                    } else if (isDragging) {
+                                        val ms = (totalDragX / screenW * 15 * 1000).toLong()
+                                        val mp = mediaPlayer
+                                        if (mp != null) {
+                                            try {
+                                                val dur = mp.duration.coerceAtLeast(0)
+                                                val pos = mp.currentPosition.coerceAtLeast(0)
+                                                if (dur > 0) {
+                                                    val target = (pos.toLong() + ms).coerceIn(0L, dur.toLong())
+                                                    mp.seekTo(target, MediaPlayer.SEEK_CLOSEST)
+                                                    currentPosition = mp.currentPosition.coerceAtLeast(0).toLong()
+                                                }
+                                            } catch (_: Exception) {
+                                            }
+                                        }
+                                        dragSeekPreview = 0
+                                        controlsVisible = true
                                     } else {
-                                        controlsVisible = !controlsVisible
+                                        val now = System.currentTimeMillis()
+                                        if (now - lastTapTime < 300) tapCount++ else tapCount = 1
+                                        lastTapTime = now
+                                        if (tapCount >= 2) {
+                                            val pl = mediaPlayer ?: return@awaitPointerEventScope
+                                            if (pl.isPlaying) pl.pause() else resumeOrRestart()
+                                            tapCount = 0
+                                        } else {
+                                            controlsVisible = !controlsVisible
+                                        }
                                     }
-                                }
-                            } else if (!ch.pressed) {
-                                done = true
-                                fingerDown = false
-                            } else {
-                                if (!isDragging && !isFastForwardingState.value && !screenLocked) {
-                                    val dx = ch.position.x - downPos.x
-                                    totalDragX = dx
-                                    if (abs(dx) > viewConfiguration.touchSlop) {
-                                        isDragging = true
-                                        fingerDown = false
+                                } else if (!ch.pressed) {
+                                    done = true
+                                    fingerDown = false
+                                } else {
+                                    if (!isDragging && !isFastForwardingState.value && !screenLocked) {
+                                        val dx = ch.position.x - downPos.x
+                                        totalDragX = dx
+                                        if (abs(dx) > viewConfiguration.touchSlop) {
+                                            isDragging = true
+                                            fingerDown = false
+                                            ch.consume()
+                                        }
+                                    }
+                                    if (isDragging) {
                                         ch.consume()
+                                        totalDragX = ch.position.x - downPos.x
+                                        dragSeekPreview = (totalDragX / screenW * 15 * 1000).toLong()
                                     }
-                                }
-                                if (isDragging) {
-                                    ch.consume()
-                                    totalDragX = ch.position.x - downPos.x
-                                    dragSeekPreview = (totalDragX / screenW * 15 * 1000).toLong()
                                 }
                             }
                         }
                     }
-                }
-            },
-        )
+                },
+            )
+        } // end aspect ratio Box
 
-        // 底部控制栏（最多 23%，自适应不挤压）
         AnimatedVisibility(visible = controlsVisible, enter = EnterTransition.None, exit = ExitTransition.None, modifier = Modifier.align(Alignment.BottomCenter).fillMaxHeight(0.23f)) {
             Surface(Modifier.fillMaxWidth().fillMaxHeight(), color = Color.Black.copy(alpha = 0.55f)) {
                 Column(Modifier.fillMaxHeight().padding(horizontal = 12.dp, vertical = 4.dp), verticalArrangement = Arrangement.Center) {
@@ -413,8 +477,8 @@ private fun VideoPlayerView(
                         value = if (duration > 0) currentPosition.toFloat() / duration else 0f,
                         onValueChange = {
                             val pos = (it * duration).toLong()
-                            exoPlayer?.seekTo(pos)
-                            currentPosition = pos
+                            safeSeekTo(pos)
+                            currentPosition = safeGetPosition()
                         },
                         modifier = Modifier.fillMaxWidth().height(20.dp),
                         track = {
@@ -429,16 +493,13 @@ private fun VideoPlayerView(
                         },
                     )
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        // 左侧：播放/暂停
                         IconButton(onClick = {
-                            val p = exoPlayer ?: return@IconButton
+                            val p = mediaPlayer ?: return@IconButton
                             if (p.isPlaying) p.pause() else resumeOrRestart()
                         }, modifier = Modifier.size(36.dp)) {
                             Icon(if (isPlayingState.value) Icons.Default.Pause else Icons.Default.PlayArrow, if (isPlayingState.value) "暂停" else "播放", tint = Color.White, modifier = Modifier.size(20.dp))
                         }
-                        // 中间：时间
                         Text("${formatTime(currentPosition)} / ${formatTime(duration)}", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
-                        // 截图
                         IconButton(onClick = {
                             val url = videoUrl
                             val pos = currentPosition
@@ -469,7 +530,6 @@ private fun VideoPlayerView(
                         }, modifier = Modifier.size(36.dp)) {
                             Icon(Icons.Default.CameraAlt, "截图", tint = Color.White, modifier = Modifier.size(20.dp))
                         }
-                        // 锁定（进度条区域，仅未锁定状态）
                         IconButton(onClick = {
                             screenLocked = true
                             controlsVisible = false
@@ -477,11 +537,10 @@ private fun VideoPlayerView(
                         }, modifier = Modifier.size(36.dp)) {
                             Icon(Icons.Default.LockOpen, "锁定", tint = Color.White, modifier = Modifier.size(20.dp))
                         }
-                        // 下载
                         IconButton(onClick = {
                             val dm = ctx.getSystemService(android.content.Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
                             dm.enqueue(
-                                android.app.DownloadManager.Request(android.net.Uri.parse(videoUrl)).apply {
+                                android.app.DownloadManager.Request(Uri.parse(videoUrl)).apply {
                                     setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "zhihu_video_${System.currentTimeMillis()}.mp4")
                                     setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
                                 },
@@ -490,7 +549,6 @@ private fun VideoPlayerView(
                         }, modifier = Modifier.size(36.dp)) {
                             Icon(Icons.Default.Download, "下载", tint = Color.White, modifier = Modifier.size(20.dp))
                         }
-                        // 右侧：倍速选择
                         var speedMenuExpanded by remember { mutableStateOf(false) }
                         Box {
                             Text(
@@ -507,7 +565,7 @@ private fun VideoPlayerView(
                                         text = { Text("${sp}x", color = if (sel) Color(0xFFA78BFA) else Color.White.copy(alpha = 0.75f), fontSize = 13.sp, fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal) },
                                         onClick = {
                                             playbackSpeed = sp
-                                            exoPlayer?.setPlaybackSpeed(sp)
+                                            safeSetSpeed(sp)
                                             speedMenuExpanded = false
                                         },
                                     )
@@ -519,7 +577,6 @@ private fun VideoPlayerView(
             }
         }
 
-        // 锁按钮（锁定后右侧居中悬浮，点击屏幕唤出）
         AnimatedVisibility(visible = screenLocked && lockHintVisible, enter = EnterTransition.None, exit = ExitTransition.None, modifier = Modifier.align(Alignment.CenterEnd).padding(end = 8.dp)) {
             Surface(onClick = {
                 screenLocked = false
@@ -530,7 +587,6 @@ private fun VideoPlayerView(
             }
         }
 
-        // 滑动快进预览
         if (dragSeekPreview != 0L && duration > 0) {
             Surface(Modifier.align(Alignment.Center).padding(bottom = 80.dp), shape = RoundedCornerShape(8.dp), color = Color.Black.copy(alpha = 0.6f)) {
                 Text("${if (dragSeekPreview > 0) "+" else ""}${dragSeekPreview / 1000}s  ${formatTime((currentPosition + dragSeekPreview).coerceIn(0, duration))}", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
