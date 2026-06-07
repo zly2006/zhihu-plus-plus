@@ -997,8 +997,7 @@ fun AppearanceSettingsScreen(
                                     8.dp +
                                         bottomBarSettingItemHeight * orderedSettingItems.size +
                                         bottomBarSettingItemSpacing * (orderedSettingItems.size - 1).coerceAtLeast(0),
-                                )
-                                .padding(top = 8.dp),
+                                ).padding(top = 8.dp),
                             userScrollEnabled = false,
                             verticalArrangement = Arrangement.spacedBy(bottomBarSettingItemSpacing),
                         ) {
