@@ -4,6 +4,14 @@
 
 ## 经验总结
 
+### CI 修复完成条件
+
+修复 CI 时不能在本地验证不完整或远程检查仍在运行时宣布完成。即使本地测试因为模拟器卡住无法给出结论，也必须继续跟踪 GitHub Actions 的最新 run，拿到明确通过或新的失败日志后再决定下一步。例子：一个分页测试的本地单用例进入 instrumentation 后长时间无输出，不能因此把“已推送、等待 CI”当作任务完成；应该持续查看对应 job 日志，确认失败断言是否消失或定位新的失败点。
+
+### Instrument test 验证边界
+
+除非用户明确要求，本地不要跑完整的 instrument test；全量 Android instrument test 应交给 GitHub CI 验证。本地只做必要的构建、格式化，以及针对当前失败点的定向用例或诊断。例子：修复某个页面的单个失败用例时，可以本地跑该 class 或 method 辅助定位，但不能默认执行完整 `connectedLiteDebugAndroidTest` 来占用模拟器和拖慢反馈。
+
 ### Desktop release jar 运行验证
 
 打包桌面单体 jar 时，不能只验证任务成功、文件大小和 manifest。ProGuard 会改变运行时可达性，尤其会删除 `ServiceLoader` 发现的 provider 类、Room/KSP 生成实现，或改名 JNI 需要按原签名查找的 native 方法，导致启动后才报错。例子：桌面 release jar 必须实际执行 `java -jar` 到数据库和网络初始化路径，并为服务 provider、反射生成类、native 方法添加 keep 规则；否则一个看起来更小的 jar 可能只是被错误裁剪了。
@@ -101,9 +109,11 @@ adb shell monkey -p com.github.zly2006.zhplus.lite -c android.intent.category.LA
 
 ### UI 双代理复检
 
-只要修改内容涉及 Compose、布局、样式、导航、交互、可见文案或任何用户可见 UI，主 agent 在完成上面的基础验证后，**必须**再执行以下流程：
+`$ui-voyager` 和 `$picky-user` 运行成本较高，非必要不要调用。只有在改动范围较大、交互路径复杂、主 agent 已经完成基础截图/设备验证但仍需要额外视角，或我明确要求复检时，才启动它们。调用时必须使用 5.4 mini 级别模型，避免使用过慢模型。
 
-1. 必须启动两个 subagent skill，不能由主 agent 自己扮演：
+需要调用时，主 agent 在完成上面的基础验证后，再执行以下流程：
+
+1. 启动两个 subagent skill，不能由主 agent 自己扮演：
    - `$ui-voyager`（UI漫游者）：系统性探索目标页面，把能点的尽量都点一遍，把上下左右的滑动都试一遍，重点找空白页、越界、裁切、重叠、错位、状态切换异常。
    - `$picky-user`（挑剔的用户）：分别扮演新用户和老用户，对 self explain、明确性、直觉性、效率、布局和操作习惯提出高标准意见。
 2. 两个 skill 都必须先读取自己的持久化记忆：
@@ -152,3 +162,4 @@ python3 .agents/skills/ui-review-memory/memory_store.py update-status \
 当我要求你发 PR 的时候，PR 的title必须以feat: /fix: /refactor: 开头，标题和内容必须用中文写。
 提交PR前，先更新master与远程同步或领先，并确保当前分支基于master，而不包括其他feature branch的内容。
 如果一开始给你的提示词包括了issue链接，并且此PR解决了这个issue，应该写上Resolves #issue_number在PR描述里，这样GitHub会自动关联并在PR合并时关闭这个issue。
+涉及 UI、布局、样式、可见交互或截图可判断效果的 PR，PR 描述里必须放最终效果截图。截图必须来自实际运行的应用、AVD、或可复现的 UI 测试渲染结果，不能用设计参考图、想象图或旧截图代替；如果真实业务链路被登录态/安全验证挡住，要说明截图来源。

@@ -159,7 +159,12 @@ data object SentenceSimilarityTest : NavDestination
 @Serializable
 data class Search(
     val query: String = "",
-) : NavDestination
+    val restrictedMemberHashId: String = "",
+    val restrictedMemberName: String = "",
+) : NavDestination {
+    val isRestrictedToMember: Boolean
+        get() = restrictedMemberHashId.isNotBlank()
+}
 
 @Serializable
 data class Collections(

@@ -21,15 +21,36 @@ import com.github.zly2006.zhihu.shared.data.SearchResult
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.ZhihuPaging
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import io.ktor.http.encodeURLParameter
 import kotlinx.serialization.json.jsonArray
 
 const val ZHIHU_HOT_SEARCH_URL = "https://www.zhihu.com/api/v4/search/hot_search"
 
 class SearchViewModel(
     val searchQuery: String,
+    val restrictedMemberHashId: String = "",
 ) : BaseFeedViewModel() {
+    val initialRequestUrl: String
+        get() = initialUrl
+
     override val initialUrl: String
-        get() = "https://www.zhihu.com/api/v4/search_v3?t=general&q=$searchQuery&correction=1&offset=0&limit=20"
+        get() = buildString {
+            append("https://www.zhihu.com/api/v4/search_v3")
+            append("?t=general")
+            append("&q=${searchQuery.encodeURLParameter()}")
+            append("&correction=1")
+            append("&offset=0")
+            append("&limit=20")
+            if (restrictedMemberHashId.isNotBlank()) {
+                append("&filter_fields=")
+                append("&lc_idx=0")
+                append("&show_all_topics=0")
+                append("&search_source=Normal")
+                append("&restricted_scene=member")
+                append("&restricted_field=member_hash_id")
+                append("&restricted_value=${restrictedMemberHashId.encodeURLParameter()}")
+            }
+        }
 
     // Override include to request necessary fields for search results
     override val include = "data[*].highlight,object,type"
