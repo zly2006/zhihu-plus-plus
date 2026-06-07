@@ -18,6 +18,8 @@
 package com.github.zly2006.zhihu.ui.subscreens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -27,9 +29,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -130,6 +135,8 @@ const val START_DESTINATION_PREFERENCE_KEY = "startDestination"
 const val BOTTOM_BAR_ITEMS_PREFERENCE_KEY = "bottom_bar_items"
 const val BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY = "bottom_bar_item_order"
 private const val BOTTOM_BAR_ITEM_ORDER_SEPARATOR = ","
+private val bottomBarSettingItemHeight = 64.dp
+private val bottomBarSettingItemSpacing = 4.dp
 
 private val topLevelDestinationsInOrder: List<Pair<String, TopLevelDestination>> = listOf(
     Home.name to Home,
@@ -983,11 +990,22 @@ fun AppearanceSettingsScreen(
                         Text("建议选择 3-5 项，可用箭头调整显示和滑动顺序。")
                     },
                     bottomAction = {
-                        Column(
-                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(
+                                    8.dp +
+                                        bottomBarSettingItemHeight * orderedSettingItems.size +
+                                        bottomBarSettingItemSpacing * (orderedSettingItems.size - 1).coerceAtLeast(0),
+                                )
+                                .padding(top = 8.dp),
+                            userScrollEnabled = false,
+                            verticalArrangement = Arrangement.spacedBy(bottomBarSettingItemSpacing),
                         ) {
-                            orderedSettingItems.forEach { (key, label) ->
+                            items(
+                                items = orderedSettingItems,
+                                key = { it.first },
+                            ) { (key, label) ->
                                 val isChecked = selectedBottomBarItemKeys.value.contains(key)
                                 val selectedIndex = selectedBottomBarItemKeys.value.indexOf(key)
                                 val candidateOrderKeys = if (isChecked) {
@@ -999,8 +1017,13 @@ fun AppearanceSettingsScreen(
 
                                 Row(
                                     modifier = Modifier
-                                        .testTag(appearanceSettingsBottomBarItemTag(key))
+                                        .animateItem(
+                                            fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                                            fadeOutSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                                            placementSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                                        ).testTag(appearanceSettingsBottomBarItemTag(key))
                                         .fillMaxWidth()
+                                        .height(bottomBarSettingItemHeight)
                                         .clickable(enabled = isEnabled) {
                                             when {
                                                 isChecked && selectedBottomBarItemKeys.value.size <= 3 -> {
@@ -1013,7 +1036,7 @@ fun AppearanceSettingsScreen(
 
                                                 else -> persistBottomBarSelection(candidateOrderKeys)
                                             }
-                                        }.padding(vertical = 8.dp),
+                                        },
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                 ) {
@@ -1036,20 +1059,26 @@ fun AppearanceSettingsScreen(
                                             },
                                         )
                                     }
-                                    if (isChecked) {
-                                        IconButton(
-                                            onClick = { moveBottomBarItem(key, -1) },
-                                            enabled = selectedIndex > 0,
-                                            modifier = Modifier.testTag(appearanceSettingsBottomBarMoveUpTag(key)),
-                                        ) {
-                                            Icon(Icons.Filled.KeyboardArrowUp, contentDescription = "上移$label")
-                                        }
-                                        IconButton(
-                                            onClick = { moveBottomBarItem(key, 1) },
-                                            enabled = selectedIndex in 0 until selectedBottomBarItemKeys.value.lastIndex,
-                                            modifier = Modifier.testTag(appearanceSettingsBottomBarMoveDownTag(key)),
-                                        ) {
-                                            Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "下移$label")
+                                    Row(
+                                        modifier = Modifier.width(96.dp),
+                                        horizontalArrangement = Arrangement.End,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        if (isChecked) {
+                                            IconButton(
+                                                onClick = { moveBottomBarItem(key, -1) },
+                                                enabled = selectedIndex > 0,
+                                                modifier = Modifier.testTag(appearanceSettingsBottomBarMoveUpTag(key)),
+                                            ) {
+                                                Icon(Icons.Filled.KeyboardArrowUp, contentDescription = "上移$label")
+                                            }
+                                            IconButton(
+                                                onClick = { moveBottomBarItem(key, 1) },
+                                                enabled = selectedIndex in 0 until selectedBottomBarItemKeys.value.lastIndex,
+                                                modifier = Modifier.testTag(appearanceSettingsBottomBarMoveDownTag(key)),
+                                            ) {
+                                                Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "下移$label")
+                                            }
                                         }
                                     }
                                 }
