@@ -355,6 +355,30 @@ class PeopleScreenInstrumentedTest {
             ),
         )
 
+        val headerBounds = composeRule
+            .onAllNodesWithTag(PEOPLE_SCREEN_HEADER_TAG)
+            .fetchSemanticsNodes()
+            .single()
+            .boundsInRoot
+        val avatarBounds = composeRule
+            .onAllNodesWithTag(PEOPLE_SCREEN_AVATAR_TAG)
+            .fetchSemanticsNodes()
+            .single()
+            .boundsInRoot
+        val searchBounds = composeRule
+            .onAllNodesWithTag(PEOPLE_SCREEN_SEARCH_BUTTON_TAG)
+            .fetchSemanticsNodes()
+            .single()
+            .boundsInRoot
+        assertTrue(
+            "搜索按钮不应占用 TopAppBar actions 槽位并挤压 header，headerBounds=$headerBounds searchBounds=$searchBounds",
+            searchBounds.left < headerBounds.right,
+        )
+        assertTrue(
+            "搜索按钮应位于用户信息首屏右上区域，不能落到数据/操作区附近，avatarBounds=$avatarBounds searchBounds=$searchBounds",
+            searchBounds.center.y < avatarBounds.bottom,
+        )
+
         composeRule.onNodeWithTag(PEOPLE_SCREEN_SEARCH_BUTTON_TAG).assertIsDisplayed().performClick()
         composeRule.waitForIdle()
 
