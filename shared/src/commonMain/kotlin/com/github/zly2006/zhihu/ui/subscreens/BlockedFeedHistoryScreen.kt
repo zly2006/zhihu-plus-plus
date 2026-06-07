@@ -62,6 +62,12 @@ import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.json.Json
 import kotlin.time.Instant
 
+/**
+ * 屏蔽记录页面。
+ *
+ * 页面直接观察本地屏蔽记录 DAO，展示被过滤内容、屏蔽原因和重新打开内容的入口，并提供清空记录操作。它用于解释“为什么内容消失”，
+ * 所以新增过滤规则时应确保记录里能留下用户可理解的原因。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BlockedFeedHistoryScreen() {

@@ -37,6 +37,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
@@ -44,9 +45,11 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -79,6 +82,10 @@ import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
+import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.feed.SearchContentType
+import com.github.zly2006.zhihu.viewmodel.feed.SearchSortOption
+import com.github.zly2006.zhihu.viewmodel.feed.SearchTimeRange
 import com.github.zly2006.zhihu.viewmodel.feed.SearchViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.ZHIHU_HOT_SEARCH_URL
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
@@ -111,6 +118,12 @@ private fun saveSearchHistory(
     settings.putString(SEARCH_HISTORY_KEY, ZhihuJson.json.encodeToString(history))
 }
 
+/**
+ * 搜索页。
+ *
+ * 页面由搜索输入框、热搜/历史建议和结果列表组成。空查询时是否显示热搜、是否记录并展示搜索历史分别由
+ * `showSearchHotSearch` 和 `showSearchHistory` 控制；执行搜索后会进入分页结果模式，并通过 [LocalNavigator] 打开条目详情。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
@@ -121,13 +134,16 @@ fun SearchScreen(
     val navigator = LocalNavigator.current
     val userMessages = rememberUserMessageSink()
     val settings = rememberSettingsStore()
-    val viewModel = viewModel { SearchViewModel(search.query) }
+    val viewModel = viewModel { SearchViewModel(search.query, search.restrictedMemberHashId) }
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val keyboardController = LocalSoftwareKeyboardController.current
     var searchText by remember { mutableStateOf(search.query) }
     val coroutineScope = rememberCoroutineScope()
+    val isMemberSearch = search.isRestrictedToMember
+    val memberSearchName = search.restrictedMemberName.ifBlank { "TA" }
+    val searchPlaceholder = if (isMemberSearch) "搜索 $memberSearchName 的创作" else "搜索内容"
 
-    val showHotSearch = remember { mutableStateOf(settings.getBoolean("showSearchHotSearch", true)) }
+    val showHotSearch = remember { mutableStateOf(!isMemberSearch && settings.getBoolean("showSearchHotSearch", true)) }
     val hotSearchItems = remember(testHotSearchQueries) {
         mutableStateListOf<HotSearchItem>().apply {
             addAll(testHotSearchQueries.orEmpty().map { query -> HotSearchItem(query = query) })
@@ -135,11 +151,14 @@ fun SearchScreen(
     }
     var hotSearchMoreMenuExpanded by remember { mutableStateOf(false) }
     var historyMoreMenuExpanded by remember { mutableStateOf(false) }
+    var filterMenuExpanded by remember { mutableStateOf(false) }
     val useTestHotSearchQueries = testHotSearchQueries != null
-    val showSearchHistory = remember { mutableStateOf(settings.getBoolean("showSearchHistory", true)) }
+    val showSearchHistory = remember { mutableStateOf(!isMemberSearch && settings.getBoolean("showSearchHistory", true)) }
     val searchHistoryItems = remember {
         mutableStateListOf<String>().apply {
-            addAll(loadSearchHistory(settings))
+            if (!isMemberSearch) {
+                addAll(loadSearchHistory(settings))
+            }
         }
     }
 
@@ -154,7 +173,7 @@ fun SearchScreen(
             }
             saveSearchHistory(settings, searchHistoryItems)
         }
-        navigator.onNavigate(Search(query = trimmedQuery))
+        navigator.onNavigate(search.copy(query = trimmedQuery))
     }
 
     suspend fun fetchHotSearch() {
@@ -211,13 +230,13 @@ fun SearchScreen(
         }
     }
 
-    LaunchedEffect(showHotSearch.value, useTestHotSearchQueries) {
-        if (showHotSearch.value && !useTestHotSearchQueries) {
+    LaunchedEffect(showHotSearch.value, useTestHotSearchQueries, isMemberSearch) {
+        if (!isMemberSearch && showHotSearch.value && !useTestHotSearchQueries) {
             runCatching { fetchHotSearch() }
         }
     }
 
-    // Load search results when query is not empty
+    // 查询非空时加载搜索结果。
     LaunchedEffect(search.query) {
         if (search.query.isNotEmpty() && viewModel.displayItems.isEmpty()) {
             viewModel.refresh(paginationEnvironment)
@@ -279,7 +298,7 @@ fun SearchScreen(
                                     decorationBox = { innerTextField ->
                                         if (searchText.isEmpty()) {
                                             Text(
-                                                text = "搜索内容",
+                                                text = searchPlaceholder,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 style = MaterialTheme.typography.bodyLarge,
                                             )
@@ -314,6 +333,21 @@ fun SearchScreen(
                     ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
+                },
+                actions = {
+                    IconButton(
+                        onClick = { filterMenuExpanded = true },
+                        enabled = search.query.isNotEmpty(),
+                        modifier = Modifier.testTag("search_filter_button"),
+                    ) {
+                        Icon(Icons.Default.FilterList, contentDescription = "筛选搜索结果")
+                    }
+                    SearchFilterMenu(
+                        expanded = filterMenuExpanded,
+                        onDismissRequest = { filterMenuExpanded = false },
+                        viewModel = viewModel,
+                        paginationEnvironment = paginationEnvironment,
+                    )
                 },
             )
         },
@@ -456,16 +490,22 @@ fun SearchScreen(
                         }
                     }
                 } else {
-                    if (showSearchHistory.value) {
+                    if (showSearchHistory.value || isMemberSearch) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(16.dp),
                         ) {
-                            SearchHistoryHeader(showClearAction = false)
-                            Spacer(modifier = Modifier.height(12.dp))
+                            if (showSearchHistory.value) {
+                                SearchHistoryHeader(showClearAction = false)
+                                Spacer(modifier = Modifier.height(12.dp))
+                            }
                             Text(
-                                text = "暂无搜索历史，输入关键词搜索后会保存在这里",
+                                text = if (isMemberSearch) {
+                                    "输入关键词搜索 $memberSearchName 的创作"
+                                } else {
+                                    "暂无搜索历史，输入关键词搜索后会保存在这里"
+                                },
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodyMedium,
                             )
@@ -486,6 +526,16 @@ fun SearchScreen(
                         onLoadMore = { viewModel.loadMore(paginationEnvironment) },
                         topContent = {
                             item {
+                                if (isMemberSearch) {
+                                    Text(
+                                        text = "以下结果来自 $memberSearchName 的创作",
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                                    )
+                                }
                                 Spacer(modifier = Modifier.height(8.dp))
                             }
                         },
@@ -512,4 +562,86 @@ fun SearchScreen(
             }
         }
     }
+}
+
+@Composable
+private fun SearchFilterMenu(
+    expanded: Boolean,
+    onDismissRequest: () -> Unit,
+    viewModel: SearchViewModel,
+    paginationEnvironment: PaginationEnvironment,
+) {
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismissRequest,
+    ) {
+        SearchFilterHeader("排序")
+        SearchSortOption.entries.forEach { option ->
+            SearchFilterMenuItem(
+                text = option.label,
+                selected = viewModel.sortOption == option,
+                testTag = "search_filter_sort_${option.name}",
+                onClick = {
+                    onDismissRequest()
+                    viewModel.updateSortOption(paginationEnvironment, option)
+                },
+            )
+        }
+        HorizontalDivider()
+        SearchFilterHeader("内容类型")
+        SearchContentType.entries.forEach { type ->
+            SearchFilterMenuItem(
+                text = type.label,
+                selected = viewModel.contentType == type,
+                testTag = "search_filter_type_${type.name}",
+                onClick = {
+                    onDismissRequest()
+                    viewModel.updateContentType(paginationEnvironment, type)
+                },
+            )
+        }
+        HorizontalDivider()
+        SearchFilterHeader("时间范围")
+        SearchTimeRange.entries.forEach { range ->
+            SearchFilterMenuItem(
+                text = range.label,
+                selected = viewModel.timeRange == range,
+                testTag = "search_filter_time_${range.name}",
+                onClick = {
+                    onDismissRequest()
+                    viewModel.updateTimeRange(paginationEnvironment, range)
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun SearchFilterHeader(text: String) {
+    Text(
+        text = text,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+@Composable
+private fun SearchFilterMenuItem(
+    text: String,
+    selected: Boolean,
+    testTag: String,
+    onClick: () -> Unit,
+) {
+    DropdownMenuItem(
+        text = { Text(text) },
+        leadingIcon = {
+            RadioButton(
+                selected = selected,
+                onClick = onClick,
+            )
+        },
+        onClick = onClick,
+        modifier = Modifier.testTag(testTag),
+    )
 }

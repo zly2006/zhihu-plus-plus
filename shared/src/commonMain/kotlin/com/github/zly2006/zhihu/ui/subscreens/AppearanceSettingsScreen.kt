@@ -18,6 +18,8 @@
 package com.github.zly2006.zhihu.ui.subscreens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -27,15 +29,20 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
@@ -83,6 +90,7 @@ import com.github.zly2006.zhihu.navigation.Follow
 import com.github.zly2006.zhihu.navigation.Home
 import com.github.zly2006.zhihu.navigation.HotList
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.navigation.MyCollections
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
@@ -117,8 +125,18 @@ fun appearanceSettingsStartDestinationOptionTag(key: String): String =
 fun appearanceSettingsBottomBarItemTag(key: String): String =
     "appearanceSettings.bottomBarItem.$key"
 
+fun appearanceSettingsBottomBarMoveUpTag(key: String): String =
+    "appearanceSettings.bottomBarItem.$key.moveUp"
+
+fun appearanceSettingsBottomBarMoveDownTag(key: String): String =
+    "appearanceSettings.bottomBarItem.$key.moveDown"
+
 const val START_DESTINATION_PREFERENCE_KEY = "startDestination"
 const val BOTTOM_BAR_ITEMS_PREFERENCE_KEY = "bottom_bar_items"
+const val BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY = "bottom_bar_item_order"
+private const val BOTTOM_BAR_ITEM_ORDER_SEPARATOR = ","
+private val bottomBarSettingItemHeight = 64.dp
+private val bottomBarSettingItemSpacing = 4.dp
 
 private val topLevelDestinationsInOrder: List<Pair<String, TopLevelDestination>> = listOf(
     Home.name to Home,
@@ -126,6 +144,7 @@ private val topLevelDestinationsInOrder: List<Pair<String, TopLevelDestination>>
     HotList.name to HotList,
     Daily.name to Daily,
     OnlineHistory.name to OnlineHistory,
+    MyCollections.name to MyCollections,
     Account.name to Account,
 )
 
@@ -150,7 +169,7 @@ internal fun defaultBottomBarSelectionKeys(duo3HomeAccount: Boolean): Set<String
 }
 
 internal fun normalizeBottomBarSelection(
-    selectedKeys: Set<String>,
+    selectedKeys: Collection<String>,
     duo3HomeAccount: Boolean,
     enforceMinimumSelection: Boolean = false,
 ): Set<String> {
@@ -170,6 +189,7 @@ internal fun normalizeBottomBarSelection(
         while (normalized.size > 5) {
             val removableKey = listOf(
                 HotList.name,
+                MyCollections.name,
                 OnlineHistory.name,
                 Daily.name,
                 Follow.name,
@@ -187,7 +207,7 @@ internal fun normalizeBottomBarSelection(
                 listOf(Follow.name, Daily.name, HotList.name, OnlineHistory.name, Home.name)
             }
         } else {
-            listOf(Home.name, Follow.name, Daily.name, HotList.name, OnlineHistory.name, Account.name)
+            listOf(Home.name, Follow.name, Daily.name, HotList.name, OnlineHistory.name, MyCollections.name, Account.name)
         }
         fillOrder.forEach { key ->
             if (normalized.size < 3) {
@@ -199,11 +219,54 @@ internal fun normalizeBottomBarSelection(
     return normalized
 }
 
+internal fun normalizeBottomBarItemOrder(
+    preferredOrderKeys: List<String>,
+    selectedKeys: Set<String>,
+): List<String> {
+    val allowedKeys = topLevelDestinationsInOrder.map { it.first }.toSet()
+    val orderedKeys = mutableListOf<String>()
+    preferredOrderKeys.forEach { key ->
+        if (key in allowedKeys && key in selectedKeys && key !in orderedKeys) {
+            orderedKeys.add(key)
+        }
+    }
+    topLevelDestinationsInOrder.forEach { (key, _) ->
+        if (key in selectedKeys && key !in orderedKeys) {
+            orderedKeys.add(key)
+        }
+    }
+    return orderedKeys
+}
+
+internal fun bottomBarItemOrderPreferenceValue(keys: List<String>): String =
+    keys.joinToString(BOTTOM_BAR_ITEM_ORDER_SEPARATOR)
+
+internal fun bottomBarItemOrderFromPreference(
+    preferenceValue: String?,
+    selectedKeys: Set<String>,
+): List<String> = normalizeBottomBarItemOrder(
+    preferenceValue
+        .orEmpty()
+        .split(BOTTOM_BAR_ITEM_ORDER_SEPARATOR)
+        .map { it.trim() }
+        .filter { it.isNotEmpty() },
+    selectedKeys,
+)
+
 internal fun shouldShowAccountHistoryShortcut(
     duo3HomeAccount: Boolean,
     selectedKeys: Set<String>,
 ): Boolean = duo3HomeAccount && OnlineHistory.name !in selectedKeys
 
+/**
+ * 外观与阅读体验设置页。
+ *
+ * 这里集中管理主题、字号/行高、信息流样式、文章页行为、底部导航栏、分享、搜索和技术性导航开关。页面支持通过 [setting]
+ * 跳入指定设置项并高亮滚动到位，因此新增设置时应提供稳定的 `settingKey`，必要时也补充 test tag。
+ *
+ * 底部导航栏相关设置会影响 [com.github.zly2006.zhihu.ui.ZhihuMain] 的主壳状态；页面退出时必须通过 [onExit]
+ * 触发上层重新读取设置，而不是直接重建 NavHost。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppearanceSettingsScreen(
@@ -227,14 +290,18 @@ fun AppearanceSettingsScreen(
         bringIntoViewRequesters.getOrPut(settingKey) { BringIntoViewRequester() }
     val duo3HomeAccount = remember { mutableStateOf(settings.getBoolean("duo3_home_account", false)) }
     val selectedBottomBarItemKeys = remember {
+        val normalizedSelection = normalizeBottomBarSelection(
+            settings.getStringSet(
+                BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
+                defaultBottomBarSelectionKeys(duo3HomeAccount.value),
+            ),
+            duo3HomeAccount.value,
+            enforceMinimumSelection = true,
+        )
         mutableStateOf(
-            normalizeBottomBarSelection(
-                settings.getStringSet(
-                    BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
-                    defaultBottomBarSelectionKeys(duo3HomeAccount.value),
-                ),
-                duo3HomeAccount.value,
-                enforceMinimumSelection = true,
+            bottomBarItemOrderFromPreference(
+                settings.getStringOrNull(BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY),
+                normalizedSelection,
             ),
         )
     }
@@ -818,8 +885,10 @@ fun AppearanceSettingsScreen(
                 HotList.name to "热榜",
                 Daily.name to "日报",
                 OnlineHistory.name to "历史",
+                MyCollections.name to "收藏夹",
                 Account.name to "账号设置",
             )
+            val bottomBarItemLabels = allBottomBarItems.toMap()
             var startDestinationExpanded by remember { mutableStateOf(false) }
             var startDestinationKey by remember {
                 mutableStateOf(
@@ -831,20 +900,38 @@ fun AppearanceSettingsScreen(
             }
 
             fun persistBottomBarSelection(
-                currentSet: Set<String>,
+                currentOrderKeys: List<String>,
                 duo3HomeAccountEnabled: Boolean = duo3HomeAccount.value,
             ) {
                 val normalizedSet = normalizeBottomBarSelection(
-                    currentSet,
+                    currentOrderKeys,
                     duo3HomeAccountEnabled,
                     enforceMinimumSelection = true,
                 )
-                val availableKeys = allBottomBarItems.map { it.first }.filter { it in normalizedSet }
+                val normalizedOrderKeys = normalizeBottomBarItemOrder(currentOrderKeys, normalizedSet)
+                val availableKeys = normalizedOrderKeys
                 val resolvedStartDestination = resolveValidStartDestinationKey(startDestinationKey, availableKeys)
-                selectedBottomBarItemKeys.value = normalizedSet
+                selectedBottomBarItemKeys.value = normalizedOrderKeys
                 startDestinationKey = resolvedStartDestination
                 settings.putStringSet(BOTTOM_BAR_ITEMS_PREFERENCE_KEY, normalizedSet)
+                settings.putString(
+                    BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY,
+                    bottomBarItemOrderPreferenceValue(normalizedOrderKeys),
+                )
                 settings.putString(START_DESTINATION_PREFERENCE_KEY, resolvedStartDestination)
+            }
+
+            fun moveBottomBarItem(key: String, offset: Int) {
+                val currentOrderKeys = selectedBottomBarItemKeys.value
+                val fromIndex = currentOrderKeys.indexOf(key)
+                val toIndex = fromIndex + offset
+                if (fromIndex < 0 || toIndex !in currentOrderKeys.indices) {
+                    return
+                }
+                val reorderedKeys = currentOrderKeys.toMutableList()
+                reorderedKeys.removeAt(fromIndex)
+                reorderedKeys.add(toIndex, key)
+                persistBottomBarSelection(reorderedKeys)
             }
 
             SettingItemGroup(
@@ -853,7 +940,13 @@ fun AppearanceSettingsScreen(
                 highlightedKey = settingKey,
                 bringIntoViewRequester = requesterFor(APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY),
             ) {
-                val startDestinationItems = allBottomBarItems.filter { it.first in selectedBottomBarItemKeys.value }
+                val selectedBottomBarItemKeySet = selectedBottomBarItemKeys.value.toSet()
+                val startDestinationItems = selectedBottomBarItemKeys.value.mapNotNull { key ->
+                    bottomBarItemLabels[key]?.let { label -> key to label }
+                }
+                val orderedSettingItems = selectedBottomBarItemKeys.value.mapNotNull { key ->
+                    bottomBarItemLabels[key]?.let { label -> key to label }
+                } + allBottomBarItems.filter { it.first !in selectedBottomBarItemKeySet }
 
                 SettingItem(
                     title = { Text("应用启动默认页面") },
@@ -903,53 +996,99 @@ fun AppearanceSettingsScreen(
                 SettingItem(
                     title = { Text("选择要在底部栏显示的页面") },
                     description = {
-                        Text("建议选择 3-5 项。")
+                        Text("建议选择 3-5 项，可用箭头调整显示和滑动顺序。")
                     },
                     bottomAction = {
-                        Column(
-                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(
+                                    8.dp +
+                                        bottomBarSettingItemHeight * orderedSettingItems.size +
+                                        bottomBarSettingItemSpacing * (orderedSettingItems.size - 1).coerceAtLeast(0),
+                                ).padding(top = 8.dp),
+                            userScrollEnabled = false,
+                            verticalArrangement = Arrangement.spacedBy(bottomBarSettingItemSpacing),
                         ) {
-                            allBottomBarItems.forEach { (key, label) ->
+                            items(
+                                items = orderedSettingItems,
+                                key = { it.first },
+                            ) { (key, label) ->
                                 val isChecked = selectedBottomBarItemKeys.value.contains(key)
-                                val candidateSet = normalizeBottomBarSelection(
-                                    selectedBottomBarItemKeys.value.toMutableSet().apply {
-                                        if (isChecked) remove(key) else add(key)
-                                    },
-                                    duo3HomeAccount.value,
-                                )
+                                val selectedIndex = selectedBottomBarItemKeys.value.indexOf(key)
+                                val candidateOrderKeys = if (isChecked) {
+                                    selectedBottomBarItemKeys.value.filter { it != key }
+                                } else {
+                                    selectedBottomBarItemKeys.value + key
+                                }
                                 val isEnabled = key != Account.name
 
                                 Row(
                                     modifier = Modifier
-                                        .testTag(appearanceSettingsBottomBarItemTag(key))
+                                        .animateItem(
+                                            fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                                            fadeOutSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                                            placementSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                                        ).testTag(appearanceSettingsBottomBarItemTag(key))
                                         .fillMaxWidth()
+                                        .height(bottomBarSettingItemHeight)
                                         .clickable(enabled = isEnabled) {
                                             when {
-                                                candidateSet.size < 3 -> {
+                                                isChecked && selectedBottomBarItemKeys.value.size <= 3 -> {
                                                     userMessages.showShortMessage("至少保留3项")
                                                 }
 
-                                                candidateSet.size > 5 -> {
+                                                !isChecked && selectedBottomBarItemKeys.value.size >= 5 -> {
                                                     userMessages.showShortMessage("最多选择5项")
                                                 }
 
-                                                else -> persistBottomBarSelection(candidateSet)
+                                                else -> persistBottomBarSelection(candidateOrderKeys)
                                             }
-                                        }.padding(vertical = 8.dp),
+                                        },
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                 ) {
-                                    Text(
-                                        text = label,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = if (isEnabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                                    )
-                                    Checkbox(
-                                        checked = isChecked,
-                                        onCheckedChange = null,
-                                        enabled = isEnabled,
-                                    )
+                                    Row(
+                                        modifier = Modifier.weight(1f),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Checkbox(
+                                            checked = isChecked,
+                                            onCheckedChange = null,
+                                            enabled = isEnabled,
+                                        )
+                                        Text(
+                                            text = label,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = if (isEnabled) {
+                                                MaterialTheme.colorScheme.onSurface
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                            },
+                                        )
+                                    }
+                                    Row(
+                                        modifier = Modifier.width(96.dp),
+                                        horizontalArrangement = Arrangement.End,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        if (isChecked) {
+                                            IconButton(
+                                                onClick = { moveBottomBarItem(key, -1) },
+                                                enabled = selectedIndex > 0,
+                                                modifier = Modifier.testTag(appearanceSettingsBottomBarMoveUpTag(key)),
+                                            ) {
+                                                Icon(Icons.Filled.KeyboardArrowUp, contentDescription = "上移$label")
+                                            }
+                                            IconButton(
+                                                onClick = { moveBottomBarItem(key, 1) },
+                                                enabled = selectedIndex in 0 until selectedBottomBarItemKeys.value.lastIndex,
+                                                modifier = Modifier.testTag(appearanceSettingsBottomBarMoveDownTag(key)),
+                                            ) {
+                                                Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "下移$label")
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1121,7 +1260,7 @@ fun AppearanceSettingsScreen(
                 duo3CardLayout.value = true
                 duo3ArticleBar.value = true
                 duo3ArticleActions.value = true
-                // in 123duo3 changes, FABs are removed.
+                // 123duo3 改动中会移除 FAB。
                 showRefreshFab.value = false
                 buttonSkipAnswer.value = false
                 val updatedSelection = if (Home.name !in selectedBottomBarItemKeys.value) {

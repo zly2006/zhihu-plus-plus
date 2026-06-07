@@ -4,9 +4,33 @@
 
 ## 经验总结
 
+### CI 修复完成条件
+
+修复 CI 时不能在本地验证不完整或远程检查仍在运行时宣布完成。即使本地测试因为模拟器卡住无法给出结论，也必须继续跟踪 GitHub Actions 的最新 run，拿到明确通过或新的失败日志后再决定下一步。例子：一个分页测试的本地单用例进入 instrumentation 后长时间无输出，不能因此把“已推送、等待 CI”当作任务完成；应该持续查看对应 job 日志，确认失败断言是否消失或定位新的失败点。
+
+### Instrument test 验证边界
+
+除非用户明确要求，本地不要跑完整的 instrument test；全量 Android instrument test 应交给 GitHub CI 验证。本地只做必要的构建、格式化，以及针对当前失败点的定向用例或诊断。例子：修复某个页面的单个失败用例时，可以本地跑该 class 或 method 辅助定位，但不能默认执行完整 `connectedLiteDebugAndroidTest` 来占用模拟器和拖慢反馈。
+
+### Desktop release jar 运行验证
+
+打包桌面单体 jar 时，不能只验证任务成功、文件大小和 manifest。ProGuard 会改变运行时可达性，尤其会删除 `ServiceLoader` 发现的 provider 类、Room/KSP 生成实现，或改名 JNI 需要按原签名查找的 native 方法，导致启动后才报错。例子：桌面 release jar 必须实际执行 `java -jar` 到数据库和网络初始化路径，并为服务 provider、反射生成类、native 方法添加 keep 规则；否则一个看起来更小的 jar 可能只是被错误裁剪了。
+
 ### 文章导出图片分辨率
 
 处理截图导出体积时，先判断尺寸来源，不能只在最终图片上套总像素上限。网页或 Compose 这类逻辑布局导出，应先选定合理的输出 DPI/缩放倍率，再把 CSS/DP 尺寸转换成像素；否则高密度设备会直接生成 3x/4x 物理像素图，后面再猜一个像素上限只是补救。例子：长图导出应该按固定输出 DPI 渲染同一份逻辑页面宽度，而不是让页面宽度跟随设备物理像素后再硬压缩。
+
+### 返回栈上下文保存
+
+处理“从弹层或列表进入详情，再返回原位置”的问题时，不能只保存开关状态，还要保存用户可见上下文。评论区这类弹层不仅要恢复打开状态，还要恢复评论列表滚动位置；从评论进入用户资料页再返回时，如果只是重新打开评论区但回到顶部，本质上仍然丢失了上下文。例子：列表弹层里的某一项进入详情页，返回后应该看到原先那一项附近，而不是只把弹层重新显示出来。
+
+### Subagent 任务边界
+
+当任务明确要求 subagent 负责实现或发 PR 时，主 agent 只能做调度、资源协调和最终验收，不能因为自己已经掌握上下文就越权直接提交 PR。例子：多个 issue worktree 并行处理时，主 agent 应负责分派互不冲突的工作、协调 AVD 使用和检查结果；具体分支提交、推送和 PR 创建应交给负责该 issue 的 subagent 完成，否则会破坏用户要求的并行工作边界。
+
+### 新功能实现边界
+
+实现新功能前必须先判断项目未来维护的主路径，不能为了“覆盖所有现存渲染方式”把即将废弃或非主线的路径也改一遍。例子：图片预览新交互如果产品方向只要求 Compose，就应该只接入 Compose 渲染链路；顺手把 WebView、平台能力接口和解析层都扩展，会让 diff 膨胀、审查成本上升，也会把功能承诺带到不打算继续支持的路径上。
 
 ## 构建与测试
 
@@ -56,6 +80,7 @@
 - 使用 Jetpack Navigation Compose
 - 定义 sealed interface `NavDestination` 表示不同页面，包含 route 和参数
 - 在编写导航代码前必须检查 NavDestination.kt
+- UI、导航、按钮或设置项设计改动前，先读 `docs/ai-ui-design-guide.md`，按其中的入口、preference key 和验证点检查影响范围。
 
 ## Android 调试标准流程
 
@@ -97,9 +122,11 @@ adb shell monkey -p com.github.zly2006.zhplus.lite -c android.intent.category.LA
 
 ### UI 双代理复检
 
-只要修改内容涉及 Compose、布局、样式、导航、交互、可见文案或任何用户可见 UI，主 agent 在完成上面的基础验证后，**必须**再执行以下流程：
+`$ui-voyager` 和 `$picky-user` 运行成本较高，非必要不要调用。只有在改动范围较大、交互路径复杂、主 agent 已经完成基础截图/设备验证但仍需要额外视角，或我明确要求复检时，才启动它们。调用时必须使用 5.4 mini 级别模型，避免使用过慢模型。
 
-1. 必须启动两个 subagent skill，不能由主 agent 自己扮演：
+需要调用时，主 agent 在完成上面的基础验证后，再执行以下流程：
+
+1. 启动两个 subagent skill，不能由主 agent 自己扮演：
    - `$ui-voyager`（UI漫游者）：系统性探索目标页面，把能点的尽量都点一遍，把上下左右的滑动都试一遍，重点找空白页、越界、裁切、重叠、错位、状态切换异常。
    - `$picky-user`（挑剔的用户）：分别扮演新用户和老用户，对 self explain、明确性、直觉性、效率、布局和操作习惯提出高标准意见。
 2. 两个 skill 都必须先读取自己的持久化记忆：
@@ -148,3 +175,4 @@ python3 .agents/skills/ui-review-memory/memory_store.py update-status \
 当我要求你发 PR 的时候，PR 的title必须以feat: /fix: /refactor: 开头，标题和内容必须用中文写。
 提交PR前，先更新master与远程同步或领先，并确保当前分支基于master，而不包括其他feature branch的内容。
 如果一开始给你的提示词包括了issue链接，并且此PR解决了这个issue，应该写上Resolves #issue_number在PR描述里，这样GitHub会自动关联并在PR合并时关闭这个issue。
+涉及 UI、布局、样式、可见交互或截图可判断效果的 PR，PR 描述里必须放最终效果截图。截图必须来自实际运行的应用、AVD、或可复现的 UI 测试渲染结果，不能用设计参考图、想象图或旧截图代替；如果真实业务链路被登录态/安全验证挡住，要说明截图来源。

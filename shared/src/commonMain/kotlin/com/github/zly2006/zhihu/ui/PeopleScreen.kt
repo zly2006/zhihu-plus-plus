@@ -22,6 +22,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -35,8 +36,12 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.PrimaryScrollableTabRow
@@ -109,6 +114,7 @@ import org.jetbrains.compose.resources.painterResource
 import zhihu.shared.generated.resources.Res
 import zhihu.shared.generated.resources.ic_zh_plus_author_badge
 import kotlin.reflect.typeOf
+import com.github.zly2006.zhihu.navigation.Search as SearchDestination
 
 class PeopleAnswersViewModel(
     val person: Person,
@@ -325,6 +331,7 @@ class PersonViewModel(
     var isFollowing by mutableStateOf(false)
     var isBlocking by mutableStateOf(false)
     var isBlockedInRecommendations by mutableStateOf(false)
+    var memberHashId by mutableStateOf(person.id)
 
     // 只实现已有数据类型的 ViewModel
     val answersFeedModel = PeopleAnswersViewModel(person)
@@ -443,6 +450,8 @@ class PersonViewModel(
         this.isFollowing = profile.isFollowing
         this.isBlocking = profile.isBlocking
         this.isBlockedInRecommendations = profile.isBlockedInRecommendations
+        this.memberHashId = loadedPerson.id
+        this.person.id = loadedPerson.id
         if (urlToken != null) {
             this.person.urlToken = urlToken
         }
@@ -492,6 +501,7 @@ const val PEOPLE_SCREEN_FOLLOWING_COUNT_TAG = "people_screen_stat_following"
 const val PEOPLE_SCREEN_FOLLOW_BUTTON_TAG = "people_screen_follow_button"
 const val PEOPLE_SCREEN_BLOCK_BUTTON_TAG = "people_screen_block_button"
 const val PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG = "people_screen_recommendation_block_button"
+const val PEOPLE_SCREEN_SEARCH_BUTTON_TAG = "people_screen_search_button"
 const val PEOPLE_SCREEN_ANSWER_SORT_HOT_TAG = "people_screen_answer_sort_voteups"
 const val PEOPLE_SCREEN_ANSWER_SORT_TIME_TAG = "people_screen_answer_sort_created"
 const val PEOPLE_SCREEN_ARTICLE_SORT_HOT_TAG = "people_screen_article_sort_voteups"
@@ -539,8 +549,9 @@ internal fun peopleProfileUrl(person: Person): String {
 }
 
 /**
- * Instrumented tests inject a fixed profile snapshot, seeded tab contents, and offline callbacks
- * here so PeopleScreen can be exercised without touching remote profile fetches or mutations.
+ * 用户主页的测试替身配置。
+ *
+ * instrumentation 测试通过这里注入固定资料快照、预置 tab 内容和离线回调，避免触碰远程资料拉取或关注状态变更。
  */
 data class PeopleScreenTestOverrides(
     val initialUiState: PeopleScreenUiState,
@@ -636,18 +647,34 @@ private fun PersonViewModel.toUiState(): PeopleScreenUiState = PeopleScreenUiSta
     ),
 )
 
+/**
+ * 用户主页的生产入口。
+ *
+ * 用户页展示资料头部、关注/屏蔽状态、回答、文章、想法、收藏等内容 tab，并支持从 `Person.jumpTo` 跳到指定子区域。
+ */
 @OptIn(ExperimentalFoundationApi::class, ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun PeopleScreen(
     person: Person,
 ): Unit = PeopleScreenContent(person, testOverrides = null)
 
+/**
+ * 用户主页的测试入口。
+ *
+ * 与生产入口复用同一套内容布局，但允许测试注入资料状态和各 tab 的分页模型，避免 UI 测试依赖真实用户数据。
+ */
 @Composable
 fun PeopleScreen(
     person: Person,
     testOverrides: PeopleScreenTestOverrides,
 ): Unit = PeopleScreenContent(person, testOverrides)
 
+/**
+ * 用户主页的实际布局实现。
+ *
+ * 这里统一处理资料头部、关注/屏蔽操作、顶部 tab、各类用户内容列表、分享和跳转逻辑。新增 tab 或快捷跳转时，要同步处理
+ * [Person.jumpTo]、测试 override 和可访问的 tab 文案。
+ */
 @OptIn(ExperimentalFoundationApi::class, ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun PeopleScreenContent(
@@ -691,6 +718,8 @@ private fun PeopleScreenContent(
     }
 
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    val searchMemberHashId = viewModel.memberHashId
+        .takeUnless { it.isBlank() || it == Person.EMPTY_ID }
 
     fun updateAnswersSort(newSort: String) {
         if (testOverrides != null) {
@@ -720,75 +749,96 @@ private fun PeopleScreenContent(
             .nestedScroll(scrollBehavior.nestedScrollConnection)
             .fillMaxSize(),
         topBar = {
-            TopAppBar(
-                title = {
-                    UserInfoHeader(
-                        profile = uiState.profile,
-                        pagerState = pagerState,
+            Box {
+                TopAppBar(
+                    title = {
+                        UserInfoHeader(
+                            profile = uiState.profile,
+                            pagerState = pagerState,
+                            modifier = Modifier
+                                .padding(horizontal = 8.dp)
+                                .testTag(PEOPLE_SCREEN_HEADER_TAG),
+                            onFollowToggle = {
+                                if (testOverrides != null) {
+                                    val newFollowing = !uiState.profile.isFollowing
+                                    testUiState = uiState.copy(
+                                        profile = uiState.profile.copy(
+                                            isFollowing = newFollowing,
+                                            followerCount = (uiState.profile.followerCount + if (newFollowing) 1 else -1).coerceAtLeast(0),
+                                        ),
+                                    )
+                                    testOverrides.onToggleFollow?.invoke(newFollowing)
+                                } else {
+                                    coroutineScope.launch {
+                                        try {
+                                            viewModel.toggleFollow(paginationEnvironment)
+                                        } catch (e: Exception) {
+                                            userMessages.showShortMessage("操作失败: ${e.message}")
+                                        }
+                                    }
+                                }
+                            },
+                            onBlockToggle = {
+                                if (testOverrides != null) {
+                                    val newBlocking = !uiState.profile.isBlocking
+                                    testUiState = uiState.copy(profile = uiState.profile.copy(isBlocking = newBlocking))
+                                    testOverrides.onToggleBlock?.invoke(newBlocking)
+                                } else {
+                                    coroutineScope.launch {
+                                        try {
+                                            viewModel.toggleBlock(paginationEnvironment)
+                                        } catch (e: Exception) {
+                                            userMessages.showShortMessage("操作失败: ${e.message}")
+                                        }
+                                    }
+                                }
+                            },
+                            onRecommendationBlockToggle = {
+                                if (testOverrides != null) {
+                                    val newRecommendationBlock = !uiState.profile.isBlockedInRecommendations
+                                    testUiState = uiState.copy(
+                                        profile = uiState.profile.copy(isBlockedInRecommendations = newRecommendationBlock),
+                                    )
+                                    testOverrides.onToggleRecommendationBlock?.invoke(newRecommendationBlock)
+                                } else {
+                                    coroutineScope.launch {
+                                        try {
+                                            viewModel.toggleRecommendationBlock(paginationEnvironment)
+                                            userMessages.showShortMessage(if (viewModel.isBlockedInRecommendations) "已屏蔽推荐" else "已取消屏蔽推荐")
+                                        } catch (e: Exception) {
+                                            userMessages.showShortMessage("操作失败: ${e.message}")
+                                        }
+                                    }
+                                }
+                            },
+                        )
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors().copy(
+                        scrolledContainerColor = MaterialTheme.colorScheme.surface,
+                    ),
+                    scrollBehavior = scrollBehavior,
+                    expandedHeight = 200.dp,
+                )
+                if (searchMemberHashId != null) {
+                    IconButton(
+                        onClick = {
+                            val memberName = uiState.profile.name.takeIf { it.isNotBlank() } ?: person.name
+                            navigator.onNavigate(
+                                SearchDestination(
+                                    restrictedMemberHashId = searchMemberHashId.orEmpty(),
+                                    restrictedMemberName = memberName,
+                                ),
+                            )
+                        },
                         modifier = Modifier
-                            .padding(horizontal = 8.dp)
-                            .testTag(PEOPLE_SCREEN_HEADER_TAG),
-                        onFollowToggle = {
-                            if (testOverrides != null) {
-                                val newFollowing = !uiState.profile.isFollowing
-                                testUiState = uiState.copy(
-                                    profile = uiState.profile.copy(
-                                        isFollowing = newFollowing,
-                                        followerCount = (uiState.profile.followerCount + if (newFollowing) 1 else -1).coerceAtLeast(0),
-                                    ),
-                                )
-                                testOverrides.onToggleFollow?.invoke(newFollowing)
-                            } else {
-                                coroutineScope.launch {
-                                    try {
-                                        viewModel.toggleFollow(paginationEnvironment)
-                                    } catch (e: Exception) {
-                                        userMessages.showShortMessage("操作失败: ${e.message}")
-                                    }
-                                }
-                            }
-                        },
-                        onBlockToggle = {
-                            if (testOverrides != null) {
-                                val newBlocking = !uiState.profile.isBlocking
-                                testUiState = uiState.copy(profile = uiState.profile.copy(isBlocking = newBlocking))
-                                testOverrides.onToggleBlock?.invoke(newBlocking)
-                            } else {
-                                coroutineScope.launch {
-                                    try {
-                                        viewModel.toggleBlock(paginationEnvironment)
-                                    } catch (e: Exception) {
-                                        userMessages.showShortMessage("操作失败: ${e.message}")
-                                    }
-                                }
-                            }
-                        },
-                        onRecommendationBlockToggle = {
-                            if (testOverrides != null) {
-                                val newRecommendationBlock = !uiState.profile.isBlockedInRecommendations
-                                testUiState = uiState.copy(
-                                    profile = uiState.profile.copy(isBlockedInRecommendations = newRecommendationBlock),
-                                )
-                                testOverrides.onToggleRecommendationBlock?.invoke(newRecommendationBlock)
-                            } else {
-                                coroutineScope.launch {
-                                    try {
-                                        viewModel.toggleRecommendationBlock(paginationEnvironment)
-                                        userMessages.showShortMessage(if (viewModel.isBlockedInRecommendations) "已屏蔽推荐" else "已取消屏蔽推荐")
-                                    } catch (e: Exception) {
-                                        userMessages.showShortMessage("操作失败: ${e.message}")
-                                    }
-                                }
-                            }
-                        },
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors().copy(
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface,
-                ),
-                scrollBehavior = scrollBehavior,
-                expandedHeight = 200.dp,
-            )
+                            .align(Alignment.TopEnd)
+                            .padding(top = 32.dp, end = 8.dp)
+                            .testTag(PEOPLE_SCREEN_SEARCH_BUTTON_TAG),
+                    ) {
+                        Icon(Icons.Default.Search, contentDescription = "搜索 TA 的创作")
+                    }
+                }
+            }
         },
     ) { innerPadding ->
         Column(

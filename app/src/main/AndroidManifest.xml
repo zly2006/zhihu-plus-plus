@@ -84,6 +84,11 @@
                 android:name=".WebviewActivity"
                 android:exported="false"/>
         <activity
+                android:name=".VideoPlayerActivity"
+                android:exported="false"
+                android:theme="@style/Theme.Zhihu"
+                android:configChanges="orientation|screenSize"/>
+        <activity
                 android:name=".QRCodeScanActivity"
                 android:exported="false"
                 android:theme="@style/Theme.Zhihu"/>

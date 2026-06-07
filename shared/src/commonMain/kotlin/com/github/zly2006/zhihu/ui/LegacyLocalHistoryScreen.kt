@@ -46,8 +46,8 @@ fun LegacyLocalHistoryScreen(
         PaginatedList(
             modifier = Modifier.padding(innerPadding),
             items = viewModel.displayItems,
-            onLoadMore = { /* 不需要loadMore */ },
-            isEnd = { true }, // 始终为true，因为没有更多数据需要加载
+            onLoadMore = { /* 不需要加载更多 */ },
+            isEnd = { true }, // 始终为 true，因为没有更多数据需要加载。
         ) { item ->
             FeedCard(
                 item,

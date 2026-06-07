@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-// From: androidx.compose.material3:material3:1.5.0-alpha17
+// 来源：androidx.compose.material3:material3:1.5.0-alpha17
 @file:Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE", "INVISIBLE_SETTER")
 
 package com.github.zly2006.zhihu.ui.components
@@ -110,7 +110,7 @@ fun MyModalBottomSheet(
 ) {
     val scope = rememberCoroutineScope()
     val animateToDismiss: () -> Unit = {
-        // hack here to fix: androidx/compose/material3/SheetState.confirmValueChange is invisible
+        // 绕过 SheetState.confirmValueChange 不可见的问题，直接调用内部 anchoredDraggableState。
         if (sheetState.anchoredDraggableState.confirmValueChange.invoke(Hidden)) {
             scope
                 .launch { sheetState.hide() }
@@ -132,7 +132,7 @@ fun MyModalBottomSheet(
         properties = properties,
         contentColor = contentColor,
         onDismissRequest = {
-            // Hack here by zly2006: press back button only once to dismiss.
+            // 修复返回键需要按两次才关闭的问题。
             scope.launch { sheetState.hide() }.invokeOnCompletion { onDismissRequest() }
         },
         predictiveBackProgress = predictiveBackProgress,

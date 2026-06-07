@@ -88,6 +88,13 @@ import zhihu.shared.generated.resources.ic_telegram_24dp
 
 internal const val CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES_KEY = "continuousUsageReminderIntervalMinutes"
 
+/**
+ * 系统、更新和外部服务设置页。
+ *
+ * 页面展示更新横幅、下载/安装/跳过版本操作、GitHub Token、自动检查更新、Nightly、遥测、防沉迷提醒和社区链接。
+ * 更新相关状态由平台 [SystemUpdateRuntime] 提供，防沉迷间隔写入 [CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES_KEY]，
+ * 改动时要同时考虑 Android 更新管理器和 Desktop 运行时。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SystemAndUpdateSettingsScreen() {
@@ -286,7 +293,7 @@ fun SystemAndUpdateSettingsScreen() {
                 }
             }
 
-            // Github Token
+            // GitHub Token。
             var githubToken by remember { mutableStateOf(settings.getString("githubToken", "")) }
             var showGithubToken by remember { mutableStateOf(false) }
 
