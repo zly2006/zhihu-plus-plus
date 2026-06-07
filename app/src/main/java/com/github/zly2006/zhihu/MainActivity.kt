@@ -36,7 +36,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
-import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
@@ -91,7 +90,6 @@ import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import com.github.zly2006.zhihu.util.clearShareImageCache
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
-import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.util.telemetry
 import com.github.zly2006.zhihu.viewmodel.AndroidArticlesSharedData
 import com.github.zly2006.zhihu.viewmodel.filter.AndroidContentFilterRuntime
@@ -510,7 +508,12 @@ class MainActivity :
                     androidUserMessageSink(this@MainActivity).showShortMessage("获取视频链接失败")
                     return@launch
                 }
-                luoTianYiUrlLauncher(this@MainActivity, videoUrl.toUri())
+                startActivity(
+                    Intent(this@MainActivity, VideoPlayerActivity::class.java).apply {
+                        putExtra("video_url", videoUrl)
+                        putExtra("video_id", route.id)
+                    },
+                )
             }
             return
         }
