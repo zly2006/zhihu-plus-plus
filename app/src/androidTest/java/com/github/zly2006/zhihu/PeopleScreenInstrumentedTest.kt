@@ -225,9 +225,9 @@ class PeopleScreenInstrumentedTest {
         composeRule.onNodeWithTag(PEOPLE_SCREEN_ACTIVITIES_LIST_TAG).assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_ACTIVITIES_LIST_TAG)
-            .performScrollToNode(hasTestTag("people_screen_activity_item_activity-15"))
+            .performScrollToNode(hasTestTag("people_screen_activity_item_activity-18"))
         composeRule.waitUntilLoadMore("activities") { activitiesLoadMore }
-        composeRule.onNodeWithTag("people_screen_activity_item_activity-15").assertIsDisplayed()
+        composeRule.onNodeWithTag("people_screen_activity_item_activity-18").assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_ACTIVITIES_LIST_TAG)
             .performScrollToNode(hasTestTag("people_screen_activity_item_activity-2"))
@@ -237,19 +237,19 @@ class PeopleScreenInstrumentedTest {
         composeRule.onNodeWithTag(PEOPLE_SCREEN_COLLECTIONS_LIST_TAG).assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_COLLECTIONS_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenCollectionItemTag("collection-15")))
+            .performScrollToNode(hasTestTag(peopleScreenCollectionItemTag("collection-18")))
         composeRule.waitUntilLoadMore("collections") { collectionsLoadMore }
         composeRule.onNodeWithTag(PEOPLE_SCREEN_COLLECTIONS_LIST_TAG).performVerticalSwipeCycle()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_COLLECTIONS_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenCollectionItemTag("collection-15")))
-        composeRule.onNodeWithTag(peopleScreenCollectionItemTag("collection-15")).assertIsDisplayed()
+            .performScrollToNode(hasTestTag(peopleScreenCollectionItemTag("collection-18")))
+        composeRule.onNodeWithTag(peopleScreenCollectionItemTag("collection-18")).assertIsDisplayed()
 
         composeRule.onNodeWithTag(peopleScreenTabTag(4)).performClick()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_QUESTIONS_LIST_TAG).assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_QUESTIONS_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenQuestionItemTag(15)))
+            .performScrollToNode(hasTestTag(peopleScreenQuestionItemTag(18)))
         composeRule.waitUntilLoadMore("questions") { questionsLoadMore }
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_QUESTIONS_LIST_TAG)
@@ -260,7 +260,7 @@ class PeopleScreenInstrumentedTest {
         composeRule.onNodeWithTag(PEOPLE_SCREEN_PINS_LIST_TAG).assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_PINS_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenPinItemTag("15")))
+            .performScrollToNode(hasTestTag(peopleScreenPinItemTag("18")))
         composeRule.waitUntilLoadMore("pins") { pinsLoadMore }
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_PINS_LIST_TAG)
@@ -271,19 +271,19 @@ class PeopleScreenInstrumentedTest {
         composeRule.onNodeWithTag(PEOPLE_SCREEN_COLUMNS_LIST_TAG).assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_COLUMNS_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenColumnItemTag("column-15")))
+            .performScrollToNode(hasTestTag(peopleScreenColumnItemTag("column-18")))
         composeRule.waitUntilLoadMore("columns") { columnsLoadMore }
         composeRule.onNodeWithTag(PEOPLE_SCREEN_COLUMNS_LIST_TAG).performVerticalSwipeCycle()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_COLUMNS_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenColumnItemTag("column-15")))
-        composeRule.onNodeWithTag(peopleScreenColumnItemTag("column-15")).assertIsDisplayed()
+            .performScrollToNode(hasTestTag(peopleScreenColumnItemTag("column-18")))
+        composeRule.onNodeWithTag(peopleScreenColumnItemTag("column-18")).assertIsDisplayed()
 
         composeRule.onNodeWithTag(peopleScreenTabTag(7)).performClick()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_FOLLOWERS_LIST_TAG).assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_FOLLOWERS_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenFollowerItemTag("follower-15")))
+            .performScrollToNode(hasTestTag(peopleScreenFollowerItemTag("follower-18")))
         composeRule.waitUntilLoadMore("followers") { followersLoadMore }
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_FOLLOWERS_LIST_TAG)
@@ -294,7 +294,7 @@ class PeopleScreenInstrumentedTest {
         composeRule.onNodeWithTag(PEOPLE_SCREEN_FOLLOWING_LIST_TAG).assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_FOLLOWING_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenFollowingItemTag("following-15")))
+            .performScrollToNode(hasTestTag(peopleScreenFollowingItemTag("following-18")))
         composeRule.waitUntilLoadMore("following") { followingLoadMore }
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_FOLLOWING_LIST_TAG)
@@ -452,7 +452,7 @@ class PeopleScreenInstrumentedTest {
         listName: String,
         count: () -> Int,
     ) {
-        waitUntil("Expected $listName tab to request more data") {
+        waitUntil("Expected $listName tab to request more data", timeoutMillis = 5_000) {
             count() > 0
         }
     }
