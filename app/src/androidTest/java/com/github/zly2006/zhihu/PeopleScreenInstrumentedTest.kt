@@ -226,6 +226,7 @@ class PeopleScreenInstrumentedTest {
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_ACTIVITIES_LIST_TAG)
             .performScrollToNode(hasTestTag("people_screen_activity_item_activity-15"))
+        composeRule.waitUntilLoadMore("activities") { activitiesLoadMore }
         composeRule.onNodeWithTag("people_screen_activity_item_activity-15").assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_ACTIVITIES_LIST_TAG)
@@ -237,6 +238,7 @@ class PeopleScreenInstrumentedTest {
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_COLLECTIONS_LIST_TAG)
             .performScrollToNode(hasTestTag(peopleScreenCollectionItemTag("collection-15")))
+        composeRule.waitUntilLoadMore("collections") { collectionsLoadMore }
         composeRule.onNodeWithTag(PEOPLE_SCREEN_COLLECTIONS_LIST_TAG).performVerticalSwipeCycle()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_COLLECTIONS_LIST_TAG)
@@ -248,6 +250,7 @@ class PeopleScreenInstrumentedTest {
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_QUESTIONS_LIST_TAG)
             .performScrollToNode(hasTestTag(peopleScreenQuestionItemTag(15)))
+        composeRule.waitUntilLoadMore("questions") { questionsLoadMore }
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_QUESTIONS_LIST_TAG)
             .performScrollToNode(hasTestTag(peopleScreenQuestionItemTag(2)))
@@ -258,6 +261,7 @@ class PeopleScreenInstrumentedTest {
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_PINS_LIST_TAG)
             .performScrollToNode(hasTestTag(peopleScreenPinItemTag("15")))
+        composeRule.waitUntilLoadMore("pins") { pinsLoadMore }
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_PINS_LIST_TAG)
             .performScrollToNode(hasTestTag(peopleScreenPinItemTag("2")))
@@ -268,6 +272,7 @@ class PeopleScreenInstrumentedTest {
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_COLUMNS_LIST_TAG)
             .performScrollToNode(hasTestTag(peopleScreenColumnItemTag("column-15")))
+        composeRule.waitUntilLoadMore("columns") { columnsLoadMore }
         composeRule.onNodeWithTag(PEOPLE_SCREEN_COLUMNS_LIST_TAG).performVerticalSwipeCycle()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_COLUMNS_LIST_TAG)
@@ -279,6 +284,7 @@ class PeopleScreenInstrumentedTest {
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_FOLLOWERS_LIST_TAG)
             .performScrollToNode(hasTestTag(peopleScreenFollowerItemTag("follower-15")))
+        composeRule.waitUntilLoadMore("followers") { followersLoadMore }
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_FOLLOWERS_LIST_TAG)
             .performScrollToNode(hasTestTag(peopleScreenFollowerActionTag("follower-2")))
@@ -289,6 +295,7 @@ class PeopleScreenInstrumentedTest {
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_FOLLOWING_LIST_TAG)
             .performScrollToNode(hasTestTag(peopleScreenFollowingItemTag("following-15")))
+        composeRule.waitUntilLoadMore("following") { followingLoadMore }
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_FOLLOWING_LIST_TAG)
             .performScrollToNode(hasTestTag(peopleScreenFollowingActionTag("following-2")))
@@ -439,6 +446,15 @@ class PeopleScreenInstrumentedTest {
             person = ROOT_PERSON,
             testOverrides = overrides,
         )
+    }
+
+    private fun MainActivityComposeRule.waitUntilLoadMore(
+        listName: String,
+        count: () -> Int,
+    ) {
+        waitUntil("Expected $listName tab to request more data") {
+            count() > 0
+        }
     }
 
     private fun seededUiState(itemCount: Int = 12): PeopleScreenUiState = PeopleScreenUiState(
