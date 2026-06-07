@@ -89,6 +89,24 @@ class SearchViewModelUrlTest {
         )
     }
 
+    @Test
+    fun buildsMemberRestrictedSearchUrlWithEncodedRestrictionParameters() {
+        val url = zhihuSearchUrl(
+            query = "用户 创作",
+            restrictedMemberHashId = "member hash/id",
+        )
+        val params = URL(url).queryParameters()
+
+        assertEquals("用户 创作", params["q"])
+        assertEquals("Normal", params["search_source"])
+        assertEquals("", params["filter_fields"])
+        assertEquals("0", params["lc_idx"])
+        assertEquals("member", params["restricted_scene"])
+        assertEquals("member_hash_id", params["restricted_field"])
+        assertEquals("member hash/id", params["restricted_value"])
+        assertTrue(url.contains("restricted_value=member+hash%2Fid"))
+    }
+
     private fun URL.queryParameters(): Map<String, String> =
         query
             .split("&")
