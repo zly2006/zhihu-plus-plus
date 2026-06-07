@@ -37,6 +37,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bookmarks
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
@@ -96,6 +97,7 @@ import com.github.zly2006.zhihu.navigation.Home
 import com.github.zly2006.zhihu.navigation.HotList
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.MainTabs
+import com.github.zly2006.zhihu.navigation.MyCollections
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Navigator
 import com.github.zly2006.zhihu.navigation.Notification
@@ -135,6 +137,8 @@ private sealed class MainTabPage(
     data object DailyPage : MainTabPage(Daily, "daily")
 
     data object OnlineHistoryPage : MainTabPage(OnlineHistory, "online_history")
+
+    data object MyCollectionsPage : MainTabPage(MyCollections, "my_collections")
 
     data object AccountPage : MainTabPage(Account, "account")
 }
@@ -192,9 +196,12 @@ fun ZhihuMain(
         Triple(HotList, "热榜", Icons.Filled.Whatshot),
         Triple(Daily, "日报", Icons.Filled.Newspaper),
         Triple(OnlineHistory, "历史", Icons.Filled.History),
+        Triple(MyCollections, "收藏夹", Icons.Filled.Bookmarks),
         Triple(Account, "账号", Icons.Filled.ManageAccounts),
     )
-    val bottomBarItems = allBottomBarItems.filter { it.first.name in selectedBottomBarItemKeys }
+    val bottomBarItems = selectedBottomBarItemKeys.mapNotNull { key ->
+        allBottomBarItems.firstOrNull { it.first.name == key }
+    }
 
     val mainTabPages = remember(bottomBarItems) {
         bottomBarItems.flatMap { item ->
@@ -204,6 +211,7 @@ fun ZhihuMain(
                 HotList -> listOf(MainTabPage.HotListPage)
                 Daily -> listOf(MainTabPage.DailyPage)
                 OnlineHistory -> listOf(MainTabPage.OnlineHistoryPage)
+                MyCollections -> listOf(MainTabPage.MyCollectionsPage)
                 Account -> listOf(MainTabPage.AccountPage)
                 else -> emptyList()
             }
@@ -543,9 +551,20 @@ private fun MainTabsPager(
             MainTabPage.HotListPage -> HotListScreen(innerPadding)
             MainTabPage.DailyPage -> DailyScreen()
             MainTabPage.OnlineHistoryPage -> OnlineHistoryScreen()
+            MainTabPage.MyCollectionsPage -> MyCollectionsTopLevelPage()
             MainTabPage.AccountPage -> AccountSettingScreen(innerPadding)
         }
     }
+}
+
+@Composable
+private fun MyCollectionsTopLevelPage() {
+    val runtime = rememberAccountSettingsPlatformRuntime()
+    val account = runtime.accountState.value
+    CollectionScreen(
+        urlToken = account.urlToken,
+        showBackButton = false,
+    )
 }
 
 private fun isTopLevelDest(navEntry: NavBackStackEntry?): Boolean = navEntry.hasRoute(MainTabs::class)

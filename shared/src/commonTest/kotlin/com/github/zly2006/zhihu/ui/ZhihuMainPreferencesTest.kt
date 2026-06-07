@@ -22,8 +22,11 @@ import com.github.zly2006.zhihu.navigation.Daily
 import com.github.zly2006.zhihu.navigation.Follow
 import com.github.zly2006.zhihu.navigation.Home
 import com.github.zly2006.zhihu.navigation.HotList
+import com.github.zly2006.zhihu.navigation.MyCollections
 import com.github.zly2006.zhihu.navigation.OnlineHistory
+import com.github.zly2006.zhihu.ui.subscreens.bottomBarItemOrderFromPreference
 import com.github.zly2006.zhihu.ui.subscreens.defaultBottomBarSelectionKeys
+import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarItemOrder
 import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarSelection
 import com.github.zly2006.zhihu.ui.subscreens.resolveValidStartDestinationKey
 import kotlin.test.Test
@@ -77,6 +80,44 @@ class ZhihuMainPreferencesTest {
                 preferredKey = HotList.name,
                 availableKeysInOrder = listOf(Follow.name, Daily.name),
             ),
+        )
+    }
+
+    @Test
+    fun normalizeBottomBarSelectionAllowsCollectionsEntry() {
+        val normalized = normalizeBottomBarSelection(
+            selectedKeys = linkedSetOf(Home.name, HotList.name, MyCollections.name),
+            duo3HomeAccount = true,
+            enforceMinimumSelection = true,
+        )
+
+        assertTrue(MyCollections.name in normalized)
+        assertEquals(3, normalized.size)
+    }
+
+    @Test
+    fun normalizeBottomBarItemOrderKeepsPreferredOrderAndAppendsMissingSelectedItems() {
+        val normalized = normalizeBottomBarItemOrder(
+            preferredOrderKeys = listOf(HotList.name, MyCollections.name, HotList.name, "Unknown"),
+            selectedKeys = linkedSetOf(Home.name, HotList.name, MyCollections.name, Daily.name),
+        )
+
+        assertEquals(
+            listOf(HotList.name, MyCollections.name, Home.name, Daily.name),
+            normalized,
+        )
+    }
+
+    @Test
+    fun bottomBarItemOrderFromPreferenceIgnoresUnselectedAndUnknownKeys() {
+        val normalized = bottomBarItemOrderFromPreference(
+            preferenceValue = "${MyCollections.name}, Unknown, ${HotList.name}, ${OnlineHistory.name}",
+            selectedKeys = linkedSetOf(Home.name, HotList.name, MyCollections.name),
+        )
+
+        assertEquals(
+            listOf(MyCollections.name, HotList.name, Home.name),
+            normalized,
         )
     }
 }
