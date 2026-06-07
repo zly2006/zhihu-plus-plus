@@ -55,12 +55,12 @@ actual fun rememberZhihuWebUrlOpener(): (String) -> Unit {
 
 @Composable
 actual fun rememberImagePreviewOpener(): (String) -> Unit {
-    val openGallery = rememberImageGalleryPreviewOpener()
+    val openGallery = rememberImageGalleryOpener()
     return remember(openGallery) { { url -> openGallery(listOf(url), 0) } }
 }
 
 @Composable
-actual fun rememberImageGalleryPreviewOpener(): (List<String>, Int) -> Unit {
+actual fun rememberImageGalleryOpener(): (List<String>, Int) -> Unit {
     val context = LocalContext.current
     return remember(context) {
         { urls, initialIndex ->

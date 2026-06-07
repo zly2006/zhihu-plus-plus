@@ -34,7 +34,7 @@ actual fun rememberZhihuWebUrlOpener(): (String) -> Unit = rememberExternalUrlOp
 actual fun rememberImagePreviewOpener(): (String) -> Unit = rememberExternalUrlOpener()
 
 @Composable
-actual fun rememberImageGalleryPreviewOpener(): (List<String>, Int) -> Unit {
+actual fun rememberImageGalleryOpener(): (List<String>, Int) -> Unit {
     val openExternalUrl = rememberExternalUrlOpener()
     return remember(openExternalUrl) {
         { urls, initialIndex ->

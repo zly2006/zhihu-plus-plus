@@ -65,7 +65,7 @@ import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
 import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
-import com.github.zly2006.zhihu.shared.platform.rememberImageGalleryPreviewOpener
+import com.github.zly2006.zhihu.shared.platform.rememberImageGalleryOpener
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.LocalSegmentActionSheetHost
@@ -86,7 +86,7 @@ fun RenderImage(
     imageUrls: List<String> = listOf(data.url),
 ) {
     val runtime = rememberMarkdownRuntime()
-    val openImageGalleryPreview = rememberImageGalleryPreviewOpener()
+    val openImageGallery = rememberImageGalleryOpener()
     val openExternalUrl = rememberExternalUrlOpener()
     var expanded by remember { mutableStateOf(false) }
     var pressOffset by remember { mutableStateOf(DpOffset.Zero) }
@@ -97,9 +97,9 @@ fun RenderImage(
         imageUrls.ifEmpty { listOf(data.url) }
     }
 
-    fun openPreview() {
+    fun openGallery() {
         val initialIndex = previewUrls.indexOf(data.url).takeIf { it >= 0 } ?: 0
-        openImageGalleryPreview(previewUrls, initialIndex)
+        openImageGallery(previewUrls, initialIndex)
     }
 
     Box(
@@ -114,7 +114,7 @@ fun RenderImage(
                 .pointerInput(Unit) {
                     detectTapGestures(
                         onTap = {
-                            openPreview()
+                            openGallery()
                         },
                         onLongPress = { offset ->
                             hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -140,7 +140,7 @@ fun RenderImage(
                     text = { Text("查看图片") },
                     onClick = {
                         expanded = false
-                        openPreview()
+                        openGallery()
                     },
                 )
                 DropdownMenuItem(
