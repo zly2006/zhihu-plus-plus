@@ -121,13 +121,16 @@ fun SearchScreen(
     val navigator = LocalNavigator.current
     val userMessages = rememberUserMessageSink()
     val settings = rememberSettingsStore()
-    val viewModel = viewModel { SearchViewModel(search.query) }
+    val viewModel = viewModel { SearchViewModel(search.query, search.restrictedMemberHashId) }
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val keyboardController = LocalSoftwareKeyboardController.current
     var searchText by remember { mutableStateOf(search.query) }
     val coroutineScope = rememberCoroutineScope()
+    val isMemberSearch = search.isRestrictedToMember
+    val memberSearchName = search.restrictedMemberName.ifBlank { "TA" }
+    val searchPlaceholder = if (isMemberSearch) "搜索 $memberSearchName 的创作" else "搜索内容"
 
-    val showHotSearch = remember { mutableStateOf(settings.getBoolean("showSearchHotSearch", true)) }
+    val showHotSearch = remember { mutableStateOf(!isMemberSearch && settings.getBoolean("showSearchHotSearch", true)) }
     val hotSearchItems = remember(testHotSearchQueries) {
         mutableStateListOf<HotSearchItem>().apply {
             addAll(testHotSearchQueries.orEmpty().map { query -> HotSearchItem(query = query) })
@@ -136,10 +139,12 @@ fun SearchScreen(
     var hotSearchMoreMenuExpanded by remember { mutableStateOf(false) }
     var historyMoreMenuExpanded by remember { mutableStateOf(false) }
     val useTestHotSearchQueries = testHotSearchQueries != null
-    val showSearchHistory = remember { mutableStateOf(settings.getBoolean("showSearchHistory", true)) }
+    val showSearchHistory = remember { mutableStateOf(!isMemberSearch && settings.getBoolean("showSearchHistory", true)) }
     val searchHistoryItems = remember {
         mutableStateListOf<String>().apply {
-            addAll(loadSearchHistory(settings))
+            if (!isMemberSearch) {
+                addAll(loadSearchHistory(settings))
+            }
         }
     }
 
@@ -154,7 +159,7 @@ fun SearchScreen(
             }
             saveSearchHistory(settings, searchHistoryItems)
         }
-        navigator.onNavigate(Search(query = trimmedQuery))
+        navigator.onNavigate(search.copy(query = trimmedQuery))
     }
 
     suspend fun fetchHotSearch() {
@@ -211,8 +216,8 @@ fun SearchScreen(
         }
     }
 
-    LaunchedEffect(showHotSearch.value, useTestHotSearchQueries) {
-        if (showHotSearch.value && !useTestHotSearchQueries) {
+    LaunchedEffect(showHotSearch.value, useTestHotSearchQueries, isMemberSearch) {
+        if (!isMemberSearch && showHotSearch.value && !useTestHotSearchQueries) {
             runCatching { fetchHotSearch() }
         }
     }
@@ -279,7 +284,7 @@ fun SearchScreen(
                                     decorationBox = { innerTextField ->
                                         if (searchText.isEmpty()) {
                                             Text(
-                                                text = "搜索内容",
+                                                text = searchPlaceholder,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 style = MaterialTheme.typography.bodyLarge,
                                             )
@@ -456,16 +461,22 @@ fun SearchScreen(
                         }
                     }
                 } else {
-                    if (showSearchHistory.value) {
+                    if (showSearchHistory.value || isMemberSearch) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(16.dp),
                         ) {
-                            SearchHistoryHeader(showClearAction = false)
-                            Spacer(modifier = Modifier.height(12.dp))
+                            if (showSearchHistory.value) {
+                                SearchHistoryHeader(showClearAction = false)
+                                Spacer(modifier = Modifier.height(12.dp))
+                            }
                             Text(
-                                text = "暂无搜索历史，输入关键词搜索后会保存在这里",
+                                text = if (isMemberSearch) {
+                                    "输入关键词搜索 $memberSearchName 的创作"
+                                } else {
+                                    "暂无搜索历史，输入关键词搜索后会保存在这里"
+                                },
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodyMedium,
                             )
@@ -486,6 +497,16 @@ fun SearchScreen(
                         onLoadMore = { viewModel.loadMore(paginationEnvironment) },
                         topContent = {
                             item {
+                                if (isMemberSearch) {
+                                    Text(
+                                        text = "以下结果来自 $memberSearchName 的创作",
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                                    )
+                                }
                                 Spacer(modifier = Modifier.height(8.dp))
                             }
                         },

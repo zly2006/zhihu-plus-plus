@@ -1,3 +1,4 @@
+import org.gradle.jvm.tasks.Jar
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
@@ -48,18 +49,70 @@ dependencies {
     implementation(compose.desktop.currentOs)
 }
 
+fun currentDesktopNativeExcludes(): List<String> {
+    val osName = System.getProperty("os.name").lowercase()
+    val osArch = System.getProperty("os.arch").lowercase()
+    val isArm64 = osArch == "aarch64" || osArch == "arm64"
+    val sqliteTarget =
+        when {
+            osName.contains("mac") && isArm64 -> "osx_arm64"
+            osName.contains("mac") -> "osx_x64"
+            osName.contains("win") -> "windows_x64"
+            osName.contains("linux") && isArm64 -> "linux_arm64"
+            else -> "linux_x64"
+        }
+    val skikoTarget =
+        when {
+            osName.contains("mac") && isArm64 -> "macos-arm64"
+            osName.contains("mac") -> "macos-x64"
+            osName.contains("win") -> "windows-x64"
+            osName.contains("linux") && isArm64 -> "linux-arm64"
+            else -> "linux-x64"
+        }
+    val sqliteNatives =
+        listOf(
+            "natives/linux_arm64/**",
+            "natives/linux_x64/**",
+            "natives/osx_arm64/**",
+            "natives/osx_x64/**",
+            "natives/windows_x64/**",
+        )
+    val skikoNatives =
+        listOf(
+            "libskiko-linux-arm64.so",
+            "libskiko-linux-x64.so",
+            "libskiko-macos-arm64.dylib",
+            "libskiko-macos-x64.dylib",
+            "skiko-windows-x64.dll",
+        )
+
+    return sqliteNatives.filterNot { it == "natives/$sqliteTarget/**" } +
+        skikoNatives.filterNot { it.contains(skikoTarget) }
+}
+
+tasks.withType<Jar>().configureEach {
+    if (name == "packageReleaseUberJarForCurrentOS") {
+        exclude(currentDesktopNativeExcludes())
+    }
+}
+
 compose.desktop {
     application {
         mainClass = "com.github.zly2006.zhihu.desktop.MainKt"
 
         buildTypes.release.proguard {
-            isEnabled.set(false)
+            isEnabled.set(true)
+            optimize.set(false)
+            configurationFiles.from(project.file("proguard-release.pro"))
         }
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "com.github.zly2006.zhihu"
             packageVersion = desktopPackageVersion
+            linux {
+                iconFile.set(project.file("src/main/resources/desktop-icon.png"))
+            }
         }
     }
 }
