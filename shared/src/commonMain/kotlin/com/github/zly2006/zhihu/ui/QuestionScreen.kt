@@ -179,7 +179,7 @@ fun QuestionScreen(
         mutableIntStateOf(initialUiState.followerCount)
     }
     var title by remember(question.questionId, initialTitle) { mutableStateOf(initialTitle) }
-    var showComments by remember { mutableStateOf(false) }
+    var showComments by rememberSaveable(question.questionId) { mutableStateOf(false) }
     var isFollowing by remember(question.questionId, initialUiState.isFollowing) {
         mutableStateOf(initialUiState.isFollowing)
     }
