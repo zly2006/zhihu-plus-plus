@@ -32,6 +32,7 @@ private const val SEARCH_VERTICAL_INFO = "0,0,0,0,0,0,0,0,0,0,0,0"
 
 class SearchViewModel(
     val searchQuery: String,
+    val restrictedMemberHashId: String = "",
 ) : BaseFeedViewModel() {
     var sortOption by mutableStateOf(SearchSortOption.Default)
         private set
@@ -40,8 +41,11 @@ class SearchViewModel(
     var timeRange by mutableStateOf(SearchTimeRange.All)
         private set
 
+    val initialRequestUrl: String
+        get() = initialUrl
+
     override val initialUrl: String
-        get() = zhihuSearchUrl(searchQuery, sortOption, contentType, timeRange)
+        get() = zhihuSearchUrl(searchQuery, sortOption, contentType, timeRange, restrictedMemberHashId)
 
     // Override include to request necessary fields for search results
     override val include = "data[*].highlight,object,type"
@@ -142,6 +146,7 @@ fun zhihuSearchUrl(
     sortOption: SearchSortOption = SearchSortOption.Default,
     contentType: SearchContentType = SearchContentType.All,
     timeRange: SearchTimeRange = SearchTimeRange.All,
+    restrictedMemberHashId: String = "",
 ): String {
     val hasActiveFilter = sortOption != SearchSortOption.Default ||
         contentType != SearchContentType.All ||
@@ -155,6 +160,13 @@ fun zhihuSearchUrl(
         add("limit" to "20")
         add("search_source" to if (hasActiveFilter) "Filter" else "Normal")
         add("show_all_topics" to "0")
+        if (restrictedMemberHashId.isNotBlank()) {
+            add("filter_fields" to "")
+            add("lc_idx" to "0")
+            add("restricted_scene" to "member")
+            add("restricted_field" to "member_hash_id")
+            add("restricted_value" to restrictedMemberHashId)
+        }
         if (contentType.value.isNotEmpty()) {
             add("vertical" to contentType.value)
             add("vertical_info" to SEARCH_VERTICAL_INFO)
