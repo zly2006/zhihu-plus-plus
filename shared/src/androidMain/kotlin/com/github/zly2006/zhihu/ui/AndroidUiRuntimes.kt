@@ -16,12 +16,12 @@
  */
 
 package com.github.zly2006.zhihu.ui
+import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
-import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ScrollState
