@@ -37,10 +37,7 @@ ksp {
 
 android {
     namespace = "com.github.zly2006.zhihu"
-    compileSdk = 36
-    dependenciesInfo {
-        checkAarMetadata = false
-    }
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.github.zly2006.zhplus"

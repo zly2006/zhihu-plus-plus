@@ -787,7 +787,7 @@ private fun MainTabsPager(
                 OnlineHistoryScreen()
             }
             MainTabPage.MyCollectionsPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
-                MiuixCollectionScreen(innerPadding)
+                MiuixCollectionScreen(urlToken = "")
             } else {
                 MyCollectionsTopLevelPage()
             }
