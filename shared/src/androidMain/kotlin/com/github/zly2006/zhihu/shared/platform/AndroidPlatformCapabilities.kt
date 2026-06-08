@@ -21,6 +21,7 @@ import android.content.Context
 import android.content.Intent
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
@@ -32,6 +33,7 @@ import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.OpenImageDialog
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
+import kotlinx.coroutines.CancellationException
 
 private const val WEBVIEW_ACTIVITY_CLASS = "com.github.zly2006.zhihu.WebviewActivity"
 
@@ -153,3 +155,21 @@ actual fun PlatformBackHandler(
     enabled: Boolean,
     onBack: () -> Unit,
 ) = BackHandler(enabled = enabled, onBack = onBack)
+
+@Composable
+actual fun PlatformPredictiveBackHandler(
+    enabled: Boolean,
+    onProgress: (Float) -> Unit,
+    onCancel: () -> Unit,
+    onBack: () -> Unit,
+) = PredictiveBackHandler(enabled = enabled) { progress ->
+    try {
+        progress.collect { backEvent ->
+            onProgress(backEvent.progress)
+        }
+        onBack()
+    } catch (e: CancellationException) {
+        onCancel()
+        throw e
+    }
+}

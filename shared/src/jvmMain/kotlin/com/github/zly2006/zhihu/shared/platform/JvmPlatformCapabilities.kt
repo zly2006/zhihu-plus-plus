@@ -160,4 +160,12 @@ actual fun PlatformBackHandler(
 ) = Unit // TODO: desktop back handler
 
 @Composable
+actual fun PlatformPredictiveBackHandler(
+    enabled: Boolean,
+    onProgress: (Float) -> Unit,
+    onCancel: () -> Unit,
+    onBack: () -> Unit,
+) = PlatformBackHandler(enabled = enabled, onBack = onBack)
+
+@Composable
 actual fun rememberIsLiteVariant(): Boolean = false
