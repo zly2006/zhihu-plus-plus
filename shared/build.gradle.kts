@@ -1,5 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jlleitschuh.gradle.ktlint.tasks.GenerateReportsTask
+import org.jlleitschuh.gradle.ktlint.tasks.KtLintCheckTask
 import org.jlleitschuh.gradle.ktlint.tasks.KtLintFormatTask
 
 plugins {
@@ -33,7 +34,11 @@ ktlint {
         exclude("build/generated/**")
         exclude("**/build/generated/ksp/**")
         exclude("**/ksp/**")
-        exclude { it.file.absolutePath.contains("/build/generated/") }
+        exclude {
+            it.file.absolutePath
+                .replace('\\', '/')
+                .contains("/build/generated/")
+        }
     }
 }
 
@@ -42,7 +47,11 @@ tasks.withType<KtLintFormatTask>().configureEach {
     exclude("build/generated/**")
     exclude("**/build/generated/ksp/**")
     exclude("**/ksp/**")
-    exclude { it.file.absolutePath.contains("/build/generated/") }
+    exclude {
+        it.file.absolutePath
+            .replace('\\', '/')
+            .contains("/build/generated/")
+    }
 }
 
 tasks
@@ -51,6 +60,21 @@ tasks
     .configureEach {
         enabled = false
     }
+
+mapOf(
+    "runKtlintCheckOverAndroidMainSourceSet" to "src/androidMain/kotlin",
+    "runKtlintCheckOverJvmMainSourceSet" to "src/jvmMain/kotlin",
+    "runKtlintCheckOverCommonMainSourceSet" to "src/commonMain/kotlin",
+    "runKtlintCheckOverJvmTestSourceSet" to "src/jvmTest/kotlin",
+).forEach { (taskName, sourcePath) ->
+    tasks.withType<KtLintCheckTask>().matching { it.name == taskName }.configureEach {
+        setSource(
+            fileTree(sourcePath) {
+                include("**/*.kt")
+            },
+        )
+    }
+}
 
 mapOf(
     "runKtlintFormatOverAndroidMainSourceSet" to "src/androidMain/kotlin",
