@@ -78,7 +78,10 @@ kotlin {
 
     androidLibrary {
         namespace = "com.github.zly2006.zhihu.shared"
-        compileSdk = 37
+        compileSdk = 36
+        dependenciesInfo {
+            checkAarMetadata = false
+        }
         minSdk = 27
 
         compilerOptions {
