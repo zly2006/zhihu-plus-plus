@@ -29,6 +29,11 @@ import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.platform.SettingsStore
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.serialization.json.Json
 
 suspend fun ContentFilterDatabase.recordContentDisplay(
@@ -207,26 +212,10 @@ class FeedContentFilterPipeline(
         }
 
         if (settings.enableMcnBlocking && (settings.blockAllMcnAuthors || blocklistService.hasBlockedMcnOrganizations())) {
+            val mcnCompanyByToken = resolveMcnCompanies(filteredContents)
             val kept = mutableListOf<FilterableContent>()
             for (content in filteredContents) {
-                val urlToken = content.authorUrlToken
-                val mcnCompany = if (urlToken.isNullOrBlank()) {
-                    null
-                } else {
-                    val cachedAuthor = blocklistService.getCachedMcnAuthor(urlToken)
-                    if (cachedAuthor != null) {
-                        cachedAuthor.mcnCompany.normalizeMcnCompany()
-                    } else {
-                        runCatching {
-                            mcnCompanyProvider
-                                .getMcnCompany(urlToken)
-                                .normalizeMcnCompany()
-                                .also { company ->
-                                    blocklistService.cacheMcnCompany(urlToken, content.authorName, company)
-                                }
-                        }.getOrNull()
-                    }
-                }
+                val mcnCompany = content.authorUrlToken?.let(mcnCompanyByToken::get)
                 val shouldBlock = !mcnCompany.isNullOrBlank() &&
                     (settings.blockAllMcnAuthors || blocklistService.isMcnOrganizationBlocked(mcnCompany))
                 if (shouldBlock) {
@@ -257,7 +246,49 @@ class FeedContentFilterPipeline(
 
         return FeedContentFilterResult(filteredContents, blocked)
     }
+
+    private suspend fun resolveMcnCompanies(contents: List<FilterableContent>): Map<String, String?> = coroutineScope {
+        val authorNamesByToken = mutableMapOf<String, String?>()
+        contents.forEach { content ->
+            val token = content.authorUrlToken?.takeIf { it.isNotBlank() } ?: return@forEach
+            if (token !in authorNamesByToken) {
+                authorNamesByToken[token] = content.authorName
+            }
+        }
+
+        val resolvedCompanies = mutableMapOf<String, String?>()
+        val tokensToFetch = mutableListOf<String>()
+        authorNamesByToken.keys.forEach { token ->
+            val cachedAuthor = blocklistService.getCachedMcnAuthor(token)
+            if (cachedAuthor != null) {
+                resolvedCompanies[token] = cachedAuthor.mcnCompany.normalizeMcnCompany()
+            } else {
+                tokensToFetch.add(token)
+            }
+        }
+
+        val semaphore = Semaphore(MCN_LOOKUP_CONCURRENCY)
+        val fetchedCompanies = tokensToFetch
+            .map { token ->
+                async {
+                    token to semaphore.withPermit {
+                        runCatching {
+                            mcnCompanyProvider
+                                .getMcnCompany(token)
+                                .normalizeMcnCompany()
+                                .also { company ->
+                                    blocklistService.cacheMcnCompany(token, authorNamesByToken[token], company)
+                                }
+                        }.getOrNull()
+                    }
+                }
+            }.awaitAll()
+
+        resolvedCompanies + fetchedCompanies
+    }
 }
+
+private const val MCN_LOOKUP_CONCURRENCY = 4
 
 private fun htmlToPlainText(html: String): String = Ksoup.parse(html).text()
 

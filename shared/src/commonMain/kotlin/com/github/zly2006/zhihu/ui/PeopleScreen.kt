@@ -102,6 +102,7 @@ import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.filter.NoopMcnCompanyProvider
 import com.github.zly2006.zhihu.viewmodel.filter.ZhihuMcnCompanyProvider
 import com.github.zly2006.zhihu.viewmodel.filter.normalizeMcnCompany
 import com.github.zly2006.zhihu.viewmodel.filter.rememberBlocklistManager
@@ -698,9 +699,11 @@ private fun PeopleScreenContent(
     val coroutineScope = rememberCoroutineScope()
     val blocklistManager = rememberBlocklistManager()
     val mcnCompanyProvider = remember(paginationEnvironment) {
-        ZhihuMcnCompanyProvider(paginationEnvironment.httpClient()) { request ->
-            paginationEnvironment.configureSignedRequest(request)
-        }
+        runCatching {
+            ZhihuMcnCompanyProvider(paginationEnvironment.httpClient()) { request ->
+                paginationEnvironment.configureSignedRequest(request)
+            }
+        }.getOrElse { NoopMcnCompanyProvider }
     }
     var mcnCompanyToBlock by remember(person.urlToken) { mutableStateOf<String?>(null) }
     var testUiState by remember(person.id, person.urlToken, testOverrides?.initialUiState) {
@@ -732,8 +735,8 @@ private fun PeopleScreenContent(
             viewModel.mcnCompany = profileMcn
             return@LaunchedEffect
         }
-        blocklistManager.getCachedMcnAuthor(person.urlToken)?.mcnCompany.normalizeMcnCompany()?.let { cachedMcn ->
-            viewModel.mcnCompany = cachedMcn
+        blocklistManager.getCachedMcnAuthor(person.urlToken)?.let { cachedAuthor ->
+            viewModel.mcnCompany = cachedAuthor.mcnCompany.normalizeMcnCompany()
             return@LaunchedEffect
         }
         runCatching {

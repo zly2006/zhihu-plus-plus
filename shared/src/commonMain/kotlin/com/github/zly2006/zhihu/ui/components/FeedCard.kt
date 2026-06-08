@@ -88,10 +88,8 @@ import com.github.zly2006.zhihu.shared.platform.rememberIsLiteVariant
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.util.parseHtmlTextWithTheme
-import com.github.zly2006.zhihu.viewmodel.filter.ZhihuMcnCompanyProvider
 import com.github.zly2006.zhihu.viewmodel.filter.normalizeMcnCompany
 import com.github.zly2006.zhihu.viewmodel.filter.rememberBlocklistManager
-import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.max
@@ -130,12 +128,6 @@ fun FeedCard(
     val userMessages = rememberUserMessageSink()
     val settings = rememberSettingsStore()
     val blocklistManager = rememberBlocklistManager()
-    val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
-    val mcnProvider = remember(paginationEnvironment) {
-        ZhihuMcnCompanyProvider(paginationEnvironment.httpClient()) { request ->
-            paginationEnvironment.configureSignedRequest(request)
-        }
-    }
     val isLiteVariant = rememberIsLiteVariant()
     var mcnCompany by remember(item.authorUrlToken) { mutableStateOf<String?>(null) }
     var offsetX by remember { mutableFloatStateOf(0f) }
@@ -184,12 +176,7 @@ fun FeedCard(
             mcnCompany = cachedAuthor.mcnCompany.normalizeMcnCompany()
             return@LaunchedEffect
         }
-        runCatching {
-            mcnProvider.getMcnCompany(urlToken).normalizeMcnCompany()
-        }.onSuccess { resolvedMcn ->
-            blocklistManager.cacheMcnCompany(urlToken, item.authorName, resolvedMcn)
-            mcnCompany = resolvedMcn
-        }
+        mcnCompany = null
     }
 
     // 动画偏移量

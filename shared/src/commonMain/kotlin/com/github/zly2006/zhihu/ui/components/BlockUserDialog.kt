@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.viewmodel.feed.FeedBlockAuthorInfo
+import com.github.zly2006.zhihu.viewmodel.filter.NoopMcnCompanyProvider
 import com.github.zly2006.zhihu.viewmodel.filter.ZhihuMcnCompanyProvider
 import com.github.zly2006.zhihu.viewmodel.filter.normalizeMcnCompany
 import com.github.zly2006.zhihu.viewmodel.filter.rememberBlocklistManager
@@ -95,9 +96,11 @@ fun BlockUserConfirmDialogContent(
         val blocklistManager = rememberBlocklistManager()
         val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
         val mcnProvider = remember(paginationEnvironment) {
-            ZhihuMcnCompanyProvider(paginationEnvironment.httpClient()) { request ->
-                paginationEnvironment.configureSignedRequest(request)
-            }
+            runCatching {
+                ZhihuMcnCompanyProvider(paginationEnvironment.httpClient()) { request ->
+                    paginationEnvironment.configureSignedRequest(request)
+                }
+            }.getOrElse { NoopMcnCompanyProvider }
         }
         var isResolvingMcn by remember(author.urlToken) { mutableStateOf(true) }
         var mcnCompany by remember(author.urlToken) { mutableStateOf<String?>(null) }

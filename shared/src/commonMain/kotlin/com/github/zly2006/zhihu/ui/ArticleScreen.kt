@@ -144,6 +144,7 @@ import com.github.zly2006.zhihu.ui.components.rememberPreferCollapsedExitUntilCo
 import com.github.zly2006.zhihu.util.smoothGradient
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
+import com.github.zly2006.zhihu.viewmodel.filter.NoopMcnCompanyProvider
 import com.github.zly2006.zhihu.viewmodel.filter.ZhihuMcnCompanyProvider
 import com.github.zly2006.zhihu.viewmodel.filter.normalizeMcnCompany
 import com.github.zly2006.zhihu.viewmodel.filter.rememberBlocklistManager
@@ -577,9 +578,11 @@ fun ArticleScreen(
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
     val blocklistManager = rememberBlocklistManager()
     val mcnProvider = remember(environment) {
-        ZhihuMcnCompanyProvider(environment.httpClient()) { request ->
-            environment.configureSignedRequest(request)
-        }
+        runCatching {
+            ZhihuMcnCompanyProvider(environment.httpClient()) { request ->
+                environment.configureSignedRequest(request)
+            }
+        }.getOrElse { NoopMcnCompanyProvider }
     }
     val articleHost = articleScreenRuntime.articleHost
     val previewPreloader = articleScreenRuntime.previewPreloader

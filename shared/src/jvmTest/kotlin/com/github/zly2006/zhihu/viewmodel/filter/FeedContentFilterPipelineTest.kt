@@ -388,6 +388,46 @@ class FeedContentFilterPipelineTest {
     }
 
     @Test
+    fun deduplicatesMcnLookupForSameAuthorInSingleBatch() = runTest {
+        val database = getContentFilterDatabase(
+            createTempDirectory("feed-content-filter-mcn-dedup").resolve("content-filter.db").toFile(),
+        )
+        var calls = 0
+        val blocklistService = BlocklistService(
+            keywordDao = database.blockedKeywordDao(),
+            userDao = database.blockedUserDao(),
+            topicDao = database.blockedTopicDao(),
+            mcnOrganizationDao = database.blockedMcnOrganizationDao(),
+            mcnAuthorCacheDao = database.mcnAuthorCacheDao(),
+        )
+        blocklistService.addBlockedMcnOrganization("杭州亚序")
+
+        val result = FeedContentFilterPipeline(
+            settings = FeedFilterSettings(),
+            blocklistService = blocklistService,
+            blockedKeywordService = BlockedKeywordService(
+                keywordDao = database.blockedKeywordDao(),
+                recordDao = database.blockedContentRecordDao(),
+                semanticMatcher = KeywordSemanticMatcher { _, _, _ -> emptyList() },
+            ),
+            mcnCompanyProvider = McnCompanyProvider {
+                calls += 1
+                "杭州亚序"
+            },
+        ).filter(
+            listOf(
+                filterable("first", authorId = "same-user", authorUrlToken = "same-token"),
+                filterable("second", authorId = "same-user", authorUrlToken = "same-token"),
+            ),
+        )
+
+        assertEquals(1, calls)
+        assertEquals(emptyList(), result.kept)
+        assertEquals(listOf("屏蔽MCN机构：杭州亚序", "屏蔽MCN机构：杭州亚序"), result.blocked.map { it.second })
+        database.close()
+    }
+
+    @Test
     fun refreshesExpiredMcnCacheEntries() = runTest {
         val database = getContentFilterDatabase(
             createTempDirectory("feed-content-filter-expired-mcn-cache").resolve("content-filter.db").toFile(),
