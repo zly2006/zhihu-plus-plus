@@ -355,78 +355,81 @@ fun MiuixArticleScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
-                    .overScrollVertical()
-                    .nestedScroll(scrollBehavior.nestedScrollConnection),
+                    .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier),
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(scrollState)
-                        .padding(innerPadding)
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                ) {
-                if (viewModel.authorName.isNotEmpty()) {
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                navigator.onNavigate(
-                                    Person(id = viewModel.authorId, urlToken = viewModel.authorUrlToken, name = viewModel.authorName),
-                                )
-                            }.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        if (viewModel.authorAvatarSrc.isNotEmpty()) {
-                            AsyncImage(viewModel.authorAvatarSrc, "头像", modifier = Modifier.size(44.dp).clip(CircleShape))
-                            Spacer(Modifier.width(12.dp))
+                AnimatedContent(
+                    targetState = viewModel.content.isEmpty(),
+                    transitionSpec = {
+                        fadeIn(tween(200)) togetherWith fadeOut(tween(200))
+                    },
+                    label = "articleBody",
+                ) { isLoading ->
+                    if (isLoading) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator()
                         }
-                        Column(Modifier.weight(1f)) {
-                            Text(viewModel.authorName, style = MiuixTheme.textStyles.title4, fontWeight = FontWeight.Bold)
-                            if (viewModel.authorBio.isNotEmpty()) {
-                                Text(
-                                    viewModel.authorBio,
-                                    style = MiuixTheme.textStyles.footnote1,
-                                    color = MiuixTheme.colorScheme.onSurfaceSecondary,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
+                    } else {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(scrollState)
+                                .overScrollVertical()
+                                .nestedScroll(scrollBehavior.nestedScrollConnection)
+                                .padding(innerPadding)
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                        ) {
+                            if (viewModel.authorName.isNotEmpty()) {
+                            Card(modifier = Modifier.fillMaxWidth()) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            navigator.onNavigate(
+                                                Person(id = viewModel.authorId, urlToken = viewModel.authorUrlToken, name = viewModel.authorName),
+                                            )
+                                        }.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    if (viewModel.authorAvatarSrc.isNotEmpty()) {
+                                        AsyncImage(viewModel.authorAvatarSrc, "头像", modifier = Modifier.size(44.dp).clip(CircleShape))
+                                        Spacer(Modifier.width(12.dp))
+                                    }
+                                    Column(Modifier.weight(1f)) {
+                                        Text(viewModel.authorName, style = MiuixTheme.textStyles.title4, fontWeight = FontWeight.Bold)
+                                        if (viewModel.authorBio.isNotEmpty()) {
+                                            Text(
+                                                viewModel.authorBio,
+                                                style = MiuixTheme.textStyles.footnote1,
+                                                color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                            )
+                                        }
+                                    }
+                                }
                             }
+                            Spacer(Modifier.height(8.dp))
                         }
-                    }
-                }
-                Spacer(Modifier.height(8.dp))
-            }
 
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    AnimatedContent(
-                        targetState = viewModel.content.isEmpty(),
-                        transitionSpec = {
-                            fadeIn(tween(200)) togetherWith fadeOut(tween(200))
-                        },
-                        label = "articleContent",
-                    ) { isLoading ->
-                        if (isLoading) {
-                            Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator()
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                RenderMarkdown(html = viewModel.content, selectable = true, enableScroll = false)
+                                if (viewModel.ipInfo != null) {
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(
+                                        "IP属地：${viewModel.ipInfo}",
+                                        style = MiuixTheme.textStyles.footnote2,
+                                        color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                                    )
+                                }
                             }
-                        } else {
-                            RenderMarkdown(html = viewModel.content, selectable = true, enableScroll = false)
+                        }
+                            Spacer(Modifier.height(16.dp))
                         }
                     }
-                    if (viewModel.ipInfo != null) {
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            "IP属地：${viewModel.ipInfo}",
-                            style = MiuixTheme.textStyles.footnote2,
-                            color = MiuixTheme.colorScheme.onSurfaceSecondary,
-                        )
-                    }
-                }
-            }
-                Spacer(Modifier.height(16.dp))
                 }
                 // 右侧阅读进度条（对齐 M3）。
                 VerticalReadingProgressBar(
