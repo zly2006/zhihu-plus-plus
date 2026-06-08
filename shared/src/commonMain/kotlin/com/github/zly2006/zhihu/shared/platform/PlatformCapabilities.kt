@@ -95,4 +95,12 @@ expect fun PlatformBackHandler(
 )
 
 @Composable
+expect fun PlatformPredictiveBackHandler(
+    enabled: Boolean,
+    onProgress: (Float) -> Unit,
+    onCancel: () -> Unit,
+    onBack: () -> Unit,
+)
+
+@Composable
 expect fun rememberIsLiteVariant(): Boolean

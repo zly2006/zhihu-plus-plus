@@ -54,6 +54,14 @@ actual fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit =
 actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) = Unit // TODO: iOS 返回手势处理
 
 @Composable
+actual fun PlatformPredictiveBackHandler(
+    enabled: Boolean,
+    onProgress: (Float) -> Unit,
+    onCancel: () -> Unit,
+    onBack: () -> Unit,
+) = PlatformBackHandler(enabled = enabled, onBack = onBack)
+
+@Composable
 actual fun rememberScreenSizeDp(): ScreenSizeDp = ScreenSizeDp(width = 0f, height = 0f) // TODO: iOS 屏幕尺寸获取
 
 @Composable
