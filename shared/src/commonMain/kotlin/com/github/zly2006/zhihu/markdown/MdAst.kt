@@ -80,6 +80,18 @@ fun htmlToMdAst(html: String): Document {
     return document
 }
 
+internal fun Document.previewImageUrls(): List<String> =
+    collectPreviewImageUrls()
+        .filter { it.isNotBlank() && !it.startsWith("data") }
+        .distinct()
+
+private fun MarkdownNode.collectPreviewImageUrls(): List<String> = when (this) {
+    is Figure -> listOf(imageUrl)
+    is Image -> listOf(destination)
+    is ContainerNode -> children.flatMap { it.collectPreviewImageUrls() }
+    else -> emptyList()
+}
+
 private fun List<HtmlNode>.appendBlocksTo(parent: ContainerNode) {
     convertNodesToBlocks().forEach(parent::appendChild)
 }

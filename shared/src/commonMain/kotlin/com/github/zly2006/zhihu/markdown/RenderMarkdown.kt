@@ -65,7 +65,7 @@ import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
 import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
-import com.github.zly2006.zhihu.shared.platform.rememberImagePreviewOpener
+import com.github.zly2006.zhihu.shared.platform.rememberImageGalleryOpener
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.LocalSegmentActionSheetHost
@@ -83,15 +83,24 @@ import kotlinx.coroutines.launch
 fun RenderImage(
     data: MarkdownImageData,
     modifier: Modifier,
+    imageUrls: List<String> = listOf(data.url),
 ) {
     val runtime = rememberMarkdownRuntime()
-    val openImagePreview = rememberImagePreviewOpener()
+    val openImageGallery = rememberImageGalleryOpener()
     val openExternalUrl = rememberExternalUrlOpener()
     var expanded by remember { mutableStateOf(false) }
     var pressOffset by remember { mutableStateOf(DpOffset.Zero) }
     val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
     val hapticFeedback = LocalHapticFeedback.current
+    val previewUrls = remember(imageUrls, data.url) {
+        imageUrls.ifEmpty { listOf(data.url) }
+    }
+
+    fun openGallery() {
+        val initialIndex = previewUrls.indexOf(data.url).takeIf { it >= 0 } ?: 0
+        openImageGallery(previewUrls, initialIndex)
+    }
 
     Box(
         modifier = Modifier.fillMaxWidth(),
@@ -105,7 +114,7 @@ fun RenderImage(
                 .pointerInput(Unit) {
                     detectTapGestures(
                         onTap = {
-                            openImagePreview(data.url)
+                            openGallery()
                         },
                         onLongPress = { offset ->
                             hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -131,7 +140,7 @@ fun RenderImage(
                     text = { Text("查看图片") },
                     onClick = {
                         expanded = false
-                        openImagePreview(data.url)
+                        openGallery()
                     },
                 )
                 DropdownMenuItem(
@@ -241,6 +250,7 @@ fun RenderMarkdown(
     footer: (@Composable () -> Unit)? = null,
 ) {
     val document = remember(html) { htmlToMdAst(html) }
+    val imageUrls = remember(document) { document.previewImageUrls() }
     val navigator = LocalNavigator.current
     val runtime = rememberMarkdownRuntime()
     val openExternalUrl = rememberExternalUrlOpener()
@@ -267,7 +277,13 @@ fun RenderMarkdown(
             NoDoubleClickSelectionScope {
                 Markdown(
                     document = document,
-                    imageContent = ::RenderImage,
+                    imageContent = { data, imageModifier ->
+                        RenderImage(
+                            data = data,
+                            modifier = imageModifier,
+                            imageUrls = imageUrls,
+                        )
+                    },
                     scrollState = scrollState,
                     enableScroll = enableScroll,
                     enableSelection = selectable,
