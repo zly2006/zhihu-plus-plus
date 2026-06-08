@@ -95,8 +95,10 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 
 /**
- * Instrumented tests inject fixed state and side-effect callbacks here so QuestionScreen can be
- * exercised offline without triggering real detail fetches, follow requests, or comment loading.
+ * 问题页的测试替身配置。
+ *
+ * instrumentation 测试通过这里注入固定状态和副作用回调，让 QuestionScreen 可以离线验证，
+ * 不触发真实详情拉取、关注请求或评论加载。
  */
 data class QuestionScreenTestOverrides(
     val viewModel: QuestionFeedViewModel,
@@ -145,6 +147,12 @@ private suspend fun loadQuestion(
     return loadedData
 }
 
+/**
+ * 问题详情页。
+ *
+ * 顶部展示问题标题、描述、关注状态和统计信息，主体是该问题下回答的信息流列表。页面会记录内容打开来源和历史记录，
+ * 并复用文章/回答卡片、评论底部表单和分享入口；正文描述同样受 WebView/Markdown 渲染设置影响。
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun QuestionScreen(
@@ -179,7 +187,7 @@ fun QuestionScreen(
         mutableIntStateOf(initialUiState.followerCount)
     }
     var title by remember(question.questionId, initialTitle) { mutableStateOf(initialTitle) }
-    var showComments by remember { mutableStateOf(false) }
+    var showComments by rememberSaveable(question.questionId) { mutableStateOf(false) }
     var isFollowing by remember(question.questionId, initialUiState.isFollowing) {
         mutableStateOf(initialUiState.isFollowing)
     }

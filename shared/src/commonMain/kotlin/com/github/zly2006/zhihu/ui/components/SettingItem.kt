@@ -62,6 +62,12 @@ import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.util.ProvideContentColorTextStyle
 import kotlinx.coroutines.delay
 
+/**
+ * 为设置项提供跳转高亮和滚动定位能力。
+ *
+ * 账号页、分享弹窗等入口会带着具体 `settingKey` 打开设置页；目标设置项通过这个 modifier 注册位置并播放短暂高亮，
+ * 让用户知道刚才跳到的是哪一项。新增可被外部入口直达的设置时，应复用这个机制，而不是手写一次性滚动逻辑。
+ */
 fun Modifier.highlightSetting(
     settingKey: String?,
     highlightedKey: String,
@@ -96,7 +102,7 @@ fun Modifier.highlightSetting(
                     delay(200)
                     it.bringIntoView()
                 }
-                // Flash 2 times (In, Out, In, Out, In)
+                // 闪烁两次：亮、暗、亮、暗、亮。
                 repeat(2) {
                     highlightAlpha.animateTo(0.4f, tween(200, easing = LinearEasing))
                     highlightAlpha.animateTo(0.1f, tween(200, easing = LinearEasing))
@@ -120,6 +126,12 @@ fun Modifier.highlightSetting(
     modifier
 }
 
+/**
+ * 设置页的分组容器。
+ *
+ * 每组可以包含标题、顶部总控件、底部说明和多个设置项。内部使用自定义 Layout 压缩动画隐藏项之间的间距，
+ * 让 `AnimatedVisibility` 展开/收起时不会留下突兀空白。视觉上它是设置页的主要节奏单位，新增设置页时优先用它组织内容。
+ */
 @Composable
 fun SettingItemGroup(
     modifier: Modifier = Modifier,
@@ -170,8 +182,7 @@ fun SettingItemGroup(
                 val placeable = placeables[i]
                 val scale = (placeable.height / baseItemHeight).coerceIn(0f, 1f)
 
-                // Add proportional spacing BEFORE this element if it's not the first visible element.
-                // It smoothly scales down its own preceding gap as it shrinks.
+                // 非首个可见元素前按比例补间距；元素缩小时，它前面的间距也同步收缩。
                 if (hasVisibleBefore && scale > 0f) {
                     yPosition += (spacing * scale).toInt()
                 }
@@ -206,6 +217,12 @@ fun SettingItemGroup(
     }
 }
 
+/**
+ * 分组顶部的强调型总开关。
+ *
+ * 适合“启用全部”“开发者模式”这类会影响一组子设置的主控制。它用更强的背景色和圆角药丸形态区别于普通行，
+ * 点击整行即可切换，具体批量写入哪些 preference key 由调用方负责。
+ */
 @Composable
 fun SettingItemOverall(
     modifier: Modifier = Modifier,
@@ -250,6 +267,12 @@ fun SettingItemOverall(
     )
 }
 
+/**
+ * 标准开关设置行。
+ *
+ * 标题、说明、可选图标和右侧带图标 Switch 组成一行，整行点击与直接点开关等价。大多数布尔设置都应使用这个组件，
+ * 以保持触控区域、禁用态、高亮跳转和测试定位行为一致。
+ */
 @Composable
 fun SettingItemWithSwitch(
     modifier: Modifier = Modifier,
@@ -285,6 +308,12 @@ fun SettingItemWithSwitch(
     )
 }
 
+/**
+ * 带选中/未选中图标的开关。
+ *
+ * 这是设置页统一使用的 Switch 视觉样式：开启时显示对勾，关闭时显示叉号。调用方通常不直接使用它，而是通过
+ * [SettingItemWithSwitch] 或 [SettingItemOverall] 获得完整的设置行语义。
+ */
 @Composable
 fun SwitchWithIcon(
     checked: Boolean,
@@ -324,6 +353,12 @@ fun SwitchWithIcon(
     )
 }
 
+/**
+ * 设置页的基础行组件。
+ *
+ * 一行由左侧可选图标、标题/说明、右侧动作和底部扩展内容组成，可表示普通导航入口、数值配置、下拉选择或开关行的底层布局。
+ * 它同时接入高亮跳转、禁用态和统一圆角/背景色，是所有设置项视觉一致性的基础。
+ */
 @Composable
 fun SettingItem(
     modifier: Modifier = Modifier,

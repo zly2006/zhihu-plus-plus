@@ -44,6 +44,7 @@ import com.github.zly2006.zhihu.navigation.History
 import com.github.zly2006.zhihu.navigation.Home
 import com.github.zly2006.zhihu.navigation.HotList
 import com.github.zly2006.zhihu.navigation.MainTabs
+import com.github.zly2006.zhihu.navigation.MyCollections
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.OnlineHistory
@@ -59,7 +60,9 @@ import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.START_DESTINATION_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.subscreens.bottomBarItemOrderFromPreference
 import com.github.zly2006.zhihu.ui.subscreens.defaultBottomBarSelectionKeys
 import com.github.zly2006.zhihu.ui.subscreens.navDestinationFromName
 import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarSelection
@@ -71,6 +74,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/**
+ * Desktop 平台的 Zhihu++ 主界面入口。
+ *
+ * 这里创建桌面 NavController、账号存储、HTTP 客户端和视频/文章等平台行为，再注入共享 [ZhihuMain]。
+ * 设计上尽量复用 common 页面结构，只把浏览器打开、签名请求、回答切换状态和桌面账号读取留在 JVM 侧。
+ */
 @Composable
 fun DesktopZhihuMain() {
     val navController = rememberNavController()
@@ -228,10 +237,17 @@ fun DesktopZhihuMain() {
     )
 }
 
+/**
+ * 读取 Desktop 设置中会影响主壳的偏好快照。
+ *
+ * 语义必须和 Android 的 `rememberAndroidZhihuMainPreferenceState()` 保持一致，避免同一个底栏/启动页设置在不同平台表现不同。
+ */
 @Composable
 private fun rememberDesktopZhihuMainPreferenceState(): ZhihuMainPreferenceState {
     val settings = rememberSettingsStore()
-    val allBottomBarItemKeys = remember { listOf(Home.name, Follow.name, HotList.name, Daily.name, OnlineHistory.name, Account.name) }
+    val allBottomBarItemKeys = remember {
+        listOf(Home.name, Follow.name, HotList.name, Daily.name, OnlineHistory.name, MyCollections.name, Account.name)
+    }
     return rememberZhihuMainPreferenceState {
         val duo3HomeAccount = settings.getBoolean("duo3_home_account", false)
         val selectedKeys = normalizeBottomBarSelection(
@@ -242,17 +258,21 @@ private fun rememberDesktopZhihuMainPreferenceState(): ZhihuMainPreferenceState 
             duo3HomeAccount,
             enforceMinimumSelection = true,
         )
+        val orderedSelectedKeys = bottomBarItemOrderFromPreference(
+            settings.getStringOrNull(BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY),
+            selectedKeys,
+        )
         ZhihuMainPreferenceSnapshot(
             duo3HomeAccount = duo3HomeAccount,
             duo3NavStyle = settings.getBoolean("duo3_nav_style", false),
             tapToScrollToTopEnabled = settings.getBoolean("bottomBarTapScrollToTop", true),
             autoHideBottomBar = settings.getBoolean("autoHideBottomBar", false),
             autoHideTopBar = settings.getBoolean("autoHideTopBar", false),
-            selectedBottomBarItemKeys = selectedKeys,
+            selectedBottomBarItemKeys = orderedSelectedKeys,
             startDestination = navDestinationFromName(
                 resolveValidStartDestinationKey(
                     settings.getString(START_DESTINATION_PREFERENCE_KEY, Home.name),
-                    allBottomBarItemKeys.filter { it in selectedKeys },
+                    orderedSelectedKeys.ifEmpty { allBottomBarItemKeys.filter { it in selectedKeys } },
                 ),
             ),
         )

@@ -23,6 +23,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -119,6 +120,49 @@ class SearchScreenInstrumentedTest {
         composeRule.waitForIdle()
         assertEquals(1, recordingNavigator.backCount)
         assertEquals(listOf(Search(query = "jetpack compose")), recordingNavigator.destinations)
+    }
+
+    @Test
+    fun memberScopedSearchKeepsRestrictionWhenSubmittingQuery() {
+        val preferences = composeRule.activity.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        preferences
+            .edit()
+            .putString("searchHistoryQueries", """["全局历史"]""")
+            .commit()
+
+        val recordingNavigator = composeRule.setScreenContent {
+            SearchScreen(
+                search = Search(
+                    restrictedMemberHashId = "member-hash-id",
+                    restrictedMemberName = "离线用户",
+                ),
+                testHotSearchQueries = listOf("全站热搜"),
+            )
+        }
+
+        composeRule.onNodeWithText("搜索 离线用户 的创作").assertIsDisplayed()
+        composeRule.onNodeWithText("输入关键词搜索 离线用户 的创作").assertIsDisplayed()
+        composeRule.onAllNodesWithText("搜索历史").assertCountEquals(0)
+        composeRule.onAllNodesWithText("全局历史").assertCountEquals(0)
+        composeRule.onAllNodesWithText("全站热搜").assertCountEquals(0)
+        composeRule.onAllNodesWithTag("search_hot_list").assertCountEquals(0)
+
+        val searchInput = composeRule.onNodeWithTag("search_input")
+        searchInput.performTextInput("限定关键词")
+        searchInput.performImeAction()
+        composeRule.waitForIdle()
+
+        assertEquals(
+            listOf(
+                Search(
+                    query = "限定关键词",
+                    restrictedMemberHashId = "member-hash-id",
+                    restrictedMemberName = "离线用户",
+                ),
+            ),
+            recordingNavigator.destinations,
+        )
+        assertEquals("""["全局历史"]""", preferences.getString("searchHistoryQueries", null))
     }
 
     @Test

@@ -96,6 +96,12 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
+/**
+ * 知乎日报页面。
+ *
+ * 顶部提供日期切换和刷新，主体展示指定日期的日报内容并支持继续加载历史日期。日报条目可能跳转到站内内容或外部链接，
+ * 因此页面同时依赖 [LocalNavigator] 和系统 URI 打开能力；测试入口可以注入固定状态和日期选择回调。
+ */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalTime::class)
 @Composable
 fun DailyScreen(
@@ -305,14 +311,14 @@ fun DailyScreen(
                         contentPadding = PaddingValues(vertical = 8.dp),
                     ) {
                         uiState.sections.forEach { section ->
-                            // Date header
+                            // 日期分组标题。
                             item(key = "header_${section.date}") {
                                 DateHeader(
                                     date = formatDailyDate(section.date),
                                     modifier = Modifier.testTag(dailySectionHeaderTag(section.date)),
                                 )
                             }
-                            // Stories for this date
+                            // 当前日期的日报条目。
                             items(section.stories, key = { "story_${it.id}" }) { story ->
                                 DailyStoryCard(
                                     story = story,
@@ -333,7 +339,7 @@ fun DailyScreen(
                             }
                         }
 
-                        // Loading indicator at the bottom
+                        // 底部加载指示器。
                         if (uiState.isLoadingMore) {
                             item(key = "loading_more") {
                                 Box(

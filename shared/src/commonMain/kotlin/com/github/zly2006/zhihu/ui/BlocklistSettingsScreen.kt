@@ -144,6 +144,12 @@ data class BlocklistSettingsTestConfig(
     val nlpContent: BlocklistSettingsNlpContent? = null,
 )
 
+/**
+ * 屏蔽列表管理页。
+ *
+ * 页面用 tab 管理关键词、NLP 智能屏蔽短语、用户和主题四类规则，并展示统计、添加、删除和清空操作。Lite variant 可能没有
+ * NLP 内容区，因此 [nlpContent] 需要作为可空插槽传入；新增屏蔽类型时要同步数据管理、设置页入口和 Feed 卡片菜单。
+ */
 @Composable
 fun BlocklistSettingsScreen(
     nlpContent: BlocklistSettingsNlpContent? = null,

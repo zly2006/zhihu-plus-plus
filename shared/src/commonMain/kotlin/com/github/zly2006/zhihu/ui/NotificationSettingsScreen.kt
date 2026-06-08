@@ -52,6 +52,12 @@ object NotificationPreferences {
     fun matchNotificationType(verb: String): NotificationType? = sharedMatchNotificationType(verb)
 }
 
+/**
+ * 通知设置页。
+ *
+ * 页面分为阅读行为、系统通知和应用内显示三组：自动已读控制进入通知页后的处理方式，系统通知控制是否向 OS 发通知，
+ * 应用内显示控制通知中心是否展示某类消息。这里使用 [NotificationSettingsStore]，不要和普通偏好设置 key 混用。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationSettingsScreen() {

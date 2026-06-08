@@ -97,6 +97,12 @@ val fullVariantManualLibraries = listOf(
     ),
 )
 
+/**
+ * 开源许可列表内容。
+ *
+ * 许可证主体由 about-libraries 生成，手动维护项用于补充当前工具无法自动识别的 Rust/Full variant 依赖。新增依赖时应优先让
+ * 构建系统生成许可证；只有无法自动发现时再加入 [manualLibraries]。
+ */
 @Suppress("DEPRECATION")
 @Composable
 fun OpenSourceLicensesContent(
@@ -129,6 +135,11 @@ expect fun rememberOpenSourceLicensesLibraries(): Libs
 @Composable
 expect fun rememberShowFullVariantLicenses(): Boolean
 
+/**
+ * 开源许可页面。
+ *
+ * 页面包装许可证列表、返回按钮和滚动行为，并根据当前变体决定是否展示 Full variant 的手工许可证项。它是账号页“开源许可”入口的终点。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OpenSourceLicensesScreen() {

@@ -79,6 +79,12 @@ const val DEVELOPER_SETTINGS_MODE_TAG = "developerSettings/modeToggle"
 const val DEVELOPER_SETTINGS_SENTENCE_SIMILARITY_TAG = "developerSettings/sentenceSimilarity"
 const val DEVELOPER_SETTINGS_COLOR_SCHEME_TAG = "developerSettings/colorScheme"
 
+/**
+ * 开发者选项页。
+ *
+ * 页面用于展示网络、电源、连续使用时长、TTS 引擎等诊断信息，并提供验证登录、刷新 Token、手动 Cookie、签名请求、
+ * 句子相似度和配色查看器等调试入口。关闭开发者模式会立即返回上一页，因此新增调试项应避免依赖页面长期驻留。
+ */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun DeveloperSettingsScreen() {

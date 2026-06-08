@@ -123,8 +123,7 @@ fun AnswerVerticalOverscroll(
     var hasTriggeredHaptic by remember { mutableStateOf(false) }
     var rawDragAccumulator by remember { mutableFloatStateOf(0f) }
 
-    // rememberUpdatedState ensures nestedScrollConnection always reads the latest values
-    // even though it is `remember`-ed without keys.
+    // nestedScrollConnection 没有带 key 重新 remember，因此用 rememberUpdatedState 保证它总能读到最新值。
     val currentCanGoPrevious by rememberUpdatedState(previousAnswer != null)
     val currentCanGoNext by rememberUpdatedState(nextAnswer != null)
     val currentOnNavigatePrevious by rememberUpdatedState(onNavigatePrevious)
@@ -229,8 +228,7 @@ fun AnswerVerticalOverscroll(
             .nestedScroll(nestedScrollConnection)
             .then(
                 if (isContentNonScrollable) {
-                    // Use Unit key so the gesture handler is never rebuilt mid-gesture;
-                    // current* refs (rememberUpdatedState) handle live value updates.
+                    // 使用 Unit key 避免手势处理中途重建 handler；current* 引用负责读取实时更新。
                     Modifier.pointerInput(Unit) {
                         awaitPointerEventScope {
                             while (true) {
