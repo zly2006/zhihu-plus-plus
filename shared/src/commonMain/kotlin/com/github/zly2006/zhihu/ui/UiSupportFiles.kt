@@ -556,6 +556,7 @@ interface ArticleAnswerSwitchState {
     var pendingInitialContent: CachedAnswerContent?
     var navigatingFromAnswerSwitch: Boolean
     var answerTransitionDirection: ArticleAnswerTransitionDirection
+    var isImmersiveMode: Boolean
 
     fun reset()
 
@@ -799,5 +800,12 @@ expect fun rememberBlocklistSettingsPlatformRuntime(
 
 @Composable
 expect fun rememberZhihuHttpClient(): HttpClient
+
+/**
+ * 沉浸式阅读时控制系统栏（状态栏/导航栏）的显隐。
+ * Android 会隐藏状态栏并允许滑动唤出；Desktop/iOS 为空操作。
+ */
+@Composable
+expect fun ArticleImmersiveModeEffect(immersive: Boolean)
 
 expect fun Modifier.questionSelectionWorkaround(): Modifier

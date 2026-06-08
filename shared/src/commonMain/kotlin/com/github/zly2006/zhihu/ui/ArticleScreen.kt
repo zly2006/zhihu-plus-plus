@@ -147,6 +147,7 @@ import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import com.materialkolor.ktx.harmonize
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -853,6 +854,15 @@ fun ArticleScreen(
         null
     }
 
+    // 沉浸式阅读模式：使用共享状态以在切换回答时保持
+    var isImmersiveMode by remember(sharedData) {
+        mutableStateOf(sharedData?.isImmersiveMode ?: false)
+    }
+    LaunchedEffect(sharedData, isImmersiveMode) {
+        if (sharedData != null) sharedData.isImmersiveMode = isImmersiveMode
+    }
+    ArticleImmersiveModeEffect(isImmersiveMode)
+
     LaunchedEffect(article.id) {
         // Bug 2: 在主线程检查标志并重置（避免跨线程可见性问题）
         if (sharedData != null) {
@@ -986,20 +996,23 @@ fun ArticleScreen(
             }
         }
         Scaffold(
-            modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
-            topBar = {
-                Box(
-                    modifier = Modifier
-                        .onSizeChanged {
-                            topBarHeightPx = it.height.toFloat()
-                            if (it.height >= 10) topBarHeight = it.height
-                        }.let {
-                            it.graphicsLayer {
+            modifier = Modifier
+                .fillMaxSize()
+                .then(if (!isImmersiveMode) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier),
+            topBar = if (isImmersiveMode) {
+                {}
+            } else {
+                @Composable {
+                    Box(
+                        modifier = Modifier
+                            .onSizeChanged {
+                                topBarHeightPx = it.height.toFloat()
+                                if (it.height >= 10) topBarHeight = it.height
+                            }.graphicsLayer {
                                 translationY = topBarOffset.value
                                 alpha = if (topBarHeightPx > 0f) 1f + (topBarOffset.value / topBarHeightPx) else 1f
-                            }
-                        },
-                ) {
+                            },
+                    ) {
                     ZhihuTwoRowsTopAppBar(
                         navigationIcon = {
                             IconButton(
@@ -1120,8 +1133,12 @@ fun ArticleScreen(
                         ),
                     )
                 }
-            },
-            bottomBar = {
+            }
+        },
+        bottomBar = if (isImmersiveMode) {
+            {}
+        } else {
+            @Composable {
                 // 防止在导航动画和预测性返回手势过程中，底部操作栏闪烁。
                 val showBottomBarCondition = backStackEntry?.hasRoute(Article::class) == true || articleHost == null
 
@@ -1424,8 +1441,9 @@ fun ArticleScreen(
                         ActionBarContent()
                     }
                 }
-            },
-        ) { innerPadding ->
+            }
+        },
+    ) { innerPadding ->
             CompositionLocalProvider(LocalBringIntoViewSpec provides articleBringIntoViewSpec) {
                 Box {
                     Column(
@@ -1604,7 +1622,7 @@ fun ArticleScreen(
                     top = progressBarTopPadding,
                     bottom = progressBarBottomPadding,
                     end = 2.dp,
-                ),
+                ).then(if (isImmersiveMode) Modifier.graphicsLayer { alpha = 0f } else Modifier),
         )
 
         // 跳转按钮需要压在问题区和回答区之上。
@@ -1615,15 +1633,25 @@ fun ArticleScreen(
                 animationSpec = tween(200),
                 label = "skipButtonAlpha",
             )
+            var fabClickCount by remember { mutableIntStateOf(0) }
+            LaunchedEffect(fabClickCount) {
+                if (fabClickCount > 0) {
+                    delay(350)
+                    if (fabClickCount >= 2) {
+                        isImmersiveMode = !isImmersiveMode
+                    } else {
+                        if (showSkipButton) {
+                            navigatingToNextAnswer = true
+                            navigateToNext()
+                            navigatingToNextAnswer = false
+                        }
+                    }
+                    fabClickCount = 0
+                }
+            }
             DraggableRefreshButton(
                 modifier = Modifier.graphicsLayer { alpha = skipButtonAlpha },
-                onClick = {
-                    if (showSkipButton) {
-                        navigatingToNextAnswer = true
-                        navigateToNext()
-                        navigatingToNextAnswer = false
-                    }
-                },
+                onClick = { fabClickCount++ },
                 preferenceName = "buttonSkipAnswer",
             ) {
                 if (navigatingToNextAnswer) {

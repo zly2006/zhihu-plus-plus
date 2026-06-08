@@ -485,3 +485,6 @@ actual fun QuestionDetailWebViewContent(
 actual fun supportsQuestionDetailWebView(): Boolean = false
 
 actual fun Modifier.questionSelectionWorkaround(): Modifier = this
+
+@Composable
+actual fun ArticleImmersiveModeEffect(immersive: Boolean) = Unit

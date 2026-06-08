@@ -21,11 +21,13 @@ import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,6 +38,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.getContentDetail
@@ -515,3 +519,21 @@ actual fun supportsQuestionDetailWebView(): Boolean = true
 actual fun rememberZhihuHttpClient(): HttpClient = AccountData.httpClient(LocalContext.current)
 
 actual fun Modifier.questionSelectionWorkaround(): Modifier = fuckHonorService()
+
+@Composable
+actual fun ArticleImmersiveModeEffect(immersive: Boolean) {
+    val context = LocalContext.current
+    val window = remember(context) { (context as? Activity)?.window }
+    LaunchedEffect(window, immersive) {
+        window?.let { w ->
+            val ctrl = WindowInsetsControllerCompat(w, w.decorView)
+            if (immersive) {
+                ctrl.hide(WindowInsetsCompat.Type.statusBars())
+                ctrl.systemBarsBehavior =
+                    WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            } else {
+                ctrl.show(WindowInsetsCompat.Type.statusBars())
+            }
+        }
+    }
+}

@@ -179,11 +179,15 @@ open class ArticleAnswerSwitchData :
     // 导航动画方向
     override var answerTransitionDirection = ArticleAnswerTransitionDirection.DEFAULT
 
+    // 沉浸式阅读模式
+    override var isImmersiveMode by mutableStateOf(false)
+
     override fun reset() {
         navigator = pendingNavigator
         pendingNavigator = null
         pendingInitialContent = null
         navigatingFromAnswerSwitch = false
+        isImmersiveMode = false
     }
 
     override fun promoteForNavigation(direction: ArticleAnswerTransitionDirection) = Unit
