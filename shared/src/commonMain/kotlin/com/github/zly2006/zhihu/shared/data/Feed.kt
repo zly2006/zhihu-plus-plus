@@ -331,6 +331,14 @@ val Feed.actionText: String?
         is HotListFeed -> detailText
     }
 
+val Feed.sourceLabel: String?
+    get() = when (this) {
+        is CommonFeed -> actionText
+        is FeedItemIndexGroup -> actionText
+        is MomentsFeed -> momentDesc
+        else -> null
+    }?.trim()?.takeIf { it.isNotEmpty() }
+
 @Serializable
 @SerialName("feed_advert")
 class AdvertisementFeed(
