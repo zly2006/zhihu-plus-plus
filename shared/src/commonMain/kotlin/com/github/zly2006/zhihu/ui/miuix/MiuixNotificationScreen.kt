@@ -7,6 +7,10 @@
 
 package com.github.zly2006.zhihu.ui.miuix
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -74,6 +78,7 @@ import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -144,22 +149,37 @@ fun MiuixNotificationScreen() {
             Box(
                 modifier = if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier,
             ) {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .overScrollVertical()
-                        .nestedScroll(scrollBehavior.nestedScrollConnection),
-                    contentPadding = PaddingValues(
-                        top = padding.calculateTopPadding(),
-                        bottom = padding.calculateBottomPadding(),
-                    ),
-                ) {
-                    items(viewModel.allData, key = { it.id }) { notification ->
-                        if (viewModel.shouldShowNotification(settingsStore, notification)) {
-                            NotificationItemCard(
-                                notification = notification,
-                                onClick = {
+                AnimatedContent(
+                    targetState = viewModel.allData.isEmpty() && viewModel.isLoading,
+                    transitionSpec = {
+                        fadeIn(tween(200)) togetherWith fadeOut(tween(200))
+                    },
+                    label = "notificationContent",
+                ) { isLoading ->
+                    if (isLoading) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    } else {
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .overScrollVertical()
+                                .nestedScroll(scrollBehavior.nestedScrollConnection),
+                            contentPadding = PaddingValues(
+                                top = padding.calculateTopPadding(),
+                                bottom = padding.calculateBottomPadding(),
+                            ),
+                        ) {
+                            items(viewModel.allData, key = { it.id }) { notification ->
+                                if (viewModel.shouldShowNotification(settingsStore, notification)) {
+                                    NotificationItemCard(
+                                        notification = notification,
+                                        onClick = {
                                     viewModel.markAsRead(notification.id)
                                     when (notification.target) {
                                         is NotificationTarget.Comment -> {
@@ -204,6 +224,9 @@ fun MiuixNotificationScreen() {
                         item {
                             LaunchedEffect(Unit) { viewModel.loadMore(runtime.environment) }
                         }
+                    }
+                }
+
                     }
                 }
 
