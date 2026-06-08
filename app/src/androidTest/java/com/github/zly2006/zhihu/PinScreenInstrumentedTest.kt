@@ -27,10 +27,10 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
@@ -74,7 +74,7 @@ class PinScreenInstrumentedTest {
          * 2. An error-only injected state should render the visible error message contract exactly
          *    where PinScreen normally reports load failures.
          * 3. Switching between those injected states inside tests must remain completely offline and
-         *    deterministic because the screen never instantiates the production PinViewModel path.
+         *    deterministic because the screen never enters the production runtime loading path.
          */
         composeRule.setScreenContent {
             PinScreen(

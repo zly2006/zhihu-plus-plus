@@ -1,0 +1,161 @@
+/*
+ * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation (version 3 only).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package com.github.zly2006.zhihu.ui.subscreens
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.navigation.LocalNavigator
+
+/**
+ * Material 3 配色调试页。
+ *
+ * 页面列出当前 [MaterialTheme.colorScheme] 的主要 token，用于检查动态取色、自定义主题色和明暗模式对 UI 的实际影响。
+ * 它只作为开发者诊断入口，不承载用户设置写入。
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ColorSchemeScreen() {
+    val navigator = LocalNavigator.current
+    val cs = MaterialTheme.colorScheme
+
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar(
+                title = { Text("Color Scheme") },
+                navigationIcon = {
+                    IconButton(onClick = navigator.onNavigateBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    }
+                },
+            )
+        },
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            ColorGroup("Primary") {
+                ColorSwatch(cs.primary, cs.onPrimary, "primary", "onPrimary")
+                ColorSwatch(cs.primaryContainer, cs.onPrimaryContainer, "primaryContainer", "onPrimaryContainer")
+                ColorSwatch(cs.inversePrimary, cs.primary, "inversePrimary", "primary")
+            }
+            ColorGroup("Secondary") {
+                ColorSwatch(cs.secondary, cs.onSecondary, "secondary", "onSecondary")
+                ColorSwatch(cs.secondaryContainer, cs.onSecondaryContainer, "secondaryContainer", "onSecondaryContainer")
+            }
+            ColorGroup("Tertiary") {
+                ColorSwatch(cs.tertiary, cs.onTertiary, "tertiary", "onTertiary")
+                ColorSwatch(cs.tertiaryContainer, cs.onTertiaryContainer, "tertiaryContainer", "onTertiaryContainer")
+            }
+            ColorGroup("Error") {
+                ColorSwatch(cs.error, cs.onError, "error", "onError")
+                ColorSwatch(cs.errorContainer, cs.onErrorContainer, "errorContainer", "onErrorContainer")
+            }
+            ColorGroup("Surface") {
+                ColorSwatch(cs.surface, cs.onSurface, "surface", "onSurface")
+                ColorSwatch(cs.surfaceVariant, cs.onSurfaceVariant, "surfaceVariant", "onSurfaceVariant")
+                ColorSwatch(cs.surfaceBright, cs.onSurface, "surfaceBright", "onSurface")
+                ColorSwatch(cs.surfaceDim, cs.onSurface, "surfaceDim", "onSurface")
+                ColorSwatch(cs.inverseSurface, cs.inverseOnSurface, "inverseSurface", "inverseOnSurface")
+            }
+            ColorGroup("Surface Containers") {
+                ColorSwatch(cs.surfaceContainerLowest, cs.onSurface, "surfaceContainerLowest", "onSurface")
+                ColorSwatch(cs.surfaceContainerLow, cs.onSurface, "surfaceContainerLow", "onSurface")
+                ColorSwatch(cs.surfaceContainer, cs.onSurface, "surfaceContainer", "onSurface")
+                ColorSwatch(cs.surfaceContainerHigh, cs.onSurface, "surfaceContainerHigh", "onSurface")
+                ColorSwatch(cs.surfaceContainerHighest, cs.onSurface, "surfaceContainerHighest", "onSurface")
+            }
+            ColorGroup("Background") {
+                ColorSwatch(cs.background, cs.onBackground, "background", "onBackground")
+            }
+            ColorGroup("Outline") {
+                ColorSwatch(cs.outline, cs.surface, "outline", "surface")
+                ColorSwatch(cs.outlineVariant, cs.onSurface, "outlineVariant", "onSurface")
+            }
+            ColorGroup("Scrim") {
+                ColorSwatch(cs.scrim, Color.White, "scrim", "White")
+            }
+        }
+    }
+}
+
+@Composable
+private fun ColorGroup(
+    name: String,
+    content: @Composable () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            name,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 2.dp),
+        )
+        content()
+    }
+}
+
+@Composable
+private fun ColorSwatch(
+    bg: Color,
+    fg: Color,
+    bgName: String,
+    fgName: String,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(52.dp)
+            .background(bg),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            "$bgName / $fgName",
+            color = fg,
+            style = MaterialTheme.typography.bodyMedium,
+        )
+    }
+}

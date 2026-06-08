@@ -31,11 +31,11 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.github.zly2006.zhihu.shared.theme.ThemeMode
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
-import com.github.zly2006.zhihu.theme.ThemeManager
-import com.github.zly2006.zhihu.theme.ThemeMode
+import com.github.zly2006.zhihu.theme.AndroidThemeSettings
 import com.github.zly2006.zhihu.ui.subscreens.ColorSchemeScreen
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -57,12 +57,12 @@ class ColorSchemeScreenInstrumentedTest {
     fun setUp() {
         composeRule.resetAppPreferences()
         composeRule.activity.runOnUiThread {
-            ThemeManager.initialize(composeRule.activity)
-            ThemeManager.setUseDynamicColor(composeRule.activity, false)
-            ThemeManager.setCustomColor(composeRule.activity, TestPrimaryColor)
-            ThemeManager.setBackgroundColor(composeRule.activity, TestLightBackground, isDark = false)
-            ThemeManager.setBackgroundColor(composeRule.activity, TestDarkBackground, isDark = true)
-            ThemeManager.setThemeMode(composeRule.activity, ThemeMode.LIGHT)
+            AndroidThemeSettings.initialize(composeRule.activity)
+            AndroidThemeSettings.setUseDynamicColor(composeRule.activity, false)
+            AndroidThemeSettings.setCustomColor(composeRule.activity, TestPrimaryColor)
+            AndroidThemeSettings.setBackgroundColor(composeRule.activity, TestLightBackground, isDark = false)
+            AndroidThemeSettings.setBackgroundColor(composeRule.activity, TestDarkBackground, isDark = true)
+            AndroidThemeSettings.setThemeMode(composeRule.activity, ThemeMode.LIGHT)
         }
         composeRule.waitForIdle()
     }
@@ -103,7 +103,7 @@ class ColorSchemeScreenInstrumentedTest {
         // Switching to dark mode should update the composed color scheme in place while preserving the
         // current scroll position, so the bottom section remains visible after recomposition.
         composeRule.activity.runOnUiThread {
-            ThemeManager.setThemeMode(composeRule.activity, ThemeMode.DARK)
+            AndroidThemeSettings.setThemeMode(composeRule.activity, ThemeMode.DARK)
         }
         composeRule.waitUntil(timeoutMillis = 5_000) {
             observedBackgroundArgb.get() == TestDarkBackground.toArgb()
@@ -113,7 +113,7 @@ class ColorSchemeScreenInstrumentedTest {
         // Switching back to light mode should restore the original configured background color without
         // resetting the page state, proving that repeated theme transitions are stable and reversible.
         composeRule.activity.runOnUiThread {
-            ThemeManager.setThemeMode(composeRule.activity, ThemeMode.LIGHT)
+            AndroidThemeSettings.setThemeMode(composeRule.activity, ThemeMode.LIGHT)
         }
         composeRule.waitUntil(timeoutMillis = 5_000) {
             observedBackgroundArgb.get() == TestLightBackground.toArgb()

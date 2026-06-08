@@ -36,6 +36,7 @@ import com.github.zly2006.zhihu.navigation.Follow
 import com.github.zly2006.zhihu.navigation.Home
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.OnlineHistory
+import com.github.zly2006.zhihu.test.InstrumentedTestEnvironment
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
 import com.github.zly2006.zhihu.test.ZhihuMockApi
@@ -54,6 +55,7 @@ import com.github.zly2006.zhihu.ui.ACCOUNT_SETTINGS_SHORTCUT_HISTORY_TAG
 import com.github.zly2006.zhihu.ui.ACCOUNT_SETTINGS_SHORTCUT_NOTIFICATION_TAG
 import com.github.zly2006.zhihu.ui.ACCOUNT_SETTINGS_SYSTEM_TAG
 import com.github.zly2006.zhihu.ui.AccountSettingScreen
+import com.github.zly2006.zhihu.ui.AccountSettingsAccountState
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import io.ktor.http.HttpMethod
@@ -65,7 +67,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.util.concurrent.atomic.AtomicInteger
-import com.github.zly2006.zhihu.data.Person as AccountPerson
+import com.github.zly2006.zhihu.shared.data.Person as AccountPerson
 
 @RunWith(AndroidJUnit4::class)
 class AccountSettingScreenInstrumentedTest {
@@ -84,6 +86,7 @@ class AccountSettingScreenInstrumentedTest {
     @After
     fun tearDown() {
         AccountData.delete(composeRule.activity)
+        ZhihuMockApi.install(enabled = InstrumentedTestEnvironment.isMockMode())
         composeRule.resetAppPreferences()
     }
 
@@ -167,6 +170,8 @@ class AccountSettingScreenInstrumentedTest {
                 linkedSetOf(Home.name, Follow.name, Daily.name),
             ).commit()
         AccountData.saveData(composeRule.activity, seededLoggedInAccountData())
+        ZhihuMockApi.install(enabled = true)
+        ZhihuMockApi.reset()
         ZhihuMockApi.mockJson(
             method = HttpMethod.Get,
             url = "https://www.zhihu.com/api/v4/me",
@@ -254,7 +259,7 @@ class AccountSettingScreenInstrumentedTest {
         unreadCount: Int = 0,
         onDismissRequest: () -> Unit = {},
         refreshAccountProfileOnEnter: Boolean = false,
-        testAccountData: AccountData.Data? = null,
+        testAccountData: AccountSettingsAccountState? = null,
     ): RecordingNavigator = composeRule.setScreenContent {
         AccountSettingScreen(
             innerPadding = PaddingValues(),

@@ -1,0 +1,95 @@
+/*
+ * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation (version 3 only).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package com.github.zly2006.zhihu.shared.updater
+
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+
+@Serializable(with = SchematicVersion.Companion::class)
+class SchematicVersion(
+    val allComponents: List<Int>,
+    val preRelease: String,
+    val build: String,
+) : Comparable<SchematicVersion> {
+    companion object : KSerializer<SchematicVersion> {
+        override val descriptor =
+            PrimitiveSerialDescriptor(SchematicVersion::class.simpleName!!, PrimitiveKind.STRING)
+
+        override fun serialize(encoder: Encoder, value: SchematicVersion) = encoder.encodeString(value.toString())
+
+        override fun deserialize(decoder: Decoder) = fromString(decoder.decodeString())
+
+        private val REGEX = Regex("""[vV]?(?<components>[\d.]+)(-(?<pre>[\w._-]+))?(\+(?<build>.+))?""")
+
+        fun fromString(version: String): SchematicVersion {
+            val match = REGEX.matchEntire(version) ?: throw IllegalArgumentException("Invalid version string")
+            val components = match.groups["components"]!!
+                .value
+                .split(".")
+                .map { it.toInt() }
+            require(components.isNotEmpty()) { "Version must have at least one component" }
+            val preRelease = match.groups["pre"]?.value ?: ""
+            val build = match.groups["build"]?.value ?: ""
+            return SchematicVersion(components, preRelease, build)
+        }
+    }
+
+    val major: Int get() = allComponents.getOrNull(0) ?: 0
+    val minor: Int get() = allComponents.getOrNull(1) ?: 0
+    val patch: Int get() = allComponents.getOrNull(2) ?: 0
+
+    override fun toString() = buildString {
+        append(allComponents.joinToString("."))
+        if (preRelease.isNotEmpty()) append("-$preRelease")
+        if (build.isNotEmpty()) append("+$build")
+    }
+
+    override operator fun compareTo(other: SchematicVersion): Int {
+        for (i in 0 until maxOf(allComponents.size, other.allComponents.size)) {
+            val a = allComponents.getOrNull(i) ?: 0
+            val b = other.allComponents.getOrNull(i) ?: 0
+            if (a != b) return a - b
+        }
+        if (preRelease.isNotEmpty() && other.preRelease.isNotEmpty()) {
+            val a = preRelease.split(".")
+            val b = other.preRelease.split(".")
+            for (i in 0 until maxOf(a.size, b.size)) {
+                val aPart = a.getOrNull(i) ?: ""
+                val bPart = b.getOrNull(i) ?: ""
+                if (aPart != bPart) {
+                    return when {
+                        aPart.all { it.isDigit() } && bPart.all { it.isDigit() } -> aPart.toInt() - bPart.toInt()
+                        else -> aPart.compareTo(bPart)
+                    }
+                }
+            }
+            return 0
+        } else if (preRelease.isNotEmpty()) {
+            return -1
+        } else if (other.preRelease.isNotEmpty()) {
+            return 1
+        }
+        return 0
+    }
+
+    operator fun compareTo(other: String): Int = compareTo(fromString(other))
+}
