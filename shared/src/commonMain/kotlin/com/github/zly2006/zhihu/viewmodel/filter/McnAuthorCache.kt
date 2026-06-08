@@ -31,9 +31,21 @@ data class McnAuthorCache(
     val hasMcn: Boolean
         get() = !mcnCompany.isNullOrBlank()
 
+    fun isExpired(nowMillis: Long = currentEpochMillis()): Boolean {
+        val ttlMillis = if (hasMcn) {
+            POSITIVE_MCN_CACHE_TTL_MILLIS
+        } else {
+            NEGATIVE_MCN_CACHE_TTL_MILLIS
+        }
+        return checkedTime <= 0L || nowMillis - checkedTime >= ttlMillis
+    }
+
     companion object {
         const val TABLE_NAME = "mcn_author_cache"
     }
 }
+
+internal const val POSITIVE_MCN_CACHE_TTL_MILLIS: Long = 30L * 24 * 60 * 60 * 1000
+internal const val NEGATIVE_MCN_CACHE_TTL_MILLIS: Long = 24L * 60 * 60 * 1000
 
 private fun currentEpochMillis(): Long = Clock.System.now().toEpochMilliseconds()

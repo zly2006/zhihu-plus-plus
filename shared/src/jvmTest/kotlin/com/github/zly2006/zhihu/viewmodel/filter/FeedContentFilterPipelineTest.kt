@@ -388,6 +388,47 @@ class FeedContentFilterPipelineTest {
     }
 
     @Test
+    fun refreshesExpiredMcnCacheEntries() = runTest {
+        val database = getContentFilterDatabase(
+            createTempDirectory("feed-content-filter-expired-mcn-cache").resolve("content-filter.db").toFile(),
+        )
+        var calls = 0
+        val blocklistService = BlocklistService(
+            keywordDao = database.blockedKeywordDao(),
+            userDao = database.blockedUserDao(),
+            topicDao = database.blockedTopicDao(),
+            mcnOrganizationDao = database.blockedMcnOrganizationDao(),
+            mcnAuthorCacheDao = database.mcnAuthorCacheDao(),
+        )
+        blocklistService.cacheMcnCompany("mcn-token", "author", null)
+        database.mcnAuthorCacheDao().insert(
+            McnAuthorCache(urlToken = "mcn-token", userName = "author", mcnCompany = null, checkedTime = 0L),
+        )
+
+        val result = FeedContentFilterPipeline(
+            settings = FeedFilterSettings(blockAllMcnAuthors = true),
+            blocklistService = blocklistService,
+            blockedKeywordService = BlockedKeywordService(
+                keywordDao = database.blockedKeywordDao(),
+                recordDao = database.blockedContentRecordDao(),
+                semanticMatcher = KeywordSemanticMatcher { _, _, _ -> emptyList() },
+            ),
+            mcnCompanyProvider = McnCompanyProvider {
+                calls += 1
+                "刷新后的机构"
+            },
+        ).filter(
+            listOf(filterable("expired", authorId = "mcn-user", authorUrlToken = "mcn-token")),
+        )
+
+        assertEquals(1, calls)
+        assertEquals(emptyList(), result.kept)
+        assertEquals(listOf("屏蔽MCN机构：刷新后的机构"), result.blocked.map { it.second })
+        assertEquals("刷新后的机构", blocklistService.getCachedMcnAuthor("mcn-token")?.mcnCompany)
+        database.close()
+    }
+
+    @Test
     fun filterableContentFallsBackToFeedDisplayAuthorUrlToken() {
         val item = FeedDisplayItem(
             title = "answer card",

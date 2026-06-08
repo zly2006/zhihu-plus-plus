@@ -36,7 +36,7 @@ class ZhihuMcnCompanyProvider(
     private val configureRequest: (HttpRequestBuilder) -> Unit = {},
 ) : McnCompanyProvider {
     override suspend fun getMcnCompany(urlToken: String): String? {
-        var hasSuccessfulResponse = false
+        var successfulResponses = 0
         var lastError: Throwable? = null
         listOf<suspend () -> String?>(
             {
@@ -48,14 +48,14 @@ class ZhihuMcnCompanyProvider(
         ).forEach { fetch ->
             runCatching { fetch() }
                 .onSuccess { company ->
-                    hasSuccessfulResponse = true
+                    successfulResponses += 1
                     company.normalizeMcnCompany()?.let { return it }
                 }.onFailure { error ->
                     lastError = error
                     Log.e("ZhihuMcnCompanyProvider", "Failed to fetch MCN company for $urlToken", error)
                 }
         }
-        if (hasSuccessfulResponse) return null
+        if (successfulResponses == MCN_LOOKUP_ENDPOINT_COUNT) return null
         throw lastError ?: IllegalStateException("Failed to fetch MCN company for $urlToken")
     }
 
@@ -81,6 +81,8 @@ class ZhihuMcnCompanyProvider(
         return extractMcnCompanyFromPeopleApi(user)
     }
 }
+
+private const val MCN_LOOKUP_ENDPOINT_COUNT = 2
 
 internal fun extractMcnCompanyFromPeopleApi(user: JsonElement): String? {
     val root = user.jsonObject

@@ -17,8 +17,18 @@
 
 package com.github.zly2006.zhihu.viewmodel.filter
 
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respond
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.headersOf
+import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
+import kotlin.test.assertFailsWith
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -111,4 +121,62 @@ class ZhihuMcnCompanyProviderTest {
 
         assertNull(extractMcnCompanyFromPeopleApi(Json.parseToJsonElement(json)))
     }
+
+    @Test
+    fun returnsNullOnlyWhenBothEndpointsConfirmNoMcn() = runTest {
+        val provider = ZhihuMcnCompanyProvider(
+            HttpClient(
+                MockEngine {
+                    respond(
+                        content = NO_MCN_USER_JSON,
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+                    )
+                },
+            ) {
+                install(ContentNegotiation) { json(Json) }
+            },
+        )
+
+        assertNull(provider.getMcnCompany("plain-author"))
+    }
+
+    @Test
+    fun treatsPartialEndpointFailureAsUnknownInsteadOfNoMcn() = runTest {
+        val provider = ZhihuMcnCompanyProvider(
+            HttpClient(
+                MockEngine { request ->
+                    if (request.url.host == "api.zhihu.com") {
+                        respond(
+                            content = NO_MCN_USER_JSON,
+                            status = HttpStatusCode.OK,
+                            headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+                        )
+                    } else {
+                        error("members endpoint failed")
+                    }
+                },
+            ) {
+                install(ContentNegotiation) { json(Json) }
+            },
+        )
+
+        assertFailsWith<IllegalStateException> {
+            provider.getMcnCompany("plain-author")
+        }
+    }
 }
+
+private const val NO_MCN_USER_JSON =
+    """
+    {
+      "id": "user-id",
+      "url_token": "plain-author",
+      "name": "普通作者",
+      "is_org": false,
+      "badge_v2": {
+        "detail_badges": [],
+        "merged_badges": []
+      }
+    }
+    """

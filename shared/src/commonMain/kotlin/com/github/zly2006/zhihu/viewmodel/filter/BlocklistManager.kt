@@ -201,7 +201,9 @@ class BlocklistService(
 
     suspend fun hasBlockedMcnOrganizations(): Boolean = mcnOrganizationDao.hasOrganizations()
 
-    suspend fun getCachedMcnAuthor(urlToken: String): McnAuthorCache? = mcnAuthorCacheDao.getByUrlToken(urlToken)
+    suspend fun getCachedMcnAuthor(urlToken: String): McnAuthorCache? = mcnAuthorCacheDao
+        .getByUrlToken(urlToken)
+        ?.takeUnless { it.isExpired() }
 
     suspend fun cacheMcnCompany(
         urlToken: String,
