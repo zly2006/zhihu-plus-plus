@@ -30,8 +30,63 @@ permissions:
   contents: write
 
 jobs:
+  build-desktop:
+    name: Build Desktop App (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set Up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Change wrapper permissions
+        shell: bash
+        run: chmod +x ./gradlew
+
+      - name: Set desktop artifact suffix
+        id: desktop_suffix
+        shell: bash
+        run: |
+          arch="$(uname -m)"
+          case "$arch" in
+            x86_64|amd64) arch="x64" ;;
+            aarch64|arm64) arch="arm64" ;;
+          esac
+          case "$RUNNER_OS" in
+            Linux) os="linux" ;;
+            macOS) os="macos" ;;
+            Windows) os="windows" ;;
+            *) os="$(echo "$RUNNER_OS" | tr '[:upper:]' '[:lower:]')" ;;
+          esac
+          echo "suffix=$os-$arch" >> "$GITHUB_OUTPUT"
+
+      - name: Build Desktop Jar
+        shell: bash
+        run: ./gradlew ${{ inputs.args }} :desktopApp:packageReleaseUberJarForCurrentOS
+
+      - name: Move desktop jar
+        shell: bash
+        run: |
+          mkdir -p desktopApp/build/upload
+          mv desktopApp/build/compose/jars/*-release.jar desktopApp/build/upload/zhihu++-desktop-${{ steps.desktop_suffix.outputs.suffix }}.jar
+
+      - name: Upload Desktop Jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: zhihu++-desktop-${{ steps.desktop_suffix.outputs.suffix }}
+          path: desktopApp/build/upload/zhihu++-desktop-${{ steps.desktop_suffix.outputs.suffix }}.jar
+
   build:
     name: Build Android App
+    needs: build-desktop
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -117,6 +172,12 @@ jobs:
           mkdir -p app/build/upload
           mv app/build/outputs/apk/full/release/app-full-release.apk app/build/upload/zhihu++-full.apk
           mv app/build/outputs/apk/lite/release/app-lite-release.apk app/build/upload/zhihu++-lite.apk
+      - name: Download desktop jars
+        uses: actions/download-artifact@v4
+        with:
+          pattern: zhihu++-desktop-*
+          path: app/build/upload
+          merge-multiple: true
       - name: Compress lite mapping file
         if: ${{ inputs.minify }}
         run: |
@@ -208,6 +269,7 @@ jobs:
             app/build/upload/zhihu++-lite.apk
             app/build/upload/mapping-lite.zip
             app/build/upload/zhihu++-full.apk
+            app/build/upload/zhihu++-desktop-*.jar
           fail_on_unmatched_files: true
           prerelease: true
       - name: Generate release notes
@@ -246,6 +308,6 @@ jobs:
             app/build/upload/zhihu++-lite.apk
             app/build/upload/mapping-lite.zip
             app/build/upload/zhihu++-full.apk
+            app/build/upload/zhihu++-desktop-*.jar
           fail_on_unmatched_files: true
           prerelease: false
-

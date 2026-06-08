@@ -44,6 +44,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 
+/**
+ * Material 3 配色调试页。
+ *
+ * 页面列出当前 [MaterialTheme.colorScheme] 的主要 token，用于检查动态取色、自定义主题色和明暗模式对 UI 的实际影响。
+ * 它只作为开发者诊断入口，不承载用户设置写入。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ColorSchemeScreen() {

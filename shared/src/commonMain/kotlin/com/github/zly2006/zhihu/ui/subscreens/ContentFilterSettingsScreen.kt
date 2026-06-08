@@ -76,6 +76,14 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 
+/**
+ * 推荐系统与内容过滤设置页。
+ *
+ * 页面分为推荐来源、智能过滤、关键词/用户/主题屏蔽、广告/付费内容过滤、屏蔽列表、屏蔽记录和过滤统计。这里的开关会影响首页信息流
+ * 数据来源和 Feed 卡片的更多菜单行为，不能只按静态设置页验证；改动后要检查推荐拉取、过滤运行时和 Blocklist 管理入口。
+ *
+ * [setting] 用于从其他 UI 入口跳转并高亮具体设置项，新增过滤能力时应保持这个参数可用，方便用户从提示或弹窗直接回到相关配置。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContentFilterSettingsScreen(
@@ -138,7 +146,7 @@ fun ContentFilterSettingsScreen(
                     settingKey = "recommendationMode",
                     highlightedKey = highlightedSetting,
                     endAction = {
-                        // Rec Mode
+                        // 推荐模式
                         val currentRecommendationMode = remember {
                             mutableStateOf(
                                 RecommendationMode.entries.find {
@@ -449,7 +457,7 @@ fun ContentFilterSettingsScreen(
                 )
             }
 
-            // Filter Stats (Simplified)
+            // 过滤统计（简化版）
             var filterStats by remember { mutableStateOf<ContentFilterStats?>(null) }
             var showStatsDialog by remember { mutableStateOf(false) }
 
@@ -496,7 +504,7 @@ fun ContentFilterSettingsScreen(
                                             filterStats = filterMaintenance.cleanupOldData()
                                             userMessages.showMessage("已清理过期数据")
                                         } catch (e: Exception) {
-                                            // ignore
+                                            // 忽略导出异常。
                                         }
                                     }
                                 },
@@ -512,7 +520,7 @@ fun ContentFilterSettingsScreen(
                                             userMessages.showMessage("已重置所有数据")
                                             showStatsDialog = false
                                         } catch (e: Exception) {
-                                            // ignore
+                                            // 忽略分享异常。
                                         }
                                     }
                                 },

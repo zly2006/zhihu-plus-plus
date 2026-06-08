@@ -17,22 +17,65 @@
 
 package com.github.zly2006.zhihu.viewmodel.feed
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.github.zly2006.zhihu.shared.data.SearchResult
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.ZhihuPaging
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import io.ktor.http.encodeURLParameter
 import kotlinx.serialization.json.jsonArray
 
 const val ZHIHU_HOT_SEARCH_URL = "https://www.zhihu.com/api/v4/search/hot_search"
+private const val SEARCH_VERTICAL_INFO = "0,0,0,0,0,0,0,0,0,0,0,0"
 
 class SearchViewModel(
     val searchQuery: String,
+    val restrictedMemberHashId: String = "",
 ) : BaseFeedViewModel() {
+    var sortOption by mutableStateOf(SearchSortOption.Default)
+        private set
+    var contentType by mutableStateOf(SearchContentType.All)
+        private set
+    var timeRange by mutableStateOf(SearchTimeRange.All)
+        private set
+
+    val initialRequestUrl: String
+        get() = initialUrl
+
     override val initialUrl: String
-        get() = "https://www.zhihu.com/api/v4/search_v3?t=general&q=$searchQuery&correction=1&offset=0&limit=20"
+        get() = zhihuSearchUrl(searchQuery, sortOption, contentType, timeRange, restrictedMemberHashId)
 
     // Override include to request necessary fields for search results
     override val include = "data[*].highlight,object,type"
+
+    fun updateSortOption(
+        environment: PaginationEnvironment,
+        option: SearchSortOption,
+    ) {
+        if (sortOption == option) return
+        sortOption = option
+        refresh(environment)
+    }
+
+    fun updateContentType(
+        environment: PaginationEnvironment,
+        type: SearchContentType,
+    ) {
+        if (contentType == type) return
+        contentType = type
+        refresh(environment)
+    }
+
+    fun updateTimeRange(
+        environment: PaginationEnvironment,
+        range: SearchTimeRange,
+    ) {
+        if (timeRange == range) return
+        timeRange = range
+        refresh(environment)
+    }
 
     override suspend fun fetchFeeds(environment: PaginationEnvironment) {
         try {
@@ -64,4 +107,78 @@ class SearchViewModel(
             isLoading = false
         }
     }
+}
+
+enum class SearchSortOption(
+    val label: String,
+    val value: String,
+) {
+    Default("综合排序", ""),
+    Latest("最新发布", "created_time"),
+    MostVoted("最多赞同", "upvoted_count"),
+}
+
+enum class SearchContentType(
+    val label: String,
+    val value: String,
+) {
+    All("全部内容", ""),
+    Answer("回答", "answer"),
+    Article("文章", "article"),
+    Video("视频", "zvideo"),
+}
+
+enum class SearchTimeRange(
+    val label: String,
+    val value: String,
+) {
+    All("不限时间", ""),
+    Day("一天内", "a_day"),
+    Week("一周内", "a_week"),
+    Month("一个月内", "a_month"),
+    ThreeMonths("三个月内", "three_months"),
+    HalfYear("半年内", "half_a_year"),
+    Year("一年内", "a_year"),
+}
+
+fun zhihuSearchUrl(
+    query: String,
+    sortOption: SearchSortOption = SearchSortOption.Default,
+    contentType: SearchContentType = SearchContentType.All,
+    timeRange: SearchTimeRange = SearchTimeRange.All,
+    restrictedMemberHashId: String = "",
+): String {
+    val hasActiveFilter = sortOption != SearchSortOption.Default ||
+        contentType != SearchContentType.All ||
+        timeRange != SearchTimeRange.All
+    val params = buildList {
+        add("gk_version" to "gz-gaokao")
+        add("t" to "general")
+        add("q" to query)
+        add("correction" to "1")
+        add("offset" to "0")
+        add("limit" to "20")
+        add("search_source" to if (hasActiveFilter) "Filter" else "Normal")
+        add("show_all_topics" to "0")
+        if (restrictedMemberHashId.isNotBlank()) {
+            add("filter_fields" to "")
+            add("lc_idx" to "0")
+            add("restricted_scene" to "member")
+            add("restricted_field" to "member_hash_id")
+            add("restricted_value" to restrictedMemberHashId)
+        }
+        if (contentType.value.isNotEmpty()) {
+            add("vertical" to contentType.value)
+            add("vertical_info" to SEARCH_VERTICAL_INFO)
+        }
+        if (sortOption.value.isNotEmpty()) {
+            add("sort" to sortOption.value)
+        }
+        if (timeRange.value.isNotEmpty()) {
+            add("time_interval" to timeRange.value)
+        }
+    }.joinToString("&") { (key, value) ->
+        "$key=${value.encodeURLParameter(spaceToPlus = true)}"
+    }
+    return "https://www.zhihu.com/api/v4/search_v3?$params"
 }

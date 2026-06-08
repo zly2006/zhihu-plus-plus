@@ -62,6 +62,12 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.platform.SettingsStore
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 
+/**
+ * 通用分享弹窗内容。
+ *
+ * 弹窗采用底部滑入的操作面板，提供系统分享、复制链接和跳转分享设置三个动作。它只负责视觉和点击分发，
+ * 具体分享、复制和设置导航由调用方注入，方便文章、问题、想法等内容复用同一套交互。
+ */
 @Composable
 fun ShareDialogContent(
     showDialog: Boolean,
@@ -246,6 +252,12 @@ fun ShareDialog(
     )
 }
 
+/**
+ * 根据用户的分享偏好执行默认分享动作。
+ *
+ * `shareActionMode=ask` 时打开弹窗，`copy` 时直接复制，`share` 时直接调用系统分享。新增分享入口时优先走这里，
+ * 避免不同页面对同一个设置项解释不一致。
+ */
 fun handleShareAction(
     content: NavDestination,
     settings: SettingsStore,
