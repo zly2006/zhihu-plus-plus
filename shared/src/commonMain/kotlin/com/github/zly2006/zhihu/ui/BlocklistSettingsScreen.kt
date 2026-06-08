@@ -1075,7 +1075,7 @@ fun AddMcnOrganizationDialog(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    "提示：机构名称需与知乎用户主页显示的 MCN 机构名称一致。",
+                    "提示：可输入完整机构名或关键名称，例如「杭州亚序」。",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

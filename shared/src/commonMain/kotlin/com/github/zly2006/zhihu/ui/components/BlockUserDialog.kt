@@ -151,6 +151,14 @@ fun BlockUserConfirmDialogContent(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    if (isResolvingMcn) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            "正在识别是否可按 MCN 机构屏蔽；你也可以直接屏蔽该用户。",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             },
             confirmButton = {

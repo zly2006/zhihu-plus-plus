@@ -743,9 +743,8 @@ private fun PeopleScreenContent(
             mcnCompanyProvider.getMcnCompany(person.urlToken).normalizeMcnCompany()
         }.onSuccess { resolvedMcn ->
             if (resolvedMcn.isNullOrBlank()) {
-                if (viewModel.mcnCompany.normalizeMcnCompany() == null) {
-                    blocklistManager.cacheMcnCompany(person.urlToken, uiState.profile.name, null)
-                }
+                blocklistManager.cacheMcnCompany(person.urlToken, uiState.profile.name, null)
+                viewModel.mcnCompany = null
             } else {
                 blocklistManager.cacheMcnCompany(person.urlToken, uiState.profile.name, resolvedMcn)
                 viewModel.mcnCompany = resolvedMcn
