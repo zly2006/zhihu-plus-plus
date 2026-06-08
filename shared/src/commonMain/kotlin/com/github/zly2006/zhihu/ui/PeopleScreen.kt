@@ -873,7 +873,11 @@ private fun PeopleScreenContent(
                                                 viewModel.toggleRecommendationBlock(paginationEnvironment)
                                                 userMessages.showShortMessage("已屏蔽推荐")
                                             } else {
-                                                mcnCompanyToBlock = resolvedMcn
+                                                if (blocklistManager.isMcnOrganizationBlocked(resolvedMcn)) {
+                                                    userMessages.showShortMessage("该 MCN 已在屏蔽列表中")
+                                                } else {
+                                                    mcnCompanyToBlock = resolvedMcn
+                                                }
                                             }
                                         } catch (e: Exception) {
                                             userMessages.showShortMessage("操作失败: ${e.message}")
@@ -1233,6 +1237,7 @@ private fun PeopleScreenContent(
         BlockRecommendationSourceDialog(
             authorName = viewModel.name.ifBlank { person.name },
             mcnCompany = resolvedMcnCompanyToBlock,
+            isMcnBlocked = false,
             onDismiss = { mcnCompanyToBlock = null },
             onBlockUser = {
                 coroutineScope.launch {

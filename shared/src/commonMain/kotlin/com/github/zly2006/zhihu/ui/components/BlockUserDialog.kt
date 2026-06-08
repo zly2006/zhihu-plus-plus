@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -43,10 +44,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.viewmodel.feed.FeedBlockAuthorInfo
@@ -55,6 +58,7 @@ import com.github.zly2006.zhihu.viewmodel.filter.ZhihuMcnCompanyProvider
 import com.github.zly2006.zhihu.viewmodel.filter.normalizeMcnCompany
 import com.github.zly2006.zhihu.viewmodel.filter.rememberBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import kotlinx.coroutines.launch
 
 /**
  * 屏蔽用户确认弹窗。
@@ -72,6 +76,8 @@ fun BlockUserConfirmDialogContent(
     onConfirmBlockMcn: (String) -> Unit = {},
 ) {
     if (showDialog && userToBlock != null) {
+        val coroutineScope = rememberCoroutineScope()
+        val userMessages = rememberUserMessageSink()
         val author = remember(userToBlock, displayItems) {
             userToBlock.let { authorInfo ->
                 val resolvedAuthor = displayItems
@@ -132,9 +138,19 @@ fun BlockUserConfirmDialogContent(
             BlockRecommendationSourceDialog(
                 authorName = author.name,
                 mcnCompany = resolvedMcnCompany,
+                isMcnBlocked = false,
                 onDismiss = onDismiss,
                 onBlockUser = { onConfirmBlock(author) },
-                onBlockMcn = { onConfirmBlockMcn(resolvedMcnCompany) },
+                onBlockMcn = {
+                    coroutineScope.launch {
+                        if (blocklistManager.isMcnOrganizationBlocked(resolvedMcnCompany)) {
+                            onDismiss()
+                            userMessages.showShortMessage("该 MCN 已在屏蔽列表中")
+                        } else {
+                            onConfirmBlockMcn(resolvedMcnCompany)
+                        }
+                    }
+                },
             )
             return
         }
@@ -183,6 +199,7 @@ fun BlockUserConfirmDialogContent(
 fun BlockRecommendationSourceDialog(
     authorName: String,
     mcnCompany: String,
+    isMcnBlocked: Boolean,
     onDismiss: () -> Unit,
     onBlockUser: () -> Unit,
     onBlockMcn: () -> Unit,
@@ -205,8 +222,13 @@ fun BlockRecommendationSourceDialog(
                 )
                 BlockSourceChoiceCard(
                     icon = { Icon(Icons.Default.Business, contentDescription = null) },
-                    title = "屏蔽 MCN 机构",
-                    description = "隐藏「$mcnCompany」旗下作者内容",
+                    title = if (isMcnBlocked) "MCN 机构已屏蔽" else "屏蔽 MCN 机构",
+                    description = if (isMcnBlocked) {
+                        "「$mcnCompany」已在屏蔽列表中"
+                    } else {
+                        "隐藏「$mcnCompany」旗下作者内容"
+                    },
+                    enabled = !isMcnBlocked,
                     onClick = onBlockMcn,
                 )
             }
@@ -225,15 +247,21 @@ private fun BlockSourceChoiceCard(
     icon: @Composable () -> Unit,
     title: String,
     description: String,
+    enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .clickable(enabled = enabled, onClick = onClick),
         shape = RoundedCornerShape(16.dp),
+        border = if (enabled) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            containerColor = if (enabled) {
+                MaterialTheme.colorScheme.surfaceContainerHighest
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant
+            },
         ),
     ) {
         Row(
@@ -243,7 +271,11 @@ private fun BlockSourceChoiceCard(
             icon()
             Spacer(modifier = Modifier.width(16.dp))
             Column {
-                Text(title, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     description,

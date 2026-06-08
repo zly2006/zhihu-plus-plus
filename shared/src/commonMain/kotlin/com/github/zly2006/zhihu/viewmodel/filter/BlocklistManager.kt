@@ -439,6 +439,10 @@ class BlocklistManager(
         service.getAllBlockedMcnOrganizations()
     }
 
+    suspend fun isMcnOrganizationBlocked(organizationName: String?): Boolean = withContext(Dispatchers.Default) {
+        service.isMcnOrganizationBlocked(organizationName)
+    }
+
     suspend fun getCachedMcnAuthor(urlToken: String): McnAuthorCache? = withContext(Dispatchers.Default) {
         service.getCachedMcnAuthor(urlToken)
     }
