@@ -92,6 +92,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -553,6 +554,14 @@ fun ArticleActionsMenu(
     }
 }
 
+/**
+ * 文章/回答详情页。
+ *
+ * 页面负责加载知乎回答或专栏文章，展示标题、作者、正文、附件视频、评论入口、分享/复制/朗读/浏览器打开等底部操作，
+ * 并根据阅读设置切换 Compose Markdown 或 WebView 渲染。回答页还承载同题回答切换手势和对应转场状态，因此改动时要同时关注
+ * `answerSwitchMode`、`buttonSkipAnswer`、`autoHideArticleBottomBar`、`titleAutoHide`、`answerDoubleTapAction` 和
+ * `ARTICLE_USE_WEBVIEW_PREFERENCE_KEY`。
+ */
 @OptIn(
     ExperimentalMaterial3Api::class,
     ExperimentalFoundationApi::class,
@@ -597,7 +606,7 @@ fun ArticleScreen(
     val density = LocalDensity.current
     val scrollDeltaThreshold = with(density) { ScrollThresholdDp.toPx() }
     var topBarHeight by remember { mutableIntStateOf(0) }
-    var showComments by remember { mutableStateOf(false) }
+    var showComments by rememberSaveable(article.type, article.id) { mutableStateOf(false) }
     var showCollectionDialog by remember { mutableStateOf(false) }
     var showActionsMenu by remember { mutableStateOf(false) }
     var showSummaryDialog by remember { mutableStateOf(false) }
@@ -617,7 +626,7 @@ fun ArticleScreen(
     }
     var useWebView by remember { mutableStateOf(articleSettings.useWebView) }
 
-    // Follow-the-finger bar hide: pixel-based offsets driven by scroll delta
+    // 跟手隐藏标题栏和底栏：用滚动增量直接驱动像素偏移。
     val topBarOffset = remember { Animatable(0f) }
     val bottomBarOffset = remember { Animatable(0f) }
     var topBarHeightPx by remember { mutableFloatStateOf(0f) }
@@ -713,7 +722,7 @@ fun ArticleScreen(
         answerDoubleTapAction = articleSettings.answerDoubleTapAction
     }
 
-    // Reset bar offsets when auto-hide preferences are turned off
+    // 自动隐藏关闭时重置栏位偏移。
     LaunchedEffect(isTitleAutoHide) {
         if (!isTitleAutoHide) topBarOffset.snapTo(0f)
     }
@@ -729,20 +738,20 @@ fun ArticleScreen(
             previousScrollValue = currentScroll
         }
 
-        // Skip bar offset tracking during snap animation (scroll is driven programmatically)
+        // 吸附动画期间滚动由程序驱动，跳过栏位偏移跟踪。
         if (!isBarSnapping) {
             val delta = currentScroll - previousScrollForBarOffset
             val atTop = currentScroll == 0
             val atBottom = currentScroll >= scrollState.maxValue
 
-            // Top bar: force show at top; content-like reveal at bottom
+            // 顶栏：顶部强制显示，接近底部时按内容距离逐步露出。
             if (atTop) {
                 topBarOffset.snapTo(0f)
             } else if (isTitleAutoHide && topBarHeightPx > 0f) {
                 val deltaBasedOffset = (topBarOffset.value - delta).coerceIn(-topBarHeightPx, 0f)
                 val distanceFromBottom = (scrollState.maxValue - currentScroll).coerceAtLeast(0)
                 if (distanceFromBottom < topBarHeightPx.toInt()) {
-                    // Bottom region: use whichever shows MORE of the bar (closer to 0)
+                    // 底部区域取露出更多栏位的偏移，也就是更接近 0 的值。
                     val distanceBasedOffset = (-distanceFromBottom.toFloat()).coerceIn(-topBarHeightPx, 0f)
                     topBarOffset.snapTo(maxOf(distanceBasedOffset, deltaBasedOffset))
                 } else {
@@ -750,14 +759,14 @@ fun ArticleScreen(
                 }
             }
 
-            // Bottom bar: force show at top; content-like reveal at bottom
+            // 底栏：顶部强制显示，接近底部时按内容距离逐步露出。
             if (atTop) {
                 bottomBarOffset.snapTo(0f)
             } else if (autoHideArticleBottomBar && bottomBarHeightPx > 0f) {
                 val deltaBasedOffset = (bottomBarOffset.value + delta).coerceIn(0f, bottomBarHeightPx)
                 val distanceFromBottom = (scrollState.maxValue - currentScroll).coerceAtLeast(0)
                 if (distanceFromBottom < bottomBarHeightPx.toInt()) {
-                    // Bottom region: use whichever shows MORE of the bar
+                    // 底部区域取露出更多栏位的偏移。
                     val distanceBasedOffset = distanceFromBottom.toFloat().coerceIn(0f, bottomBarHeightPx)
                     bottomBarOffset.snapTo(minOf(distanceBasedOffset, deltaBasedOffset))
                 } else {
@@ -775,8 +784,7 @@ fun ArticleScreen(
         }
     }
 
-    // Snap bars to fully visible or fully hidden when scrolling stops,
-    // and animate content scroll to follow the snap
+    // 滚动停止时把栏位吸附到完全显示或完全隐藏，并让内容滚动跟随顶栏吸附。
     LaunchedEffect(scrollState.isScrollInProgress) {
         if (!scrollState.isScrollInProgress) {
             val topTarget = if (isTitleAutoHide && topBarHeightPx > 0f) {
@@ -791,8 +799,7 @@ fun ArticleScreen(
                 bottomBarOffset.value
             }
 
-            // Only compensate scroll for the top bar near the top
-            // Bottom bar: no scroll compensation (distance-based reveal handles it)
+            // 仅在靠近顶部时补偿顶栏吸附导致的内容位移；底栏交给距离触发的露出逻辑处理。
             val topInNaturalArea = scrollState.value <= topBarHeightPx
             val topDelta = if (topInNaturalArea) topBarOffset.value - topTarget else 0f
 
@@ -813,7 +820,7 @@ fun ArticleScreen(
         }
     }
 
-    // Master-style bar visibility (direction-based, used when true is false)
+    // 主视觉风格的栏位显隐：按滚动方向控制，用于非跟手偏移路径。
     val showTopBar by remember {
         derivedStateOf {
             val canScroll = scrollState.maxValue > topBarHeight
@@ -999,7 +1006,7 @@ fun ArticleScreen(
     @OptIn(ExperimentalMaterial3Api::class)
     val answerSwitchContent: @Composable () -> Unit = {
         val scrollBehavior = rememberPreferCollapsedExitUntilCollapsedScrollBehavior()
-        // 不受到是否收起影响，在topbar最大时是否可以滚动？
+        // 记录历史最大滚动范围，避免顶栏展开/收起时 maxValue 短暂变化导致 scrollBehavior 抖动。
         var scrollStateMaxValue by remember { mutableIntStateOf(0) }
         LaunchedEffect(scrollState.maxValue) {
             if (scrollState.maxValue != Int.MAX_VALUE) {
@@ -1148,14 +1155,14 @@ fun ArticleScreen(
                 }
             },
             bottomBar = {
-                // 防止在导航动画和预测性返回手势的过程中，bottom bar闪烁
+                // 防止在导航动画和预测性返回手势过程中，底部操作栏闪烁。
                 val showBottomBarCondition = backStackEntry?.hasRoute(Article::class) == true || articleHost == null
 
-                // Shared composable for the action bar content (gated by useDuo3ArticleActions)
+                // 操作栏内容的共享组合，按 useDuo3ArticleActions 切换两套视觉。
                 @Composable
                 fun ActionBarContent() {
                     if (!useDuo3ArticleActions) {
-                        // ── master: Button-based vote + actions ────────────────────────
+                        // ── 主视觉：按钮式投票与操作区 ────────────────────────
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1277,7 +1284,7 @@ fun ArticleScreen(
                             }
                         }
                     } else {
-                        // ── duo3: pill-shaped animated vote + actions ────────────────────
+                        // ── duo3：药丸式动画投票与操作区 ────────────────────
                         Row(
                             modifier = Modifier
                                 .padding(bottom = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 16.dp)
@@ -1552,7 +1559,7 @@ fun ArticleScreen(
                             }
                         }
                     }
-                    // Status bar gradient overlay (duo3 only — not needed in master path)
+                    // 状态栏渐变遮罩，仅 duo3 路径需要；主视觉路径不绘制。
                     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
                     val surfaceColor = MaterialTheme.colorScheme.surfaceContainer
                     Box(
@@ -1566,11 +1573,11 @@ fun ArticleScreen(
                 }
             }
         }
-    } // end answerSwitchContent
+    } // answerSwitchContent 结束。
 
     val nav = sharedData?.navigator
     if (article.type == ArticleType.Answer && answerSwitchMode == "horizontal") {
-        // 预加载预览 WebView 内容，确保滑动前 WebView 已渲染完成
+        // 预加载预览内容，确保滑动前相邻回答已经准备好。
         LaunchedEffect(nav?.nextAnswer) {
             val cached = nav?.nextAnswer ?: return@LaunchedEffect
             previewPreloader.preloadPreview(cached, isNext = true, viewModel.title) {
@@ -1633,7 +1640,7 @@ fun ArticleScreen(
                 ),
         )
 
-        // Keep the skip button above both question and answer regions.
+        // 跳转按钮需要压在问题区和回答区之上。
         if (article.type == ArticleType.Answer && buttonSkipAnswer) {
             val showSkipButton = !autoHideSkipAnswerButton || isScrollingUp || scrollState.value == 0
             val skipButtonAlpha by animateFloatAsState(
@@ -1787,9 +1794,9 @@ fun ArticleScreen(
 
 /**
  * 渲染缓存的回答完整内容，用于水平滑动预览。
- * 显示标题、作者信息、HTML 内容（WebView）。
- * sharedData: ViewModel 中的共享数据，提供缓存 WebView 实例。
- * isNext: 标识是下一个还是上一个回答的预览。
+ *
+ * 内容来自 [CachedAnswerContent]，包含标题、作者信息、投票/评论计数和 HTML 正文。正文使用 [ArticleMarkdownContent]，
+ * 因此这里是轻量预览，不持有 WebView 或答案切换共享状态。
  */
 @Composable
 private fun CachedAnswerPreview(

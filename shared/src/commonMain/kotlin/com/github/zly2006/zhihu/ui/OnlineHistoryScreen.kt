@@ -54,6 +54,12 @@ import kotlinx.coroutines.launch
 
 const val ONLINE_HISTORY_OVERFLOW_TAG = "online_history_overflow"
 
+/**
+ * 在线浏览历史页面。
+ *
+ * 页面展示知乎账号侧的浏览历史，提供刷新、分页加载和清空历史入口。它既可能作为底部栏 tab 出现，也可能从账号页快捷入口独立 push。
+ * 当前实现本身不绘制返回箭头，底栏显隐由外层 route 决定；如果包装层需要独立返回入口，应由包装层显式传入对应状态。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OnlineHistoryScreen() {

@@ -57,6 +57,12 @@ import com.github.zly2006.zhihu.viewmodel.filter.normalizeMcnCompany
 import com.github.zly2006.zhihu.viewmodel.filter.rememberBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 
+/**
+ * 屏蔽用户确认弹窗。
+ *
+ * 弹窗向用户确认即将屏蔽的作者，并在确认时从当前信息流条目中提取完整作者信息。它只处理确认 UI，
+ * 真正写入屏蔽列表由 [onConfirmBlock] 完成。
+ */
 @Composable
 fun BlockUserConfirmDialogContent(
     showDialog: Boolean,

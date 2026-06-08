@@ -91,8 +91,9 @@ fun formatCollectionUpdatedTime(seconds: Long): String {
 }
 
 /**
- * Instrumented tests inject a prefilled ViewModel plus side-effect stubs here so the screen can
- * be exercised deterministically without triggering refresh/export network work.
+ * 收藏内容页的测试替身配置。
+ *
+ * instrumentation 测试通过这里注入预填充 ViewModel 和副作用桩，避免刷新、加载更多或导出流程触发真实网络。
  */
 data class CollectionContentScreenTestOverrides(
     val viewModel: CollectionContentViewModel,

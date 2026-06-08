@@ -57,6 +57,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -167,6 +168,12 @@ data class PinScreenTestOverrides(
     )? = null,
 )
 
+/**
+ * 想法详情页。
+ *
+ * 页面展示想法正文、链接卡片、图片、评论入口、点赞和分享操作。正文渲染会受 WebView/Markdown 设置影响，图片长按菜单和评论弹窗
+ * 也在这里串联，因此改动内容渲染或图片交互时要同时验证想法页。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PinScreen(
@@ -197,7 +204,7 @@ fun PinScreen(
     }
 
     var showShareDialog by remember { mutableStateOf(false) }
-    var showComments by remember { mutableStateOf(false) }
+    var showComments by rememberSaveable(pin.id) { mutableStateOf(false) }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -357,7 +364,7 @@ private fun PinContent(
             .testTag(PIN_SCREEN_SCROLL_TAG)
             .padding(16.dp),
     ) {
-        // Author info
+        // 作者信息。
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -451,7 +458,7 @@ private fun PinContent(
         )
 
         if (likeCount > 0) {
-            // SocialProof
+            // 社交证明。
             Spacer(modifier = Modifier.height(8.dp))
             val firstLiker = pin.likers.firstOrNull()
             Text(
@@ -467,7 +474,7 @@ private fun PinContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Content
+        // 想法正文。
         PinHtmlContent(pin.contentHtml)
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -570,7 +577,7 @@ private fun PinContent(
             Spacer(modifier = Modifier.height(24.dp))
         }
 
-        // Stats and actions
+        // 统计与操作区。
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
@@ -608,7 +615,7 @@ private fun PinContent(
             }
         }
 
-        // Topics
+        // 话题列表。
         val topics = pin.topics
         if (topics?.isNotEmpty() == true) {
             Spacer(modifier = Modifier.height(24.dp))
