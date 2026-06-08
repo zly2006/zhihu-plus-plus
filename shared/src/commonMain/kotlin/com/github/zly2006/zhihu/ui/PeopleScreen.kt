@@ -859,11 +859,16 @@ private fun PeopleScreenContent(
                                             val resolvedMcn = if (cachedAuthor != null) {
                                                 cachedAuthor.mcnCompany.normalizeMcnCompany()
                                             } else {
-                                                runCatching {
+                                                val lookupResult = runCatching {
                                                     mcnCompanyProvider.getMcnCompany(person.urlToken).normalizeMcnCompany()
-                                                }.onSuccess { company ->
+                                                }
+                                                if (lookupResult.isFailure) {
+                                                    userMessages.showShortMessage("识别MCN机构失败，请稍后重试")
+                                                    return@launch
+                                                }
+                                                lookupResult.getOrNull().also { company ->
                                                     blocklistManager.cacheMcnCompany(person.urlToken, viewModel.name, company)
-                                                }.getOrNull()
+                                                }
                                             }
                                             if (resolvedMcn.isNullOrBlank()) {
                                                 viewModel.toggleRecommendationBlock(paginationEnvironment)

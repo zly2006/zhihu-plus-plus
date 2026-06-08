@@ -165,6 +165,38 @@ class FeedContentFilterPipelineTest {
     }
 
     @Test
+    fun filtersByShortMcnOrganizationName() = runTest {
+        val database = getContentFilterDatabase(
+            createTempDirectory("feed-content-filter-short-mcn").resolve("content-filter.db").toFile(),
+        )
+        val blocklistService = BlocklistService(
+            keywordDao = database.blockedKeywordDao(),
+            userDao = database.blockedUserDao(),
+            topicDao = database.blockedTopicDao(),
+            mcnOrganizationDao = database.blockedMcnOrganizationDao(),
+            mcnAuthorCacheDao = database.mcnAuthorCacheDao(),
+        )
+        blocklistService.addBlockedMcnOrganization("杭州亚序")
+
+        val result = FeedContentFilterPipeline(
+            settings = FeedFilterSettings(),
+            blocklistService = blocklistService,
+            blockedKeywordService = BlockedKeywordService(
+                keywordDao = database.blockedKeywordDao(),
+                recordDao = database.blockedContentRecordDao(),
+                semanticMatcher = KeywordSemanticMatcher { _, _, _ -> emptyList() },
+            ),
+            mcnCompanyProvider = McnCompanyProvider { "杭州亚序科技有限公司" },
+        ).filter(
+            listOf(filterable("blocked mcn", authorId = "blocked-user", authorUrlToken = "blocked-token")),
+        )
+
+        assertEquals(emptyList(), result.kept)
+        assertEquals(listOf("屏蔽MCN机构：杭州亚序科技有限公司"), result.blocked.map { it.second })
+        database.close()
+    }
+
+    @Test
     fun keepsBlockedMcnOrganizationWhenMcnBlockingDisabled() = runTest {
         val database = getContentFilterDatabase(
             createTempDirectory("feed-content-filter-mcn-disabled").resolve("content-filter.db").toFile(),

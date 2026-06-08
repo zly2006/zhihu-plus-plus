@@ -164,7 +164,6 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()
     val openExternalUrl = rememberExternalUrlOpener()
-
     val duo3HomeAccount = settings.getBoolean("duo3_home_account", false)
     val showRefreshFab = settings.getBoolean("showRefreshFab", true)
     var showAccountBottomSheet by remember { mutableStateOf(false) }

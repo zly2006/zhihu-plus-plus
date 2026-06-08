@@ -153,3 +153,14 @@ internal fun String?.normalizeMcnCompany(): String? {
     val value = this?.trim()?.takeIf { it.isNotBlank() } ?: return null
     return value.takeUnless { it.equals("false", ignoreCase = true) || it.equals("true", ignoreCase = true) }
 }
+
+internal fun String.matchesMcnOrganization(other: String): Boolean {
+    val left = normalizeMcnCompanyForMatch()
+    val right = other.normalizeMcnCompanyForMatch()
+    if (left.isBlank() || right.isBlank()) return false
+    return left == right || left.contains(right) || right.contains(left)
+}
+
+private fun String.normalizeMcnCompanyForMatch(): String = normalizeMcnCompany()
+    ?.filterNot { it.isWhitespace() || it == '（' || it == '）' || it == '(' || it == ')' }
+    .orEmpty()

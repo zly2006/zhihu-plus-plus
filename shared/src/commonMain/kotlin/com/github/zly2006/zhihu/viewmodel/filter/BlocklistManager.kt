@@ -178,8 +178,8 @@ class BlocklistService(
     }
 
     suspend fun addBlockedMcnOrganization(organizationName: String) {
-        val trimmed = organizationName.trim()
-        if (trimmed.isNotEmpty()) {
+        val trimmed = organizationName.normalizeMcnCompany()
+        if (!trimmed.isNullOrEmpty()) {
             mcnOrganizationDao.insertOrganization(BlockedMcnOrganization(trimmed))
         }
     }
@@ -195,8 +195,11 @@ class BlocklistService(
     }
 
     suspend fun isMcnOrganizationBlocked(organizationName: String?): Boolean {
-        if (organizationName.isNullOrBlank()) return false
-        return mcnOrganizationDao.isOrganizationBlocked(organizationName)
+        val normalized = organizationName.normalizeMcnCompany()
+        if (normalized.isNullOrBlank()) return false
+        return mcnOrganizationDao.getAllOrganizations().any { blocked ->
+            blocked.organizationName.matchesMcnOrganization(normalized)
+        }
     }
 
     suspend fun hasBlockedMcnOrganizations(): Boolean = mcnOrganizationDao.hasOrganizations()

@@ -31,7 +31,9 @@ import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class ZhihuMcnCompanyProviderTest {
     @Test
@@ -164,6 +166,13 @@ class ZhihuMcnCompanyProviderTest {
         assertFailsWith<IllegalStateException> {
             provider.getMcnCompany("plain-author")
         }
+    }
+
+    @Test
+    fun matchesShortAndFullMcnOrganizationNames() {
+        assertTrue("杭州亚序".matchesMcnOrganization("杭州亚序科技有限公司"))
+        assertTrue("知加传媒".matchesMcnOrganization("知加传媒（深圳）有限公司"))
+        assertFalse("杭州亚序".matchesMcnOrganization("知加传媒（深圳）有限公司"))
     }
 }
 

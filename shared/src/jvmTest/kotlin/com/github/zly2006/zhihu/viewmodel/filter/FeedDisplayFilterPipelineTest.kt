@@ -140,6 +140,32 @@ class FeedDisplayFilterPipelineTest {
     }
 
     @Test
+    fun mcnFilterUsesFeedDisplayAuthorTokenWhenRawContentIsUnavailable() = runTest {
+        val fixture = fixture()
+        fixture.database.createBlocklistManager().addBlockedMcnOrganization("杭州亚序")
+
+        val result = fixture
+            .pipeline(
+                detailProvider = ContentDetailProvider { null },
+                mcnCompanyProvider = McnCompanyProvider { token ->
+                    if (token == "lihuawei") "杭州亚序" else null
+                },
+            ).filter(
+                listOf(item("mcn", 1, authorUrlToken = "lihuawei")),
+            )
+
+        assertEquals(emptyList(), result)
+        assertEquals(
+            listOf("屏蔽MCN机构：杭州亚序"),
+            fixture.database
+                .blockedFeedRecordDao()
+                .getRecent()
+                .map { it.blockedReason },
+        )
+        fixture.database.close()
+    }
+
+    @Test
     fun databaseFactoryWiresFeedDisplayPipelineServices() = runTest {
         val fixture = fixture()
         val keywordService = BlockedKeywordService(
@@ -185,6 +211,7 @@ class FeedDisplayFilterPipelineTest {
     ) {
         fun pipeline(
             detailProvider: ContentDetailProvider,
+            mcnCompanyProvider: McnCompanyProvider = NoopMcnCompanyProvider,
         ): FeedDisplayFilterPipeline = FeedDisplayFilterPipeline(
             settings = settings,
             contentDetailProvider = detailProvider,
@@ -202,6 +229,7 @@ class FeedDisplayFilterPipelineTest {
                     recordDao = database.blockedContentRecordDao(),
                     semanticMatcher = KeywordSemanticMatcher { _, _, _ -> emptyList() },
                 ),
+                mcnCompanyProvider = mcnCompanyProvider,
             ),
             blockedFeedRecordDao = database.blockedFeedRecordDao(),
         )
@@ -221,11 +249,13 @@ class FeedDisplayFilterPipelineTest {
         id: Long,
         details: String = "",
         feed: Feed? = null,
+        authorUrlToken: String? = null,
     ): FeedDisplayItem = FeedDisplayItem(
         title = title,
         summary = null,
         details = details,
         feed = feed,
+        authorUrlToken = authorUrlToken,
         navDestinationJson = Article(type = ArticleType.Article, id = id).toFeedDisplayItemNavDestinationJson(),
     )
 
