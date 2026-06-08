@@ -6,8 +6,11 @@
 
 package com.github.zly2006.zhihu.ui.miuix
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
@@ -398,12 +401,20 @@ fun MiuixArticleScreen(
 
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    if (viewModel.content.isEmpty()) {
-                        Box(Modifier.fillMaxWidth().padding(24.dp), Alignment.Center) {
-                            CircularProgressIndicator()
+                    AnimatedContent(
+                        targetState = viewModel.content.isEmpty(),
+                        transitionSpec = {
+                            fadeIn(tween(200)) togetherWith fadeOut(tween(200))
+                        },
+                        label = "articleContent",
+                    ) { isLoading ->
+                        if (isLoading) {
+                            Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator()
+                            }
+                        } else {
+                            RenderMarkdown(html = viewModel.content, selectable = true, enableScroll = false)
                         }
-                    } else {
-                        RenderMarkdown(html = viewModel.content, selectable = true, enableScroll = false)
                     }
                     if (viewModel.ipInfo != null) {
                         Spacer(Modifier.height(8.dp))
