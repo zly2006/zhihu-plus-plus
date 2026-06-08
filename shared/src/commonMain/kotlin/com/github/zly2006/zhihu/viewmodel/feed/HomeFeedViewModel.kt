@@ -34,19 +34,26 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 
+data class FeedBlockAuthorInfo(
+    val id: String,
+    val name: String,
+    val urlToken: String?,
+    val avatarUrl: String?,
+)
+
 suspend fun resolveFeedBlockAuthorInfo(
     feedItem: FeedDisplayItem,
     contentDetailProvider: ContentDetailProvider?,
-): Pair<String, String>? {
+): FeedBlockAuthorInfo? {
     feedItem.feed?.target?.author?.let { author ->
-        return Pair(author.id, author.name)
+        return FeedBlockAuthorInfo(author.id, author.name, author.urlToken, author.avatarUrl)
     }
 
     return when (val content = resolveFeedBlockContentDetail(feedItem, contentDetailProvider)) {
-        is DataHolder.Answer -> content.author.let { Pair(it.id, it.name) }
-        is DataHolder.Article -> content.author.let { Pair(it.id, it.name) }
-        is DataHolder.Question -> content.author.let { Pair(it.id, it.name) }
-        is DataHolder.Pin -> content.author.let { Pair(it.id, it.name) }
+        is DataHolder.Answer -> content.author.let { FeedBlockAuthorInfo(it.id, it.name, it.urlToken, it.avatarUrl) }
+        is DataHolder.Article -> content.author.let { FeedBlockAuthorInfo(it.id, it.name, it.urlToken, it.avatarUrl) }
+        is DataHolder.Question -> content.author.let { FeedBlockAuthorInfo(it.id, it.name, it.urlToken, it.avatarUrl) }
+        is DataHolder.Pin -> content.author.let { FeedBlockAuthorInfo(it.id, it.name, it.urlToken, it.avatarUrl) }
         else -> null
     }
 }

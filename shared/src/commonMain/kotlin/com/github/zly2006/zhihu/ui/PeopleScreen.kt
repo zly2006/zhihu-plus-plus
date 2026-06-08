@@ -55,9 +55,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
@@ -696,18 +696,30 @@ private fun PeopleScreenContent(
             userMessages.showShortMessage("加载用户信息失败: ${e.message}")
         }
     }
-    LaunchedEffect(person.urlToken, uiState.profile.name, testOverrides) {
+    LaunchedEffect(person.urlToken, uiState.profile.name, uiState.profile.mcnCompany, testOverrides) {
         if (testOverrides != null || person.urlToken.isBlank()) {
             return@LaunchedEffect
         }
-        blocklistManager.getCachedMcnAuthor(person.urlToken)?.let { cachedAuthor ->
-            viewModel.mcnCompany = cachedAuthor.mcnCompany.normalizeMcnCompany()
+        uiState.profile.mcnCompany.normalizeMcnCompany()?.let { profileMcn ->
+            blocklistManager.cacheMcnCompany(person.urlToken, uiState.profile.name, profileMcn)
+            viewModel.mcnCompany = profileMcn
+            return@LaunchedEffect
+        }
+        blocklistManager.getCachedMcnAuthor(person.urlToken)?.mcnCompany.normalizeMcnCompany()?.let { cachedMcn ->
+            viewModel.mcnCompany = cachedMcn
+            return@LaunchedEffect
         }
         runCatching {
             mcnCompanyProvider.getMcnCompany(person.urlToken).normalizeMcnCompany()
         }.onSuccess { resolvedMcn ->
-            blocklistManager.cacheMcnCompany(person.urlToken, uiState.profile.name, resolvedMcn)
-            viewModel.mcnCompany = resolvedMcn
+            if (resolvedMcn.isNullOrBlank()) {
+                if (viewModel.mcnCompany.normalizeMcnCompany() == null) {
+                    blocklistManager.cacheMcnCompany(person.urlToken, uiState.profile.name, null)
+                }
+            } else {
+                blocklistManager.cacheMcnCompany(person.urlToken, uiState.profile.name, resolvedMcn)
+                viewModel.mcnCompany = resolvedMcn
+            }
         }
     }
     LaunchedEffect(pagerState.currentPage, testOverrides) {

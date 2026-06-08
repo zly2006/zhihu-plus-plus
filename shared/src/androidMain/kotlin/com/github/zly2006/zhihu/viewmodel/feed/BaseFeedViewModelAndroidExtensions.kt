@@ -40,7 +40,7 @@ suspend fun BaseFeedViewModel.pullToRefresh(context: Context) {
 fun BaseFeedViewModel.handleBlockUser(
     context: Context,
     feedItem: FeedDisplayItem,
-    onShowDialog: (Pair<String, String>) -> Unit,
+    onShowDialog: (FeedBlockAuthorInfo) -> Unit,
 ) {
     val userMessages = androidUserMessageSink(context)
     viewModelScope.launch {
@@ -97,7 +97,7 @@ fun BaseFeedViewModel.handleBlockTopic(
 private suspend fun ensureAuthorInfo(
     context: Context,
     feedItem: FeedDisplayItem,
-): Pair<String, String>? = withContext(Dispatchers.IO) {
+): FeedBlockAuthorInfo? = withContext(Dispatchers.IO) {
     resolveFeedBlockAuthorInfo(feedItem, androidContentDetailProvider(context))
 }
 

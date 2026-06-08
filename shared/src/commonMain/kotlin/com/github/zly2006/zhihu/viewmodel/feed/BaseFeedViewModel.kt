@@ -87,7 +87,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
     fun handleBlockUser(
         environment: PaginationEnvironment,
         feedItem: FeedDisplayItem,
-        onShowDialog: (Pair<String, String>) -> Unit,
+        onShowDialog: (FeedBlockAuthorInfo) -> Unit,
     ) {
         // TODO: 实现需要 ContentDetailCache.getOrFetch 和 UserMessageSink
     }

@@ -26,10 +26,10 @@ import io.ktor.client.request.url
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 
 class ZhihuMcnCompanyProvider(
     private val httpClient: HttpClient,
@@ -142,8 +142,7 @@ private fun findString(
     jsonObject: JsonObject,
     vararg keys: String,
 ): String? = keys.firstNotNullOfOrNull { key ->
-    jsonObject[key]
-        ?.jsonPrimitive
+    (jsonObject[key] as? JsonPrimitive)
         ?.contentOrNull
         ?.takeIf { it.isNotBlank() }
 }

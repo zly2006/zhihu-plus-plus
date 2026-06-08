@@ -51,6 +51,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.target
+import com.github.zly2006.zhihu.viewmodel.feed.FeedBlockAuthorInfo
 import com.github.zly2006.zhihu.viewmodel.filter.ZhihuMcnCompanyProvider
 import com.github.zly2006.zhihu.viewmodel.filter.normalizeMcnCompany
 import com.github.zly2006.zhihu.viewmodel.filter.rememberBlocklistManager
@@ -59,7 +60,7 @@ import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 @Composable
 fun BlockUserConfirmDialogContent(
     showDialog: Boolean,
-    userToBlock: Pair<String, String>?, // Pair of userId and userName
+    userToBlock: FeedBlockAuthorInfo?,
     displayItems: List<FeedDisplayItem>,
     onDismiss: () -> Unit,
     onConfirmBlock: (BlockedFeedAuthor) -> Unit,
@@ -67,21 +68,21 @@ fun BlockUserConfirmDialogContent(
 ) {
     if (showDialog && userToBlock != null) {
         val author = remember(userToBlock, displayItems) {
-            userToBlock.let { (userId, userName) ->
+            userToBlock.let { authorInfo ->
                 val resolvedAuthor = displayItems
                     .find { item ->
                         item.feed
                             ?.target
                             ?.author
-                            ?.id == userId
+                            ?.id == authorInfo.id
                     }?.feed
                     ?.target
                     ?.author
                 BlockedFeedAuthor(
-                    id = resolvedAuthor?.id ?: userId,
-                    name = resolvedAuthor?.name ?: userName,
-                    urlToken = resolvedAuthor?.urlToken,
-                    avatarUrl = resolvedAuthor?.avatarUrl,
+                    id = resolvedAuthor?.id ?: authorInfo.id,
+                    name = resolvedAuthor?.name ?: authorInfo.name,
+                    urlToken = resolvedAuthor?.urlToken ?: authorInfo.urlToken,
+                    avatarUrl = resolvedAuthor?.avatarUrl ?: authorInfo.avatarUrl,
                 )
             }
         }
@@ -160,7 +161,7 @@ fun BlockUserConfirmDialogContent(
             title = { Text("屏蔽用户") },
             text = {
                 Column {
-                    Text("确定要屏蔽用户 \"${userToBlock.second}\" 吗？")
+                    Text("确定要屏蔽用户 \"${userToBlock.name}\" 吗？")
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         "屏蔽后，该用户的内容将不会在推荐流中显示。",

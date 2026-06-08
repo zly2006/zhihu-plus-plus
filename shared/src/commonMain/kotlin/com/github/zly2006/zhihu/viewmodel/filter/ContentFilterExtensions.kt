@@ -511,9 +511,9 @@ fun FeedDisplayItem.toFilterableContent(
         is DataHolder.Pin -> rawContent.contentHtml
         else -> null
     } ?: content ?: summary,
-    authorName = authorName,
-    authorId = rawContent.author?.id,
-    authorUrlToken = rawContent.author?.urlToken,
+    authorName = authorName ?: rawContent.author?.name,
+    authorId = rawContent.author?.id ?: feed?.target?.author?.id,
+    authorUrlToken = rawContent.author?.urlToken ?: authorUrlToken ?: feed?.target?.author?.urlToken,
     contentId = identity.id,
     contentType = identity.type,
     raw = rawContent,

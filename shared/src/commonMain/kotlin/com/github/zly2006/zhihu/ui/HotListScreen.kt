@@ -46,6 +46,7 @@ import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
+import com.github.zly2006.zhihu.viewmodel.feed.FeedBlockAuthorInfo
 import com.github.zly2006.zhihu.viewmodel.feed.HotListViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 
@@ -78,7 +79,7 @@ fun HotListScreen(
 
     // Block user confirm dialog
     var showBlockUserDialog by remember { mutableStateOf(false) }
-    var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var userToBlock by remember { mutableStateOf<FeedBlockAuthorInfo?>(null) }
 
     Column {
         FeedPullToRefresh(viewModel, environment) {

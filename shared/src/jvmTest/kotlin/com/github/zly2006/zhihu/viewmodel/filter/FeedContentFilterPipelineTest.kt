@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.viewmodel.filter
 
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import kotlinx.coroutines.test.runTest
 import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
@@ -384,6 +385,26 @@ class FeedContentFilterPipelineTest {
 
         assertEquals(1, calls)
         database.close()
+    }
+
+    @Test
+    fun filterableContentFallsBackToFeedDisplayAuthorUrlToken() {
+        val item = FeedDisplayItem(
+            title = "answer card",
+            summary = "summary",
+            details = "details",
+            feed = null,
+            authorName = "MCN author",
+            authorUrlToken = "mcn-token",
+        )
+
+        val content = item.toFilterableContent(
+            identity = FeedContentIdentity(ContentType.ANSWER, "answer-id"),
+            rawContent = DataHolder.DummyContent,
+        )
+
+        assertEquals("MCN author", content.authorName)
+        assertEquals("mcn-token", content.authorUrlToken)
     }
 
     private fun filterable(

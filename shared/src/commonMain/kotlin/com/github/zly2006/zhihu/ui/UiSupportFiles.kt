@@ -43,6 +43,7 @@ import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
+import com.github.zly2006.zhihu.shared.data.mcnCompany
 import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.shared.data.officialBadgeDetails
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
@@ -58,6 +59,7 @@ import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.ShareDialogRuntime
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.filter.normalizeMcnCompany
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import io.ktor.client.HttpClient
 import kotlinx.serialization.json.JsonElement
@@ -621,6 +623,7 @@ internal fun toPeopleProfileLoadResult(
         headline = loadedPerson.headline,
         officialBadge = loadedPerson.badgeV2.officialBadge(),
         officialBadgeDetails = loadedPerson.badgeV2.officialBadgeDetails(),
+        mcnCompany = loadedPerson.badgeV2.mcnCompany().normalizeMcnCompany(),
         followerCount = loadedPerson.followerCount,
         followingCount = loadedPerson.followingCount,
         answerCount = loadedPerson.answerCount,

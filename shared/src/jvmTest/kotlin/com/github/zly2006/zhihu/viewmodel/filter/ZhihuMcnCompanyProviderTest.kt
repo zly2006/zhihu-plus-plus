@@ -74,6 +74,26 @@ class ZhihuMcnCompanyProviderTest {
     }
 
     @Test
+    fun parsesMcnCompanyFromObjectField() = runTest {
+        val json =
+            """
+            {
+              "id": "user-id",
+              "url_token": "lihuawei",
+              "name": "李明殊",
+              "mcn_company": {
+                "name": "知加传媒（深圳）有限公司"
+              }
+            }
+            """.trimIndent()
+
+        assertEquals(
+            "知加传媒（深圳）有限公司",
+            extractMcnCompanyFromPeopleApi(Json.parseToJsonElement(json)),
+        )
+    }
+
+    @Test
     fun returnsNullWhenPeopleApiHasNoMcnCompany() = runTest {
         val json =
             """

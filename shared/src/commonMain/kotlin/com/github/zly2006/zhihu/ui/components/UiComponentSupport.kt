@@ -44,6 +44,7 @@ import com.github.zly2006.zhihu.shared.nlp.KeywordWithWeight
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.feed.FeedBlockAuthorInfo
 import com.github.zly2006.zhihu.viewmodel.filter.rememberBlocklistManager
 import kotlinx.coroutines.launch
 
@@ -51,7 +52,7 @@ data class FeedBlockActions(
     val handleBlockUser: (
         viewModel: BaseFeedViewModel,
         feedItem: FeedDisplayItem,
-        onShowDialog: (Pair<String, String>) -> Unit,
+        onShowDialog: (FeedBlockAuthorInfo) -> Unit,
     ) -> Unit,
     val handleBlockTopic: (
         viewModel: BaseFeedViewModel,
@@ -82,7 +83,7 @@ expect fun rememberBlockByKeywordsRuntime(): BlockByKeywordsRuntime
 @Composable
 fun BlockUserConfirmDialog(
     showDialog: Boolean,
-    userToBlock: Pair<String, String>?,
+    userToBlock: FeedBlockAuthorInfo?,
     displayItems: List<FeedDisplayItem>,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,

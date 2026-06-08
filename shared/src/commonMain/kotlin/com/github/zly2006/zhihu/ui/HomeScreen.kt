@@ -99,6 +99,7 @@ import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.components.rememberFeedBlockActions
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.feed.FeedBlockAuthorInfo
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import io.ktor.client.request.forms.MultiPartFormDataContent
@@ -237,7 +238,7 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
 
     // 屏蔽用户确认对话框
     var showBlockUserDialog by remember { mutableStateOf(false) }
-    var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) } // Pair of userId and userName
+    var userToBlock by remember { mutableStateOf<FeedBlockAuthorInfo?>(null) }
 
     // 按关键词屏蔽对话框
     var showBlockByKeywordsDialog by remember { mutableStateOf(false) }

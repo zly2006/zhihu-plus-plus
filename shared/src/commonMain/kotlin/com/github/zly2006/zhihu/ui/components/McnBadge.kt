@@ -45,12 +45,10 @@ fun McnBadge(
                 width = 1.dp,
                 color = Color(0xFFD84B45),
                 shape = RoundedCornerShape(3.dp),
-            )
-            .background(
+            ).background(
                 color = Color(0xFFFFE6E5),
                 shape = RoundedCornerShape(3.dp),
-            )
-            .padding(horizontal = 4.dp, vertical = 1.dp)
+            ).padding(horizontal = 4.dp, vertical = 1.dp)
             .semantics { contentDescription = "MCN机构：$mcnCompany" },
         contentAlignment = Alignment.Center,
     ) {
