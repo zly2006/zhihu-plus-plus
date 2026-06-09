@@ -481,10 +481,7 @@ class ArticleViewModel(
                         ArticleType.Article -> "article"
                     }
                     val collectionsUrl = "https://api.zhihu.com/collections/contents/$contentType/${article.id}?limit=50"
-                    val jojo = httpClient!!
-                        .get(collectionsUrl) {
-                            environment.configureSignedRequest(this)
-                        }.body<JsonObject>()
+                    val jojo = environment.fetchJson(collectionsUrl, "") ?: return@withContext
                     val collectionsData = ZhihuJson.decodeJson<CollectionResponse>(jojo)
                     collections.clear()
                     collections.addAll(
@@ -516,9 +513,9 @@ class ArticleViewModel(
         description: String = "",
         isPublic: Boolean = false,
     ) {
-        if (httpClient == null) return
+        val client = httpClient ?: return
         viewModelScope.launch {
-            httpClient!!.post("https://www.zhihu.com/api/v4/collections") {
+            client.post("https://www.zhihu.com/api/v4/collections") {
                 contentType(ContentType.Application.Json)
                 setBody(
                     buildJsonObject {
@@ -566,14 +563,12 @@ class ArticleViewModel(
     }
 
     fun loadMoreVoters(environment: ZhihuApiEnvironment, reset: Boolean = false) {
-        val client = httpClient ?: return
         if (article.type != ArticleType.Answer || votersLoading) return
         viewModelScope.launch {
             votersLoading = true
             votersError = null
             try {
                 val page = loadVotersPage(
-                    client = client,
                     environment = environment,
                     initialUrl = "https://www.zhihu.com/api/v4/answers/${article.id}/upvoters?limit=10&offset=0",
                     nextUrl = votersNextUrl,
@@ -592,14 +587,11 @@ class ArticleViewModel(
     }
 
     fun loadAnswerRelationshipEndorsement(environment: ZhihuApiEnvironment) {
-        val client = httpClient ?: return
         if (article.type != ArticleType.Answer) return
         viewModelScope.launch {
             try {
-                val response = client
-                    .get("https://www.zhihu.com/api/v4/answers/${article.id}/relationship?desktop=true") {
-                        environment.configureSignedRequest(this)
-                    }.body<JsonObject>()
+                val response = environment.fetchJson("https://www.zhihu.com/api/v4/answers/${article.id}/relationship?desktop=true", "")
+                    ?: return@launch
                 val endorsement = ZhihuJson.decodeJson<AnswerRelationshipEndorsement>(response)
                 votersSocialText = endorsement.text
             } catch (e: Exception) {
@@ -826,15 +818,14 @@ class ArticleViewModel(
         val safeRequestedCount = requestedCount.coerceAtLeast(0)
         if (safeRequestedCount == 0) return emptyList()
 
-        val client = httpClient ?: environment.accountHttpClient()
         val url = when (article.type) {
             ArticleType.Answer -> "https://www.zhihu.com/api/v4/comment_v5/answers/${article.id}/root_comment"
             ArticleType.Article -> "https://www.zhihu.com/api/v4/comment_v5/articles/${article.id}/root_comment"
         }
-        val json = client
-            .get("${'$'}url?order=score&limit=${'$'}{safeRequestedCount.coerceAtMost(20)}&include=data[*].content,excerpt,headline") {
-                environment.configureSignedRequest(this)
-            }.body<JsonObject>()
+        val json = environment.fetchJson(
+            url = "$url?order=score&limit=${safeRequestedCount.coerceAtMost(20)}",
+            include = "data[*].content,excerpt,headline",
+        ) ?: return emptyList()
         return decodeZhihuCommentData(json, safeRequestedCount)
             .map(::mapExportComment)
     }

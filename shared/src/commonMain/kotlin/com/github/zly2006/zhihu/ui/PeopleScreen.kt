@@ -418,14 +418,8 @@ class PersonViewModel(
     suspend fun load(environment: ProfileLoadEnvironment) {
         environment.addReadHistory(person.id, "profile")
 
-        val jojo = environment
-            .httpClient()
-            .get(peopleProfileUrl(person)) {
-                url {
-                    parameters["include"] = PEOPLE_PROFILE_INCLUDE_PATH
-                }
-                environment.configureSignedRequest(this)
-            }.body<JsonObject>()
+        val jojo = environment.fetchJson(peopleProfileUrl(person), PEOPLE_PROFILE_INCLUDE_PATH)
+            ?: error("用户资料为空")
 
         val loadedPerson = ZhihuJson.decodeJson<DataHolder.People>(jojo)
         val urlToken = loadedPerson.urlToken

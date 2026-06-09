@@ -20,23 +20,15 @@ package com.github.zly2006.zhihu.viewmodel
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.ZhihuVotersResponse
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.request.get
-import kotlinx.serialization.json.JsonObject
 
 suspend fun loadVotersPage(
-    client: HttpClient,
     environment: ZhihuApiEnvironment,
     initialUrl: String,
     nextUrl: String?,
     reset: Boolean,
 ): ZhihuVotersResponse {
     val url = (if (reset || nextUrl == null) initialUrl else nextUrl).toHttps()
-    val response = client
-        .get(url) {
-            environment.configureSignedRequest(this)
-        }.body<JsonObject>()
+    val response = environment.fetchJson(url, "") ?: error("赞同者信息为空")
     return ZhihuJson.decodeJson(response)
 }
 

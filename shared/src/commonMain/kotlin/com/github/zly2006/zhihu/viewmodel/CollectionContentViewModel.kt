@@ -31,13 +31,10 @@ import com.github.zly2006.zhihu.shared.data.ZhihuPaging
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.ui.Collection
-import io.ktor.client.call.body
-import io.ktor.client.request.get
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
 import kotlin.reflect.typeOf
 
 data class CollectionHtmlExportProgress(
@@ -73,10 +70,7 @@ interface CollectionContentEnvironment :
     CollectionExportEnvironment
 
 suspend fun ZhihuApiEnvironment.fetchCollection(collectionId: String): Collection {
-    val json = httpClient()
-        .get("https://www.zhihu.com/api/v4/collections/$collectionId") {
-            configureSignedRequest(this)
-        }.body<JsonObject>()
+    val json = fetchJson("https://www.zhihu.com/api/v4/collections/$collectionId", "") ?: error("收藏夹信息为空")
     return ZhihuJson.decodeJson<Collection>(json["collection"] ?: throw IllegalStateException("收藏夹信息为空"))
 }
 

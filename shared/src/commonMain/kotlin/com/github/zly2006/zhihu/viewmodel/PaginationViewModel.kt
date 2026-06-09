@@ -38,7 +38,10 @@ import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import io.ktor.client.HttpClient
+import io.ktor.client.call.body
 import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.client.request.get
+import io.ktor.client.request.parameter
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Job
@@ -205,7 +208,14 @@ interface ZhihuApiEnvironment {
     suspend fun fetchJson(
         url: String,
         include: String,
-    ): JsonObject?
+    ): JsonObject? =
+        httpClient()
+            .get(url.replace("http://", "https://")) {
+                if (include.isNotEmpty()) {
+                    parameter("include", include)
+                }
+                configureSignedRequest(this)
+            }.body<JsonObject>()
 
     suspend fun handleFetchFailure(
         tag: String?,
