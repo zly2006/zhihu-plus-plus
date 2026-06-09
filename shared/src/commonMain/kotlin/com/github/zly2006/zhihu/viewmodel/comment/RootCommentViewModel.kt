@@ -29,8 +29,8 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
+import com.github.zly2006.zhihu.viewmodel.postSigned
 import io.ktor.client.call.body
-import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
@@ -136,8 +136,7 @@ class RootCommentViewModel(
                     replyToCommentId?.let { put("reply_comment_id", it) }
                 }
 
-                val response = environment.httpClient().post(content.submitCommentUrl) {
-                    environment.configureSignedRequest(this)
+                val response = environment.postSigned(content.submitCommentUrl) {
                     contentType(ContentType.Application.Json)
                     setBody(requestBody)
                 }

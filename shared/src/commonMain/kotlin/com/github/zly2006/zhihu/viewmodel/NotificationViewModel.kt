@@ -22,8 +22,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.shared.data.NotificationItem
-import com.github.zly2006.zhihu.shared.data.fetchZhihuUnreadNotificationCount
-import com.github.zly2006.zhihu.shared.data.markAllZhihuNotificationsAsRead
 import com.github.zly2006.zhihu.shared.data.zhihuNotificationRecentUrl
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.notification.matchNotificationType
@@ -67,9 +65,7 @@ class NotificationViewModel :
      */
     private suspend fun getUnreadCount(environment: ZhihuApiEnvironment): Int {
         try {
-            return fetchZhihuUnreadNotificationCount(environment.httpClient()) {
-                environment.configureSignedRequest(this)
-            }
+            return environment.fetchUnreadNotificationCountSigned()
         } catch (_: Exception) {
             // 忽略错误
             return 0
@@ -124,9 +120,7 @@ class NotificationViewModel :
      */
     @OptIn(DelicateCoroutinesApi::class)
     suspend fun markAllAsRead(environment: ZhihuApiEnvironment) {
-        markAllZhihuNotificationsAsRead(environment.httpClient()) {
-            environment.configureSignedRequest(this)
-        }
+        environment.markAllNotificationsAsReadSigned()
     }
 }
 

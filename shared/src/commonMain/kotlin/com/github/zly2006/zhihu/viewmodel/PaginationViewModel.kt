@@ -32,6 +32,8 @@ import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.ZhihuPaging
+import com.github.zly2006.zhihu.shared.data.fetchZhihuUnreadNotificationCount
+import com.github.zly2006.zhihu.shared.data.markAllZhihuNotificationsAsRead
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
 import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
@@ -40,8 +42,11 @@ import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
+import io.ktor.client.request.post
+import io.ktor.client.statement.HttpResponse
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Job
@@ -232,6 +237,35 @@ interface ZhihuApiEnvironment {
         error: Exception,
     ) {
         Log.e(tag ?: "PaginationViewModel", "Failed to decode item: $item", error)
+    }
+}
+
+suspend fun ZhihuApiEnvironment.postSigned(
+    url: String,
+    block: HttpRequestBuilder.() -> Unit = {},
+): HttpResponse =
+    httpClient().post(url) {
+        block()
+        configureSignedRequest(this)
+    }
+
+suspend fun ZhihuApiEnvironment.deleteSigned(
+    url: String,
+    block: HttpRequestBuilder.() -> Unit = {},
+): HttpResponse =
+    httpClient().delete(url) {
+        block()
+        configureSignedRequest(this)
+    }
+
+suspend fun ZhihuApiEnvironment.fetchUnreadNotificationCountSigned(): Int =
+    fetchZhihuUnreadNotificationCount(httpClient()) {
+        configureSignedRequest(this)
+    }
+
+suspend fun ZhihuApiEnvironment.markAllNotificationsAsReadSigned() {
+    markAllZhihuNotificationsAsRead(httpClient()) {
+        configureSignedRequest(this)
     }
 }
 

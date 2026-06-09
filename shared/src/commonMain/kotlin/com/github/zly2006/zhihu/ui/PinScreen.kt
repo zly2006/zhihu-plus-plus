@@ -91,13 +91,13 @@ import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.viewmodel.ContentLoadEnvironment
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
+import com.github.zly2006.zhihu.viewmodel.deleteSigned
 import com.github.zly2006.zhihu.viewmodel.loadVotersPage
 import com.github.zly2006.zhihu.viewmodel.nextUrlOrNull
+import com.github.zly2006.zhihu.viewmodel.postSigned
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.replaceOrAppendUniqueVoters
 import io.ktor.client.call.body
-import io.ktor.client.request.delete
-import io.ktor.client.request.post
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
@@ -119,11 +119,10 @@ private suspend fun togglePinLike(
     isLiked: Boolean,
 ): PinLikeResult {
     val endpoint = "https://www.zhihu.com/api/v4/pins/${pin.id}/voters/up"
-    val client = environment.httpClient()
     val jojo = if (isLiked) {
-        client.delete(endpoint) { environment.configureSignedRequest(this) }.body<JsonObject>()
+        environment.deleteSigned(endpoint).body<JsonObject>()
     } else {
-        client.post(endpoint) { environment.configureSignedRequest(this) }.body<JsonObject>()
+        environment.postSigned(endpoint).body<JsonObject>()
     }
     return PinLikeResult(
         isLiked = !isLiked,

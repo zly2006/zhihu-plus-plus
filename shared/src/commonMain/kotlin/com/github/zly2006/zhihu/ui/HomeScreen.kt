@@ -73,7 +73,6 @@ import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
-import com.github.zly2006.zhihu.shared.data.fetchZhihuUnreadNotificationCount
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
@@ -95,6 +94,7 @@ import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.components.rememberFeedBlockActions
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
+import com.github.zly2006.zhihu.viewmodel.fetchUnreadNotificationCountSigned
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.serialization.json.Json
 
@@ -175,9 +175,7 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
     var unreadCount by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) {
         try {
-            unreadCount = fetchZhihuUnreadNotificationCount(paginationEnvironment.httpClient()) {
-                paginationEnvironment.configureSignedRequest(this)
-            }
+            unreadCount = paginationEnvironment.fetchUnreadNotificationCountSigned()
         } catch (_: Exception) {
             // 忽略错误
         }

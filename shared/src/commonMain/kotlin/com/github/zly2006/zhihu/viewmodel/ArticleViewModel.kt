@@ -59,7 +59,6 @@ import io.ktor.client.call.body
 import io.ktor.client.request.accept
 import io.ktor.client.request.get
 import io.ktor.client.request.header
-import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsChannel
@@ -368,12 +367,11 @@ class ArticleViewModel(
                     contentType = contentType,
                     title = title.ifBlank { "知乎内容" },
                 )
-                val response = httpClient.post("https://www.zhihu.com/ai_ingress/stream/completion") {
+                val response = environment.postSigned("https://www.zhihu.com/ai_ingress/stream/completion") {
                     accept(ContentType.Text.EventStream)
                     contentType(ContentType.Application.Json)
                     header("x-xsrftoken", environment.xsrfToken())
                     setBody(request)
-                    environment.configureSignedRequest(this)
                 }
                 if (!response.status.isSuccess()) {
                     val errorBody = response.bodyAsText()
@@ -513,9 +511,9 @@ class ArticleViewModel(
         description: String = "",
         isPublic: Boolean = false,
     ) {
-        val client = httpClient ?: return
+        if (httpClient == null) return
         viewModelScope.launch {
-            client.post("https://www.zhihu.com/api/v4/collections") {
+            environment.postSigned("https://www.zhihu.com/api/v4/collections") {
                 contentType(ContentType.Application.Json)
                 setBody(
                     buildJsonObject {
@@ -524,7 +522,6 @@ class ArticleViewModel(
                         put("is_public", isPublic)
                     },
                 )
-                environment.configureSignedRequest(this)
             }
             loadCollections(environment)
         }
@@ -538,14 +535,13 @@ class ArticleViewModel(
                     ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${article.id}/voters"
                 }
 
-                val response = httpClient!!
-                    .post(endpoint) {
+                val response = environment
+                    .postSigned(endpoint) {
                         when (article.type) {
                             ArticleType.Answer -> setBody(mapOf("type" to newState.key))
                             ArticleType.Article -> setBody(mapOf("voting" to if (newState == VoteUpState.Up) 1 else 0))
                         }
                         contentType(ContentType.Application.Json)
-                        environment.configureSignedRequest(this)
                     }.body<JsonObject>()
 
                 voteUpState = newState
