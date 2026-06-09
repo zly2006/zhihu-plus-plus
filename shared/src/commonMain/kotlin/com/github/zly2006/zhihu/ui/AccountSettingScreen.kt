@@ -129,6 +129,7 @@ const val ACCOUNT_SETTINGS_LICENSES_TAG = "accountSettings.licenses"
 fun AccountSettingScreen(
     innerPadding: PaddingValues,
     unreadCount: Int = 0,
+    showUnreadBadge: Boolean = true,
     onDismissRequest: () -> Unit = {},
     refreshAccountProfileOnEnter: Boolean = true,
     testAccountData: AccountSettingsAccountState? = null,
@@ -338,7 +339,7 @@ fun AccountSettingScreen(
                         ) {
                             BadgedBox(
                                 badge = {
-                                    if (unreadCount > 0) {
+                                    if (showUnreadBadge && unreadCount > 0) {
                                         Badge { Text(unreadCount.toString()) }
                                     }
                                 },

@@ -30,6 +30,10 @@ interface NotificationSettingsStore {
     fun getAutoMarkAsReadEnabled(): Boolean
 
     fun setAutoMarkAsReadEnabled(enabled: Boolean)
+
+    fun getUnreadBadgeEnabled(): Boolean
+
+    fun setUnreadBadgeEnabled(enabled: Boolean)
 }
 
 @Composable
