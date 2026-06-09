@@ -106,12 +106,13 @@ fun MiuixFeedCard(
     var isDragging by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     val coroutineScope = remember { kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main) }
-    val enableSwipeReaction = remember { settings.getBoolean("enableSwipeReaction", false) } && onLike != null && onDislike != null
-    val showFeedThumbnail = remember { settings.getBoolean("showFeedThumbnail", true) }
-    val feedCardStyle = remember { settings.getString("feedCardStyle", "card") }
-    val duo3CardAppearance = remember { settings.getBoolean("duo3_card_appearance", false) }
-    val duo3CardLayout = remember { settings.getBoolean("duo3_card_layout", false) }
-    val duo3CardLargeTitle = remember { settings.getBoolean(DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY, true) }
+    // 直读（不 remember）：设置项改动后返回信息流即重组生效，避免被 remember 缓存住。
+    val enableSwipeReaction = settings.getBoolean("enableSwipeReaction", false) && onLike != null && onDislike != null
+    val showFeedThumbnail = settings.getBoolean("showFeedThumbnail", true)
+    val feedCardStyle = settings.getString("feedCardStyle", "card")
+    val duo3CardAppearance = settings.getBoolean("duo3_card_appearance", false)
+    val duo3CardLayout = settings.getBoolean("duo3_card_layout", false)
+    val duo3CardLargeTitle = settings.getBoolean(DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY, true)
     val fontSizePercent = settings.getInt("contentFontSize", 100)
     val titleFontSize = (15.sp * fontSizePercent / 100)
 
@@ -148,11 +149,22 @@ fun MiuixFeedCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { resolvedOnClick(item) }
-                    .padding(horizontal = horizontalPadding, vertical = 12.dp),
+                    .padding(horizontal = horizontalPadding, vertical = 8.dp),
             ) {
                 MiuixFeedCardContent(
-                    item, showFeedThumbnail, thumbnailUrl, duo3CardLayout, duo3CardLargeTitle, titleFontSize, titleMaxLines,
-                    showMenu, { showMenu = it }, onBlockUser, onBlockByKeywords, onBlockTopic, navigator,
+                    item,
+                    showFeedThumbnail,
+                    thumbnailUrl,
+                    duo3CardLayout,
+                    duo3CardLargeTitle,
+                    titleFontSize,
+                    titleMaxLines,
+                    showMenu,
+                    { showMenu = it },
+                    onBlockUser,
+                    onBlockByKeywords,
+                    onBlockTopic,
+                    navigator,
                 )
             }
         }
@@ -204,8 +216,19 @@ fun MiuixFeedCard(
             ) {
                 Column(modifier = Modifier.padding(if (duo3CardAppearance) 16.dp else 12.dp)) {
                     MiuixFeedCardContent(
-                        item, showFeedThumbnail, thumbnailUrl, duo3CardLayout, duo3CardLargeTitle, titleFontSize, titleMaxLines,
-                        showMenu, { showMenu = it }, onBlockUser, onBlockByKeywords, onBlockTopic, navigator,
+                        item,
+                        showFeedThumbnail,
+                        thumbnailUrl,
+                        duo3CardLayout,
+                        duo3CardLargeTitle,
+                        titleFontSize,
+                        titleMaxLines,
+                        showMenu,
+                        { showMenu = it },
+                        onBlockUser,
+                        onBlockByKeywords,
+                        onBlockTopic,
+                        navigator,
                     )
                 }
             }

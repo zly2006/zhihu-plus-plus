@@ -34,6 +34,16 @@ actual fun rememberZhihuWebUrlOpener(): (String) -> Unit = rememberExternalUrlOp
 actual fun rememberImagePreviewOpener(): (String) -> Unit = rememberExternalUrlOpener()
 
 @Composable
+actual fun rememberImageGalleryOpener(): (List<String>, Int) -> Unit {
+    val openExternalUrl = rememberExternalUrlOpener()
+    return remember(openExternalUrl) {
+        { urls, initialIndex ->
+            urls.getOrNull(initialIndex)?.let(openExternalUrl)
+        }
+    }
+}
+
+@Composable
 actual fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit = remember {
     { _, text ->
         platform.UIKit.UIPasteboard.generalPasteboard.string = text
@@ -53,6 +63,14 @@ actual fun rememberDeveloperDiagnostics(): DeveloperDiagnostics = remember {
 
 @Composable
 actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) = Unit // TODO: iOS 返回手势处理
+
+@Composable
+actual fun PlatformPredictiveBackHandler(
+    enabled: Boolean,
+    onProgress: (Float) -> Unit,
+    onCancel: () -> Unit,
+    onBack: () -> Unit,
+) = PlatformBackHandler(enabled = enabled, onBack = onBack)
 
 @Composable
 actual fun rememberScreenSizeDp(): ScreenSizeDp = ScreenSizeDp(width = 0f, height = 0f) // TODO: iOS 屏幕尺寸获取

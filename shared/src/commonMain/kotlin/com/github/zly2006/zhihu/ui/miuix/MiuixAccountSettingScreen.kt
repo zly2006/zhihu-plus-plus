@@ -34,7 +34,6 @@ import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -79,7 +78,7 @@ fun MiuixAccountSettingScreen(
     val accountState by runtime.accountState
     val data = testAccountData ?: accountState
     val userMessages = rememberUserMessageSink()
-    val blurEnabled = remember { settings.getBoolean("blurEnabled", true) }
+    val blurEnabled = settings.getBoolean("blurEnabled", true)
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
 

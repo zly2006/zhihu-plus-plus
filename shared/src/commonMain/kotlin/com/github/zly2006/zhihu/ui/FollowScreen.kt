@@ -106,6 +106,12 @@ fun followRecommendItemTag(stableKey: String) = "follow_recommend_item_$stableKe
 
 fun followDynamicItemTag(stableKey: String) = "follow_dynamic_item_$stableKey"
 
+/**
+ * 关注顶层页的生产入口。
+ *
+ * 底部栏中的“关注”在主 pager 中对应推荐和动态两个子页，这个入口使用真实刷新/加载更多逻辑，并接收主壳传入的
+ * [scrollToTopTrigger] 和 [innerPadding] 以配合 tab 重选回到顶部、系统栏和底部栏留白。
+ */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun FollowScreen(
@@ -120,6 +126,11 @@ fun FollowScreen(
     onTestDynamicLoadMore = null,
 )
 
+/**
+ * 关注页的测试入口。
+ *
+ * 与生产入口使用同一套 UI 内容，但允许测试注入刷新和加载更多回调，避免 instrumentation 测试依赖真实网络或分页状态。
+ */
 @Composable
 fun FollowScreen(
     scrollToTopTrigger: Int = 0,
@@ -137,6 +148,12 @@ fun FollowScreen(
     onTestDynamicLoadMore = onTestDynamicLoadMore,
 )
 
+/**
+ * 关注页的实际布局实现。
+ *
+ * 页面内部用横向 pager 承载“推荐”和“动态”两个 tab，并把 tab 切换、列表刷新、加载更多和主壳的回到顶部触发集中在这里。
+ * 因为它同时被生产入口和测试入口复用，新增 UI 状态时要保持默认参数可测试。
+ */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 private fun FollowScreenContent(
@@ -507,6 +524,7 @@ fun FollowDynamicScreen(
                 FeedCard(
                     item = item,
                     modifier = Modifier.testTag(followDynamicItemTag(item.stableKey)),
+                    showSourceLabel = true,
                     onLike = {
                         userMessages.showShortMessage("收到喜欢，功能正在优化")
                     },

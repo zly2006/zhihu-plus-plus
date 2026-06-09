@@ -95,7 +95,7 @@ fun MiuixHomeScreen(
     val settings = rememberSettingsStore()
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
-    val duo3HomeAccount = remember { settings.getBoolean("duo3_home_account", false) }
+    val duo3HomeAccount = settings.getBoolean("duo3_home_account", false)
 
     val currentRecommendationMode = RecommendationMode.entries.find {
         it.key == settings.getString("recommendationMode", RecommendationMode.MIXED.key)
@@ -105,7 +105,7 @@ fun MiuixHomeScreen(
     val viewModel: BaseFeedViewModel = runtime.viewModel
 
     val listState = rememberLazyListState()
-    var searchStatus by remember { mutableStateOf(SearchStatus(label = "搜索知乎")) }
+    var searchStatus by remember { mutableStateOf(SearchStatus(label = "")) }
     val showAccountSheet = remember { mutableStateOf(false) }
     var unreadCount by remember { mutableIntStateOf(0) }
 
@@ -170,7 +170,7 @@ fun MiuixHomeScreen(
         }
     }
     // 搜索结果加载完成后切换 SHOW / EMPTY
-    val showSearchHistory = remember { settings.getBoolean("showSearchHistory", true) }
+    val showSearchHistory = settings.getBoolean("showSearchHistory", true)
     LaunchedEffect(searchViewModel?.displayItems?.size, searchViewModel?.isLoading) {
         val vm = searchViewModel ?: return@LaunchedEffect
         if (!vm.isLoading) {
@@ -189,7 +189,7 @@ fun MiuixHomeScreen(
         }
     }
 
-    val blurEnabled = remember { settings.getBoolean("blurEnabled", true) }
+    val blurEnabled = settings.getBoolean("blurEnabled", true)
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
 

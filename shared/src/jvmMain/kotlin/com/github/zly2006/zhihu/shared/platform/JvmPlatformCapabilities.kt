@@ -115,6 +115,18 @@ actual fun rememberZhihuWebUrlOpener(): (String) -> Unit = rememberExternalUrlOp
 actual fun rememberImagePreviewOpener(): (String) -> Unit = rememberExternalUrlOpener()
 
 @Composable
+actual fun rememberImageGalleryOpener(): (List<String>, Int) -> Unit {
+    val openExternalUrl = rememberExternalUrlOpener()
+    return remember(openExternalUrl) {
+        { urls, initialIndex ->
+            if (urls.isNotEmpty()) {
+                urls[initialIndex.coerceIn(0, urls.lastIndex)].let(openExternalUrl)
+            }
+        }
+    }
+}
+
+@Composable
 actual fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit =
     remember { { _, text -> runCatching { copyDesktopPlainText(text) } } }
 
@@ -176,6 +188,14 @@ actual fun PlatformBackHandler(
     enabled: Boolean,
     onBack: () -> Unit,
 ) = Unit // TODO: desktop back handler
+
+@Composable
+actual fun PlatformPredictiveBackHandler(
+    enabled: Boolean,
+    onProgress: (Float) -> Unit,
+    onCancel: () -> Unit,
+    onBack: () -> Unit,
+) = PlatformBackHandler(enabled = enabled, onBack = onBack)
 
 @Composable
 actual fun rememberIsLiteVariant(): Boolean = false

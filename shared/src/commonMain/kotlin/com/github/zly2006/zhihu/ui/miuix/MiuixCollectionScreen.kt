@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
@@ -53,7 +52,7 @@ fun MiuixCollectionScreen(
     val useTestCollections = testCollections != null
     val collections = testCollections ?: viewModel.allData
     val settings = rememberSettingsStore()
-    val blurEnabled = remember { settings.getBoolean("blurEnabled", true) }
+    val blurEnabled = settings.getBoolean("blurEnabled", true)
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
 

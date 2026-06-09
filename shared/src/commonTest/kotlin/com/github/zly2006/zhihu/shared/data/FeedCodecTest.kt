@@ -21,6 +21,8 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class FeedCodecTest {
     val feed = listOf(
@@ -33,11 +35,35 @@ class FeedCodecTest {
     @Test
     fun testFeeds() {
         feed.forEach {
-            val decodeFromString = Json.decodeFromString<JsonObject>(it)
-            val feeds = decodeFromString["data"]!!.jsonArray
-            feeds.forEach {
-                ZhihuJson.decodeJson<Feed>(it)
-            }
+            decodeFeeds(it)
+        }
+    }
+
+    @Test
+    fun sourceLabelUsesRealMomentsActionTextPayload() {
+        val feeds = feed.flatMap(::decodeFeeds)
+        val voteupAnswer = feeds
+            .filterIsInstance<CommonFeed>()
+            .first { it.id == "0_1743381359761741131_1743380894294_4" }
+        val voteupArticle = feeds
+            .filterIsInstance<CommonFeed>()
+            .first { it.id == "0_1743381359767140611_1743380365517_8" }
+        val feedGroup = GroupFeed(
+            brief = "",
+            groupText = "今日动态",
+            list = listOf(voteupAnswer),
+        )
+
+        assertEquals("实名开导赞同了回答", voteupAnswer.sourceLabel)
+        assertEquals("圆角骑士魔理沙赞同了文章", voteupArticle.sourceLabel)
+        assertNull(feedGroup.sourceLabel)
+    }
+
+    private fun decodeFeeds(payload: String): List<Feed> {
+        val decodeFromString = Json.decodeFromString<JsonObject>(payload)
+        val feeds = decodeFromString["data"]!!.jsonArray
+        return feeds.map {
+            ZhihuJson.decodeJson<Feed>(it)
         }
     }
 }

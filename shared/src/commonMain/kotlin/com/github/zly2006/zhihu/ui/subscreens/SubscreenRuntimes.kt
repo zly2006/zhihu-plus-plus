@@ -49,6 +49,9 @@ fun rememberThemeSettingsRuntime(): ThemeSettingsRuntime {
                 settings.putBoolean("useDynamicColor", enabled)
             },
             setCustomColor = { color ->
+                // 用户主动设置自定义主题色时，联动关闭动态取色，否则自定义 seed 会被 Monet 静默屏蔽。
+                ThemeManager.setUseDynamicColor(false)
+                settings.putBoolean("useDynamicColor", false)
                 ThemeManager.setCustomColor(color)
                 settings.putInt("customThemeColor", color.toArgb())
             },

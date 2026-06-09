@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
@@ -135,7 +136,9 @@ fun MiuixBlocklistSettingsScreen(
     LaunchedEffect(testConfig) { if (testConfig == null) loadData() }
 
     val showFab = selectedTab == 0 || selectedTab == 2 || selectedTab == 3
-    val backdrop = rememberMiuixBlurBackdrop(true)
+    val settings = rememberSettingsStore()
+    val blurEnabled = settings.getBoolean("blurEnabled", true)
+    val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
 
     Scaffold(

@@ -66,6 +66,12 @@ import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 const val HOT_LIST_LIST_TAG = "hot_list_list"
 const val HOT_LIST_REFRESH_BUTTON_TAG = "hot_list_refresh_button"
 
+/**
+ * 热榜页面。
+ *
+ * 页面主体是知乎热榜分页列表，支持下拉刷新、加载更多和刷新 FAB。它既可以作为主 tab 页使用，
+ * 也可以在测试中通过 [onTestRefreshClick]、[onTestLoadMore] 控制分页行为，因此新增交互时要保留测试注入路径。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HotListScreen(
@@ -94,6 +100,7 @@ fun HotListScreen(
         }
     }
 
+    // 屏蔽用户确认弹窗。
     var showBlockUserDialog by remember { mutableStateOf(false) }
     var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) }
 
@@ -176,6 +183,7 @@ fun HotListScreen(
             }
         }
 
+        // 屏蔽用户确认弹窗。
         BlockUserConfirmDialog(
             showDialog = showBlockUserDialog,
             userToBlock = userToBlock,

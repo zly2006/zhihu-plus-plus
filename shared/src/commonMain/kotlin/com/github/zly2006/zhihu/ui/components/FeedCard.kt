@@ -91,6 +91,15 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
+/**
+ * 信息流卡片的 Material 3 实现。
+ *
+ * 卡片负责展示标题、摘要、作者、徽章、缩略图和更多菜单，并根据设置支持卡片/分割线两种外观、Duo3 排版、缩略图开关和滑动反馈。
+ * 默认点击会解析 [FeedDisplayItem] 的导航目标并进入详情页；外部也可以注入喜欢/不喜欢、屏蔽用户、按关键词屏蔽和屏蔽主题等动作。
+ *
+ * 修改这个组件时要同步复核 `showFeedThumbnail`、`feedCardStyle`、`duo3_card_appearance`、
+ * `duo3_card_layout`、`duo3_card_large_title` 和 `enableSwipeReaction` 对各信息流入口的影响。
+ */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun FeedCard(
@@ -104,8 +113,9 @@ fun FeedCard(
     onBlockUser: ((FeedDisplayItem) -> Unit)? = null,
     onBlockByKeywords: ((FeedDisplayItem) -> Unit)? = null,
     onBlockTopic: ((topicId: String, topicName: String) -> Unit)? = null,
+    showSourceLabel: Boolean = false,
     /**
-     * Default onClick: navigate to feed detail if possible, otherwise do nothing
+     * 默认点击行为：优先跳转到信息流条目的详情页；如果只能识别为外链则打开外链，否则提示暂不支持。
      */
     onClick: (FeedDisplayItem.() -> Unit)? = null,
 ) {
@@ -121,20 +131,13 @@ fun FeedCard(
     var isDragging by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
-    val enableSwipeReaction = remember {
-        settings.getBoolean("enableSwipeReaction", false)
-    } &&
-        onLike != null &&
-        onDislike != null
-    val showFeedThumbnail = remember {
-        settings.getBoolean("showFeedThumbnail", true)
-    }
-    val feedCardStyle = remember {
-        settings.getString("feedCardStyle", "card")
-    }
-    val duo3CardAppearance = remember { settings.getBoolean("duo3_card_appearance", false) }
-    val duo3CardLayout = remember { settings.getBoolean("duo3_card_layout", false) }
-    val duo3CardLargeTitle = remember { settings.getBoolean("duo3_card_large_title", true) }
+    // 直读（不 remember）：设置项改动后返回信息流即重组生效，避免被 remember 缓存住。
+    val enableSwipeReaction = settings.getBoolean("enableSwipeReaction", false) && onLike != null && onDislike != null
+    val showFeedThumbnail = settings.getBoolean("showFeedThumbnail", true)
+    val feedCardStyle = settings.getString("feedCardStyle", "card")
+    val duo3CardAppearance = settings.getBoolean("duo3_card_appearance", false)
+    val duo3CardLayout = settings.getBoolean("duo3_card_layout", false)
+    val duo3CardLargeTitle = settings.getBoolean("duo3_card_large_title", true)
     val onClick = onClick ?: {
         this.navDestination?.let {
             navigator.onNavigate(it)
@@ -195,6 +198,7 @@ fun FeedCard(
                     onBlockTopic = onBlockTopic,
                     duo3CardLayout = duo3CardLayout,
                     duo3CardLargeTitle = duo3CardLargeTitle,
+                    showSourceLabel = showSourceLabel,
                 )
             }
             HorizontalDivider(thickness = 0.3.dp)
@@ -283,6 +287,7 @@ fun FeedCard(
                         onBlockTopic = onBlockTopic,
                         duo3CardLayout = duo3CardLayout,
                         duo3CardLargeTitle = duo3CardLargeTitle,
+                        showSourceLabel = showSourceLabel,
                     )
                 }
             }
@@ -364,6 +369,12 @@ fun FeedCard(
     }
 }
 
+/**
+ * 信息流卡片右上角的更多菜单。
+ *
+ * 菜单集中承载和当前条目相关的轻量操作：按关键词屏蔽、屏蔽用户、屏蔽主题、跳转外观设置，以及对已过滤内容快速关闭质量过滤。
+ * 这些入口会把用户带回对应设置项，因此新增菜单动作时要明确它是直接修改内容，还是跳转到设置页继续配置。
+ */
 @Composable
 private fun FeedCardMenuBox(
     item: FeedDisplayItem,
@@ -443,6 +454,12 @@ private fun FeedCardMenuBox(
     }
 }
 
+/**
+ * 信息流卡片正文内容。
+ *
+ * 这里决定标题、摘要、缩略图、作者信息和操作菜单在卡片内的排列方式。标准排版强调兼容既有 Material 3 卡片，
+ * Duo3 排版则把作者移到底部、调整图片和摘要结构，并可使用更大的标题字号。
+ */
 @Composable
 private fun FeedCardContent(
     item: FeedDisplayItem,
@@ -455,10 +472,14 @@ private fun FeedCardContent(
     onBlockTopic: ((topicId: String, topicName: String) -> Unit)?,
     duo3CardLayout: Boolean,
     duo3CardLargeTitle: Boolean,
+    showSourceLabel: Boolean,
 ) {
     val navigator = LocalNavigator.current
     if (duo3CardLayout) {
         // ── 新排版（duo3）────────────────────────────────────────────────────
+        if (showSourceLabel) {
+            FeedCardSourceLabel(item.sourceLabel)
+        }
         if (!item.title.isEmpty()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -555,6 +576,9 @@ private fun FeedCardContent(
         }
     } else {
         // ── 原始排版（master）────────────────────────────────────────────────
+        if (showSourceLabel) {
+            FeedCardSourceLabel(item.sourceLabel)
+        }
         if (!item.title.isEmpty() && !item.isFiltered) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -635,4 +659,17 @@ private fun FeedCardContent(
             }
         }
     }
+}
+
+@Composable
+private fun FeedCardSourceLabel(sourceLabel: String?) {
+    val label = sourceLabel?.takeIf { it.isNotBlank() } ?: return
+    Text(
+        text = parseHtmlTextWithTheme(label),
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.primary,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.padding(bottom = 6.dp),
+    )
 }

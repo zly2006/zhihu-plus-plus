@@ -45,6 +45,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -64,6 +65,7 @@ import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Navigator
 import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
@@ -96,7 +98,9 @@ fun MiuixAboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
     val darkTheme = ThemeManager.isDarkTheme()
     val lazyListState = rememberLazyListState()
     val scrollBehavior = MiuixScrollBehavior()
-    val backdrop = rememberMiuixBlurBackdrop(true)
+    val settings = rememberSettingsStore()
+    val blurEnabled = settings.getBoolean("blurEnabled", true)
+    val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
 
     val scrollProgress by remember {
         derivedStateOf {
@@ -240,7 +244,7 @@ private fun AboutContent(
                 Image(
                     painter = painterResource(Res.drawable.ic_launcher_foreground),
                     contentDescription = "知乎++",
-                    modifier = Modifier.size(74.dp),
+                    modifier = Modifier.size(74.dp).clip(RoundedCornerShape(24.dp)),
                 )
             }
             // 知乎++ 流光：照抄 miuix 官方 AboutPage 的 HyperOS shimmer 扫光（drawWithCache + drawText + 横向渐变平移）

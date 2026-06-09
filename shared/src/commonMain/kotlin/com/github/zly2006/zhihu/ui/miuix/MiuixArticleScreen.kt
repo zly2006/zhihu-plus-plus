@@ -80,9 +80,8 @@ import com.github.zly2006.zhihu.ui.rememberArticleScreenSettingsState
 import com.github.zly2006.zhihu.ui.voteUpNeutralContent
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
-import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
-import kotlin.math.abs
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
@@ -96,6 +95,7 @@ import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.window.WindowBottomSheet
+import kotlin.math.abs
 
 /**
  * 回答/文章页的 miuix 版本（阶段一骨架）。
@@ -115,7 +115,7 @@ fun MiuixArticleScreen(
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
     val articleActions = rememberArticleActionsRuntime()
     val settings = rememberSettingsStore()
-    val blurEnabled = remember { settings.getBoolean("blurEnabled", true) }
+    val blurEnabled = settings.getBoolean("blurEnabled", true)
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
     val scrollState = rememberScrollState()
@@ -246,108 +246,107 @@ fun MiuixArticleScreen(
                     enter = slideInVertically(tween(200)) { -it },
                     exit = slideOutVertically(tween(200)) { -it },
                 ) {
-                TopAppBar(
-                    modifier = Modifier.installerMiuixBlurEffect(backdrop),
-                color = backdrop.getMiuixAppBarColor(),
-                title = viewModel.title.ifEmpty {
-                    if (article.type == ArticleType.Answer) "回答" else "文章"
-                },
-                navigationIcon = {
-                    IconButton(onClick = navigator.onNavigateBack) {
-                        Icon(MiuixIconsEmbedded.Back, "返回", tint = MiuixTheme.colorScheme.onBackground)
-                    }
-                },
-                actions = {
-                    IconButton(onClick = {
-                        articleActions.shareArticle(article, viewModel.questionId, viewModel.title, viewModel.authorName)
-                    }) {
-                        Icon(Icons.Default.Share, "分享", tint = MiuixTheme.colorScheme.onBackground)
-                    }
-                },
-                scrollBehavior = scrollBehavior,
-            )
+                    TopAppBar(
+                        modifier = Modifier.installerMiuixBlurEffect(backdrop),
+                        color = backdrop.getMiuixAppBarColor(),
+                        title = viewModel.title.ifEmpty {
+                            if (article.type == ArticleType.Answer) "回答" else "文章"
+                        },
+                        navigationIcon = {
+                            IconButton(onClick = navigator.onNavigateBack) {
+                                Icon(MiuixIconsEmbedded.Back, "返回", tint = MiuixTheme.colorScheme.onBackground)
+                            }
+                        },
+                        actions = {
+                            IconButton(onClick = {
+                                articleActions.shareArticle(article, viewModel.questionId, viewModel.title, viewModel.authorName)
+                            }) {
+                                Icon(Icons.Default.Share, "分享", tint = MiuixTheme.colorScheme.onBackground)
+                            }
+                        },
+                        scrollBehavior = scrollBehavior,
+                    )
                 }
-        },
-        bottomBar = {
-            AnimatedVisibility(
-                visible = showBottomBar,
-                enter = slideInVertically(tween(200)) { it },
-                exit = slideOutVertically(tween(200)) { it },
-            ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    // 底栏背景模糊（与顶栏同一 backdrop）。
-                    .installerMiuixBlurEffect(backdrop)
-                    .background(backdrop.getMiuixAppBarColor())
-                    .navigationBarsPadding()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                // 赞同/反对药丸（对齐 M3：可分别切换，激活态蓝底白字）。
-                val up = viewModel.voteUpState == VoteUpState.Up
-                val down = viewModel.voteUpState == VoteUpState.Down
-                Row(
-                    modifier = Modifier.clip(RoundedCornerShape(50)).background(MiuixTheme.colorScheme.surfaceContainerHigh),
-                    verticalAlignment = Alignment.CenterVertically,
+            },
+            bottomBar = {
+                AnimatedVisibility(
+                    visible = showBottomBar,
+                    enter = slideInVertically(tween(200)) { it },
+                    exit = slideOutVertically(tween(200)) { it },
                 ) {
                     Row(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(50))
-                            .background(if (up) voteUpNeutralContent() else Color.Transparent)
-                            .clickable { viewModel.toggleVoteUp(environment, if (up) VoteUpState.Neutral else VoteUpState.Up) }
+                            .fillMaxWidth()
+                            // 底栏背景模糊（与顶栏同一 backdrop）。
+                            .installerMiuixBlurEffect(backdrop)
+                            .navigationBarsPadding()
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Icon(Icons.Default.ThumbUp, "赞同", modifier = Modifier.size(18.dp), tint = if (up) Color.White else MiuixTheme.colorScheme.onSurface)
-                        Spacer(Modifier.width(4.dp))
-                        Text(viewModel.voteUpCount.toString(), color = if (up) Color.White else MiuixTheme.colorScheme.onSurface, fontSize = 13.sp)
-                    }
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(50))
-                            .background(if (down) voteUpNeutralContent() else Color.Transparent)
-                            .clickable { viewModel.toggleVoteUp(environment, if (down) VoteUpState.Neutral else VoteUpState.Down) }
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                    ) {
-                        Icon(Icons.Default.ThumbDown, "反对", modifier = Modifier.size(18.dp), tint = if (down) Color.White else MiuixTheme.colorScheme.onSurface)
-                    }
-                }
+                        // 赞同/反对药丸（对齐 M3：可分别切换，激活态蓝底白字）。
+                        val up = viewModel.voteUpState == VoteUpState.Up
+                        val down = viewModel.voteUpState == VoteUpState.Down
+                        Row(
+                            modifier = Modifier.clip(RoundedCornerShape(50)).background(MiuixTheme.colorScheme.surfaceContainerHigh),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(50))
+                                    .background(if (up) voteUpNeutralContent() else Color.Transparent)
+                                    .clickable { viewModel.toggleVoteUp(environment, if (up) VoteUpState.Neutral else VoteUpState.Up) }
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(Icons.Default.ThumbUp, "赞同", modifier = Modifier.size(18.dp), tint = if (up) Color.White else MiuixTheme.colorScheme.onSurface)
+                                Spacer(Modifier.width(4.dp))
+                                Text(viewModel.voteUpCount.toString(), color = if (up) Color.White else MiuixTheme.colorScheme.onSurface, fontSize = 13.sp)
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(50))
+                                    .background(if (down) voteUpNeutralContent() else Color.Transparent)
+                                    .clickable { viewModel.toggleVoteUp(environment, if (down) VoteUpState.Neutral else VoteUpState.Down) }
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                            ) {
+                                Icon(Icons.Default.ThumbDown, "反对", modifier = Modifier.size(18.dp), tint = if (down) Color.White else MiuixTheme.colorScheme.onSurface)
+                            }
+                        }
 
-                Spacer(Modifier.weight(1f))
+                        Spacer(Modifier.weight(1f))
 
-                // 收藏
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(50))
-                        .background(if (viewModel.isFavorited) voteUpNeutralContent() else MiuixTheme.colorScheme.surfaceContainerHigh)
-                        .clickable { showCollections.value = true }
-                        .padding(10.dp),
-                ) {
-                    Icon(
-                        if (viewModel.isFavorited) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                        "收藏",
-                        modifier = Modifier.size(20.dp),
-                        tint = if (viewModel.isFavorited) Color.White else MiuixTheme.colorScheme.onSurface,
-                    )
+                        // 收藏
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(50))
+                                .background(if (viewModel.isFavorited) voteUpNeutralContent() else MiuixTheme.colorScheme.surfaceContainerHigh)
+                                .clickable { showCollections.value = true }
+                                .padding(10.dp),
+                        ) {
+                            Icon(
+                                if (viewModel.isFavorited) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                                "收藏",
+                                modifier = Modifier.size(20.dp),
+                                tint = if (viewModel.isFavorited) Color.White else MiuixTheme.colorScheme.onSurface,
+                            )
+                        }
+                        // 评论
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(50))
+                                .background(MiuixTheme.colorScheme.surfaceContainerHigh)
+                                .clickable { showComments = true }
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.Comment, "评论", modifier = Modifier.size(18.dp), tint = MiuixTheme.colorScheme.onSurface)
+                            Spacer(Modifier.width(4.dp))
+                            Text(viewModel.commentCount.toString(), color = MiuixTheme.colorScheme.onSurface, fontSize = 13.sp)
+                        }
+                    }
                 }
-                // 评论
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(50))
-                        .background(MiuixTheme.colorScheme.surfaceContainerHigh)
-                        .clickable { showComments = true }
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.Comment, "评论", modifier = Modifier.size(18.dp), tint = MiuixTheme.colorScheme.onSurface)
-                    Spacer(Modifier.width(4.dp))
-                    Text(viewModel.commentCount.toString(), color = MiuixTheme.colorScheme.onSurface, fontSize = 13.sp)
-                }
-            }
-            }
-        },
+            },
         ) { innerPadding ->
             Box(
                 modifier = Modifier
@@ -363,59 +362,93 @@ fun MiuixArticleScreen(
                         .padding(innerPadding)
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                 ) {
-                if (viewModel.authorName.isNotEmpty()) {
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                navigator.onNavigate(
-                                    Person(id = viewModel.authorId, urlToken = viewModel.authorUrlToken, name = viewModel.authorName),
-                                )
-                            }.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        if (viewModel.authorAvatarSrc.isNotEmpty()) {
-                            AsyncImage(viewModel.authorAvatarSrc, "头像", modifier = Modifier.size(44.dp).clip(CircleShape))
-                            Spacer(Modifier.width(12.dp))
-                        }
-                        Column(Modifier.weight(1f)) {
-                            Text(viewModel.authorName, style = MiuixTheme.textStyles.title4, fontWeight = FontWeight.Bold)
-                            if (viewModel.authorBio.isNotEmpty()) {
+                    // 正文内容卡（优先显示）
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            // 置顶日期：置顶模式下日期放在内容顶部
+                            if (articleSettings.pinAnswerDate && viewModel.createdAt > 0) {
                                 Text(
-                                    viewModel.authorBio,
-                                    style = MiuixTheme.textStyles.footnote1,
+                                    "发布于 " + formatArticleDateTime(viewModel.createdAt),
+                                    style = MiuixTheme.textStyles.footnote2,
                                     color = MiuixTheme.colorScheme.onSurfaceSecondary,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                if (viewModel.createdAt != viewModel.updatedAt) {
+                                    Text(
+                                        "编辑于 " + formatArticleDateTime(viewModel.updatedAt),
+                                        style = MiuixTheme.textStyles.footnote2,
+                                        color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                                    )
+                                }
+                                Spacer(Modifier.height(8.dp))
+                            }
+                            if (viewModel.content.isEmpty()) {
+                                Box(Modifier.fillMaxWidth().padding(24.dp), Alignment.Center) {
+                                    CircularProgressIndicator()
+                                }
+                            } else {
+                                RenderMarkdown(html = viewModel.content, selectable = true, enableScroll = false)
+                            }
+                            // 非置顶日期 + IP属地 放在内容底部
+                            if (!articleSettings.pinAnswerDate && viewModel.createdAt > 0) {
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    "发布于 " + formatArticleDateTime(viewModel.createdAt),
+                                    style = MiuixTheme.textStyles.footnote2,
+                                    color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                                )
+                                if (viewModel.createdAt != viewModel.updatedAt) {
+                                    Text(
+                                        "编辑于 " + formatArticleDateTime(viewModel.updatedAt),
+                                        style = MiuixTheme.textStyles.footnote2,
+                                        color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                                    )
+                                }
+                            }
+                            if (viewModel.ipInfo != null) {
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    "IP属地：${viewModel.ipInfo}",
+                                    style = MiuixTheme.textStyles.footnote2,
+                                    color = MiuixTheme.colorScheme.onSurfaceSecondary,
                                 )
                             }
                         }
                     }
-                }
-                Spacer(Modifier.height(8.dp))
-            }
 
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    if (viewModel.content.isEmpty()) {
-                        Box(Modifier.fillMaxWidth().padding(24.dp), Alignment.Center) {
-                            CircularProgressIndicator()
-                        }
-                    } else {
-                        RenderMarkdown(html = viewModel.content, selectable = true, enableScroll = false)
-                    }
-                    if (viewModel.ipInfo != null) {
+                    // 作者卡（正文之后）
+                    if (viewModel.authorName.isNotEmpty()) {
                         Spacer(Modifier.height(8.dp))
-                        Text(
-                            "IP属地：${viewModel.ipInfo}",
-                            style = MiuixTheme.textStyles.footnote2,
-                            color = MiuixTheme.colorScheme.onSurfaceSecondary,
-                        )
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        navigator.onNavigate(
+                                            Person(id = viewModel.authorId, urlToken = viewModel.authorUrlToken, name = viewModel.authorName),
+                                        )
+                                    }.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                if (viewModel.authorAvatarSrc.isNotEmpty()) {
+                                    AsyncImage(viewModel.authorAvatarSrc, "头像", modifier = Modifier.size(44.dp).clip(CircleShape))
+                                    Spacer(Modifier.width(12.dp))
+                                }
+                                Column(Modifier.weight(1f)) {
+                                    Text(viewModel.authorName, style = MiuixTheme.textStyles.title4, fontWeight = FontWeight.Bold)
+                                    if (viewModel.authorBio.isNotEmpty()) {
+                                        Text(
+                                            viewModel.authorBio,
+                                            style = MiuixTheme.textStyles.footnote1,
+                                            color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
-                }
-            }
-                Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(16.dp))
                 }
                 // 右侧阅读进度条（对齐 M3）。
                 VerticalReadingProgressBar(

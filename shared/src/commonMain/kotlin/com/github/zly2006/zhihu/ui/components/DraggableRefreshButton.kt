@@ -43,6 +43,12 @@ import com.github.zly2006.zhihu.shared.platform.rememberScreenSizeDp
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import kotlin.math.roundToInt
 
+/**
+ * 可拖动并自动贴边的刷新按钮。
+ *
+ * 这个 FAB 用于首页和其他列表页的手动刷新入口。位置按 [preferenceName] 分别保存到 `-x`、`-y` 两个 preference key，
+ * 拖动结束后会限制在屏幕内并贴近左右边缘，避免遮挡内容或被系统栏吞掉。需要多个可拖动按钮时必须使用不同的 [preferenceName]。
+ */
 @Composable
 fun DraggableRefreshButton(
     modifier: Modifier = Modifier,
