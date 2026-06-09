@@ -54,6 +54,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -78,12 +79,15 @@ import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
+import com.github.zly2006.zhihu.shared.data.ZhihuPaging
 import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.util.formatCompactCount
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.ShareDialog
+import com.github.zly2006.zhihu.ui.components.VotersSheet
 import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
@@ -97,6 +101,7 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
@@ -145,6 +150,23 @@ private suspend fun loadPinDetail(
         isLiked = content.virtuals.booleanCompat("isLiked", "is_liked"),
         likeCount = content.likeCount,
     )
+}
+
+private suspend fun loadPinVoters(
+    environment: PaginationEnvironment,
+    pinId: Long,
+    nextUrl: String?,
+): PinVotersResponse {
+    val url = (
+        nextUrl
+            ?: "https://www.zhihu.com/api/v4/pins/$pinId/upvoters?limit=10&offset=0"
+    ).replace("http://", "https://")
+    val jsonObject = environment
+        .httpClient()
+        .get(url) {
+            environment.configureSignedRequest(this)
+        }.body<JsonObject>()
+    return ZhihuJson.decodeJson(jsonObject)
 }
 
 const val PIN_SCREEN_AUTHOR_TAG = "pin_screen_author"
@@ -205,6 +227,40 @@ fun PinScreen(
 
     var showShareDialog by remember { mutableStateOf(false) }
     var showComments by rememberSaveable(pin.id) { mutableStateOf(false) }
+    var showVoters by rememberSaveable(pin.id) { mutableStateOf(false) }
+    var votersNextUrl by rememberSaveable(pin.id) { mutableStateOf<String?>(null) }
+    var votersLoading by rememberSaveable(pin.id) { mutableStateOf(false) }
+    var votersError by rememberSaveable(pin.id) { mutableStateOf<String?>(null) }
+    val voters = remember(pin.id) { mutableStateListOf<DataHolder.Author>() }
+
+    fun loadMoreVoters(reset: Boolean = false) {
+        if (votersLoading) return
+        coroutineScope.launch {
+            votersLoading = true
+            votersError = null
+            try {
+                val page = loadPinVoters(
+                    environment = paginationEnvironment,
+                    pinId = pin.id,
+                    nextUrl = if (reset) null else votersNextUrl,
+                )
+                if (reset) {
+                    voters.clear()
+                }
+                val existingIds = voters.mapTo(mutableSetOf()) { it.id }
+                voters.addAll(page.data.filter { existingIds.add(it.id) })
+                val total = page.paging.totals.takeIf { it > 0 } ?: screenState.likeCount
+                screenState = screenState.copy(likeCount = total)
+                votersNextUrl = page.paging.next
+                    .takeUnless { page.paging.isEnd || it.isBlank() }
+                    ?.replace("http://", "https://")
+            } catch (e: Exception) {
+                votersError = e.message ?: "加载赞同者失败"
+            } finally {
+                votersLoading = false
+            }
+        }
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -303,6 +359,12 @@ fun PinScreen(
                         onCommentClick = {
                             showComments = true
                         },
+                        onSocialCreditClick = {
+                            showVoters = true
+                            if (voters.isEmpty()) {
+                                loadMoreVoters(reset = true)
+                            }
+                        },
                         linkCardPreviewOverride = testOverrides?.linkCardPreview,
                     )
 
@@ -338,6 +400,22 @@ fun PinScreen(
                             )
                         }
                     }
+
+                    VotersSheet(
+                        show = showVoters,
+                        title = "${formatCompactCount(screenState.likeCount)} 人赞同了该想法",
+                        voters = voters,
+                        isLoading = votersLoading,
+                        errorMessage = votersError,
+                        canLoadMore = votersNextUrl != null,
+                        onDismissRequest = { showVoters = false },
+                        onLoadMore = { loadMoreVoters() },
+                        onRetry = { loadMoreVoters(reset = voters.isEmpty()) },
+                        onNavigate = { person ->
+                            showVoters = false
+                            navigator.onNavigate(person)
+                        },
+                    )
                 }
             }
         }
@@ -351,6 +429,7 @@ private fun PinContent(
     likeCount: Int,
     onLikeClick: () -> Unit,
     onCommentClick: () -> Unit,
+    onSocialCreditClick: () -> Unit,
     linkCardPreviewOverride: PinLinkCardPreview? = null,
 ) {
     val navigator = LocalNavigator.current
@@ -469,6 +548,7 @@ private fun PinContent(
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.clickable(onClick = onSocialCreditClick),
             )
         }
 
@@ -720,6 +800,12 @@ data class PinScreenUiState(
     val pinContent: DataHolder.Pin? = null,
     val isLiked: Boolean = false,
     val likeCount: Int = 0,
+)
+
+@Serializable
+private data class PinVotersResponse(
+    val paging: ZhihuPaging,
+    val data: List<DataHolder.Author> = emptyList(),
 )
 
 data class PinLinkCardPreview(
