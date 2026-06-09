@@ -204,6 +204,9 @@ suspend fun addZhihuReadHistory(
 }
 
 const val ZHIHU_NOTIFICATION_RECENT_URL = "https://www.zhihu.com/api/v4/notifications/v2/recent"
+const val ZHIHU_NOTIFICATION_DEFAULT_URL = "https://www.zhihu.com/api/v4/notifications/v2/default"
+const val ZHIHU_NOTIFICATION_FOLLOW_URL = "https://www.zhihu.com/api/v4/notifications/v2/follow"
+const val ZHIHU_NOTIFICATION_VOTE_THANK_URL = "https://www.zhihu.com/api/v4/notifications/v2/vote_thank"
 const val ZHIHU_NOTIFICATION_DEFAULT_READ_ALL_URL =
     "https://www.zhihu.com/api/v4/notifications/v2/default/actions/readall"
 const val ZHIHU_NOTIFICATION_FOLLOW_READ_ALL_URL =
@@ -220,6 +223,18 @@ val ZHIHU_NOTIFICATION_READ_ALL_URLS = listOf(
 fun zhihuNotificationRecentUrl(
     limit: Int = 20,
 ): String = "https://www.zhihu.com/api/v4/notifications/v2/recent?limit=$limit"
+
+fun zhihuNotificationDefaultUrl(
+    limit: Int = 20,
+): String = "https://www.zhihu.com/api/v4/notifications/v2/default?limit=$limit"
+
+fun zhihuNotificationFollowUrl(
+    limit: Int = 20,
+): String = "https://www.zhihu.com/api/v4/notifications/v2/follow?limit=$limit"
+
+fun zhihuNotificationVoteThankUrl(
+    limit: Int = 20,
+): String = "https://www.zhihu.com/api/v4/notifications/v2/vote_thank?limit=$limit"
 
 fun decodeZhihuMeNotifications(response: JsonObject): ZhihuMeNotifications =
     ZhihuJson.decodeJson(response)

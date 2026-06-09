@@ -50,9 +50,15 @@ class AndroidNotificationSettingsStore(
         preferences.getBoolean(KEY_AUTO_MARK_AS_READ, true)
 
     override fun setAutoMarkAsReadEnabled(enabled: Boolean) = preferences.edit { putBoolean(KEY_AUTO_MARK_AS_READ, enabled) }
+
+    override fun getUnreadBadgeEnabled(): Boolean =
+        preferences.getBoolean(KEY_UNREAD_BADGE, true)
+
+    override fun setUnreadBadgeEnabled(enabled: Boolean) = preferences.edit { putBoolean(KEY_UNREAD_BADGE, enabled) }
 }
 
 private const val PREF_NAME = "notification_settings"
 private const val KEY_SYSTEM_NOTIFICATION = "system_notification_"
 private const val KEY_DISPLAY_IN_APP = "display_in_app_"
 private const val KEY_AUTO_MARK_AS_READ = "auto_mark_notifications_read"
+private const val KEY_UNREAD_BADGE = "show_unread_badge"

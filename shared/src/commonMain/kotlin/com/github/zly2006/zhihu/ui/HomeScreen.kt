@@ -75,6 +75,7 @@ import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
+import com.github.zly2006.zhihu.shared.notification.rememberNotificationSettingsStore
 import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
 import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
@@ -121,11 +122,13 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
     val navigator = LocalNavigator.current
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = true)
     val settings = rememberSettingsStore()
+    val notificationSettings = rememberNotificationSettingsStore()
     val userMessages = rememberUserMessageSink()
     val openExternalUrl = rememberExternalUrlOpener()
 
     val duo3HomeAccount = settings.getBoolean("duo3_home_account", false)
     val showRefreshFab = settings.getBoolean("showRefreshFab", true)
+    val showUnreadBadge = notificationSettings.getUnreadBadgeEnabled()
     var showAccountBottomSheet by remember { mutableStateOf(false) }
 
     // 获取当前推荐算法设置
@@ -275,7 +278,7 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
                                     Box(Modifier.padding(12.dp)) {
                                         BadgedBox(
                                             badge = {
-                                                if (unreadCount > 0) {
+                                                if (showUnreadBadge && unreadCount > 0) {
                                                     Badge { }
                                                 }
                                             },
@@ -354,7 +357,7 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
                         ) {
                             BadgedBox(
                                 badge = {
-                                    if (unreadCount > 0) {
+                                    if (showUnreadBadge && unreadCount > 0) {
                                         Badge { Text("$unreadCount") }
                                     }
                                 },
@@ -379,6 +382,7 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
                 AccountSettingScreen(
                     innerPadding = PaddingValues(0.dp),
                     unreadCount = unreadCount,
+                    showUnreadBadge = showUnreadBadge,
                     onDismissRequest = { showAccountBottomSheet = false },
                 )
             }
