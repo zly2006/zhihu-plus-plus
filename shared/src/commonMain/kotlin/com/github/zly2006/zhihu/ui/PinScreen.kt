@@ -89,15 +89,15 @@ import com.github.zly2006.zhihu.ui.components.VotersSheet
 import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
-import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.ContentLoadEnvironment
+import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
+import com.github.zly2006.zhihu.viewmodel.deleteSigned
 import com.github.zly2006.zhihu.viewmodel.loadVotersPage
 import com.github.zly2006.zhihu.viewmodel.nextUrlOrNull
+import com.github.zly2006.zhihu.viewmodel.postSigned
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.replaceOrAppendUniqueVoters
 import io.ktor.client.call.body
-import io.ktor.client.request.delete
-import io.ktor.client.request.get
-import io.ktor.client.request.post
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
@@ -114,16 +114,15 @@ const val PIN_SCREEN_ERROR_TAG = "pin_screen_error"
 const val PIN_SCREEN_SCROLL_TAG = "pin_screen_scroll"
 
 private suspend fun togglePinLike(
-    environment: PaginationEnvironment,
+    environment: ZhihuApiEnvironment,
     pin: Pin,
     isLiked: Boolean,
 ): PinLikeResult {
     val endpoint = "https://www.zhihu.com/api/v4/pins/${pin.id}/voters/up"
-    val client = environment.httpClient()
     val jojo = if (isLiked) {
-        client.delete(endpoint) { environment.configureSignedRequest(this) }.body<JsonObject>()
+        environment.deleteSigned(endpoint).body<JsonObject>()
     } else {
-        client.post(endpoint) { environment.configureSignedRequest(this) }.body<JsonObject>()
+        environment.postSigned(endpoint).body<JsonObject>()
     }
     return PinLikeResult(
         isLiked = !isLiked,
@@ -132,15 +131,12 @@ private suspend fun togglePinLike(
 }
 
 private suspend fun loadPinDetail(
-    environment: PaginationEnvironment,
+    environment: ContentLoadEnvironment,
     pin: Pin,
 ): PinScreenUiState {
     environment.addReadHistory(pin.id.toString(), "pin")
-    val jsonObject = environment
-        .httpClient()
-        .get("https://www.zhihu.com/api/v4/pins/${pin.id}") {
-            environment.configureSignedRequest(this)
-        }.body<JsonObject>()
+    val jsonObject = environment.fetchJson("https://www.zhihu.com/api/v4/pins/${pin.id}", "")
+        ?: error("想法详情为空")
     val content = decodePinContentDetail(jsonObject)
     environment.postHistoryDestination(pin)
     environment.recordContentOpenEvent(destination = pin)
@@ -223,7 +219,6 @@ fun PinScreen(
             votersError = null
             try {
                 val page = loadVotersPage(
-                    client = paginationEnvironment.httpClient(),
                     environment = paginationEnvironment,
                     initialUrl = "https://www.zhihu.com/api/v4/pins/${pin.id}/upvoters?limit=10&offset=0",
                     nextUrl = votersNextUrl,

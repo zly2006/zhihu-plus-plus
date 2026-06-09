@@ -24,11 +24,13 @@ import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
+import com.github.zly2006.zhihu.viewmodel.ContentBlocklistEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
+import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
+import com.github.zly2006.zhihu.viewmodel.deleteSigned
 import com.github.zly2006.zhihu.viewmodel.filter.fetchBlockedUserIds
-import io.ktor.client.request.delete
-import io.ktor.client.request.post
+import com.github.zly2006.zhihu.viewmodel.postSigned
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonArray
@@ -63,7 +65,7 @@ abstract class BaseCommentViewModel(
     }
 
     private fun filterBlockedComments(
-        environment: PaginationEnvironment,
+        environment: ContentBlocklistEnvironment,
         comments: List<DataHolder.Comment>,
     ): List<DataHolder.Comment> {
         val blockedUserIds = environment.fetchBlockedUserIds()
@@ -93,7 +95,7 @@ abstract class BaseCommentViewModel(
     abstract fun submitComment(
         content: NavDestination,
         commentText: String,
-        environment: PaginationEnvironment,
+        environment: ZhihuApiEnvironment,
         replyToCommentId: String? = null,
         onSuccess: () -> Unit,
     )
@@ -102,7 +104,7 @@ abstract class BaseCommentViewModel(
 
     fun toggleLikeComment(
         commentData: DataHolder.Comment,
-        environment: PaginationEnvironment,
+        environment: ZhihuApiEnvironment,
         onSuccess: () -> Unit,
     ) {
         if (isLikeLoading) return
@@ -112,17 +114,11 @@ abstract class BaseCommentViewModel(
         val newLikeState = !commentData.liked
         viewModelScope.launch {
             try {
-                val httpClient = environment.httpClient()
+                val likeUrl = "https://www.zhihu.com/api/v4/comments/$commentId/like"
                 val response = if (newLikeState) {
-                    // 点赞
-                    httpClient.post("https://www.zhihu.com/api/v4/comments/$commentId/like") {
-                        environment.configureSignedRequest(this)
-                    }
+                    environment.postSigned(likeUrl)
                 } else {
-                    // 取消点赞
-                    httpClient.delete("https://www.zhihu.com/api/v4/comments/$commentId/like") {
-                        environment.configureSignedRequest(this)
-                    }
+                    environment.deleteSigned(likeUrl)
                 }
 
                 if (response.status.isSuccess()) {

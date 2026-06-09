@@ -22,8 +22,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.shared.data.NotificationItem
-import com.github.zly2006.zhihu.shared.data.fetchZhihuUnreadNotificationCount
-import com.github.zly2006.zhihu.shared.data.markAllZhihuNotificationsAsRead
 import com.github.zly2006.zhihu.shared.data.zhihuNotificationRecentUrl
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.notification.matchNotificationType
@@ -31,9 +29,13 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlin.reflect.typeOf
 
-interface NotificationPaginationEnvironment : PaginationEnvironment {
+interface NotificationSettingsEnvironment {
     val notificationSettingsStore: NotificationSettingsStore
 }
+
+interface NotificationEnvironment :
+    PaginationEnvironment,
+    NotificationSettingsEnvironment
 
 class NotificationViewModel :
     PaginationViewModel<NotificationItem>(
@@ -47,7 +49,7 @@ class NotificationViewModel :
 
     @Suppress("HttpUrlsUsage")
     override suspend fun fetchFeeds(environment: PaginationEnvironment) {
-        val notificationEnvironment = environment.requireNotificationEnvironment()
+        val notificationSettingsEnvironment = environment.requireNotificationSettingsEnvironment()
         super.fetchFeeds(environment)
         if (lastPaging?.next?.startsWith("http://") == true) {
             lastPaging = lastPaging!!.copy(next = lastPaging!!.next.replace("http://", "https://"))
@@ -55,17 +57,15 @@ class NotificationViewModel :
 
         // 获取未读消息数量
         unreadCount = getUnreadCount(environment)
-        checkAndMarkAllAsRead(notificationEnvironment)
+        checkAndMarkAllAsRead(environment, notificationSettingsEnvironment)
     }
 
     /**
      * 更新未读消息数量
      */
-    private suspend fun getUnreadCount(environment: PaginationEnvironment): Int {
+    private suspend fun getUnreadCount(environment: ZhihuApiEnvironment): Int {
         try {
-            return fetchZhihuUnreadNotificationCount(environment.httpClient()) {
-                environment.configureSignedRequest(this)
-            }
+            return environment.fetchUnreadNotificationCountSigned()
         } catch (_: Exception) {
             // 忽略错误
             return 0
@@ -88,17 +88,20 @@ class NotificationViewModel :
     /**
      * 检查如果所有消息都被屏蔽了，且unreadCount>=0，则主动调用一次readall
      */
-    private suspend fun checkAndMarkAllAsRead(environment: NotificationPaginationEnvironment) {
+    private suspend fun checkAndMarkAllAsRead(
+        apiEnvironment: ZhihuApiEnvironment,
+        settingsEnvironment: NotificationSettingsEnvironment,
+    ) {
         if (unreadCount >= 0 && allData.isNotEmpty()) {
             val hasVisibleNotification = allData.any {
-                shouldShowNotification(environment.notificationSettingsStore, it)
+                shouldShowNotification(settingsEnvironment.notificationSettingsStore, it)
             }
             if (!hasVisibleNotification) {
-                markAllAsRead(environment)
+                markAllAsRead(apiEnvironment)
             }
         }
-        if (environment.notificationSettingsStore.getAutoMarkAsReadEnabled()) {
-            markAllAsRead(environment)
+        if (settingsEnvironment.notificationSettingsStore.getAutoMarkAsReadEnabled()) {
+            markAllAsRead(apiEnvironment)
             unreadCount = 0
         }
     }
@@ -116,13 +119,11 @@ class NotificationViewModel :
      * 标记所有消息为已读
      */
     @OptIn(DelicateCoroutinesApi::class)
-    suspend fun markAllAsRead(environment: PaginationEnvironment) {
-        markAllZhihuNotificationsAsRead(environment.httpClient()) {
-            environment.configureSignedRequest(this)
-        }
+    suspend fun markAllAsRead(environment: ZhihuApiEnvironment) {
+        environment.markAllNotificationsAsReadSigned()
     }
 }
 
-private fun PaginationEnvironment.requireNotificationEnvironment(): NotificationPaginationEnvironment =
-    this as? NotificationPaginationEnvironment
+private fun PaginationEnvironment.requireNotificationSettingsEnvironment(): NotificationSettingsEnvironment =
+    this as? NotificationSettingsEnvironment
         ?: error("NotificationSettingsStore is required for notification pagination")

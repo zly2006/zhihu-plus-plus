@@ -59,7 +59,6 @@ import io.ktor.client.call.body
 import io.ktor.client.request.accept
 import io.ktor.client.request.get
 import io.ktor.client.request.header
-import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsChannel
@@ -182,7 +181,7 @@ class ArticleViewModel(
     open class ArticlesSharedData : ArticleAnswerSwitchData()
 
     @OptIn(ExperimentalStdlibApi::class)
-    fun loadArticle(environment: PaginationEnvironment) {
+    fun loadArticle(environment: ArticleLoadEnvironment) {
         if (httpClient == null) return
         viewModelScope.launch {
             withContext(Dispatchers.Default) {
@@ -318,7 +317,7 @@ class ArticleViewModel(
         }
     }
 
-    fun toggleFavorite(collectionId: String, remove: Boolean, environment: PaginationEnvironment) {
+    fun toggleFavorite(collectionId: String, remove: Boolean, environment: ZhihuApiEnvironment) {
         if (httpClient == null) return
         viewModelScope.launch {
             try {
@@ -348,7 +347,7 @@ class ArticleViewModel(
         }
     }
 
-    fun requestAiSummary(environment: PaginationEnvironment) {
+    fun requestAiSummary(environment: ZhihuApiEnvironment) {
         if (httpClient == null) {
             aiSummaryError = "未初始化网络客户端"
             return
@@ -368,12 +367,11 @@ class ArticleViewModel(
                     contentType = contentType,
                     title = title.ifBlank { "知乎内容" },
                 )
-                val response = httpClient.post("https://www.zhihu.com/ai_ingress/stream/completion") {
+                val response = environment.postSigned("https://www.zhihu.com/ai_ingress/stream/completion") {
                     accept(ContentType.Text.EventStream)
                     contentType(ContentType.Application.Json)
                     header("x-xsrftoken", environment.xsrfToken())
                     setBody(request)
-                    environment.configureSignedRequest(this)
                 }
                 if (!response.status.isSuccess()) {
                     val errorBody = response.bodyAsText()
@@ -471,7 +469,7 @@ class ArticleViewModel(
 
     private val collectionOrder = mutableListOf<String>()
 
-    fun loadCollections(environment: PaginationEnvironment) {
+    fun loadCollections(environment: ZhihuApiEnvironment) {
         if (httpClient == null) return
         viewModelScope.launch {
             withContext(Dispatchers.Default) {
@@ -481,10 +479,7 @@ class ArticleViewModel(
                         ArticleType.Article -> "article"
                     }
                     val collectionsUrl = "https://api.zhihu.com/collections/contents/$contentType/${article.id}?limit=50"
-                    val jojo = httpClient!!
-                        .get(collectionsUrl) {
-                            environment.configureSignedRequest(this)
-                        }.body<JsonObject>()
+                    val jojo = environment.fetchJson(collectionsUrl, "") ?: return@withContext
                     val collectionsData = ZhihuJson.decodeJson<CollectionResponse>(jojo)
                     collections.clear()
                     collections.addAll(
@@ -511,14 +506,14 @@ class ArticleViewModel(
     }
 
     fun createNewCollection(
-        environment: PaginationEnvironment,
+        environment: ZhihuApiEnvironment,
         title: String,
         description: String = "",
         isPublic: Boolean = false,
     ) {
         if (httpClient == null) return
         viewModelScope.launch {
-            httpClient!!.post("https://www.zhihu.com/api/v4/collections") {
+            environment.postSigned("https://www.zhihu.com/api/v4/collections") {
                 contentType(ContentType.Application.Json)
                 setBody(
                     buildJsonObject {
@@ -527,13 +522,12 @@ class ArticleViewModel(
                         put("is_public", isPublic)
                     },
                 )
-                environment.configureSignedRequest(this)
             }
             loadCollections(environment)
         }
     }
 
-    fun toggleVoteUp(environment: PaginationEnvironment, newState: VoteUpState) {
+    fun toggleVoteUp(environment: ZhihuApiEnvironment, newState: VoteUpState) {
         viewModelScope.launch {
             try {
                 val endpoint = when (article.type) {
@@ -541,14 +535,13 @@ class ArticleViewModel(
                     ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${article.id}/voters"
                 }
 
-                val response = httpClient!!
-                    .post(endpoint) {
+                val response = environment
+                    .postSigned(endpoint) {
                         when (article.type) {
                             ArticleType.Answer -> setBody(mapOf("type" to newState.key))
                             ArticleType.Article -> setBody(mapOf("voting" to if (newState == VoteUpState.Up) 1 else 0))
                         }
                         contentType(ContentType.Application.Json)
-                        environment.configureSignedRequest(this)
                     }.body<JsonObject>()
 
                 voteUpState = newState
@@ -565,15 +558,13 @@ class ArticleViewModel(
         }
     }
 
-    fun loadMoreVoters(environment: PaginationEnvironment, reset: Boolean = false) {
-        val client = httpClient ?: return
+    fun loadMoreVoters(environment: ZhihuApiEnvironment, reset: Boolean = false) {
         if (article.type != ArticleType.Answer || votersLoading) return
         viewModelScope.launch {
             votersLoading = true
             votersError = null
             try {
                 val page = loadVotersPage(
-                    client = client,
                     environment = environment,
                     initialUrl = "https://www.zhihu.com/api/v4/answers/${article.id}/upvoters?limit=10&offset=0",
                     nextUrl = votersNextUrl,
@@ -591,15 +582,12 @@ class ArticleViewModel(
         }
     }
 
-    fun loadAnswerRelationshipEndorsement(environment: PaginationEnvironment) {
-        val client = httpClient ?: return
+    fun loadAnswerRelationshipEndorsement(environment: ZhihuApiEnvironment) {
         if (article.type != ArticleType.Answer) return
         viewModelScope.launch {
             try {
-                val response = client
-                    .get("https://www.zhihu.com/api/v4/answers/${article.id}/relationship?desktop=true") {
-                        environment.configureSignedRequest(this)
-                    }.body<JsonObject>()
+                val response = environment.fetchJson("https://www.zhihu.com/api/v4/answers/${article.id}/relationship?desktop=true", "")
+                    ?: return@launch
                 val endorsement = ZhihuJson.decodeJson<AnswerRelationshipEndorsement>(response)
                 votersSocialText = endorsement.text
             } catch (e: Exception) {
@@ -611,7 +599,7 @@ class ArticleViewModel(
 
     // 导出为图片 - 使用WebView渲染
     suspend fun exportToImage(
-        environment: PaginationEnvironment,
+        environment: ArticleExportContentEnvironment,
         includeAppAttribution: Boolean,
         onComplete: (Boolean) -> Unit,
     ) {
@@ -627,7 +615,7 @@ class ArticleViewModel(
 
     // 导出为带评论的图片 - 使用WebView渲染
     suspend fun exportToImageWithComments(
-        environment: PaginationEnvironment,
+        environment: ArticleExportContentEnvironment,
         commentCount: Int,
         includeAppAttribution: Boolean,
         onComplete: (Boolean) -> Unit,
@@ -643,7 +631,7 @@ class ArticleViewModel(
     }
 
     suspend fun exportToHtml(
-        environment: PaginationEnvironment,
+        environment: ArticleExportContentEnvironment,
         includeAppAttribution: Boolean,
         onComplete: (Boolean) -> Unit,
     ) {
@@ -683,18 +671,18 @@ class ArticleViewModel(
         }
     }
 
-    private fun requiresHtmlExportPermission(environment: PaginationEnvironment): Boolean =
+    private fun requiresHtmlExportPermission(environment: ArticleExportEnvironment): Boolean =
         environment.requiresHtmlExportPermission()
 
-    private fun hasStoragePermission(environment: PaginationEnvironment): Boolean =
+    private fun hasStoragePermission(environment: ArticleExportEnvironment): Boolean =
         environment.hasImageExportPermission()
 
-    private fun requestStoragePermission(environment: PaginationEnvironment) {
+    private fun requestStoragePermission(environment: ArticleExportEnvironment) {
         environment.requestImageExportPermission()
     }
 
     private suspend fun exportToImageInternal(
-        environment: PaginationEnvironment,
+        environment: ArticleExportContentEnvironment,
         includeComments: Boolean,
         commentCount: Int,
         includeAppAttribution: Boolean,
@@ -760,7 +748,7 @@ class ArticleViewModel(
         timeoutMs: Long,
     ): PreparedArticleExportContent = renderer.prepareExportWebView(htmlContent, timeoutMs)
 
-    private fun loadExportAssetText(environment: PaginationEnvironment, fileName: String): String = try {
+    private fun loadExportAssetText(environment: ArticleExportEnvironment, fileName: String): String = try {
         environment.loadExportAssetText(fileName)
     } catch (e: Exception) {
         Log.e("ArticleViewModel", "Failed to load export asset: $fileName", e)
@@ -780,14 +768,14 @@ class ArticleViewModel(
     private fun recycleExportBitmap(renderer: ArticleImageExportRenderer, bitmap: Any) =
         renderer.recycleExportBitmap(bitmap)
 
-    private fun articleImageExportRenderer(environment: PaginationEnvironment): ArticleImageExportRenderer? =
+    private fun articleImageExportRenderer(environment: ArticleExportEnvironment): ArticleImageExportRenderer? =
         environment.articleImageExportRenderer { fileName ->
             loadExportAssetText(environment, fileName)
         }
 
     // 创建HTML内容
     private suspend fun createHtmlContent(
-        environment: PaginationEnvironment,
+        environment: ArticleExportContentEnvironment,
         includeComments: Boolean,
         commentCount: Int,
         includeAppAttribution: Boolean,
@@ -809,7 +797,7 @@ class ArticleViewModel(
     }
 
     private suspend fun createOfflineHtmlContent(
-        environment: PaginationEnvironment,
+        environment: ArticleExportContentEnvironment,
         includeAppAttribution: Boolean,
     ): String = withContext(Dispatchers.Default) {
         environment.buildOfflineArticleExportHtml(
@@ -820,21 +808,20 @@ class ArticleViewModel(
     }
 
     private suspend fun fetchExportComments(
-        environment: PaginationEnvironment,
+        environment: ArticleExportContentEnvironment,
         requestedCount: Int,
     ): List<ArticleExportComment> {
         val safeRequestedCount = requestedCount.coerceAtLeast(0)
         if (safeRequestedCount == 0) return emptyList()
 
-        val client = httpClient ?: environment.accountHttpClient()
         val url = when (article.type) {
             ArticleType.Answer -> "https://www.zhihu.com/api/v4/comment_v5/answers/${article.id}/root_comment"
             ArticleType.Article -> "https://www.zhihu.com/api/v4/comment_v5/articles/${article.id}/root_comment"
         }
-        val json = client
-            .get("${'$'}url?order=score&limit=${'$'}{safeRequestedCount.coerceAtMost(20)}&include=data[*].content,excerpt,headline") {
-                environment.configureSignedRequest(this)
-            }.body<JsonObject>()
+        val json = environment.fetchJson(
+            url = "$url?order=score&limit=${safeRequestedCount.coerceAtMost(20)}",
+            include = "data[*].content,excerpt,headline",
+        ) ?: return emptyList()
         return decodeZhihuCommentData(json, safeRequestedCount)
             .map(::mapExportComment)
     }
@@ -854,12 +841,12 @@ class ArticleViewModel(
         ?: throw IllegalStateException("内容未加载完成")
 
     // 使用MediaStore保存图片到公共目录
-    private fun saveImageToMediaStore(environment: PaginationEnvironment, bitmap: Any) {
+    private fun saveImageToMediaStore(environment: ArticleExportEnvironment, bitmap: Any) {
         val displayName = buildExportFileName("jpg")
         environment.saveImageToMediaStore(displayName, bitmap)
     }
 
-    private fun saveHtmlToDownloads(environment: PaginationEnvironment, htmlContent: String): String {
+    private fun saveHtmlToDownloads(environment: ArticleExportEnvironment, htmlContent: String): String {
         val displayName = buildExportFileName("html")
         return environment.saveHtmlToDownloads(displayName, htmlContent)
     }
@@ -1018,7 +1005,7 @@ class ArticleViewModel(
     }
 
     // 导出到剪贴板
-    fun exportToClipboard(environment: PaginationEnvironment) {
+    fun exportToClipboard(environment: ClipboardEnvironment) {
         val markdown = convertToMarkdown()
 
         // 将Markdown文本复制到剪贴板

@@ -31,7 +31,7 @@ import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
-import com.github.zly2006.zhihu.viewmodel.NotificationPaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.NotificationEnvironment
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
 import io.ktor.client.HttpClient
@@ -65,14 +65,14 @@ actual fun rememberNotificationScreenRuntime(
     settingsStore: NotificationSettingsStore,
 ): NotificationScreenRuntime = remember(settingsStore) {
     NotificationScreenRuntime(
-        environment = IosNotificationPaginationEnvironment(settingsStore),
+        environment = IosNotificationEnvironment(settingsStore),
         showDebugCopy = false,
     )
 }
 
-private class IosNotificationPaginationEnvironment(
+private class IosNotificationEnvironment(
     override val notificationSettingsStore: NotificationSettingsStore,
-) : NotificationPaginationEnvironment {
+) : NotificationEnvironment {
     override fun httpClient() = error("HTTP client not available on iOS yet") // TODO: iOS HTTP 客户端
 
     override suspend fun fetchJson(url: String, include: String): JsonObject = error("fetchJson not available on iOS yet") // TODO: iOS 通知数据获取

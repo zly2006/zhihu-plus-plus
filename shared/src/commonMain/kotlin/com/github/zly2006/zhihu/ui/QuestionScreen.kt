@@ -86,13 +86,10 @@ import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
-import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.ContentLoadEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
-import io.ktor.client.call.body
-import io.ktor.client.request.get
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.JsonObject
 
 /**
  * 问题页的测试替身配置。
@@ -129,17 +126,13 @@ const val QUESTION_STATS_TAG = "question_stats"
 fun questionFeedItemTag(stableKey: String) = "question_feed_item_$stableKey"
 
 private suspend fun loadQuestion(
-    environment: PaginationEnvironment,
+    environment: ContentLoadEnvironment,
     question: Question,
 ): LoadedQuestionScreenData? {
     environment.addReadHistory(question.questionId.toString(), "question")
     val include = "read_count,visit_count,answer_count,voteup_count,comment_count,follower_count,detail,excerpt,author,relationship.is_following,topics"
-    val url = "https://www.zhihu.com/api/v4/questions/${question.questionId}?include=$include"
-    val jsonObject = environment
-        .httpClient()
-        .get(url) {
-            environment.configureSignedRequest(this)
-        }.body<JsonObject>()
+    val jsonObject = environment.fetchJson("https://www.zhihu.com/api/v4/questions/${question.questionId}", include)
+        ?: return null
     val questionData = decodeQuestionContentDetail(jsonObject)
     val loadedData = loadedQuestionScreenData(question, questionData)
     environment.postHistoryDestination(loadedData.historyDestination)
