@@ -1461,12 +1461,12 @@ fun ArticleScreen(
                             val text = viewModel.votersSocialText.ifBlank {
                                 "${formatCompactCount(viewModel.votersTotal)} 人赞同了该回答"
                             }
+                            Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 text = text,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier
-                                    .padding(top = 8.dp)
                                     .clickable {
                                         showVoters = true
                                         if (viewModel.voters.isEmpty()) {
@@ -1476,17 +1476,26 @@ fun ArticleScreen(
                             )
                         }
 
-                        if (viewModel.content.isNotEmpty() || viewModel.attachment != null) {
-                            if (useWebView) {
-                                if (pinAnswerDate) {
-                                    Column(
-                                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                                        horizontalAlignment = Alignment.Start,
-                                    ) {
-                                        DateTexts()
-                                    }
+                        @Composable
+                        fun ColumnScope.AnswerLeadingMeta() {
+                            val hasPinnedDate = pinAnswerDate
+                            val hasSocialCredit = article.type == ArticleType.Answer && viewModel.votersTotal > 0
+                            if (!hasPinnedDate && !hasSocialCredit) return
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                horizontalAlignment = Alignment.Start,
+                            ) {
+                                if (hasPinnedDate) {
+                                    DateTexts()
                                 }
                                 AnswerVotersSocialCredit()
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+
+                        if (viewModel.content.isNotEmpty() || viewModel.attachment != null) {
+                            if (useWebView) {
+                                AnswerLeadingMeta()
                                 ArticleWebViewContent(
                                     article = article,
                                     html = viewModel.content,
@@ -1515,15 +1524,7 @@ fun ArticleScreen(
                                 }
                                 Spacer(modifier = Modifier.height((16 + 36).dp))
                             } else {
-                                if (pinAnswerDate) {
-                                    Column(
-                                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                                        horizontalAlignment = Alignment.Start,
-                                    ) {
-                                        DateTexts()
-                                    }
-                                }
-                                AnswerVotersSocialCredit()
+                                AnswerLeadingMeta()
                                 ArticleMarkdownContent(
                                     html = viewModel.content,
                                     modifier = answerDoubleTapModifier.articleMarkdownSelectionWorkaround(),
