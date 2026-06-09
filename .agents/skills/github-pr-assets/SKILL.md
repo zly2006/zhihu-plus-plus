@@ -9,7 +9,7 @@ description: Manage screenshots and other visual assets for GitHub pull requests
 
 Use this skill to attach verified screenshots or other review assets to GitHub PRs without relying on local-only paths or unverified upload behavior.
 
-Core rule: PR descriptions must contain durable, publicly accessible Markdown links or images. A local path such as `/tmp/foo.png` is evidence for the agent, not a usable PR asset.
+Core rule: PR descriptions must contain durable, publicly accessible Markdown links or images. A local path such as `/tmp/foo.png` is evidence for the agent, not a usable PR asset. Do not store transient PR screenshots in the product repository unless the user explicitly asks for that; use the dedicated `agent-image` repository.
 
 ## Workflow
 
@@ -20,8 +20,9 @@ Core rule: PR descriptions must contain durable, publicly accessible Markdown li
    - optional checksum: `shasum -a 256 <path>`
 3. Choose the least disruptive hosting method:
    - Prefer existing durable URLs if the image is already hosted and can be verified.
-   - If GitHub web attachment upload is unavailable, commit assets under a small review-only path such as `docs/pr-assets/pr-<number>/`.
-   - Use raw GitHub URLs for PR Markdown, for example `https://raw.githubusercontent.com/<owner>/<repo>/<branch>/docs/pr-assets/pr-<number>/<file>.png`.
+   - For generated agent screenshots, use `zly2006/agent-image` by default. Check it with `gh repo view zly2006/agent-image`; if it does not exist, create it instead of claiming upload is blocked.
+   - Put PR assets under a namespaced path such as `zhihu-plus-plus/pr-<number>/<file>.png` inside `agent-image`.
+   - Use raw GitHub URLs for PR Markdown, for example `https://raw.githubusercontent.com/zly2006/agent-image/main/zhihu-plus-plus/pr-<number>/<file>.png`.
 4. Push the branch before updating the PR body.
 5. Verify hosted URLs with `curl -I -L '<url>'` and require `HTTP 200` plus the expected content type.
 6. Update the PR body with `gh pr edit <number> --body-file -`.
@@ -65,7 +66,8 @@ Avoid:
 
 Keep asset commits narrow:
 
-- Commit only the new skill/content and PR asset files needed for the requested PR.
+- In the product repository, commit only skill/content changes needed for the requested PR.
+- In `agent-image`, commit only the PR asset files needed for the requested PR.
 - Do not touch unrelated dirty files in the user's worktree.
 - Avoid committing large or reusable generated assets unless the PR requirement needs them.
 - Prefer descriptive names like `answer-voters-sheet.png` over timestamp-only names.
@@ -75,6 +77,10 @@ Keep asset commits narrow:
 ### 创建 skill 的指令不能降级成普通记录
 
 当用户明确说要“创建 skill”或纠正先前误写的 skill 触发词时，必须实际创建或更新一个 skill 目录，并按 skill 创建流程验证。不能只把经验写进现有文档、回复一句“记住了”，或把它当成任务已经完成。例子：用户要求把某类 PR 截图收尾流程沉淀成 skill 时，应该生成 `SKILL.md`、必要的 metadata，并跑 validator；不是只在原任务技能里加一条失败经验。
+
+### agent-image 不存在就创建
+
+当流程要求用 `agent-image` 承载截图资产时，必须真实检查仓库是否存在。如果不存在，就用 `gh repo create zly2006/agent-image --public` 创建并继续上传；不能把截图提交到业务仓库，也不能说“没有仓库所以做不了”。例子：PR 需要两张 AVD 截图时，应把图片提交到 `agent-image` 的项目/PR 子目录，然后把 PR 正文改成该仓库 raw 链接。
 
 ### raw 链接返回 404
 
