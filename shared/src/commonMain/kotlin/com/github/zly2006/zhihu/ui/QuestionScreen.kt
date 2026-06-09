@@ -78,6 +78,7 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberZhihuWebUrlOpener
+import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
@@ -487,7 +488,7 @@ fun QuestionScreen(
         if (showComments) {
             content { showComments = false }
         }
-    } ?: QuestionCommentsSheet(
+    } ?: CommentScreenComponent(
         showComments = showComments,
         onDismiss = { showComments = false },
         content = question,

@@ -119,6 +119,7 @@ import androidx.navigation.toRoute
 import coil3.compose.AsyncImage
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Element
+import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
@@ -1525,9 +1526,11 @@ fun ArticleScreen(
                                 Spacer(modifier = Modifier.height((16 + 36).dp))
                             } else {
                                 AnswerLeadingMeta()
-                                ArticleMarkdownContent(
+                                RenderMarkdown(
                                     html = viewModel.content,
                                     modifier = answerDoubleTapModifier.articleMarkdownSelectionWorkaround(),
+                                    selectable = true,
+                                    enableScroll = false,
                                     header = {},
                                     footer = {
                                         ArticleVideoAttachmentContent(viewModel.attachment)
@@ -1803,7 +1806,7 @@ fun ArticleScreen(
 /**
  * 渲染缓存的回答完整内容，用于水平滑动预览。
  *
- * 内容来自 [CachedAnswerContent]，包含标题、作者信息、投票/评论计数和 HTML 正文。正文使用 [ArticleMarkdownContent]，
+ * 内容来自 [CachedAnswerContent]，包含标题、作者信息、投票/评论计数和 HTML 正文。正文使用 Compose Markdown，
  * 因此这里是轻量预览，不持有 WebView 或答案切换共享状态。
  */
 @Composable
@@ -1937,9 +1940,11 @@ private fun CachedAnswerPreview(
             }
             if (cached.content.isNotEmpty()) {
                 Spacer(Modifier.height(10.dp))
-                ArticleMarkdownContent(
+                RenderMarkdown(
                     html = cached.content,
                     modifier = Modifier,
+                    selectable = true,
+                    enableScroll = false,
                     header = {},
                     footer = {},
                 )

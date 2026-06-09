@@ -84,6 +84,7 @@ import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.util.formatCompactCount
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
+import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.VotersSheet
 import com.github.zly2006.zhihu.ui.components.getShareText
@@ -349,7 +350,7 @@ fun PinScreen(
                             pin,
                         )
                     } else if (showComments) {
-                        PinCommentsSheet(
+                        CommentScreenComponent(
                             showComments = showComments,
                             onDismiss = { showComments = false },
                             content = pin,
