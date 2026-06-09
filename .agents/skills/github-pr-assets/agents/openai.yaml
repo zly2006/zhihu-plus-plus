@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub PR Assets"
+  short_description: "处理 PR 截图、图片链接和 GitHub 附件限制"
+  default_prompt: "Use $github-pr-assets to attach verified screenshots to a GitHub PR without relying on local file paths."

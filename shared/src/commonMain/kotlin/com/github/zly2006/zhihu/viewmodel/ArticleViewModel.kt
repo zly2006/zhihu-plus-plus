@@ -74,6 +74,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.toLocalDateTime
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -102,6 +103,17 @@ class ArticleViewModel(
     var voteUpCount by mutableIntStateOf(0)
     var commentCount by mutableIntStateOf(0)
     var voteUpState by mutableStateOf(VoteUpState.Neutral)
+    var votersTotal by mutableIntStateOf(0)
+        private set
+    var votersNextUrl by mutableStateOf<String?>(null)
+        private set
+    var votersLoading by mutableStateOf(false)
+        private set
+    var votersError by mutableStateOf<String?>(null)
+        private set
+    var votersSocialText by mutableStateOf("")
+        private set
+    val voters = mutableStateListOf<DataHolder.Author>()
     var questionId by mutableLongStateOf(0L)
     var collections = mutableStateListOf<Collection>()
     var updatedAt by mutableLongStateOf(0L)
@@ -196,6 +208,7 @@ class ArticleViewModel(
                             authorAvatarSrc = answer.author.avatarUrl
                             authorBadge = answer.author.badgeV2.officialBadge()
                             voteUpCount = answer.voteupCount
+                            votersTotal = answer.voteupCount
                             commentCount = answer.commentCount
                             questionId = answer.question.id
                             voteUpState = when (answer.reaction?.relation?.vote) {
@@ -236,6 +249,8 @@ class ArticleViewModel(
                                 }
                             }
                             sharedData?.navigator?.pushAnswer(toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"))
+                            loadAnswerRelationshipEndorsement(environment)
+                            loadMoreVoters(environment, reset = true)
 
                             // 仅在无前向历史时预取下一个回答
                             sharedData?.navigator?.let { nav ->
@@ -261,6 +276,7 @@ class ArticleViewModel(
                                 contentType = "article",
                             )
                             voteUpCount = article.voteupCount
+                            votersTotal = article.voteupCount
                             commentCount = article.commentCount
                             authorId = article.author.id
                             authorUrlToken = article.author.urlToken
@@ -537,9 +553,58 @@ class ArticleViewModel(
 
                 voteUpState = newState
                 voteUpCount = response["voteup_count"]!!.jsonPrimitive.int
+                votersTotal = voteUpCount
+                if (article.type == ArticleType.Answer) {
+                    loadAnswerRelationshipEndorsement(environment)
+                    loadMoreVoters(environment, reset = true)
+                }
             } catch (e: Exception) {
                 Log.e("ArticleViewModel", "Vote up failed", e)
                 userMessages.showShortMessage("点赞失败: ${e.message}")
+            }
+        }
+    }
+
+    fun loadMoreVoters(environment: PaginationEnvironment, reset: Boolean = false) {
+        val client = httpClient ?: return
+        if (article.type != ArticleType.Answer || votersLoading) return
+        viewModelScope.launch {
+            votersLoading = true
+            votersError = null
+            try {
+                val page = loadVotersPage(
+                    client = client,
+                    environment = environment,
+                    initialUrl = "https://www.zhihu.com/api/v4/answers/${article.id}/upvoters?limit=10&offset=0",
+                    nextUrl = votersNextUrl,
+                    reset = reset,
+                )
+                voters.replaceOrAppendUniqueVoters(page.data, reset)
+                votersTotal = page.paging.totals.takeIf { it > 0 } ?: voteUpCount
+                votersNextUrl = page.nextUrlOrNull()
+            } catch (e: Exception) {
+                Log.e("ArticleViewModel", "Failed to load answer voters", e)
+                votersError = e.message ?: "加载赞同者失败"
+            } finally {
+                votersLoading = false
+            }
+        }
+    }
+
+    fun loadAnswerRelationshipEndorsement(environment: PaginationEnvironment) {
+        val client = httpClient ?: return
+        if (article.type != ArticleType.Answer) return
+        viewModelScope.launch {
+            try {
+                val response = client
+                    .get("https://www.zhihu.com/api/v4/answers/${article.id}/relationship?desktop=true") {
+                        environment.configureSignedRequest(this)
+                    }.body<JsonObject>()
+                val endorsement = ZhihuJson.decodeJson<AnswerRelationshipEndorsement>(response)
+                votersSocialText = endorsement.text
+            } catch (e: Exception) {
+                Log.e("ArticleViewModel", "Failed to load answer relationship endorsement", e)
+                votersSocialText = ""
             }
         }
     }
@@ -980,3 +1045,9 @@ fun formatArticleDateTime(seconds: Long): String {
         append(dateTime.second.toString().padStart(2, '0'))
     }
 }
+
+@Serializable
+private data class AnswerRelationshipEndorsement(
+    val type: String = "",
+    val text: String = "",
+)

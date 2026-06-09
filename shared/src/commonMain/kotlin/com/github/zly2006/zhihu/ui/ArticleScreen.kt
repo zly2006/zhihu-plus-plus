@@ -128,6 +128,7 @@ import com.github.zly2006.zhihu.shared.data.ZhihuPaging
 import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
+import com.github.zly2006.zhihu.shared.util.formatCompactCount
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.components.AnswerHorizontalOverscroll
 import com.github.zly2006.zhihu.ui.components.AnswerVerticalOverscroll
@@ -138,6 +139,7 @@ import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
+import com.github.zly2006.zhihu.ui.components.VotersSheet
 import com.github.zly2006.zhihu.ui.components.ZhihuTwoRowsTopAppBar
 import com.github.zly2006.zhihu.ui.components.rememberPreferCollapsedExitUntilCollapsedScrollBehavior
 import com.github.zly2006.zhihu.util.smoothGradient
@@ -602,6 +604,7 @@ fun ArticleScreen(
     var showSummaryDialog by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
     var showDoubleTapActionDialog by remember { mutableStateOf(false) }
+    var showVoters by rememberSaveable(article.type, article.id) { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val hapticFeedback = LocalHapticFeedback.current
 
@@ -1452,16 +1455,47 @@ fun ArticleScreen(
                             }
                         }
 
+                        @Composable
+                        fun ColumnScope.AnswerVotersSocialCredit() {
+                            if (article.type != ArticleType.Answer || viewModel.votersTotal <= 0) return
+                            val text = viewModel.votersSocialText.ifBlank {
+                                "${formatCompactCount(viewModel.votersTotal)} 人赞同了该回答"
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = text,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier
+                                    .clickable {
+                                        showVoters = true
+                                        if (viewModel.voters.isEmpty()) {
+                                            viewModel.loadMoreVoters(environment, reset = true)
+                                        }
+                                    },
+                            )
+                        }
+
+                        @Composable
+                        fun ColumnScope.AnswerLeadingMeta() {
+                            val hasPinnedDate = pinAnswerDate
+                            val hasSocialCredit = article.type == ArticleType.Answer && viewModel.votersTotal > 0
+                            if (!hasPinnedDate && !hasSocialCredit) return
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                horizontalAlignment = Alignment.Start,
+                            ) {
+                                if (hasPinnedDate) {
+                                    DateTexts()
+                                }
+                                AnswerVotersSocialCredit()
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+
                         if (viewModel.content.isNotEmpty() || viewModel.attachment != null) {
                             if (useWebView) {
-                                if (pinAnswerDate) {
-                                    Column(
-                                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                                        horizontalAlignment = Alignment.Start,
-                                    ) {
-                                        DateTexts()
-                                    }
-                                }
+                                AnswerLeadingMeta()
                                 ArticleWebViewContent(
                                     article = article,
                                     html = viewModel.content,
@@ -1490,19 +1524,11 @@ fun ArticleScreen(
                                 }
                                 Spacer(modifier = Modifier.height((16 + 36).dp))
                             } else {
+                                AnswerLeadingMeta()
                                 ArticleMarkdownContent(
                                     html = viewModel.content,
                                     modifier = answerDoubleTapModifier.articleMarkdownSelectionWorkaround(),
-                                    header = {
-                                        if (pinAnswerDate) {
-                                            Column(
-                                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                                                horizontalAlignment = Alignment.Start,
-                                            ) {
-                                                DateTexts()
-                                            }
-                                        }
-                                    },
+                                    header = {},
                                     footer = {
                                         ArticleVideoAttachmentContent(viewModel.attachment)
                                         Column(
@@ -1684,6 +1710,21 @@ fun ArticleScreen(
         showComments = showComments,
         onDismiss = { showComments = false },
         content = article,
+    )
+    VotersSheet(
+        show = showVoters,
+        title = "${formatCompactCount(viewModel.votersTotal)} 人赞同了该回答",
+        voters = viewModel.voters,
+        isLoading = viewModel.votersLoading,
+        errorMessage = viewModel.votersError,
+        canLoadMore = viewModel.votersNextUrl != null,
+        onDismissRequest = { showVoters = false },
+        onLoadMore = { viewModel.loadMoreVoters(environment) },
+        onRetry = { viewModel.loadMoreVoters(environment, reset = viewModel.voters.isEmpty()) },
+        onNavigate = { person ->
+            showVoters = false
+            navigator.onNavigate(person)
+        },
     )
     if (showDoubleTapActionDialog) {
         MyModalBottomSheet(
