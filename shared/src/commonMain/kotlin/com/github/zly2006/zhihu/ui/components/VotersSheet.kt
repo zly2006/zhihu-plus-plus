@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -35,6 +34,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -164,38 +164,39 @@ private fun VoterRow(
     voter: DataHolder.Author,
     onClick: () -> Unit,
 ) {
-    Row(
+    val supportingContent: (@Composable () -> Unit)? = voter.headline.takeIf { it.isNotBlank() }?.let { headline ->
+        {
+            Text(
+                text = headline,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+    ListItem(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
-            .padding(vertical = 10.dp, horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        AsyncImage(
-            model = voter.avatarUrl,
-            contentDescription = "${voter.name}的头像",
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape),
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
+            .clickable(onClick = onClick),
+        leadingContent = {
+            AsyncImage(
+                model = voter.avatarUrl,
+                contentDescription = "${voter.name}的头像",
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape),
+            )
+        },
+        headlineContent = {
             Text(
                 text = voter.name,
                 style = MaterialTheme.typography.titleSmall,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (voter.headline.isNotBlank()) {
-                Text(
-                    text = voter.headline,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-    }
+        },
+        supportingContent = supportingContent,
+    )
 }

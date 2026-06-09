@@ -37,7 +37,6 @@ import com.github.zly2006.zhihu.shared.comment.decodeZhihuCommentData
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.OfficialBadge
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.shared.data.ZhihuPaging
 import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
@@ -573,26 +572,16 @@ class ArticleViewModel(
             votersLoading = true
             votersError = null
             try {
-                val nextUrl = votersNextUrl
-                val url = if (reset || nextUrl == null) {
-                    "https://www.zhihu.com/api/v4/answers/${article.id}/upvoters?limit=10&offset=0"
-                } else {
-                    nextUrl
-                }.replace("http://", "https://")
-                val response = client
-                    .get(url) {
-                        environment.configureSignedRequest(this)
-                    }.body<JsonObject>()
-                val page = ZhihuJson.decodeJson<AnswerVotersResponse>(response)
-                if (reset) {
-                    voters.clear()
-                }
-                val existingIds = voters.mapTo(mutableSetOf()) { it.id }
-                voters.addAll(page.data.filter { existingIds.add(it.id) })
+                val page = loadVotersPage(
+                    client = client,
+                    environment = environment,
+                    initialUrl = "https://www.zhihu.com/api/v4/answers/${article.id}/upvoters?limit=10&offset=0",
+                    nextUrl = votersNextUrl,
+                    reset = reset,
+                )
+                voters.replaceOrAppendUniqueVoters(page.data, reset)
                 votersTotal = page.paging.totals.takeIf { it > 0 } ?: voteUpCount
-                votersNextUrl = page.paging.next
-                    .takeUnless { page.paging.isEnd || it.isBlank() }
-                    ?.replace("http://", "https://")
+                votersNextUrl = page.nextUrlOrNull()
             } catch (e: Exception) {
                 Log.e("ArticleViewModel", "Failed to load answer voters", e)
                 votersError = e.message ?: "加载赞同者失败"
@@ -1056,12 +1045,6 @@ fun formatArticleDateTime(seconds: Long): String {
         append(dateTime.second.toString().padStart(2, '0'))
     }
 }
-
-@Serializable
-private data class AnswerVotersResponse(
-    val paging: ZhihuPaging,
-    val data: List<DataHolder.Author> = emptyList(),
-)
 
 @Serializable
 private data class AnswerRelationshipEndorsement(

@@ -348,3 +348,9 @@ data class ZhihuPaging(
     val next: String,
     val prev: String? = null,
 )
+
+@Serializable
+data class ZhihuVotersResponse(
+    val paging: ZhihuPaging,
+    val data: List<DataHolder.Author> = emptyList(),
+)

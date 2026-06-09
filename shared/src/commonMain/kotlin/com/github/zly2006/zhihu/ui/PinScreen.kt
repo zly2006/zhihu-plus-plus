@@ -79,8 +79,6 @@ import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.shared.data.ZhihuPaging
 import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
@@ -92,7 +90,10 @@ import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.loadVotersPage
+import com.github.zly2006.zhihu.viewmodel.nextUrlOrNull
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.replaceOrAppendUniqueVoters
 import io.ktor.client.call.body
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
@@ -101,7 +102,6 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
@@ -150,23 +150,6 @@ private suspend fun loadPinDetail(
         isLiked = content.virtuals.booleanCompat("isLiked", "is_liked"),
         likeCount = content.likeCount,
     )
-}
-
-private suspend fun loadPinVoters(
-    environment: PaginationEnvironment,
-    pinId: Long,
-    nextUrl: String?,
-): PinVotersResponse {
-    val url = (
-        nextUrl
-            ?: "https://www.zhihu.com/api/v4/pins/$pinId/upvoters?limit=10&offset=0"
-    ).replace("http://", "https://")
-    val jsonObject = environment
-        .httpClient()
-        .get(url) {
-            environment.configureSignedRequest(this)
-        }.body<JsonObject>()
-    return ZhihuJson.decodeJson(jsonObject)
 }
 
 const val PIN_SCREEN_AUTHOR_TAG = "pin_screen_author"
@@ -239,21 +222,17 @@ fun PinScreen(
             votersLoading = true
             votersError = null
             try {
-                val page = loadPinVoters(
+                val page = loadVotersPage(
+                    client = paginationEnvironment.httpClient(),
                     environment = paginationEnvironment,
-                    pinId = pin.id,
-                    nextUrl = if (reset) null else votersNextUrl,
+                    initialUrl = "https://www.zhihu.com/api/v4/pins/${pin.id}/upvoters?limit=10&offset=0",
+                    nextUrl = votersNextUrl,
+                    reset = reset,
                 )
-                if (reset) {
-                    voters.clear()
-                }
-                val existingIds = voters.mapTo(mutableSetOf()) { it.id }
-                voters.addAll(page.data.filter { existingIds.add(it.id) })
+                voters.replaceOrAppendUniqueVoters(page.data, reset)
                 val total = page.paging.totals.takeIf { it > 0 } ?: screenState.likeCount
                 screenState = screenState.copy(likeCount = total)
-                votersNextUrl = page.paging.next
-                    .takeUnless { page.paging.isEnd || it.isBlank() }
-                    ?.replace("http://", "https://")
+                votersNextUrl = page.nextUrlOrNull()
             } catch (e: Exception) {
                 votersError = e.message ?: "加载赞同者失败"
             } finally {
@@ -800,12 +779,6 @@ data class PinScreenUiState(
     val pinContent: DataHolder.Pin? = null,
     val isLiked: Boolean = false,
     val likeCount: Int = 0,
-)
-
-@Serializable
-private data class PinVotersResponse(
-    val paging: ZhihuPaging,
-    val data: List<DataHolder.Author> = emptyList(),
 )
 
 data class PinLinkCardPreview(
