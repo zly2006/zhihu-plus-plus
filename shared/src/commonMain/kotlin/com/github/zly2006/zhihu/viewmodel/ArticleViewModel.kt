@@ -643,7 +643,8 @@ class ArticleViewModel(
         if (client == null || aigcReadSyncStarted || content.isBlank()) return
 
         val evidence = currentAigcReadEvidence()
-        if (!evidence.isEligibleForCredit() || currentContentUpdatedAt() <= 0) return
+        val contentUpdatedAt = currentContentUpdatedAt()
+        if (!evidence.isEligibleForCredit() || contentUpdatedAt <= 0) return
         aigcReadSyncStarted = true
 
         viewModelScope.launch {
@@ -655,7 +656,7 @@ class ArticleViewModel(
                         title = title,
                         authorHash = currentAuthorHash(),
                         contentHtml = content,
-                        contentUpdatedAt = currentContentUpdatedAt(),
+                        contentUpdatedAt = contentUpdatedAt,
                         evidence = evidence,
                     ),
                 )

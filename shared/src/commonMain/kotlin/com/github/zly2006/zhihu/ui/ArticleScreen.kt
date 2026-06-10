@@ -1017,8 +1017,15 @@ fun ArticleScreen(
 
     LaunchedEffect(article.type, article.id, viewModel.content) {
         if (viewModel.content.isNotBlank()) {
+            viewModel.updateAigcReadProgress(scrollState.value, scrollState.maxValue)
             delay(15_000)
+            viewModel.updateAigcReadProgress(scrollState.value, scrollState.maxValue)
             viewModel.syncAigcReadEventIfEligible(environment)
+        }
+    }
+    LaunchedEffect(scrollState.maxValue, viewModel.content) {
+        if (viewModel.content.isNotBlank()) {
+            viewModel.updateAigcReadProgress(scrollState.value, scrollState.maxValue)
         }
     }
 
