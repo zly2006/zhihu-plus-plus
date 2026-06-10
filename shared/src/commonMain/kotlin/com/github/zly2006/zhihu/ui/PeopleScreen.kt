@@ -413,16 +413,9 @@ class PersonViewModel(
     }
 
     suspend fun load(environment: PaginationEnvironment) {
-        environment.addReadHistory(person.id, "profile")
-
-        val jojo = environment
-            .httpClient()
-            .get(peopleProfileUrl(person)) {
-                url {
-                    parameters["include"] = PEOPLE_PROFILE_INCLUDE_PATH
-                }
-                environment.configureSignedRequest(this)
-            }.body<JsonObject>()
+        // 与 master 一致：走标准 fetchJson（= AccountData.fetchGet + executeZhihuAuthenticatedRequest），
+        // 而非 KMP 重构引入的裸 httpClient().get()（后者缺鉴权处理）。
+        val jojo = environment.fetchJson(peopleProfileUrl(person), PEOPLE_PROFILE_INCLUDE_PATH)!!
 
         val loadedPerson = ZhihuJson.decodeJson<DataHolder.People>(jojo)
         val urlToken = loadedPerson.urlToken
@@ -455,6 +448,10 @@ class PersonViewModel(
         if (urlToken != null) {
             this.person.urlToken = urlToken
         }
+
+        // 读历史放到资料加载之后（与 master 一致）：登录后首发的这个 POST 可能 401→触发 token 刷新，
+        // 放在前面会阻塞头像/资料拉取，导致用户主页要等好几秒才显示。
+        environment.addReadHistory(person.id, "profile")
     }
 }
 

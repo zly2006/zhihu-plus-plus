@@ -316,6 +316,12 @@ fun MiuixHomeScreen(
                     Box(
                         modifier = if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier,
                     ) {
+                        // 首次加载信息流为空时显示转圈，避免白屏
+                        if (viewModel.displayItems.isEmpty() && viewModel.isLoading) {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                top.yukonga.miuix.kmp.basic.CircularProgressIndicator()
+                            }
+                        }
                         PaginatedList(
                             items = viewModel.displayItems,
                             listState = listState,

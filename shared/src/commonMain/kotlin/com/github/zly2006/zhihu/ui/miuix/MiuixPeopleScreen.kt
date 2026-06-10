@@ -66,6 +66,7 @@ import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -239,7 +240,16 @@ fun MiuixPeopleScreen(
                         }
 
                         if (items.isEmpty()) {
-                            item { Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { Text("暂无内容", color = MiuixTheme.colorScheme.onSurfaceSecondary) } }
+                            // 首次加载列表为空时显示转圈，加载结束仍为空才显示「暂无内容」
+                            item {
+                                Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                                    if (subModel.isLoading) {
+                                        CircularProgressIndicator()
+                                    } else {
+                                        Text("暂无内容", color = MiuixTheme.colorScheme.onSurfaceSecondary)
+                                    }
+                                }
+                            }
                         } else {
                             items(items.size, key = { items[it].hashCode() }) { index ->
                                 val feedItem = coerceToFeedItem(items[index])

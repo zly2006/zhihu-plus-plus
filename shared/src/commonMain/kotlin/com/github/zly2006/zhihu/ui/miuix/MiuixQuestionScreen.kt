@@ -27,6 +27,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Text as M3Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,6 +41,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
@@ -49,7 +53,6 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberZhihuWebUrlOpener
-import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.LoadedQuestionScreenData
@@ -69,8 +72,10 @@ import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.components.ShareDialog
+import com.github.zly2006.zhihu.ui.components.ZhihuTwoRowsTopAppBar
 import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.ui.components.handleShareAction
+import com.github.zly2006.zhihu.ui.components.rememberPreferCollapsedExitUntilCollapsedScrollBehavior
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.ui.loadedQuestionScreenData
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
@@ -88,16 +93,15 @@ import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.PullToRefresh
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MiuixQuestionScreen(
     question: Question,
@@ -134,7 +138,7 @@ fun MiuixQuestionScreen(
 
     val blurEnabled = remember { mutableStateOf(settings.getBoolean("blurEnabled", true)) }
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
-    val scrollBehavior = MiuixScrollBehavior()
+    val scrollBehavior = rememberPreferCollapsedExitUntilCollapsedScrollBehavior()
 
     LaunchedEffect(question.questionId, testOverrides) {
         if (testOverrides != null) return@LaunchedEffect
@@ -160,16 +164,28 @@ fun MiuixQuestionScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            // 顶栏对齐 M3：展开 headlineMedium / 折叠 titleLarge（标题即问题本身，不可点击）；容器透明透出模糊
+            ZhihuTwoRowsTopAppBar(
                 modifier = Modifier.installerMiuixBlurEffect(backdrop),
-                color = backdrop.getMiuixAppBarColor(),
-                title = title,
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = Color.Transparent,
+                    titleContentColor = MiuixTheme.colorScheme.onBackground,
+                    navigationIconContentColor = MiuixTheme.colorScheme.onBackground,
+                ),
+                scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     IconButton(onClick = navigator.onNavigateBack) {
                         Icon(MiuixIconsEmbedded.Back, "返回", tint = MiuixTheme.colorScheme.onBackground)
                     }
                 },
-                scrollBehavior = scrollBehavior,
+                title = { expanded ->
+                    M3Text(
+                        text = title,
+                        maxLines = if (expanded) Int.MAX_VALUE else 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
             )
         },
     ) { padding ->

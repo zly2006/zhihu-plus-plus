@@ -35,6 +35,9 @@ import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Text as M3Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -63,8 +66,8 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
@@ -73,6 +76,8 @@ import com.github.zly2006.zhihu.ui.components.AnswerHorizontalOverscroll
 import com.github.zly2006.zhihu.ui.components.AnswerVerticalOverscroll
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
+import com.github.zly2006.zhihu.ui.components.ZhihuTwoRowsTopAppBar
+import com.github.zly2006.zhihu.ui.components.rememberPreferCollapsedExitUntilCollapsedScrollBehavior
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.ui.rememberArticleActionsRuntime
 import com.github.zly2006.zhihu.ui.rememberArticleScreenRuntime
@@ -87,10 +92,8 @@ import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
@@ -106,6 +109,7 @@ import kotlin.math.abs
  * 待后续阶段：标题自动隐藏、底栏自动隐藏、跳转下一答、双击手势、答案切换手势、置顶日期、
  * WebView 正文、AI 摘要、语音朗读等高级交互。
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MiuixArticleScreen(
     article: Article,
@@ -117,7 +121,7 @@ fun MiuixArticleScreen(
     val settings = rememberSettingsStore()
     val blurEnabled = settings.getBoolean("blurEnabled", true)
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
-    val scrollBehavior = MiuixScrollBehavior()
+    val scrollBehavior = rememberPreferCollapsedExitUntilCollapsedScrollBehavior()
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
     val articleScreenRuntime = rememberArticleScreenRuntime()
@@ -246,12 +250,17 @@ fun MiuixArticleScreen(
                     enter = slideInVertically(tween(200)) { -it },
                     exit = slideOutVertically(tween(200)) { -it },
                 ) {
-                    TopAppBar(
+                    ZhihuTwoRowsTopAppBar(
+                        // 顶栏对齐 M3：展开 headlineMedium / 折叠 titleLarge；容器透明以透出 miuix 模糊背景
                         modifier = Modifier.installerMiuixBlurEffect(backdrop),
-                        color = backdrop.getMiuixAppBarColor(),
-                        title = viewModel.title.ifEmpty {
-                            if (article.type == ArticleType.Answer) "回答" else "文章"
-                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = Color.Transparent,
+                            scrolledContainerColor = Color.Transparent,
+                            titleContentColor = MiuixTheme.colorScheme.onBackground,
+                            navigationIconContentColor = MiuixTheme.colorScheme.onBackground,
+                            actionIconContentColor = MiuixTheme.colorScheme.onBackground,
+                        ),
+                        scrollBehavior = scrollBehavior,
                         navigationIcon = {
                             IconButton(onClick = navigator.onNavigateBack) {
                                 Icon(MiuixIconsEmbedded.Back, "返回", tint = MiuixTheme.colorScheme.onBackground)
@@ -264,7 +273,23 @@ fun MiuixArticleScreen(
                                 Icon(Icons.Default.Share, "分享", tint = MiuixTheme.colorScheme.onBackground)
                             }
                         },
-                        scrollBehavior = scrollBehavior,
+                        title = { expanded ->
+                            // 回答页标题可点击跳到问题页（对齐 M3）
+                            M3Text(
+                                text = viewModel.title.ifEmpty {
+                                    if (article.type == ArticleType.Answer) "回答" else "文章"
+                                },
+                                modifier = if (article.type == ArticleType.Answer) {
+                                    Modifier.clickable {
+                                        navigator.onNavigate(Question(viewModel.questionId, viewModel.title))
+                                    }
+                                } else {
+                                    Modifier
+                                },
+                                maxLines = if (expanded) Int.MAX_VALUE else 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        },
                     )
                 }
             },
@@ -362,7 +387,41 @@ fun MiuixArticleScreen(
                         .padding(innerPadding)
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                 ) {
-                    // 正文内容卡（优先显示）
+                    // 作者卡（正文之前）
+                    if (viewModel.authorName.isNotEmpty()) {
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        navigator.onNavigate(
+                                            Person(id = viewModel.authorId, urlToken = viewModel.authorUrlToken, name = viewModel.authorName),
+                                        )
+                                    }.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                if (viewModel.authorAvatarSrc.isNotEmpty()) {
+                                    AsyncImage(viewModel.authorAvatarSrc, "头像", modifier = Modifier.size(44.dp).clip(CircleShape))
+                                    Spacer(Modifier.width(12.dp))
+                                }
+                                Column(Modifier.weight(1f)) {
+                                    Text(viewModel.authorName, style = MiuixTheme.textStyles.title4, fontWeight = FontWeight.Bold)
+                                    if (viewModel.authorBio.isNotEmpty()) {
+                                        Text(
+                                            viewModel.authorBio,
+                                            style = MiuixTheme.textStyles.footnote1,
+                                            color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                    }
+
+                    // 正文内容卡
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             // 置顶日期：置顶模式下日期放在内容顶部
@@ -411,40 +470,6 @@ fun MiuixArticleScreen(
                                     style = MiuixTheme.textStyles.footnote2,
                                     color = MiuixTheme.colorScheme.onSurfaceSecondary,
                                 )
-                            }
-                        }
-                    }
-
-                    // 作者卡（正文之后）
-                    if (viewModel.authorName.isNotEmpty()) {
-                        Spacer(Modifier.height(8.dp))
-                        Card(modifier = Modifier.fillMaxWidth()) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        navigator.onNavigate(
-                                            Person(id = viewModel.authorId, urlToken = viewModel.authorUrlToken, name = viewModel.authorName),
-                                        )
-                                    }.padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                if (viewModel.authorAvatarSrc.isNotEmpty()) {
-                                    AsyncImage(viewModel.authorAvatarSrc, "头像", modifier = Modifier.size(44.dp).clip(CircleShape))
-                                    Spacer(Modifier.width(12.dp))
-                                }
-                                Column(Modifier.weight(1f)) {
-                                    Text(viewModel.authorName, style = MiuixTheme.textStyles.title4, fontWeight = FontWeight.Bold)
-                                    if (viewModel.authorBio.isNotEmpty()) {
-                                        Text(
-                                            viewModel.authorBio,
-                                            style = MiuixTheme.textStyles.footnote1,
-                                            color = MiuixTheme.colorScheme.onSurfaceSecondary,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                    }
-                                }
                             }
                         }
                     }
