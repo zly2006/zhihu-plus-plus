@@ -74,6 +74,7 @@ import com.github.zly2006.zhihu.ui.commentReplyButtonTag
 import com.github.zly2006.zhihu.ui.commentReplyToAuthorTag
 import com.github.zly2006.zhihu.ui.commentRowTag
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.filter.getBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.paginationEnvironment
@@ -516,7 +517,7 @@ class CommentScreenInstrumentedTest {
         override fun submitComment(
             content: NavDestination,
             commentText: String,
-            environment: PaginationEnvironment,
+            environment: ZhihuApiEnvironment,
             replyToCommentId: String?,
             onSuccess: () -> Unit,
         ) = Unit
@@ -549,7 +550,7 @@ class CommentScreenInstrumentedTest {
         override fun submitComment(
             content: NavDestination,
             commentText: String,
-            environment: PaginationEnvironment,
+            environment: ZhihuApiEnvironment,
             replyToCommentId: String?,
             onSuccess: () -> Unit,
         ) {

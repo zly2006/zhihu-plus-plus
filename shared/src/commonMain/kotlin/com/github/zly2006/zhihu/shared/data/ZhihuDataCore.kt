@@ -33,6 +33,7 @@ data class FeedDisplayItem(
     val localContentId: String? = null,
     val localFeedId: String? = null,
     val localReason: String? = null,
+    val sourceLabel: String? = null,
     val segmentInfos: List<SegmentInfoParagraph> = emptyList(),
     val segmentSourceUrl: String? = null,
 ) {

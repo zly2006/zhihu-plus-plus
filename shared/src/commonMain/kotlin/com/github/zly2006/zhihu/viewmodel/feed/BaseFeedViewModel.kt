@@ -24,6 +24,7 @@ import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.GroupFeed
 import com.github.zly2006.zhihu.shared.data.toDisplayItem
+import com.github.zly2006.zhihu.viewmodel.FeedDisplayEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
 import kotlinx.serialization.json.JsonArray
@@ -62,7 +63,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
         isPullToRefresh = false
     }
 
-    open fun createDisplayItem(environment: PaginationEnvironment, feed: Feed): FeedDisplayItem {
+    open fun createDisplayItem(environment: FeedDisplayEnvironment, feed: Feed): FeedDisplayItem {
         val settings = environment.feedDisplaySettings()
         return feed.toDisplayItem(
             enableQualityFilter = settings.enableQualityFilter,

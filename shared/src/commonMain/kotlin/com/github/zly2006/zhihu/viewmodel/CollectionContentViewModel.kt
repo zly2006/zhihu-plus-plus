@@ -54,13 +54,7 @@ data class CollectionHtmlExportResult(
     val zipFilePath: String?,
 )
 
-interface CollectionContentEnvironment : PaginationEnvironment {
-    suspend fun fetchCollection(collectionId: String): Collection {
-        val json = fetchJson("https://www.zhihu.com/api/v4/collections/$collectionId", "")
-            ?: throw IllegalStateException("收藏夹信息加载失败")
-        return ZhihuJson.decodeJson<Collection>(json["collection"] ?: throw IllegalStateException("收藏夹信息为空"))
-    }
-
+interface CollectionExportEnvironment {
     suspend fun exportCollectionItemsToHtmlZip(
         collectionTitle: String,
         items: List<CollectionItem>,
@@ -69,6 +63,15 @@ interface CollectionContentEnvironment : PaginationEnvironment {
     ): CollectionHtmlExportResult
 
     suspend fun handleCollectionExportFailure(error: Exception)
+}
+
+interface CollectionContentEnvironment :
+    PaginationEnvironment,
+    CollectionExportEnvironment
+
+suspend fun ZhihuApiEnvironment.fetchCollection(collectionId: String): Collection {
+    val json = fetchJson("https://www.zhihu.com/api/v4/collections/$collectionId", "") ?: error("收藏夹信息为空")
+    return ZhihuJson.decodeJson<Collection>(json["collection"] ?: throw IllegalStateException("收藏夹信息为空"))
 }
 
 class CollectionContentViewModel(
@@ -111,10 +114,8 @@ class CollectionContentViewModel(
     override fun refresh(environment: PaginationEnvironment) {
         if (isLoading) return
         displayItems.clear()
-        if (environment is CollectionContentEnvironment) {
-            viewModelScope.launch {
-                loadCollectionInfo(environment)
-            }
+        viewModelScope.launch {
+            loadCollectionInfo(environment)
         }
         super.refresh(environment)
     }
@@ -205,7 +206,7 @@ class CollectionContentViewModel(
         }
     }
 
-    private suspend fun loadCollectionInfo(environment: CollectionContentEnvironment) {
+    private suspend fun loadCollectionInfo(environment: ZhihuApiEnvironment) {
         collection = environment.fetchCollection(collectionId)
     }
 

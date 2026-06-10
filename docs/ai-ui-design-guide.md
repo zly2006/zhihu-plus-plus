@@ -123,7 +123,7 @@ URL 解析集中在 `resolveContent()`。支持知乎问题、回答、文章、
 | `enableScrollEndHaptic` | 开发者选项: 滚动到底震动 | 滚动边界反馈行为开关 | 改前查具体 overScroll 使用点 |
 | `showDebugOverlay` | 开发者选项: 调试悬浮窗 | 调试 Feed 详情显示 | 如果 `rg` 只命中设置页，先补运行时读取点 |
 | `zse96_key` | 开发者签名请求 | 调试签名相关请求 | 只在开发者页处理 |
-| NotificationSettingsStore | 通知设置 | 系统通知、应用内显示、自动已读 | 不走普通 `SettingsStore` key 命名 |
+| NotificationSettingsStore | 通知设置 | 系统通知、应用内显示、自动已读、未读红点 | 不走普通 `SettingsStore` key 命名 |
 
 ## 123Duo3 UI/UX 开关
 

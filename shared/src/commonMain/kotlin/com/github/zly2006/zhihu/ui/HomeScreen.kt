@@ -72,14 +72,10 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.shared.data.Feed
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
-import com.github.zly2006.zhihu.shared.data.ZHIHU_LAST_READ_TOUCH_URL
-import com.github.zly2006.zhihu.shared.data.encodeZhihuLastReadTouchItems
-import com.github.zly2006.zhihu.shared.data.fetchZhihuUnreadNotificationCount
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
-import com.github.zly2006.zhihu.shared.data.zhihuLastReadTouchItem
+import com.github.zly2006.zhihu.shared.notification.rememberNotificationSettingsStore
 import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
 import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
@@ -97,57 +93,22 @@ import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.components.rememberFeedBlockActions
-import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.FeedBlockAuthorInfo
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
+import com.github.zly2006.zhihu.viewmodel.fetchUnreadNotificationCountSigned
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
-import io.ktor.client.request.forms.MultiPartFormDataContent
-import io.ktor.client.request.forms.formData
-import io.ktor.client.request.header
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
 import kotlinx.serialization.json.Json
 
 const val PREFERENCE_NAME = "com.github.zly2006.zhihu_preferences"
 const val ARTICLE_USE_WEBVIEW_PREFERENCE_KEY = "webviewRender"
-const val QQ_GROUP_DISMISSED_PREFERENCE_KEY = "dismissQQGroup11"
+const val QQ_GROUP_DISMISSED_PREFERENCE_KEY = "dismissQQGroup3"
 const val HOME_TOP_ACTIONS_TAG = "home_top_actions"
 const val HOME_SEARCH_BUTTON_TAG = "home_search_button"
 const val HOME_NOTIFICATION_BUTTON_TAG = "home_notification_button"
 const val HOME_ACCOUNT_BUTTON_TAG = "home_account_button"
 const val HOME_FEED_LIST_TAG = "home_feed_list"
 const val HOME_REFRESH_BUTTON_TAG = "home_refresh_button"
-
-interface IHomeFeedViewModel {
-    suspend fun recordContentInteraction(environment: PaginationEnvironment, feed: Feed)
-
-    fun onUiContentClick(environment: PaginationEnvironment, feed: Feed, item: FeedDisplayItem)
-
-    /**
-     * 发送"已读"状态到知乎服务器的通用实现
-     */
-    suspend fun sendReadStatusToServer(environment: PaginationEnvironment, feed: Feed) {
-        try {
-            val payloadItem = zhihuLastReadTouchItem(feed, "read") ?: return
-            environment.httpClient().post(ZHIHU_LAST_READ_TOUCH_URL) {
-                environment.configureSignedRequest(this)
-                header("x-requested-with", "fetch")
-                setBody(
-                    MultiPartFormDataContent(
-                        formData {
-                            append(
-                                "items",
-                                encodeZhihuLastReadTouchItems(listOf(payloadItem)),
-                            )
-                        },
-                    ),
-                )
-            }
-        } catch (_: Exception) {
-        }
-    }
-}
 
 /**
  * 首页信息流页面。
@@ -162,10 +123,12 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
     val navigator = LocalNavigator.current
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = true)
     val settings = rememberSettingsStore()
+    val notificationSettings = rememberNotificationSettingsStore()
     val userMessages = rememberUserMessageSink()
     val openExternalUrl = rememberExternalUrlOpener()
     val duo3HomeAccount = settings.getBoolean("duo3_home_account", false)
     val showRefreshFab = settings.getBoolean("showRefreshFab", true)
+    val showUnreadBadge = notificationSettings.getUnreadBadgeEnabled()
     var showAccountBottomSheet by remember { mutableStateOf(false) }
 
     // 获取当前推荐算法设置
@@ -215,9 +178,7 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
     var unreadCount by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) {
         try {
-            unreadCount = fetchZhihuUnreadNotificationCount(paginationEnvironment.httpClient()) {
-                paginationEnvironment.configureSignedRequest(this)
-            }
+            unreadCount = paginationEnvironment.fetchUnreadNotificationCountSigned()
         } catch (_: Exception) {
             // 忽略错误
         }
@@ -317,7 +278,7 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
                                     Box(Modifier.padding(12.dp)) {
                                         BadgedBox(
                                             badge = {
-                                                if (unreadCount > 0) {
+                                                if (showUnreadBadge && unreadCount > 0) {
                                                     Badge { }
                                                 }
                                             },
@@ -396,7 +357,7 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
                         ) {
                             BadgedBox(
                                 badge = {
-                                    if (unreadCount > 0) {
+                                    if (showUnreadBadge && unreadCount > 0) {
                                         Badge { Text("$unreadCount") }
                                     }
                                 },
@@ -421,6 +382,7 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
                 AccountSettingScreen(
                     innerPadding = PaddingValues(0.dp),
                     unreadCount = unreadCount,
+                    showUnreadBadge = showUnreadBadge,
                     onDismissRequest = { showAccountBottomSheet = false },
                 )
             }
@@ -462,10 +424,10 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
                             visible = showQQGroup,
                             title = "欢迎加入 QQ 群",
                             leadingIcon = { Icon(Icons.Default.MarkUnreadChatAlt, contentDescription = null) },
-                            content = "欢迎加入 Zhihu++ QQ 群。1 群已满，我们新建了 2 群。已加入 1 群的朋友请不要重复加群。",
+                            content = "欢迎加入 Zhihu++ QQ 群。1 & 2 群已满，我们新建了 3 群。已入群的朋友请不要重复加群。",
                             accept = { Text("加入") },
                             onAccept = {
-                                openExternalUrl("https://qm.qq.com/q/trN5cJbWpk")
+                                openExternalUrl("https://qm.qq.com/q/AaCml6Un4G")
                             },
                             dismiss = { Text("关闭") },
                             onDismiss = {
@@ -530,7 +492,7 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
                     val destination = navDestination
                     if (feed != null) {
 //                            DataHolder.putFeed(feed)
-                        (viewModel as HomeFeedInteractionViewModel).onUiContentClick(paginationEnvironment, feed, item)
+                        (viewModel as? HomeFeedInteractionViewModel)?.onUiContentClick(paginationEnvironment, feed, item)
                     } else if (item.localContentId != null) {
                         runtime.recordLocalItemOpened(item)
                     }

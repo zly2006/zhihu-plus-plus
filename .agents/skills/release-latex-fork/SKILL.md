@@ -38,6 +38,10 @@ Optional:
 ## Guardrails
 
 - The fork publishes under `io.github.zly2006` coordinates (NOT `io.github.huarangmeng`).
+- In any commit message, release note, or final report, `Original version` means the
+  upstream `huarangmeng/latex` version/tag this release is based on. It does NOT
+  mean the previous `zly2006` fork version. Use `Fork version` for the zly-published
+  version, for example `1.4.7-zly`.
 - Fork-specific approved deltas:
   - **Font removal**: 21 font files removed from latex-renderer's Compose Resources
   - **System fallback**: `defaultLatexFontFamilies()` returns `FontFamily.Default`
@@ -181,6 +185,7 @@ Then publish Markdown following the `release-markdown-fork` skill.
 ## Final report checklist
 
 - [ ] Upstream base tag confirmed
+- [ ] `Original version` reported as the upstream `huarangmeng/latex` version/tag
 - [ ] Fork deltas match approved list (font removal only)
 - [ ] `jvmTest` passes
 - [ ] latex-base published and verified on Maven Central

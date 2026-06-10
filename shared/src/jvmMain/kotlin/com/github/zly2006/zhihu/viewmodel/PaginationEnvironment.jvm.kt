@@ -147,7 +147,7 @@ class DesktopPaginationEnvironment(
     private val showFetchFailureMessage: ((String) -> Unit)? = null,
 ) : PaginationEnvironment,
     CollectionContentEnvironment,
-    NotificationPaginationEnvironment {
+    NotificationEnvironment {
     private val settingsStore = desktopSettingsStore()
     private val historyStorage = DesktopHistoryStorage()
     private val contentFilterDatabase = getContentFilterDatabase(desktopContentFilterDatabaseFile())

@@ -99,19 +99,20 @@ import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.McnBadge
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
+import com.github.zly2006.zhihu.viewmodel.ContentBlocklistEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
+import com.github.zly2006.zhihu.viewmodel.ProfileLoadEnvironment
+import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
+import com.github.zly2006.zhihu.viewmodel.deleteSigned
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.filter.NoopMcnCompanyProvider
 import com.github.zly2006.zhihu.viewmodel.filter.ZhihuMcnCompanyProvider
 import com.github.zly2006.zhihu.viewmodel.filter.normalizeMcnCompany
 import com.github.zly2006.zhihu.viewmodel.filter.rememberBlocklistManager
+import com.github.zly2006.zhihu.viewmodel.postSigned
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import io.ktor.client.call.body
-import io.ktor.client.request.delete
-import io.ktor.client.request.get
-import io.ktor.client.request.post
-import io.ktor.client.request.url
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
@@ -367,45 +368,31 @@ class PersonViewModel(
         followingFeedModel,
     )
 
-    suspend fun toggleFollow(environment: PaginationEnvironment) {
-        val client = environment.httpClient()
-        if (isFollowing) {
-            val jojo = client
-                .delete("https://www.zhihu.com/api/v4/members/${person.urlToken}/followers") {
-                    environment.configureSignedRequest(this)
-                }.raiseForStatus()
-                .body<JsonObject>()
-            followerCount = jojo["follower_count"]?.jsonPrimitive?.int ?: (followerCount - 1)
-            isFollowing = false
+    suspend fun toggleFollow(environment: ZhihuApiEnvironment) {
+        val followersUrl = "https://www.zhihu.com/api/v4/members/${person.urlToken}/followers"
+        val newFollowingState = !isFollowing
+        val response = if (newFollowingState) {
+            environment.postSigned(followersUrl)
         } else {
-            val jojo = client
-                .post("https://www.zhihu.com/api/v4/members/${person.urlToken}/followers") {
-                    environment.configureSignedRequest(this)
-                }.raiseForStatus()
-                .body<JsonObject>()
-            followerCount = jojo["follower_count"]?.jsonPrimitive?.int ?: (followerCount + 1)
-            isFollowing = true
+            environment.deleteSigned(followersUrl)
         }
+        val jojo = response.raiseForStatus().body<JsonObject>()
+        followerCount = jojo["follower_count"]?.jsonPrimitive?.int ?: (followerCount + if (newFollowingState) 1 else -1)
+        isFollowing = newFollowingState
     }
 
-    suspend fun toggleBlock(environment: PaginationEnvironment) {
-        val client = environment.httpClient()
-        if (isBlocking) {
-            client
-                .delete("https://www.zhihu.com/api/v4/members/${person.urlToken}/actions/block") {
-                    environment.configureSignedRequest(this)
-                }.raiseForStatus()
-            isBlocking = false
+    suspend fun toggleBlock(environment: ZhihuApiEnvironment) {
+        val blockUrl = "https://www.zhihu.com/api/v4/members/${person.urlToken}/actions/block"
+        val newBlockingState = !isBlocking
+        if (newBlockingState) {
+            environment.postSigned(blockUrl)
         } else {
-            client
-                .post("https://www.zhihu.com/api/v4/members/${person.urlToken}/actions/block") {
-                    environment.configureSignedRequest(this)
-                }.raiseForStatus()
-            isBlocking = true
-        }
+            environment.deleteSigned(blockUrl)
+        }.raiseForStatus()
+        isBlocking = newBlockingState
     }
 
-    suspend fun toggleRecommendationBlock(environment: PaginationEnvironment) {
+    suspend fun toggleRecommendationBlock(environment: ContentBlocklistEnvironment) {
         if (isBlockedInRecommendations) {
             environment.removeBlockedUser(person.id)
             isBlockedInRecommendations = false
@@ -420,17 +407,11 @@ class PersonViewModel(
         }
     }
 
-    suspend fun load(environment: PaginationEnvironment) {
+    suspend fun load(environment: ProfileLoadEnvironment) {
         environment.addReadHistory(person.id, "profile")
 
-        val jojo = environment
-            .httpClient()
-            .get(peopleProfileUrl(person)) {
-                url {
-                    parameters["include"] = PEOPLE_PROFILE_INCLUDE_PATH
-                }
-                environment.configureSignedRequest(this)
-            }.body<JsonObject>()
+        val jojo = environment.fetchJson(peopleProfileUrl(person), PEOPLE_PROFILE_INCLUDE_PATH)
+            ?: error("用户资料为空")
 
         val loadedPerson = ZhihuJson.decodeJson<DataHolder.People>(jojo)
         val urlToken = loadedPerson.urlToken
