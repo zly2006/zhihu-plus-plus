@@ -1,0 +1,21 @@
+FROM rust:1-bookworm AS builder
+
+WORKDIR /src
+COPY Cargo.toml Cargo.lock ./
+COPY src ./src
+
+RUN cargo build --release
+
+FROM debian:bookworm-slim
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --system --user-group --home /nonexistent --shell /usr/sbin/nologin aigcvote
+
+COPY --from=builder /src/target/release/aigc-vote-server /usr/local/bin/aigc-vote-server
+
+USER aigcvote
+ENV AIGC_VOTE_LISTEN=0.0.0.0:8787
+
+CMD ["/usr/local/bin/aigc-vote-server"]
