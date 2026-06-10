@@ -652,6 +652,8 @@ class ArticleViewModel(
                     AigcVoteReadEvent(
                         contentType = aigcContentType(),
                         contentId = article.id.toString(),
+                        title = title,
+                        authorHash = currentAuthorHash(),
                         contentHtml = content,
                         contentUpdatedAt = currentContentUpdatedAt(),
                         evidence = evidence,
@@ -711,9 +713,7 @@ class ArticleViewModel(
                             contentId = article.id.toString(),
                             voter = voter,
                             title = title,
-                            authorHash = ZhihuFetchSignature.md5Hex(
-                                authorId.ifBlank { authorUrlToken.ifBlank { authorName } },
-                            ),
+                            authorHash = currentAuthorHash(),
                             contentHtml = content,
                             contentUpdatedAt = currentContentUpdatedAt(),
                             evidence = currentAigcReadEvidence(),
@@ -764,6 +764,10 @@ class ArticleViewModel(
         createdAt > 0L -> createdAt
         else -> 0L
     }
+
+    private fun currentAuthorHash(): String = ZhihuFetchSignature.md5Hex(
+        authorId.ifBlank { authorUrlToken.ifBlank { authorName } },
+    )
 
     private fun aigcContentType(): String = when (article.type) {
         ArticleType.Answer -> "answer"

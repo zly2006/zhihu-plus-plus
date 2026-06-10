@@ -17,7 +17,6 @@
 
 package com.github.zly2006.zhihu.shared.aigc
 
-import com.github.zly2006.zhihu.shared.util.ZhihuFetchSignature
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -106,6 +105,8 @@ data class AigcVoteReadEvidence(
 data class AigcVoteReadEvent(
     val contentType: String,
     val contentId: String,
+    val title: String,
+    val authorHash: String,
     val contentHtml: String,
     val contentUpdatedAt: Long,
     val evidence: AigcVoteReadEvidence,
@@ -113,7 +114,8 @@ data class AigcVoteReadEvent(
     fun toRequestEvent(): AigcVoteReadEventRequest = AigcVoteReadEventRequest(
         contentType = contentType,
         contentId = contentId,
-        contentHash = ZhihuFetchSignature.md5Hex(contentHtml),
+        title = title,
+        authorHash = authorHash,
         contentHtml = contentHtml,
         contentUpdatedAt = contentUpdatedAt,
         openedAt = evidence.openedAtEpochSeconds,
@@ -156,8 +158,9 @@ data class AigcVoteReadEventRequest(
     val contentType: String,
     @SerialName("content_id")
     val contentId: String,
-    @SerialName("content_hash")
-    val contentHash: String,
+    val title: String,
+    @SerialName("author_hash")
+    val authorHash: String,
     @SerialName("content_html")
     val contentHtml: String,
     @SerialName("content_updated_at")

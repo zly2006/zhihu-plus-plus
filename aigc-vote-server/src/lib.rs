@@ -73,6 +73,10 @@ pub struct ReadEventsRequest {
 pub struct ReadEvent {
     pub content_type: String,
     pub content_id: String,
+    #[serde(default)]
+    pub title: String,
+    #[serde(default)]
+    pub author_hash: String,
     pub content_html: String,
     pub content_updated_at: i64,
     pub opened_at: i64,
@@ -659,6 +663,18 @@ impl VoteStore for PostgresVoteStore {
             }
             let content_hash = sha256_hex(&event.content_html);
 
+            upsert_content_snapshot_fields_tx(
+                &mut tx,
+                &event.content_type,
+                &event.content_id,
+                &content_hash,
+                event.content_updated_at,
+                &event.title,
+                &event.author_hash,
+                &event.content_html,
+            )
+            .await?;
+
             let result = sqlx::query(
                 r#"
                 INSERT INTO read_events (
@@ -666,12 +682,11 @@ impl VoteStore for PostgresVoteStore {
                     content_type,
                     content_id,
                     content_hash,
-                    content_html,
                     content_updated_at,
                     opened_at,
                     foreground_duration_ms,
                     max_scroll_ratio
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                 ON CONFLICT(client_id, content_type, content_id) DO NOTHING
                 "#,
             )
@@ -679,7 +694,6 @@ impl VoteStore for PostgresVoteStore {
             .bind(&event.content_type)
             .bind(&event.content_id)
             .bind(&content_hash)
-            .bind(&event.content_html)
             .bind(event.content_updated_at)
             .bind(event.opened_at)
             .bind(event.foreground_duration_ms)
@@ -872,7 +886,6 @@ async fn initialize_postgres_schema(pool: &PgPool) -> Result<(), ServiceError> {
             content_type TEXT NOT NULL,
             content_id TEXT NOT NULL,
             content_hash TEXT NOT NULL,
-            content_html TEXT NOT NULL,
             content_updated_at BIGINT NOT NULL,
             opened_at BIGINT NOT NULL,
             foreground_duration_ms BIGINT NOT NULL,
@@ -881,7 +894,6 @@ async fn initialize_postgres_schema(pool: &PgPool) -> Result<(), ServiceError> {
             UNIQUE(client_id, content_type, content_id)
         )
         "#,
-        "ALTER TABLE read_events ADD COLUMN IF NOT EXISTS content_html TEXT NOT NULL DEFAULT ''",
         "CREATE INDEX IF NOT EXISTS index_read_events_client_id ON read_events(client_id)",
         "CREATE INDEX IF NOT EXISTS index_read_events_content ON read_events(content_type, content_id)",
         r#"
@@ -1021,6 +1033,29 @@ async fn upsert_content_snapshot_tx(
     content_hash: &str,
     request: &AigcFlagRequest,
 ) -> Result<(), ServiceError> {
+    upsert_content_snapshot_fields_tx(
+        tx,
+        content_type,
+        content_id,
+        content_hash,
+        request.content_updated_at,
+        &request.title,
+        &request.author_hash,
+        &request.content_html,
+    )
+    .await
+}
+
+async fn upsert_content_snapshot_fields_tx(
+    tx: &mut Transaction<'_, Postgres>,
+    content_type: &str,
+    content_id: &str,
+    content_hash: &str,
+    content_updated_at: i64,
+    title: &str,
+    author_hash: &str,
+    content_html: &str,
+) -> Result<(), ServiceError> {
     sqlx::query(
         r#"
         INSERT INTO content_snapshots (
@@ -1033,16 +1068,23 @@ async fn upsert_content_snapshot_tx(
             content_html,
             first_seen_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        ON CONFLICT(content_type, content_id, content_hash) DO NOTHING
+        ON CONFLICT(content_type, content_id, content_hash) DO UPDATE SET
+            content_updated_at = GREATEST(
+                content_snapshots.content_updated_at,
+                EXCLUDED.content_updated_at
+            ),
+            title = COALESCE(NULLIF(EXCLUDED.title, ''), content_snapshots.title),
+            author_hash = COALESCE(NULLIF(EXCLUDED.author_hash, ''), content_snapshots.author_hash),
+            content_html = EXCLUDED.content_html
         "#,
     )
     .bind(content_type)
     .bind(content_id)
     .bind(content_hash)
-    .bind(request.content_updated_at)
-    .bind(&request.title)
-    .bind(&request.author_hash)
-    .bind(&request.content_html)
+    .bind(content_updated_at)
+    .bind(title)
+    .bind(author_hash)
+    .bind(content_html)
     .bind(now_epoch_seconds())
     .execute(&mut **tx)
     .await?;

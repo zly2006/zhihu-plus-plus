@@ -81,6 +81,18 @@ class AigcVoteClientTest {
                         .jsonPrimitive.content,
                 )
                 assertEquals(
+                    "测试回答",
+                    requestBody.json["events"]!!
+                        .jsonArraySingle()["title"]!!
+                        .jsonPrimitive.content,
+                )
+                assertEquals(
+                    "author-md5",
+                    requestBody.json["events"]!!
+                        .jsonArraySingle()["author_hash"]!!
+                        .jsonPrimitive.content,
+                )
+                assertEquals(
                     "<p>正文</p>",
                     requestBody.json["events"]!!
                         .jsonArraySingle()["content_html"]!!
@@ -107,6 +119,8 @@ class AigcVoteClientTest {
             AigcVoteReadEvent(
                 contentType = "answer",
                 contentId = "42",
+                title = "测试回答",
+                authorHash = "author-md5",
                 contentHtml = "<p>正文</p>",
                 contentUpdatedAt = 1_781_020_000,
                 evidence = AigcVoteReadEvidence(

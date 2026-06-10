@@ -96,6 +96,8 @@ async fn read_events_without_content_html_do_not_earn_credit() {
             events: vec![ReadEvent {
                 content_type: "answer".to_string(),
                 content_id: "42".to_string(),
+                title: "测试回答".to_string(),
+                author_hash: "author-hash".to_string(),
                 content_html: String::new(),
                 content_updated_at: 1_781_000_000,
                 opened_at: 1_781_020_000,
@@ -406,6 +408,8 @@ fn build_read_events_from(
         .map(|idx| ReadEvent {
             content_type: "answer".to_string(),
             content_id: idx.to_string(),
+            title: format!("测试回答 {idx}"),
+            author_hash: "author-hash".to_string(),
             content_html: format!("<p>用于阅读积分同步的正文 {idx}</p>"),
             content_updated_at: 1_781_000_000 + idx as i64,
             opened_at: 1_781_020_000 + idx as i64,
