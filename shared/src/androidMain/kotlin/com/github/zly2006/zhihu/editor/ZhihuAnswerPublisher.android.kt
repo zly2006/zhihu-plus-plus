@@ -72,7 +72,7 @@ private class AndroidZhihuAnswerPublisher(
         var url: String? = zhihuQuestionFeedsUrl(questionId, limit = 20, order = "default")
         repeat(5) {
             if (url.isNullOrBlank()) return null
-            val currentUrl = url ?: return null
+            val currentUrl = url
             val response = AccountData.fetchGet(context, currentUrl) { signFetchRequest() } ?: return null
             val page = answerNavigatorPageFromJson(response) { data ->
                 ZhihuJson.decodeJson<List<Feed>>(data)
@@ -89,18 +89,31 @@ private class AndroidZhihuAnswerPublisher(
     }
 
     override suspend fun fetchAnswerForEditing(answerId: Long): ExistingAnswerForEditing? {
-        val url = "https://www.zhihu.com/api/v4/answers/$answerId?include=content,editable_content,settings.table_of_contents.enabled"
-        val json = AccountData.fetchGet(context, url) { signFetchRequest() } ?: return null
-        val answer = decodeArticleContentDetail(
-            article = Article(type = ArticleType.Answer, id = answerId),
-            json = json,
-        ) as? DataHolder.Answer ?: return null
-        val html = answer.editableContent ?: answer.content
-        return ExistingAnswerForEditing(
-            answerId = answerId,
-            html = html,
-            tocEnabled = answer.settings?.tableOfContents?.enabled ?: false,
-        )
+        val url =
+            "https://www.zhihu.com/api/v4/answers/$answerId?include=" +
+                "is_visible,paid_info,paid_info_content,has_column,admin_closed_comment," +
+                "reward_info,annotation_action,annotation_detail,collapse_reason,is_normal," +
+                "is_sticky,collapsed_by,suggest_edit,comment_count,thanks_count," +
+                "favlists_count,can_comment,content,editable_content,voteup_count," +
+                "reshipment_settings,comment_permission,created_time,updated_time," +
+                "review_info,relevant_info,question,excerpt,attachment,content_source," +
+                "is_labeled,endorsements,reaction_instruction,ip_info,relationship.is_authorized," +
+                "voting,is_thanked,is_author,is_nothelp,is_favorited,pagination_info," +
+                "question.topics,reaction.relation.voting,author.badge_v2," +
+                "settings.table_of_contents.enabled"
+        return runCatching {
+            val json = AccountData.fetchGet(context, url) { signFetchRequest() } ?: return null
+            val answer = decodeArticleContentDetail(
+                article = Article(type = ArticleType.Answer, id = answerId),
+                json = json,
+            ) as? DataHolder.Answer ?: return null
+            val html = answer.editableContent ?: answer.content
+            ExistingAnswerForEditing(
+                answerId = answerId,
+                html = html,
+                tocEnabled = answer.settings?.tableOfContents?.enabled ?: false,
+            )
+        }.getOrThrow()
     }
 
     override suspend fun uploadImage(bytes: ByteArray, mimeType: String?, fileName: String?): UploadedZhihuImage =
@@ -134,7 +147,7 @@ private class AndroidZhihuAnswerPublisher(
                 header("x-xsrftoken", xsrf)
                 signFetchRequest()
                 setBody(body)
-            }.raiseForStatus()
+            }.raiseForStatus(dumpRequest = true)
     }
 
     override suspend fun publishAnswer(
@@ -177,7 +190,7 @@ private class AndroidZhihuAnswerPublisher(
                 header("x-xsrftoken", xsrf)
                 signFetchRequest()
                 setBody(requestBody)
-            }.raiseForStatus()
+            }.raiseForStatus(dumpRequest = true)
             .body<JsonObject>()
 
         val message = responseJson["message"]?.jsonPrimitive?.content

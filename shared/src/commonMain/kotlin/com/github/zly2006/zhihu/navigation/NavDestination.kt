@@ -243,6 +243,7 @@ data class Question(
 data class WriteAnswer(
     val questionId: Long,
     val questionTitle: String = "",
+    val questionDetail: String = "",
 ) : NavDestination {
     override fun hashCode(): Int = questionId.hashCode()
 

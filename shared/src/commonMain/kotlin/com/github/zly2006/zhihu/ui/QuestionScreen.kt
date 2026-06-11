@@ -471,6 +471,7 @@ fun QuestionScreen(
                                         WriteAnswer(
                                             questionId = question.questionId,
                                             questionTitle = title,
+                                            questionDetail = questionContent,
                                         ),
                                     )
                                 },

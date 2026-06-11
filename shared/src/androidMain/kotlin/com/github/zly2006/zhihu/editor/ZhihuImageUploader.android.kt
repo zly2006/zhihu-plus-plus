@@ -60,42 +60,46 @@ class ZhihuImageUploader(
         val ext = guessExtension(contentType, fileName)
         val (rawWidth, rawHeight) = decodeImageSize(bytes)
         val md5Hex = md5Hex(bytes)
+        return runCatching {
+            val applyResponse = requestImageUpload(md5Hex)
+            val imageId = applyResponse.uploadFile.imageId
+            val uploadFileState = applyResponse.uploadFile.state
 
-        val applyResponse = requestImageUpload(md5Hex)
-        val imageId = applyResponse.uploadFile.imageId
-        val uploadToken = applyResponse.uploadToken
-        val uploadFileState = applyResponse.uploadFile.state
-
-        if (uploadFileState == 2) {
-            if (contentType.equals("image/gif", ignoreCase = true)) {
-                uploadGifMultipart(md5Hex, bytes, uploadToken)
-                notifyUploadingStatus(imageId)
-            } else {
-                uploadSinglePut(md5Hex, bytes, contentType, uploadToken)
+            if (uploadFileState == 2) {
+                val uploadToken = applyResponse.uploadToken
+                    ?: throw IllegalStateException(
+                        "知乎返回的图片需要重新上传，但响应里缺少 uploadToken。imageId=$imageId, state=$uploadFileState",
+                    )
+                if (contentType.equals("image/gif", ignoreCase = true)) {
+                    uploadGifMultipart(md5Hex, bytes, uploadToken)
+                    notifyUploadingStatus(imageId)
+                } else {
+                    uploadSinglePut(md5Hex, bytes, contentType, uploadToken)
+                }
             }
-        }
 
-        val status = pollImageStatus(imageId)
-        val original = status.originalSrc
-            ?: "https://picx.zhimg.com/v2-$md5Hex"
-        val watermarkSrc = status.watermarkSrc
-        val watermark = status.watermark
+            val status = pollImageStatus(imageId)
+            val original = status.originalSrc
+                ?: "https://picx.zhimg.com/v2-$md5Hex"
+            val watermarkSrc = status.watermarkSrc
+            val watermark = status.watermarkFlag
 
-        val originalUrl = "${original.trimEnd('.')}.$ext"
-        val watermarkUrl = watermarkSrc?.let { "${it.trimEnd('.')}.$ext" }
+            val originalUrl = normalizeZhihuImageUrl(original, ext)
+            val watermarkUrl = watermarkSrc?.let { normalizeZhihuImageUrl(it, ext) }
 
-        return UploadedZhihuImage(
-            url = originalUrl,
-            originalUrl = originalUrl,
-            watermark = watermark,
-            watermarkUrl = watermarkUrl,
-            rawWidth = rawWidth,
-            rawHeight = rawHeight,
-        )
+            UploadedZhihuImage(
+                url = originalUrl,
+                originalUrl = originalUrl,
+                watermark = watermark,
+                watermarkUrl = watermarkUrl,
+                rawWidth = rawWidth,
+                rawHeight = rawHeight,
+            )
+        }.getOrThrow()
     }
 
     suspend fun uploadFromUrl(url: String): UploadedZhihuImage {
-        val response = client.get(url).raiseForStatus()
+        val response = client.get(url).raiseForStatus(dumpRequest = true)
         val bytes = response.body<ByteArray>()
         val contentType = response.headers[HttpHeaders.ContentType]
             ?.substringBefore(';')
@@ -114,7 +118,7 @@ class ZhihuImageUploader(
                 header(HttpHeaders.UserAgent, userAgent)
                 header(HttpHeaders.Cookie, buildCookieHeader(cookies))
                 setBody(body)
-            }.raiseForStatus()
+            }.raiseForStatus(dumpRequest = true)
             .body<JsonObject>()
         return AccountData.decodeJson(ApplyImageUploadResponse.serializer(), response)
     }
@@ -146,7 +150,7 @@ class ZhihuImageUploader(
                 header(HttpHeaders.Authorization, authorization)
                 header(HttpHeaders.UserAgent, userAgent)
                 setBody(bytes)
-            }.raiseForStatus()
+            }.raiseForStatus(dumpRequest = true)
     }
 
     private suspend fun uploadGifMultipart(
@@ -206,7 +210,7 @@ class ZhihuImageUploader(
                 header("x-oss-security-token", token.accessToken)
                 header(HttpHeaders.Authorization, authorization)
                 header(HttpHeaders.UserAgent, userAgent)
-            }.raiseForStatus()
+            }.raiseForStatus(dumpRequest = true)
 
         val xml = response.body<String>()
         return Regex("<UploadId>([^<]+)</UploadId>").find(xml)?.groupValues?.get(1)
@@ -244,7 +248,7 @@ class ZhihuImageUploader(
                 header(HttpHeaders.Authorization, authorization)
                 header(HttpHeaders.UserAgent, userAgent)
                 setBody(bytes)
-            }.raiseForStatus()
+            }.raiseForStatus(dumpRequest = true)
 
         return response.headers[HttpHeaders.ETag]
             ?: response.headers["etag"]
@@ -292,7 +296,7 @@ class ZhihuImageUploader(
                 header(HttpHeaders.Authorization, authorization)
                 header(HttpHeaders.UserAgent, userAgent)
                 setBody(xmlBody)
-            }.raiseForStatus()
+            }.raiseForStatus(dumpRequest = true)
     }
 
     private suspend fun notifyUploadingStatus(imageId: String) {
@@ -302,7 +306,7 @@ class ZhihuImageUploader(
                 header(HttpHeaders.UserAgent, userAgent)
                 header(HttpHeaders.Cookie, buildCookieHeader(cookies))
                 setBody("""{"upload_result":"success"}""")
-            }.raiseForStatus()
+            }.raiseForStatus(dumpRequest = true)
     }
 
     private suspend fun pollImageStatus(imageId: String): ImageStatus {
@@ -319,7 +323,7 @@ class ZhihuImageUploader(
             .get("https://api.zhihu.com/images/$imageId") {
                 header(HttpHeaders.UserAgent, userAgent)
                 header(HttpHeaders.Cookie, buildCookieHeader(cookies))
-            }.raiseForStatus()
+            }.raiseForStatus(dumpRequest = true)
             .body<JsonObject>()
         return AccountData.decodeJson(ImageStatus.serializer(), response)
     }
@@ -334,38 +338,37 @@ private data class ApplyImageUploadRequest(
 
 @Serializable
 private data class ApplyImageUploadResponse(
-    @SerialName("upload_file")
     val uploadFile: UploadFile,
-    @SerialName("upload_token")
-    val uploadToken: UploadToken,
+    val uploadToken: UploadToken? = null,
 )
 
 @Serializable
 private data class UploadFile(
-    @SerialName("image_id")
     val imageId: String,
     val state: Int,
 )
 
 @Serializable
 private data class UploadToken(
-    @SerialName("access_id")
     val accessId: String,
-    @SerialName("access_key")
     val accessKey: String,
-    @SerialName("access_token")
     val accessToken: String,
 )
 
 @Serializable
 private data class ImageStatus(
     val status: String? = null,
-    @SerialName("original_src")
     val originalSrc: String? = null,
-    val watermark: Boolean? = null,
-    @SerialName("watermark_src")
+    val watermark: String? = null,
     val watermarkSrc: String? = null,
-)
+) {
+    val watermarkFlag: Boolean?
+        get() = when (watermark?.lowercase()) {
+            "watermark", "true", "1" -> true
+            "original", "false", "0" -> false
+            else -> null
+        }
+}
 
 private const val OSS_USER_AGENT =
     "aliyun-sdk-js/6.8.0 Chrome 99.0.4844.84 on Windows 10 64-bit"
@@ -471,4 +474,14 @@ private fun guessExtension(mimeType: String, fileName: String?): String = when {
     mimeType.equals("image/gif", ignoreCase = true) -> "gif"
     mimeType.equals("image/webp", ignoreCase = true) -> "webp"
     else -> "png"
+}
+
+private fun normalizeZhihuImageUrl(rawUrl: String, ext: String): String {
+    val normalized = rawUrl.substringBefore('?').trimEnd('.')
+    val lastSegment = normalized.substringAfterLast('/')
+    return if ('.' in lastSegment) {
+        normalized
+    } else {
+        "$normalized.$ext"
+    }
 }
