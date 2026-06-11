@@ -12,19 +12,19 @@ Options:
                  This discards old vote/read/snapshot/client data and lets the
                  service recreate schema from the current binary.
   --skip-smoke   Skip the read-event/database smoke test.
-  --build-only   Build the local Linux binary and exit without touching off.
+  --build-only   Build the Linux binary on off and exit without restarting the container.
 
 Environment overrides:
   OFF_HOST                         default: off
   AIGC_VOTE_REMOTE_BASE            default: /home/dom/services/aigc-vote
-  AIGC_VOTE_LOCAL_TARGET           default: x86_64-unknown-linux-gnu
   AIGC_VOTE_IMAGE                  default: aigc-vote-server:off
   AIGC_VOTE_CONTAINER              default: aigc-vote-server
   AIGC_VOTE_ENV_FILE               default: /home/dom/services/aigc-vote/aigc-vote.env
   AIGC_VOTE_POSTGRES_CONTAINER     default: postgres-office
   AIGC_VOTE_LOCAL_HEALTH_URL       default: http://127.0.0.1:18787/healthz
   AIGC_VOTE_PUBLIC_HEALTH_URL      default: https://aigc-vote.ai.fintechedu.cn/healthz
-  AIGC_VOTE_LOCAL_DOCKER_BUILD     default: auto
+  AIGC_VOTE_REMOTE_CARGO_JOBS      default: 2
+  AIGC_VOTE_REMOTE_PROXY           default: http://127.0.0.1:7890
 USAGE
 }
 
@@ -58,21 +58,20 @@ done
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd)"
-DIST_DIR="$APP_DIR/dist"
 
 OFF_HOST="${OFF_HOST:-off}"
 REMOTE_BASE="${AIGC_VOTE_REMOTE_BASE:-/home/dom/services/aigc-vote}"
+REMOTE_SRC="$REMOTE_BASE/src"
 REMOTE_BUILD="$REMOTE_BASE/runtime-build"
-LOCAL_TARGET="${AIGC_VOTE_LOCAL_TARGET:-x86_64-unknown-linux-gnu}"
 IMAGE="${AIGC_VOTE_IMAGE:-aigc-vote-server:off}"
 CONTAINER="${AIGC_VOTE_CONTAINER:-aigc-vote-server}"
 ENV_FILE="${AIGC_VOTE_ENV_FILE:-$REMOTE_BASE/aigc-vote.env}"
 POSTGRES_CONTAINER="${AIGC_VOTE_POSTGRES_CONTAINER:-postgres-office}"
 LOCAL_HEALTH_URL="${AIGC_VOTE_LOCAL_HEALTH_URL:-http://127.0.0.1:18787/healthz}"
 PUBLIC_HEALTH_URL="${AIGC_VOTE_PUBLIC_HEALTH_URL:-https://aigc-vote.ai.fintechedu.cn/healthz}"
-LOCAL_DOCKER_BUILD="${AIGC_VOTE_LOCAL_DOCKER_BUILD:-auto}"
+CARGO_JOBS="${AIGC_VOTE_REMOTE_CARGO_JOBS:-2}"
+REMOTE_PROXY="${AIGC_VOTE_REMOTE_PROXY:-http://127.0.0.1:7890}"
 BINARY_NAME="aigc-vote-server-linux-amd64"
-LOCAL_BINARY="$DIST_DIR/$BINARY_NAME"
 
 log() {
   printf '[deploy-off] %s\n' "$*"
@@ -83,82 +82,46 @@ ssh_off() {
 }
 
 log "preflight"
-mkdir -p "$DIST_DIR"
-
-build_with_cargo() {
-  (
-    cd "$APP_DIR"
-    if command -v cargo-zigbuild >/dev/null 2>&1 && command -v zig >/dev/null 2>&1; then
-      cargo zigbuild --release --target "$LOCAL_TARGET"
-    else
-      if [[ "$LOCAL_TARGET" == "x86_64-unknown-linux-gnu" ]] && ! command -v x86_64-linux-gnu-gcc >/dev/null 2>&1; then
-        echo "x86_64-linux-gnu-gcc not found; skipping direct cargo cross build" >&2
-        return 1
-      fi
-      cargo build --release --target "$LOCAL_TARGET"
-    fi
-  )
-  cp "$APP_DIR/target/$LOCAL_TARGET/release/aigc-vote-server" "$LOCAL_BINARY"
-}
-
-build_with_local_docker() {
-  local builder_image="aigc-vote-server-builder:local"
-  local container_id
-  docker build --platform linux/amd64 --target builder -t "$builder_image" "$APP_DIR"
-  container_id="$(docker create "$builder_image")"
-  trap 'docker rm -f "$container_id" >/dev/null 2>&1 || true' RETURN
-  docker cp "$container_id:/src/target/release/aigc-vote-server" "$LOCAL_BINARY"
-  docker rm -f "$container_id" >/dev/null
-  trap - RETURN
-}
-
-log "build local Linux binary"
-case "$LOCAL_DOCKER_BUILD" in
-  1|true|yes)
-    build_with_local_docker
-    ;;
-  0|false|no)
-    build_with_cargo
-    ;;
-  auto)
-    if build_with_cargo; then
-      :
-    elif command -v docker >/dev/null 2>&1; then
-      log "local cargo cross build failed; falling back to local Docker build"
-      build_with_local_docker
-    else
-      echo "Local Linux build failed and docker is unavailable" >&2
-      exit 1
-    fi
-    ;;
-  *)
-    echo "Invalid AIGC_VOTE_LOCAL_DOCKER_BUILD=$LOCAL_DOCKER_BUILD" >&2
-    exit 2
-    ;;
-esac
-chmod 0755 "$LOCAL_BINARY"
-
-if [[ "$BUILD_ONLY" == "1" ]]; then
-  log "built $LOCAL_BINARY"
-  exit 0
-fi
-
-log "preflight"
 ssh_off "set -e
 test -r '$ENV_FILE'
 sudo -n true
 sudo -n docker ps >/dev/null
-mkdir -p '$REMOTE_BUILD'
+command -v gcc >/dev/null
+test -x \"\$HOME/.cargo/bin/cargo\"
+mkdir -p '$REMOTE_SRC' '$REMOTE_BUILD'
 "
 
-log "sync runtime artifact to $OFF_HOST:$REMOTE_BUILD"
-rsync -az --delete \
-  "$LOCAL_BINARY" \
-  "$APP_DIR/Dockerfile.runtime" \
-  "$OFF_HOST:$REMOTE_BUILD/"
+log "sync source to $OFF_HOST:$REMOTE_SRC"
+rsync -az --delete "$APP_DIR/src/" "$OFF_HOST:$REMOTE_SRC/src/"
+rsync -az "$APP_DIR/Cargo.toml" "$APP_DIR/Cargo.lock" "$OFF_HOST:$REMOTE_SRC/"
+
+log "build binary on off with CARGO_BUILD_JOBS=$CARGO_JOBS"
+ssh_off "set -e
+cd '$REMOTE_SRC'
+PATH=\"\$HOME/.cargo/bin:\$PATH\" \
+  CARGO_BUILD_JOBS='$CARGO_JOBS' \
+  HTTP_PROXY='$REMOTE_PROXY' HTTPS_PROXY='$REMOTE_PROXY' \
+  http_proxy='$REMOTE_PROXY' https_proxy='$REMOTE_PROXY' \
+  cargo build --release
+cp target/release/aigc-vote-server '$REMOTE_BUILD/$BINARY_NAME'
+chmod 0755 '$REMOTE_BUILD/$BINARY_NAME'
+"
+
+if [[ "$BUILD_ONLY" == "1" ]]; then
+  log "built $OFF_HOST:$REMOTE_BUILD/$BINARY_NAME"
+  exit 0
+fi
+
+log "sync runtime Dockerfile to $OFF_HOST:$REMOTE_BUILD"
+rsync -az "$APP_DIR/Dockerfile.runtime" "$OFF_HOST:$REMOTE_BUILD/"
 
 log "build runtime image $IMAGE on off"
-ssh_off "cd '$REMOTE_BUILD' && sudo docker build --pull=false -f Dockerfile.runtime -t '$IMAGE' ."
+ssh_off "cd '$REMOTE_BUILD' && sudo env DOCKER_BUILDKIT=0 docker build --pull=false --network host \
+  --build-arg HTTP_PROXY='$REMOTE_PROXY' \
+  --build-arg HTTPS_PROXY='$REMOTE_PROXY' \
+  --build-arg http_proxy='$REMOTE_PROXY' \
+  --build-arg https_proxy='$REMOTE_PROXY' \
+  -f Dockerfile.runtime -t '$IMAGE' ."
 
 log "stop old container $CONTAINER"
 ssh_off "sudo docker rm -f '$CONTAINER' >/dev/null 2>&1 || true"
