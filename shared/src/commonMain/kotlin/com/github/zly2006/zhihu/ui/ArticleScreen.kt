@@ -1603,27 +1603,34 @@ fun ArticleScreen(
                         }
 
                         @Composable
-                        fun ColumnScope.AnswerVotersSocialCredit() {
-                            if (article.type != ArticleType.Answer) return
+                        fun ColumnScope.ArticleVotersSocialCredit() {
+                            val contentLabel = when (article.type) {
+                                ArticleType.Answer -> "回答"
+                                ArticleType.Article -> "文章"
+                            }
                             val hasVotersSocialCredit = viewModel.votersTotal > 0
                             val aigcSupportVoterCount = viewModel.aigcSupportVoterCount
                             if (!hasVotersSocialCredit && aigcSupportVoterCount <= 0) return
                             Spacer(modifier = Modifier.height(8.dp))
                             if (hasVotersSocialCredit) {
                                 val text = viewModel.votersSocialText.ifBlank {
-                                    "${formatCompactCount(viewModel.votersTotal)} 人赞同了该回答"
+                                    "${formatCompactCount(viewModel.votersTotal)} 人赞同了该$contentLabel"
+                                }
+                                val votersTextModifier = if (article.type == ArticleType.Answer) {
+                                    Modifier.clickable {
+                                        showVoters = true
+                                        if (viewModel.voters.isEmpty()) {
+                                            viewModel.loadMoreVoters(environment, reset = true)
+                                        }
+                                    }
+                                } else {
+                                    Modifier
                                 }
                                 Text(
                                     text = text,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier
-                                        .clickable {
-                                            showVoters = true
-                                            if (viewModel.voters.isEmpty()) {
-                                                viewModel.loadMoreVoters(environment, reset = true)
-                                            }
-                                        },
+                                    modifier = votersTextModifier,
                                 )
                             }
                             if (aigcSupportVoterCount > 0) {
@@ -1631,7 +1638,7 @@ fun ArticleScreen(
                                     Spacer(modifier = Modifier.height(4.dp))
                                 }
                                 Text(
-                                    text = "有 ${formatCompactCount(aigcSupportVoterCount)} 人认为此回答包含AIGC内容",
+                                    text = "有 ${formatCompactCount(aigcSupportVoterCount)} 人认为此${contentLabel}包含AIGC内容",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.error,
                                 )
@@ -1641,8 +1648,7 @@ fun ArticleScreen(
                         @Composable
                         fun ColumnScope.AnswerLeadingMeta() {
                             val hasPinnedDate = pinAnswerDate
-                            val hasSocialCredit = article.type == ArticleType.Answer &&
-                                (viewModel.votersTotal > 0 || viewModel.aigcSupportVoterCount > 0)
+                            val hasSocialCredit = viewModel.votersTotal > 0 || viewModel.aigcSupportVoterCount > 0
                             if (!hasPinnedDate && !hasSocialCredit) return
                             Column(
                                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
@@ -1651,7 +1657,7 @@ fun ArticleScreen(
                                 if (hasPinnedDate) {
                                     DateTexts()
                                 }
-                                AnswerVotersSocialCredit()
+                                ArticleVotersSocialCredit()
                             }
                             Spacer(modifier = Modifier.height(16.dp))
                         }

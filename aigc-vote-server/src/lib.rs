@@ -2,6 +2,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
+use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -26,6 +27,9 @@ const MIN_FLAG_SCROLL_DEPTH: f64 = 0.25;
 const EXTERNAL_AIGC_SOURCE: &str = "zhihuai";
 const EXTERNAL_AIGC_BASE_URL: &str = "https://zhihuai.sx349.xyz";
 const EXTERNAL_AIGC_TIMEOUT_SECONDS: u64 = 5;
+const EXTERNAL_AIGC_LEADERBOARD_REFRESH_INTERVAL_SECONDS: i64 = 300;
+static EXTERNAL_AIGC_LEADERBOARD_REFRESH_IN_FLIGHT: AtomicBool = AtomicBool::new(false);
+static EXTERNAL_AIGC_LEADERBOARD_LAST_REFRESH_ATTEMPT_AT: AtomicI64 = AtomicI64::new(0);
 
 #[derive(Clone)]
 pub struct AppState {
@@ -1261,7 +1265,7 @@ struct ExternalAigcLeaderboard {
     content: Vec<ExternalAigcContentStats>,
 }
 
-/// 每次查询先刷新外部源和榜单缓存；外部源失败时降级返回本地缓存。
+/// 每次查询同步刷新当前内容的外部源；榜单缓存放到后台刷新，避免拖慢 App 展示。
 async fn refresh_and_load_external_aigc_stats(
     pool: &PgPool,
     content_type: &str,
@@ -1276,7 +1280,7 @@ async fn refresh_and_load_external_aigc_stats(
     }
 }
 
-/// 刷新当前内容的 zhihuai 统计，同时缓存 24 小时榜和历史总榜数据。
+/// 刷新当前内容的 zhihuai 统计，同时异步缓存 24 小时榜和历史总榜数据。
 async fn refresh_external_aigc_stats(
     pool: &PgPool,
     content_type: &str,
@@ -1295,6 +1299,40 @@ async fn refresh_external_aigc_stats(
         current_source = Some(source);
     }
 
+    spawn_external_aigc_leaderboard_cache_refresh(pool.clone(), client, refreshed_at);
+
+    Ok(current_source)
+}
+
+/// 后台刷新 zhihuai 24 小时榜和历史总榜缓存；失败不影响当前内容投票状态返回。
+fn spawn_external_aigc_leaderboard_cache_refresh(
+    pool: PgPool,
+    client: reqwest::Client,
+    refreshed_at: i64,
+) {
+    let last_attempt = EXTERNAL_AIGC_LEADERBOARD_LAST_REFRESH_ATTEMPT_AT.load(Ordering::Relaxed);
+    if refreshed_at - last_attempt < EXTERNAL_AIGC_LEADERBOARD_REFRESH_INTERVAL_SECONDS {
+        return;
+    }
+    if EXTERNAL_AIGC_LEADERBOARD_REFRESH_IN_FLIGHT
+        .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
+        .is_err()
+    {
+        return;
+    }
+    EXTERNAL_AIGC_LEADERBOARD_LAST_REFRESH_ATTEMPT_AT.store(refreshed_at, Ordering::Relaxed);
+    tokio::spawn(async move {
+        let _ = refresh_external_aigc_leaderboard_cache(&pool, &client, refreshed_at).await;
+        EXTERNAL_AIGC_LEADERBOARD_REFRESH_IN_FLIGHT.store(false, Ordering::Release);
+    });
+}
+
+/// 将 zhihuai 榜单批量写入缓存表；调用方负责决定是否阻塞当前请求。
+async fn refresh_external_aigc_leaderboard_cache(
+    pool: &PgPool,
+    client: &reqwest::Client,
+    refreshed_at: i64,
+) -> Result<(), ServiceError> {
     for path in ["/data/rolling24h.json", "/data/alltime.json"] {
         if let Ok(leaderboard) = fetch_external_aigc_leaderboard(&client, path).await {
             for stats in leaderboard.content {
@@ -1307,7 +1345,7 @@ async fn refresh_external_aigc_stats(
         }
     }
 
-    Ok(current_source)
+    Ok(())
 }
 
 /// 调用 zhihuai resolve 接口，获取当前内容的外部投票统计。
