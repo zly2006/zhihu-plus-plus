@@ -137,6 +137,10 @@ kotlin {
             implementation("top.yukonga.miuix.kmp:miuix-preference:$miuixVersion")
             implementation("top.yukonga.miuix.kmp:miuix-icons:$miuixVersion")
             implementation("top.yukonga.miuix.kmp:miuix-blur:$miuixVersion")
+            // Navigation: vendored miuix-nav (standalone v1) source under
+            // top.yukonga.miuix.kmp.nav (+ a minimal squircle shim). Only external runtime dep is
+            // the predictive-back event source; lifecycle/serialization come from the deps above.
+            implementation("org.jetbrains.androidx.navigationevent:navigationevent-compose:1.1.0")
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

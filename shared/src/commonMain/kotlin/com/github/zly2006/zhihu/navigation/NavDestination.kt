@@ -21,9 +21,16 @@ import com.github.zly2006.zhihu.shared.util.Log
 import io.ktor.http.Url
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import top.yukonga.miuix.kmp.nav.core.NavKey
 
+/**
+ * 应用全部页面 route 的封闭模型，同时作为 miuix-nav 的 [NavKey]，可直接作为导航栈元素。
+ *
+ * 封闭 + `@Serializable` 让 `serializer<List<NavDestination>>()` 是闭合多态序列化，miuix-nav 的
+ * `rememberNavBackStack<NavDestination>` 无需 `SerializersModule` 即可跨进程死亡持久化返回栈。
+ */
 @Serializable
-sealed interface NavDestination
+sealed interface NavDestination : NavKey
 
 /**
  * 底部栏和主 pager 使用的 tab 目标。
