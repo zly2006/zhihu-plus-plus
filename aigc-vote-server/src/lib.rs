@@ -26,7 +26,7 @@ const MIN_FLAG_DURATION_MS: i64 = 15_000;
 const MIN_FLAG_SCROLL_DEPTH: f64 = 0.25;
 const EXTERNAL_AIGC_SOURCE: &str = "zhihuai";
 const EXTERNAL_AIGC_BASE_URL: &str = "https://zhihuai.sx349.xyz";
-const EXTERNAL_AIGC_TIMEOUT_SECONDS: u64 = 5;
+const EXTERNAL_AIGC_TIMEOUT_MILLIS: u64 = 1_500;
 const EXTERNAL_AIGC_LEADERBOARD_REFRESH_INTERVAL_SECONDS: i64 = 300;
 static EXTERNAL_AIGC_LEADERBOARD_REFRESH_IN_FLIGHT: AtomicBool = AtomicBool::new(false);
 static EXTERNAL_AIGC_LEADERBOARD_LAST_REFRESH_ATTEMPT_AT: AtomicI64 = AtomicI64::new(0);
@@ -1287,7 +1287,7 @@ async fn refresh_external_aigc_stats(
     content_id: &str,
 ) -> Result<Option<ExternalAigcSource>, ServiceError> {
     let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(EXTERNAL_AIGC_TIMEOUT_SECONDS))
+        .timeout(Duration::from_millis(EXTERNAL_AIGC_TIMEOUT_MILLIS))
         .build()
         .map_err(|error| ServiceError::internal(error.to_string()))?;
     let refreshed_at = now_epoch_seconds();
