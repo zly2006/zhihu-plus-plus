@@ -1,0 +1,403 @@
+/*
+ * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation (version 3 only).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package com.github.zly2006.zhihu.editor
+
+import androidx.compose.runtime.Composable
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
+
+/**
+ * 将“发布知乎回答”封装为平台能力：
+ * - Android：用 app 的登录态 Cookie + XSRF + zse96(v2) 签名请求知乎网页 API。
+ * - Desktop：当前不实现（避免桌面端误触发导致困惑/风控），但保持编译通过。
+ */
+interface ZhihuAnswerPublisher {
+    val isSupported: Boolean
+
+    /**
+     * 探测当前登录账号在该问题下是否已发布过回答。
+     *
+     * 返回值：
+     * - null：未找到（视为“新回答”）
+     * - answerId：找到（发布时会走“更新回答”的 payload）
+     */
+    suspend fun findMyAnswerId(questionId: Long): Long?
+
+    /**
+     * 获取“我已发布的回答”的可编辑内容，用于回填编辑框。
+     *
+     * 说明：
+     * - zhihu_obsidian 的“更新回答”逻辑依赖 answerId；本 app 也用相同策略。
+     * - 优先返回 editable_content（知乎用于编辑器的 HTML），否则退回 content。
+     */
+    suspend fun fetchAnswerForEditing(answerId: Long): ExistingAnswerForEditing?
+
+    /**
+     * 上传图片到知乎图床（对齐 zhihu_obsidian 的 image_service.ts）并返回：
+     * - 编辑器所需的 `<img data-*>` 元数据
+     * - 便于 Markdown 里引用的图片 URL（通常是 https://picx.zhimg.com/v2-xxx.png 这种）
+     */
+    suspend fun uploadImage(
+        bytes: ByteArray,
+        mimeType: String?,
+        fileName: String?,
+    ): UploadedZhihuImage
+
+    /**
+     * 上传网络图片（Markdown 内引用 http(s)）的便捷方法。
+     */
+    suspend fun uploadImageFromUrl(url: String): UploadedZhihuImage
+
+    /**
+     * 写入“问题草稿”（对应 zhihu_obsidian 的 patchDraft）。
+     *
+     * 说明：
+     * - 草稿接口和发布接口是两步（知乎网页版也是类似链路）。
+     * - 对应端点：POST /api/v4/questions/{questionId}/draft
+     */
+    suspend fun patchDraft(
+        questionId: Long,
+        answerId: Long?,
+        html: String,
+        tocEnabled: Boolean,
+    )
+
+    /**
+     * 将草稿发布为正式回答（或更新已有回答）。
+     *
+     * 返回值：发布成功后的 answerId
+     *
+     * 对应端点：POST /api/v4/content/publish
+     */
+    suspend fun publishAnswer(
+        questionId: Long,
+        answerId: Long?,
+        html: String,
+        tocEnabled: Boolean,
+    ): Long
+}
+
+data class ExistingAnswerForEditing(
+    val answerId: Long,
+    val html: String,
+    val tocEnabled: Boolean,
+)
+
+data class UploadedZhihuImage(
+    val url: String,
+    val originalUrl: String,
+    val watermark: Boolean? = null,
+    val watermarkUrl: String? = null,
+    val rawWidth: Int,
+    val rawHeight: Int,
+)
+
+@Composable
+expect fun rememberZhihuAnswerPublisher(): ZhihuAnswerPublisher
+
+/**
+ * 参考 zhihu_obsidian 的思路：知乎“回答草稿/发布”接口接受 HTML，而不是原始 Markdown。
+ *
+ * 这里先实现一个“最小可用”的 Markdown → HTML：
+ * - 段落（空行分隔）
+ * - 链接 [text](url)
+ * - 行内代码 `code`
+ * - 代码块 ```lang ... ```
+ * - 简单加粗/斜体（**text** / *text*）
+ *
+ * 目前不做：
+ * - 图片上传到知乎图床（zhihu_obsidian 有完整实现，后续可按需移植）
+ * - 表格/脚注/callout/知乎卡片等复杂结构
+ */
+fun markdownToZhihuHtml(markdown: String): String {
+    val lines = markdown.replace("\r\n", "\n").split('\n')
+    val out = StringBuilder()
+    var i = 0
+
+    fun appendParagraph(text: String) {
+        val content = renderInlineMarkdown(text.trim())
+        if (content.isNotEmpty()) {
+            out.append("<p>").append(content).append("</p>\n")
+        }
+    }
+
+    while (i < lines.size) {
+        val line = lines[i]
+
+        if (line.startsWith("```")) {
+            val lang = line.removePrefix("```").trim()
+            val code = StringBuilder()
+            i++
+            while (i < lines.size && !lines[i].startsWith("```")) {
+                code.append(lines[i]).append('\n')
+                i++
+            }
+            // consume closing ```
+            if (i < lines.size) i++
+
+            val escaped = escapeHtml(code.toString().trimEnd())
+            out.append("<pre")
+            if (lang.isNotEmpty()) {
+                out.append(" lang=\"").append(escapeHtmlAttribute(lang)).append("\"")
+            }
+            out.append(">").append(escaped).append("</pre>\n")
+            continue
+        }
+
+        if (line.isBlank()) {
+            i++
+            continue
+        }
+
+        val paragraph = StringBuilder()
+        paragraph.append(line)
+        i++
+        while (i < lines.size && lines[i].isNotBlank() && !lines[i].startsWith("```")) {
+            paragraph.append("\n").append(lines[i])
+            i++
+        }
+
+        // 段落内换行使用 <br>，避免知乎把它们拼成一行。
+        appendParagraph(paragraph.toString().replace("\n", "<br/>"))
+    }
+
+    return out.toString().trim()
+}
+
+private fun renderInlineMarkdown(text: String): String {
+    // 这是一个非常“克制”的 inline 渲染：优先保证不会产生非法 HTML。
+    // 规则采用从左到右扫描 + 少量正则替换，覆盖最常用的 Markdown 片段。
+    var s = escapeHtml(text)
+
+    // 行内代码：先处理，避免其中的 * / [ ] 被后续规则误伤
+    s = s.replace(Regex("`([^`]+)`")) { m ->
+        "<code>${escapeHtml(m.groupValues[1])}</code>"
+    }
+
+    // 链接：[text](url)
+    s = s.replace(Regex("\\[([^\\]]+)]\\(([^)\\s]+)\\)")) { m ->
+        val label = escapeHtml(m.groupValues[1])
+        val url = escapeHtmlAttribute(m.groupValues[2])
+        "<a href=\"$url\">$label</a>"
+    }
+
+    // 加粗/斜体：只处理最常用的形式，避免在复杂嵌套里错配
+    s = s.replace(Regex("\\*\\*([^*]+)\\*\\*")) { m ->
+        "<strong>${escapeHtml(m.groupValues[1])}</strong>"
+    }
+    s = s.replace(Regex("\\*([^*]+)\\*")) { m ->
+        "<em>${escapeHtml(m.groupValues[1])}</em>"
+    }
+
+    return s
+}
+
+private fun escapeHtml(text: String): String =
+    text
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
+        .replace("'", "&#39;")
+
+private fun escapeHtmlAttribute(text: String): String = escapeHtml(text)
+
+/**
+ * publish 接口的响应是“双层 JSON”：
+ * - response.data.result 是 JSON 字符串，需要再次 parse 才能拿到 publish.id
+ *
+ * 这里不强依赖完整数据模型，只提取我们需要的字段。
+ */
+fun parsePublishAnswerId(resultJson: JsonObject): Long? {
+    // zhihu_obsidian：JSON.parse(response.json.data.result).publish.id
+    val publish = resultJson["publish"] as? JsonObject ?: return null
+    val idText = publish["id"]?.jsonPrimitive?.content ?: return null
+    return idText.toLongOrNull()
+}
+
+@Serializable
+data class PatchDraftRequest(
+    val content: String,
+    @SerialName("draft_type")
+    val draftType: String = "normal",
+    @SerialName("delta_time")
+    val deltaTime: Int = 30,
+    val settings: PatchDraftSettings,
+)
+
+@Serializable
+data class PatchDraftSettings(
+    @SerialName("reshipment_settings")
+    val reshipmentSettings: String = "allowed",
+    @SerialName("comment_permission")
+    val commentPermission: String = "all",
+    @SerialName("can_reward")
+    val canReward: Boolean = false,
+    val tagline: String = "",
+    @SerialName("disclaimer_status")
+    val disclaimerStatus: String = "close",
+    @SerialName("disclaimer_type")
+    val disclaimerType: String = "none",
+    @SerialName("commercial_report_info")
+    val commercialReportInfo: CommercialReportInfo = CommercialReportInfo(isReport = true),
+    @SerialName("push_activity")
+    val pushActivity: Boolean = false,
+    @SerialName("table_of_contents_enabled")
+    val tableOfContentsEnabled: Boolean,
+    @SerialName("thank_inviter_status")
+    val thankInviterStatus: String = "close",
+    @SerialName("thank_inviter")
+    val thankInviter: String = "",
+)
+
+@Serializable
+data class CommercialReportInfo(
+    @SerialName("is_report")
+    val isReport: Boolean = true,
+)
+
+@Serializable
+data class PublishAnswerRequest(
+    val action: String = "answer",
+    val data: PublishAnswerData,
+)
+
+@Serializable
+data class PublishAnswerData(
+    val publish: PublishTrace,
+    val hybridInfo: JsonObject = buildJsonObject { },
+    val draft: PublishDraft,
+    @SerialName("extra_info")
+    val extraInfo: PublishExtraInfo,
+    val hybrid: PublishHybrid,
+    val reprint: PublishReprint = PublishReprint(),
+    val commentsPermission: PublishCommentsPermission = PublishCommentsPermission(),
+    val appreciate: PublishAppreciate = PublishAppreciate(),
+    val publishSwitch: PublishSwitch = PublishSwitch(),
+    val creationStatement: PublishCreationStatement = PublishCreationStatement(),
+    val commercialReportInfo: PublishCommercialReportInfo = PublishCommercialReportInfo(),
+    val toFollower: JsonObject = buildJsonObject { },
+    val contentsTables: PublishContentsTables,
+    val thanksInvitation: PublishThanksInvitation = PublishThanksInvitation(),
+)
+
+@Serializable
+data class PublishTrace(
+    val traceId: String,
+)
+
+@Serializable
+data class PublishDraft(
+    val disabled: Int = 1,
+    val isPublished: Boolean,
+    val contentId: String? = null,
+)
+
+@Serializable
+data class PublishExtraInfo(
+    @SerialName("question_id")
+    val questionId: String,
+    val publisher: String = "pc",
+    val include: String = DEFAULT_PUBLISH_INCLUDE,
+    @SerialName("pc_business_params")
+    val pcBusinessParams: String,
+)
+
+@Serializable
+data class PublishHybrid(
+    val html: String,
+)
+
+@Serializable
+data class PublishReprint(
+    @SerialName("reshipment_settings")
+    val reshipmentSettings: String = "allowed",
+)
+
+@Serializable
+data class PublishCommentsPermission(
+    @SerialName("comment_permission")
+    val commentPermission: String = "all",
+)
+
+@Serializable
+data class PublishAppreciate(
+    @SerialName("can_reward")
+    val canReward: Boolean = false,
+)
+
+@Serializable
+data class PublishSwitch(
+    @SerialName("draft_type")
+    val draftType: String = "normal",
+)
+
+@Serializable
+data class PublishCreationStatement(
+    @SerialName("disclaimer_status")
+    val disclaimerStatus: String = "close",
+    @SerialName("disclaimer_type")
+    val disclaimerType: String = "none",
+)
+
+@Serializable
+data class PublishCommercialReportInfo(
+    val isReport: Int = 0,
+)
+
+@Serializable
+data class PublishContentsTables(
+    @SerialName("table_of_contents_enabled")
+    val tableOfContentsEnabled: Boolean,
+)
+
+@Serializable
+data class PublishThanksInvitation(
+    @SerialName("thank_inviter_status")
+    val thankInviterStatus: String = "close",
+    @SerialName("thank_inviter")
+    val thankInviter: String = "",
+)
+
+/**
+ * zhihu_obsidian 里 include 是一段很长的 fields 列表；复制过来尽量保持一致，
+ * 以减少服务端字段缺失导致的返回差异。
+ */
+private const val DEFAULT_PUBLISH_INCLUDE: String =
+    "is_visible,paid_info,paid_info_content,has_column,admin_closed_comment,reward_info,annotation_action,annotation_detail,collapse_reason,is_normal,is_sticky,collapsed_by,suggest_edit,comment_count,thanks_count,favlists_count,can_comment,content,editable_content,voteup_count,reshipment_settings,comment_permission,created_time,updated_time,review_info,relevant_info,question,excerpt,attachment,content_source,is_labeled,endorsements,reaction_instruction,ip_info,relationship.is_authorized,voting,is_thanked,is_author,is_nothelp,is_favorited;author.vip_info,kvip_info,badge[*].topics;settings.table_of_content.enabled"
+
+/**
+ * pc_business_params 在 publish 接口里是字符串化 JSON（zhihu_obsidian 也是这样做的）。
+ */
+fun buildPcBusinessParams(tocEnabled: Boolean): String = buildJsonObject {
+    put("reshipment_settings", "allowed")
+    put("comment_permission", "all")
+    put("reward_setting", buildJsonObject { put("can_reward", false) })
+    put("disclaimer_status", "close")
+    put("disclaimer_type", "none")
+    put("commercial_report_info", buildJsonObject { put("is_report", false) })
+    put("commercial_zhitask_bind_info", null)
+    put("is_report", false)
+    put("table_of_contents_enabled", tocEnabled)
+    put("thank_inviter_status", "close")
+    put("thank_inviter", "")
+}.toString()

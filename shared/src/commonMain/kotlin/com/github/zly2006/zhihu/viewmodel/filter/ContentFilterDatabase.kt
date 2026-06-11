@@ -51,7 +51,9 @@ abstract class ContentFilterDatabase : RoomDatabase() {
 }
 
 @Suppress("NO_ACTUAL_FOR_EXPECT")
-expect object ContentFilterDatabaseConstructor : RoomDatabaseConstructor<ContentFilterDatabase>
+expect object ContentFilterDatabaseConstructor : RoomDatabaseConstructor<ContentFilterDatabase> {
+    override fun initialize(): ContentFilterDatabase
+}
 
 private val migration2To3 = object : Migration(2, 3) {
     override fun migrate(connection: SQLiteConnection) {

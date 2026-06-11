@@ -232,6 +232,23 @@ data class Question(
     override fun equals(other: Any?): Boolean = other is Question && other.questionId == questionId
 }
 
+/**
+ * 在问题详情页发起“写回答/编辑回答”的编辑器页面。
+ *
+ * 说明：
+ * - 目前编辑器只提供纯文本输入（可输入 Markdown），不做语法高亮等复杂编辑能力。
+ * - 是否是“新回答”还是“更新已有回答”，由上传逻辑在发布前根据登录账号自动探测。
+ */
+@Serializable
+data class WriteAnswer(
+    val questionId: Long,
+    val questionTitle: String = "",
+) : NavDestination {
+    override fun hashCode(): Int = questionId.hashCode()
+
+    override fun equals(other: Any?): Boolean = other is WriteAnswer && other.questionId == questionId
+}
+
 @Serializable
 data class Person(
     /**
