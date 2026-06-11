@@ -12,6 +12,7 @@ serde_json = "1.0"
 sha2 = "0.10"
 sqlx = { version = "0.8", default-features = false, features = ["postgres", "runtime-tokio-rustls"] }
 tokio = { version = "1.48", features = ["macros", "net", "rt-multi-thread"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 
 [dev-dependencies]
 http = "1.3"

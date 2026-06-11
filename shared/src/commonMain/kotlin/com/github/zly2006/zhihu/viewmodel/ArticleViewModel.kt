@@ -151,10 +151,20 @@ class ArticleViewModel(
         private set
     var aigcNamedVoters by mutableStateOf<List<AigcVoteNamedVoter>>(emptyList())
         private set
+
+    /** 自家后端支持人数：在 Zhihu++ 服务中把该内容标记为 AIGC 的有效用户数。 */
     var aigcEffectiveFlagCount by mutableIntStateOf(0)
         private set
     var aigcCurrentVersionFlagCount by mutableIntStateOf(0)
         private set
+
+    /** 外部来源支持人数：仅来自 zhihuai.sx349.xyz 的支持票投票人数。 */
+    var zhihuaiAigcSupportVoterCount by mutableIntStateOf(0)
+        private set
+
+    /** 展示用 AIGC 支持总人数：自家后端支持人数 + zhihuai 外部支持人数。 */
+    val aigcSupportVoterCount: Int
+        get() = aigcEffectiveFlagCount + zhihuaiAigcSupportVoterCount
     var aigcFlagged by mutableStateOf(false)
         private set
     private var aigcMaxScrollRatio by mutableFloatStateOf(0f)
@@ -740,6 +750,7 @@ class ArticleViewModel(
         aigcCreditBypassAvailable = response.creditBypassAvailable
         aigcEffectiveFlagCount = response.effectiveFlagCount
         aigcNamedVoters = response.voters
+        zhihuaiAigcSupportVoterCount = response.externalSource?.voterCount ?: 0
     }
 
     private fun applyAigcFlagResponse(response: AigcVoteFlagResponse) {
@@ -749,6 +760,7 @@ class ArticleViewModel(
         aigcEffectiveFlagCount = response.effectiveFlagCount
         aigcCurrentVersionFlagCount = response.currentVersionFlagCount
         aigcNamedVoters = response.voters
+        zhihuaiAigcSupportVoterCount = response.externalSource?.voterCount ?: 0
     }
 
     private fun currentAigcReadEvidence(): AigcVoteReadEvidence {

@@ -3,7 +3,7 @@
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use async_trait::async_trait;
 use axum::extract::{Path as AxumPath, State};
@@ -23,6 +23,9 @@ const MIN_READ_DURATION_MS: i64 = 15_000;
 const MIN_READ_SCROLL_RATIO: f64 = 0.25;
 const MIN_FLAG_DURATION_MS: i64 = 15_000;
 const MIN_FLAG_SCROLL_DEPTH: f64 = 0.25;
+const EXTERNAL_AIGC_SOURCE: &str = "zhihuai";
+const EXTERNAL_AIGC_BASE_URL: &str = "https://zhihuai.sx349.xyz";
+const EXTERNAL_AIGC_TIMEOUT_SECONDS: u64 = 5;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -124,13 +127,19 @@ pub struct AigcFlagResponse {
     pub my_flagged: bool,
     pub credit: i64,
     pub credit_bypass_available: bool,
+    /// 自家后端支持人数：每个有效的 Zhihu++ AIGC 标记用户计 1 人。
     pub effective_flag_count: i64,
+    /// 自家后端原始支持人数；当前与 effective_flag_count 相同。
     pub raw_flag_count: i64,
+    /// 自家后端中当前正文 HTML 版本的支持人数。
     pub current_version_flag_count: i64,
     pub content_hash: String,
     pub content_updated_at: i64,
     pub confidence: String,
     pub voters: Vec<AigcFlagVoter>,
+    /// 来自 zhihuai.sx349.xyz 的外部数据源统计。
+    /// 客户端展示总人数时，应使用 effective_flag_count + external_source.voter_count。
+    pub external_source: Option<ExternalAigcSource>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -140,10 +149,15 @@ pub struct AigcFlagStatusResponse {
     pub progress: i64,
     pub cap: i64,
     pub credit_bypass_available: bool,
+    /// 自家后端支持人数：每个有效的 Zhihu++ AIGC 标记用户计 1 人。
     pub effective_flag_count: i64,
+    /// 自家后端原始支持人数；当前与 effective_flag_count 相同。
     pub raw_flag_count: i64,
     pub confidence: String,
     pub voters: Vec<AigcFlagVoter>,
+    /// 来自 zhihuai.sx349.xyz 的外部数据源统计。
+    /// 客户端展示总人数时，应使用 effective_flag_count + external_source.voter_count。
+    pub external_source: Option<ExternalAigcSource>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -154,6 +168,22 @@ pub struct AigcFlagVoter {
     pub voter_avatar_url: Option<String>,
     pub created_at: i64,
     pub credit_bypassed: bool,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ExternalAigcSource {
+    pub source: String,
+    pub content_type: String,
+    pub content_id: String,
+    /// zhihuai 支持票数，含义是“疑似AI生成低质量内容”。
+    pub total_votes: i64,
+    /// zhihuai 支持票投票人数；这是外部来源的 AIGC 支持人数。
+    pub voter_count: i64,
+    /// zhihuai 反对票数，含义是“并非AI生成低质量内容”。
+    pub total_downvotes: i64,
+    /// zhihuai 反对票投票人数；这不计入 AIGC 支持人数。
+    pub downvoter_count: i64,
+    pub refreshed_at: i64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -556,6 +586,7 @@ impl VoteStore for MemoryVoteStore {
             content_updated_at: request.content_updated_at,
             confidence: confidence_for_count(count),
             voters,
+            external_source: None,
         })
     }
 
@@ -612,6 +643,7 @@ impl VoteStore for MemoryVoteStore {
             raw_flag_count: count,
             confidence: confidence_for_count(count),
             voters,
+            external_source: None,
         })
     }
 }
@@ -799,7 +831,7 @@ impl VoteStore for PostgresVoteStore {
             }
         }
 
-        let response = build_flag_response_tx(
+        let mut response = build_flag_response_tx(
             &mut tx,
             &request.client_id,
             &content_type,
@@ -810,6 +842,8 @@ impl VoteStore for PostgresVoteStore {
         )
         .await?;
         tx.commit().await?;
+        response.external_source =
+            refresh_and_load_external_aigc_stats(&self.pool, &content_type, &content_id).await;
 
         Ok(response)
     }
@@ -852,6 +886,8 @@ impl VoteStore for PostgresVoteStore {
         let count = flag_count_tx(&mut tx, &content_type, &content_id).await?;
         let voters = flag_voters_tx(&mut tx, &content_type, &content_id).await?;
         tx.commit().await?;
+        let external_source =
+            refresh_and_load_external_aigc_stats(&self.pool, &content_type, &content_id).await;
 
         Ok(AigcFlagStatusResponse {
             my_flagged,
@@ -863,6 +899,7 @@ impl VoteStore for PostgresVoteStore {
             raw_flag_count: count,
             confidence: confidence_for_count(count),
             voters,
+            external_source,
         })
     }
 }
@@ -1127,6 +1164,7 @@ async fn build_flag_response_tx(
         content_updated_at,
         confidence: confidence_for_count(count),
         voters,
+        external_source: None,
     })
 }
 
@@ -1197,6 +1235,235 @@ async fn flag_voters_tx(
             })
         })
         .collect()
+}
+
+/// 从 zhihuai.sx349.xyz 解析到的单条内容投票统计。
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct ExternalAigcContentStats {
+    #[serde(default)]
+    content_type: String,
+    #[serde(default)]
+    content_id: String,
+    #[serde(default)]
+    total_votes: i64,
+    #[serde(default)]
+    voter_count: i64,
+    #[serde(default)]
+    total_downvotes: i64,
+    #[serde(default)]
+    downvoter_count: i64,
+}
+
+/// 从 zhihuai.sx349.xyz 榜单文件解析到的内容列表。
+#[derive(Debug, Deserialize)]
+struct ExternalAigcLeaderboard {
+    #[serde(default)]
+    content: Vec<ExternalAigcContentStats>,
+}
+
+/// 每次查询先刷新外部源和榜单缓存；外部源失败时降级返回本地缓存。
+async fn refresh_and_load_external_aigc_stats(
+    pool: &PgPool,
+    content_type: &str,
+    content_id: &str,
+) -> Option<ExternalAigcSource> {
+    match refresh_external_aigc_stats(pool, content_type, content_id).await {
+        Ok(Some(source)) => Some(source),
+        _ => cached_external_aigc_stats(pool, content_type, content_id)
+            .await
+            .ok()
+            .flatten(),
+    }
+}
+
+/// 刷新当前内容的 zhihuai 统计，同时缓存 24 小时榜和历史总榜数据。
+async fn refresh_external_aigc_stats(
+    pool: &PgPool,
+    content_type: &str,
+    content_id: &str,
+) -> Result<Option<ExternalAigcSource>, ServiceError> {
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(EXTERNAL_AIGC_TIMEOUT_SECONDS))
+        .build()
+        .map_err(|error| ServiceError::internal(error.to_string()))?;
+    let refreshed_at = now_epoch_seconds();
+    let mut current_source = None;
+
+    if let Ok(stats) = fetch_external_aigc_content_stats(&client, content_type, content_id).await {
+        let source = stats.to_source_with_identity(content_type, content_id, refreshed_at);
+        upsert_external_aigc_cache(pool, &source, &stats).await?;
+        current_source = Some(source);
+    }
+
+    for path in ["/data/rolling24h.json", "/data/alltime.json"] {
+        if let Ok(leaderboard) = fetch_external_aigc_leaderboard(&client, path).await {
+            for stats in leaderboard.content {
+                if stats.content_type.is_blank() || stats.content_id.is_blank() {
+                    continue;
+                }
+                let source = stats.to_source(refreshed_at);
+                upsert_external_aigc_cache(pool, &source, &stats).await?;
+            }
+        }
+    }
+
+    Ok(current_source)
+}
+
+/// 调用 zhihuai resolve 接口，获取当前内容的外部投票统计。
+async fn fetch_external_aigc_content_stats(
+    client: &reqwest::Client,
+    content_type: &str,
+    content_id: &str,
+) -> Result<ExternalAigcContentStats, ServiceError> {
+    let response = client
+        .get(format!("{EXTERNAL_AIGC_BASE_URL}/api/v1/resolve"))
+        .query(&[("content_type", content_type), ("content_id", content_id)])
+        .send()
+        .await
+        .map_err(|error| ServiceError::internal(error.to_string()))?;
+    if !response.status().is_success() {
+        return Err(ServiceError::internal(format!(
+            "external AIGC source returned {}",
+            response.status()
+        )));
+    }
+    response
+        .json()
+        .await
+        .map_err(|error| ServiceError::internal(error.to_string()))
+}
+
+/// 读取 zhihuai 的榜单 JSON，用于把榜单内容批量写入本地缓存。
+async fn fetch_external_aigc_leaderboard(
+    client: &reqwest::Client,
+    path: &str,
+) -> Result<ExternalAigcLeaderboard, ServiceError> {
+    let response = client
+        .get(format!("{EXTERNAL_AIGC_BASE_URL}{path}"))
+        .send()
+        .await
+        .map_err(|error| ServiceError::internal(error.to_string()))?;
+    if !response.status().is_success() {
+        return Err(ServiceError::internal(format!(
+            "external AIGC leaderboard returned {}",
+            response.status()
+        )));
+    }
+    response
+        .json()
+        .await
+        .map_err(|error| ServiceError::internal(error.to_string()))
+}
+
+/// 将 zhihuai 当前内容或榜单统计写入本地缓存表。
+async fn upsert_external_aigc_cache(
+    pool: &PgPool,
+    source: &ExternalAigcSource,
+    raw: &ExternalAigcContentStats,
+) -> Result<(), ServiceError> {
+    sqlx::query(
+        r#"
+        INSERT INTO external_aigc_content_cache (
+            source,
+            content_type,
+            content_id,
+            total_votes,
+            voter_count,
+            total_downvotes,
+            downvoter_count,
+            refreshed_at,
+            raw_json
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb)
+        ON CONFLICT(source, content_type, content_id) DO UPDATE SET
+            total_votes = EXCLUDED.total_votes,
+            voter_count = EXCLUDED.voter_count,
+            total_downvotes = EXCLUDED.total_downvotes,
+            downvoter_count = EXCLUDED.downvoter_count,
+            refreshed_at = EXCLUDED.refreshed_at,
+            raw_json = EXCLUDED.raw_json
+        "#,
+    )
+    .bind(&source.source)
+    .bind(&source.content_type)
+    .bind(&source.content_id)
+    .bind(source.total_votes)
+    .bind(source.voter_count)
+    .bind(source.total_downvotes)
+    .bind(source.downvoter_count)
+    .bind(source.refreshed_at)
+    .bind(serde_json::to_string(raw).map_err(|error| ServiceError::internal(error.to_string()))?)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+/// 外部源刷新失败时，从本地缓存读取最近一次 zhihuai 统计。
+async fn cached_external_aigc_stats(
+    pool: &PgPool,
+    content_type: &str,
+    content_id: &str,
+) -> Result<Option<ExternalAigcSource>, ServiceError> {
+    let row = sqlx::query(
+        r#"
+        SELECT
+            source,
+            content_type,
+            content_id,
+            total_votes,
+            voter_count,
+            total_downvotes,
+            downvoter_count,
+            refreshed_at
+        FROM external_aigc_content_cache
+        WHERE source = $1 AND content_type = $2 AND content_id = $3
+        "#,
+    )
+    .bind(EXTERNAL_AIGC_SOURCE)
+    .bind(content_type)
+    .bind(content_id)
+    .fetch_optional(pool)
+    .await?;
+
+    row.map(|row| {
+        Ok(ExternalAigcSource {
+            source: row.try_get("source")?,
+            content_type: row.try_get("content_type")?,
+            content_id: row.try_get("content_id")?,
+            total_votes: row.try_get("total_votes")?,
+            voter_count: row.try_get("voter_count")?,
+            total_downvotes: row.try_get("total_downvotes")?,
+            downvoter_count: row.try_get("downvoter_count")?,
+            refreshed_at: row.try_get("refreshed_at")?,
+        })
+    })
+    .transpose()
+}
+
+impl ExternalAigcContentStats {
+    /// 将榜单中的 zhihuai 统计转换成服务端响应使用的外部源结构。
+    fn to_source(&self, refreshed_at: i64) -> ExternalAigcSource {
+        self.to_source_with_identity(&self.content_type, &self.content_id, refreshed_at)
+    }
+
+    /// 将 zhihuai 统计转换成服务端响应结构；resolve 接口会从路径参数补齐内容标识。
+    fn to_source_with_identity(
+        &self,
+        content_type: &str,
+        content_id: &str,
+        refreshed_at: i64,
+    ) -> ExternalAigcSource {
+        ExternalAigcSource {
+            source: EXTERNAL_AIGC_SOURCE.to_string(),
+            content_type: content_type.to_string(),
+            content_id: content_id.to_string(),
+            total_votes: self.total_votes,
+            voter_count: self.voter_count,
+            total_downvotes: self.total_downvotes,
+            downvoter_count: self.downvoter_count,
+            refreshed_at,
+        }
+    }
 }
 
 fn apply_credit_progress_to_account(account: &mut ClientAccount, accepted_events: i64) {

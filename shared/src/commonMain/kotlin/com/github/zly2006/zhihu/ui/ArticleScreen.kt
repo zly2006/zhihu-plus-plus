@@ -1604,29 +1604,45 @@ fun ArticleScreen(
 
                         @Composable
                         fun ColumnScope.AnswerVotersSocialCredit() {
-                            if (article.type != ArticleType.Answer || viewModel.votersTotal <= 0) return
-                            val text = viewModel.votersSocialText.ifBlank {
-                                "${formatCompactCount(viewModel.votersTotal)} 人赞同了该回答"
-                            }
+                            if (article.type != ArticleType.Answer) return
+                            val hasVotersSocialCredit = viewModel.votersTotal > 0
+                            val aigcSupportVoterCount = viewModel.aigcSupportVoterCount
+                            if (!hasVotersSocialCredit && aigcSupportVoterCount <= 0) return
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = text,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier
-                                    .clickable {
-                                        showVoters = true
-                                        if (viewModel.voters.isEmpty()) {
-                                            viewModel.loadMoreVoters(environment, reset = true)
-                                        }
-                                    },
-                            )
+                            if (hasVotersSocialCredit) {
+                                val text = viewModel.votersSocialText.ifBlank {
+                                    "${formatCompactCount(viewModel.votersTotal)} 人赞同了该回答"
+                                }
+                                Text(
+                                    text = text,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier
+                                        .clickable {
+                                            showVoters = true
+                                            if (viewModel.voters.isEmpty()) {
+                                                viewModel.loadMoreVoters(environment, reset = true)
+                                            }
+                                        },
+                                )
+                            }
+                            if (aigcSupportVoterCount > 0) {
+                                if (hasVotersSocialCredit) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                }
+                                Text(
+                                    text = "有 ${formatCompactCount(aigcSupportVoterCount)} 人认为此回答包含AIGC内容",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                            }
                         }
 
                         @Composable
                         fun ColumnScope.AnswerLeadingMeta() {
                             val hasPinnedDate = pinAnswerDate
-                            val hasSocialCredit = article.type == ArticleType.Answer && viewModel.votersTotal > 0
+                            val hasSocialCredit = article.type == ArticleType.Answer &&
+                                (viewModel.votersTotal > 0 || viewModel.aigcSupportVoterCount > 0)
                             if (!hasPinnedDate && !hasSocialCredit) return
                             Column(
                                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),

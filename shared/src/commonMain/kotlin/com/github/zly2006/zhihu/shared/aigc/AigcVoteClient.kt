@@ -216,10 +216,13 @@ data class AigcVoteFlagResponse(
     val credit: Int,
     @SerialName("credit_bypass_available")
     val creditBypassAvailable: Boolean = false,
+    /** 自家后端支持人数：每个有效的 Zhihu++ AIGC 标记用户计 1 人。 */
     @SerialName("effective_flag_count")
     val effectiveFlagCount: Int,
+    /** 自家后端原始支持人数；当前与 effectiveFlagCount 相同。 */
     @SerialName("raw_flag_count")
     val rawFlagCount: Int,
+    /** 自家后端中当前正文 HTML 版本的支持人数。 */
     @SerialName("current_version_flag_count")
     val currentVersionFlagCount: Int,
     @SerialName("content_hash")
@@ -228,6 +231,9 @@ data class AigcVoteFlagResponse(
     val contentUpdatedAt: Long,
     val confidence: String,
     val voters: List<AigcVoteNamedVoter> = emptyList(),
+    /** 来自 zhihuai.sx349.xyz 的外部数据源统计。 */
+    @SerialName("external_source")
+    val externalSource: AigcVoteExternalSource? = null,
 )
 
 @Serializable
@@ -239,12 +245,40 @@ data class AigcVoteFlagStatusResponse(
     val cap: Int,
     @SerialName("credit_bypass_available")
     val creditBypassAvailable: Boolean = false,
+    /** 自家后端支持人数：每个有效的 Zhihu++ AIGC 标记用户计 1 人。 */
     @SerialName("effective_flag_count")
     val effectiveFlagCount: Int,
+    /** 自家后端原始支持人数；当前与 effectiveFlagCount 相同。 */
     @SerialName("raw_flag_count")
     val rawFlagCount: Int,
     val confidence: String,
     val voters: List<AigcVoteNamedVoter> = emptyList(),
+    /** 来自 zhihuai.sx349.xyz 的外部数据源统计。 */
+    @SerialName("external_source")
+    val externalSource: AigcVoteExternalSource? = null,
+)
+
+@Serializable
+data class AigcVoteExternalSource(
+    val source: String,
+    @SerialName("content_type")
+    val contentType: String,
+    @SerialName("content_id")
+    val contentId: String,
+    /** zhihuai 支持票数，含义是“疑似AI生成低质量内容”。 */
+    @SerialName("total_votes")
+    val totalVotes: Int,
+    /** zhihuai 支持票投票人数；这是外部来源的 AIGC 支持人数。 */
+    @SerialName("voter_count")
+    val voterCount: Int,
+    /** zhihuai 反对票数，含义是“并非AI生成低质量内容”。 */
+    @SerialName("total_downvotes")
+    val totalDownvotes: Int,
+    /** zhihuai 反对票投票人数；这不计入 AIGC 支持人数。 */
+    @SerialName("downvoter_count")
+    val downvoterCount: Int,
+    @SerialName("refreshed_at")
+    val refreshedAt: Long,
 )
 
 @Serializable
