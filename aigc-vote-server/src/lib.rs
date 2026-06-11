@@ -26,7 +26,8 @@ const MIN_FLAG_DURATION_MS: i64 = 15_000;
 const MIN_FLAG_SCROLL_DEPTH: f64 = 0.25;
 const EXTERNAL_AIGC_SOURCE: &str = "zhihuai";
 const EXTERNAL_AIGC_BASE_URL: &str = "https://zhihuai.sx349.xyz";
-const EXTERNAL_AIGC_TIMEOUT_MILLIS: u64 = 1_500;
+const EXTERNAL_AIGC_RESPONSE_WAIT_MILLIS: u64 = 500;
+const EXTERNAL_AIGC_BACKGROUND_TIMEOUT_MILLIS: u64 = 5_000;
 const EXTERNAL_AIGC_LEADERBOARD_REFRESH_INTERVAL_SECONDS: i64 = 300;
 static EXTERNAL_AIGC_LEADERBOARD_REFRESH_IN_FLIGHT: AtomicBool = AtomicBool::new(false);
 static EXTERNAL_AIGC_LEADERBOARD_LAST_REFRESH_ATTEMPT_AT: AtomicI64 = AtomicI64::new(0);
@@ -1265,7 +1266,7 @@ struct ExternalAigcLeaderboard {
     content: Vec<ExternalAigcContentStats>,
 }
 
-/// 每次查询同步刷新当前内容的外部源；榜单缓存放到后台刷新，避免拖慢 App 展示。
+/// 每次查询都启动当前内容外部源刷新；最多等 500ms，超时则读缓存并让后台继续更新。
 async fn refresh_and_load_external_aigc_stats(
     pool: &PgPool,
     content_type: &str,
@@ -1287,21 +1288,67 @@ async fn refresh_external_aigc_stats(
     content_id: &str,
 ) -> Result<Option<ExternalAigcSource>, ServiceError> {
     let client = reqwest::Client::builder()
-        .timeout(Duration::from_millis(EXTERNAL_AIGC_TIMEOUT_MILLIS))
+        .timeout(Duration::from_millis(
+            EXTERNAL_AIGC_BACKGROUND_TIMEOUT_MILLIS,
+        ))
         .build()
         .map_err(|error| ServiceError::internal(error.to_string()))?;
     let refreshed_at = now_epoch_seconds();
-    let mut current_source = None;
 
-    if let Ok(stats) = fetch_external_aigc_content_stats(&client, content_type, content_id).await {
-        let source = stats.to_source_with_identity(content_type, content_id, refreshed_at);
-        upsert_external_aigc_cache(pool, &source, &stats).await?;
-        current_source = Some(source);
-    }
-
+    let mut current_refresh = spawn_external_aigc_content_cache_refresh(
+        pool.clone(),
+        client.clone(),
+        content_type.to_string(),
+        content_id.to_string(),
+        refreshed_at,
+    );
     spawn_external_aigc_leaderboard_cache_refresh(pool.clone(), client, refreshed_at);
 
-    Ok(current_source)
+    match tokio::time::timeout(
+        Duration::from_millis(EXTERNAL_AIGC_RESPONSE_WAIT_MILLIS),
+        &mut current_refresh,
+    )
+    .await
+    {
+        Ok(Ok(result)) => result,
+        _ => Ok(None),
+    }
+}
+
+/// 后台刷新当前内容的 zhihuai 统计；调用方可以只短暂等待，超时后任务仍继续写缓存。
+fn spawn_external_aigc_content_cache_refresh(
+    pool: PgPool,
+    client: reqwest::Client,
+    content_type: String,
+    content_id: String,
+    refreshed_at: i64,
+) -> tokio::task::JoinHandle<Result<Option<ExternalAigcSource>, ServiceError>> {
+    tokio::spawn(async move {
+        refresh_external_aigc_content_cache(
+            &pool,
+            &client,
+            &content_type,
+            &content_id,
+            refreshed_at,
+        )
+        .await
+    })
+}
+
+/// 请求 zhihuai 当前内容统计并写入本地缓存；外部源失败时由调用方回退读取旧缓存。
+async fn refresh_external_aigc_content_cache(
+    pool: &PgPool,
+    client: &reqwest::Client,
+    content_type: &str,
+    content_id: &str,
+    refreshed_at: i64,
+) -> Result<Option<ExternalAigcSource>, ServiceError> {
+    if let Ok(stats) = fetch_external_aigc_content_stats(client, content_type, content_id).await {
+        let source = stats.to_source_with_identity(content_type, content_id, refreshed_at);
+        upsert_external_aigc_cache(pool, &source, &stats).await?;
+        return Ok(Some(source));
+    }
+    Ok(None)
 }
 
 /// 后台刷新 zhihuai 24 小时榜和历史总榜缓存；失败不影响当前内容投票状态返回。
