@@ -176,8 +176,14 @@ open class SharedAndroidPaginationEnvironment(
             showDebugErrorDialog(error)
         }
         Log.e(tag, "Failed to fetch feeds", error)
+        // 缺少 d_c0 设备标识时 zse96 签名必然非法（知乎回 10003 请升级客户端），给出可操作提示而非看不懂的报错
+        val hint = if (AccountData.data.cookies["d_c0"].isNullOrBlank()) {
+            "（登录缺少设备标识 d_c0，网页接口无法签名，请重新登录）"
+        } else {
+            ""
+        }
         context.mainExecutor.execute {
-            userMessageSink.showShortMessage("加载失败: ${error.message}")
+            userMessageSink.showShortMessage("加载失败: ${error.message}$hint")
         }
     }
 

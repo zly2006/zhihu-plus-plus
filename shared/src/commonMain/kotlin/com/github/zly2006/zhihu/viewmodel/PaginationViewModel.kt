@@ -98,9 +98,15 @@ abstract class PaginationViewModel<T : Any>(
             val url = lastPaging?.next ?: initialUrl
 
             @Suppress("HttpUrlsUsage")
-            val json = environment.fetchJson(url.replace("http://", "https://"), include)!!
+            val json = environment.fetchJson(url.replace("http://", "https://"), include)
+                ?: throw IllegalStateException("接口返回空响应或非 JSON 对象（可能触发知乎风控或登录态失效）")
 
-            val jsonArray = json["data"]!!.jsonArray
+            // 不再用 !!：风控/异常响应没有 data 时，release 下 R8 会把 !! 降级成不可读的 getClass NPE，
+            // 这里直接把原始响应带进异常，方便定位是风控、登录态失效还是响应结构变化。
+            val jsonArray = (
+                json["data"]
+                    ?: throw IllegalStateException("接口未返回 data 字段，原始响应: $json")
+            ).jsonArray
             processResponse(
                 environment,
                 jsonArray.mapNotNull {
