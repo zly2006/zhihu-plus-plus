@@ -69,6 +69,7 @@ import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixListLoadingIndicator
 import com.github.zly2006.zhihu.ui.rememberNotificationScreenRuntime
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import kotlinx.coroutines.launch
@@ -98,11 +99,16 @@ fun MiuixNotificationScreen() {
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
     val scrollBehavior = MiuixScrollBehavior()
     val listState = rememberLazyListState()
+    // 区分“下拉刷新”和“首次加载”：下拉刷新时不显示中心转圈，避免与刷新动画叠加
+    var isManualRefreshing by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         if (viewModel.allData.isEmpty()) {
             viewModel.refresh(runtime.environment)
         }
+    }
+    LaunchedEffect(viewModel.isLoading) {
+        if (!viewModel.isLoading) isManualRefreshing = false
     }
 
     Scaffold(
@@ -137,7 +143,10 @@ fun MiuixNotificationScreen() {
     ) { padding ->
         PullToRefresh(
             isRefreshing = viewModel.isLoading,
-            onRefresh = { coroutineScope.launch { viewModel.refresh(runtime.environment) } },
+            onRefresh = {
+                isManualRefreshing = true
+                coroutineScope.launch { viewModel.refresh(runtime.environment) }
+            },
             contentPadding = PaddingValues(top = padding.calculateTopPadding() + 6.dp),
             refreshTexts = listOf("下拉刷新", "释放刷新", "正在刷新...", "刷新完成"),
         ) {
@@ -206,6 +215,12 @@ fun MiuixNotificationScreen() {
                         }
                     }
                 }
+
+                MiuixListLoadingIndicator(
+                    isLoading = viewModel.isLoading,
+                    isEmpty = viewModel.allData.isEmpty(),
+                    isPullToRefresh = isManualRefreshing,
+                )
 
                 if (runtime.showDebugCopy) {
                     androidx.compose.foundation.layout.Box(

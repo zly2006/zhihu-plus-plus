@@ -45,6 +45,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -60,6 +61,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -241,6 +243,7 @@ fun SearchBar(
     searchBarTopPadding: Dp = 12.dp,
 ) {
     val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
     var textFieldValue by remember { mutableStateOf(TextFieldValue(searchStatus.searchText)) }
 
     LaunchedEffect(searchStatus.searchText) {
@@ -259,6 +262,8 @@ fun SearchBar(
         textStyle = TextStyle(fontWeight = FontWeight.Medium, fontSize = 17.sp, color = colorScheme.onSurface),
         cursorBrush = SolidColor(colorScheme.primary),
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        // 回车/搜索键：收起键盘（结果随输入防抖实时展示，筛选项在内联浮层里直接调整）。
+        keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp)

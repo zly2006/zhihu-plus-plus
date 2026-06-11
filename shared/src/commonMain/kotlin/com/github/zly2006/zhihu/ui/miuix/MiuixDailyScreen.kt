@@ -212,7 +212,8 @@ fun MiuixDailyScreen(
                 modifier = if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier,
             ) {
                 when {
-                    uiState.isLoading -> {
+                    // 下拉刷新时不显示中心转圈，避免与刷新动画叠加（旧内容仍展示，刷新成功后替换）
+                    uiState.isLoading && !isRefreshing -> {
                         Box(
                             modifier = Modifier.fillMaxSize().testTag(DAILY_SCREEN_LOADING_TAG),
                             contentAlignment = Alignment.Center,

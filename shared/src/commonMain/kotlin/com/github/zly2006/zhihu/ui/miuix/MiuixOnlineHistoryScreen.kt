@@ -45,6 +45,7 @@ import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.components.AutoHideTopBar
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixListLoadingIndicator
 import com.github.zly2006.zhihu.viewmodel.feed.OnlineHistoryViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
@@ -216,6 +217,11 @@ fun MiuixOnlineHistoryScreen(showBackButton: Boolean = false) {
                         )
                     }
                 }
+                MiuixListLoadingIndicator(
+                    isLoading = viewModel.isLoading,
+                    isEmpty = viewModel.displayItems.isEmpty(),
+                    isPullToRefresh = viewModel.isPullToRefresh,
+                )
             }
         }
     }

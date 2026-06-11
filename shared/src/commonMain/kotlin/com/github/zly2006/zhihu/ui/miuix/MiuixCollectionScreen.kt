@@ -6,6 +6,7 @@
 
 package com.github.zly2006.zhihu.ui.miuix
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,6 +29,7 @@ import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.Collection
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixListLoadingIndicator
 import com.github.zly2006.zhihu.viewmodel.CollectionsViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import top.yukonga.miuix.kmp.basic.Card
@@ -77,29 +79,35 @@ fun MiuixCollectionScreen(
             )
         },
     ) { padding ->
-        LazyColumn(
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
-                .overScrollVertical()
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
-            contentPadding = padding,
-        ) {
-            item { Spacer(Modifier.height(12.dp)) }
-            items(collections, key = { it.id }) { collection ->
-                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
-                    ArrowPreference(
-                        title = collection.title,
-                        onClick = { navigator.onNavigate(CollectionContent(collection.id)) },
-                    )
+        Box(Modifier.fillMaxSize()) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
+                    .overScrollVertical()
+                    .nestedScroll(scrollBehavior.nestedScrollConnection),
+                contentPadding = padding,
+            ) {
+                item { Spacer(Modifier.height(12.dp)) }
+                items(collections, key = { it.id }) { collection ->
+                    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
+                        ArrowPreference(
+                            title = collection.title,
+                            onClick = { navigator.onNavigate(CollectionContent(collection.id)) },
+                        )
+                    }
+                }
+                if (!useTestCollections && !viewModel.isEnd) {
+                    item {
+                        LaunchedEffect(Unit) { viewModel.loadMore(environment) }
+                    }
                 }
             }
-            if (!useTestCollections && !viewModel.isEnd) {
-                item {
-                    LaunchedEffect(Unit) { viewModel.loadMore(environment) }
-                }
-            }
+            MiuixListLoadingIndicator(
+                isLoading = viewModel.isLoading,
+                isEmpty = collections.isEmpty(),
+            )
         }
     }
 }

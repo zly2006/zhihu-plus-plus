@@ -244,7 +244,8 @@ private fun AboutContent(
                 Image(
                     painter = painterResource(Res.drawable.ic_launcher_foreground),
                     contentDescription = "知乎++",
-                    modifier = Modifier.size(74.dp).clip(RoundedCornerShape(24.dp)),
+                    // 与外框圆角同心：内圆角 = 外圆角 - 内缩量((88-74)/2=7) = 17dp
+                    modifier = Modifier.size(74.dp).clip(RoundedCornerShape(17.dp)),
                 )
             }
             // 知乎++ 流光：照抄 miuix 官方 AboutPage 的 HyperOS shimmer 扫光（drawWithCache + drawText + 横向渐变平移）

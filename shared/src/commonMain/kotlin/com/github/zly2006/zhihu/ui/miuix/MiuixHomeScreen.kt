@@ -14,16 +14,21 @@ package com.github.zly2006.zhihu.ui.miuix
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -44,6 +49,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
@@ -61,11 +67,14 @@ import com.github.zly2006.zhihu.ui.components.rememberFeedBlockActions
 import com.github.zly2006.zhihu.ui.loadSearchHistory
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixAccountSheet
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixListLoadingIndicator
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixSearchFilterSheet
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixSearchSuggestions
 import com.github.zly2006.zhihu.ui.miuix.components.SearchBarFake
 import com.github.zly2006.zhihu.ui.miuix.components.SearchBox
 import com.github.zly2006.zhihu.ui.miuix.components.SearchPager
 import com.github.zly2006.zhihu.ui.miuix.components.SearchStatus
+import com.github.zly2006.zhihu.ui.miuix.components.searchFilterSummary
 import com.github.zly2006.zhihu.ui.rememberHomeScreenRuntime
 import com.github.zly2006.zhihu.ui.saveSearchHistory
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
@@ -108,6 +117,7 @@ fun MiuixHomeScreen(
     var searchStatus by remember { mutableStateOf(SearchStatus(label = "")) }
     val showAccountSheet = remember { mutableStateOf(false) }
     var unreadCount by remember { mutableIntStateOf(0) }
+    var showSearchFilter by remember { mutableStateOf(false) }
 
     // 屏蔽相关 state（沿用 HomeScreen 逻辑）
     var showBlockUserDialog by remember { mutableStateOf(false) }
@@ -316,12 +326,12 @@ fun MiuixHomeScreen(
                     Box(
                         modifier = if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier,
                     ) {
-                        // 首次加载信息流为空时显示转圈，避免白屏
-                        if (viewModel.displayItems.isEmpty() && viewModel.isLoading) {
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                top.yukonga.miuix.kmp.basic.CircularProgressIndicator()
-                            }
-                        }
+                        // 首次加载信息流为空时显示转圈，避免白屏；下拉刷新时不显示，避免叠加
+                        MiuixListLoadingIndicator(
+                            isLoading = viewModel.isLoading,
+                            isEmpty = viewModel.displayItems.isEmpty(),
+                            isPullToRefresh = viewModel.isPullToRefresh,
+                        )
                         PaginatedList(
                             items = viewModel.displayItems,
                             listState = listState,
@@ -411,6 +421,31 @@ fun MiuixHomeScreen(
                         ),
                         onLoadMore = { vm.loadMore(paginationEnvironment) },
                         key = { item -> item.stableKey },
+                        topContent = {
+                            // 内联筛选入口：显示当前筛选并打开筛选弹层（省去独立搜索页）
+                            item {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { showSearchFilter = true }
+                                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Icon(
+                                        Icons.Default.FilterList,
+                                        contentDescription = "筛选",
+                                        tint = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                    Spacer(Modifier.size(8.dp))
+                                    Text(
+                                        searchFilterSummary(vm),
+                                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                        fontSize = 13.sp,
+                                    )
+                                }
+                            }
+                        },
                     ) { item ->
                         MiuixFeedCard(
                             item = item,
@@ -423,6 +458,16 @@ fun MiuixHomeScreen(
             },
         )
     } // 外层 Box 结束
+
+    // 内联搜索筛选弹层（排序/内容类型/时间范围），仅在有搜索结果时存在
+    searchViewModel?.let { vm ->
+        MiuixSearchFilterSheet(
+            show = showSearchFilter,
+            onDismiss = { showSearchFilter = false },
+            viewModel = vm,
+            environment = paginationEnvironment,
+        )
+    }
 
     // 屏蔽用户确认对话框（与 HomeScreen 同签名）
     com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog(

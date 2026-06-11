@@ -31,6 +31,7 @@ import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixListLoadingIndicator
 import com.github.zly2006.zhihu.viewmodel.feed.HistoryViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
@@ -99,6 +100,11 @@ fun MiuixLocalHistoryScreen(
                         )
                     }
                 }
+                MiuixListLoadingIndicator(
+                    isLoading = viewModel.isLoading,
+                    isEmpty = viewModel.displayItems.isEmpty(),
+                    isPullToRefresh = viewModel.isPullToRefresh,
+                )
             }
         }
     }

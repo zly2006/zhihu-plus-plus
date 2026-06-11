@@ -131,6 +131,7 @@ import com.github.zly2006.zhihu.ui.miuix.MiuixOnlineHistoryScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixPeopleScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixPinScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixQuestionScreen
+import com.github.zly2006.zhihu.ui.miuix.MiuixSearchScreen
 import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixAboutScreen
 import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixAppearanceSettingsScreen
 import com.github.zly2006.zhihu.ui.miuix.subscreens.MiuixBlockedFeedHistoryScreen
@@ -579,7 +580,11 @@ fun ZhihuMain(
                 }
                 composable<Search> { navEntry ->
                     val search: Search = navEntry.toRoute()
-                    SearchScreen(search)
+                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                        MiuixSearchScreen(search)
+                    } else {
+                        SearchScreen(search)
+                    }
                 }
                 composable<Collections> {
                     val data: Collections = it.toRoute()
