@@ -86,9 +86,6 @@ import kotlin.math.abs
  *   touch point must not snap back to center at lift); the cancel branch clears it after its
  *   settle, the commit branch leaves clearing to the host (the leaving entry's unload).
  */
-
-// composed { } is required here: the swipe needs composition-scoped state (coroutine scope,
-// up-to-date callbacks). A Modifier.Node rewrite is a deferred optimization.
 fun Modifier.navSwipeDismiss(
     enabled: Boolean,
     direction: NavSwipeDirection,
@@ -98,6 +95,8 @@ fun Modifier.navSwipeDismiss(
     onCancel: () -> Unit,
     onGesture: (NavGesture?) -> Unit = {},
 ): Modifier = composed {
+    // composed { } is required here: the swipe needs composition-scoped state (coroutine scope,
+    // up-to-date callbacks). A Modifier.Node rewrite is a deferred optimization.
     if (!enabled || direction == NavSwipeDirection.None) return@composed this
 
     val scope = rememberCoroutineScope()
