@@ -31,7 +31,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.test.printToLog
+import androidx.compose.ui.test.printToString
 import androidx.compose.ui.test.swipeUp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.navigation.Account
@@ -145,8 +145,17 @@ class AppearanceSettingsScreenInstrumentedTest {
         )
 
         composeRule.onNodeWithTag(APPEARANCE_SETTINGS_START_DESTINATION_TAG).performClick()
-        // [DIAG] 定位后删除：打印语义树，确认点击锚点后下拉是否展开、HotList 选项是否存在。
-        composeRule.onRoot(useUnmergedTree = true).printToLog("DROPDOWN_DEBUG")
+        composeRule.waitForIdle()
+        // [DIAG] 定位后删除：若点击锚点后下拉里没有 HotList 选项，带完整语义树报错（进入 gradle 输出）。
+        val diagOption = composeRule
+            .onAllNodesWithTag(appearanceSettingsStartDestinationOptionTag(HotList.name), useUnmergedTree = true)
+            .fetchSemanticsNodes(atLeastOneRootRequired = false)
+        if (diagOption.isEmpty()) {
+            error(
+                "DROPDOWN_DEBUG HotList 选项缺失。语义树:\n" +
+                    composeRule.onRoot(useUnmergedTree = true).printToString(maxDepth = 200),
+            )
+        }
         composeRule.onNodeWithTag(appearanceSettingsStartDestinationOptionTag(HotList.name)).performClick()
 
         waitUntilStringPreference(START_DESTINATION_PREFERENCE_KEY, expected = HotList.name)
