@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -67,6 +68,18 @@ private const val BOTTOM_BAR_ITEMS_PREFERENCE_KEY = "bottom_bar_items"
 private const val START_DESTINATION_PREFERENCE_KEY = "startDestination"
 private const val PREF_FONT_SIZE = "contentFontSize"
 private const val PREF_LINE_HEIGHT = "contentLineHeight"
+
+private val bottomBarItemLabels = mapOf(
+    "Home" to "主页",
+    "Follow" to "关注",
+    "HotList" to "热榜",
+    "Daily" to "日报",
+    "OnlineHistory" to "历史",
+    "MyCollections" to "收藏夹",
+    "Account" to "账号设置",
+)
+
+private val bottomBarItemKeys = bottomBarItemLabels.keys.toList()
 
 @Composable
 fun MiuixAppearanceSettingsScreen(
@@ -147,12 +160,18 @@ fun MiuixAppearanceSettingsScreen(
     // duo3_home_account 关闭时强制保留「账号」入口，否则账号设置无处可进。
     fun persistBottomBar(currentSet: Set<String>, duo3Enabled: Boolean) {
         val normalized = normalizeBottomBarSelection(currentSet, duo3Enabled, enforceMinimumSelection = true)
-        val available = listOf("Home", "Follow", "HotList", "Daily", "OnlineHistory", "Account").filter { it in normalized }
+        val available = bottomBarItemKeys.filter { it in normalized }
         val resolvedStart = resolveValidStartDestinationKey(startDestinationKey.value, available)
         selectedBottomBarKeys.value = normalized
         startDestinationKey.value = resolvedStart
         settings.putStringSet(BOTTOM_BAR_ITEMS_PREFERENCE_KEY, normalized)
         settings.putString(START_DESTINATION_PREFERENCE_KEY, resolvedStart)
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            onExit()
+        }
     }
 
     Scaffold(
@@ -163,7 +182,6 @@ fun MiuixAppearanceSettingsScreen(
                 title = "外观",
                 navigationIcon = {
                     IconButton(onClick = {
-                        onExit()
                         navigator.onNavigateBack()
                     }) {
                         Icon(MiuixIconsEmbedded.Back, "返回", tint = MiuixTheme.colorScheme.onBackground)
@@ -368,8 +386,8 @@ fun MiuixAppearanceSettingsScreen(
                     }
                     MiuixMultiSelectExpandable(
                         title = "选择显示的页面",
-                        options = listOf("Home", "Follow", "HotList", "Daily", "OnlineHistory", "Account"),
-                        optionLabel = { mapOf("Home" to "主页", "Follow" to "关注", "HotList" to "热榜", "Daily" to "日报", "OnlineHistory" to "历史", "Account" to "账号设置")[it] ?: it },
+                        options = bottomBarItemKeys,
+                        optionLabel = { bottomBarItemLabels[it] ?: it },
                         selectedOptions = selectedBottomBarKeys.value,
                         onSelectionChange = { persistBottomBar(it, duo3HomeAccount.value) },
                     )
@@ -644,8 +662,7 @@ private fun AnswerDoubleTapSpinner(current: String, onChange: (String) -> Unit) 
 
 @Composable
 private fun StartDestinationSpinner(current: String, availableKeys: Set<String>, onChange: (String) -> Unit) {
-    val allLabels = mapOf("Home" to "主页", "Follow" to "关注", "HotList" to "热榜", "Daily" to "日报", "OnlineHistory" to "历史", "Account" to "账号设置")
-    val filtered = allLabels.filterKeys { it in availableKeys }
+    val filtered = bottomBarItemLabels.filterKeys { it in availableKeys }
     val items = remember(filtered) { filtered.values.map { DropdownItem(title = it) } }
     val keys = remember(filtered) { filtered.keys.toList() }
     val idx = remember(current, keys) { keys.indexOf(current).coerceAtLeast(0) }
