@@ -20,15 +20,19 @@ package com.github.zly2006.zhihu
 import android.content.ContentResolver
 import android.content.Context
 import android.graphics.Bitmap
+import android.os.Build
+import android.os.Environment
 import android.provider.MediaStore
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.viewmodel.SharedAndroidPaginationEnvironment
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.io.File
 
 @RunWith(AndroidJUnit4::class)
 class ArticleExportEnvironmentInstrumentedTest {
@@ -55,6 +59,29 @@ class ArticleExportEnvironmentInstrumentedTest {
             bitmap.recycle()
             context.deleteSavedImage(displayName)
         }
+
+        val htmlDisplayName = "zhihu-html-export-regression-${System.currentTimeMillis()}.html"
+        try {
+            val savedLocation = environment.saveHtmlToDownloads(htmlDisplayName, "<html><body>正文</body></html>")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                assertEquals("Zhihu++/$htmlDisplayName", savedLocation)
+                assertTrue(context.savedDownloadExists(htmlDisplayName))
+            } else {
+                assertEquals(
+                    File(
+                        File(
+                            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                            "Zhihu++",
+                        ),
+                        htmlDisplayName,
+                    ).absolutePath,
+                    savedLocation,
+                )
+                assertTrue(File(savedLocation).exists())
+            }
+        } finally {
+            context.deleteSavedDownload(htmlDisplayName)
+        }
     }
 
     private fun Context.savedImageExists(displayName: String): Boolean =
@@ -68,6 +95,37 @@ class ArticleExportEnvironmentInstrumentedTest {
         )
     }
 
+    private fun Context.savedDownloadExists(displayName: String): Boolean =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            contentResolver.querySavedDownload(displayName) { count > 0 } == true
+        } else {
+            File(
+                File(
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                    "Zhihu++",
+                ),
+                displayName,
+            ).exists()
+        }
+
+    private fun Context.deleteSavedDownload(displayName: String) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            contentResolver.delete(
+                MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                "${MediaStore.MediaColumns.DISPLAY_NAME}=?",
+                arrayOf(displayName),
+            )
+        } else {
+            File(
+                File(
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                    "Zhihu++",
+                ),
+                displayName,
+            ).delete()
+        }
+    }
+
     private fun <T> ContentResolver.querySavedImage(
         displayName: String,
         block: android.database.Cursor.() -> T,
@@ -78,6 +136,21 @@ class ArticleExportEnvironmentInstrumentedTest {
         arrayOf(displayName),
         null,
     )?.use(block)
+
+    private fun <T> ContentResolver.querySavedDownload(
+        displayName: String,
+        block: android.database.Cursor.() -> T,
+    ): T? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        query(
+            MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+            arrayOf(MediaStore.MediaColumns._ID),
+            "${MediaStore.MediaColumns.DISPLAY_NAME}=?",
+            arrayOf(displayName),
+            null,
+        )?.use(block)
+    } else {
+        null
+    }
 
     private fun sampleArticleContent(): DataHolder.Article = DataHolder.Article(
         id = 1001L,

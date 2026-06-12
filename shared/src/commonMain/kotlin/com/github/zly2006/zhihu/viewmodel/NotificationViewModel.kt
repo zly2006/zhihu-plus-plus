@@ -22,24 +22,47 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.shared.data.NotificationItem
-import com.github.zly2006.zhihu.shared.data.fetchZhihuUnreadNotificationCount
-import com.github.zly2006.zhihu.shared.data.markAllZhihuNotificationsAsRead
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
+import com.github.zly2006.zhihu.shared.data.ZhihuPaging
+import com.github.zly2006.zhihu.shared.data.zhihuNotificationDefaultUrl
+import com.github.zly2006.zhihu.shared.data.zhihuNotificationFollowUrl
 import com.github.zly2006.zhihu.shared.data.zhihuNotificationRecentUrl
+import com.github.zly2006.zhihu.shared.data.zhihuNotificationVoteThankUrl
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.notification.matchNotificationType
+import com.github.zly2006.zhihu.shared.util.Log
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.jsonArray
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.reflect.typeOf
 
-interface NotificationPaginationEnvironment : PaginationEnvironment {
+interface NotificationSettingsEnvironment {
     val notificationSettingsStore: NotificationSettingsStore
 }
+
+interface NotificationEnvironment :
+    PaginationEnvironment,
+    NotificationSettingsEnvironment
 
 class NotificationViewModel :
     PaginationViewModel<NotificationItem>(
         dataType = typeOf<NotificationItem>(),
     ) {
     override val initialUrl = zhihuNotificationRecentUrl()
+    private val notificationSourceUrls = listOf(
+        zhihuNotificationDefaultUrl(),
+        zhihuNotificationFollowUrl(),
+        zhihuNotificationVoteThankUrl(),
+    )
+    private val notificationSourcePaging = mutableMapOf<String, ZhihuPaging?>()
+    private val endedNotificationSources = mutableSetOf<String>()
+    override val isEnd: Boolean
+        get() = notificationSourcePaging.isNotEmpty() &&
+            notificationSourceUrls.all { it in endedNotificationSources }
 
     // 未读消息数量
     var unreadCount: Int by mutableIntStateOf(0)
@@ -47,25 +70,88 @@ class NotificationViewModel :
 
     @Suppress("HttpUrlsUsage")
     override suspend fun fetchFeeds(environment: PaginationEnvironment) {
-        val notificationEnvironment = environment.requireNotificationEnvironment()
-        super.fetchFeeds(environment)
-        if (lastPaging?.next?.startsWith("http://") == true) {
-            lastPaging = lastPaging!!.copy(next = lastPaging!!.next.replace("http://", "https://"))
-        }
+        try {
+            val notificationSettingsEnvironment = environment.requireNotificationSettingsEnvironment()
+            val rawData = mutableListOf<JsonElement>()
+            val decodedData = mutableListOf<NotificationItem>()
+            val sourceFailures = mutableListOf<Exception>()
+            var successfulSourceCount = 0
+            val sourcesToFetch = if (notificationSourcePaging.isEmpty()) {
+                notificationSourceUrls
+            } else {
+                notificationSourceUrls.filterNot { it in endedNotificationSources }
+            }
 
-        // 获取未读消息数量
-        unreadCount = getUnreadCount(environment)
-        checkAndMarkAllAsRead(notificationEnvironment)
+            sourcesToFetch.forEach { sourceUrl ->
+                try {
+                    val url = notificationSourcePaging[sourceUrl]?.next ?: sourceUrl
+                    val json = environment.fetchJson(url.replace("http://", "https://"), include) ?: return@forEach
+                    successfulSourceCount++
+                    val jsonArray = json["data"]?.jsonArray ?: JsonArray(emptyList())
+                    rawData.addAll(jsonArray)
+                    decodedData += jsonArray.mapNotNull {
+                        try {
+                            ZhihuJson.decodeJson<NotificationItem>(it)
+                        } catch (e: Exception) {
+                            if (shouldLogDecodeFailures) {
+                                environment.logDecodeFailure(this::class.simpleName, it, e)
+                            }
+                            null
+                        }
+                    }
+
+                    val paging = json["paging"]?.let { ZhihuJson.decodeJson<ZhihuPaging>(it) }
+                    notificationSourcePaging[sourceUrl] = paging
+                    if (paging == null || paging.isEnd) {
+                        endedNotificationSources += sourceUrl
+                    }
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    sourceFailures += e
+                    Log.e("NotificationViewModel", "Failed to fetch notification source: $sourceUrl", e)
+                }
+            }
+
+            if (shouldReportNotificationFetchFailure(successfulSourceCount, sourceFailures.size)) {
+                environment.handleFetchFailure(this::class.simpleName, sourceFailures.first())
+                return
+            }
+
+            processResponse(
+                environment,
+                decodedData,
+                buildJsonArray {
+                    rawData.forEach { add(it) }
+                },
+            )
+
+            // 获取未读消息数量
+            unreadCount = getUnreadCount(environment)
+            checkAndMarkAllAsRead(environment, notificationSettingsEnvironment)
+        } finally {
+            isLoading = false
+        }
+    }
+
+    override fun refresh(environment: PaginationEnvironment) {
+        notificationSourcePaging.clear()
+        endedNotificationSources.clear()
+        super.refresh(environment)
+    }
+
+    override fun processResponse(environment: PaginationEnvironment, data: List<NotificationItem>, rawData: JsonArray) {
+        debugData.addAll(rawData)
+        val merged = mergeNotificationsByCreateTime(allData, data)
+        allData.clear()
+        allData.addAll(merged)
     }
 
     /**
      * 更新未读消息数量
      */
-    private suspend fun getUnreadCount(environment: PaginationEnvironment): Int {
+    private suspend fun getUnreadCount(environment: ZhihuApiEnvironment): Int {
         try {
-            return fetchZhihuUnreadNotificationCount(environment.httpClient()) {
-                environment.configureSignedRequest(this)
-            }
+            return environment.fetchUnreadNotificationCountSigned()
         } catch (_: Exception) {
             // 忽略错误
             return 0
@@ -88,17 +174,20 @@ class NotificationViewModel :
     /**
      * 检查如果所有消息都被屏蔽了，且unreadCount>=0，则主动调用一次readall
      */
-    private suspend fun checkAndMarkAllAsRead(environment: NotificationPaginationEnvironment) {
+    private suspend fun checkAndMarkAllAsRead(
+        apiEnvironment: ZhihuApiEnvironment,
+        settingsEnvironment: NotificationSettingsEnvironment,
+    ) {
         if (unreadCount >= 0 && allData.isNotEmpty()) {
             val hasVisibleNotification = allData.any {
-                shouldShowNotification(environment.notificationSettingsStore, it)
+                shouldShowNotification(settingsEnvironment.notificationSettingsStore, it)
             }
             if (!hasVisibleNotification) {
-                markAllAsRead(environment)
+                markAllAsRead(apiEnvironment)
             }
         }
-        if (environment.notificationSettingsStore.getAutoMarkAsReadEnabled()) {
-            markAllAsRead(environment)
+        if (settingsEnvironment.notificationSettingsStore.getAutoMarkAsReadEnabled()) {
+            markAllAsRead(apiEnvironment)
             unreadCount = 0
         }
     }
@@ -116,13 +205,25 @@ class NotificationViewModel :
      * 标记所有消息为已读
      */
     @OptIn(DelicateCoroutinesApi::class)
-    suspend fun markAllAsRead(environment: PaginationEnvironment) {
-        markAllZhihuNotificationsAsRead(environment.httpClient()) {
-            environment.configureSignedRequest(this)
-        }
+    suspend fun markAllAsRead(environment: ZhihuApiEnvironment) {
+        environment.markAllNotificationsAsReadSigned()
     }
 }
 
-private fun PaginationEnvironment.requireNotificationEnvironment(): NotificationPaginationEnvironment =
-    this as? NotificationPaginationEnvironment
+private fun PaginationEnvironment.requireNotificationSettingsEnvironment(): NotificationSettingsEnvironment =
+    this as? NotificationSettingsEnvironment
         ?: error("NotificationSettingsStore is required for notification pagination")
+
+internal fun mergeNotificationsByCreateTime(
+    existing: List<NotificationItem>,
+    incoming: List<NotificationItem>,
+): List<NotificationItem> {
+    val existingIds = existing.mapTo(mutableSetOf()) { it.id }
+    return (existing + incoming.filter { existingIds.add(it.id) })
+        .sortedByDescending { it.createTime }
+}
+
+internal fun shouldReportNotificationFetchFailure(
+    successfulSourceCount: Int,
+    failureCount: Int,
+): Boolean = successfulSourceCount == 0 && failureCount > 0

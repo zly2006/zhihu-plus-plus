@@ -25,6 +25,7 @@ import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
+import com.github.zly2006.zhihu.viewmodel.ContentInteractionEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
 import com.github.zly2006.zhihu.viewmodel.filter.extractTopicIds
@@ -96,9 +97,9 @@ private suspend fun resolveFeedBlockContentDetail(
 }
 
 interface HomeFeedInteractionViewModel {
-    suspend fun recordContentInteraction(environment: PaginationEnvironment, feed: Feed)
+    suspend fun recordContentInteraction(environment: ContentInteractionEnvironment, feed: Feed)
 
-    fun onUiContentClick(environment: PaginationEnvironment, feed: Feed, item: FeedDisplayItem)
+    fun onUiContentClick(environment: ContentInteractionEnvironment, feed: Feed, item: FeedDisplayItem)
 }
 
 class HomeFeedViewModel :
@@ -159,7 +160,7 @@ class HomeFeedViewModel :
      * 记录用户与内容的交互行为
      * 应该在用户点击、点赞等操作时调用
      */
-    override suspend fun recordContentInteraction(environment: PaginationEnvironment, feed: Feed) {
+    override suspend fun recordContentInteraction(environment: ContentInteractionEnvironment, feed: Feed) {
         try {
             environment.recordContentInteraction(feed)
         } catch (e: Exception) {
@@ -171,7 +172,7 @@ class HomeFeedViewModel :
      * 记录用户点击内容
      * 在viewModelScope中运行，使用viewModelScope代替GlobalScope
      */
-    override fun onUiContentClick(environment: PaginationEnvironment, feed: Feed, item: FeedDisplayItem) {
+    override fun onUiContentClick(environment: ContentInteractionEnvironment, feed: Feed, item: FeedDisplayItem) {
         viewModelScope.launch(Dispatchers.Default) {
             environment.sendFeedReadStatus(feed)
             recordContentInteraction(environment, feed)
@@ -179,7 +180,7 @@ class HomeFeedViewModel :
     }
 
     private suspend fun markItemsAsTouched(
-        environment: PaginationEnvironment,
+        environment: ContentInteractionEnvironment,
     ) {
         try {
             val currentTouchItems = displayItems

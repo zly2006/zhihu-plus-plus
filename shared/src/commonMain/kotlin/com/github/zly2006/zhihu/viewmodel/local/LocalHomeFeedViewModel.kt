@@ -20,6 +20,8 @@ package com.github.zly2006.zhihu.viewmodel.local
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.viewmodel.ContentInteractionEnvironment
+import com.github.zly2006.zhihu.viewmodel.LocalRecommendationEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
@@ -95,7 +97,7 @@ class LocalHomeFeedViewModel :
         }
     }
 
-    private suspend fun ensureEngine(environment: PaginationEnvironment): LocalRecommendationEngine {
+    private suspend fun ensureEngine(environment: LocalRecommendationEnvironment): LocalRecommendationEngine {
         if (!::recommendationEngine.isInitialized) {
             recommendationEngine = environment.localRecommendationEngine()
                 ?: error("LocalRecommendationEngine is required for local home feed")
@@ -131,9 +133,9 @@ class LocalHomeFeedViewModel :
     }
 
     override suspend fun recordContentInteraction(
-        environment: PaginationEnvironment,
+        environment: ContentInteractionEnvironment,
         feed: Feed,
     ) = Unit
 
-    override fun onUiContentClick(environment: PaginationEnvironment, feed: Feed, item: FeedDisplayItem) = Unit
+    override fun onUiContentClick(environment: ContentInteractionEnvironment, feed: Feed, item: FeedDisplayItem) = Unit
 }

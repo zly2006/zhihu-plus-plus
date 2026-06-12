@@ -28,7 +28,8 @@ import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.sourceLabel
 import com.github.zly2006.zhihu.shared.data.target
-import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.FeedDisplayEnvironment
+import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.jsonArray
@@ -37,7 +38,7 @@ class FollowViewModel : BaseFeedViewModel() {
     override val initialUrl: String
         get() = "https://www.zhihu.com/api/v3/moments?limit=10&desktop=true"
 
-    override fun createDisplayItem(environment: PaginationEnvironment, feed: Feed): FeedDisplayItem =
+    override fun createDisplayItem(environment: FeedDisplayEnvironment, feed: Feed): FeedDisplayItem =
         super.createDisplayItem(environment, feed).withFollowSourceLabel(feed)
 }
 
@@ -74,7 +75,7 @@ class RecentMomentsViewModel : ViewModel() {
     var isLoading by mutableStateOf(false)
     var errorMessage by mutableStateOf<String?>(null)
 
-    fun load(environment: PaginationEnvironment) {
+    fun load(environment: ZhihuApiEnvironment) {
         if (isLoading || users.isNotEmpty()) return
         isLoading = true
         viewModelScope.launch {

@@ -54,7 +54,7 @@ class NotificationSettingsScreenInstrumentedTest {
     @Test
     fun notificationSwitchesScrollAndPersistDeterministicallyAcrossForwardAndReversePasses() {
         // Start from cleared SharedPreferences so every row begins at its documented default value.
-        // This makes the assertions deterministic for all nine switches and prevents cross-test
+        // This makes the assertions deterministic for every switch and prevents cross-test
         // leakage from previous runs from changing the expected toggle target.
         val toggleCases = notificationToggleCases()
         toggleCases.forEach { toggleCase ->
@@ -142,6 +142,7 @@ class NotificationSettingsScreenInstrumentedTest {
 
     private fun readPreference(toggleCase: ToggleCase): Boolean = when (toggleCase.group) {
         ToggleGroup.AutoMarkAsRead -> settingsStore.getAutoMarkAsReadEnabled()
+        ToggleGroup.UnreadBadge -> settingsStore.getUnreadBadgeEnabled()
         ToggleGroup.SystemNotification -> settingsStore.getSystemNotificationEnabled(
             checkNotNull(toggleCase.type),
         )
@@ -156,6 +157,15 @@ class NotificationSettingsScreenInstrumentedTest {
             ToggleCase(
                 title = "打开通知自动已读",
                 group = ToggleGroup.AutoMarkAsRead,
+                defaultValue = true,
+                labelOccurrenceCount = 1,
+                labelOccurrenceIndex = 0,
+            ),
+        )
+        add(
+            ToggleCase(
+                title = "显示未读红点",
+                group = ToggleGroup.UnreadBadge,
                 defaultValue = true,
                 labelOccurrenceCount = 1,
                 labelOccurrenceIndex = 0,
@@ -200,6 +210,7 @@ class NotificationSettingsScreenInstrumentedTest {
 
     private enum class ToggleGroup {
         AutoMarkAsRead,
+        UnreadBadge,
         SystemNotification,
         DisplayInApp,
     }

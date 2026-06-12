@@ -24,6 +24,9 @@ import com.github.zly2006.zhihu.navigation.zhihuQuestionFeedsUrl
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.target
+import com.github.zly2006.zhihu.viewmodel.ContentBlocklistEnvironment
+import com.github.zly2006.zhihu.viewmodel.ContentInteractionEnvironment
+import com.github.zly2006.zhihu.viewmodel.FeedDisplayEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.filter.fetchBlockedUserIds
 
@@ -42,7 +45,7 @@ open class QuestionFeedViewModel(
         }
     }
 
-    override fun createDisplayItem(environment: PaginationEnvironment, feed: Feed): FeedDisplayItem {
+    override fun createDisplayItem(environment: FeedDisplayEnvironment, feed: Feed): FeedDisplayItem {
         val target = feed.target
         if (target is Feed.AnswerTarget) {
             return FeedDisplayItem(
@@ -57,7 +60,7 @@ open class QuestionFeedViewModel(
         return super.createDisplayItem(environment, feed)
     }
 
-    suspend fun followQuestion(environment: PaginationEnvironment, questionId: Long, follow: Boolean) {
+    suspend fun followQuestion(environment: ContentInteractionEnvironment, questionId: Long, follow: Boolean) {
         try {
             environment.followQuestion(questionId, follow)
         } catch (e: Exception) {
@@ -70,7 +73,7 @@ open class QuestionFeedViewModel(
         super.processResponse(environment, filtered, rawData)
     }
 
-    private fun filterBlockedAnswers(environment: PaginationEnvironment, data: List<Feed>): List<Feed> {
+    private fun filterBlockedAnswers(environment: ContentBlocklistEnvironment, data: List<Feed>): List<Feed> {
         val blockedUserIds = environment.fetchBlockedUserIds()
         if (blockedUserIds.isEmpty()) return data
         return data.filterNot { feed ->

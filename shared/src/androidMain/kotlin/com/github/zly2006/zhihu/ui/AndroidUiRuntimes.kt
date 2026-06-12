@@ -71,7 +71,7 @@ import com.github.zly2006.zhihu.viewmodel.filter.exportAllBlocklistToJson
 import com.github.zly2006.zhihu.viewmodel.filter.getBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.importAllBlocklistFromJson
 import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.notificationPaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.notificationEnvironment
 import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.za.MixedHomeFeedViewModel
 import io.ktor.client.HttpClient
@@ -477,7 +477,7 @@ actual fun rememberNotificationScreenRuntime(
 ): NotificationScreenRuntime {
     val context = LocalContext.current
     val environment = remember(context, settingsStore, viewModel) {
-        viewModel.notificationPaginationEnvironment(context, settingsStore)
+        viewModel.notificationEnvironment(context, settingsStore)
     }
     return NotificationScreenRuntime(
         environment = environment,

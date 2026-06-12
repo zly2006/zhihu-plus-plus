@@ -20,7 +20,7 @@ package com.github.zly2006.zhihu.viewmodel.feed
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.zhihuHotListUrl
-import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.FeedDisplayEnvironment
 
 class HotListViewModel : BaseFeedViewModel() {
     override val initialUrl: String
@@ -30,7 +30,7 @@ class HotListViewModel : BaseFeedViewModel() {
         allowGuestAccess = true
     }
 
-    override fun createDisplayItem(environment: PaginationEnvironment, feed: Feed): FeedDisplayItem = super.createDisplayItem(environment, feed).copy(
+    override fun createDisplayItem(environment: FeedDisplayEnvironment, feed: Feed): FeedDisplayItem = super.createDisplayItem(environment, feed).copy(
         authorName = null,
         avatarSrc = null,
     )

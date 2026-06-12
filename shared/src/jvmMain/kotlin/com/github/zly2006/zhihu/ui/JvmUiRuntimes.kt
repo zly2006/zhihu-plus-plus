@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.em
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.shared.data.DataHolder
@@ -410,9 +411,11 @@ actual fun ArticleWebViewContent(
     onImageLoadFailed: () -> Unit,
     onDoubleTap: () -> Unit,
 ) {
-    ArticleMarkdownContent(
+    RenderMarkdown(
         html = html,
         modifier = Modifier,
+        selectable = true,
+        enableScroll = false,
         header = {},
         footer = {},
     )
