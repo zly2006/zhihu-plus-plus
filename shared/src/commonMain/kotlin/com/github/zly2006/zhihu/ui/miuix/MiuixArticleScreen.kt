@@ -317,6 +317,9 @@ fun MiuixArticleScreen(
 
     val articleScaffold: @Composable () -> Unit = {
         Scaffold(
+            // 顶栏折叠（两行→一行）由 scrollBehavior 驱动，必须把其 nestedScrollConnection 挂到滚动祖先上，
+            // 否则内容滚动喂不到 heightOffset，两行大标题永不折叠。
+            modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
             topBar = {
                 AnimatedVisibility(
                     visible = showTopBar,
