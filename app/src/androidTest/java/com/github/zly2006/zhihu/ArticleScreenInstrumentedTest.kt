@@ -84,12 +84,16 @@ class ArticleScreenInstrumentedTest {
         composeRule.onNodeWithText("IP属地：上海").assertExists()
         composeRule.onNodeWithContentDescription("更多选项").assertIsDisplayed().performClick()
         composeRule.onNodeWithText("复制链接").assertIsDisplayed().performClick()
-        val clipboardText = composeRule.activity.clipboardManager.primaryClip
-            ?.getItemAt(0)
-            ?.coerceToText(composeRule.activity)
-            ?.toString()
-        assertTrue(clipboardText?.contains("https://zhuanlan.zhihu.com/p/777") == true)
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            clipboardText()?.contains("https://zhuanlan.zhihu.com/p/777") == true
+        }
+        assertTrue(clipboardText()?.contains("https://zhuanlan.zhihu.com/p/777") == true)
     }
+
+    private fun clipboardText(): String? = composeRule.activity.clipboardManager.primaryClip
+        ?.getItemAt(0)
+        ?.coerceToText(composeRule.activity)
+        ?.toString()
 
     @Test
     fun contentBodyAndMetadataRenderOffline() {

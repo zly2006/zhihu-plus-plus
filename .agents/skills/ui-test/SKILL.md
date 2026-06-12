@@ -6,6 +6,19 @@ license: CC BY-NC-SA 4.0
 
 # UI 自动化测试 Skill
 
+## 执行环境优先级
+
+- 调用本 skill 的 UI 自动化 agent 或 subagent 时，尽量使用 `gpt-5.4-mini`；复杂视觉或流程判断再使用 `gpt-5.4`，避免使用反应较慢的模型拖慢 AVD 交互。
+- 若 `/Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/SKILL.md` 存在，必须优先按 `$off-android-avd-ci-debug` 使用远端 `off` AVD runner，不要默认启动本地 AVD。
+- 远端 runner 只用于短生命周期 UI/AVD 验证：先运行 `status` / `boot-check` 确认健康；`boot-check` 会自行清理模拟器，真实 UI 交互要在 `off` 的远端 ADB 环境中启动短生命周期 AVD 后执行；验证结束后运行 `kill` 清理。
+- 只有 `$off-android-avd-ci-debug` 不存在，或远端 runner 明确不可用时，才退回本地 AVD。
+
+```bash
+/Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/scripts/off-avd-ci-debug.sh status
+/Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/scripts/off-avd-ci-debug.sh boot-check
+/Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/scripts/off-avd-ci-debug.sh kill
+```
+
 ## 失败经验
 
 ### 先判断布局占位是否破坏原有中心
@@ -185,23 +198,58 @@ python3 .agents/skills/ui-test/llm_test_helper.py screenshot /tmp/result.png
 
 ## 标准测试流程模板
 
+远端路径和本地回退路径必须分开执行。选择 `$off-android-avd-ci-debug` 时，后续 `adb` / `llm_test_helper.py` 都必须在能访问远端 emulator 的 `off` 环境中运行；裸 `adb` 只属于本地回退路径。如果远端 skill 当前只有 `status` / `boot-check` / `kill`，没有能保持 emulator 运行的交互入口，不能把 `boot-check` 后面接本机 `adb`；应先补远端交互脚本，或把远端 runner 明确标记为当前不可用后再走本地回退。
+
+### 远端优先流程
+
 ```bash
-# 1. 启动应用
+# 1. 先检查 off runner 健康状态
+/Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/scripts/off-avd-ci-debug.sh status
+/Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/scripts/off-avd-ci-debug.sh boot-check
+
+# 2. boot-check 会清理模拟器；真实 UI 交互必须在 off runner 的远端 ADB 环境执行。
+# 不要在本机继续执行裸 adb。需要设备命令时，用 ssh off 进入同一套远端环境：
+ssh off 'bash -lc '"'"'
+BASE=/home/dom/android-ci
+export JAVA_HOME="$BASE/java"
+export ANDROID_HOME="$BASE/android-sdk"
+export ANDROID_SDK_ROOT="$BASE/android-sdk"
+export ANDROID_USER_HOME="$BASE/android-home"
+export ANDROID_AVD_HOME="$BASE/avd"
+export ANDROID_EMULATOR_HOME="$BASE/emulator-home"
+export TMPDIR="$BASE/tmp"
+export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
+adb devices
+'"'"''
+
+# 3. 验证结束后清理
+/Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/scripts/off-avd-ci-debug.sh kill
+```
+
+### 本地回退流程
+
+仅当 `$off-android-avd-ci-debug` 不存在，或远端 runner 明确不可用时执行：
+
+```bash
+# 1. 启动本地 AVD
+emulator -avd Medium_Phone_2
+
+# 2. 启动应用
 adb shell am force-stop com.github.zly2006.zhplus.lite
 adb shell monkey -p com.github.zly2006.zhplus.lite -c android.intent.category.LAUNCHER 1
 sleep 10
 
-# 2. 确认界面元素
+# 3. 确认界面元素
 python3 .agents/skills/ui-test/llm_test_helper.py dump
 
-# 3. 交互（根据 dump 结果选择命令）
+# 4. 交互（根据 dump 结果选择命令）
 python3 .agents/skills/ui-test/llm_test_helper.py tap --tag nav_tab_hotlist
 
-# 4. 截图验证
+# 5. 截图验证
 python3 .agents/skills/ui-test/llm_test_helper.py screenshot /tmp/after_tap.png
 # （新 response 中）view /tmp/after_tap.png
 
-# 5. 滚动（无 tag 时）
+# 6. 滚动（无 tag 时）
 adb shell input swipe 540 1200 540 400 500   # 上滑
 adb shell input swipe 540 400 540 1200 500   # 下拉刷新
 ```
