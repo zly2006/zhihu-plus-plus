@@ -30,6 +30,7 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.swipeUp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.navigation.Account
@@ -142,6 +143,7 @@ class AppearanceSettingsScreenInstrumentedTest {
             expected = setOf(Home.name, Follow.name, Daily.name, HotList.name, Account.name),
         )
 
+        scrollBackUntilTagDisplayed(APPEARANCE_SETTINGS_START_DESTINATION_TAG)
         composeRule.onNodeWithTag(APPEARANCE_SETTINGS_START_DESTINATION_TAG).performClick()
         val hotListStartDestinationOptionTag = appearanceSettingsStartDestinationOptionTag(HotList.name)
         waitUntilTagExists(hotListStartDestinationOptionTag)
@@ -223,6 +225,17 @@ class AppearanceSettingsScreenInstrumentedTest {
                 return
             }
             scrollContainer().performVerticalSwipeCycle()
+            composeRule.waitForIdle()
+        }
+        composeRule.onNodeWithTag(tag).assertIsDisplayed()
+    }
+
+    private fun scrollBackUntilTagDisplayed(tag: String, maxSwipes: Int = 12) {
+        repeat(maxSwipes) {
+            if (isTagDisplayed(tag)) {
+                return
+            }
+            scrollContainer().performTouchInput { swipeDown() }
             composeRule.waitForIdle()
         }
         composeRule.onNodeWithTag(tag).assertIsDisplayed()
