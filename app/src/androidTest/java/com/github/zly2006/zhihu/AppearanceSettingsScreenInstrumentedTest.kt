@@ -143,8 +143,9 @@ class AppearanceSettingsScreenInstrumentedTest {
         )
 
         composeRule.onNodeWithTag(APPEARANCE_SETTINGS_START_DESTINATION_TAG).performClick()
-        composeRule.waitForIdle()
-        composeRule.onNodeWithTag(appearanceSettingsStartDestinationOptionTag(HotList.name)).performClick()
+        val hotListStartDestinationOptionTag = appearanceSettingsStartDestinationOptionTag(HotList.name)
+        waitUntilTagExists(hotListStartDestinationOptionTag)
+        composeRule.onNodeWithTag(hotListStartDestinationOptionTag, useUnmergedTree = true).performClick()
 
         waitUntilStringPreference(START_DESTINATION_PREFERENCE_KEY, expected = HotList.name)
         scrollContainer().performVerticalSwipeCycle()
