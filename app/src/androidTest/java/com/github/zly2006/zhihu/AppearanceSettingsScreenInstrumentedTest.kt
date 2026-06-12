@@ -19,6 +19,7 @@ package com.github.zly2006.zhihu
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
@@ -135,12 +136,14 @@ class AppearanceSettingsScreenInstrumentedTest {
         waitUntilStringSetPreference(
             BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
             expected = setOf(Home.name, Follow.name, Daily.name, Account.name),
+            context = "after removing online history",
         )
 
         composeRule.onNodeWithTag(appearanceSettingsBottomBarItemTag(HotList.name)).performClick()
         waitUntilStringSetPreference(
             BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
             expected = setOf(Home.name, Follow.name, Daily.name, HotList.name, Account.name),
+            context = "after adding hot list",
         )
 
         scrollBackUntilTagDisplayed(APPEARANCE_SETTINGS_START_DESTINATION_TAG)
@@ -242,23 +245,17 @@ class AppearanceSettingsScreenInstrumentedTest {
     }
 
     private fun waitUntilDisplayed(matcher: SemanticsMatcher, timeoutMillis: Long = 5_000) {
-        composeRule.waitUntil(timeoutMillis) { isDisplayed(matcher) }
+        waitUntilCondition("node matching $matcher is displayed", timeoutMillis) { isDisplayed(matcher) }
         composeRule.onNode(matcher, useUnmergedTree = true).assertIsDisplayed()
     }
 
     private fun waitUntilTagDisplayed(tag: String, timeoutMillis: Long = 5_000) {
-        composeRule.waitUntil(timeoutMillis) { isTagDisplayed(tag) }
+        waitUntilCondition("tag $tag is displayed", timeoutMillis) { isTagDisplayed(tag) }
         composeRule.onNodeWithTag(tag).assertIsDisplayed()
     }
 
     private fun waitUntilTagExists(tag: String, timeoutMillis: Long = 5_000) {
-        composeRule.waitUntil(timeoutMillis) {
-            composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() ||
-                composeRule
-                    .onAllNodesWithTag(tag, useUnmergedTree = true)
-                    .fetchSemanticsNodes(atLeastOneRootRequired = false)
-                    .isNotEmpty()
-        }
+        waitUntilCondition("tag $tag exists", timeoutMillis) { doesTagExist(tag) }
     }
 
     private fun boundsHeightForTag(tag: String): Float = composeRule
@@ -268,7 +265,7 @@ class AppearanceSettingsScreenInstrumentedTest {
         .height
 
     private fun waitUntilNodeDoesNotExist(matcher: SemanticsMatcher, timeoutMillis: Long = 5_000) {
-        composeRule.waitUntil(timeoutMillis) {
+        waitUntilCondition("node matching $matcher does not exist", timeoutMillis) {
             composeRule
                 .onAllNodes(matcher, useUnmergedTree = true)
                 .fetchSemanticsNodes(atLeastOneRootRequired = false)
@@ -299,7 +296,7 @@ class AppearanceSettingsScreenInstrumentedTest {
     }
 
     private fun waitUntilTagDoesNotExist(tag: String, timeoutMillis: Long = 5_000) {
-        composeRule.waitUntil(timeoutMillis) {
+        waitUntilCondition("tag $tag does not exist", timeoutMillis) {
             composeRule
                 .onAllNodesWithTag(tag)
                 .fetchSemanticsNodes(atLeastOneRootRequired = false)
@@ -312,22 +309,62 @@ class AppearanceSettingsScreenInstrumentedTest {
     }
 
     private fun waitUntilBooleanPreference(key: String, expected: Boolean, timeoutMillis: Long = 5_000) {
-        composeRule.waitUntil(timeoutMillis) { preferences.getBoolean(key, !expected) == expected }
+        waitUntilCondition(
+            "preference $key becomes $expected",
+            timeoutMillis,
+            failureMessage = { "Expected preference $key to be $expected, actual=${preferences.getBoolean(key, !expected)}" },
+        ) {
+            preferences.getBoolean(key, !expected) == expected
+        }
     }
 
     private fun waitUntilStringPreference(key: String, expected: String, timeoutMillis: Long = 5_000) {
-        composeRule.waitUntil(timeoutMillis) { preferences.getString(key, null) == expected }
+        waitUntilCondition(
+            "preference $key becomes $expected",
+            timeoutMillis,
+            failureMessage = { "Expected preference $key to be $expected, actual=${preferences.getString(key, null)}" },
+        ) {
+            preferences.getString(key, null) == expected
+        }
     }
 
     private fun waitUntilStringSetPreference(
         key: String,
         expected: Set<String>,
         timeoutMillis: Long = 5_000,
+        context: String = key,
     ) {
-        composeRule.waitUntil(timeoutMillis) {
+        waitUntilCondition(
+            "preference $key becomes $expected ($context)",
+            timeoutMillis,
+            failureMessage = {
+                "Expected preference $key to be $expected ($context), " +
+                    "actual=${preferences.getStringSet(key, emptySet())?.toSet()}"
+            },
+        ) {
             preferences.getStringSet(key, emptySet())?.toSet() == expected
         }
     }
+
+    private fun waitUntilCondition(
+        description: String,
+        timeoutMillis: Long,
+        failureMessage: () -> String = { "Timed out waiting until $description" },
+        condition: () -> Boolean,
+    ) {
+        try {
+            composeRule.waitUntil(description, timeoutMillis) { condition() }
+        } catch (e: ComposeTimeoutException) {
+            throw AssertionError(failureMessage(), e)
+        }
+    }
+
+    private fun doesTagExist(tag: String): Boolean =
+        composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() ||
+            composeRule
+                .onAllNodesWithTag(tag, useUnmergedTree = true)
+                .fetchSemanticsNodes(atLeastOneRootRequired = false)
+                .isNotEmpty()
 
     private fun isDisplayed(matcher: SemanticsMatcher): Boolean = runCatching {
         composeRule.onNode(matcher, useUnmergedTree = true).assertIsDisplayed()
