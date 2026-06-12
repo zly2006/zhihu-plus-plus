@@ -29,8 +29,6 @@ import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.test.swipeUp
 import androidx.navigation.compose.rememberNavController
 import androidx.test.ext.junit.rules.ActivityScenarioRule
-import androidx.test.platform.app.InstrumentationRegistry
-import androidx.test.uiautomator.UiDevice
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
@@ -103,7 +101,9 @@ fun SemanticsNodeInteraction.performVerticalSwipeCycle() {
 }
 
 fun MainActivityComposeRule.pressSystemBack() {
-    UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).pressBack()
+    activityRule.scenario.onActivity {
+        it.onBackPressedDispatcher.onBackPressed()
+    }
     waitForIdle()
 }
 

@@ -76,6 +76,10 @@ fun OnlineHistoryScreen() {
         }
     }
 
+    PlatformBackHandler(enabled = showClearHistoryDialog) {
+        showClearHistoryDialog = false
+    }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {

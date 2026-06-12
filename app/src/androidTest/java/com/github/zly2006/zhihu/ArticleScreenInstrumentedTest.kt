@@ -43,10 +43,9 @@ import com.github.zly2006.zhihu.ui.ArticleScreen
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.ui.rememberArticleActionsRuntime
-import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.CollectionItem
-import org.junit.Assert.assertTrue
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -85,15 +84,10 @@ class ArticleScreenInstrumentedTest {
         composeRule.onNodeWithContentDescription("更多选项").assertIsDisplayed().performClick()
         composeRule.onNodeWithText("复制链接").assertIsDisplayed().performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) {
-            clipboardText()?.contains("https://zhuanlan.zhihu.com/p/777") == true
+            composeRule.activity.clipboardDestination == ARTICLE
         }
-        assertTrue(clipboardText()?.contains("https://zhuanlan.zhihu.com/p/777") == true)
+        assertEquals(ARTICLE, composeRule.activity.clipboardDestination)
     }
-
-    private fun clipboardText(): String? = composeRule.activity.clipboardManager.primaryClip
-        ?.getItemAt(0)
-        ?.coerceToText(composeRule.activity)
-        ?.toString()
 
     @Test
     fun contentBodyAndMetadataRenderOffline() {
