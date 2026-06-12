@@ -20,6 +20,8 @@
 
 处理截图导出体积时，先判断尺寸来源，不能只在最终图片上套总像素上限。网页或 Compose 这类逻辑布局导出，应先选定合理的输出 DPI/缩放倍率，再把 CSS/DP 尺寸转换成像素；否则高密度设备会直接生成 3x/4x 物理像素图，后面再猜一个像素上限只是补救。例子：长图导出应该按固定输出 DPI 渲染同一份逻辑页面宽度，而不是让页面宽度跟随设备物理像素后再硬压缩。
 
+修复截图导出空白、裁切或渲染时序问题时，不能只验证 bitmap 能创建、JPEG 能编码或文件大小大于 0；这些都不能证明页面内容真的画进去了。必须检查实际像素内容，至少验证导出区域存在非背景像素，最好保存并查看一张真实导出结果。例子：一个 WebView 长图如果在最终高度布局后立刻截图，可能得到一张尺寸正确但全白的图片；测试只断言压缩成功会漏掉根因，应验证正文文字区域已经产生可见像素。
+
 ### 返回栈上下文保存
 
 处理“从弹层或列表进入详情，再返回原位置”的问题时，不能只保存开关状态，还要保存用户可见上下文。评论区这类弹层不仅要恢复打开状态，还要恢复评论列表滚动位置；从评论进入用户资料页再返回时，如果只是重新打开评论区但回到顶部，本质上仍然丢失了上下文。例子：列表弹层里的某一项进入详情页，返回后应该看到原先那一项附近，而不是只把弹层重新显示出来。
@@ -107,24 +109,63 @@
 ## Android 调试标准流程
 
 注意：
-1. 必须使用avd验证，不要使用真机。
+1. 必须使用avd验证，不要使用真机。若 `/Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/SKILL.md` 存在，UI/AVD 验证必须优先使用 `$off-android-avd-ci-debug` 提供的远端 `off` AVD；只有该 skill 不存在或远端 runner 不可用时，才退回本地 AVD。
 2. 时刻注意你是一个LLM，延迟很高。所以大多数情况下不需要你执行sleep指令，你本身的反应就很慢，足够程序响应了。这也是说，如果需要执行双击等复杂手势，必须用&&来串联多个adb指令，不然你的反应太慢就不是双击了。
 3. UI 验证时如果启动后看到“下载官方App”“查看协议”“查看设置”这类官方 App/协议确认页，或进入知乎网页登录/安全验证页，不要当成普通业务 UI 问题；这表示当前 AVD 登录态缺失或失效。应先按 `.agents/skills/launch-on-device/SKILL.md` 的 Login JSON Backup and Restore 流程恢复/覆盖 `files/account.json`，确认已登录后再继续 UI 验证；不要反复卡在登录流程里。
+4. 调用 `$ui-test` 或安排 UI 自动化 subagent 时，尽量使用 `gpt-5.4-mini`；复杂判断再使用 `gpt-5.4`，避免使用反应较慢的模型拖慢 AVD 交互。
+
+### AVD 选择优先级
+
+1. 若 `$off-android-avd-ci-debug` 存在，先读取该 skill，并用其远端 runner 脚本做健康检查：
+   ```bash
+   /Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/scripts/off-avd-ci-debug.sh status
+   /Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/scripts/off-avd-ci-debug.sh boot-check
+   ```
+2. `boot-check` 只证明远端 runner 可启动并会在结束时清理模拟器。需要真实 UI 交互时，应按 `$off-android-avd-ci-debug` 的远端环境约定在 `off` 上启动短生命周期 AVD，并在远端 ADB 环境中安装、启动和执行 UI 验证，不要把本地 ADB 当成远端 emulator。
+3. 远端 AVD 只作为短生命周期 runner 使用；验证完成后必须清理：
+   ```bash
+   /Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/scripts/off-avd-ci-debug.sh kill
+   ```
+4. 只有远端 skill 缺失或远端 runner 明确不可用时，才使用本地 `Medium_Phone_2`。
 
 ### 应用启动与验证
+远端路径和本地回退路径必须分开执行，不能连续复制执行。只要选择了 `$off-android-avd-ci-debug`，后续 `adb` / `ui-test` 命令都必须在 `off` 的远端 ADB 环境中运行，不能继续使用本机裸 `adb`。如果当前远端 skill 只有 `status` / `boot-check` / `kill`，没有能保持 emulator 运行的交互入口，不能把 `boot-check` 后面接本机 `adb`；应先补远端交互脚本，或把远端 runner 明确标记为当前不可用后再走本地回退。
+
 ```bash
-# 1. 检查包名（必须先做）
+# 检查包名（必须先做）
 grep "applicationId" app/build.gradle.kts
 # lite variant: com.github.zly2006.zhplus.lite
+```
 
-# 2. 启动模拟器（如果还没启动）
+远端优先路径：
+
+```bash
+/Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/scripts/off-avd-ci-debug.sh status
+/Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/scripts/off-avd-ci-debug.sh boot-check
+# boot-check 会清理模拟器。真实 UI 交互必须在 off 上启动短生命周期 AVD 后执行。
+# 后续设备命令的作用域必须类似这样，不能换成本机裸 adb：
+ssh off 'bash -lc '"'"'
+BASE=/home/dom/android-ci
+export JAVA_HOME="$BASE/java"
+export ANDROID_HOME="$BASE/android-sdk"
+export ANDROID_SDK_ROOT="$BASE/android-sdk"
+export ANDROID_USER_HOME="$BASE/android-home"
+export ANDROID_AVD_HOME="$BASE/avd"
+export ANDROID_EMULATOR_HOME="$BASE/emulator-home"
+export TMPDIR="$BASE/tmp"
+export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
+adb devices
+'"'"''
+```
+
+本地回退路径，仅当 off skill 缺失或远端 runner 明确不可用时执行：
+
+```bash
 emulator -avd Medium_Phone_2
 
-# 3. 构建并安装
 ./gradlew assembleLiteDebug
 adb install -r app/build/outputs/apk/lite/debug/app-lite-debug.apk
 
-# 4. 启动
 adb shell am force-stop com.github.zly2006.zhplus.lite
 adb shell monkey -p com.github.zly2006.zhplus.lite -c android.intent.category.LAUNCHER 1
 ```
@@ -144,7 +185,7 @@ adb shell monkey -p com.github.zly2006.zhplus.lite -c android.intent.category.LA
 
 ### UI 双代理复检
 
-`$ui-voyager` 和 `$picky-user` 运行成本较高，非必要不要调用。只有在改动范围较大、交互路径复杂、主 agent 已经完成基础截图/设备验证但仍需要额外视角，或我明确要求复检时，才启动它们。调用时必须使用 5.4 mini 级别模型，避免使用过慢模型。
+`$ui-voyager` 和 `$picky-user` 运行成本较高，非必要不要调用。只有在改动范围较大、交互路径复杂、主 agent 已经完成基础截图/设备验证但仍需要额外视角，或我明确要求复检时，才启动它们。调用时必须优先使用 `gpt-5.4-mini`，复杂场景可用 `gpt-5.4`，避免使用过慢模型。
 
 需要调用时，主 agent 在完成上面的基础验证后，再执行以下流程：
 
