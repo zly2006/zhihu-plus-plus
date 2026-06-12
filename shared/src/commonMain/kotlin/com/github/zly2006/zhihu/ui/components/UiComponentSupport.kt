@@ -50,6 +50,7 @@ import com.github.zly2006.zhihu.shared.nlp.KeywordWithWeight
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.feed.FeedBlockAuthorInfo
 import com.github.zly2006.zhihu.viewmodel.filter.rememberBlocklistManager
 import kotlinx.coroutines.launch
 
@@ -57,7 +58,7 @@ data class FeedBlockActions(
     val handleBlockUser: (
         viewModel: BaseFeedViewModel,
         feedItem: FeedDisplayItem,
-        onShowDialog: (Pair<String, String>) -> Unit,
+        onShowDialog: (FeedBlockAuthorInfo) -> Unit,
     ) -> Unit,
     val handleBlockTopic: (
         viewModel: BaseFeedViewModel,
@@ -88,7 +89,7 @@ expect fun rememberBlockByKeywordsRuntime(): BlockByKeywordsRuntime
 @Composable
 fun BlockUserConfirmDialog(
     showDialog: Boolean,
-    userToBlock: Pair<String, String>?,
+    userToBlock: FeedBlockAuthorInfo?,
     displayItems: List<FeedDisplayItem>,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
@@ -115,6 +116,18 @@ fun BlockUserConfirmDialog(
                 } catch (e: Exception) {
                     Log.e("FeedBlockActions", "Failed to block user", e)
                     userMessages.showShortMessage("屏蔽用户失败: ${e.message}")
+                }
+            }
+        },
+        onConfirmBlockMcn = { organizationName ->
+            coroutineScope.launch {
+                try {
+                    blocklistManager.addBlockedMcnOrganization(organizationName)
+                    onConfirm()
+                    userMessages.showShortMessage("已屏蔽MCN机构：$organizationName")
+                } catch (e: Exception) {
+                    Log.e("FeedBlockActions", "Failed to block MCN organization", e)
+                    userMessages.showShortMessage("屏蔽MCN机构失败: ${e.message}")
                 }
             }
         },

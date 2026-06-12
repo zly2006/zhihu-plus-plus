@@ -80,6 +80,7 @@ import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.components.rememberFeedBlockActions
+import com.github.zly2006.zhihu.viewmodel.feed.FeedBlockAuthorInfo
 import com.github.zly2006.zhihu.viewmodel.feed.FollowRecommendViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.FollowViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.RecentMomentsViewModel
@@ -395,7 +396,7 @@ fun FollowRecommendScreen(
 
     // 屏蔽用户确认对话框
     var showBlockUserDialog by remember { mutableStateOf(false) }
-    var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var userToBlock by remember { mutableStateOf<FeedBlockAuthorInfo?>(null) }
 
     Column {
         FeedPullToRefresh(viewModel, environment) {
@@ -505,7 +506,7 @@ fun FollowDynamicScreen(
 
     // 屏蔽用户确认对话框
     var showBlockUserDialog by remember { mutableStateOf(false) }
-    var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var userToBlock by remember { mutableStateOf<FeedBlockAuthorInfo?>(null) }
 
     Column {
         FeedPullToRefresh(viewModel, environment) {

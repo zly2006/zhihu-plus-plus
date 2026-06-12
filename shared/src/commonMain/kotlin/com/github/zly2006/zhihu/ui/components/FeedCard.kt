@@ -53,6 +53,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -79,6 +80,7 @@ import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Navigator
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.mcnCompany
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
@@ -86,6 +88,8 @@ import com.github.zly2006.zhihu.shared.platform.rememberIsLiteVariant
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.util.parseHtmlTextWithTheme
+import com.github.zly2006.zhihu.viewmodel.filter.normalizeMcnCompany
+import com.github.zly2006.zhihu.viewmodel.filter.rememberBlocklistManager
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.max
@@ -124,7 +128,9 @@ fun FeedCard(
     val uriHandler = LocalUriHandler.current
     val userMessages = rememberUserMessageSink()
     val settings = rememberSettingsStore()
+    val blocklistManager = rememberBlocklistManager()
     val isLiteVariant = rememberIsLiteVariant()
+    var mcnCompany by remember(item.authorUrlToken) { mutableStateOf<String?>(null) }
     var offsetX by remember { mutableFloatStateOf(0f) }
     var currentY by remember { mutableFloatStateOf(0f) } // 当前手指Y位置
     var startY by remember { mutableFloatStateOf(0f) } // 开始滑动时的Y位置
@@ -155,6 +161,23 @@ fun FeedCard(
                 userMessages.showMessage("暂不支持打开该内容", UserMessageDuration.Short)
             }
         }
+    }
+
+    LaunchedEffect(item.authorUrlToken, item.authorName) {
+        item.authorBadgeV2.mcnCompany().normalizeMcnCompany()?.let {
+            mcnCompany = it
+            return@LaunchedEffect
+        }
+        val urlToken = item.authorUrlToken
+        if (urlToken.isNullOrBlank()) {
+            mcnCompany = null
+            return@LaunchedEffect
+        }
+        blocklistManager.getCachedMcnAuthor(urlToken)?.let { cachedAuthor ->
+            mcnCompany = cachedAuthor.mcnCompany.normalizeMcnCompany()
+            return@LaunchedEffect
+        }
+        mcnCompany = null
     }
 
     // 动画偏移量
@@ -196,6 +219,7 @@ fun FeedCard(
             ) {
                 FeedCardContent(
                     item = item,
+                    mcnCompany = mcnCompany,
                     showFeedThumbnail = showFeedThumbnail,
                     thumbnailUrl = thumbnailUrl,
                     showMenu = showMenu,
@@ -247,12 +271,8 @@ fun FeedCard(
                                     onDragEnd = {
                                         isDragging = false
                                         when {
-                                            abs(offsetX) >= 75f && currentY - startY < -30f && onLike != null -> {
-                                                onLike(item)
-                                            }
-                                            abs(offsetX) >= 75f && currentY - startY > 30f && onDislike != null -> {
-                                                onDislike(item)
-                                            }
+                                            abs(offsetX) >= 75f && currentY - startY < -30f -> onLike(item)
+                                            abs(offsetX) >= 75f && currentY - startY > 30f -> onDislike(item)
                                         }
                                         coroutineScope.launch {
                                             offsetX = 0f
@@ -285,6 +305,7 @@ fun FeedCard(
                 ) {
                     FeedCardContent(
                         item = item,
+                        mcnCompany = mcnCompany,
                         showFeedThumbnail = showFeedThumbnail,
                         thumbnailUrl = thumbnailUrl,
                         showMenu = showMenu,
@@ -470,6 +491,7 @@ private fun FeedCardMenuBox(
 @Composable
 private fun FeedCardContent(
     item: FeedDisplayItem,
+    mcnCompany: String?,
     showFeedThumbnail: Boolean,
     thumbnailUrl: String?,
     showMenu: Boolean,
@@ -564,6 +586,11 @@ private fun FeedCardContent(
                                 Spacer(Modifier.width(4.dp))
                                 AuthorBadge(authorBadge, compact = true)
                             }
+                            val resolvedMcnCompany = mcnCompany
+                            if (resolvedMcnCompany != null) {
+                                Spacer(Modifier.width(4.dp))
+                                McnBadge(mcnCompany = resolvedMcnCompany)
+                            }
                         }
                         Spacer(Modifier.width(6.dp))
                     }
@@ -625,6 +652,11 @@ private fun FeedCardContent(
                 if (authorBadge?.isUsefulInList == true) {
                     Spacer(Modifier.width(4.dp))
                     AuthorBadge(authorBadge, compact = true)
+                }
+                val resolvedMcnCompany = mcnCompany
+                if (resolvedMcnCompany != null) {
+                    Spacer(Modifier.width(4.dp))
+                    McnBadge(mcnCompany = resolvedMcnCompany)
                 }
             }
         }

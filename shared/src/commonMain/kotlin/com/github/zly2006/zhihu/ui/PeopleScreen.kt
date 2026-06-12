@@ -62,6 +62,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
@@ -93,7 +94,9 @@ import com.github.zly2006.zhihu.ui.PeopleListUiState
 import com.github.zly2006.zhihu.ui.PeopleProfileUiState
 import com.github.zly2006.zhihu.ui.PeopleSortedListUiState
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
+import com.github.zly2006.zhihu.ui.components.BlockRecommendationSourceDialog
 import com.github.zly2006.zhihu.ui.components.FeedCard
+import com.github.zly2006.zhihu.ui.components.McnBadge
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.viewmodel.ContentBlocklistEnvironment
@@ -103,6 +106,10 @@ import com.github.zly2006.zhihu.viewmodel.ProfileLoadEnvironment
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.deleteSigned
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.filter.NoopMcnCompanyProvider
+import com.github.zly2006.zhihu.viewmodel.filter.ZhihuMcnCompanyProvider
+import com.github.zly2006.zhihu.viewmodel.filter.normalizeMcnCompany
+import com.github.zly2006.zhihu.viewmodel.filter.rememberBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.postSigned
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import io.ktor.client.call.body
@@ -325,6 +332,7 @@ class PersonViewModel(
     var headline by mutableStateOf("")
     var officialBadge by mutableStateOf<OfficialBadge?>(null)
     var officialBadgeDetails by mutableStateOf<List<OfficialBadge>>(emptyList())
+    var mcnCompany by mutableStateOf<String?>(null)
     var followerCount by mutableIntStateOf(0)
     var followingCount by mutableIntStateOf(0)
     var answerCount by mutableIntStateOf(0)
@@ -424,6 +432,7 @@ class PersonViewModel(
         this.headline = profile.headline
         this.officialBadge = profile.officialBadge
         this.officialBadgeDetails = profile.officialBadgeDetails
+        this.mcnCompany = profile.mcnCompany
         this.followerCount = profile.followerCount
         this.followingCount = profile.followingCount
         this.answerCount = profile.answerCount
@@ -488,6 +497,7 @@ const val PEOPLE_SCREEN_ANSWER_SORT_TIME_TAG = "people_screen_answer_sort_create
 const val PEOPLE_SCREEN_ARTICLE_SORT_HOT_TAG = "people_screen_article_sort_voteups"
 const val PEOPLE_SCREEN_ARTICLE_SORT_TIME_TAG = "people_screen_article_sort_created"
 const val PEOPLE_SCREEN_OFFICIAL_BADGE_TAG = "people_screen_official_badge"
+const val PEOPLE_SCREEN_MCN_BADGE_TAG = "people_screen_mcn_badge"
 
 fun peopleScreenTabTag(index: Int): String = "people_screen_tab_$index"
 
@@ -564,6 +574,7 @@ private fun PersonViewModel.toUiState(): PeopleScreenUiState = PeopleScreenUiSta
         headline = headline,
         officialBadge = officialBadge,
         officialBadgeDetails = officialBadgeDetails,
+        mcnCompany = mcnCompany,
         followerCount = followerCount,
         followingCount = followingCount,
         answerCount = answerCount,
@@ -667,6 +678,15 @@ private fun PeopleScreenContent(
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val viewModel = viewModel { PersonViewModel(person) }
     val coroutineScope = rememberCoroutineScope()
+    val blocklistManager = rememberBlocklistManager()
+    val mcnCompanyProvider = remember(paginationEnvironment) {
+        runCatching {
+            ZhihuMcnCompanyProvider(paginationEnvironment.httpClient()) { request ->
+                paginationEnvironment.configureSignedRequest(request)
+            }
+        }.getOrElse { NoopMcnCompanyProvider }
+    }
+    var mcnCompanyToBlock by remember(person.urlToken) { mutableStateOf<String?>(null) }
     var testUiState by remember(person.id, person.urlToken, testOverrides?.initialUiState) {
         mutableStateOf(testOverrides?.initialUiState ?: PeopleScreenUiState())
     }
@@ -685,6 +705,31 @@ private fun PeopleScreenContent(
             viewModel.load(paginationEnvironment)
         } catch (e: Exception) {
             userMessages.showShortMessage("加载用户信息失败: ${e.message}")
+        }
+    }
+    LaunchedEffect(person.urlToken, uiState.profile.name, uiState.profile.mcnCompany, testOverrides) {
+        if (testOverrides != null || person.urlToken.isBlank()) {
+            return@LaunchedEffect
+        }
+        uiState.profile.mcnCompany.normalizeMcnCompany()?.let { profileMcn ->
+            blocklistManager.cacheMcnCompany(person.urlToken, uiState.profile.name, profileMcn)
+            viewModel.mcnCompany = profileMcn
+            return@LaunchedEffect
+        }
+        blocklistManager.getCachedMcnAuthor(person.urlToken)?.let { cachedAuthor ->
+            viewModel.mcnCompany = cachedAuthor.mcnCompany.normalizeMcnCompany()
+            return@LaunchedEffect
+        }
+        runCatching {
+            mcnCompanyProvider.getMcnCompany(person.urlToken).normalizeMcnCompany()
+        }.onSuccess { resolvedMcn ->
+            if (resolvedMcn.isNullOrBlank()) {
+                blocklistManager.cacheMcnCompany(person.urlToken, uiState.profile.name, null)
+                viewModel.mcnCompany = null
+            } else {
+                blocklistManager.cacheMcnCompany(person.urlToken, uiState.profile.name, resolvedMcn)
+                viewModel.mcnCompany = resolvedMcn
+            }
         }
     }
     LaunchedEffect(pagerState.currentPage, testOverrides) {
@@ -784,8 +829,37 @@ private fun PeopleScreenContent(
                                 } else {
                                     coroutineScope.launch {
                                         try {
-                                            viewModel.toggleRecommendationBlock(paginationEnvironment)
-                                            userMessages.showShortMessage(if (viewModel.isBlockedInRecommendations) "已屏蔽推荐" else "已取消屏蔽推荐")
+                                            if (viewModel.isBlockedInRecommendations) {
+                                                viewModel.toggleRecommendationBlock(paginationEnvironment)
+                                                userMessages.showShortMessage("已取消屏蔽推荐")
+                                                return@launch
+                                            }
+
+                                            val cachedAuthor = blocklistManager.getCachedMcnAuthor(person.urlToken)
+                                            val resolvedMcn = if (cachedAuthor != null) {
+                                                cachedAuthor.mcnCompany.normalizeMcnCompany()
+                                            } else {
+                                                val lookupResult = runCatching {
+                                                    mcnCompanyProvider.getMcnCompany(person.urlToken).normalizeMcnCompany()
+                                                }
+                                                if (lookupResult.isFailure) {
+                                                    userMessages.showShortMessage("识别MCN机构失败，请稍后重试")
+                                                    return@launch
+                                                }
+                                                lookupResult.getOrNull().also { company ->
+                                                    blocklistManager.cacheMcnCompany(person.urlToken, viewModel.name, company)
+                                                }
+                                            }
+                                            if (resolvedMcn.isNullOrBlank()) {
+                                                viewModel.toggleRecommendationBlock(paginationEnvironment)
+                                                userMessages.showShortMessage("已屏蔽推荐")
+                                            } else {
+                                                if (blocklistManager.isMcnOrganizationBlocked(resolvedMcn)) {
+                                                    userMessages.showShortMessage("该 MCN 已在屏蔽列表中")
+                                                } else {
+                                                    mcnCompanyToBlock = resolvedMcn
+                                                }
+                                            }
                                         } catch (e: Exception) {
                                             userMessages.showShortMessage("操作失败: ${e.message}")
                                         }
@@ -1137,6 +1211,38 @@ private fun PeopleScreenContent(
                 }
             }
         }
+    }
+
+    val resolvedMcnCompanyToBlock = mcnCompanyToBlock
+    if (resolvedMcnCompanyToBlock != null) {
+        BlockRecommendationSourceDialog(
+            authorName = viewModel.name.ifBlank { person.name },
+            mcnCompany = resolvedMcnCompanyToBlock,
+            isMcnBlocked = false,
+            onDismiss = { mcnCompanyToBlock = null },
+            onBlockUser = {
+                coroutineScope.launch {
+                    try {
+                        viewModel.toggleRecommendationBlock(paginationEnvironment)
+                        mcnCompanyToBlock = null
+                        userMessages.showShortMessage("已屏蔽推荐")
+                    } catch (e: Exception) {
+                        userMessages.showShortMessage("操作失败: ${e.message}")
+                    }
+                }
+            },
+            onBlockMcn = {
+                coroutineScope.launch {
+                    try {
+                        blocklistManager.addBlockedMcnOrganization(resolvedMcnCompanyToBlock)
+                        mcnCompanyToBlock = null
+                        userMessages.showShortMessage("已屏蔽MCN机构：$resolvedMcnCompanyToBlock")
+                    } catch (e: Exception) {
+                        userMessages.showShortMessage("操作失败: ${e.message}")
+                    }
+                }
+            },
+        )
     }
 }
 
@@ -1677,6 +1783,14 @@ private fun UserInfoHeader(
                                 .testTag(PEOPLE_SCREEN_OFFICIAL_BADGE_TAG),
                         )
                     }
+                    if (profile.mcnCompany != null) {
+                        McnBadge(
+                            mcnCompany = profile.mcnCompany,
+                            modifier = Modifier
+                                .padding(start = 6.dp)
+                                .testTag(PEOPLE_SCREEN_MCN_BADGE_TAG),
+                        )
+                    }
                 }
                 Text(
                     profile.headline,
@@ -1684,6 +1798,16 @@ private fun UserInfoHeader(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
+                if (profile.mcnCompany != null) {
+                    Text(
+                        text = "MCN机构：${profile.mcnCompany}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color(0xFF7A5200),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
                 OfficialBadgeDetails(
                     badges = profile.officialBadgeDetails,
                     modifier = Modifier.padding(top = 6.dp),
@@ -1751,6 +1875,7 @@ data class PeopleProfileUiState(
     val headline: String = "",
     val officialBadge: OfficialBadge? = null,
     val officialBadgeDetails: List<OfficialBadge> = emptyList(),
+    val mcnCompany: String? = null,
     val followerCount: Int = 0,
     val followingCount: Int = 0,
     val answerCount: Int = 0,

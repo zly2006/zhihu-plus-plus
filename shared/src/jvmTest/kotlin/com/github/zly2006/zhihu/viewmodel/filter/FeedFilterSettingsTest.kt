@@ -32,6 +32,8 @@ class FeedFilterSettingsTest {
             "enableNLPBlocking" to false,
             "nlpSimilarityThreshold" to 0.65f,
             "enableUserBlocking" to false,
+            "enableMcnBlocking" to false,
+            "blockAllMcnAuthors" to true,
             "enableTopicBlocking" to false,
             "topicBlockingThreshold" to 3,
             "blockZhihuAdPlatform" to false,
@@ -47,6 +49,8 @@ class FeedFilterSettingsTest {
         assertEquals(false, settings.enableNlpBlocking)
         assertEquals(0.65, settings.nlpSimilarityThreshold, 0.0001)
         assertEquals(false, settings.enableUserBlocking)
+        assertEquals(false, settings.enableMcnBlocking)
+        assertEquals(true, settings.blockAllMcnAuthors)
         assertEquals(false, settings.enableTopicBlocking)
         assertEquals(3, settings.topicBlockingThreshold)
         assertEquals(false, settings.adBlockSettings.blockZhihuAdPlatform)

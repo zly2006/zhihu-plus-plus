@@ -94,6 +94,7 @@ import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.components.rememberFeedBlockActions
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.feed.FeedBlockAuthorInfo
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
 import com.github.zly2006.zhihu.viewmodel.fetchUnreadNotificationCountSigned
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
@@ -125,7 +126,6 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
     val notificationSettings = rememberNotificationSettingsStore()
     val userMessages = rememberUserMessageSink()
     val openExternalUrl = rememberExternalUrlOpener()
-
     val duo3HomeAccount = settings.getBoolean("duo3_home_account", false)
     val showRefreshFab = settings.getBoolean("showRefreshFab", true)
     val showUnreadBadge = notificationSettings.getUnreadBadgeEnabled()
@@ -205,7 +205,7 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
 
     // 屏蔽用户确认对话框
     var showBlockUserDialog by remember { mutableStateOf(false) }
-    var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) } // 二元组内容为 userId 和 userName。
+    var userToBlock by remember { mutableStateOf<FeedBlockAuthorInfo?>(null) }
 
     // 按关键词屏蔽对话框
     var showBlockByKeywordsDialog by remember { mutableStateOf(false) }

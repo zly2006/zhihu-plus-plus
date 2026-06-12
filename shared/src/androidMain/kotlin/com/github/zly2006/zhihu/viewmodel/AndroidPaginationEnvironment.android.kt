@@ -73,6 +73,7 @@ import com.github.zly2006.zhihu.viewmodel.CollectionItem
 import com.github.zly2006.zhihu.viewmodel.filter.AndroidContentFilterRuntime
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
+import com.github.zly2006.zhihu.viewmodel.filter.ZhihuMcnCompanyProvider
 import com.github.zly2006.zhihu.viewmodel.filter.contentFilterSettings
 import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
@@ -302,6 +303,9 @@ open class SharedAndroidPaginationEnvironment(
             },
             onDetailsKeywordFiltered = { item, keyword ->
                 Log.e("ContentFilterExtensions", "Filtered item '${item.title}' due to keyword '$keyword' in details: ${item.content}")
+            },
+            mcnCompanyProvider = ZhihuMcnCompanyProvider(httpClient()) { request ->
+                configureSignedRequest(request)
             },
         )
         return HomeFeedFilterResult(

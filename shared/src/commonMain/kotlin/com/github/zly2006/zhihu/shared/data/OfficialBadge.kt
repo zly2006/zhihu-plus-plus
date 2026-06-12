@@ -75,3 +75,22 @@ private fun DataHolder.BadgeV2.Badge.asOfficialBadge(): OfficialBadge? {
         detailType = detailType,
     )
 }
+
+fun DataHolder.BadgeV2?.mcnCompany(): String? {
+    this ?: return null
+    val badges = detailBadges.orEmpty() + mergedBadges.orEmpty()
+    return badges.firstNotNullOfOrNull { badge ->
+        val isMcnBadge = sequenceOf(badge.type, badge.detailType, badge.title)
+            .filter { it.isNotBlank() }
+            .any { it.contains("mcn", ignoreCase = true) }
+        if (!isMcnBadge) {
+            return@firstNotNullOfOrNull null
+        }
+
+        badge.sources
+            ?.firstNotNullOfOrNull { source -> source.name.takeIf { it.isNotBlank() } }
+            ?: badge.description.takeUnless {
+                it.isBlank() || it.equals("MCN", ignoreCase = true)
+            }
+    }
+}

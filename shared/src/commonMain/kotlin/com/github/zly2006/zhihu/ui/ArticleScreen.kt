@@ -138,6 +138,7 @@ import com.github.zly2006.zhihu.ui.components.CollectionDialogComponent
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
+import com.github.zly2006.zhihu.ui.components.McnBadge
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
 import com.github.zly2006.zhihu.ui.components.VotersSheet
@@ -146,6 +147,10 @@ import com.github.zly2006.zhihu.ui.components.rememberPreferCollapsedExitUntilCo
 import com.github.zly2006.zhihu.util.smoothGradient
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
+import com.github.zly2006.zhihu.viewmodel.filter.NoopMcnCompanyProvider
+import com.github.zly2006.zhihu.viewmodel.filter.ZhihuMcnCompanyProvider
+import com.github.zly2006.zhihu.viewmodel.filter.normalizeMcnCompany
+import com.github.zly2006.zhihu.viewmodel.filter.rememberBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import com.materialkolor.ktx.harmonize
@@ -574,6 +579,14 @@ fun ArticleScreen(
     val navigator = LocalNavigator.current
     val articleScreenRuntime = rememberArticleScreenRuntime()
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
+    val blocklistManager = rememberBlocklistManager()
+    val mcnProvider = remember(environment) {
+        runCatching {
+            ZhihuMcnCompanyProvider(environment.httpClient()) { request ->
+                environment.configureSignedRequest(request)
+            }
+        }.getOrElse { NoopMcnCompanyProvider }
+    }
     val articleHost = articleScreenRuntime.articleHost
     val previewPreloader = articleScreenRuntime.previewPreloader
     val backStackEntry by articleHost?.articleNavController?.currentBackStackEntryAsState()
@@ -605,6 +618,7 @@ fun ArticleScreen(
     var showSummaryDialog by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
     var showDoubleTapActionDialog by remember { mutableStateOf(false) }
+    var authorMcnCompany by remember(viewModel.authorUrlToken) { mutableStateOf<String?>(null) }
     var showVoters by rememberSaveable(article.type, article.id) { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val hapticFeedback = LocalHapticFeedback.current
@@ -629,6 +643,23 @@ fun ArticleScreen(
 
     LaunchedEffect(Unit) {
         readHistoryRecorder.addReadHistory(article)
+    }
+    LaunchedEffect(viewModel.authorUrlToken, viewModel.authorName) {
+        val urlToken = viewModel.authorUrlToken
+        if (urlToken.isBlank()) {
+            authorMcnCompany = null
+            return@LaunchedEffect
+        }
+        blocklistManager.getCachedMcnAuthor(urlToken)?.let { cachedAuthor ->
+            authorMcnCompany = cachedAuthor.mcnCompany.normalizeMcnCompany()
+            return@LaunchedEffect
+        }
+        runCatching {
+            mcnProvider.getMcnCompany(urlToken).normalizeMcnCompany()
+        }.onSuccess { resolvedMcn ->
+            blocklistManager.cacheMcnCompany(urlToken, viewModel.authorName, resolvedMcn)
+            authorMcnCompany = resolvedMcn
+        }
     }
 
     fun upVoteFromDoubleTap() {
@@ -1102,6 +1133,11 @@ fun ArticleScreen(
                                                 badge = viewModel.authorBadge,
                                                 compact = !expanded,
                                             )
+                                        }
+                                        val resolvedAuthorMcnCompany = authorMcnCompany
+                                        if (resolvedAuthorMcnCompany != null) {
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            McnBadge(mcnCompany = resolvedAuthorMcnCompany)
                                         }
                                     }
                                     if (viewModel.authorBio.isNotEmpty() && expanded) {

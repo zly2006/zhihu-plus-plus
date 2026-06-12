@@ -282,6 +282,34 @@ fun ContentFilterSettingsScreen(
                     highlightedKey = highlightedSetting,
                 )
 
+                val enableMcnBlocking = remember { mutableStateOf(settings.getBoolean("enableMcnBlocking", true)) }
+                SettingItemWithSwitch(
+                    title = { Text("启用MCN机构屏蔽") },
+                    description = { Text("按作者所属MCN机构屏蔽内容") },
+                    checked = enableMcnBlocking.value,
+                    onCheckedChange = {
+                        enableMcnBlocking.value = it
+                        settings.putBoolean("enableMcnBlocking", it)
+                    },
+                    settingKey = "enableMcnBlocking",
+                    highlightedKey = highlightedSetting,
+                )
+
+                AnimatedVisibility(visible = enableMcnBlocking.value) {
+                    val blockAllMcnAuthors = remember { mutableStateOf(settings.getBoolean("blockAllMcnAuthors", false)) }
+                    SettingItemWithSwitch(
+                        title = { Text("屏蔽所有MCN机构用户") },
+                        description = { Text("开启后，所有检测到MCN机构的作者内容都会被屏蔽") },
+                        checked = blockAllMcnAuthors.value,
+                        onCheckedChange = {
+                            blockAllMcnAuthors.value = it
+                            settings.putBoolean("blockAllMcnAuthors", it)
+                        },
+                        settingKey = "blockAllMcnAuthors",
+                        highlightedKey = highlightedSetting,
+                    )
+                }
+
                 val enableTopicBlocking = remember { mutableStateOf(settings.getBoolean("enableTopicBlocking", true)) }
                 SettingItemWithSwitch(
                     title = { Text("启用主题屏蔽") },
