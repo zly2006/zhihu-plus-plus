@@ -19,8 +19,6 @@ package com.github.zly2006.zhihu
 
 import android.content.Context
 import android.content.SharedPreferences
-import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
@@ -28,7 +26,6 @@ import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onAllNodes
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -147,12 +144,6 @@ class AppearanceSettingsScreenInstrumentedTest {
 
         composeRule.onNodeWithTag(APPEARANCE_SETTINGS_START_DESTINATION_TAG).performClick()
         composeRule.waitForIdle()
-        // [DIAG] 定位后删除：dump 所有 testTag（紧凑单行，避免被测试进度刷掉）。
-        val diagTags = composeRule
-            .onAllNodes(SemanticsMatcher("any") { true }, useUnmergedTree = true)
-            .fetchSemanticsNodes(atLeastOneRootRequired = false)
-            .mapNotNull { it.config.getOrNull(SemanticsProperties.TestTag) }
-        error("DROPDOWN_DEBUG totalTags=${diagTags.size} tags=$diagTags")
         composeRule.onNodeWithTag(appearanceSettingsStartDestinationOptionTag(HotList.name)).performClick()
 
         waitUntilStringPreference(START_DESTINATION_PREFERENCE_KEY, expected = HotList.name)
