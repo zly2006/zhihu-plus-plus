@@ -19,6 +19,8 @@ package com.github.zly2006.zhihu
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
@@ -26,12 +28,11 @@ import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodes
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.test.printToString
 import androidx.compose.ui.test.swipeUp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.navigation.Account
@@ -146,16 +147,12 @@ class AppearanceSettingsScreenInstrumentedTest {
 
         composeRule.onNodeWithTag(APPEARANCE_SETTINGS_START_DESTINATION_TAG).performClick()
         composeRule.waitForIdle()
-        // [DIAG] 定位后删除：若点击锚点后下拉里没有 HotList 选项，带完整语义树报错（进入 gradle 输出）。
-        val diagOption = composeRule
-            .onAllNodesWithTag(appearanceSettingsStartDestinationOptionTag(HotList.name), useUnmergedTree = true)
+        // [DIAG] 定位后删除：dump 所有 testTag（紧凑单行，避免被测试进度刷掉）。
+        val diagTags = composeRule
+            .onAllNodes(SemanticsMatcher("any") { true }, useUnmergedTree = true)
             .fetchSemanticsNodes(atLeastOneRootRequired = false)
-        if (diagOption.isEmpty()) {
-            error(
-                "DROPDOWN_DEBUG HotList 选项缺失。语义树:\n" +
-                    composeRule.onRoot(useUnmergedTree = true).printToString(maxDepth = 200),
-            )
-        }
+            .mapNotNull { it.config.getOrNull(SemanticsProperties.TestTag) }
+        error("DROPDOWN_DEBUG totalTags=${diagTags.size} tags=$diagTags")
         composeRule.onNodeWithTag(appearanceSettingsStartDestinationOptionTag(HotList.name)).performClick()
 
         waitUntilStringPreference(START_DESTINATION_PREFERENCE_KEY, expected = HotList.name)
