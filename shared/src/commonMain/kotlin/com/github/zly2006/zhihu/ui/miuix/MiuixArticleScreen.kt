@@ -6,9 +6,12 @@
 
 package com.github.zly2006.zhihu.ui.miuix
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
@@ -479,9 +482,7 @@ fun MiuixArticleScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
-                    .overScrollVertical()
-                    .nestedScroll(scrollBehavior.nestedScrollConnection),
+                    .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier),
             ) {
                 Column(
                     modifier = Modifier
