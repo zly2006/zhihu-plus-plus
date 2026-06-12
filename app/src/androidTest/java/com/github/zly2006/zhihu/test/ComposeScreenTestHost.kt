@@ -91,7 +91,11 @@ fun MainActivityComposeRule.setZhihuMainContent() {
     waitForIdle()
     activity.setContent {
         ZhihuTheme {
-            AndroidZhihuMain(navController = rememberNavController<NavDestination>(MainTabs))
+            // 与生产一致：activity.navController 必须是 AndroidZhihuMain 实际渲染的同一实例，
+            // 否则 activity.navigate() 操作的是 onCreate 旧栈，openFrom 等基于 backStack 的判定会出错。
+            val navController = rememberNavController<NavDestination>(MainTabs)
+            activity.navController = navController
+            AndroidZhihuMain(navController = navController)
         }
     }
     waitForIdle()
