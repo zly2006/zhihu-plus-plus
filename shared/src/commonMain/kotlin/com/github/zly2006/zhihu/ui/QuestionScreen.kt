@@ -41,6 +41,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ExpandLess
@@ -50,6 +51,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -74,6 +77,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.data.decodeQuestionContentDetail
+import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
@@ -112,6 +116,7 @@ data class QuestionScreenTestOverrides(
 )
 
 const val QUESTION_SCREEN_LIST_TAG = "question_screen_list"
+const val QUESTION_BACK_BUTTON_TAG = "question_back_button"
 const val QUESTION_TITLE_TAG = "question_title"
 const val QUESTION_DETAIL_TOGGLE_TAG = "question_detail_toggle"
 const val QUESTION_DETAIL_CONTENT_TAG = "question_detail_content"
@@ -153,6 +158,7 @@ fun QuestionScreen(
     question: Question,
     testOverrides: QuestionScreenTestOverrides? = null,
 ) {
+    val navigator = LocalNavigator.current
     val settings = rememberSettingsStore()
     val shareRuntime = rememberShareDialogRuntime()
     val openZhihuWebUrl = rememberZhihuWebUrlOpener()
@@ -226,16 +232,33 @@ fun QuestionScreen(
         Scaffold(
             modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars),
             topBar = {
-                SelectionContainer(
-                    modifier = Modifier.questionSelectionWorkaround(),
+                Row(
+                    verticalAlignment = Alignment.Top,
                 ) {
-                    Row {
+                    IconButton(
+                        onClick = navigator.onNavigateBack,
+                        modifier = Modifier
+                            .padding(start = 8.dp, top = 8.dp)
+                            .testTag(QUESTION_BACK_BUTTON_TAG),
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        ),
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    }
+                    SelectionContainer(
+                        modifier = Modifier
+                            .weight(1f)
+                            .questionSelectionWorkaround(),
+                    ) {
                         Text(
                             text = title,
                             fontSize = 24.sp,
                             lineHeight = 32.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier
+                                .fillMaxWidth()
                                 .padding(16.dp)
                                 .testTag(QUESTION_TITLE_TAG),
                         )
