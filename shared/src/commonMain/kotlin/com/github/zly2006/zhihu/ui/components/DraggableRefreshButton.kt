@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -37,6 +38,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.shared.platform.rememberScreenSizeDp
@@ -53,6 +55,7 @@ import kotlin.math.roundToInt
 fun DraggableRefreshButton(
     modifier: Modifier = Modifier,
     preferenceName: String = "fabRefresh",
+    buttonSize: Dp = 56.dp,
     onClick: () -> Unit,
     content: @Composable () -> Unit = {
         Icon(Icons.Default.Refresh, contentDescription = "刷新")
@@ -68,7 +71,8 @@ fun DraggableRefreshButton(
 
     fun adjustFabPosition() {
         with(density) {
-            offsetX = offsetX.coerceIn(0f, screenSize.width.dp.toPx() - 56.dp.toPx())
+            val maxOffsetX = (screenSize.width.dp.toPx() - buttonSize.toPx()).coerceAtLeast(0f)
+            offsetX = offsetX.coerceIn(0f, maxOffsetX)
             offsetY = offsetY.coerceIn(0f, screenSize.height.dp.toPx() - 250.dp.toPx())
         }
     }
@@ -87,42 +91,54 @@ fun DraggableRefreshButton(
     )
     val hapticFeedback = LocalHapticFeedback.current
 
-    FloatingActionButton(
-        onClick = onClick,
-        shape = CircleShape,
-        modifier = modifier
-            .offset { IntOffset(animatedOffsetX.roundToInt(), animatedOffsetY.roundToInt()) }
-            .pointerInput(Unit) {
-                detectDragGestures(
-                    onDragStart = {
-                        pressing = true
-                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                    },
-                    onDragEnd = {
-                        pressing = false
+    val draggableModifier = modifier
+        .offset { IntOffset(animatedOffsetX.roundToInt(), animatedOffsetY.roundToInt()) }
+        .pointerInput(buttonSize) {
+            detectDragGestures(
+                onDragStart = {
+                    pressing = true
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                },
+                onDragEnd = {
+                    pressing = false
+                    adjustFabPosition()
+                    with(density) {
+                        val screenWidth = screenSize.width.dp.toPx()
+                        val maxOffsetX = (screenWidth - buttonSize.toPx()).coerceAtLeast(0f)
+                        offsetX =
+                            if (offsetX < screenWidth / 2) {
+                                0f
+                            } else {
+                                maxOffsetX
+                            }
+                    }
+                    settings.putFloat("$preferenceName-x", offsetX)
+                    settings.putFloat("$preferenceName-y", offsetY)
+                },
+                onDrag = { change, dragAmount ->
+                    change.consume()
+                    if (pressing) {
+                        offsetX += dragAmount.x
+                        offsetY += dragAmount.y
                         adjustFabPosition()
-                        with(density) {
-                            val screenWidth = screenSize.width.dp.toPx()
-                            offsetX =
-                                if (offsetX < screenWidth / 2) {
-                                    0f
-                                } else {
-                                    screenWidth - 56.dp.toPx()
-                                }
-                        }
-                        settings.putFloat("$preferenceName-x", offsetX)
-                        settings.putFloat("$preferenceName-y", offsetY)
-                    },
-                    onDrag = { change, dragAmount ->
-                        change.consume()
-                        if (pressing) {
-                            offsetX += dragAmount.x
-                            offsetY += dragAmount.y
-                            adjustFabPosition()
-                        }
-                    },
-                )
-            },
-        content = content,
-    )
+                    }
+                },
+            )
+        }
+
+    if (buttonSize < 56.dp) {
+        SmallFloatingActionButton(
+            onClick = onClick,
+            shape = CircleShape,
+            modifier = draggableModifier,
+            content = content,
+        )
+    } else {
+        FloatingActionButton(
+            onClick = onClick,
+            shape = CircleShape,
+            modifier = draggableModifier,
+            content = content,
+        )
+    }
 }

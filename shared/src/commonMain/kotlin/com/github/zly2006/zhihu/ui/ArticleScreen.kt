@@ -20,8 +20,9 @@ package com.github.zly2006.zhihu.ui
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -1639,26 +1640,35 @@ fun ArticleScreen(
         // 跳转按钮需要压在问题区和回答区之上。
         if (article.type == ArticleType.Answer && buttonSkipAnswer) {
             val showSkipButton = !autoHideSkipAnswerButton || isScrollingUp || scrollState.value == 0
-            val skipButtonAlpha by animateFloatAsState(
-                targetValue = if (showSkipButton) 1f else 0f,
-                animationSpec = tween(200),
-                label = "skipButtonAlpha",
-            )
-            DraggableRefreshButton(
-                modifier = Modifier.graphicsLayer { alpha = skipButtonAlpha },
-                onClick = {
-                    if (showSkipButton) {
-                        navigatingToNextAnswer = true
-                        navigateToNext()
-                        navigatingToNextAnswer = false
-                    }
-                },
-                preferenceName = "buttonSkipAnswer",
+            AnimatedVisibility(
+                visible = showSkipButton,
+                enter = fadeIn(animationSpec = tween(200)),
+                exit = fadeOut(animationSpec = tween(200)),
             ) {
-                if (navigatingToNextAnswer) {
-                    CircularProgressIndicator(modifier = Modifier.size(30.dp))
-                } else {
-                    Icon(Icons.Filled.SkipNext, contentDescription = "下一个回答")
+                DraggableRefreshButton(
+                    modifier = Modifier.graphicsLayer { alpha = 0.82f },
+                    onClick = {
+                        if (showSkipButton) {
+                            navigatingToNextAnswer = true
+                            navigateToNext()
+                            navigatingToNextAnswer = false
+                        }
+                    },
+                    preferenceName = "buttonSkipAnswer",
+                    buttonSize = 40.dp,
+                ) {
+                    if (navigatingToNextAnswer) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(22.dp),
+                            strokeWidth = 2.dp,
+                        )
+                    } else {
+                        Icon(
+                            Icons.Filled.SkipNext,
+                            contentDescription = "下一个回答",
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
                 }
             }
         }
