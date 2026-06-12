@@ -75,6 +75,11 @@ class AndroidArticleExportRenderer(
                 if (isFinished) return
                 isFinished = true
                 mainHandler.removeCallbacks(timeoutRunnable)
+                measureAndLayoutExportWebView(
+                    webView = webView,
+                    widthPx = viewportWidthPx,
+                    heightPx = contentHeightPx.coerceAtLeast(1),
+                )
                 if (continuation.isActive) {
                     continuation.resume(
                         AndroidPreparedExportWebView(
