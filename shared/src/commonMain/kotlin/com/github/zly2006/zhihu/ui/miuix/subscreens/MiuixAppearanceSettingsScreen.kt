@@ -128,7 +128,6 @@ fun MiuixAppearanceSettingsScreen(
     val showSearchHistory = remember { mutableStateOf(settings.getBoolean("showSearchHistory", true)) }
 
     // 导航
-    val useCustomNav = remember { mutableStateOf(settings.getBoolean("use_custom_nav_host", true)) }
     val enablePredictiveBack = remember { mutableStateOf(settings.getBoolean("enable_predictive_back", true)) }
 
     // 123Duo3
@@ -433,15 +432,6 @@ fun MiuixAppearanceSettingsScreen(
             item { SmallTitle(text = "导航") }
             item {
                 Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
-                    SwitchPreference(
-                        checked = useCustomNav.value,
-                        onCheckedChange = {
-                            useCustomNav.value = it
-                            settings.putBoolean("use_custom_nav_host", it)
-                        },
-                        title = "使用自定义导航",
-                        summary = "替代系统默认导航，需要重启生效",
-                    )
                     SwitchPreference(
                         checked = enablePredictiveBack.value,
                         onCheckedChange = {

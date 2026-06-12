@@ -16,7 +16,9 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
  * The result channel (navigateForResult/setResult/observeResult) is deferred past v1 core
  * (design spec §12) and intentionally absent from this signature.
  */
-public class NavController<T : NavKey>(public val backStack: SnapshotStateList<T>) {
+public class NavController<T : NavKey>(
+    public val backStack: SnapshotStateList<T>,
+) {
     /** Pushes [key] onto the top of the stack. */
     public fun push(key: T) {
         backStack.add(key)

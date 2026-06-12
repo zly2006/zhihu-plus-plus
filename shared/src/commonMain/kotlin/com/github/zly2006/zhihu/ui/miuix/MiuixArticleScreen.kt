@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -48,6 +49,7 @@ import androidx.compose.material.icons.filled.Summarize
 import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -73,8 +75,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavHostController
-import androidx.navigation.toRoute
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.Article
@@ -90,6 +90,7 @@ import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
 import com.github.zly2006.zhihu.ui.ArticleVideoAttachmentContent
+import com.github.zly2006.zhihu.ui.LocalArticleAnswerSwitcher
 import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.ui.VoteUpState
 import com.github.zly2006.zhihu.ui.components.AnswerHorizontalOverscroll
@@ -144,6 +145,8 @@ fun MiuixArticleScreen(
     viewModel: ArticleViewModel,
 ) {
     val navigator = LocalNavigator.current
+    // 回答切换在单个导航 entry 内进行（见 ArticleAnswerSlot）；无 slot 时回退到 push 导航。
+    val answerSwitch = LocalArticleAnswerSwitcher.current
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
     val articleActions = rememberArticleActionsRuntime()
     val settings = rememberSettingsStore()
@@ -267,8 +270,8 @@ fun MiuixArticleScreen(
         if (prev != null) {
             sharedData.pendingInitialContent = prev
             sharedData.promoteForNavigation(sharedData.answerTransitionDirection)
-            popCurrentAnswer(articleHost?.articleNavController)
-            navigator.onNavigate(prev.article)
+            answerSwitch?.invoke(prev.article, sharedData.answerTransitionDirection)
+                ?: navigator.onNavigate(prev.article)
         } else {
             sharedData?.pendingInitialContent = sharedData.navigator?.previousAnswerPreview
             sharedData?.promoteForNavigation(sharedData.answerTransitionDirection)
@@ -276,8 +279,8 @@ fun MiuixArticleScreen(
                 val prevCached = sharedData?.navigator?.loadPrevious()
                 if (prevCached != null) {
                     sharedData.pendingInitialContent = prevCached
-                    popCurrentAnswer(articleHost?.articleNavController)
-                    navigator.onNavigate(prevCached.article)
+                    answerSwitch?.invoke(prevCached.article, sharedData.answerTransitionDirection)
+                        ?: navigator.onNavigate(prevCached.article)
                 }
             }
         }
@@ -294,16 +297,16 @@ fun MiuixArticleScreen(
         if (historyNext != null) {
             sharedData.pendingInitialContent = historyNext
             sharedData.promoteForNavigation(sharedData.answerTransitionDirection)
-            popCurrentAnswer(articleHost?.articleNavController)
-            navigator.onNavigate(historyNext.article)
+            answerSwitch?.invoke(historyNext.article, sharedData.answerTransitionDirection)
+                ?: navigator.onNavigate(historyNext.article)
         } else {
             sharedData?.pendingInitialContent = sharedData.navigator?.nextAnswer
             sharedData?.promoteForNavigation(sharedData.answerTransitionDirection)
             coroutineScope.launch {
                 val nextArticle = sharedData?.navigator?.loadNext()
                 if (nextArticle != null) {
-                    popCurrentAnswer(articleHost?.articleNavController)
-                    navigator.onNavigate(nextArticle)
+                    answerSwitch?.invoke(nextArticle, sharedData.answerTransitionDirection)
+                        ?: navigator.onNavigate(nextArticle)
                 }
             }
         }
@@ -880,55 +883,128 @@ private fun MiuixActionMenuRow(
 /** 横向滑动切换时的全屏预览（miuix 样式），渲染缓存的上/下一答内容。 */
 @Composable
 private fun MiuixCachedAnswerPreview(cached: CachedAnswerContent) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MiuixTheme.colorScheme.background)
-            .padding(horizontal = 16.dp),
-    ) {
-        Spacer(Modifier.height(12.dp))
-        if (cached.title.isNotEmpty()) {
-            Text(cached.title, style = MiuixTheme.textStyles.title2, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp))
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (cached.authorAvatarUrl.isNotEmpty()) {
-                AsyncImage(cached.authorAvatarUrl, "头像", modifier = Modifier.size(40.dp).clip(CircleShape))
-                Spacer(Modifier.width(8.dp))
-            }
-            Column(Modifier.weight(1f)) {
-                Text(
-                    cached.authorName,
-                    style = MiuixTheme.textStyles.body2,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+    // 拖拽预览要与正文页“同形”：复刻 articleScaffold 的顶栏 + 作者卡 + 正文卡 + 底部操作栏（均不可交互、不带模糊）。
+    val barH = 40.dp
+    Scaffold(
+        // 不指定 containerColor，与正文页 articleScaffold 的 Scaffold 一致（默认 MaterialTheme.colorScheme.background，
+        // miuix 暗色下即黑色背景）；卡片仍由 miuix Card 用原 surface 色，整页与真页同色。
+        topBar = {
+            // 与正文页 ZhihuTwoRowsTopAppBar 的“展开态”一致：上行图标 + 下方完整大标题（headlineMedium，不折叠）。
+            Column(modifier = Modifier.fillMaxWidth().statusBarsPadding()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    IconButton(onClick = {}) {
+                        Icon(MiuixIconsEmbedded.Back, "返回", tint = MiuixTheme.colorScheme.onBackground)
+                    }
+                    Spacer(Modifier.weight(1f))
+                    IconButton(onClick = {}) {
+                        Icon(Icons.Default.Share, "分享", tint = MiuixTheme.colorScheme.onBackground)
+                    }
+                }
+                M3Text(
+                    text = cached.title.ifEmpty { "回答" },
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MiuixTheme.colorScheme.onBackground,
+                    modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
                 )
-                if (cached.authorBio.isNotEmpty()) {
-                    Text(
-                        cached.authorBio,
-                        style = MiuixTheme.textStyles.footnote1,
-                        color = MiuixTheme.colorScheme.onSurfaceSecondary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+            }
+        },
+        bottomBar = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .height(barH)
+                        .clip(RoundedCornerShape(50))
+                        .background(MiuixTheme.colorScheme.surfaceContainerHigh)
+                        .padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.ThumbUp, "赞同", modifier = Modifier.size(18.dp), tint = MiuixTheme.colorScheme.onSurface)
+                    Spacer(Modifier.width(4.dp))
+                    Text(cached.voteUpCount.toString(), color = MiuixTheme.colorScheme.onSurface, fontSize = 13.sp)
+                }
+                Spacer(Modifier.weight(1f))
+                Row(
+                    modifier = Modifier
+                        .height(barH)
+                        .clip(RoundedCornerShape(50))
+                        .background(MiuixTheme.colorScheme.surfaceContainerHigh)
+                        .padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.Comment, "评论", modifier = Modifier.size(18.dp), tint = MiuixTheme.colorScheme.onSurface)
+                    Spacer(Modifier.width(4.dp))
+                    Text(cached.commentCount.toString(), color = MiuixTheme.colorScheme.onSurface, fontSize = 13.sp)
                 }
             }
-        }
-        if (cached.content.isNotEmpty()) {
-            Spacer(Modifier.height(10.dp))
-            RenderMarkdown(html = cached.content, selectable = false, enableScroll = false)
+        },
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(innerPadding)
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+        ) {
+            if (cached.authorName.isNotEmpty()) {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        if (cached.authorAvatarUrl.isNotEmpty()) {
+                            AsyncImage(cached.authorAvatarUrl, "头像", modifier = Modifier.size(44.dp).clip(CircleShape))
+                            Spacer(Modifier.width(12.dp))
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    cached.authorName,
+                                    style = MiuixTheme.textStyles.title4,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f, fill = false),
+                                )
+                                if (cached.authorBadge != null) {
+                                    Spacer(Modifier.width(4.dp))
+                                    AuthorBadge(badge = cached.authorBadge)
+                                }
+                            }
+                            if (cached.authorBio.isNotEmpty()) {
+                                Text(
+                                    cached.authorBio,
+                                    style = MiuixTheme.textStyles.footnote1,
+                                    color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    if (cached.content.isEmpty()) {
+                        Box(Modifier.fillMaxWidth().padding(24.dp), Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                    } else {
+                        RenderMarkdown(html = cached.content, selectable = false, enableScroll = false)
+                    }
+                }
+            }
+            Spacer(Modifier.height(16.dp))
         }
     }
-}
-
-/** 切换答案前把当前答案路由出栈，避免回退时堆叠一长串答案（逻辑同 M3 ArticleScreen）。 */
-private fun popCurrentAnswer(navController: NavHostController?) {
-    if (navController == null) return
-    val currentIsAnswer = runCatching {
-        navController.currentBackStackEntry?.toRoute<Article>()?.type == ArticleType.Answer
-    }.getOrDefault(false)
-    if (currentIsAnswer) navController.popBackStack()
 }
 
 /** miuix 样式的上/下一答预览卡片，替代 M3 版 AnswerPreviewCard（避免 M3 圆角/密度/取色在 miuix 下违和）。 */

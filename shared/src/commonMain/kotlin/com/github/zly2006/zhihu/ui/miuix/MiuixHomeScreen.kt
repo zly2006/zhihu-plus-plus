@@ -37,6 +37,8 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,6 +52,7 @@ import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
@@ -94,6 +97,23 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
+/**
+ * 跨导航持久化首页搜索浮层状态的 Saver。保存查询词、是否展开（动画态归一到稳定态）和假框位置 offsetY。
+ * offsetY 必须保留：收起动画的目标位置取自它，恢复的展开态若丢了 offsetY 会弹向屏幕顶而非假框位置。
+ * resultStatus 不保存，返回后由搜索结果重新驱动。
+ */
+private val SearchStatusSaver = listSaver<SearchStatus, Any>(
+    save = { listOf(it.searchText, it.shouldExpand(), it.offsetY.value) },
+    restore = {
+        SearchStatus(
+            label = "",
+            searchText = it[0] as String,
+            current = if (it[1] as Boolean) SearchStatus.Status.EXPANDED else SearchStatus.Status.COLLAPSED,
+            offsetY = (it[2] as Float).dp,
+        )
+    },
+)
+
 @Composable
 fun MiuixHomeScreen(
     scrollToTopTrigger: Int = 0,
@@ -114,7 +134,13 @@ fun MiuixHomeScreen(
     val viewModel: BaseFeedViewModel = runtime.viewModel
 
     val listState = rememberLazyListState()
-    var searchStatus by remember { mutableStateOf(SearchStatus(label = "")) }
+    // 跨导航完整保留搜索浮层状态（展开/折叠、查询词、假框位置 offsetY）：点搜索结果进入文章/回答详情后，
+    // 首页会被 NavHost dispose，普通 remember 会丢失，导致返回时回到折叠主页；且 offsetY 必须一并保留，
+    // 否则恢复的展开态 offsetY=0，再收起时动画会弹向屏幕顶而非假框位置（抽风）。用 rememberSaveable + Saver
+    // 把整个状态存进 MainTabs 返回栈条目的 saved-state，导航往返完整复原。
+    var searchStatus by rememberSaveable(stateSaver = SearchStatusSaver) {
+        mutableStateOf(SearchStatus(label = ""))
+    }
     val showAccountSheet = remember { mutableStateOf(false) }
     var unreadCount by remember { mutableIntStateOf(0) }
     var showSearchFilter by remember { mutableStateOf(false) }
@@ -150,7 +176,8 @@ fun MiuixHomeScreen(
 
     // ── 同页搜索 ──
     // 防抖后的查询词：searchText 停止变化 350ms 后才真正搜索，避免每打一个字就请求
-    var debouncedQuery by remember { mutableStateOf("") }
+    // 用恢复的查询词初始化，返回时立即定位到已缓存结果，避免 350ms 防抖期间闪现历史/热搜
+    var debouncedQuery by remember { mutableStateOf(searchStatus.searchText) }
     LaunchedEffect(searchStatus.searchText) {
         val q = searchStatus.searchText.trim()
         if (q.isEmpty()) {
@@ -160,23 +187,26 @@ fun MiuixHomeScreen(
             debouncedQuery = q
         }
     }
-    // query 变化时重建 SearchViewModel（SearchViewModel 的 query 是构造参数，不可变）
-    val searchViewModel = remember(debouncedQuery) {
-        if (debouncedQuery.isEmpty()) {
-            null
-        } else {
-            SearchViewModel(debouncedQuery)
-        }
+    // query 变化时切换 SearchViewModel（query 是构造参数，不可变）。用 viewModel(key=query) 而非
+    // remember，把 viewModel scope 到 MainTabs 返回栈条目的 ViewModelStore：进入文章/回答详情再返回时，
+    // 同 query 的 viewModel 连同已加载结果一起存活复用，配合下方“已有结果不重复 refresh”守卫，做到返回
+    // 不重新请求（与首页 feed viewModel 同一机制）。
+    val searchViewModel = if (debouncedQuery.isEmpty()) {
+        null
+    } else {
+        viewModel(key = "home_search_$debouncedQuery") { SearchViewModel(debouncedQuery) }
     }
     val searchListState = rememberLazyListState()
-    // 触发搜索 + 驱动 resultStatus
+    // 触发搜索 + 驱动 resultStatus。已有结果（viewModel 跨导航复用）时直接显示，不重新请求。
     LaunchedEffect(searchViewModel) {
         val vm = searchViewModel
-        if (vm == null) {
-            searchStatus = searchStatus.copy(resultStatus = SearchStatus.ResultStatus.DEFAULT)
-        } else {
-            searchStatus = searchStatus.copy(resultStatus = SearchStatus.ResultStatus.LOAD)
-            vm.refresh(paginationEnvironment)
+        when {
+            vm == null -> searchStatus = searchStatus.copy(resultStatus = SearchStatus.ResultStatus.DEFAULT)
+            vm.displayItems.isNotEmpty() -> searchStatus = searchStatus.copy(resultStatus = SearchStatus.ResultStatus.SHOW)
+            else -> {
+                searchStatus = searchStatus.copy(resultStatus = SearchStatus.ResultStatus.LOAD)
+                vm.refresh(paginationEnvironment)
+            }
         }
     }
     // 搜索结果加载完成后切换 SHOW / EMPTY

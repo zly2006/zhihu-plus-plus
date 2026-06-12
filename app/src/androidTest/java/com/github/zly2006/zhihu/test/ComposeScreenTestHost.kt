@@ -27,15 +27,16 @@ import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.test.swipeUp
-import androidx.navigation.compose.rememberNavController
 import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.rules.ActivityScenarioRule
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.navigation.MainTabs
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Navigator
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.AndroidZhihuMain
+import top.yukonga.miuix.kmp.nav.core.rememberNavController
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -90,7 +91,7 @@ fun MainActivityComposeRule.setZhihuMainContent() {
     waitForIdle()
     activity.setContent {
         ZhihuTheme {
-            AndroidZhihuMain(navController = rememberNavController())
+            AndroidZhihuMain(navController = rememberNavController<NavDestination>(MainTabs))
         }
     }
     waitForIdle()

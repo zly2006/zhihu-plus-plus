@@ -17,15 +17,9 @@
 
 package com.github.zly2006.zhihu.ui
 
-import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.PaddingValues
@@ -76,18 +70,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavBackStackEntry
-import androidx.navigation.NavDestination.Companion.hasRoute
-import androidx.navigation.NavDestination.Companion.hierarchy
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.toRoute
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.ArticleType
-import com.github.zly2006.zhihu.navigation.ArticleTypeNavType
 import com.github.zly2006.zhihu.navigation.CollectionContent
 import com.github.zly2006.zhihu.navigation.Collections
 import com.github.zly2006.zhihu.navigation.Daily
@@ -121,7 +105,6 @@ import com.github.zly2006.zhihu.ui.miuix.MiuixBlocklistSettingsScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixCollectionContentScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixCollectionScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixDailyScreen
-import com.github.zly2006.zhihu.ui.miuix.MiuixFollowScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixFollowTopLevelPage
 import com.github.zly2006.zhihu.ui.miuix.MiuixHomeScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixHotListScreen
@@ -151,8 +134,12 @@ import com.github.zly2006.zhihu.ui.subscreens.SystemAndUpdateSettingsScreen
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import top.yukonga.miuix.kmp.blur.layerBackdrop
-import kotlin.reflect.KClass
-import kotlin.reflect.typeOf
+import top.yukonga.miuix.kmp.nav.core.NavController
+import top.yukonga.miuix.kmp.nav.core.NavCornerClipMode
+import top.yukonga.miuix.kmp.nav.core.NavDisplay
+import top.yukonga.miuix.kmp.nav.core.NavDisplayEffects
+import top.yukonga.miuix.kmp.nav.core.rememberNavSystemCornerRadius
+import top.yukonga.miuix.kmp.nav.transition.NavTransitions
 import top.yukonga.miuix.kmp.basic.NavigationBar as MiuixNavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationBarItem as MiuixNavigationBarItem
 
@@ -187,13 +174,11 @@ private sealed class MainTabPage(
  * 平台代码则继续处理生命周期、浏览器、模型加载等细节。
  */
 data class ZhihuMainPlatformAdapter(
-    val article: @Composable (Article, NavBackStackEntry) -> Unit,
+    val article: @Composable (Article) -> Unit,
     val sentenceSimilarityTest: @Composable () -> Unit = {
         Text("Sentence similarity test is not available on this platform.")
     },
     val blocklistSettingsNlpContent: BlocklistSettingsNlpContent? = null,
-    val articleEnterTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition?)? = null,
-    val articleExitTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition?)? = null,
 )
 
 /**
@@ -211,7 +196,7 @@ data class ZhihuMainPlatformAdapter(
 @Composable
 fun ZhihuMain(
     modifier: Modifier = Modifier,
-    navController: NavHostController,
+    navController: NavController<NavDestination>,
     navigationState: ZhihuMainNavigationState,
     preferenceState: ZhihuMainPreferenceState,
     isDarkTheme: Boolean,
@@ -227,7 +212,8 @@ fun ZhihuMain(
     val startDestination = preferenceState.startDestination
     val reloadBottomBarPreferences = preferenceState::reload
 
-    val navEntry by navController.currentBackStackEntryAsState()
+    // miuix-nav 的返回栈是 SnapshotStateList，直接读取栈顶即响应式（替代 currentBackStackEntryAsState）。
+    val currentTopDestination = navController.backStack.lastOrNull()
 
     var scrollToTopTrigger by remember { mutableIntStateOf(0) }
     // 滚动时自动隐藏底部导航栏（顶栏自动隐藏复用同一信号，见 LocalAutoHideTopBarVisible）
@@ -251,8 +237,11 @@ fun ZhihuMain(
     }
 
     val useMiuix = ThemeManager.getThemeStyle() == ThemeStyle.Miuix
-    val blurEnabled = rememberSettingsStore().getBoolean("blurEnabled", true)
+    val settings = rememberSettingsStore()
+    val blurEnabled = settings.getBoolean("blurEnabled", true)
     val bottomBarBackdrop = rememberMiuixBlurBackdrop(useMiuix && blurEnabled)
+    // 设置项“启用预测性返回”：关闭后系统返回仍可用，但不跟手播放预测返回动画（返回设置页后下次重组生效）。
+    val enablePredictiveBack = settings.getBoolean("enable_predictive_back", true)
 
     val allBottomBarItems = listOf(
         Triple(Home, "主页", Icons.Filled.Home),
@@ -357,14 +346,14 @@ fun ZhihuMain(
         modifier = modifier
             .nestedScroll(bottomBarScrollConnection),
         bottomBar = {
-            if (navEntry != null) {
+            run {
                 // 页面切换时重置底部导航栏可见状态（顶栏复用此信号，一并恢复）
-                LaunchedEffect(navEntry) { isBottomBarVisible = true }
+                LaunchedEffect(currentTopDestination) { isBottomBarVisible = true }
                 val currentBottomDestination = mainTabPages
                     .getOrNull(mainPagerState.targetPage)
                     ?.bottomDestination
                 AnimatedVisibility(
-                    visible = (!autoHideBottomBar || isBottomBarVisible) && isTopLevelDest(navEntry),
+                    visible = (!autoHideBottomBar || isBottomBarVisible) && currentTopDestination is MainTabs,
                     enter = slideInVertically(tween(200)) { it },
                     exit = slideOutVertically(tween(200)) { it },
                 ) {
@@ -461,32 +450,40 @@ fun ZhihuMain(
             }
         },
     ) { innerPadding ->
+        val systemCornerRadius = rememberNavSystemCornerRadius()
+        // miuix：滑动时裁前缘屏幕圆角（与自有横滑转场配套）。
+        // M3：关闭 effects 圆角，圆角由 AOSP 预测返回转场自行在手势中处理，避免双重裁切。
+        val navEffects = if (useMiuix) {
+            NavDisplayEffects(
+                cornerClipRadius = systemCornerRadius,
+                cornerClipMode = NavCornerClipMode.Leading,
+                dimAmount = 0f,
+                // 不拦截 transition 期间输入：避免 settle 慢尾挡住点击造成“返回后卡一段时间”。
+                blockInputDuringTransition = false,
+            )
+        } else {
+            // M3：关 effects 圆角（交给 AOSP 转场）；关闭 transition 期间的输入拦截——否则预测返回 settle 的
+            // ~500ms 弹簧慢尾会一直挡住已揭示页面的点击，造成“返回后卡一段时间点不动”。
+            NavDisplayEffects(enableCornerClip = false, dimAmount = 0f, blockInputDuringTransition = false)
+        }
         CompositionLocalProvider(
             LocalNavigator provides Navigator(
                 onNavigate = { destination ->
                     navigationState.navigate(destination)
                 },
-                onNavigateBack = navController::popBackStack,
+                onNavigateBack = { navController.pop() },
             ),
         ) {
-            NavHost(
+            NavDisplay(
                 navController,
                 modifier = Modifier,
-                startDestination = MainTabs,
-                enterTransition = {
-                    slideInHorizontally(tween(300)) { it }
-                },
-                exitTransition = {
-                    ExitTransition.None
-                },
-                popEnterTransition = {
-                    EnterTransition.None
-                },
-                popExitTransition = {
-                    slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
-                },
+                onBack = { navController.pop() },
+                // M3 用 AOSP 风格预测性返回（手势中缩放+圆角+跟随边），miuix 保持自有横滑转场。
+                transition = if (useMiuix) NavTransitions.MiuixDefault else AospPredictiveBackTransition,
+                effects = navEffects,
+                enablePredictiveBack = enablePredictiveBack,
             ) {
-                composable<MainTabs> {
+                entry<MainTabs> {
                     CompositionLocalProvider(
                         LocalAutoHideTopBarVisible provides (!autoHideTopBar || isBottomBarVisible),
                     ) {
@@ -512,57 +509,30 @@ fun ZhihuMain(
                         )
                     }
                 }
-                composable<Question> { navEntry ->
-                    val question: Question = navEntry.toRoute()
+                entry<Question> { question ->
                     if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
                         MiuixQuestionScreen(question)
                     } else {
                         QuestionScreen(question)
                     }
                 }
-                composable<Article>(
-                    typeMap = mapOf(typeOf<ArticleType>() to ArticleTypeNavType),
-                    enterTransition = platformAdapter.articleEnterTransition,
-                    exitTransition = platformAdapter.articleExitTransition,
-                ) { navEntry ->
-                    val article: Article = navEntry.toRoute()
-                    platformAdapter.article(article, navEntry)
-                }
-                composable<HotList> {
-                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
-                        MiuixHotListScreen(innerPadding)
-                    } else {
-                        HotListScreen(innerPadding)
+                entry<Article> { article ->
+                    // 同一回答链在单个 entry 内用 AnimatedContent 切换：返回键直接回到来源页，
+                    // 切换动画两层互补满屏滑动，不透出上一个回答。
+                    ArticleAnswerSlot(article) { answer ->
+                        platformAdapter.article(answer)
                     }
                 }
-                composable<Follow> {
-                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
-                        MiuixFollowScreen(
-                            scrollToTopTrigger = scrollToTopTrigger,
-                            innerPadding = innerPadding,
-                        )
-                    } else {
-                        FollowScreen(
-                            scrollToTopTrigger = scrollToTopTrigger,
-                            innerPadding = innerPadding,
-                        )
-                    }
-                }
-                composable<Daily> {
-                    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
-                        MiuixDailyScreen()
-                    } else {
-                        DailyScreen()
-                    }
-                }
-                composable<History> {
+                // 注：HotList/Follow/Daily/Account 是纯 TopLevelDestination（非 NavDestination），
+                // 只能作为底栏 tab 在 MainTabs pager 内渲染，无法被 push，故不注册为独立 entry。
+                entry<History> {
                     if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
                         MiuixLocalHistoryScreen(innerPadding)
                     } else {
                         LegacyLocalHistoryScreen(innerPadding)
                     }
                 }
-                composable<OnlineHistory> {
+                entry<OnlineHistory> {
                     // 作为独立路由 push 进来（如账号页/面板"浏览历史"入口），显示返回箭头。
                     if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
                         MiuixOnlineHistoryScreen(showBackButton = true)
@@ -570,87 +540,73 @@ fun ZhihuMain(
                         OnlineHistoryScreen()
                     }
                 }
-                composable<Account> {
-                    val style = ThemeManager.getThemeStyle()
-                    if (style == ThemeStyle.Miuix) {
-                        MiuixAccountSettingScreen(innerPadding)
-                    } else {
-                        AccountSettingScreen(innerPadding)
-                    }
-                }
-                composable<Search> { navEntry ->
-                    val search: Search = navEntry.toRoute()
+                entry<Search> { search ->
                     if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
                         MiuixSearchScreen(search)
                     } else {
                         SearchScreen(search)
                     }
                 }
-                composable<Collections> {
-                    val data: Collections = it.toRoute()
+                entry<Collections> { data ->
                     if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
                         MiuixCollectionScreen(data.userToken)
                     } else {
                         CollectionScreen(data.userToken)
                     }
                 }
-                composable<CollectionContent> {
-                    val content: CollectionContent = it.toRoute()
+                entry<CollectionContent> { content ->
                     if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
                         MiuixCollectionContentScreen(content.collectionId)
                     } else {
                         CollectionContentScreen(content.collectionId)
                     }
                 }
-                composable<Person> {
-                    val person: Person = it.toRoute()
+                entry<Person> { person ->
                     if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
                         MiuixPeopleScreen(person)
                     } else {
                         PeopleScreen(person)
                     }
                 }
-                composable<Pin> {
-                    val pin = it.toRoute<Pin>()
+                entry<Pin> { pin ->
                     if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
                         MiuixPinScreen(pin)
                     } else {
                         PinScreen(pin)
                     }
                 }
-                composable<Account.RecommendSettings.Blocklist> {
+                entry<Account.RecommendSettings.Blocklist> {
                     if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
                         MiuixBlocklistSettingsScreen(platformAdapter.blocklistSettingsNlpContent)
                     } else {
                         BlocklistSettingsScreen(platformAdapter.blocklistSettingsNlpContent)
                     }
                 }
-                composable<Account.RecommendSettings.BlockedFeedHistory> {
+                entry<Account.RecommendSettings.BlockedFeedHistory> {
                     if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
                         MiuixBlockedFeedHistoryScreen()
                     } else {
                         BlockedFeedHistoryScreen()
                     }
                 }
-                composable<Notification> {
+                entry<Notification> {
                     if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
                         MiuixNotificationScreen()
                     } else {
                         NotificationScreen()
                     }
                 }
-                composable<Notification.NotificationSettings> {
+                entry<Notification.NotificationSettings> {
                     if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
                         MiuixNotificationSettingsScreen()
                     } else {
                         NotificationSettingsScreen()
                     }
                 }
-                composable<SentenceSimilarityTest> {
+                entry<SentenceSimilarityTest> {
                     platformAdapter.sentenceSimilarityTest()
                 }
-                composable<Account.AppearanceSettings> {
-                    val args = it.toRoute<Account.AppearanceSettings>()
+                entry<Account.AppearanceSettings> { args ->
                     val useMiuix = ThemeManager.getThemeStyle() == ThemeStyle.Miuix
                     if (useMiuix) {
                         MiuixAppearanceSettingsScreen(
@@ -664,43 +620,42 @@ fun ZhihuMain(
                         )
                     }
                 }
-                composable<Account.RecommendSettings> {
-                    val args = it.toRoute<Account.RecommendSettings>()
+                entry<Account.RecommendSettings> { args ->
                     if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
                         MiuixContentFilterSettingsScreen(args.setting)
                     } else {
                         ContentFilterSettingsScreen(args.setting)
                     }
                 }
-                composable<Account.SystemAndUpdateSettings> {
+                entry<Account.SystemAndUpdateSettings> {
                     if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
                         MiuixSystemAndUpdateSettingsScreen()
                     } else {
                         SystemAndUpdateSettingsScreen()
                     }
                 }
-                composable<Account.About> {
+                entry<Account.About> {
                     if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
                         MiuixAboutScreen(innerPadding)
                     } else {
                         AboutScreen(innerPadding)
                     }
                 }
-                composable<Account.OpenSourceLicenses> {
+                entry<Account.OpenSourceLicenses> {
                     if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
                         MiuixOpenSourceLicensesScreen()
                     } else {
                         OpenSourceLicensesScreen()
                     }
                 }
-                composable<Account.DeveloperSettings> {
+                entry<Account.DeveloperSettings> {
                     if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
                         MiuixDeveloperSettingsScreen()
                     } else {
                         DeveloperSettingsScreen()
                     }
                 }
-                composable<Account.DeveloperSettings.ColorScheme> {
+                entry<Account.DeveloperSettings.ColorScheme> {
                     ColorSchemeScreen()
                 }
             }
@@ -812,16 +767,9 @@ private fun MyCollectionsTopLevelPage() {
     )
 }
 
-private fun isTopLevelDest(navEntry: NavBackStackEntry?): Boolean = navEntry.hasRoute(MainTabs::class)
-
 private val TopLevelDestination.openFrom: String?
     get() = when (this) {
         Home -> ContentOpenFrom.HOME_FEED
         OnlineHistory -> ContentOpenFrom.HISTORY
         else -> null
     }
-
-internal fun NavBackStackEntry?.hasRoute(cls: KClass<out NavDestination>): Boolean {
-    val dest = this?.destination ?: return false
-    return dest.hierarchy.any { it.hasRoute(cls) }
-}

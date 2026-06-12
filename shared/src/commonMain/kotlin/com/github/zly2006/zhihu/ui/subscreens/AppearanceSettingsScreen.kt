@@ -1239,18 +1239,6 @@ fun AppearanceSettingsScreen(
             SettingItemGroup(
                 title = "技术性导航设置",
             ) {
-                val useCustomNavHost = remember { mutableStateOf(settings.getBoolean("use_custom_nav_host", true)) }
-                SettingItemWithSwitch(
-                    title = { Text("使用自定义导航") },
-                    description = { Text("使用自定义导航替代系统默认的导航组件，可能部分提升国产手机上的操作手感，请视情况开启。") },
-                    checked = useCustomNavHost.value,
-                    onCheckedChange = {
-                        useCustomNavHost.value = it
-                        settings.putBoolean("use_custom_nav_host", it)
-                        userMessages.showShortMessage("需要重启应用生效")
-                    },
-                )
-
                 val enablePredictiveBack = remember { mutableStateOf(settings.getBoolean("enable_predictive_back", true)) }
                 SettingItemWithSwitch(
                     title = { Text("启用预测性返回") },

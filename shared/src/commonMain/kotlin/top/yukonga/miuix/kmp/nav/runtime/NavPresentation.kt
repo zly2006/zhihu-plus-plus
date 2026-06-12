@@ -66,7 +66,9 @@ internal fun isVisibleAt(relativeDepth: Float, opaqueDepth: Float): Boolean = re
  * @param initialTopIndex the initial value of [animatedTop] (the top index of the initial back stack).
  */
 @Stable
-internal class NavPresentation(initialTopIndex: Float) {
+internal class NavPresentation(
+    initialTopIndex: Float,
+) {
     /**
      * The single driving float for the whole stack (spec §4.1 / §7.1 dual-mode driver).
      *

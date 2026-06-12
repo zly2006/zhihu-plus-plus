@@ -121,10 +121,10 @@ fun PredictiveBackHandler(
 internal class NavigationEventFlowAdapter(
     private val scope: CoroutineScope,
 ) : NavigationEventHandler<NavigationEventInfo>(
-    initialInfo = NavigationEventInfo.None,
-    isBackEnabled = false,
-    isForwardEnabled = false,
-) {
+        initialInfo = NavigationEventInfo.None,
+        isBackEnabled = false,
+        isForwardEnabled = false,
+    ) {
     var currentOnProgress: suspend (Flow<NavBackEvent>) -> Unit = {}
     var currentOnCommit: () -> Unit = {}
     var currentOnCancel: () -> Unit = {}

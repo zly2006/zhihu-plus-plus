@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEach
 import androidx.lifecycle.Lifecycle
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.nav.gesture.PredictiveBackHandler
@@ -218,6 +219,9 @@ private fun <T : NavKey> NavDisplayLayout(
     transition: NavTransition,
     effects: NavDisplayEffects,
     modifier: Modifier = Modifier,
+    // [Zhihu++ fork] 关闭后系统返回仍可用，但不跟手驱动 animatedTop（提交时由收敛弹簧正常播放 pop），
+    // 对应设置项“启用预测性返回”。
+    enablePredictiveBack: Boolean = true,
 ) {
     val presentation = rememberNavPresentation(backStack.lastIndex)
     val stateHolder = rememberNavSaveableStateHolder()
@@ -234,6 +238,12 @@ private fun <T : NavKey> NavDisplayLayout(
     PredictiveBackHandler(
         enabled = backStack.size > 1,
         onProgress = { events ->
+            if (!enablePredictiveBack) {
+                // [Zhihu++ fork] 关闭预测性返回：只消费手势事件、不驱动 animatedTop；onCommit 仍会 pop，
+                // 由收敛弹簧把 pop 当作普通编程式返回播放（无跟手动画）。
+                events.collect { }
+                return@PredictiveBackHandler
+            }
             // Per-gesture trackers: the initial touch anchors vertical-follow transitions, the
             // last two timestamped events estimate the release velocity (depth-units/sec).
             var initialTouchY = Float.NaN
@@ -491,8 +501,7 @@ private fun <T : NavKey> NavDisplayLayout(
                                 .fillMaxSize()
                                 .graphicsLayer {
                                     alpha = effects.dimAmount * ownTransition.scrimFraction(scrimScope).coerceIn(0f, 1f)
-                                }
-                                .background(Color.Black),
+                                }.background(Color.Black),
                         )
                     }
 
@@ -678,6 +687,7 @@ fun <T : NavKey> NavDisplay(
     onBack: () -> Unit = { backStack.removeLastOrNull() },
     transition: NavTransition = NavTransitions.Cupertino,
     effects: NavDisplayEffects = NavDisplayEffects(),
+    enablePredictiveBack: Boolean = true,
     content: NavEntryBuilder<T>.() -> Unit,
 ) {
     val provider = remember(content) { entryProvider(content) }
@@ -688,6 +698,7 @@ fun <T : NavKey> NavDisplay(
         onBack = onBack,
         transition = transition,
         effects = effects,
+        enablePredictiveBack = enablePredictiveBack,
     )
 }
 
@@ -709,6 +720,7 @@ fun <T : NavKey> NavDisplay(
     onBack: () -> Unit = { navController.pop() },
     transition: NavTransition = NavTransitions.Cupertino,
     effects: NavDisplayEffects = NavDisplayEffects(),
+    enablePredictiveBack: Boolean = true,
     content: NavEntryBuilder<T>.() -> Unit,
 ) {
     NavDisplay(
@@ -717,6 +729,7 @@ fun <T : NavKey> NavDisplay(
         onBack = onBack,
         transition = transition,
         effects = effects,
+        enablePredictiveBack = enablePredictiveBack,
         content = content,
     )
 }
@@ -742,6 +755,7 @@ internal fun <T : NavKey> NavDisplay(
     onBack: () -> Unit = { backStack.removeLastOrNull() },
     transition: NavTransition = NavTransitions.Cupertino,
     effects: NavDisplayEffects = NavDisplayEffects(),
+    enablePredictiveBack: Boolean = true,
 ) {
     require(backStack.isNotEmpty()) { "NavDisplay back stack cannot be empty" }
     NavDisplayLayout(
@@ -751,5 +765,6 @@ internal fun <T : NavKey> NavDisplay(
         transition = transition,
         effects = effects,
         modifier = modifier,
+        enablePredictiveBack = enablePredictiveBack,
     )
 }

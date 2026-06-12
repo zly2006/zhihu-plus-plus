@@ -94,11 +94,6 @@ fun MiuixDeveloperSettingsScreen() {
             item { SmallTitle(text = "行为开关") }
             item {
                 Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
-                    var useCustomNavHost by remember { mutableStateOf(settings.getBoolean("use_custom_nav_host", true)) }
-                    SwitchPreference(title = "自定义导航宿主", summary = "用自定义 NavHost 替代系统导航", checked = useCustomNavHost, onCheckedChange = {
-                        useCustomNavHost = it
-                        settings.putBoolean("use_custom_nav_host", it)
-                    })
                     var enablePredictiveBack by remember { mutableStateOf(settings.getBoolean("enable_predictive_back", true)) }
                     SwitchPreference(title = "预测性返回手势", summary = "Android 14+", checked = enablePredictiveBack, onCheckedChange = {
                         enablePredictiveBack = it

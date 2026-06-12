@@ -25,7 +25,6 @@ import androidx.compose.ui.unit.dp
  * be non-linear because it is identical in both drive modes.
  */
 object NavTransitions {
-
     /**
      * Default preset. iOS-style horizontal slide: the entering page slides in from the trailing
      * edge (d: -1 -> 0, translationX: +width -> 0), and the covered page parallaxes a quarter

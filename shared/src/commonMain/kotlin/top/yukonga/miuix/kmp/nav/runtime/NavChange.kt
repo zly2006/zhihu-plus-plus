@@ -19,10 +19,14 @@ public sealed interface NavChange {
     public data object Pop : NavChange
 
     /** More than one entry was added at once (added > 1, removed == 0). [count] == added. */
-    public data class MultiPush(val count: Int) : NavChange
+    public data class MultiPush(
+        val count: Int,
+    ) : NavChange
 
     /** More than one entry was removed at once (removed > 1, added == 0). [count] == removed. */
-    public data class MultiPop(val count: Int) : NavChange
+    public data class MultiPop(
+        val count: Int,
+    ) : NavChange
 
     /** The top entry was replaced (common == new.size - 1 && removed == 1 && added == 1). */
     public data object Replace : NavChange

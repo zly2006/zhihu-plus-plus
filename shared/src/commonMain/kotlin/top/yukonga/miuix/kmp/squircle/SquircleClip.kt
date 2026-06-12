@@ -87,6 +87,7 @@ private fun Path.addSquircleRect(
     if (width <= 0f || height <= 0f) return
     val ext = extension.coerceIn(SquircleDefaults.ExtensionMin, SquircleDefaults.ExtensionMax)
     val halfMin = min(width, height) * 0.5f
+
     fun tile(r: Float) = max(0f, r * ext).coerceAtMost(halfMin)
     val tTL = tile(topLeftPx)
     val tTR = tile(topRightPx)

@@ -12,7 +12,6 @@ import kotlin.math.min
 
 /** Shared default constants for every squircle API in this module. */
 object SquircleDefaults {
-
     /** Corner-tile size as a multiple of `cornerRadius`. 1.0 = circular arc, 1.1 = continuous corner. */
     val Extension = 1.1f
 
