@@ -646,6 +646,8 @@ fun ArticleScreen(
         mutableStateOf(sharedData?.isImmersiveMode ?: false)
     }
 
+    val toggleImmersive: () -> Unit = { isImmersiveMode = !isImmersiveMode }
+
     fun performAnswerDoubleTapAction(action: AnswerDoubleTapAction) {
         when (action) {
             AnswerDoubleTapAction.None -> Unit
@@ -656,7 +658,7 @@ fun ArticleScreen(
                 showComments = true
             }
             AnswerDoubleTapAction.ToggleImmersive -> {
-                isImmersiveMode = !isImmersiveMode
+                toggleImmersive()
             }
         }
     }
@@ -1640,7 +1642,7 @@ fun ArticleScreen(
                 if (fabClickCount > 0) {
                     delay(350)
                     if (fabClickCount >= 2) {
-                        isImmersiveMode = !isImmersiveMode
+                        toggleImmersive()
                     } else {
                         if (showSkipButton) {
                             navigatingToNextAnswer = true
@@ -1766,6 +1768,17 @@ fun ArticleScreen(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("设为打开评论区")
+                }
+                Button(
+                    onClick = {
+                        showDoubleTapActionDialog = false
+                        saveAnswerDoubleTapAction(AnswerDoubleTapAction.ToggleImmersive)
+                        toggleImmersive()
+                        userMessages.showMessage("已将双击回答动作设为：${AnswerDoubleTapAction.ToggleImmersive.label}")
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("设为开关沉浸式")
                 }
             }
         }
