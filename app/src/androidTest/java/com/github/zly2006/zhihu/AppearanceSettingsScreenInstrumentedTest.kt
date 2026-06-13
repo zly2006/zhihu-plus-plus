@@ -59,6 +59,7 @@ import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEM_ORDER_PREFERENCE_K
 import com.github.zly2006.zhihu.ui.subscreens.START_DESTINATION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.appearanceSettingsBottomBarItemTag
 import com.github.zly2006.zhihu.ui.subscreens.appearanceSettingsBottomBarMoveDownTag
+import com.github.zly2006.zhihu.ui.subscreens.appearanceSettingsStartDestinationOptionTag
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -127,8 +128,8 @@ class AppearanceSettingsScreenInstrumentedTest {
     @Test
     fun bottomBarSelectionAndStartDestinationRemainStableAcrossScrollAndClicks() {
         // This test verifies a multi-step bottom-bar configuration flow: remove one selected item,
-        // add another one, persist the new entry as the startup destination, and then perform an
-        // extra scroll cycle to ensure the rendered state still matches SharedPreferences.
+        // add another one, pick the new entry as the startup destination, and then perform an extra
+        // scroll cycle to ensure the rendered state still matches SharedPreferences.
         setUpScreen(setting = APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY)
 
         scrollUntilTagDisplayed(appearanceSettingsBottomBarItemTag(OnlineHistory.name))
@@ -146,14 +147,8 @@ class AppearanceSettingsScreenInstrumentedTest {
             context = "after adding hot list",
         )
 
-        preferences.edit().putString(START_DESTINATION_PREFERENCE_KEY, HotList.name).commit()
+        selectStartDestination(HotList.name)
         waitUntilStringPreference(START_DESTINATION_PREFERENCE_KEY, expected = HotList.name)
-        setUpScreen(
-            setting = APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY,
-            resetPreferences = false,
-        )
-        waitUntilTagExists(APPEARANCE_SETTINGS_START_DESTINATION_ROW_TAG)
-        scrollUntilTagDisplayed(APPEARANCE_SETTINGS_START_DESTINATION_ROW_TAG)
 
         scrollContainer().performVerticalSwipeCycle()
         composeRule
@@ -258,6 +253,15 @@ class AppearanceSettingsScreenInstrumentedTest {
 
     private fun waitUntilTagExists(tag: String, timeoutMillis: Long = 5_000) {
         waitUntilCondition("tag $tag exists", timeoutMillis) { doesTagExist(tag) }
+    }
+
+    private fun selectStartDestination(key: String) {
+        val optionTag = appearanceSettingsStartDestinationOptionTag(key)
+        waitUntilTagExists(APPEARANCE_SETTINGS_START_DESTINATION_ROW_TAG)
+        scrollUntilTagDisplayed(APPEARANCE_SETTINGS_START_DESTINATION_ROW_TAG)
+        composeRule.onNodeWithTag(APPEARANCE_SETTINGS_START_DESTINATION_TAG, useUnmergedTree = true).performClick()
+        waitUntilTagExists(optionTag)
+        composeRule.onNodeWithTag(optionTag, useUnmergedTree = true).performClick()
     }
 
     private fun boundsHeightForTag(tag: String): Float = composeRule
