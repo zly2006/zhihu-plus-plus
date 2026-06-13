@@ -39,6 +39,10 @@ enum class AnswerDoubleTapAction(
         preferenceValue = "openComments",
         label = "打开评论区",
     ),
+    ToggleImmersive(
+        preferenceValue = "toggleImmersive",
+        label = "开关沉浸式",
+    ),
     ;
 
     companion object {

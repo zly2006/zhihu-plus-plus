@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "app/**"
+      - "shared/**"
       - ".github/workflows/instrument-test.yml"
       - "build.gradle.kts"
       - "settings.gradle.kts"
