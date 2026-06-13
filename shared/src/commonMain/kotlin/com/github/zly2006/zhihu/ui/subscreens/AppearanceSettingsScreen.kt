@@ -113,6 +113,7 @@ const val DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY = "duo3_card_large_title"
 const val PREF_FONT_SIZE = "contentFontSize"
 const val PREF_LINE_HEIGHT = "contentLineHeight"
 const val APPEARANCE_SETTINGS_SCROLL_TAG = "appearanceSettings.scroll"
+const val APPEARANCE_SETTINGS_START_DESTINATION_ROW_TAG = "appearanceSettings.startDestinationRow"
 const val APPEARANCE_SETTINGS_START_DESTINATION_TAG = "appearanceSettings.startDestination"
 const val APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG = "appearanceSettings.answerDoubleTap"
 const val APPEARANCE_SETTINGS_USE_WEBVIEW_TAG = "appearanceSettings.useWebView"
@@ -968,6 +969,13 @@ fun AppearanceSettingsScreen(
                 } + allBottomBarItems.filter { it.first !in selectedBottomBarItemKeySet }
 
                 SettingItem(
+                    modifier = Modifier.testTag(APPEARANCE_SETTINGS_START_DESTINATION_ROW_TAG),
+                    onClick = {
+                        if (startDestinationItems.isNotEmpty()) {
+                            startDestinationExpanded = true
+                        }
+                    },
+                    enabled = startDestinationItems.isNotEmpty(),
                     title = { Text("应用启动默认页面") },
                     description = { Text("仅可选择已在底部导航栏中显示的页面。") },
                     endAction = {

@@ -19,12 +19,10 @@ package com.github.zly2006.zhihu
 
 import android.content.Context
 import android.content.SharedPreferences
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
-import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
@@ -52,6 +50,7 @@ import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_SCROLL_TAG
+import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_START_DESTINATION_ROW_TAG
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_START_DESTINATION_TAG
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_USE_WEBVIEW_TAG
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
@@ -148,7 +147,7 @@ class AppearanceSettingsScreenInstrumentedTest {
             context = "after adding hot list",
         )
 
-        scrollBackUntilTagDisplayed(APPEARANCE_SETTINGS_START_DESTINATION_TAG)
+        scrollBackUntilTagDisplayed(APPEARANCE_SETTINGS_START_DESTINATION_ROW_TAG)
         val hotListStartDestinationOptionTag = appearanceSettingsStartDestinationOptionTag(HotList.name)
         openStartDestinationDropdownUntilOptionExists(hotListStartDestinationOptionTag)
         composeRule.onNodeWithTag(hotListStartDestinationOptionTag, useUnmergedTree = true).performClick()
@@ -260,13 +259,19 @@ class AppearanceSettingsScreenInstrumentedTest {
     }
 
     private fun openStartDestinationDropdownUntilOptionExists(optionTag: String, timeoutMillis: Long = 5_000) {
-        waitUntilCondition("start destination option $optionTag exists", timeoutMillis) {
+        waitUntilCondition(
+            "start destination option $optionTag exists",
+            timeoutMillis,
+            failureMessage = {
+                "Timed out waiting until start destination option $optionTag exists, " +
+                    "bottomBarItems=${preferences.getStringSet(BOTTOM_BAR_ITEMS_PREFERENCE_KEY, emptySet())?.toSet()}, " +
+                    "startDestinationFieldExists=${doesTagExist(APPEARANCE_SETTINGS_START_DESTINATION_TAG)}"
+            },
+        ) {
             if (doesTagExist(optionTag)) {
                 true
             } else {
-                composeRule.onNodeWithTag(APPEARANCE_SETTINGS_START_DESTINATION_TAG).performTouchInput {
-                    click(Offset(right * 0.9f, centerY))
-                }
+                composeRule.onNodeWithTag(APPEARANCE_SETTINGS_START_DESTINATION_ROW_TAG).performClick()
                 composeRule.waitForIdle()
                 doesTagExist(optionTag)
             }
