@@ -51,12 +51,9 @@ import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
-import com.github.zly2006.zhihu.ui.PeopleProfileUiState
-import com.github.zly2006.zhihu.ui.PinLinkCardPreview
-import com.github.zly2006.zhihu.ui.QuestionScreenUiState
-import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.ShareDialogRuntime
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
+import com.github.zly2006.zhihu.viewmodel.HistoryEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import io.ktor.client.HttpClient
@@ -151,24 +148,6 @@ expect fun supportsPinHtmlWebView(): Boolean
 
 @Composable
 expect fun PinHtmlWebViewContent(html: String)
-
-/**
- * 想法评论底部表单。
- *
- * 这是 [PinScreen] 的评论入口封装，保持想法页和其他内容页使用同一个 [CommentScreenComponent]，只把内容类型绑定为 [Pin]。
- */
-@Composable
-fun PinCommentsSheet(
-    showComments: Boolean,
-    onDismiss: () -> Unit,
-    content: Pin,
-) {
-    CommentScreenComponent(
-        showComments = showComments,
-        onDismiss = onDismiss,
-        content = content,
-    )
-}
 
 /**
  * 文章页 Compose UI 使用的运行时设置视图。
@@ -307,28 +286,6 @@ expect fun ArticleWebViewContent(
 )
 
 /**
- * 文章正文的 Compose Markdown 渲染入口。
- *
- * 调用方提供头部和尾部内容，这里只负责把知乎 HTML 交给 Markdown runtime，并打开选择能力。它是 WebView 关闭时文章页的主渲染路径。
- */
-@Composable
-fun ArticleMarkdownContent(
-    html: String,
-    modifier: Modifier,
-    header: @Composable () -> Unit,
-    footer: @Composable () -> Unit,
-) {
-    RenderMarkdown(
-        html = html,
-        modifier = modifier,
-        selectable = true,
-        enableScroll = false,
-        header = header,
-        footer = footer,
-    )
-}
-
-/**
  * 文章附件中的视频入口渲染。
  *
  * 只处理知乎接口里 `attachment.type=video` 的情况，将视频 ID 和缩略图交给统一的视频卡片。普通正文视频仍由 Markdown/WebView 路径处理。
@@ -360,6 +317,7 @@ fun ArticleVideoAttachmentContent(attachment: JsonElement?) {
     }
 }
 
+/** 过滤部分设备文本选择菜单中的非预期系统项。 */
 expect fun Modifier.articleMarkdownSelectionWorkaround(): Modifier
 
 data class LoadedQuestionScreenData(
@@ -422,24 +380,6 @@ expect fun QuestionDetailWebViewContent(
     questionId: Long,
     html: String,
 )
-
-/**
- * 问题评论底部表单。
- *
- * 封装问题页的评论入口，让问题页使用和文章、想法一致的 [CommentScreenComponent] 展示方式。
- */
-@Composable
-fun QuestionCommentsSheet(
-    showComments: Boolean,
-    onDismiss: () -> Unit,
-    content: Question,
-) {
-    CommentScreenComponent(
-        showComments = showComments,
-        onDismiss = onDismiss,
-        content = content,
-    )
-}
 
 /**
  * 文章页底部操作区使用的平台桥接。
@@ -762,7 +702,7 @@ fun interface ArticleReadHistoryRecorder {
 
 @Composable
 fun rememberArticleReadHistoryRecorder(): ArticleReadHistoryRecorder {
-    val environment = rememberPaginationEnvironment(false)
+    val environment: HistoryEnvironment = rememberPaginationEnvironment(false)
     return remember(environment) {
         ArticleReadHistoryRecorder { article ->
             environment.addReadHistory(

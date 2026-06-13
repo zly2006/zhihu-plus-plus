@@ -55,8 +55,9 @@ object NotificationPreferences {
 /**
  * 通知设置页。
  *
- * 页面分为阅读行为、系统通知和应用内显示三组：自动已读控制进入通知页后的处理方式，系统通知控制是否向 OS 发通知，
- * 应用内显示控制通知中心是否展示某类消息。这里使用 [NotificationSettingsStore]，不要和普通偏好设置 key 混用。
+ * 页面分为阅读行为、系统通知和应用内显示三组：自动已读控制进入通知页后的处理方式，未读红点控制入口 badge，
+ * 系统通知控制是否向 OS 发通知，应用内显示控制通知中心是否展示某类消息。这里使用 [NotificationSettingsStore]，
+ * 不要和普通偏好设置 key 混用。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,6 +82,7 @@ fun NotificationSettingsScreen() {
         )
     }
     var autoMarkAsRead by remember { mutableStateOf(settingsStore.getAutoMarkAsReadEnabled()) }
+    var unreadBadgeEnabled by remember { mutableStateOf(settingsStore.getUnreadBadgeEnabled()) }
 
     Scaffold(
         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -114,16 +116,22 @@ fun NotificationSettingsScreen() {
                 .padding(innerPadding)
                 .padding(vertical = 16.dp),
         ) {
-            SettingItemGroup(
-                title = "阅读行为",
-                footer = { Text("进入通知页后，自动把当前通知批次标记为已读") },
-            ) {
+            SettingItemGroup(title = "阅读行为") {
                 SettingItemWithSwitch(
                     title = { Text("打开通知自动已读") },
+                    description = { Text("进入通知页后，自动把当前通知批次标记为已读") },
                     checked = autoMarkAsRead,
                     onCheckedChange = { checked ->
                         autoMarkAsRead = checked
                         settingsStore.setAutoMarkAsReadEnabled(checked)
+                    },
+                )
+                SettingItemWithSwitch(
+                    title = { Text("显示未读红点") },
+                    checked = unreadBadgeEnabled,
+                    onCheckedChange = { checked ->
+                        unreadBadgeEnabled = checked
+                        settingsStore.setUnreadBadgeEnabled(checked)
                     },
                 )
             }

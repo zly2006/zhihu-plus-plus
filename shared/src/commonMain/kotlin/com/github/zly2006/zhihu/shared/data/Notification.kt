@@ -173,7 +173,7 @@ sealed interface NotificationTarget {
         val url: String,
         val id: String,
         val excerpt: String,
-        val question: Question,
+        val question: Question? = null,
         override val title: String,
     ) : NotificationTarget {
         override val content: String

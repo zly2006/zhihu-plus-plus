@@ -63,6 +63,11 @@ private class DesktopNotificationSettingsStore : NotificationSettingsStore {
 
     override fun setAutoMarkAsReadEnabled(enabled: Boolean) = setBoolean(KEY_AUTO_MARK_AS_READ, enabled)
 
+    override fun getUnreadBadgeEnabled(): Boolean =
+        properties.getProperty(KEY_UNREAD_BADGE)?.toBooleanStrictOrNull() ?: true
+
+    override fun setUnreadBadgeEnabled(enabled: Boolean) = setBoolean(KEY_UNREAD_BADGE, enabled)
+
     private fun setBoolean(key: String, enabled: Boolean) {
         properties.setProperty(key, enabled.toString())
         save()
@@ -72,3 +77,4 @@ private class DesktopNotificationSettingsStore : NotificationSettingsStore {
 private const val KEY_SYSTEM_NOTIFICATION = "system_notification_"
 private const val KEY_DISPLAY_IN_APP = "display_in_app_"
 private const val KEY_AUTO_MARK_AS_READ = "auto_mark_notifications_read"
+private const val KEY_UNREAD_BADGE = "show_unread_badge"

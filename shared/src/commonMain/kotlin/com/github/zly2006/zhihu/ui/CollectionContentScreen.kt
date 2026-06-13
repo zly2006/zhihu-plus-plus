@@ -134,8 +134,7 @@ private fun CollectionContentScreenContent(
             includeImages = includeImages,
         )
     }
-    val environment = rememberPaginationEnvironment(allowGuestAccess = false)
-    val sharedData = environment.articleAnswerSwitchState()
+    val sharedData = collectionEnvironment.articleAnswerSwitchState()
 
     LaunchedEffect(testOverrides) {
         if (testOverrides == null && screenViewModel.allData.isEmpty()) {

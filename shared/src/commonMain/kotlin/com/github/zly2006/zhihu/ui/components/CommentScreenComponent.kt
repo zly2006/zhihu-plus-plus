@@ -102,6 +102,7 @@ fun CommentScreenComponent(
                 shouldDismissOnClickOutside = true,
             ),
             dragHandle = { DragHandleTitle("评论") },
+            usePlatformWindow = false,
         ) {
             CommentScreen(
                 content = { content },
@@ -121,6 +122,7 @@ fun CommentScreenComponent(
                 shouldDismissOnClickOutside = true,
             ),
             dragHandle = { DragHandleTitle("回复") },
+            usePlatformWindow = false,
         ) {
             CommentScreen(
                 content = { childTarget },

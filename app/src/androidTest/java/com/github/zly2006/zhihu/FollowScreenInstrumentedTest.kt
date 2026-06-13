@@ -27,6 +27,7 @@ import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
@@ -125,6 +126,7 @@ class FollowScreenInstrumentedTest {
         composeRule.onNodeWithTag(followScreenTabTag(1)).assertIsSelected()
         composeRule.onNodeWithTag(followScreenTabTag(0)).assertIsNotSelected()
         composeRule.onNodeWithTag(followDynamicItemTag("dynamic-item-1")).assertIsDisplayed()
+        composeRule.onNodeWithText("关注用户 1 赞同了回答").assertIsDisplayed()
 
         composeRule.onNodeWithTag(FOLLOW_SCREEN_PAGER_TAG).performTouchInput { swipeRight() }
 
@@ -351,6 +353,7 @@ class FollowScreenInstrumentedTest {
             feed = null,
             navDestinationJson = Search(query = "follow-dynamic-$itemId").toFeedDisplayItemNavDestinationJson(),
             localFeedId = "dynamic-item-$itemId",
+            sourceLabel = "关注用户 $itemId 赞同了回答",
         )
     }
 

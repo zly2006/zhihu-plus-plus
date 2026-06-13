@@ -20,9 +20,17 @@
 
 处理截图导出体积时，先判断尺寸来源，不能只在最终图片上套总像素上限。网页或 Compose 这类逻辑布局导出，应先选定合理的输出 DPI/缩放倍率，再把 CSS/DP 尺寸转换成像素；否则高密度设备会直接生成 3x/4x 物理像素图，后面再猜一个像素上限只是补救。例子：长图导出应该按固定输出 DPI 渲染同一份逻辑页面宽度，而不是让页面宽度跟随设备物理像素后再硬压缩。
 
+修复截图导出空白、裁切或渲染时序问题时，不能只验证 bitmap 能创建、JPEG 能编码或文件大小大于 0；这些都不能证明页面内容真的画进去了。必须检查实际像素内容，至少验证导出区域存在非背景像素，最好保存并查看一张真实导出结果。例子：一个 WebView 长图如果在最终高度布局后立刻截图，可能得到一张尺寸正确但全白的图片；测试只断言压缩成功会漏掉根因，应验证正文文字区域已经产生可见像素。
+
 ### 返回栈上下文保存
 
 处理“从弹层或列表进入详情，再返回原位置”的问题时，不能只保存开关状态，还要保存用户可见上下文。评论区这类弹层不仅要恢复打开状态，还要恢复评论列表滚动位置；从评论进入用户资料页再返回时，如果只是重新打开评论区但回到顶部，本质上仍然丢失了上下文。例子：列表弹层里的某一项进入详情页，返回后应该看到原先那一项附近，而不是只把弹层重新显示出来。
+
+保存返回栈上下文时，必须区分“应该跨返回保留的 UI 状态”和“不能重复入栈的导航目标”。评论区这类场景可以保存弹层打开状态和列表位置，但从评论作者进入个人页这类外部导航要防止同一目标短时间连续入栈；否则返回时可能只是露出前一个重复的个人页，看起来像又自动进入了一次。不要声称 Compose recompose 会重放 `clickable` 的 `onClick`；排查这类问题应先看是否重复调用了导航入口、是否重复 push 了同一个 route。
+
+用户指出某个提交引入具体回归时，不能只记录根因就结束；除非用户明确只要求写经验，否则必须同时修复回归并验证。例子：用户说返回评论页会再次进入个人主页时，记录“导航重复入栈”只是第一步，还要改掉导航去重逻辑并跑必要检查。
+
+调试 UI 导航回归时，不能在未抓到导航调用次数、返回栈变化或输入事件日志前，把“重复入栈”“事件未消费”等猜测写成根因并上补丁。Compose 的 `clickable` 不会因为 recompose 自动重放 `onClick`；如果怀疑重复导航，必须先用最小日志或测试证明同一入口被调用了几次、每次来自哪里，再决定修导航层还是 UI 层。例子：返回评论页后再次出现个人页，可能是重复 push、返回键先关闭弹层、或其他返回栈状态问题；不能只看症状就给 `navigate()` 加时间窗口去重。
 
 ### Subagent 任务边界
 
@@ -31,6 +39,22 @@
 ### 新功能实现边界
 
 实现新功能前必须先判断项目未来维护的主路径，不能为了“覆盖所有现存渲染方式”把即将废弃或非主线的路径也改一遍。例子：图片预览新交互如果产品方向只要求 Compose，就应该只接入 Compose 渲染链路；顺手把 WebView、平台能力接口和解析层都扩展，会让 diff 膨胀、审查成本上升，也会把功能承诺带到不打算继续支持的路径上。
+
+### 段评与正文格式优先级
+
+`segment_infos` 没有正文原始格式重要。段评高亮只能在不会破坏原 HTML 结构时注入；加粗和斜体可以正常处理，应纳入白名单；如果段落里已经有脚注、链接、图片、公式等非白名单内联或块级格式，应暂停解析这段 `segment_infos`，优先保留原格式。例子：一个带脚注引用的段落不能为了注入段评 span 把 `<sup>` 展平成普通 `[3]` 文本；临时跳过段评比破坏脚注显示更合理。
+
+### 抽象边界
+
+清理或新增 UI 辅助函数时，不能把只转发一次调用、没有分支、状态、契约隔离或复用收益的包装层保留下来。例子：一个正文渲染函数如果只是把参数原样传给底层渲染组件，调用点也只有少数几处，就应该在调用点直接使用底层组件；只有当它承载平台分支、设置读取、状态保存或跨页面统一语义时，才值得独立成函数。
+
+### 通知偏好默认值
+
+修复某类通知“数据缺失、不显示、不能进入”的问题时，只能修数据源、解析、分页和渲染链路，不能顺手改变该类通知的默认开关策略。默认是否展示属于产品偏好，不是 bug 修复的附属决定；如果用户原本需要主动选择接收某类通知，修复后仍应保持 opt-in。例子：某类通知以前因为只拉了聚合列表而缺失，正确修复是补齐对应分类接口和失败隔离，而不是把该类通知从默认隐藏改成默认显示。
+
+### 设置项说明位置
+
+修复设置页说明文字位置时，必须先检查设置项组件是否已有 description/supporting text 能力；说明只解释某个开关时，应绑定到该设置项自身，而不是为了视觉位置新建分组或放到组 footer。例子：一个“进入页面后自动执行”的说明只属于自动执行开关，就应该作为该行的说明文字；把另一个无关开关拆到新组只会改变信息架构，不能算修复说明位置。
 
 ## 构建与测试
 
@@ -85,24 +109,63 @@
 ## Android 调试标准流程
 
 注意：
-1. 必须使用avd验证，不要使用真机。
+1. 必须使用avd验证，不要使用真机。若 `/Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/SKILL.md` 存在，UI/AVD 验证必须优先使用 `$off-android-avd-ci-debug` 提供的远端 `off` AVD；只有该 skill 不存在或远端 runner 不可用时，才退回本地 AVD。
 2. 时刻注意你是一个LLM，延迟很高。所以大多数情况下不需要你执行sleep指令，你本身的反应就很慢，足够程序响应了。这也是说，如果需要执行双击等复杂手势，必须用&&来串联多个adb指令，不然你的反应太慢就不是双击了。
 3. UI 验证时如果启动后看到“下载官方App”“查看协议”“查看设置”这类官方 App/协议确认页，或进入知乎网页登录/安全验证页，不要当成普通业务 UI 问题；这表示当前 AVD 登录态缺失或失效。应先按 `.agents/skills/launch-on-device/SKILL.md` 的 Login JSON Backup and Restore 流程恢复/覆盖 `files/account.json`，确认已登录后再继续 UI 验证；不要反复卡在登录流程里。
+4. 调用 `$ui-test` 或安排 UI 自动化 subagent 时，尽量使用 `gpt-5.4-mini`；复杂判断再使用 `gpt-5.4`，避免使用反应较慢的模型拖慢 AVD 交互。
+
+### AVD 选择优先级
+
+1. 若 `$off-android-avd-ci-debug` 存在，先读取该 skill，并用其远端 runner 脚本做健康检查：
+   ```bash
+   /Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/scripts/off-avd-ci-debug.sh status
+   /Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/scripts/off-avd-ci-debug.sh boot-check
+   ```
+2. `boot-check` 只证明远端 runner 可启动并会在结束时清理模拟器。需要真实 UI 交互时，应按 `$off-android-avd-ci-debug` 的远端环境约定在 `off` 上启动短生命周期 AVD，并在远端 ADB 环境中安装、启动和执行 UI 验证，不要把本地 ADB 当成远端 emulator。
+3. 远端 AVD 只作为短生命周期 runner 使用；验证完成后必须清理：
+   ```bash
+   /Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/scripts/off-avd-ci-debug.sh kill
+   ```
+4. 只有远端 skill 缺失或远端 runner 明确不可用时，才使用本地 `Medium_Phone_2`。
 
 ### 应用启动与验证
+远端路径和本地回退路径必须分开执行，不能连续复制执行。只要选择了 `$off-android-avd-ci-debug`，后续 `adb` / `ui-test` 命令都必须在 `off` 的远端 ADB 环境中运行，不能继续使用本机裸 `adb`。如果当前远端 skill 只有 `status` / `boot-check` / `kill`，没有能保持 emulator 运行的交互入口，不能把 `boot-check` 后面接本机 `adb`；应先补远端交互脚本，或把远端 runner 明确标记为当前不可用后再走本地回退。
+
 ```bash
-# 1. 检查包名（必须先做）
+# 检查包名（必须先做）
 grep "applicationId" app/build.gradle.kts
 # lite variant: com.github.zly2006.zhplus.lite
+```
 
-# 2. 启动模拟器（如果还没启动）
+远端优先路径：
+
+```bash
+/Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/scripts/off-avd-ci-debug.sh status
+/Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/scripts/off-avd-ci-debug.sh boot-check
+# boot-check 会清理模拟器。真实 UI 交互必须在 off 上启动短生命周期 AVD 后执行。
+# 后续设备命令的作用域必须类似这样，不能换成本机裸 adb：
+ssh off 'bash -lc '"'"'
+BASE=/home/dom/android-ci
+export JAVA_HOME="$BASE/java"
+export ANDROID_HOME="$BASE/android-sdk"
+export ANDROID_SDK_ROOT="$BASE/android-sdk"
+export ANDROID_USER_HOME="$BASE/android-home"
+export ANDROID_AVD_HOME="$BASE/avd"
+export ANDROID_EMULATOR_HOME="$BASE/emulator-home"
+export TMPDIR="$BASE/tmp"
+export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
+adb devices
+'"'"''
+```
+
+本地回退路径，仅当 off skill 缺失或远端 runner 明确不可用时执行：
+
+```bash
 emulator -avd Medium_Phone_2
 
-# 3. 构建并安装
 ./gradlew assembleLiteDebug
 adb install -r app/build/outputs/apk/lite/debug/app-lite-debug.apk
 
-# 4. 启动
 adb shell am force-stop com.github.zly2006.zhplus.lite
 adb shell monkey -p com.github.zly2006.zhplus.lite -c android.intent.category.LAUNCHER 1
 ```
@@ -122,7 +185,7 @@ adb shell monkey -p com.github.zly2006.zhplus.lite -c android.intent.category.LA
 
 ### UI 双代理复检
 
-`$ui-voyager` 和 `$picky-user` 运行成本较高，非必要不要调用。只有在改动范围较大、交互路径复杂、主 agent 已经完成基础截图/设备验证但仍需要额外视角，或我明确要求复检时，才启动它们。调用时必须使用 5.4 mini 级别模型，避免使用过慢模型。
+`$ui-voyager` 和 `$picky-user` 运行成本较高，非必要不要调用。只有在改动范围较大、交互路径复杂、主 agent 已经完成基础截图/设备验证但仍需要额外视角，或我明确要求复检时，才启动它们。调用时必须优先使用 `gpt-5.4-mini`，复杂场景可用 `gpt-5.4`，避免使用过慢模型。
 
 需要调用时，主 agent 在完成上面的基础验证后，再执行以下流程：
 

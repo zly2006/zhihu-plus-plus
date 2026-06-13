@@ -146,7 +146,7 @@ class DesktopPaginationEnvironment(
     private val showFetchFailureMessage: ((String) -> Unit)? = null,
 ) : PaginationEnvironment,
     CollectionContentEnvironment,
-    NotificationPaginationEnvironment {
+    NotificationEnvironment {
     private val settingsStore = desktopSettingsStore()
     private val historyStorage = DesktopHistoryStorage()
     private val contentFilterDatabase = getContentFilterDatabase(desktopContentFilterDatabaseFile())
@@ -697,7 +697,7 @@ private fun writeJpegImage(file: File, image: BufferedImage) {
             val params = writer.defaultWriteParam
             if (params.canWriteCompressed()) {
                 params.compressionMode = ImageWriteParam.MODE_EXPLICIT
-                params.compressionQuality = 0.70f
+                params.compressionQuality = 0.80f
             }
             writer.write(null, IIOImage(image, null, null), params)
         } finally {
