@@ -23,6 +23,7 @@ import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
@@ -58,7 +59,6 @@ import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEM_ORDER_PREFERENCE_K
 import com.github.zly2006.zhihu.ui.subscreens.START_DESTINATION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.appearanceSettingsBottomBarItemTag
 import com.github.zly2006.zhihu.ui.subscreens.appearanceSettingsBottomBarMoveDownTag
-import com.github.zly2006.zhihu.ui.subscreens.appearanceSettingsStartDestinationOptionTag
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -147,10 +147,10 @@ class AppearanceSettingsScreenInstrumentedTest {
         )
 
         scrollBackUntilTagDisplayed(APPEARANCE_SETTINGS_START_DESTINATION_TAG)
-        composeRule.onNodeWithTag(APPEARANCE_SETTINGS_START_DESTINATION_TAG).performClick()
-        val hotListStartDestinationOptionTag = appearanceSettingsStartDestinationOptionTag(HotList.name)
-        waitUntilTagExists(hotListStartDestinationOptionTag)
-        composeRule.onNodeWithTag(hotListStartDestinationOptionTag, useUnmergedTree = true).performClick()
+        composeRule.onNodeWithTag(APPEARANCE_SETTINGS_START_DESTINATION_TAG).performTouchInput { click() }
+        val hotListStartDestinationOption = hasText("热榜") and hasClickAction()
+        waitUntilDisplayed(hotListStartDestinationOption)
+        composeRule.onNode(hotListStartDestinationOption, useUnmergedTree = true).performClick()
 
         waitUntilStringPreference(START_DESTINATION_PREFERENCE_KEY, expected = HotList.name)
         scrollContainer().performVerticalSwipeCycle()
