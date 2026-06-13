@@ -1643,7 +1643,7 @@ fun ArticleScreen(
         )
 
         // 跳转按钮需要压在问题区和回答区之上。
-        if (article.type == ArticleType.Answer && buttonSkipAnswer) {
+        if (article.type == ArticleType.Answer && buttonSkipAnswer && !isImmersiveMode) {
             val showSkipButton = !autoHideSkipAnswerButton || isScrollingUp || scrollState.value == 0
             val skipButtonAlpha by animateFloatAsState(
                 targetValue = if (showSkipButton) 1f else 0f,
