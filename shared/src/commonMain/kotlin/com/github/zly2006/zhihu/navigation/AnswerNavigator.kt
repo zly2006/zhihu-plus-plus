@@ -37,7 +37,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 interface AnswerNavigatorRepository {
-    suspend fun fetchAnswerContent(article: Article): DataHolder.Answer?
+    suspend fun fetchCachedAnswerContent(article: Article): DataHolder.Answer?
 
     suspend fun fetchQuestionFeeds(
         questionId: Long,
@@ -240,7 +240,7 @@ class QuestionAnswerNavigator(
         }
 
     private suspend fun fetchCached(article: Article): CachedAnswerContent? {
-        val detail = repository.fetchAnswerContent(article) ?: return null
+        val detail = repository.fetchCachedAnswerContent(article) ?: return null
         return CachedAnswerContent(
             article = article,
             title = detail.question.title,
@@ -353,7 +353,7 @@ class QuestionAnswerNavigator(
         val nextDest = destinations.firstOrNull() ?: return
         if (nextDest.type != ArticleType.Answer) return
         try {
-            val detail = repository.fetchAnswerContent(nextDest) ?: return
+            val detail = repository.fetchCachedAnswerContent(nextDest) ?: return
             nextAnswerContent = CachedAnswerContent(
                 article = nextDest,
                 title = detail.question.title,
@@ -445,7 +445,7 @@ class CollectionAnswerNavigator(
         }
         val article = previousQueue.removeFirstOrNull() ?: return null
         val cached = try {
-            val detail = repository.fetchAnswerContent(article)
+            val detail = repository.fetchCachedAnswerContent(article)
             if (detail != null) {
                 CachedAnswerContent(
                     article = article,
@@ -481,7 +481,7 @@ class CollectionAnswerNavigator(
         if (previousAnswerContent != null) return
         val article = previousQueue.firstOrNull() ?: return
         try {
-            val detail = repository.fetchAnswerContent(article) ?: return
+            val detail = repository.fetchCachedAnswerContent(article) ?: return
             previousAnswerContent = CachedAnswerContent(
                 article = article,
                 title = detail.question.title,
@@ -510,7 +510,7 @@ class CollectionAnswerNavigator(
             prefetchedArticle = queue.removeFirstOrNull()
         }
         try {
-            val detail = repository.fetchAnswerContent(article) ?: return
+            val detail = repository.fetchCachedAnswerContent(article) ?: return
             nextAnswerContent = CachedAnswerContent(
                 article = article,
                 title = detail.question.title,
@@ -596,7 +596,7 @@ class PaginationInfoNavigator(
         val id = lastKnownNextId ?: return
         if (nextQueue.isNotEmpty()) return
         val dest = Article(id = id, type = ArticleType.Answer)
-        val detail = repository.fetchAnswerContent(dest) ?: return
+        val detail = repository.fetchCachedAnswerContent(dest) ?: return
         val pagination = detail.paginationInfo ?: return
         pagination.nextAnswerIds.forEach { newId ->
             if (enqueuedNextIds.add(newId)) nextQueue.addLast(newId)
@@ -613,7 +613,7 @@ class PaginationInfoNavigator(
 
     private suspend fun fetchCached(answerId: Long): CachedAnswerContent? {
         val dest = Article(id = answerId, type = ArticleType.Answer)
-        val detail = repository.fetchAnswerContent(dest) ?: return null
+        val detail = repository.fetchCachedAnswerContent(dest) ?: return null
         return CachedAnswerContent(
             article = dest,
             title = detail.question.title,

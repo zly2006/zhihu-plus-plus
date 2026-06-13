@@ -35,7 +35,7 @@ class AndroidAnswerNavigatorRepository(
 ) : AnswerNavigatorRepository {
     private val appContext = context.applicationContext
 
-    override suspend fun fetchAnswerContent(article: Article): DataHolder.Answer? =
+    override suspend fun fetchCachedAnswerContent(article: Article): DataHolder.Answer? =
         appContext.asApiEnvironment().getOrFetchContentDetail(article) as? DataHolder.Answer
 
     override suspend fun fetchQuestionFeeds(

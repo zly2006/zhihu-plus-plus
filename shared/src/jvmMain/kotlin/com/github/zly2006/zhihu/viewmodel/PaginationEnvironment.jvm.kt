@@ -175,7 +175,7 @@ class DesktopPaginationEnvironment(
 
     override fun answerNavigatorRepository(): AnswerNavigatorRepository =
         object : AnswerNavigatorRepository {
-            override suspend fun fetchAnswerContent(article: Article): DataHolder.Answer? =
+            override suspend fun fetchCachedAnswerContent(article: Article): DataHolder.Answer? =
                 getOrFetchContentDetail(article) as? DataHolder.Answer
 
             override suspend fun fetchQuestionFeeds(

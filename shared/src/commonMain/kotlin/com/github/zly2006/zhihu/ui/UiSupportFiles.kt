@@ -54,11 +54,9 @@ import com.github.zly2006.zhihu.shared.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KE
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.ui.components.ShareDialogRuntime
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
-import com.github.zly2006.zhihu.viewmodel.HistoryEnvironment
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.getOrFetchContentDetail
-import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import io.ktor.client.HttpClient
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject

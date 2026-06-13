@@ -245,7 +245,7 @@ class ArticleScreenInstrumentedTest {
         )
 
         val NO_OP_ANSWER_REPOSITORY = object : AnswerNavigatorRepository {
-            override suspend fun fetchAnswerContent(article: Article): DataHolder.Answer? = null
+            override suspend fun fetchCachedAnswerContent(article: Article): DataHolder.Answer? = null
 
             override suspend fun fetchQuestionFeeds(
                 questionId: Long,
