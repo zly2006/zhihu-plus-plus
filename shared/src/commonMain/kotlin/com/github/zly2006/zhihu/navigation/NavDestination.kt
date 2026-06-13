@@ -219,9 +219,11 @@ data class Article(
     var avatarSrc: String? = null,
     var excerpt: String? = null,
 ) : NavDestination {
-    override fun hashCode(): Int = id.hashCode()
+    override fun hashCode(): Int = 31 * type.hashCode() + id.hashCode()
 
     override fun equals(other: Any?): Boolean = other is Article && other.id == id && other.type == type
+
+    override fun toString(): String = "Article(type=$type, id=$id)"
 }
 
 @Serializable
@@ -245,6 +247,8 @@ data class Question(
     override fun hashCode(): Int = questionId.hashCode()
 
     override fun equals(other: Any?): Boolean = other is Question && other.questionId == questionId
+
+    override fun toString(): String = "Question(questionId=$questionId)"
 }
 
 @Serializable
@@ -259,24 +263,14 @@ data class Person(
     var urlToken: String,
     val name: String = "loading...",
     val jumpTo: String = "",
+    @SerialName("route_identity")
+    val routeIdentity: String = stablePersonRouteIdentity(id, urlToken),
 ) : NavDestination {
-    override fun hashCode(): Int {
-        if (id != EMPTY_ID) {
-            // 32 位十六进制字符，通常是用户 ID。
-            return id.hashCode()
-        }
-        return urlToken.hashCode()
-    }
+    override fun hashCode(): Int = routeIdentity.hashCode()
 
-    override fun equals(other: Any?): Boolean {
-        if (other is Person) {
-            if (id != EMPTY_ID && other.id != EMPTY_ID) {
-                return other.id == id
-            }
-            return other.urlToken == urlToken
-        }
-        return false
-    }
+    override fun equals(other: Any?): Boolean = other is Person && other.routeIdentity == routeIdentity
+
+    override fun toString(): String = "Person(routeIdentity=$routeIdentity)"
 
     val userTokenOrId get() = urlToken.takeIf { it.isNotEmpty() } ?: id
 
@@ -284,6 +278,13 @@ data class Person(
         const val EMPTY_ID = "00000000000000000000000000000000"
     }
 }
+
+private fun stablePersonRouteIdentity(id: String, urlToken: String): String =
+    if (urlToken.isNotBlank()) {
+        "url:$urlToken"
+    } else {
+        "id:$id"
+    }
 
 @Serializable
 data class Video(
