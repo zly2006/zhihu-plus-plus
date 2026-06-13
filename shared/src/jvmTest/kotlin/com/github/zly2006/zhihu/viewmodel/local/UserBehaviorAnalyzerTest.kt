@@ -35,8 +35,9 @@ class UserBehaviorAnalyzerTest {
         analyzer.recordRecommendationFeedback("answer:1", CrawlingReason.Trending, 1.0)
         analyzer.recordRecommendationFeedback("question:2", CrawlingReason.Following, -1.0)
 
-        val answerBehaviors = dao.getBehaviorsByContentId("answer:1").map { it.action }.toSet()
-        val questionBehaviors = dao.getBehaviorsByContentId("question:2").map { it.action }.toSet()
+        val behaviorsByContentId = dao.getBehaviorsSince(0L).groupBy { it.contentId }
+        val answerBehaviors = behaviorsByContentId.getValue("answer:1").map { it.action }.toSet()
+        val questionBehaviors = behaviorsByContentId.getValue("question:2").map { it.action }.toSet()
 
         assertEquals(setOf("click", "click:Trending", "like", "like:Trending"), answerBehaviors)
         assertEquals(setOf("dislike", "dislike:Following"), questionBehaviors)
