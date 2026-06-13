@@ -970,12 +970,6 @@ fun AppearanceSettingsScreen(
 
                 SettingItem(
                     modifier = Modifier.testTag(APPEARANCE_SETTINGS_START_DESTINATION_ROW_TAG),
-                    onClick = {
-                        if (startDestinationItems.isNotEmpty()) {
-                            startDestinationExpanded = true
-                        }
-                    },
-                    enabled = startDestinationItems.isNotEmpty(),
                     title = { Text("应用启动默认页面") },
                     description = { Text("仅可选择已在底部导航栏中显示的页面。") },
                     endAction = {
