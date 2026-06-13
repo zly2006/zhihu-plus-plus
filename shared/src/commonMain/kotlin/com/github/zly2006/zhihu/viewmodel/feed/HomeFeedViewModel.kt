@@ -23,6 +23,7 @@ import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.flattenFeeds
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.viewmodel.ContentInteractionEnvironment
@@ -127,7 +128,7 @@ class HomeFeedViewModel :
 
         viewModelScope.launch {
             val newItems = data
-                .flatten()
+                .flattenFeeds()
                 .map { feed -> createDisplayItem(environment, feed) }
 
             val filterResult = environment.applyHomeFeedFilters(newItems)

@@ -59,6 +59,7 @@ object ModelManager {
 
         // Check for updates and calculate total size
         val filesToDownload = mutableListOf<RemoteFile>()
+        val metadataPrefs = modelManagerPrefs(context)
 
         for (file in files) {
             val destFile = File(modelDir, file.localFileName)
@@ -66,10 +67,10 @@ object ModelManager {
             try {
                 val head = client.head(file.url)
                 val remoteEtag = head.etag()
-                val storedEtag = getStoredEtag(context, modelId, file.localFileName)
+                val storedEtag = metadataPrefs.getString(storedMetadataKey(modelId, file.localFileName, "etag"), null)
                 val remoteSize = head.contentLength() ?: 0L
-                val storedSize = getStoredSize(context, modelId, file.localFileName)
-                val storedSha256 = getStoredSha256(context, modelId, file.localFileName)
+                val storedSize = metadataPrefs.getLong(storedMetadataKey(modelId, file.localFileName, "size"), -1L)
+                val storedSha256 = metadataPrefs.getString(storedMetadataKey(modelId, file.localFileName, "sha256"), null)
 
                 // Verify local file integrity: check size and SHA256
                 val needsRedownload =
@@ -114,7 +115,7 @@ object ModelManager {
                 Log.e(TAG, "Failed to check update for ${file.url}", e)
                 // If we have a local file, verify its integrity before using it
                 if (destFile.exists()) {
-                    val storedSize = getStoredSize(context, modelId, file.localFileName)
+                    val storedSize = metadataPrefs.getLong(storedMetadataKey(modelId, file.localFileName, "size"), -1L)
                     if (storedSize > 0 && destFile.length() == storedSize) {
                         Log.w(TAG, "Using existing file ${file.localFileName} (network check failed)")
                         result[file.localFileName] = destFile
@@ -176,14 +177,15 @@ object ModelManager {
 
                     // Calculate and save SHA256
                     val sha256 = calculateSha256(tempFile)
-                    setStoredSha256(context, modelId, file.localFileName, sha256)
-
-                    // Save ETag and size
-                    val etag = httpResponse.etag()
-                    if (etag != null) {
-                        setStoredEtag(context, modelId, file.localFileName, etag)
-                    }
-                    setStoredSize(context, modelId, file.localFileName, tempFile.length())
+                    metadataPrefs
+                        .edit()
+                        .apply {
+                            putString(storedMetadataKey(modelId, file.localFileName, "sha256"), sha256)
+                            httpResponse.etag()?.let { etag ->
+                                putString(storedMetadataKey(modelId, file.localFileName, "etag"), etag)
+                            }
+                            putLong(storedMetadataKey(modelId, file.localFileName, "size"), tempFile.length())
+                        }.apply()
                 }
 
             if (destFile.exists()) destFile.delete()
@@ -201,62 +203,9 @@ object ModelManager {
         return@withContext result
     }
 
-    private fun getStoredEtag(
-        context: Context,
-        modelId: String,
-        fileName: String,
-    ): String? {
-        val prefs = context.getSharedPreferences("model_manager", Context.MODE_PRIVATE)
-        return prefs.getString("${modelId}_${fileName}_etag", null)
-    }
+    private fun modelManagerPrefs(context: Context) = context.getSharedPreferences("model_manager", Context.MODE_PRIVATE)
 
-    private fun setStoredEtag(
-        context: Context,
-        modelId: String,
-        fileName: String,
-        etag: String,
-    ) {
-        val prefs = context.getSharedPreferences("model_manager", Context.MODE_PRIVATE)
-        prefs.edit().putString("${modelId}_${fileName}_etag", etag).apply()
-    }
-
-    private fun getStoredSize(
-        context: Context,
-        modelId: String,
-        fileName: String,
-    ): Long {
-        val prefs = context.getSharedPreferences("model_manager", Context.MODE_PRIVATE)
-        return prefs.getLong("${modelId}_${fileName}_size", -1L)
-    }
-
-    private fun setStoredSize(
-        context: Context,
-        modelId: String,
-        fileName: String,
-        size: Long,
-    ) {
-        val prefs = context.getSharedPreferences("model_manager", Context.MODE_PRIVATE)
-        prefs.edit().putLong("${modelId}_${fileName}_size", size).apply()
-    }
-
-    private fun getStoredSha256(
-        context: Context,
-        modelId: String,
-        fileName: String,
-    ): String? {
-        val prefs = context.getSharedPreferences("model_manager", Context.MODE_PRIVATE)
-        return prefs.getString("${modelId}_${fileName}_sha256", null)
-    }
-
-    private fun setStoredSha256(
-        context: Context,
-        modelId: String,
-        fileName: String,
-        sha256: String,
-    ) {
-        val prefs = context.getSharedPreferences("model_manager", Context.MODE_PRIVATE)
-        prefs.edit().putString("${modelId}_${fileName}_sha256", sha256).apply()
-    }
+    private fun storedMetadataKey(modelId: String, fileName: String, suffix: String): String = "${modelId}_${fileName}_$suffix"
 
     private fun calculateSha256(file: File): String {
         val digest = MessageDigest.getInstance("SHA-256")

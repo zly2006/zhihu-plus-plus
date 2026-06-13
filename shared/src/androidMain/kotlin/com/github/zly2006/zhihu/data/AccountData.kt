@@ -264,12 +264,6 @@ object AccountData {
         }
     }
 
-    @Suppress("FunctionName")
-    fun snake_case2camelCase(snakeCase: String): String = ZhihuJson.snakeCaseToCamelCase(snakeCase)
-
-    @Suppress("FunctionName")
-    fun snake_case2camelCase(json: JsonElement): JsonElement = ZhihuJson.snakeCaseToCamelCase(json)
-
     private var lastRefreshCookie = 0L
 
     suspend fun fetch(context: Context, url: String, block: suspend HttpRequestBuilder.() -> Unit = {}): JsonObject? {

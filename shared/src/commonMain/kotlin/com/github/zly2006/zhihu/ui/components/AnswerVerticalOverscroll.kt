@@ -115,11 +115,6 @@ fun AnswerVerticalOverscroll(
     val currentOnNavigatePrevious by rememberUpdatedState(onNavigatePrevious)
     val currentOnNavigateNext by rememberUpdatedState(onNavigateNext)
 
-    fun dampedOffset(rawDelta: Float): Float {
-        val sign = if (rawDelta >= 0) 1f else -1f
-        return sign * maxOverscrollPx * tanh(abs(rawDelta) / (maxOverscrollPx * DAMPING_FACTOR))
-    }
-
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
@@ -135,7 +130,11 @@ fun AnswerVerticalOverscroll(
                             return Offset(0f, delta)
                         }
                         rawDragAccumulator = newRaw
-                        val newOffset = dampedOffset(rawDragAccumulator)
+                        val newOffset = dampedOverscrollOffset(
+                            rawDelta = rawDragAccumulator,
+                            maxOverscrollPx = maxOverscrollPx,
+                            dampingFactor = DAMPING_FACTOR,
+                        )
                         coroutineScope.launch { overscrollOffset.snapTo(newOffset) }
                         if (hasTriggeredHaptic && abs(newOffset) < triggerThresholdPx) {
                             hasTriggeredHaptic = false
@@ -165,7 +164,11 @@ fun AnswerVerticalOverscroll(
                     (overscrollOffset.value < 0 && delta < 0)
                 ) {
                     rawDragAccumulator += delta
-                    val newOffset = dampedOffset(rawDragAccumulator)
+                    val newOffset = dampedOverscrollOffset(
+                        rawDelta = rawDragAccumulator,
+                        maxOverscrollPx = maxOverscrollPx,
+                        dampingFactor = DAMPING_FACTOR,
+                    )
                     coroutineScope.launch { overscrollOffset.snapTo(newOffset) }
                     if (!hasTriggeredHaptic && abs(newOffset) >= triggerThresholdPx) {
                         hasTriggeredHaptic = true
@@ -254,7 +257,11 @@ fun AnswerVerticalOverscroll(
                                         ) {
                                             rawDragAccumulator = 0f
                                         }
-                                        val newOffset = dampedOffset(rawDragAccumulator)
+                                        val newOffset = dampedOverscrollOffset(
+                                            rawDelta = rawDragAccumulator,
+                                            maxOverscrollPx = maxOverscrollPx,
+                                            dampingFactor = DAMPING_FACTOR,
+                                        )
                                         coroutineScope.launch { overscrollOffset.snapTo(newOffset) }
                                         if (!hasTriggeredHaptic && abs(newOffset) >= triggerThresholdPx) {
                                             hasTriggeredHaptic = true
@@ -447,3 +454,12 @@ private fun AnswerPreviewCard(
 private const val MAX_OVERSCROLL_DP = 200f
 private const val TRIGGER_THRESHOLD_DP = 80f
 private const val DAMPING_FACTOR = 1.2f
+
+internal fun dampedOverscrollOffset(
+    rawDelta: Float,
+    maxOverscrollPx: Float,
+    dampingFactor: Float,
+): Float {
+    val sign = if (rawDelta >= 0) 1f else -1f
+    return sign * maxOverscrollPx * tanh(abs(rawDelta) / (maxOverscrollPx * dampingFactor))
+}

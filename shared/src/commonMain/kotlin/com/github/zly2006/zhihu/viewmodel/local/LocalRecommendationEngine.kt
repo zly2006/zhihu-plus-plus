@@ -24,6 +24,11 @@ import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
+import com.github.zly2006.zhihu.shared.recommendation.LocalReasonPreference
+import com.github.zly2006.zhihu.shared.recommendation.buildLocalRecommendationReason
+import com.github.zly2006.zhihu.shared.recommendation.parseLocalContentIdentity
+import com.github.zly2006.zhihu.shared.recommendation.scoreFeedTarget
+import com.github.zly2006.zhihu.shared.recommendation.toLocalContentIdentity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow

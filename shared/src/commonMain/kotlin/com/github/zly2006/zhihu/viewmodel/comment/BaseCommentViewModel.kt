@@ -83,8 +83,6 @@ abstract class BaseCommentViewModel(
 
     abstract fun createCommentItem(comment: DataHolder.Comment, article: NavDestination): CommentItem
 
-    fun getCommentById(id: String): CommentItem? = commentsMap[id]
-
     fun changeSortOrder(newSortOrder: CommentSortOrder, environment: PaginationEnvironment) {
         if (sortOrder != newSortOrder) {
             sortOrder = newSortOrder

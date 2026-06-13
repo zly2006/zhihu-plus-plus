@@ -65,9 +65,6 @@ class ContentFilterManager(
         return dao.getViewedContentIdsByIds(idsToCheck).toSet()
     }
 
-    /** 获取曝光记录统计。 */
-    suspend fun getFilterStats(): FilterStats = maintenance.loadFilterStats() ?: ContentFilterStats(0, 0, 0f)
-
     /** 清理过期曝光记录。 */
     suspend fun cleanupOldData() {
         maintenance.cleanupOldData()

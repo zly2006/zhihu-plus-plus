@@ -749,8 +749,6 @@ class MainActivity :
         ttsState = TtsState.Ready
     }
 
-    fun isSpeaking(): Boolean = textToSpeech?.isSpeaking ?: false
-
     @Suppress("unused")
     companion object {
         private const val KEY_LAST_LAUNCH_TIMESTAMP = "last_main_launch_timestamp"

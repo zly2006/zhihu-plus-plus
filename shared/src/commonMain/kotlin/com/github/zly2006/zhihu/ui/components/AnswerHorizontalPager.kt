@@ -43,7 +43,6 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
-import kotlin.math.tanh
 
 /**
  * 左右 overscroll 切换回答容器。
@@ -72,11 +71,6 @@ fun AnswerHorizontalOverscroll(
     var hasTriggeredHaptic by remember { mutableStateOf(false) }
     var rawDragAccumulator by remember { mutableFloatStateOf(0f) }
     var containerWidthPx by remember { mutableFloatStateOf(0f) }
-
-    fun dampedOffset(rawDelta: Float): Float {
-        val sign = if (rawDelta >= 0) 1f else -1f
-        return sign * maxOverscrollPx * tanh(abs(rawDelta) / (maxOverscrollPx * HORIZONTAL_DAMPING_FACTOR))
-    }
 
     Box(
         modifier = Modifier
@@ -135,7 +129,11 @@ fun AnswerHorizontalOverscroll(
                         ) {
                             rawDragAccumulator = 0f
                         }
-                        val newOffset = dampedOffset(rawDragAccumulator)
+                        val newOffset = dampedOverscrollOffset(
+                            rawDelta = rawDragAccumulator,
+                            maxOverscrollPx = maxOverscrollPx,
+                            dampingFactor = HORIZONTAL_DAMPING_FACTOR,
+                        )
                         coroutineScope.launch { overscrollOffset.snapTo(newOffset) }
                         if (!hasTriggeredHaptic && abs(newOffset) >= triggerThresholdPx) {
                             hasTriggeredHaptic = true

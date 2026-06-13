@@ -823,14 +823,14 @@ class ArticleViewModel(
             include = "data[*].content,excerpt,headline",
         ) ?: return emptyList()
         return decodeZhihuCommentData(json, safeRequestedCount)
-            .map(::mapExportComment)
+            .map { comment ->
+                prepareArticleExportComment(
+                    authorName = comment.author.name,
+                    content = comment.content,
+                    createdTimeText = formatArticleDateTime(comment.createdTime).dropLast(3),
+                )
+            }
     }
-
-    private fun mapExportComment(comment: DataHolder.Comment): ArticleExportComment = prepareArticleExportComment(
-        authorName = comment.author.name,
-        content = comment.content,
-        createdTimeText = formatArticleDateTime(comment.createdTime).dropLast(3),
-    )
 
     private fun buildExportFileName(extension: String): String = buildArticleExportFileName(
         content = requireExportSourceContent(),

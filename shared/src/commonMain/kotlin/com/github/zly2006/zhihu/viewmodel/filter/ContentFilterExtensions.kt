@@ -145,7 +145,7 @@ class FeedContentFilterPipeline(
     private val settings: FeedFilterSettings,
     private val blocklistService: BlocklistService,
     private val blockedKeywordService: BlockedKeywordService,
-    private val htmlToText: (String) -> String = ::htmlToPlainText,
+    private val htmlToText: (String) -> String = { html -> Ksoup.parse(html).text() },
     private val onNlpBlocked: suspend (List<FilterableContent>) -> Unit = {},
 ) {
     suspend fun filter(contents: List<FilterableContent>): FeedContentFilterResult {
@@ -225,8 +225,6 @@ class FeedContentFilterPipeline(
         return FeedContentFilterResult(filteredContents, blocked)
     }
 }
-
-private fun htmlToPlainText(html: String): String = Ksoup.parse(html).text()
 
 fun interface ContentDetailProvider {
     suspend fun get(navDestination: NavDestination): DataHolder.Content?
@@ -330,7 +328,7 @@ class FeedDisplayFilterPipeline(
 
         if (settings.reverseBlock) {
             val adIds = filterableContents
-                .filter(::isFeedAdOrPaidContent)
+                .filter { content -> getFeedAdBlockReason(content, FeedAdBlockSettings()) != null }
                 .map { it.contentId }
                 .toSet()
             return items.filter { item ->
@@ -511,8 +509,6 @@ data class FeedAdBlockSettings(
     val blockWeChatOfficialAccount: Boolean = true,
     val blockPaidContent: Boolean = true,
 )
-
-fun isFeedAdOrPaidContent(content: FilterableContent): Boolean = getFeedAdBlockReason(content, FeedAdBlockSettings()) != null
 
 fun getFeedAdBlockReason(
     content: FilterableContent,
