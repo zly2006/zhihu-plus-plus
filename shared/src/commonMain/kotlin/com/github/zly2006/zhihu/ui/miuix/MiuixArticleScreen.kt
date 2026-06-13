@@ -90,6 +90,7 @@ import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.shared.util.formatCompactCount
+import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
@@ -344,11 +345,11 @@ fun MiuixArticleScreen(
                     exit = slideOutVertically(tween(200)) { -it },
                 ) {
                     ZhihuTwoRowsTopAppBar(
-                        // 顶栏对齐 M3：展开 headlineMedium / 折叠 titleLarge；容器透明以透出 miuix 模糊背景
+                        // 顶栏对齐 M3：展开 headlineMedium / 折叠 titleLarge；开启模糊时透明透出背景，关闭模糊时使用实体 surface。
                         modifier = Modifier.installerMiuixBlurEffect(backdrop),
                         colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = Color.Transparent,
-                            scrolledContainerColor = Color.Transparent,
+                            containerColor = backdrop.getMiuixAppBarColor(),
+                            scrolledContainerColor = backdrop.getMiuixAppBarColor(),
                             titleContentColor = MiuixTheme.colorScheme.onBackground,
                             navigationIconContentColor = MiuixTheme.colorScheme.onBackground,
                             actionIconContentColor = MiuixTheme.colorScheme.onBackground,

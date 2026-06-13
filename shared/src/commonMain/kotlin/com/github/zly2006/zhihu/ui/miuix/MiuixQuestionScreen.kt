@@ -40,7 +40,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
@@ -53,6 +52,7 @@ import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberZhihuWebUrlOpener
+import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.LoadedQuestionScreenData
@@ -162,12 +162,12 @@ fun MiuixQuestionScreen(
 
     Scaffold(
         topBar = {
-            // 顶栏对齐 M3：展开 headlineMedium / 折叠 titleLarge（标题即问题本身，不可点击）；容器透明透出模糊
+            // 顶栏对齐 M3：展开 headlineMedium / 折叠 titleLarge；开启模糊时透明透出背景，关闭模糊时使用实体 surface。
             ZhihuTwoRowsTopAppBar(
                 modifier = Modifier.installerMiuixBlurEffect(backdrop),
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    scrolledContainerColor = Color.Transparent,
+                    containerColor = backdrop.getMiuixAppBarColor(),
+                    scrolledContainerColor = backdrop.getMiuixAppBarColor(),
                     titleContentColor = MiuixTheme.colorScheme.onBackground,
                     navigationIconContentColor = MiuixTheme.colorScheme.onBackground,
                 ),
