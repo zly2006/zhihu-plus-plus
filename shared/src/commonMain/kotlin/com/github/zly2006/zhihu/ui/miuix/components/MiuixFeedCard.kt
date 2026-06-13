@@ -299,6 +299,7 @@ private fun MiuixFeedCardContent(
 ) {
     val colors = AppTokens.colors
     val text = AppTokens.text
+    val summaryText = item.summary?.takeIf { it.isNotBlank() }
 
     // 赞同数（details）+ 「更多」菜单按钮内联一行，对齐 M3 FeedCard。
     // details 允许换行（不设 maxLines），避免长文案被截断。
@@ -335,27 +336,34 @@ private fun MiuixFeedCardContent(
                 modifier = Modifier.padding(bottom = 8.dp),
             )
         }
+        val hasSummaryMedia = summaryText != null || (!thumbnailUrl.isNullOrEmpty() && showFeedThumbnail && !item.isFiltered)
         Column {
-            Row {
-                Text(
-                    text = parseHtmlTextWithTheme(item.summary ?: ""),
-                    style = text.bodyMedium,
-                    color = colors.onSurfaceVariant,
-                    maxLines = 4,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                if (!thumbnailUrl.isNullOrEmpty() && showFeedThumbnail && !item.isFiltered) {
-                    Spacer(Modifier.width(8.dp))
-                    AsyncImage(
-                        thumbnailUrl,
-                        "缩略图",
-                        modifier = Modifier.padding(top = 8.dp).sizeIn(maxHeight = 80.dp, maxWidth = 128.dp).clip(RoundedCornerShape(8.dp)),
-                        contentScale = ContentScale.FillHeight,
-                    )
+            if (hasSummaryMedia) {
+                Row {
+                    if (summaryText != null) {
+                        Text(
+                            text = parseHtmlTextWithTheme(summaryText),
+                            style = text.bodyMedium,
+                            color = colors.onSurfaceVariant,
+                            maxLines = 4,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                    } else {
+                        Spacer(Modifier.weight(1f))
+                    }
+                    if (!thumbnailUrl.isNullOrEmpty() && showFeedThumbnail && !item.isFiltered) {
+                        Spacer(Modifier.width(8.dp))
+                        AsyncImage(
+                            thumbnailUrl,
+                            "缩略图",
+                            modifier = Modifier.padding(top = 8.dp).sizeIn(maxHeight = 80.dp, maxWidth = 128.dp).clip(RoundedCornerShape(8.dp)),
+                            contentScale = ContentScale.FillHeight,
+                        )
+                    }
                 }
             }
-            Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().padding(top = if (hasSummaryMedia) 8.dp else 0.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (item.avatarSrc != null && item.authorName != null) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f, fill = false)) {
                         AsyncImage(item.avatarSrc, "头像", modifier = Modifier.clip(CircleShape).size(24.dp))
@@ -399,7 +407,15 @@ private fun MiuixFeedCardContent(
         }
         Row {
             Column(Modifier.weight(2f)) {
-                Text(parseHtmlTextWithTheme(item.summary ?: ""), fontSize = 13.sp, maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = if (item.isFiltered) 0.dp else 3.dp))
+                if (summaryText != null) {
+                    Text(
+                        parseHtmlTextWithTheme(summaryText),
+                        fontSize = 13.sp,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = if (item.isFiltered) 0.dp else 3.dp),
+                    )
+                }
                 DetailsWithMenuRow()
             }
             if (!thumbnailUrl.isNullOrEmpty() && showFeedThumbnail) {
