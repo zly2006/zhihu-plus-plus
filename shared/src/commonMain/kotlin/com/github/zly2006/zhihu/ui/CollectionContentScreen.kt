@@ -60,6 +60,7 @@ import com.github.zly2006.zhihu.navigation.CollectionAnswerNavigator
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
+import com.github.zly2006.zhihu.shared.util.twoDigitString
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
@@ -78,15 +79,15 @@ fun formatCollectionUpdatedTime(seconds: Long): String {
     return buildString {
         append(dateTime.year.toString().padStart(4, '0'))
         append('-')
-        append(dateTime.monthNumber.toString().padStart(2, '0'))
+        append(dateTime.monthNumber.twoDigitString())
         append('-')
-        append(dateTime.dayOfMonth.toString().padStart(2, '0'))
+        append(dateTime.dayOfMonth.twoDigitString())
         append(' ')
-        append(dateTime.hour.toString().padStart(2, '0'))
+        append(dateTime.hour.twoDigitString())
         append(':')
-        append(dateTime.minute.toString().padStart(2, '0'))
+        append(dateTime.minute.twoDigitString())
         append(':')
-        append(dateTime.second.toString().padStart(2, '0'))
+        append(dateTime.second.twoDigitString())
     }
 }
 

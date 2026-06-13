@@ -59,7 +59,7 @@ object ModelManager {
 
         // Check for updates and calculate total size
         val filesToDownload = mutableListOf<RemoteFile>()
-        val metadataPrefs = modelManagerPrefs(context)
+        val metadataPrefs = context.getSharedPreferences("model_manager", Context.MODE_PRIVATE)
 
         for (file in files) {
             val destFile = File(modelDir, file.localFileName)
@@ -202,8 +202,6 @@ object ModelManager {
 
         return@withContext result
     }
-
-    private fun modelManagerPrefs(context: Context) = context.getSharedPreferences("model_manager", Context.MODE_PRIVATE)
 
     private fun storedMetadataKey(modelId: String, fileName: String, suffix: String): String = "${modelId}_${fileName}_$suffix"
 

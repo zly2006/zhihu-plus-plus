@@ -54,6 +54,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.shared.util.twoDigitString
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedFeedRecord
 import com.github.zly2006.zhihu.viewmodel.filter.rememberBlockedFeedRecordDao
 import kotlinx.coroutines.launch
@@ -207,8 +208,8 @@ private fun formatBlockedTime(timestampMillis: Long): String {
     val dateTime = Instant
         .fromEpochMilliseconds(timestampMillis)
         .toLocalDateTime(TimeZone.currentSystemDefault())
-    return "${(dateTime.month.ordinal + 1).toString().padStart(2, '0')}-" +
-        "${dateTime.day.toString().padStart(2, '0')} " +
-        "${dateTime.hour.toString().padStart(2, '0')}:" +
-        dateTime.minute.toString().padStart(2, '0')
+    return "${(dateTime.month.ordinal + 1).twoDigitString()}-" +
+        "${dateTime.day.twoDigitString()} " +
+        "${dateTime.hour.twoDigitString()}:" +
+        dateTime.minute.twoDigitString()
 }

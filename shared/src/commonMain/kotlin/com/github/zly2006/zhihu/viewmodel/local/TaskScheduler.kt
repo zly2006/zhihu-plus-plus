@@ -42,7 +42,7 @@ class TaskScheduler(
             while (isActive) {
                 try {
                     executePendingTasks()
-                    cleanupOldData()
+                    cleanupLocalRecommendationData(dao)
                     delay(60_000) // 每分钟检查一次
                 } catch (e: Exception) {
                     // 记录错误但继续运行
@@ -74,12 +74,5 @@ class TaskScheduler(
                 // 忽略单个任务的执行错误
             }
         }
-    }
-
-    /**
-     * 清理旧数据
-     */
-    private suspend fun cleanupOldData() {
-        cleanupLocalRecommendationData(dao)
     }
 }

@@ -99,7 +99,12 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
     ) scan@{ result ->
         if (result.resultCode == android.app.Activity.RESULT_OK) {
             val scanResult = result.data?.getStringExtra(QR_SCAN_RESULT_EXTRA) ?: return@scan
-            context.startActivity(context.webviewActivityIntent(scanResult))
+            context.startActivity(
+                Intent().apply {
+                    setClassName(context.packageName, WEBVIEW_ACTIVITY_CLASS)
+                    data = scanResult.toUri()
+                },
+            )
         }
     }
     val accountState = remember(accountDataState.value) {
@@ -117,8 +122,12 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
                 AccountData.saveData(context, data.copy(self = self))
             }
         },
-        requestLogin = { context.startActivity(context.loginActivityIntent()) },
-        requestQrLoginScan = { scanActivityLauncher.launch(context.qrCodeScanActivityIntent()) },
+        requestLogin = {
+            context.startActivity(Intent().setClassName(context.packageName, LOGIN_ACTIVITY_CLASS))
+        },
+        requestQrLoginScan = {
+            scanActivityLauncher.launch(Intent().setClassName(context.packageName, QR_CODE_SCAN_ACTIVITY_CLASS))
+        },
         logout = { AccountData.delete(context) },
         appVersionInfo = { context.zhihuVersionInfo() },
         selectMainTab = { destination -> context.navigateMainTab(destination) },
@@ -145,15 +154,6 @@ private fun Context.zhihuVersionInfo(): String {
         ?: if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) "debug" else "release"
     val gitHash = metaData?.getString("com.github.zly2006.zhihu.GIT_HASH") ?: "unknown"
     return "$versionName $buildType, $gitHash"
-}
-
-private fun Context.loginActivityIntent(): Intent = Intent().setClassName(packageName, LOGIN_ACTIVITY_CLASS)
-
-private fun Context.qrCodeScanActivityIntent(): Intent = Intent().setClassName(packageName, QR_CODE_SCAN_ACTIVITY_CLASS)
-
-private fun Context.webviewActivityIntent(url: String): Intent = Intent().apply {
-    setClassName(packageName, WEBVIEW_ACTIVITY_CLASS)
-    data = url.toUri()
 }
 
 private fun Context.navigateMainTab(destination: TopLevelDestination) {
@@ -403,7 +403,14 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
     return remember(context) {
         PinScreenRuntime(
             fetchLinkCardPreview = { linkCard ->
-                fetchAndroidLinkCardPreview(context, linkCard)
+                fetchPinLinkCardPreview(linkCard) { destination ->
+                    when (destination) {
+                        is Article -> DataHolder.getContentDetail(context, destination)
+                        is Question -> DataHolder.getContentDetail(context, destination)
+                        is Pin -> DataHolder.getContentDetail(context, destination)
+                        else -> null
+                    }
+                }
             },
         )
     }
@@ -422,24 +429,6 @@ actual fun PinHtmlWebViewContent(html: String) {
 }
 
 actual fun supportsPinHtmlWebView(): Boolean = true
-
-private suspend fun fetchAndroidLinkCardPreview(
-    context: Context,
-    linkCard: DataHolder.Pin.ContentLinkCard,
-): PinLinkCardPreview? = fetchPinLinkCardPreview(linkCard) { destination ->
-    when (destination) {
-        is Article -> {
-            DataHolder.getContentDetail(context, destination)
-        }
-        is Question -> {
-            DataHolder.getContentDetail(context, destination)
-        }
-        is Pin -> {
-            DataHolder.getContentDetail(context, destination)
-        }
-        else -> null
-    }
-}
 
 @Composable
 actual fun rememberCommentScreenRuntime(): CommentScreenRuntime {

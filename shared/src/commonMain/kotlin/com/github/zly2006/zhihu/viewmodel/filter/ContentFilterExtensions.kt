@@ -645,93 +645,14 @@ suspend fun applyContentFilterToDisplayItems(
     onDetailsKeywordFiltered = onDetailsKeywordFiltered,
 )
 
-fun isContentFilterEnabled(settings: FeedFilterSettings): Boolean = settings.enableContentFilter
-
-fun isKeywordBlockingEnabled(settings: FeedFilterSettings): Boolean = settings.enableKeywordBlocking
-
-fun isNLPBlockingEnabled(settings: FeedFilterSettings): Boolean = settings.enableNlpBlocking
-
-fun getNLPSimilarityThreshold(settings: FeedFilterSettings): Double = settings.nlpSimilarityThreshold
-
-fun isUserBlockingEnabled(settings: FeedFilterSettings): Boolean = settings.enableUserBlocking
-
-fun isTopicBlockingEnabled(settings: FeedFilterSettings): Boolean = settings.enableTopicBlocking
-
-fun getTopicBlockingThreshold(settings: FeedFilterSettings): Int = settings.topicBlockingThreshold
-
-fun SettingsStore.isContentFilterEnabled(): Boolean = isContentFilterEnabled(toFeedFilterSettings())
-
-fun SettingsStore.isKeywordBlockingEnabled(): Boolean = isKeywordBlockingEnabled(toFeedFilterSettings())
-
-fun SettingsStore.isNLPBlockingEnabled(): Boolean = isNLPBlockingEnabled(toFeedFilterSettings())
-
-fun SettingsStore.getNLPSimilarityThreshold(): Double = getNLPSimilarityThreshold(toFeedFilterSettings())
-
-fun SettingsStore.isUserBlockingEnabled(): Boolean = isUserBlockingEnabled(toFeedFilterSettings())
-
-fun SettingsStore.isTopicBlockingEnabled(): Boolean = isTopicBlockingEnabled(toFeedFilterSettings())
-
-fun SettingsStore.getTopicBlockingThreshold(): Int = getTopicBlockingThreshold(toFeedFilterSettings())
-
 /**
  * Feed 过滤扩展工具。
  * 只负责对 [FeedDisplayItem] 列表编排过滤流程、补齐过滤所需上下文，并写入 feed 级屏蔽历史。
  * 这里不负责定义内容级规则本身，也不负责详情页打开事件；那些逻辑分别在 blocklist/NLP 仓库和已读事件支持类里。
  */
 object ContentFilterExtensions {
-    /** 检查是否启用了 feed 已读/低质过滤总开关。 */
-    fun isContentFilterEnabled(settings: FeedFilterSettings): Boolean = settings.enableContentFilter
-
-    fun isContentFilterEnabled(settings: SettingsStore): Boolean =
-        isContentFilterEnabled(settings.toFeedFilterSettings())
-
-    /**
-     * 检查是否启用了关键词屏蔽功能
-     */
-    fun isKeywordBlockingEnabled(settings: FeedFilterSettings): Boolean = settings.enableKeywordBlocking
-
-    fun isKeywordBlockingEnabled(settings: SettingsStore): Boolean =
-        isKeywordBlockingEnabled(settings.toFeedFilterSettings())
-
-    /**
-     * 检查是否启用了NLP语义屏蔽功能
-     */
-    fun isNLPBlockingEnabled(settings: FeedFilterSettings): Boolean = settings.enableNlpBlocking
-
-    fun isNLPBlockingEnabled(settings: SettingsStore): Boolean =
-        isNLPBlockingEnabled(settings.toFeedFilterSettings())
-
-    /**
-     * 获取NLP相似度阈值
-     */
-    fun getNLPSimilarityThreshold(settings: FeedFilterSettings): Double = settings.nlpSimilarityThreshold
-
     fun getNLPSimilarityThreshold(settings: SettingsStore): Double =
-        getNLPSimilarityThreshold(settings.toFeedFilterSettings())
-
-    /**
-     * 检查是否启用了用户屏蔽功能
-     */
-    fun isUserBlockingEnabled(settings: FeedFilterSettings): Boolean = settings.enableUserBlocking
-
-    fun isUserBlockingEnabled(settings: SettingsStore): Boolean =
-        isUserBlockingEnabled(settings.toFeedFilterSettings())
-
-    /**
-     * 检查是否启用了主题屏蔽功能
-     */
-    fun isTopicBlockingEnabled(settings: FeedFilterSettings): Boolean = settings.enableTopicBlocking
-
-    fun isTopicBlockingEnabled(settings: SettingsStore): Boolean =
-        isTopicBlockingEnabled(settings.toFeedFilterSettings())
-
-    /**
-     * 获取主题屏蔽阈值
-     */
-    fun getTopicBlockingThreshold(settings: FeedFilterSettings): Int = settings.topicBlockingThreshold
-
-    fun getTopicBlockingThreshold(settings: SettingsStore): Int =
-        getTopicBlockingThreshold(settings.toFeedFilterSettings())
+        settings.toFeedFilterSettings().nlpSimilarityThreshold
 
     /**
      * 在 feed 中记录某个内容身份被展示了一次。

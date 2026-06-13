@@ -393,11 +393,6 @@ object NLPService {
     }
 
     /**
-     * 对文本进行分词
-     */
-    private fun segment(text: String): List<Term> = HanLP.segment(text)
-
-    /**
      * 判断是否应该保留该词语（过滤停用词和标点）
      */
     private fun shouldKeepTerm(term: Term): Boolean {

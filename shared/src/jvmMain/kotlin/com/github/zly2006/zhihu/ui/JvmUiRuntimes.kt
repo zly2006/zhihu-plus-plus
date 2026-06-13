@@ -38,7 +38,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
-import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.data.fetchVerifiedZhihuSession
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
@@ -301,7 +300,7 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
     userMessages: UserMessageSink,
 ): BlocklistSettingsRuntime {
     val manager = remember {
-        val databaseFile = blocklistDatabaseFile()
+        val databaseFile = desktopContentFilterDatabaseFile()
         databaseFile.parentFile?.mkdirs()
         val database = getContentFilterDatabase(databaseFile)
         database.createBlocklistManager()
@@ -324,15 +323,13 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
                 }
             },
             exportRules = {
-                val file = File(blocklistDatabaseFile().parentFile, "zhihupp_blocklist.json")
+                val file = File(desktopContentFilterDatabaseFile().parentFile, "zhihupp_blocklist.json")
                 file.writeText(manager.exportAllBlocklistToJsonText())
                 "已导出到 ${file.absolutePath}"
             },
         )
     }
 }
-
-private fun blocklistDatabaseFile(): File = desktopContentFilterDatabaseFile()
 
 private fun chooseBlocklistImportFile(): File? {
     val chooser = JFileChooser().apply {
@@ -430,7 +427,9 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
     return remember(environment) {
         PinScreenRuntime(
             fetchLinkCardPreview = { linkCard ->
-                fetchDesktopLinkCardPreview(environment, linkCard)
+                fetchPinLinkCardPreview(linkCard) { destination ->
+                    environment.getContentDetail(destination)
+                }
             },
         )
     }
@@ -440,13 +439,6 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
 actual fun PinHtmlWebViewContent(html: String) = Unit // TODO: 桌面端想法 WebView
 
 actual fun supportsPinHtmlWebView(): Boolean = false
-
-private suspend fun fetchDesktopLinkCardPreview(
-    environment: DesktopPaginationEnvironment,
-    linkCard: DataHolder.Pin.ContentLinkCard,
-): PinLinkCardPreview? = fetchPinLinkCardPreview(linkCard) { destination ->
-    environment.getContentDetail(destination)
-}
 
 @Composable
 actual fun rememberNotificationScreenRuntime(

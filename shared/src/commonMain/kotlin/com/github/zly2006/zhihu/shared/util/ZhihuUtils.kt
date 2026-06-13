@@ -108,12 +108,12 @@ fun formatRelativeTime(
             val dateTime = Instant
                 .fromEpochSeconds(epochSeconds)
                 .toLocalDateTime(timeZone)
-            "${(dateTime.month.ordinal + 1).pad2()}-${dateTime.day.pad2()} ${dateTime.hour.pad2()}:${dateTime.minute.pad2()}"
+            "${(dateTime.month.ordinal + 1).twoDigitString()}-${dateTime.day.twoDigitString()} ${dateTime.hour.twoDigitString()}:${dateTime.minute.twoDigitString()}"
         }
     }
 }
 
-private fun Int.pad2(): String = toString().padStart(2, '0')
+internal fun Int.twoDigitString(): String = toString().padStart(2, '0')
 
 private fun Double.formatOneDecimal(): String {
     val text = toString()

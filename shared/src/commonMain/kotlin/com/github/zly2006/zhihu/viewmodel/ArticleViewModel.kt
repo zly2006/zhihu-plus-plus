@@ -48,6 +48,7 @@ import com.github.zly2006.zhihu.shared.util.decodeZhidaStreamErrorMessage
 import com.github.zly2006.zhihu.shared.util.mergeSummaryChunk
 import com.github.zly2006.zhihu.shared.util.parseZhidaSsePayload
 import com.github.zly2006.zhihu.shared.util.serializeZhidaSummaryRequest
+import com.github.zly2006.zhihu.shared.util.twoDigitString
 import com.github.zly2006.zhihu.ui.Collection
 import com.github.zly2006.zhihu.ui.CollectionResponse
 import com.github.zly2006.zhihu.ui.VoteUpState
@@ -657,7 +658,13 @@ class ArticleViewModel(
         try {
             val htmlContent = createOfflineHtmlContent(environment, includeAppAttribution)
             val savedLocation = withContext(Dispatchers.Default) {
-                saveHtmlToDownloads(environment, htmlContent)
+                environment.saveHtmlToDownloads(
+                    displayName = buildArticleExportFileName(
+                        content = requireExportSourceContent(),
+                        extension = "html",
+                    ),
+                    htmlContent = htmlContent,
+                )
             }
             withContext(Dispatchers.Main) {
                 userMessages.showLongMessage("HTML 已保存到 $savedLocation")
@@ -700,10 +707,16 @@ class ArticleViewModel(
 
         var preparedWebView: PreparedArticleExportContent? = null
         var bitmap: Any? = null
-        val renderer = articleImageExportRenderer(environment)!!
+        val renderer = environment.articleImageExportRenderer { fileName ->
+            try {
+                environment.loadExportAssetText(fileName)
+            } catch (e: Exception) {
+                Log.e("ArticleViewModel", "Failed to load export asset: $fileName", e)
+                ""
+            }
+        }!!
         try {
-            preparedWebView = prepareExportWebView(
-                renderer = renderer,
+            preparedWebView = renderer.prepareExportWebView(
                 htmlContent = createHtmlContent(
                     environment = environment,
                     includeComments = includeComments,
@@ -712,9 +725,16 @@ class ArticleViewModel(
                 ),
                 timeoutMs = if (includeComments) 18_000L else 15_000L,
             )
-            bitmap = captureExportBitmap(renderer, preparedWebView)
+            val capturedBitmap = renderer.captureExportBitmap(preparedWebView)
+            bitmap = capturedBitmap
             withContext(Dispatchers.Default) {
-                saveImageToMediaStore(environment, bitmap)
+                environment.saveImageToMediaStore(
+                    displayName = buildArticleExportFileName(
+                        content = requireExportSourceContent(),
+                        extension = "jpg",
+                    ),
+                    bitmap = capturedBitmap,
+                )
             }
             withContext(Dispatchers.Main) {
                 userMessages.showLongMessage(successMessage)
@@ -728,41 +748,10 @@ class ArticleViewModel(
                 onComplete(false)
             }
         } finally {
-            bitmap?.let { recycleExportBitmap(renderer, it) }
-            preparedWebView?.let { destroyExportWebView(renderer, it) }
+            bitmap?.let { renderer.recycleExportBitmap(it) }
+            preparedWebView?.let { renderer.destroyExportWebView(it) }
         }
     }
-
-    private suspend fun prepareExportWebView(
-        renderer: ArticleImageExportRenderer,
-        htmlContent: String,
-        timeoutMs: Long,
-    ): PreparedArticleExportContent = renderer.prepareExportWebView(htmlContent, timeoutMs)
-
-    private fun loadExportAssetText(environment: ArticleExportEnvironment, fileName: String): String = try {
-        environment.loadExportAssetText(fileName)
-    } catch (e: Exception) {
-        Log.e("ArticleViewModel", "Failed to load export asset: $fileName", e)
-        ""
-    }
-
-    private suspend fun captureExportBitmap(
-        renderer: ArticleImageExportRenderer,
-        preparedWebView: PreparedArticleExportContent,
-    ): Any = renderer.captureExportBitmap(preparedWebView)
-
-    private suspend fun destroyExportWebView(
-        renderer: ArticleImageExportRenderer,
-        preparedWebView: PreparedArticleExportContent,
-    ) = renderer.destroyExportWebView(preparedWebView)
-
-    private fun recycleExportBitmap(renderer: ArticleImageExportRenderer, bitmap: Any) =
-        renderer.recycleExportBitmap(bitmap)
-
-    private fun articleImageExportRenderer(environment: ArticleExportEnvironment): ArticleImageExportRenderer? =
-        environment.articleImageExportRenderer { fileName ->
-            loadExportAssetText(environment, fileName)
-        }
 
     // 创建HTML内容
     private suspend fun createHtmlContent(
@@ -823,24 +812,8 @@ class ArticleViewModel(
             }
     }
 
-    private fun buildExportFileName(extension: String): String = buildArticleExportFileName(
-        content = requireExportSourceContent(),
-        extension = extension,
-    )
-
     private fun requireExportSourceContent(): DataHolder.Content = exportSourceContent
         ?: throw IllegalStateException("内容未加载完成")
-
-    // 使用MediaStore保存图片到公共目录
-    private fun saveImageToMediaStore(environment: ArticleExportEnvironment, bitmap: Any) {
-        val displayName = buildExportFileName("jpg")
-        environment.saveImageToMediaStore(displayName, bitmap)
-    }
-
-    private fun saveHtmlToDownloads(environment: ArticleExportEnvironment, htmlContent: String): String {
-        val displayName = buildExportFileName("html")
-        return environment.saveHtmlToDownloads(displayName, htmlContent)
-    }
 
     // 转换为Markdown格式
     fun convertToMarkdown(): String {
@@ -1012,15 +985,15 @@ fun formatArticleDateTime(seconds: Long): String {
     return buildString {
         append(dateTime.year.toString().padStart(4, '0'))
         append('-')
-        append((dateTime.month.ordinal + 1).toString().padStart(2, '0'))
+        append((dateTime.month.ordinal + 1).twoDigitString())
         append('-')
-        append(dateTime.day.toString().padStart(2, '0'))
+        append(dateTime.day.twoDigitString())
         append(' ')
-        append(dateTime.hour.toString().padStart(2, '0'))
+        append(dateTime.hour.twoDigitString())
         append(':')
-        append(dateTime.minute.toString().padStart(2, '0'))
+        append(dateTime.minute.twoDigitString())
         append(':')
-        append(dateTime.second.toString().padStart(2, '0'))
+        append(dateTime.second.twoDigitString())
     }
 }
 

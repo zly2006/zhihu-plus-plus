@@ -78,7 +78,7 @@ import kotlin.io.path.writeText
 typealias DesktopAccountData = ZhihuAccountSession
 
 class DesktopAccountStore(
-    private val accountFile: Path = defaultAccountFile(),
+    private val accountFile: Path = desktopZhihuLegacyAccountFile(),
 ) {
     private val repository = ZhihuAccountRepository(PathAccountSessionStore(accountFile))
     private var lastRefreshCookie = 0L
@@ -163,8 +163,6 @@ class DesktopAccountStore(
         }
     }
 }
-
-private fun defaultAccountFile(): Path = desktopZhihuLegacyAccountFile()
 
 private class PathAccountSessionStore(
     private val accountFile: Path,

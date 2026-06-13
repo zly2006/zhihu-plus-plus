@@ -85,18 +85,9 @@ object UpdateManager {
 
     private fun getGitHubToken(context: Context): String? = androidSettingsStore(context).getStringOrNull("githubToken")?.takeIf { it.isNotBlank() }
 
-    private fun shouldCheckNightly(context: Context): Boolean = androidSettingsStore(context).getBoolean("checkNightlyUpdates", false)
-
-    private fun Context.isLiteVariant(): Boolean = isAndroidLiteVariantPackageName(packageName)
-
     private fun Context.versionName(): String = runCatching {
         packageManager.getPackageInfo(packageName, 0).versionName
     }.getOrNull() ?: "0.0.0"
-
-    /**
-     * 获取跳过的版本
-     */
-    private fun getSkippedVersion(context: Context): String? = androidSettingsStore(context).getStringOrNull(PREF_SKIPPED_VERSION)
 
     /**
      * 设置跳过的版本
@@ -120,19 +111,12 @@ object UpdateManager {
         return (System.currentTimeMillis() - settings.getLong(PREF_LAST_UPDATE_CHECK, 0)) >= AUTO_CHECK_INTERVAL_MILLIS
     }
 
-    /**
-     * 更新最后检查时间
-     */
-    private fun updateLastCheckTime(context: Context) {
-        androidSettingsStore(context).putLong(PREF_LAST_UPDATE_CHECK, System.currentTimeMillis())
-    }
-
     private fun GithubRelease.extractDownloadInfo(context: Context): DownloadInfo {
         val apkAssets = assets.filter {
             it.contentType == ANDROID_APK_CONTENT_TYPE
         }
 
-        val selectedAsset = selectApkAsset(apkAssets, context.isLiteVariant()) ?: apkAssets.first()
+        val selectedAsset = selectApkAsset(apkAssets, isAndroidLiteVariantPackageName(context.packageName)) ?: apkAssets.first()
         return DownloadInfo(
             browserDownloadUrl = selectedAsset.browserDownloadUrl,
             cnDownloadUrl = selectedAsset.cnDownloadUrl,
@@ -153,10 +137,10 @@ object UpdateManager {
 
         try {
             updateState.value = UpdateState.Checking
-            updateLastCheckTime(context)
+            androidSettingsStore(context).putLong(PREF_LAST_UPDATE_CHECK, System.currentTimeMillis())
 
             val currentVersion = SchematicVersion.fromString(context.versionName())
-            val skippedVersion = getSkippedVersion(context)
+            val skippedVersion = androidSettingsStore(context).getStringOrNull(PREF_SKIPPED_VERSION)
 
             var latestVersion: SchematicVersion?
 
@@ -195,11 +179,11 @@ object UpdateManager {
     suspend fun checkForUpdate(context: Context) {
         try {
             updateState.value = UpdateState.Checking
-            updateLastCheckTime(context)
+            androidSettingsStore(context).putLong(PREF_LAST_UPDATE_CHECK, System.currentTimeMillis())
 
             val client = AccountData.httpClient(context)
             val currentVersion = SchematicVersion.fromString(context.versionName())
-            val checkNightly = shouldCheckNightly(context)
+            val checkNightly = androidSettingsStore(context).getBoolean("checkNightlyUpdates", false)
 
             var latestVersion: SchematicVersion?
             var isNightly = false

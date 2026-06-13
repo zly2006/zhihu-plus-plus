@@ -83,7 +83,7 @@ actual fun rememberMarkdownRuntime(): MarkdownRuntime {
 
 @OptIn(ExperimentalTextApi::class)
 private suspend fun loadDesktopMathFont(store: DesktopAccountStore): MathFont = withContext(Dispatchers.IO) {
-    val fontFile = desktopLatexFontDir().resolve("latinmodern-math.otf")
+    val fontFile = desktopZhihuDataFile("latex-fonts/v$FONT_VERSION").resolve("latinmodern-math.otf")
     if (!fontFile.exists()) {
         downloadDesktopMathFont(store, fontFile)
     }
@@ -114,9 +114,6 @@ private suspend fun downloadDesktopMathFont(
     }
     throw lastError ?: IllegalStateException("Failed to download Latin Modern Math")
 }
-
-private fun desktopLatexFontDir(): File =
-    desktopZhihuDataFile("latex-fonts/v$FONT_VERSION")
 
 private fun isOpenTypeFont(bytes: ByteArray): Boolean =
     bytes.size > 4 &&

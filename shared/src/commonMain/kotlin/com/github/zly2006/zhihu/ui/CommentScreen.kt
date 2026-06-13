@@ -131,6 +131,7 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
 import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberImagePreviewOpener
+import com.github.zly2006.zhihu.shared.util.twoDigitString
 import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.ChildCommentViewModel
@@ -1204,15 +1205,13 @@ private fun formatCommentTime(createdTimeSeconds: Long): String {
     val now = Clock.System.now().toLocalDateTime(zone)
     return when {
         dateTime.date == now.date -> dateTime.formatHms()
-        dateTime.year == now.year -> "${dateTime.monthNumber.twoDigits()}-${dateTime.day.twoDigits()} ${dateTime.formatHms()}"
-        else -> "${dateTime.year}-${dateTime.monthNumber.twoDigits()}-${dateTime.day.twoDigits()} ${dateTime.formatHms()}"
+        dateTime.year == now.year -> "${dateTime.monthNumber.twoDigitString()}-${dateTime.day.twoDigitString()} ${dateTime.formatHms()}"
+        else -> "${dateTime.year}-${dateTime.monthNumber.twoDigitString()}-${dateTime.day.twoDigitString()} ${dateTime.formatHms()}"
     }
 }
 
 private fun LocalDateTime.formatHms(): String =
-    "${hour.twoDigits()}:${minute.twoDigits()}:${second.twoDigits()}"
-
-private fun Int.twoDigits(): String = if (this < 10) "0$this" else toString()
+    "${hour.twoDigitString()}:${minute.twoDigitString()}:${second.twoDigitString()}"
 
 private fun AnnotatedString.Builder.processTextWithEmoji(
     text: String,

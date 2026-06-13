@@ -224,10 +224,8 @@ private fun loadDesktopOpenSourceLicenses(): Libs =
         ?.let { json ->
             runCatching {
                 Libs.Builder().withJson(json).build()
-            }.getOrElse { emptyDesktopLibs() }
-        } ?: emptyDesktopLibs()
-
-private fun emptyDesktopLibs(): Libs = Libs(emptyList(), emptySet())
+            }.getOrElse { Libs(emptyList(), emptySet()) }
+        } ?: Libs(emptyList(), emptySet())
 
 private fun loadDesktopAboutLibrariesJson(): String? {
     val resourceJson = Thread

@@ -81,6 +81,7 @@ import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.data.DailySection
 import com.github.zly2006.zhihu.shared.data.DailyStory
 import com.github.zly2006.zhihu.shared.util.formatDailyDate
+import com.github.zly2006.zhihu.shared.util.twoDigitString
 import com.github.zly2006.zhihu.shared.viewmodel.DailyViewModel
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -492,8 +493,8 @@ private fun formatDailyDatePickerSelection(millis: Long): String {
         .toLocalDateTime(TimeZone.currentSystemDefault())
         .date
     return date.year.toString().padStart(4, '0') +
-        (date.month.ordinal + 1).toString().padStart(2, '0') +
-        date.day.toString().padStart(2, '0')
+        (date.month.ordinal + 1).twoDigitString() +
+        date.day.twoDigitString()
 }
 
 private suspend fun fetchDailyStoryDestination(

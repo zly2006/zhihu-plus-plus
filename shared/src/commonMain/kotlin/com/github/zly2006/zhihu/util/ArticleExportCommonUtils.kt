@@ -20,6 +20,7 @@ package com.github.zly2006.zhihu.util
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Element
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.util.twoDigitString
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.readRawBytes
@@ -567,12 +568,12 @@ private fun formatArticleExportFileTimestamp(): String {
     val dateTime = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
     return buildString {
         append(dateTime.year.toString().padStart(4, '0'))
-        append((dateTime.month.ordinal + 1).toString().padStart(2, '0'))
-        append(dateTime.day.toString().padStart(2, '0'))
+        append((dateTime.month.ordinal + 1).twoDigitString())
+        append(dateTime.day.twoDigitString())
         append('_')
-        append(dateTime.hour.toString().padStart(2, '0'))
-        append(dateTime.minute.toString().padStart(2, '0'))
-        append(dateTime.second.toString().padStart(2, '0'))
+        append(dateTime.hour.twoDigitString())
+        append(dateTime.minute.twoDigitString())
+        append(dateTime.second.twoDigitString())
     }
 }
 
@@ -584,13 +585,13 @@ fun formatArticleExportDate(epochMillis: Long): String {
     return buildString {
         append(dateTime.year.toString().padStart(4, '0'))
         append('-')
-        append((dateTime.month.ordinal + 1).toString().padStart(2, '0'))
+        append((dateTime.month.ordinal + 1).twoDigitString())
         append('-')
-        append(dateTime.day.toString().padStart(2, '0'))
+        append(dateTime.day.twoDigitString())
         append(' ')
-        append(dateTime.hour.toString().padStart(2, '0'))
+        append(dateTime.hour.twoDigitString())
         append(':')
-        append(dateTime.minute.toString().padStart(2, '0'))
+        append(dateTime.minute.twoDigitString())
     }
 }
 
