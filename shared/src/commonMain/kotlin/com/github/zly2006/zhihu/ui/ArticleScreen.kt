@@ -469,16 +469,10 @@ fun ArticleActionsMenu(
             text = "分享",
             onClick = {
                 onDismissRequest()
-                val text = when (article.type) {
-                    ArticleType.Answer -> {
-                        "https://www.zhihu.com/question/${viewModel.questionId}/answer/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的回答】"
-                    }
-
-                    ArticleType.Article -> {
-                        "https://zhuanlan.zhihu.com/p/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的文章】"
-                    }
-                }
-                articleActionsRuntime.shareArticle(article, viewModel.questionId, viewModel.title, viewModel.authorName)
+                articleActionsRuntime.shareRuntime.share(
+                    article,
+                    articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName),
+                )
             },
         )
 
@@ -501,16 +495,10 @@ fun ArticleActionsMenu(
             text = "复制链接",
             onClick = {
                 onDismissRequest()
-                val text = when (article.type) {
-                    ArticleType.Answer -> {
-                        "https://www.zhihu.com/question/${viewModel.questionId}/answer/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的回答】"
-                    }
-
-                    ArticleType.Article -> {
-                        "https://zhuanlan.zhihu.com/p/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的文章】"
-                    }
-                }
-                articleActionsRuntime.copyArticleLink(article, viewModel.questionId, viewModel.title, viewModel.authorName)
+                articleActionsRuntime.shareRuntime.copyLink(
+                    article,
+                    articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName),
+                )
             },
         )
 

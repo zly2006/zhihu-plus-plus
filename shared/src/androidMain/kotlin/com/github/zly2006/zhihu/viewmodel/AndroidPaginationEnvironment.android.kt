@@ -166,7 +166,12 @@ open class SharedAndroidPaginationEnvironment(
         include: String,
     ): JsonObject? =
         AccountData.fetchGet(context, url) {
-            addIncludeAndSign(include)
+            url {
+                if (include.isNotEmpty()) {
+                    parameters["include"] = include
+                }
+            }
+            signFetchRequest()
         }
 
     override suspend fun handleFetchFailure(
@@ -672,15 +677,6 @@ fun PaginationViewModel<*>.loadMore(context: Context) {
 
 fun PaginationViewModel<*>.httpClient(context: Context): HttpClient =
     paginationEnvironment(context).httpClient()
-
-private fun HttpRequestBuilder.addIncludeAndSign(include: String) {
-    url {
-        if (include.isNotEmpty()) {
-            parameters["include"] = include
-        }
-    }
-    signFetchRequest()
-}
 
 private fun Context.canSafelyShowDialog(): Boolean {
     val activity = this as? Activity ?: return false

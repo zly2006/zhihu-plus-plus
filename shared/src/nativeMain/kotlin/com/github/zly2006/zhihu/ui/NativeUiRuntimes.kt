@@ -85,13 +85,7 @@ private class IosNotificationEnvironment(
 }
 
 @Composable
-actual fun rememberArticleScreenRuntime(): ArticleScreenRuntime = remember {
-    object : ArticleScreenRuntime {
-        override val articleHost: ArticleHost? = null
-
-        override val previewPreloader = ArticlePreviewPreloader { _, _, _, _ -> } // TODO: iOS 预加载实现
-    }
-}
+actual fun rememberArticleScreenRuntime(): ArticleScreenRuntime = remember { defaultArticleScreenRuntime() }
 
 @Composable
 actual fun ArticleWebViewContent(

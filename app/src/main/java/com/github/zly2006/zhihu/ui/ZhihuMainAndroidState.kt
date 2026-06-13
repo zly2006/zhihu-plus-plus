@@ -102,6 +102,3 @@ fun rememberAndroidZhihuMainNavigationState(): ZhihuMainNavigationState {
         consumeMainTabNavigationTarget = activity::consumeMainTabNavigationTarget,
     )
 }
-
-@Composable
-fun rememberAndroidZhihuMainActivity(): MainActivity = LocalActivity.current as MainActivity

@@ -289,22 +289,16 @@ private fun VideoPlayerView(
         }
     }
 
-    fun safeGetPosition(): Long = try {
-        mediaPlayer?.currentPosition?.toLong()?.coerceAtLeast(0) ?: 0
+    fun safeGetMediaTime(fallback: Long, value: MediaPlayer.() -> Int): Long = try {
+        mediaPlayer?.value()?.toLong()?.coerceAtLeast(0) ?: 0
     } catch (_: Exception) {
-        currentPosition
-    }
-
-    fun safeGetDuration(): Long = try {
-        mediaPlayer?.duration?.toLong()?.coerceAtLeast(0) ?: 0
-    } catch (_: Exception) {
-        duration
+        fallback
     }
 
     LaunchedEffect(controlsVisible, isPlayingState.value) {
         while (controlsVisible || isPlayingState.value) {
-            currentPosition = safeGetPosition()
-            duration = safeGetDuration()
+            currentPosition = safeGetMediaTime(currentPosition) { currentPosition }
+            duration = safeGetMediaTime(duration) { duration }
             delay(200)
         }
     }
@@ -477,7 +471,7 @@ private fun VideoPlayerView(
                         onValueChange = {
                             val pos = (it * duration).toLong()
                             safeSeekTo(pos)
-                            currentPosition = safeGetPosition()
+                            currentPosition = safeGetMediaTime(currentPosition) { currentPosition }
                         },
                         modifier = Modifier.fillMaxWidth().height(20.dp),
                         track = {

@@ -389,12 +389,7 @@ private fun com.github.zly2006.zhihu.shared.account.ZhihuAccountSession.toAccoun
     )
 
 @Composable
-actual fun rememberArticleScreenRuntime(): ArticleScreenRuntime = remember {
-    object : ArticleScreenRuntime {
-        override val articleHost: ArticleHost? = null
-        override val previewPreloader = ArticlePreviewPreloader { _, _, _, _ -> }
-    }
-}
+actual fun rememberArticleScreenRuntime(): ArticleScreenRuntime = remember { defaultArticleScreenRuntime() }
 
 @Composable
 actual fun ArticleWebViewContent(

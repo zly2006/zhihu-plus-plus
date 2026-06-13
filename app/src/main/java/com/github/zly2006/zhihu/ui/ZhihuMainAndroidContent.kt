@@ -26,6 +26,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
@@ -46,7 +47,7 @@ import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
  */
 @Composable
 fun AndroidZhihuMain(navController: NavHostController) {
-    val activity = rememberAndroidZhihuMainActivity()
+    val activity = LocalActivity.current as MainActivity
     ZhihuMain(
         navController = navController,
         navigationState = rememberAndroidZhihuMainNavigationState(),

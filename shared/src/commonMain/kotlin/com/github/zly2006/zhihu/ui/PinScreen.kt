@@ -703,45 +703,6 @@ private fun linkCardTypeLabel(dataContentType: String): String = when (dataConte
     else -> dataContentType
 }
 
-private suspend fun fetchLinkCardPreview(
-    fetchDetail: suspend (NavDestination) -> DataHolder.Content?,
-    linkCard: DataHolder.Pin.ContentLinkCard,
-): PinLinkCardPreview? {
-    val destination = resolveLinkCardDestination(linkCard) ?: return null
-    return when (destination) {
-        is Article -> {
-            when (val detail = fetchDetail(destination)) {
-                is DataHolder.Article -> PinLinkCardPreview(
-                    title = compactTitle(detail.title),
-                    preview = compactPreview(detail.excerpt.ifBlank { detail.content }),
-                )
-                is DataHolder.Answer -> PinLinkCardPreview(
-                    title = compactTitle(detail.question.title),
-                    preview = compactPreview(detail.excerpt.ifBlank { detail.content }),
-                )
-                else -> null
-            }
-        }
-        is Question -> {
-            (fetchDetail(destination) as? DataHolder.Question)?.let { detail ->
-                PinLinkCardPreview(
-                    title = compactTitle(detail.title),
-                    preview = compactPreview(detail.detail),
-                )
-            }
-        }
-        is Pin -> {
-            (fetchDetail(destination) as? DataHolder.Pin)?.let { detail ->
-                PinLinkCardPreview(
-                    title = "${detail.author.name} 的想法",
-                    preview = compactPreview(detail.contentHtml),
-                )
-            }
-        }
-        else -> null
-    }
-}
-
 internal fun resolveLinkCardDestination(linkCard: DataHolder.Pin.ContentLinkCard): NavDestination? {
     val byUrl = linkCard.url
         .takeIf { it.isNotBlank() }
