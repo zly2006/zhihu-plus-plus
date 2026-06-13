@@ -50,8 +50,6 @@ object ContentOpenFrom {
 }
 
 object ContentOpenEventSupport {
-    fun buildContentKey(type: String, id: String): String = "$type:$id"
-
     fun toTrackedContentIdentity(destination: NavDestination): TrackedContentIdentity? = when (destination) {
         is Article -> {
             val type = when (destination.type) {
@@ -104,7 +102,7 @@ object ContentOpenEventSupport {
         content: List<Pair<String, String>>,
     ): Set<String> = run {
         val idsToCheck = content.map { (targetType, targetId) ->
-            buildContentKey(targetType, targetId)
+            "$targetType:$targetId"
         }
         database
             .contentOpenEventDao()
