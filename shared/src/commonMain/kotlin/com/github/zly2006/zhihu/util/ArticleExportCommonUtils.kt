@@ -278,7 +278,7 @@ fun renderArticleExportHtml(
         ?.let { "<div class=\"author-bio\">${escapeArticleExportHtml(it)}</div>" }
         .orEmpty()
 
-    return mapOf(
+    val placeholders = mapOf(
         "{{title}}" to escapeArticleExportHtml(exportData.title),
         "{{authorAvatar}}" to authorAvatarHtml,
         "{{authorName}}" to escapeArticleExportHtml(exportData.authorName),
@@ -294,10 +294,9 @@ fun renderArticleExportHtml(
         "{{appAttributionClass}}" to footerPlaceholders.appAttributionClass,
         "{{githubUrl}}" to escapeArticleExportHtml(footerPlaceholders.githubUrl),
     )
-        .entries
-        .fold(template) { html, entry ->
-            html.replace(entry.key, entry.value)
-        }
+    return placeholders.entries.fold(template) { html, entry ->
+        html.replace(entry.key, entry.value)
+    }
 }
 
 @OptIn(ExperimentalEncodingApi::class)

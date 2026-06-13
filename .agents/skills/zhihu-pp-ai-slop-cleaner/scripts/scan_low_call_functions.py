@@ -37,7 +37,14 @@ DEFAULT_SOURCE_ROOTS = (
     "shared/src/jvmTest/kotlin",
 )
 
-TEST_MARKERS = ("/test/", "/androidTest/", "/commonTest/", "/jvmTest/", "/nativeTest/")
+TEST_MARKERS = (
+    "/test/",
+    "/androidTest/",
+    "/androidUnitTest/",
+    "/commonTest/",
+    "/jvmTest/",
+    "/nativeTest/",
+)
 SKIP_DIRS = {".git", ".gradle", ".idea", ".worktrees", "build", ".kotlin"}
 
 FUNCTION_RE = re.compile(
@@ -64,6 +71,34 @@ MODIFIER_RE = re.compile(
     r"final|external|inline|suspend|tailrec|operator|infix)\b",
 )
 
+ANNOTATION_RE = re.compile(r"@(?:[A-Za-z_][\w]*:)?(?P<name>[A-Za-z_][\w.]*)")
+
+ROOM_DAO_METHOD_ANNOTATIONS = {
+    "Delete",
+    "Insert",
+    "Query",
+    "RawQuery",
+    "Transaction",
+    "Update",
+    "Upsert",
+}
+
+EXTERNAL_ENTRY_ANNOTATIONS = {
+    "JavascriptInterface",
+}
+
+REASONABLE_SINGLE_CALL_ANNOTATIONS = {
+    "OnLifecycleEvent",
+    "Preview",
+    "TestOnly",
+    "TypeConverter",
+    "VisibleForTesting",
+}
+
+COMPOSABLE_ANNOTATIONS = {
+    "Composable",
+}
+
 
 @dataclass(frozen=True)
 class FunctionDef:
@@ -72,6 +107,7 @@ class FunctionDef:
     name: str
     arity: int
     modifiers: str
+    annotations: tuple[str, ...]
     kind: str
     body_lines: int
     body_preview: str
@@ -241,7 +277,18 @@ def line_number(starts: list[int], position: int) -> int:
     return bisect.bisect_right(starts, position)
 
 
-def source_files(root: Path, include_tests: bool) -> list[Path]:
+def annotation_names(prefix: str) -> tuple[str, ...]:
+    return tuple(
+        match.group("name").rsplit(".", 1)[-1]
+        for match in ANNOTATION_RE.finditer(prefix)
+    )
+
+
+def is_test_path(relative_path: str) -> bool:
+    return any(marker in relative_path for marker in TEST_MARKERS)
+
+
+def source_files(root: Path, include_tests: bool, test_only: bool = False) -> list[Path]:
     files: list[Path] = []
     for source_root in DEFAULT_SOURCE_ROOTS:
         base = root / source_root
@@ -251,7 +298,10 @@ def source_files(root: Path, include_tests: bool) -> list[Path]:
             rel = "/" + path.relative_to(root).as_posix()
             if any(part in SKIP_DIRS for part in path.relative_to(root).parts):
                 continue
-            if not include_tests and any(marker in rel for marker in TEST_MARKERS):
+            is_test = is_test_path(rel)
+            if test_only and not is_test:
+                continue
+            if not test_only and not include_tests and is_test:
                 continue
             files.append(path)
     return files
@@ -268,6 +318,7 @@ def parse_functions(root: Path, files: list[Path]) -> tuple[list[FunctionDef], d
         starts = line_starts(text)
 
         for match in FUNCTION_RE.finditer(masked):
+            prefix = match.group("prefix") or ""
             open_pos = masked.find("(", match.start())
             close_pos = matching_paren(masked, open_pos)
             if close_pos < 0:
@@ -276,14 +327,14 @@ def parse_functions(root: Path, files: list[Path]) -> tuple[list[FunctionDef], d
             kind, body_start, body_end = body_span(masked, close_pos)
             body = text[body_start:body_end]
             body_lines = 0 if kind == "abstract" else max(1, body.count("\n") + 1)
-            modifiers = " ".join(MODIFIER_RE.findall(match.group("prefix") or ""))
             functions.append(
                 FunctionDef(
                     path=path.relative_to(root).as_posix(),
                     line=line_number(starts, match.start()),
                     name=match.group("name").strip("`"),
                     arity=parameter_arity(masked[open_pos + 1 : close_pos]),
-                    modifiers=modifiers,
+                    modifiers=" ".join(MODIFIER_RE.findall(prefix)),
+                    annotations=annotation_names(prefix),
                     kind=kind,
                     body_lines=body_lines,
                     body_preview=" ".join(body.split())[:220],
@@ -297,24 +348,65 @@ def grouped_key(function: FunctionDef) -> tuple[object, ...]:
     mods = set(function.modifiers.split())
     if "expect" in mods or "actual" in mods:
         return function.name, function.arity, "multiplatform-family"
+    if "override" in mods:
+        return function.name, function.arity, "override-family"
     return function.name, function.arity, function.path, function.line
 
 
-def write_rows(
+def has_annotation(function: FunctionDef, names: set[str]) -> bool:
+    return any(annotation in names for annotation in function.annotations)
+
+
+def count_references(
+    names: set[str],
     functions: list[FunctionDef],
     masked_by_file: dict[Path, str],
-    max_calls: int,
-    output: Path | None,
-) -> None:
+) -> dict[str, int]:
     combined = "\n".join(masked_by_file.values())
     def_counts: dict[str, int] = {}
     for function in functions:
         def_counts[function.name] = def_counts.get(function.name, 0) + 1
 
-    ref_counts = {
-        name: len(re.findall(r"\b" + re.escape(name) + r"\b", combined)) - def_count
-        for name, def_count in def_counts.items()
+    return {
+        name: max(
+            0,
+            len(re.findall(r"\b" + re.escape(name) + r"\b", combined)) - def_counts.get(name, 0),
+        )
+        for name in names
     }
+
+
+def should_skip_group(
+    group: list[FunctionDef],
+    refs: int,
+    test_ref_counts: dict[str, int],
+) -> bool:
+    if any(has_annotation(function, EXTERNAL_ENTRY_ANNOTATIONS) for function in group):
+        return True
+
+    if any(has_annotation(function, ROOM_DAO_METHOD_ANNOTATIONS) for function in group):
+        return refs > 0
+
+    if refs == 1 and any(has_annotation(function, COMPOSABLE_ANNOTATIONS) for function in group):
+        return any(test_ref_counts.get(function.name, 0) > 0 for function in group)
+
+    return refs == 1 and any(
+        has_annotation(function, REASONABLE_SINGLE_CALL_ANNOTATIONS)
+        for function in group
+    )
+
+
+def write_rows(
+    functions: list[FunctionDef],
+    masked_by_file: dict[Path, str],
+    test_functions: list[FunctionDef],
+    test_masked_by_file: dict[Path, str],
+    max_calls: int,
+    output: Path | None,
+) -> None:
+    names = {function.name for function in functions}
+    ref_counts = count_references(names, functions, masked_by_file)
+    test_ref_counts = count_references(names, test_functions, test_masked_by_file)
 
     groups: dict[tuple[object, ...], list[FunctionDef]] = {}
     for function in functions:
@@ -325,6 +417,8 @@ def write_rows(
         representative = group[0]
         refs = max(0, ref_counts.get(representative.name, 0))
         if refs > max_calls:
+            continue
+        if should_skip_group(group, refs, test_ref_counts):
             continue
         rows.append(
             [
@@ -375,8 +469,17 @@ def main() -> int:
 
     root = Path(args.root).resolve()
     files = source_files(root, include_tests=args.include_tests)
+    test_files = source_files(root, include_tests=True, test_only=True)
     functions, masked_by_file = parse_functions(root, files)
-    write_rows(functions, masked_by_file, args.max_calls, args.output)
+    test_functions, test_masked_by_file = parse_functions(root, test_files)
+    write_rows(
+        functions,
+        masked_by_file,
+        test_functions,
+        test_masked_by_file,
+        args.max_calls,
+        args.output,
+    )
     return 0
 
 

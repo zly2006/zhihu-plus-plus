@@ -188,7 +188,7 @@ private fun CollectionContentScreenContent(
         screenViewModel.exportDialogState?.let { state ->
             CollectionHtmlExportDialog(
                 state = state,
-                onDismiss = { screenViewModel.exportDialogState = null },
+                onDismiss = screenViewModel::dismissExportDialog,
             )
         }
         PaginatedList(

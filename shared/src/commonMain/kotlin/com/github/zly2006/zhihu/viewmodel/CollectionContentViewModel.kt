@@ -202,6 +202,10 @@ class CollectionContentViewModel(
         }
     }
 
+    fun dismissExportDialog() {
+        exportDialogState = null
+    }
+
     private suspend fun ensureAllCollectionItemsLoaded(environment: CollectionContentEnvironment): List<CollectionItem> {
         if (collection == null) {
             collection = environment.fetchCollection(collectionId)
