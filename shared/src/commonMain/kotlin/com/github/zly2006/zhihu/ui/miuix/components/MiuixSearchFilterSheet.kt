@@ -6,10 +6,8 @@
 
 package com.github.zly2006.zhihu.ui.miuix.components
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,7 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
@@ -77,19 +74,19 @@ private fun <T> FilterSection(
         color = MiuixTheme.colorScheme.onSurfaceSecondary,
         modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
     )
-    options.forEach { option ->
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onSelect(option) }
-                .padding(vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(label(option), color = MiuixTheme.colorScheme.onSurface)
-            if (option == selected) {
-                Icon(Icons.Default.Check, "已选", tint = MiuixTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-            }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        options.forEach { option ->
+            MiuixSheetActionRow(
+                text = label(option),
+                onClick = { onSelect(option) },
+                trailing = if (option == selected) {
+                    {
+                        Icon(Icons.Default.Check, "已选", tint = MiuixTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                    }
+                } else {
+                    null
+                },
+            )
         }
     }
 }

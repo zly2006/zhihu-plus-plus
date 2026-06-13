@@ -110,6 +110,7 @@ import com.github.zly2006.zhihu.ui.components.VotersSheet
 import com.github.zly2006.zhihu.ui.components.ZhihuTwoRowsTopAppBar
 import com.github.zly2006.zhihu.ui.components.rememberPreferCollapsedExitUntilCollapsedScrollBehavior
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixSheetActionRow
 import com.github.zly2006.zhihu.ui.rememberArticleActionsRuntime
 import com.github.zly2006.zhihu.ui.rememberArticleScreenRuntime
 import com.github.zly2006.zhihu.ui.rememberArticleScreenSettingsState
@@ -734,19 +735,9 @@ fun MiuixArticleScreen(
         onDismissRequest = { showCollections.value = false },
         title = "收藏到收藏夹",
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             // 新建收藏夹（对齐 M3 的 onCreateCollection）。
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { showCreateCollection = !showCreateCollection }
-                    .padding(vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(Icons.Default.Add, "新建", tint = MiuixTheme.colorScheme.primary)
-                Spacer(Modifier.width(12.dp))
-                Text("新建收藏夹", color = MiuixTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
-            }
+            MiuixSheetActionRow("新建收藏夹", icon = Icons.Default.Add, onClick = { showCreateCollection = !showCreateCollection })
             AnimatedVisibility(visible = showCreateCollection) {
                 Column {
                     TextField(
@@ -786,21 +777,11 @@ fun MiuixArticleScreen(
                 )
             } else {
                 viewModel.collections.forEach { collection ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { viewModel.toggleFavorite(collection.id, collection.isFavorited, environment) }
-                            .padding(vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            if (collection.isFavorited) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                            null,
-                            tint = MiuixTheme.colorScheme.primary,
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Text(collection.title, color = MiuixTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
-                    }
+                    MiuixSheetActionRow(
+                        text = collection.title,
+                        icon = if (collection.isFavorited) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                        onClick = { viewModel.toggleFavorite(collection.id, collection.isFavorited, environment) },
+                    )
                 }
             }
             Spacer(Modifier.height(8.dp))
@@ -815,7 +796,7 @@ fun MiuixArticleScreen(
     ) {
         val speaking = articleActions.ttsState.isSpeaking
         val ttsEnabled = articleActions.ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             MiuixActionMenuRow(
                 if (speaking) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
                 if (speaking) "停止朗读" else "开始朗读",
@@ -901,16 +882,16 @@ fun MiuixArticleScreen(
                 articleSettings.saveAnswerDoubleTapAction(action)
                 userMessages.showMessage("已将双击回答动作设为：${action.label}")
             }
-            TextButton(text = "无操作", modifier = Modifier.fillMaxWidth(), onClick = { applyDoubleTap(AnswerDoubleTapAction.None) })
-            TextButton(text = "点赞", modifier = Modifier.fillMaxWidth(), onClick = {
+            MiuixSheetActionRow("无操作", onClick = { applyDoubleTap(AnswerDoubleTapAction.None) })
+            MiuixSheetActionRow("点赞", onClick = {
                 applyDoubleTap(AnswerDoubleTapAction.VoteUp)
                 upVoteFromDoubleTap()
             })
-            TextButton(text = "打开评论区", modifier = Modifier.fillMaxWidth(), onClick = {
+            MiuixSheetActionRow("打开评论区", onClick = {
                 applyDoubleTap(AnswerDoubleTapAction.OpenComments)
                 showComments = true
             })
-            TextButton(text = "开关沉浸式", modifier = Modifier.fillMaxWidth(), onClick = {
+            MiuixSheetActionRow("开关沉浸式", onClick = {
                 applyDoubleTap(AnswerDoubleTapAction.ToggleImmersive)
                 toggleImmersive()
             })
@@ -942,18 +923,7 @@ private fun MiuixActionMenuRow(
     enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        val tint = if (enabled) MiuixTheme.colorScheme.onSurface else MiuixTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-        Icon(icon, null, tint = tint, modifier = Modifier.size(22.dp))
-        Spacer(Modifier.width(16.dp))
-        Text(text, color = tint, modifier = Modifier.weight(1f))
-    }
+    MiuixSheetActionRow(text = text, icon = icon, enabled = enabled, onClick = onClick)
 }
 
 /** 横向滑动切换时的全屏预览（miuix 样式），渲染缓存的上/下一答内容。 */
