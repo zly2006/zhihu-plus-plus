@@ -51,18 +51,6 @@ class FeedGenerator(
     }
 
     /**
-     * 批量生成推荐内容
-     */
-    suspend fun generateFeedsFromResults(
-        results: List<CrawlingResult>,
-        reasonDisplay: String,
-    ): List<LocalFeed> = withContext(Dispatchers.Default) {
-        results.map { result ->
-            generateFeedFromResult(result, reasonDisplay)
-        }
-    }
-
-    /**
      * 根据推荐原因获取理由显示文本
      */
     fun getReasonDisplayText(reason: CrawlingReason): String =

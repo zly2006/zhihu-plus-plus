@@ -20,9 +20,6 @@ package com.github.zly2006.zhihu.util
 import kotlinx.coroutines.CancellationException
 import java.io.File
 import java.io.FileOutputStream
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
@@ -48,15 +45,6 @@ data class CollectionHtmlZipExportResult(
     val stagingDir: File,
     val zipFile: File?,
 )
-
-fun buildCollectionExportZipFileName(
-    collectionTitle: String,
-    timestampMillis: Long = System.currentTimeMillis(),
-): String {
-    val safeTitle = sanitizeArticleExportFileNamePart(collectionTitle).ifBlank { "收藏夹" }
-    val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date(timestampMillis))
-    return "zhihu++_${safeTitle}_$timestamp.zip"
-}
 
 suspend fun <T> exportCollectionItemsToZip(
     collectionTitle: String,

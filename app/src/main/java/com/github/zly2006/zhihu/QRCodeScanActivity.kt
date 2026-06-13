@@ -19,7 +19,6 @@ package com.github.zly2006.zhihu
 
 import android.Manifest
 import android.content.ClipData
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -231,7 +230,8 @@ private fun QRCodeScanScreen(
             result = scanResult,
             onDismiss = { showResultDialog = false },
             onCopy = { text ->
-                copyToClipboard(context, text)
+                val clipData = ClipData.newPlainText("QR扫描结果", text)
+                context.clipboardManager.setPrimaryClip(clipData)
                 userMessages.showShortMessage("已复制到剪贴板")
             },
             onConfirm = { text ->
@@ -292,9 +292,4 @@ private fun QRResultDialog(
             }
         },
     )
-}
-
-private fun copyToClipboard(context: Context, text: String) {
-    val clipData = ClipData.newPlainText("QR扫描结果", text)
-    context.clipboardManager.setPrimaryClip(clipData)
 }

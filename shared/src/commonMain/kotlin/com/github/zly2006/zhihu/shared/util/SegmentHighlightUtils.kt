@@ -212,11 +212,6 @@ fun applySegmentInfosToHtml(
     return document.body().html()
 }
 
-fun parseSegmentTextParagraphHtml(html: String): SegmentTextParagraph? {
-    val element = Ksoup.parseBodyFragment(html).body().firstElementChild() ?: return null
-    return parseSegmentTextParagraph(element)
-}
-
 fun parseSegmentTextParagraph(element: Element): SegmentTextParagraph? {
     if (element.tagName() != "p") return null
     val parts = element.childNodes().mapNotNull(::parseSegmentNode)

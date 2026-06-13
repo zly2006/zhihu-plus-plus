@@ -60,7 +60,7 @@ class LocalRecommendationSupportTest {
 
     @Test
     fun normalizeLocalContentIdUsesTypedValue() {
-        assertEquals("answer:42", normalizeLocalContentId("answer", "42"))
+        assertEquals("answer:42", LocalContentIdentity("answer", "42").value)
     }
 
     @Test

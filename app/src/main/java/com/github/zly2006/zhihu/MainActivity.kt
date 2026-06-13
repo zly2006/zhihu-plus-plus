@@ -550,7 +550,13 @@ class MainActivity :
             return
         }
         pendingContentOpenIdentity = identity
-        pendingContentOpenFrom = currentMainTabOpenFrom()
+        pendingContentOpenFrom = if (
+            runCatching { navController.currentBackStackEntry?.toRoute<MainTabs>() }.getOrNull() != null
+        ) {
+            currentMainTabOpenFrom
+        } else {
+            null
+        }
             ?: ContentOpenEventSupport.inferOpenFrom(currentContentOpenSource(), target)
     }
 
@@ -577,14 +583,6 @@ class MainActivity :
         if (mainTabNavigationTarget == destination) {
             mainTabNavigationTarget = null
         }
-    }
-
-    private fun currentMainTabOpenFrom(): String? = if (
-        runCatching { navController.currentBackStackEntry?.toRoute<MainTabs>() }.getOrNull() != null
-    ) {
-        currentMainTabOpenFrom
-    } else {
-        null
     }
 
     private fun currentContentOpenSource(): NavDestination? {

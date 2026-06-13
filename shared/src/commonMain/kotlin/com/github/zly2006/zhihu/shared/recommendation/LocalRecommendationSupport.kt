@@ -71,8 +71,6 @@ const val LOCAL_CONTENT_TYPE_ARTICLE = "article"
 const val LOCAL_CONTENT_TYPE_QUESTION = "question"
 const val LOCAL_CONTENT_TYPE_PIN = "pin"
 
-fun normalizeLocalContentId(type: String, id: String): String = LocalContentIdentity(type = type, id = id).value
-
 fun parseLocalContentIdentity(
     contentId: String,
     url: String,

@@ -662,10 +662,6 @@ fun PaginationViewModel<*>.notificationEnvironment(
 ): NotificationEnvironment =
     SharedAndroidNotificationEnvironment(context, allowGuestAccess, notificationSettingsStore)
 
-fun PaginationEnvironment.androidContext(): Context =
-    (this as? AndroidContextPaginationEnvironment)?.context
-        ?: error("Android Context is required for this pagination path")
-
 fun PaginationViewModel<*>.refresh(context: Context) {
     refresh(paginationEnvironment(context))
 }

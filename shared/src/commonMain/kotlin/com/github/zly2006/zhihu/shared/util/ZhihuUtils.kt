@@ -77,7 +77,7 @@ fun formatCompactCount(count: Int): String = when {
             "${count / 10_000} 万"
         } else {
             val roundedTenths = ((count / 10_000.0) * 10).roundToInt() / 10.0
-            "${roundedTenths.formatOneDecimal()} 万"
+            "$roundedTenths 万"
         }
     }
 
@@ -114,13 +114,6 @@ fun formatRelativeTime(
 }
 
 internal fun Int.twoDigitString(): String = toString().padStart(2, '0')
-
-private fun Double.formatOneDecimal(): String {
-    val text = toString()
-    val dotIndex = text.indexOf('.')
-    if (dotIndex < 0) return "$text.0"
-    return text.substring(0, minOf(text.length, dotIndex + 2))
-}
 
 fun extractImageUrl(attribute: (String) -> String): String? =
     attribute("data-original-token")

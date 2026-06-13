@@ -100,14 +100,6 @@ fun DesktopZhihuMain() {
         }
     }
 
-    fun currentMainTabOpenFrom(): String? = if (
-        runCatching { navController.currentBackStackEntry?.toRoute<MainTabs>() }.getOrNull() != null
-    ) {
-        currentMainTabOpenFrom
-    } else {
-        null
-    }
-
     fun currentContentOpenSource(): NavDestination? {
         val currentEntry = navController.currentBackStackEntry
         return runCatching {
@@ -178,7 +170,13 @@ fun DesktopZhihuMain() {
             else -> {
                 prepareDesktopPendingContentOpen(
                     target = route,
-                    currentMainTabOpenFrom = currentMainTabOpenFrom(),
+                    currentMainTabOpenFrom = if (
+                        runCatching { navController.currentBackStackEntry?.toRoute<MainTabs>() }.getOrNull() != null
+                    ) {
+                        currentMainTabOpenFrom
+                    } else {
+                        null
+                    },
                     source = currentContentOpenSource(),
                 )
                 navController.navigate(route)

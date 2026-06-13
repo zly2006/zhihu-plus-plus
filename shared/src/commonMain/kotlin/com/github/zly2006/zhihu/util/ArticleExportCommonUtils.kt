@@ -123,12 +123,23 @@ fun buildArticleExportCommentsHtml(
     return buildString {
         append("<div class='comments-title'>热门评论$titleSuffix</div>")
         comments.forEach { comment ->
+            val imageHtml = comment.imageSrc
+                .takeIf { it.isNotBlank() }
+                ?.let {
+                    """
+                    <img
+                        class="comment-image"
+                        src="${escapeArticleExportHtml(it)}"
+                        alt="评论图片"
+                    />
+                    """.trimIndent()
+                }.orEmpty()
             append(
                 """
                 <div class="comment">
                     <div class="comment-author">${escapeArticleExportHtml(comment.authorName)}</div>
                     <div class="comment-content">${comment.contentHtml}</div>
-                    ${buildArticleExportCommentImageHtml(comment.imageSrc)}
+                    $imageHtml
                     <div class="comment-time">${escapeArticleExportHtml(comment.createdTimeText)}</div>
                 </div>
                 """.trimIndent(),
@@ -367,18 +378,6 @@ private fun guessArticleExportImageMimeTypeFromBytes(imageBytes: ByteArray): Str
     }
 }
 
-private fun buildArticleExportCommentImageHtml(imageSrc: String): String = imageSrc
-    .takeIf { it.isNotBlank() }
-    ?.let {
-        """
-        <img
-            class="comment-image"
-            src="${escapeArticleExportHtml(it)}"
-            alt="评论图片"
-        />
-        """.trimIndent()
-    }.orEmpty()
-
 fun prepareArticleExportContentHtml(content: String): String {
     val document = Ksoup.parseBodyFragment(content)
     document.select("noscript").remove()
@@ -504,6 +503,15 @@ fun buildArticleExportFileName(
     return "zhihu++_${safeTitle}_${safeAuthorName}的${typeLabel}_${typeKey}_${articleId}_$timestamp.$normalizedExtension"
 }
 
+@OptIn(ExperimentalTime::class)
+fun buildCollectionExportZipFileName(
+    collectionTitle: String,
+    timestampMillis: Long = Clock.System.now().toEpochMilliseconds(),
+): String {
+    val safeTitle = sanitizeArticleExportFileNamePart(collectionTitle).ifBlank { "收藏夹" }
+    return "zhihu++_${safeTitle}_${formatArticleExportFileTimestamp(timestampMillis)}.zip"
+}
+
 fun sanitizeArticleExportFileNamePart(text: String): String = text
     .trim()
     .replace(Regex("\\s+"), "_")
@@ -564,8 +572,10 @@ private fun extractArticleExportImageUrl(image: Element): String? =
         ?.takeIf { !it.startsWith("data:") }
 
 @OptIn(ExperimentalTime::class)
-private fun formatArticleExportFileTimestamp(): String {
-    val dateTime = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+private fun formatArticleExportFileTimestamp(timestampMillis: Long = Clock.System.now().toEpochMilliseconds()): String {
+    val dateTime = Instant
+        .fromEpochMilliseconds(timestampMillis)
+        .toLocalDateTime(TimeZone.currentSystemDefault())
     return buildString {
         append(dateTime.year.toString().padStart(4, '0'))
         append((dateTime.month.ordinal + 1).twoDigitString())

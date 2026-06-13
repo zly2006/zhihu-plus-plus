@@ -78,7 +78,7 @@ object ContentDetailCache {
 
         // 缓存未命中，从 API 获取
         Log.d("ContentDetailCache", "Cache miss for $contentType:$contentId, fetching...")
-        val content = fetchContent(navDestination, fetcher) ?: return null
+        val content = fetcher(navDestination) ?: return null
 
         // 存入缓存
         mutex.withLock {
@@ -112,54 +112,13 @@ object ContentDetailCache {
         }
         else -> null
     }
-
-    /**
-     * 根据 NavDestination 类型调用对应的 getContentDetail
-     */
-    private suspend fun fetchContent(
-        navDestination: NavDestination,
-        fetcher: suspend (NavDestination) -> DataHolder.Content?,
-    ): DataHolder.Content? = when (navDestination) {
-        is Article -> fetcher(navDestination)
-        is Question -> fetcher(navDestination)
-        is Pin -> fetcher(navDestination)
-        else -> null
-    }
-
-    /**
-     * 清除过期缓存
-     */
-    suspend fun clearExpired() {
-        mutex.withLock {
-            val now = Clock.System.now().toEpochMilliseconds()
-            val expiredKeys = cache.entries
-                .filter { (_, entry) -> now - entry.timestamp >= CACHE_EXPIRY_MS }
-                .map { (key, _) -> key }
-            expiredKeys.forEach { cache.remove(it) }
-        }
-    }
-
-    /**
-     * 清空所有缓存
-     */
-    suspend fun clearAll() {
-        mutex.withLock {
-            cache.clear()
-        }
-    }
 }
-
-fun normalizeArticleContentDetailJson(jo: JsonObject): JsonObject =
-    normalizeLongIdContentDetailJson(jo)
-
-fun normalizeQuestionDetailJson(jo: JsonObject): JsonObject =
-    normalizeLongIdContentDetailJson(jo)
 
 fun decodeArticleContentDetail(
     article: Article,
     json: JsonObject,
 ): DataHolder.Content {
-    val normalizedJson = normalizeArticleContentDetailJson(json)
+    val normalizedJson = normalizeLongIdContentDetailJson(json)
     return when (article.type) {
         ArticleType.Answer -> ZhihuJson.decodeJson<DataHolder.Answer>(normalizedJson)
         ArticleType.Article -> ZhihuJson.decodeJson<DataHolder.Article>(normalizedJson)
@@ -167,7 +126,7 @@ fun decodeArticleContentDetail(
 }
 
 fun decodeQuestionContentDetail(json: JsonObject): DataHolder.Question =
-    ZhihuJson.decodeJson(normalizeQuestionDetailJson(json))
+    ZhihuJson.decodeJson(normalizeLongIdContentDetailJson(json))
 
 fun decodePinContentDetail(json: JsonObject): DataHolder.Pin =
     ZhihuJson.decodeJson(json)

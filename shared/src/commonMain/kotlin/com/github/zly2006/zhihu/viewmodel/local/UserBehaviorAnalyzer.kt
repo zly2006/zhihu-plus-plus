@@ -109,11 +109,4 @@ class UserBehaviorAnalyzer(
             },
         )
     }
-
-    /**
-     * 获取用户偏好分析（简化版本）
-     */
-    suspend fun getUserPreferences(): Map<CrawlingReason, Double> = withContext(Dispatchers.Default) {
-        buildBehaviorProfile().reasonPreferences.mapValues { (_, preference) -> preference.multiplier }
-    }
 }

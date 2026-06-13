@@ -131,14 +131,16 @@ actual fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit =
     remember { { _, text -> runCatching { copyDesktopPlainText(text) } } }
 
 @Composable
-actual fun rememberUserMessageSink(): UserMessageSink = remember { UserMessageSink(::showDesktopMessage) }
-
-private fun showDesktopMessage(message: String) {
-    println(message)
-    runCatching {
-        ProcessBuilder("terminal-notifier", "-message", message, "-sound", "default")
-            .start()
-    }
+actual fun rememberUserMessageSink(): UserMessageSink = remember {
+    UserMessageSink(
+        showShortMessage = { message ->
+            println(message)
+            runCatching {
+                ProcessBuilder("terminal-notifier", "-message", message, "-sound", "default")
+                    .start()
+            }
+        },
+    )
 }
 
 @Composable

@@ -112,18 +112,6 @@ object ContentOpenEventSupport {
             .toSet()
     }
 
-    fun filterUnopenedAnswerArticles(
-        candidates: List<Article>,
-        openedContentKeys: Set<String>,
-        currentArticleId: Long,
-        historyIds: Set<Long> = emptySet(),
-    ): List<Article> = candidates.filter { article ->
-        article.type == ArticleType.Answer &&
-            article.id != currentArticleId &&
-            article.id !in historyIds &&
-            buildContentKey(ContentType.ANSWER, article.id.toString()) !in openedContentKeys
-    }
-
     fun partitionQuestionAnswerCandidates(
         candidates: List<Article>,
         openedAnswerIds: Set<Long>,

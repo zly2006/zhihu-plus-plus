@@ -74,19 +74,6 @@ class ContentFilterManager(
     suspend fun clearAllData() {
         maintenance.clearAllData()
     }
-
-    /** 重置某个内容身份的曝光记录。 */
-    suspend fun resetContentRecord(targetType: String, targetId: String) {
-        val recordId = ContentViewRecord.generateId(targetType, targetId)
-        val record = ContentViewRecord(
-            id = recordId,
-            targetType = targetType,
-            targetId = targetId,
-            viewCount = 0,
-            hasInteraction = false,
-        )
-        dao.insertOrUpdateViewRecord(record)
-    }
 }
 
 fun ContentBlocklistEnvironment.fetchBlockedUserIds(): Set<String> = blockedUserIds()

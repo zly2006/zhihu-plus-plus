@@ -60,6 +60,7 @@ import com.github.zly2006.zhihu.shared.platform.desktopSettingsStore
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
 import com.github.zly2006.zhihu.util.buildArticleExportFileName
+import com.github.zly2006.zhihu.util.buildCollectionExportZipFileName
 import com.github.zly2006.zhihu.util.sanitizeArticleExportFileNamePart
 import com.github.zly2006.zhihu.viewmodel.CollectionItem
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
@@ -95,9 +96,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import java.awt.image.BufferedImage
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import javax.imageio.IIOImage
@@ -553,7 +551,7 @@ class DesktopPaginationEnvironment(
             if (!outputDir.exists() && !outputDir.mkdirs()) {
                 throw IllegalStateException("无法创建导出 ZIP 目录")
             }
-            File(outputDir, buildDesktopCollectionExportZipFileName(collectionTitle, timestampMillis)).also { file ->
+            File(outputDir, buildCollectionExportZipFileName(collectionTitle, timestampMillis)).also { file ->
                 if (file.exists()) {
                     file.delete()
                 }
@@ -741,15 +739,6 @@ private fun desktopCollectionExportCacheDir(): File =
 
 private fun desktopCollectionExportOutputDir(): File =
     desktopZhihuDownloadsDir("无法创建导出 ZIP 目录")
-
-private fun buildDesktopCollectionExportZipFileName(
-    collectionTitle: String,
-    timestampMillis: Long,
-): String {
-    val safeTitle = sanitizeArticleExportFileNamePart(collectionTitle).ifBlank { "收藏夹" }
-    val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date(timestampMillis))
-    return "zhihu++_${safeTitle}_$timestamp.zip"
-}
 
 private suspend fun zipDirectoryContents(
     sourceDir: File,

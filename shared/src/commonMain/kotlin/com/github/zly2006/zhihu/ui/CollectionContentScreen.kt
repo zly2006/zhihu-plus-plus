@@ -60,36 +60,14 @@ import com.github.zly2006.zhihu.navigation.CollectionAnswerNavigator
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
-import com.github.zly2006.zhihu.shared.util.twoDigitString
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.viewmodel.CollectionContentEnvironment
 import com.github.zly2006.zhihu.viewmodel.CollectionContentViewModel
 import com.github.zly2006.zhihu.viewmodel.CollectionHtmlExportDialogState
+import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
-import kotlinx.datetime.Instant
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
-
-fun formatCollectionUpdatedTime(seconds: Long): String {
-    val dateTime = Instant
-        .fromEpochSeconds(seconds)
-        .toLocalDateTime(TimeZone.currentSystemDefault())
-    return buildString {
-        append(dateTime.year.toString().padStart(4, '0'))
-        append('-')
-        append(dateTime.monthNumber.twoDigitString())
-        append('-')
-        append(dateTime.dayOfMonth.twoDigitString())
-        append(' ')
-        append(dateTime.hour.twoDigitString())
-        append(':')
-        append(dateTime.minute.twoDigitString())
-        append(':')
-        append(dateTime.second.twoDigitString())
-    }
-}
 
 /**
  * 收藏内容页的测试替身配置。
@@ -231,7 +209,7 @@ private fun CollectionContentScreenContent(
                             "${screenViewModel.collection?.itemCount} 条收藏",
                             "${screenViewModel.collection?.likeCount} 个赞同",
                             "${screenViewModel.collection?.commentCount} 条评论",
-                            screenViewModel.collection?.updatedTime?.let { "${formatCollectionUpdatedTime(it)} 更新" },
+                            screenViewModel.collection?.updatedTime?.let { "${formatArticleDateTime(it)} 更新" },
                         ).fastJoinToString(" · "),
                         modifier = Modifier.testTag("collection_content_stats"),
                     )

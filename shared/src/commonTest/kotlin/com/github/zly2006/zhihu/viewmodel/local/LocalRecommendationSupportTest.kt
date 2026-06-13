@@ -223,30 +223,6 @@ class LocalRecommendationSupportTest {
     }
 
     @Test
-    fun insertRefreshTasksAddsOneTaskForReasonsBelowPendingThreshold() = runTest {
-        val database = testLocalContentDatabase()
-        val dao = database.contentDao()
-        dao.insertTasks(
-            listOf(
-                CrawlingTask(
-                    url = "existing-1",
-                    reason = CrawlingReason.Trending,
-                ),
-                CrawlingTask(
-                    url = "existing-2",
-                    reason = CrawlingReason.Trending,
-                ),
-            ),
-        )
-
-        insertRefreshTasks(dao)
-
-        assertEquals(2, dao.getTaskCountByReasonAndStatus(CrawlingReason.Trending, CrawlingStatus.NotStarted))
-        assertEquals(1, dao.getTaskCountByReasonAndStatus(CrawlingReason.Following, CrawlingStatus.NotStarted))
-        database.close()
-    }
-
-    @Test
     fun waitForTaskCompletionReturnsWhenNoTaskInProgress() = runTest {
         val database = testLocalContentDatabase()
 
@@ -429,29 +405,6 @@ class LocalRecommendationSupportTest {
 
         assertEquals(1, initializeCount)
         assertEquals(1, startCount)
-        database.close()
-    }
-
-    @Test
-    fun localRecommendationEngineRefreshContentInsertsAndExecutesTopPriorityTasks() = runTest {
-        val database = testLocalContentDatabase()
-        val executedReasons = mutableListOf<CrawlingReason>()
-        val engine = localRecommendationEngineForTest(
-            dao = database.contentDao(),
-            executeTask = { task -> executedReasons.add(task.reason) },
-        )
-
-        engine.refreshContent()
-
-        assertEquals(
-            listOf(
-                CrawlingReason.Following,
-                CrawlingReason.Trending,
-                CrawlingReason.UpvotedQuestion,
-            ),
-            executedReasons,
-        )
-        assertEquals(1, database.contentDao().getTaskCountByReasonAndStatus(CrawlingReason.Following, CrawlingStatus.NotStarted))
         database.close()
     }
 

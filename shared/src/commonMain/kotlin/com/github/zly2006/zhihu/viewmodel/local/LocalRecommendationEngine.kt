@@ -31,8 +31,6 @@ import com.github.zly2006.zhihu.shared.recommendation.scoreFeedTarget
 import com.github.zly2006.zhihu.shared.recommendation.toLocalContentIdentity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlin.math.ceil
@@ -116,38 +114,6 @@ class LocalRecommendationEngine(
         withContext(Dispatchers.Default) {
             feedId?.let { dao.updateFeedFeedback(it, feedback) }
             userBehaviorAnalyzer.recordRecommendationFeedback(contentId, reason, feedback)
-        }
-    }
-
-    suspend fun refreshContent() {
-        withContext(Dispatchers.Default) {
-            insertRefreshTasks(dao)
-
-            dao
-                .getTasksByStatus(CrawlingStatus.NotStarted)
-                .sortedByDescending { it.priority }
-                .take(3)
-                .forEach { task ->
-                    runCatching { executeTask(task) }
-                }
-        }
-    }
-
-    fun getRecommendationStream(): Flow<List<LocalRecommendationEntry>> = flow {
-        while (true) {
-            try {
-                emit(generateRecommendations())
-                delay(30_000L)
-            } catch (_: Exception) {
-                delay(60_000L)
-            }
-        }
-    }
-
-    suspend fun cleanup() {
-        withContext(Dispatchers.Default) {
-            stopScheduling()
-            cleanupLocalRecommendationData(dao)
         }
     }
 
@@ -331,21 +297,6 @@ internal suspend fun ensurePendingTasks(dao: LocalContentDao) {
             repeat(3 - pendingCount - inProgressCount) {
                 tasks.add(createTaskForReason(reason))
             }
-        }
-    }
-
-    if (tasks.isNotEmpty()) {
-        dao.insertTasks(tasks)
-    }
-}
-
-internal suspend fun insertRefreshTasks(dao: LocalContentDao) {
-    val tasks = mutableListOf<CrawlingTask>()
-
-    CrawlingReason.entries.forEach { reason ->
-        val pendingCount = dao.getTaskCountByReasonAndStatus(reason, CrawlingStatus.NotStarted)
-        if (pendingCount < 2) {
-            tasks.add(createTaskForReason(reason))
         }
     }
 
