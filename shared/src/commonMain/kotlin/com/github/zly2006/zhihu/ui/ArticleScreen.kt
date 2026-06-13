@@ -343,6 +343,7 @@ fun ArticleActionsMenu(
     onDismissRequest: () -> Unit,
     onSummaryRequest: () -> Unit,
     onExportRequest: () -> Unit,
+    onSetImmersiveDoubleTap: () -> Unit = {},
 ) {
     val articleActionsRuntime = rememberArticleActionsRuntime()
     val coroutineScope = rememberCoroutineScope()
@@ -506,6 +507,18 @@ fun ArticleActionsMenu(
                     }
                 }
                 articleActionsRuntime.copyArticleLink(article, viewModel.questionId, viewModel.title, viewModel.authorName)
+            },
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // 开关沉浸式
+        MenuActionButton(
+            icon = Icons.AutoMirrored.Filled.Comment,
+            text = "设置双击开关沉浸式",
+            onClick = {
+                onDismissRequest()
+                onSetImmersiveDoubleTap()
             },
         )
 
@@ -1678,6 +1691,11 @@ fun ArticleScreen(
             viewModel.requestAiSummary(environment)
         },
         onExportRequest = { showExportDialog = true },
+        onSetImmersiveDoubleTap = {
+            showActionsMenu = false
+            // 沉浸式模式下，按返回键优先退出沉浸式，不会直接退出回答
+            toggleImmersive()
+            userMessages.showMessage("已进入沉浸式，按返回键即可退出")        },
     )
 
     ArticleSummarySheet(
@@ -1693,6 +1711,11 @@ fun ArticleScreen(
             viewModel.requestAiSummary(environment)
         },
     )
+
+    // 沉浸式模式下，返回键优先退出沉浸式
+    PlatformBackHandler(enabled = isImmersiveMode) {
+        toggleImmersive()
+    }
 
     PlatformBackHandler(showActionsMenu) {
         showActionsMenu = false
