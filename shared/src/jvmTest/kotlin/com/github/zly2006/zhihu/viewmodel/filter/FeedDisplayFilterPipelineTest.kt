@@ -26,6 +26,7 @@ import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.Person
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.buildJsonObject
 import kotlin.io.path.createTempDirectory
@@ -53,7 +54,8 @@ class FeedDisplayFilterPipelineTest {
             listOf("知乎盐选付费内容"),
             fixture.database
                 .blockedFeedRecordDao()
-                .getRecent()
+                .observeAll()
+                .first()
                 .map { it.blockedReason },
         )
         fixture.database.close()
@@ -91,7 +93,7 @@ class FeedDisplayFilterPipelineTest {
 
         assertEquals(listOf("followed"), result.map { it.title })
         assertEquals(0, fetchCount)
-        assertEquals(emptyList(), fixture.database.blockedFeedRecordDao().getRecent())
+        assertEquals(emptyList(), fixture.database.blockedFeedRecordDao().observeAll().first())
         fixture.database.close()
     }
 
@@ -120,7 +122,7 @@ class FeedDisplayFilterPipelineTest {
             ).filter(listOf(paidItem, normalItem, advertisementItem))
 
         assertEquals(listOf("paid", "ad feed"), result.map { it.title })
-        assertEquals(emptyList(), fixture.database.blockedFeedRecordDao().getRecent())
+        assertEquals(emptyList(), fixture.database.blockedFeedRecordDao().observeAll().first())
         fixture.database.close()
     }
 
@@ -135,7 +137,7 @@ class FeedDisplayFilterPipelineTest {
             )
 
         assertEquals(emptyList(), result)
-        assertEquals(emptyList(), fixture.database.blockedFeedRecordDao().getRecent())
+        assertEquals(emptyList(), fixture.database.blockedFeedRecordDao().observeAll().first())
         fixture.database.close()
     }
 
@@ -166,7 +168,8 @@ class FeedDisplayFilterPipelineTest {
             listOf("NLP语义屏蔽：semantic phrase"),
             fixture.database
                 .blockedFeedRecordDao()
-                .getRecent()
+                .observeAll()
+                .first()
                 .map { it.blockedReason },
         )
         fixture.database.close()
