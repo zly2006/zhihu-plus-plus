@@ -328,7 +328,7 @@ fun ZhihuMain(
                     .getOrNull(mainPagerState.targetPage)
                     ?.bottomDestination
                 AnimatedVisibility(
-                    visible = (!autoHideBottomBar || isBottomBarVisible) && isTopLevelDest(navEntry),
+                    visible = (!autoHideBottomBar || isBottomBarVisible) && navEntry.hasRoute(MainTabs::class),
                     enter = slideInVertically(tween(200)) { it },
                     exit = slideOutVertically(tween(200)) { it },
                 ) {
@@ -599,8 +599,6 @@ private fun MyCollectionsTopLevelPage() {
         showBackButton = false,
     )
 }
-
-private fun isTopLevelDest(navEntry: NavBackStackEntry?): Boolean = navEntry.hasRoute(MainTabs::class)
 
 private val TopLevelDestination.openFrom: String?
     get() = when (this) {

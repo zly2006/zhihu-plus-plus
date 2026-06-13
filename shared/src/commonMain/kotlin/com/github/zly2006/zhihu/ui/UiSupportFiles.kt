@@ -331,8 +331,6 @@ data class LoadedQuestionScreenData(
     val historyDestination: Question,
 )
 
-fun questionDetailPreview(html: String): String = Ksoup.parse(html).text().trim()
-
 internal fun loadedQuestionScreenData(
     question: Question,
     questionData: DataHolder.Question,
