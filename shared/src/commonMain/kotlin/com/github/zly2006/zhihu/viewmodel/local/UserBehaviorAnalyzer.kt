@@ -21,8 +21,7 @@ import com.github.zly2006.zhihu.shared.recommendation.LocalContentAffinity
 import com.github.zly2006.zhihu.shared.recommendation.LocalContentStats
 import com.github.zly2006.zhihu.shared.recommendation.LocalReasonPreference
 import com.github.zly2006.zhihu.shared.recommendation.LocalReasonStats
-import com.github.zly2006.zhihu.shared.recommendation.buildContentAffinity
-import com.github.zly2006.zhihu.shared.recommendation.buildReasonPreference
+import com.github.zly2006.zhihu.shared.recommendation.buildLocalRecommendationSignal
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.time.Clock
@@ -102,10 +101,33 @@ class UserBehaviorAnalyzer(
 
         RecommendationBehaviorProfile(
             reasonPreferences = CrawlingReason.entries.associateWith { reason ->
-                buildReasonPreference(reasonStats[reason] ?: LocalReasonStats())
+                val stats = reasonStats[reason] ?: LocalReasonStats()
+                val signal = buildLocalRecommendationSignal(
+                    clicks = stats.clicks,
+                    likes = stats.likes,
+                    dislikes = stats.dislikes,
+                    clickWeight = 0.12,
+                    likeWeight = 0.35,
+                    dislikeWeight = 0.45,
+                    multiplierRange = 0.55..1.6,
+                    likedExplanation = "你最近更偏好这类来源",
+                    clickedExplanation = "你经常点开这类来源",
+                )
+                LocalReasonPreference(multiplier = signal.multiplier, explanation = signal.explanation)
             },
             contentAffinities = contentStats.mapValues { (_, stats) ->
-                buildContentAffinity(stats)
+                val signal = buildLocalRecommendationSignal(
+                    clicks = stats.clicks,
+                    likes = stats.likes,
+                    dislikes = stats.dislikes,
+                    clickWeight = 0.08,
+                    likeWeight = 0.40,
+                    dislikeWeight = 0.70,
+                    multiplierRange = 0.15..1.8,
+                    likedExplanation = "你明确喜欢过类似内容",
+                    clickedExplanation = "你最近点开过类似内容",
+                )
+                LocalContentAffinity(multiplier = signal.multiplier, explanation = signal.explanation)
             },
         )
     }

@@ -66,6 +66,11 @@ data class LocalContentAffinity(
     val explanation: String? = null,
 )
 
+data class LocalRecommendationSignal(
+    val multiplier: Double,
+    val explanation: String? = null,
+)
+
 const val LOCAL_CONTENT_TYPE_ANSWER = "answer"
 const val LOCAL_CONTENT_TYPE_ARTICLE = "article"
 const val LOCAL_CONTENT_TYPE_QUESTION = "question"
@@ -199,26 +204,25 @@ fun <T, R> applyReasonDiversity(
     return selected.take(limit)
 }
 
-fun buildReasonPreference(stats: LocalReasonStats): LocalReasonPreference {
-    val signal = (stats.clicks * 0.12) + (stats.likes * 0.35) - (stats.dislikes * 0.45)
-    val multiplier = (1.0 + signal).coerceIn(0.55, 1.6)
+fun buildLocalRecommendationSignal(
+    clicks: Int,
+    likes: Int,
+    dislikes: Int,
+    clickWeight: Double,
+    likeWeight: Double,
+    dislikeWeight: Double,
+    multiplierRange: ClosedFloatingPointRange<Double>,
+    likedExplanation: String,
+    clickedExplanation: String,
+): LocalRecommendationSignal {
+    val signal = (clicks * clickWeight) + (likes * likeWeight) - (dislikes * dislikeWeight)
+    val multiplier = (1.0 + signal).coerceIn(multiplierRange.start, multiplierRange.endInclusive)
     val explanation = when {
-        stats.likes > 0 -> "你最近更偏好这类来源"
-        stats.clicks >= 2 -> "你经常点开这类来源"
+        likes > 0 -> likedExplanation
+        clicks >= 2 -> clickedExplanation
         else -> null
     }
-    return LocalReasonPreference(multiplier = multiplier, explanation = explanation)
-}
-
-fun buildContentAffinity(stats: LocalContentStats): LocalContentAffinity {
-    val signal = (stats.clicks * 0.08) + (stats.likes * 0.40) - (stats.dislikes * 0.70)
-    val multiplier = (1.0 + signal).coerceIn(0.15, 1.8)
-    val explanation = when {
-        stats.likes > 0 -> "你明确喜欢过类似内容"
-        stats.clicks >= 2 -> "你最近点开过类似内容"
-        else -> null
-    }
-    return LocalContentAffinity(multiplier = multiplier, explanation = explanation)
+    return LocalRecommendationSignal(multiplier = multiplier, explanation = explanation)
 }
 
 fun buildLocalRecommendationReason(
