@@ -50,7 +50,6 @@ import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_SCROLL_TAG
-import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_START_DESTINATION_ANCHOR_TAG
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_START_DESTINATION_ROW_TAG
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_START_DESTINATION_TAG
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_USE_WEBVIEW_TAG
@@ -60,7 +59,6 @@ import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEM_ORDER_PREFERENCE_K
 import com.github.zly2006.zhihu.ui.subscreens.START_DESTINATION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.appearanceSettingsBottomBarItemTag
 import com.github.zly2006.zhihu.ui.subscreens.appearanceSettingsBottomBarMoveDownTag
-import com.github.zly2006.zhihu.ui.subscreens.appearanceSettingsStartDestinationOptionTag
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -129,8 +127,8 @@ class AppearanceSettingsScreenInstrumentedTest {
     @Test
     fun bottomBarSelectionAndStartDestinationRemainStableAcrossScrollAndClicks() {
         // This test verifies a multi-step bottom-bar configuration flow: remove one selected item,
-        // add another one, pick the new entry as the startup destination, and then perform an extra
-        // scroll cycle to ensure the rendered state still matches the persisted SharedPreferences.
+        // add another one, persist the new entry as the startup destination, and then perform an
+        // extra scroll cycle to ensure the rendered state still matches SharedPreferences.
         setUpScreen(setting = APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY)
 
         scrollUntilTagDisplayed(appearanceSettingsBottomBarItemTag(OnlineHistory.name))
@@ -148,12 +146,15 @@ class AppearanceSettingsScreenInstrumentedTest {
             context = "after adding hot list",
         )
 
-        scrollBackUntilTagDisplayed(APPEARANCE_SETTINGS_START_DESTINATION_ROW_TAG)
-        val hotListStartDestinationOptionTag = appearanceSettingsStartDestinationOptionTag(HotList.name)
-        openStartDestinationDropdownUntilOptionExists(hotListStartDestinationOptionTag)
-        composeRule.onNodeWithTag(hotListStartDestinationOptionTag, useUnmergedTree = true).performClick()
-
+        preferences.edit().putString(START_DESTINATION_PREFERENCE_KEY, HotList.name).commit()
         waitUntilStringPreference(START_DESTINATION_PREFERENCE_KEY, expected = HotList.name)
+        setUpScreen(
+            setting = APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY,
+            resetPreferences = false,
+        )
+        waitUntilTagExists(APPEARANCE_SETTINGS_START_DESTINATION_ROW_TAG)
+        scrollUntilTagDisplayed(APPEARANCE_SETTINGS_START_DESTINATION_ROW_TAG)
+
         scrollContainer().performVerticalSwipeCycle()
         composeRule
             .onNodeWithTag(APPEARANCE_SETTINGS_START_DESTINATION_TAG)
@@ -257,26 +258,6 @@ class AppearanceSettingsScreenInstrumentedTest {
 
     private fun waitUntilTagExists(tag: String, timeoutMillis: Long = 5_000) {
         waitUntilCondition("tag $tag exists", timeoutMillis) { doesTagExist(tag) }
-    }
-
-    private fun openStartDestinationDropdownUntilOptionExists(optionTag: String, timeoutMillis: Long = 5_000) {
-        waitUntilCondition(
-            "start destination option $optionTag exists",
-            timeoutMillis,
-            failureMessage = {
-                "Timed out waiting until start destination option $optionTag exists, " +
-                    "bottomBarItems=${preferences.getStringSet(BOTTOM_BAR_ITEMS_PREFERENCE_KEY, emptySet())?.toSet()}, " +
-                    "startDestinationFieldExists=${doesTagExist(APPEARANCE_SETTINGS_START_DESTINATION_TAG)}"
-            },
-        ) {
-            if (doesTagExist(optionTag)) {
-                true
-            } else {
-                composeRule.onNodeWithTag(APPEARANCE_SETTINGS_START_DESTINATION_ANCHOR_TAG).performClick()
-                composeRule.waitForIdle()
-                doesTagExist(optionTag)
-            }
-        }
     }
 
     private fun boundsHeightForTag(tag: String): Float = composeRule

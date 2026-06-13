@@ -45,7 +45,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
@@ -115,7 +114,6 @@ const val PREF_FONT_SIZE = "contentFontSize"
 const val PREF_LINE_HEIGHT = "contentLineHeight"
 const val APPEARANCE_SETTINGS_SCROLL_TAG = "appearanceSettings.scroll"
 const val APPEARANCE_SETTINGS_START_DESTINATION_ROW_TAG = "appearanceSettings.startDestinationRow"
-const val APPEARANCE_SETTINGS_START_DESTINATION_ANCHOR_TAG = "appearanceSettings.startDestinationAnchor"
 const val APPEARANCE_SETTINGS_START_DESTINATION_TAG = "appearanceSettings.startDestination"
 const val APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG = "appearanceSettings.answerDoubleTap"
 const val APPEARANCE_SETTINGS_USE_WEBVIEW_TAG = "appearanceSettings.useWebView"
@@ -975,8 +973,13 @@ fun AppearanceSettingsScreen(
                     title = { Text("应用启动默认页面") },
                     description = { Text("仅可选择已在底部导航栏中显示的页面。") },
                     endAction = {
-                        Box(
-                            modifier = Modifier.width(160.dp),
+                        ExposedDropdownMenuBox(
+                            expanded = startDestinationExpanded,
+                            onExpandedChange = {
+                                if (startDestinationItems.isNotEmpty()) {
+                                    startDestinationExpanded = it
+                                }
+                            },
                         ) {
                             OutlinedTextField(
                                 value = startDestinationItems.find { it.first == startDestinationKey }?.second ?: "主页",
@@ -985,19 +988,12 @@ fun AppearanceSettingsScreen(
                                 enabled = startDestinationItems.isNotEmpty(),
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = startDestinationExpanded) },
                                 modifier = Modifier
-                                    .fillMaxWidth()
+                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                                    .width(160.dp)
                                     .testTag(APPEARANCE_SETTINGS_START_DESTINATION_TAG),
                                 colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                             )
-                            Box(
-                                modifier = Modifier
-                                    .matchParentSize()
-                                    .testTag(APPEARANCE_SETTINGS_START_DESTINATION_ANCHOR_TAG)
-                                    .clickable(enabled = startDestinationItems.isNotEmpty()) {
-                                        startDestinationExpanded = true
-                                    },
-                            )
-                            DropdownMenu(
+                            ExposedDropdownMenu(
                                 expanded = startDestinationExpanded,
                                 onDismissRequest = { startDestinationExpanded = false },
                             ) {
