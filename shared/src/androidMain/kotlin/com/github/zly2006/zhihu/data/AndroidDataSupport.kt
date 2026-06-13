@@ -71,7 +71,7 @@ suspend fun DataHolder.getContentDetail(
     context: Context,
     pin: Pin,
 ): DataHolder.Pin? {
-    val apiUrl = "https://www.zhihu.com/api/v4/pins/${pin.id}"
+    val apiUrl = "https://www.zhihu.com/api/v4/pins/${pin.id}?include=topics"
 
     return runCatching {
         val jo = AccountData.fetchGet(context, apiUrl) { signFetchRequest() }!!

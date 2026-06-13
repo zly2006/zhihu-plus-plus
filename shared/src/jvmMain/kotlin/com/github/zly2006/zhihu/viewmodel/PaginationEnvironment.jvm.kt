@@ -374,7 +374,7 @@ class DesktopPaginationEnvironment(
     }.getOrNull()
 
     private suspend fun fetchDesktopPinContentDetail(pin: Pin): DataHolder.Pin? = runCatching {
-        val json = store.signedFetchJson("https://www.zhihu.com/api/v4/pins/${pin.id}") {
+        val json = store.signedFetchJson("https://www.zhihu.com/api/v4/pins/${pin.id}?include=topics") {
             method = HttpMethod.Get
         } ?: return@runCatching null
         decodePinContentDetail(json)
