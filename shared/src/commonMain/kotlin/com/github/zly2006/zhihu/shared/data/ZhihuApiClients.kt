@@ -142,15 +142,12 @@ fun zhihuNotificationVoteThankUrl(
     limit: Int = 20,
 ): String = "https://www.zhihu.com/api/v4/notifications/v2/vote_thank?limit=$limit"
 
-fun decodeZhihuMeNotifications(response: JsonObject): ZhihuMeNotifications =
-    ZhihuJson.decodeJson(response)
-
 suspend fun fetchZhihuUnreadNotificationCount(
     client: HttpClient,
     configureRequest: HttpRequestBuilder.() -> Unit = {},
 ): Int {
     val response = client.get(ZHIHU_ME_URL, configureRequest).body<JsonObject>()
-    return decodeZhihuMeNotifications(response).totalCount
+    return ZhihuJson.decodeJson<ZhihuMeNotifications>(response).totalCount
 }
 
 suspend fun markAllZhihuNotificationsAsRead(
@@ -164,20 +161,7 @@ suspend fun markAllZhihuNotificationsAsRead(
 
 const val ZHIHU_DAILY_LATEST_URL = "https://news-at.zhihu.com/api/4/stories/latest"
 
-suspend fun fetchLatestDailyStories(client: HttpClient): DailyStoriesResponse =
-    client.get(ZHIHU_DAILY_LATEST_URL).body()
-
-suspend fun fetchDailyStoriesBefore(
-    client: HttpClient,
-    date: String,
-): DailyStoriesResponse = client.get(zhihuDailyBeforeUrl(date)).body()
-
 fun zhihuDailyBeforeUrl(date: String): String = "https://news-at.zhihu.com/api/4/stories/before/$date"
-
-suspend fun fetchDailyStoriesForDate(
-    client: HttpClient,
-    date: String,
-): DailyStoriesResponse = fetchDailyStoriesBefore(client, nextDailyApiDate(date))
 
 fun nextDailyApiDate(date: String): String {
     require(date.length == 8 && date.all { it.isDigit() }) {

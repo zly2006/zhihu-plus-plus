@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.ui
 
+import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -26,7 +27,6 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
