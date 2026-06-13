@@ -56,7 +56,8 @@ class AndroidArticleExportRenderer(
         suspendCancellableCoroutine { continuation ->
             val webView = createExportWebView()
             val mainHandler = Handler(Looper.getMainLooper())
-            val viewportWidthPx = context.resources.displayMetrics.widthPixels.coerceAtLeast(1)
+            val viewportWidthPx = context.resources.displayMetrics.widthPixels
+                .coerceAtLeast(1)
             var isFinished = false
             var timeoutRunnable = Runnable {}
 
