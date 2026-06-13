@@ -228,10 +228,8 @@ private fun MiuixFollowTabRow(selectedTabIndex: Int, onTabSelected: (Int) -> Uni
         tabs = listOf("推荐", "动态"),
         selectedTabIndex = selectedTabIndex,
         onTabSelected = onTabSelected,
-        // 底部留白：让 topBar 背景/模糊把 TabRow 完整包住，不与内容区贴边重叠
         modifier = modifier
             .padding(horizontal = 12.dp)
-            .padding(bottom = 8.dp)
             .testTag(FOLLOW_SCREEN_TAB_ROW_TAG),
     )
 }
