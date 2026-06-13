@@ -137,21 +137,13 @@ class HomeFeedViewModel :
                 }
             }
 
-            val newDestinations = filterResult.foregroundItems.map { it.navDestination }.toSet()
-
             if (filterResult.reverseBlock) {
                 addDisplayItems(filterResult.filteredItems)
             }
 
             // 移除被过滤的条目，并更新已保留条目的 raw 内容
             withContext(Dispatchers.Main) {
-                displayItems.removeAll { item ->
-                    if (item.navDestination !in newDestinations) return@removeAll false
-                    val filteredVersion = filterResult.filteredItems.find { it.navDestination == item.navDestination }
-                    item.raw = filteredVersion?.raw ?: item.raw
-                    // remove if no filtered version exists, which means it was filtered out
-                    filteredVersion == null
-                }
+                displayItems.replaceHomeFeedItemsWithFilteredResult(filterResult)
             }
         }
     }

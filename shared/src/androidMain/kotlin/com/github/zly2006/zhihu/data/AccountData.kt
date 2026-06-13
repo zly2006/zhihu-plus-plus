@@ -94,7 +94,7 @@ object AccountData {
 
     fun saveData(context: Context, data: Data) {
         dataState.value = data
-        // 失效缓存的 httpClient：它的 cookie 存储绑定的是旧 data.cookies。登录后若不重建，
+        // 使缓存的 httpClient 失效：它的 cookie 存储绑定的是旧 data.cookies。登录后若不重建，
         // 请求会带旧 d_c0 cookie 却用新 d_c0 签名 → 知乎判 10003，必须重启 App 才生效。
         httpClient?.close()
         httpClient = null
@@ -155,7 +155,7 @@ object AccountData {
         }
         val httpClient = httpClientFactoryOverride?.invoke(context, cookies) ?: createConfiguredHttpClient(context, cookies)
         if (context is LifecycleOwner && cookies == null) { // 没有指定cookie
-            // 大概率是，包括 MainActivity 等。
+            // context is LifecycleOwner: 大概率是，包括 MainActivity 等。
             ContextCompat.getMainExecutor(context).execute {
                 context.lifecycle.addObserver(object : DefaultLifecycleObserver {
                     override fun onDestroy(owner: LifecycleOwner) {

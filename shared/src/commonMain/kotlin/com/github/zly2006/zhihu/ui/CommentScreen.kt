@@ -128,6 +128,7 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
 import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberImagePreviewOpener
 import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
@@ -345,6 +346,10 @@ private fun ClickableImageWithMenu(
     var showContextMenu by remember { mutableStateOf(false) }
     val openImagePreview = rememberImagePreviewOpener()
     val openExternalUrl = rememberExternalUrlOpener()
+
+    PlatformBackHandler(enabled = showContextMenu) {
+        showContextMenu = false
+    }
 
     fun handleAction(action: CommentImageMenuAction) {
         if (onAction != null) {

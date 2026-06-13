@@ -25,6 +25,7 @@ import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.GroupFeed
 import com.github.zly2006.zhihu.shared.data.toDisplayItem
 import com.github.zly2006.zhihu.viewmodel.FeedDisplayEnvironment
+import com.github.zly2006.zhihu.viewmodel.HomeFeedFilterResult
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
 import kotlinx.serialization.json.JsonArray
@@ -114,5 +115,38 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
         topicName: String,
     ) {
         // TODO: 实现需要 UserMessageSink 和 displayItems 过滤
+    }
+}
+
+/**
+ * Merges the final home-feed filter result back into the list that was already shown optimistically.
+ *
+ * Only items from [HomeFeedFilterResult.foregroundItems] are touched, so older or unrelated cards in the
+ * list keep their current state. A foreground item is removed when it is absent from
+ * [HomeFeedFilterResult.filteredItems], and replaced when the final filter pipeline returns a matching item
+ * with the same [FeedDisplayItem.stableKey]. This lets delayed quality/content filters swap an already
+ * rendered card with an `已屏蔽` placeholder while preserving existing raw content if the replacement has not
+ * loaded one. Reverse-block mode is intentionally ignored because it renders filtered items directly.
+ */
+internal fun MutableList<FeedDisplayItem>.replaceHomeFeedItemsWithFilteredResult(filterResult: HomeFeedFilterResult) {
+    if (filterResult.reverseBlock) return
+
+    val foregroundKeys = filterResult.foregroundItems.map { it.stableKey }.toSet()
+    val filteredItemsByKey = filterResult.filteredItems.associateBy { it.stableKey }
+    var index = 0
+    while (index < size) {
+        val item = this[index]
+        if (item.stableKey !in foregroundKeys) {
+            index++
+            continue
+        }
+
+        val filteredVersion = filteredItemsByKey[item.stableKey]
+        if (filteredVersion == null) {
+            removeAt(index)
+        } else {
+            this[index] = filteredVersion.copy(raw = filteredVersion.raw ?: item.raw)
+            index++
+        }
     }
 }

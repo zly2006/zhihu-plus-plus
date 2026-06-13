@@ -204,3 +204,9 @@ actual fun QuestionDetailWebViewContent(questionId: Long, html: String) = Unit /
 actual fun supportsQuestionDetailWebView(): Boolean = false
 
 actual fun Modifier.questionSelectionWorkaround(): Modifier = this
+
+@Composable
+actual fun ArticleImmersiveModeEffect(immersive: Boolean) = Unit
+
+@Composable
+actual fun LeaveImmersiveModeCleanup() = Unit

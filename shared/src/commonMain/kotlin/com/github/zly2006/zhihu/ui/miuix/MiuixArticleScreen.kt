@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DesktopWindows
+import androidx.compose.material.icons.filled.FilterCenterFocus
 import androidx.compose.material.icons.filled.GetApp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
@@ -89,6 +90,7 @@ import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
+import com.github.zly2006.zhihu.ui.ArticleImmersiveModeEffect
 import com.github.zly2006.zhihu.ui.ArticleVideoAttachmentContent
 import com.github.zly2006.zhihu.ui.LocalArticleAnswerSwitcher
 import com.github.zly2006.zhihu.ui.TtsState
@@ -111,6 +113,7 @@ import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
@@ -159,6 +162,10 @@ fun MiuixArticleScreen(
     val articleSettings = rememberArticleScreenSettingsState()
     val answerSwitchMode = articleSettings.answerSwitchMode
     val sharedData = if (article.type == ArticleType.Answer) environment.articleAnswerSwitchState() else null
+    var isImmersiveMode by remember(sharedData) {
+        mutableStateOf(sharedData?.isImmersiveMode ?: false)
+    }
+    val toggleImmersive: () -> Unit = { isImmersiveMode = !isImmersiveMode }
     val userMessages = rememberUserMessageSink()
     val haptic = LocalHapticFeedback.current
     var showComments by remember { mutableStateOf(false) }
@@ -187,6 +194,9 @@ fun MiuixArticleScreen(
             AnswerDoubleTapAction.OpenComments -> {
                 haptic.performHapticFeedback(HapticFeedbackType.Confirm)
                 showComments = true
+            }
+            AnswerDoubleTapAction.ToggleImmersive -> {
+                toggleImmersive()
             }
         }
     }
@@ -234,6 +244,10 @@ fun MiuixArticleScreen(
             }
         }
     }
+    LaunchedEffect(sharedData, isImmersiveMode) {
+        if (sharedData != null) sharedData.isImmersiveMode = isImmersiveMode
+    }
+    ArticleImmersiveModeEffect(isImmersiveMode)
 
     LaunchedEffect(article.id) {
         // 答案切换时用 pendingInitialContent 预填充，消除空白帧（逻辑同 M3 ArticleScreen）。
@@ -315,10 +329,12 @@ fun MiuixArticleScreen(
         Scaffold(
             // 顶栏折叠（两行→一行）由 scrollBehavior 驱动，必须把其 nestedScrollConnection 挂到滚动祖先上，
             // 否则内容滚动喂不到 heightOffset，两行大标题永不折叠。
-            modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
+            modifier = Modifier
+                .fillMaxSize()
+                .then(if (!isImmersiveMode) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier),
             topBar = {
                 AnimatedVisibility(
-                    visible = showTopBar,
+                    visible = !isImmersiveMode && showTopBar,
                     enter = slideInVertically(tween(200)) { -it },
                     exit = slideOutVertically(tween(200)) { -it },
                 ) {
@@ -367,7 +383,7 @@ fun MiuixArticleScreen(
             },
             bottomBar = {
                 AnimatedVisibility(
-                    visible = showBottomBar,
+                    visible = !isImmersiveMode && showBottomBar,
                     enter = slideInVertically(tween(200)) { it },
                     exit = slideOutVertically(tween(200)) { it },
                 ) {
@@ -598,7 +614,10 @@ fun MiuixArticleScreen(
                 // 右侧阅读进度条（对齐 M3）。
                 VerticalReadingProgressBar(
                     scrollState = scrollState,
-                    modifier = Modifier.align(Alignment.CenterEnd).padding(end = 2.dp),
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 2.dp)
+                        .then(if (isImmersiveMode) Modifier.graphicsLayer { alpha = 0f } else Modifier),
                 )
             }
         }
@@ -636,18 +655,26 @@ fun MiuixArticleScreen(
         }
 
         // 跳到下一个回答（对齐 M3）：仅回答页 + buttonSkipAnswer 开启时显示，可自动隐藏。
-        if (article.type == ArticleType.Answer && articleSettings.buttonSkipAnswer) {
+        if (article.type == ArticleType.Answer && articleSettings.buttonSkipAnswer && !isImmersiveMode) {
             val showSkip = !articleSettings.autoHideSkipAnswerButton || isScrollingUp || scrollState.value == 0
             val skipAlpha by animateFloatAsState(if (showSkip) 1f else 0f, tween(200), label = "skipAlpha")
-            DraggableRefreshButton(
-                modifier = Modifier.graphicsLayer { alpha = skipAlpha },
-                onClick = {
-                    if (showSkip) {
+            var fabClickCount by remember { mutableIntStateOf(0) }
+            LaunchedEffect(fabClickCount) {
+                if (fabClickCount > 0) {
+                    delay(350)
+                    if (fabClickCount >= 2) {
+                        toggleImmersive()
+                    } else if (showSkip) {
                         navigatingToNextAnswer = true
                         navigateToNext()
                         navigatingToNextAnswer = false
                     }
-                },
+                    fabClickCount = 0
+                }
+            }
+            DraggableRefreshButton(
+                modifier = Modifier.graphicsLayer { alpha = skipAlpha },
+                onClick = { fabClickCount++ },
                 preferenceName = "buttonSkipAnswer",
             ) {
                 if (navigatingToNextAnswer) {
@@ -775,6 +802,11 @@ fun MiuixArticleScreen(
                 showActionsMenu = false
                 articleActions.openArticleInBrowser(article)
             }
+            MiuixActionMenuRow(Icons.Default.FilterCenterFocus, "沉浸式阅读") {
+                showActionsMenu = false
+                toggleImmersive()
+                userMessages.showMessage("已进入沉浸式，按返回键即可退出")
+            }
             Spacer(Modifier.height(8.dp))
         }
     }
@@ -839,6 +871,10 @@ fun MiuixArticleScreen(
                 applyDoubleTap(AnswerDoubleTapAction.OpenComments)
                 showComments = true
             })
+            TextButton(text = "开关沉浸式", modifier = Modifier.fillMaxWidth(), onClick = {
+                applyDoubleTap(AnswerDoubleTapAction.ToggleImmersive)
+                toggleImmersive()
+            })
             Spacer(Modifier.height(8.dp))
         }
     }
@@ -855,6 +891,7 @@ fun MiuixArticleScreen(
         },
     )
 
+    PlatformBackHandler(enabled = isImmersiveMode) { toggleImmersive() }
     PlatformBackHandler(showActionsMenu) { showActionsMenu = false }
 }
 

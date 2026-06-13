@@ -544,6 +544,17 @@ open class SharedAndroidPaginationEnvironment(
         extraSectionsHtml = extraSectionsHtml,
     )
 
+    override suspend fun buildOfflineArticleExportHtml(
+        content: DataHolder.Content,
+        includeAppAttribution: Boolean,
+        httpClient: HttpClient,
+    ): String = buildOfflineArticleExportHtml(
+        context = context,
+        content = content,
+        includeAppAttribution = includeAppAttribution,
+        httpClient = httpClient,
+    )
+
     override fun saveImageToMediaStore(
         displayName: String,
         bitmap: Any,
