@@ -17,6 +17,11 @@
 
 package com.github.zly2006.zhihu.shared.platform
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 
 enum class UserMessageDuration {
     Short,
@@ -63,6 +68,66 @@ data class SettingsStore(
 expect fun rememberSettingsStore(): SettingsStore
 
 @Composable
+fun rememberSettingBoolean(
+    key: String,
+    defaultValue: Boolean,
+    settings: SettingsStore = rememberSettingsStore(),
+): Boolean {
+    var value by remember(settings, key, defaultValue) {
+        mutableStateOf(settings.getBoolean(key, defaultValue))
+    }
+    DisposableEffect(settings, key, defaultValue) {
+        val unregister = settings.observeKeyChanges { changedKey ->
+            if (changedKey == key) {
+                value = settings.getBoolean(key, defaultValue)
+            }
+        }
+        onDispose(unregister)
+    }
+    return value
+}
+
+@Composable
+fun rememberSettingString(
+    key: String,
+    defaultValue: String,
+    settings: SettingsStore = rememberSettingsStore(),
+): String {
+    var value by remember(settings, key, defaultValue) {
+        mutableStateOf(settings.getString(key, defaultValue))
+    }
+    DisposableEffect(settings, key, defaultValue) {
+        val unregister = settings.observeKeyChanges { changedKey ->
+            if (changedKey == key) {
+                value = settings.getString(key, defaultValue)
+            }
+        }
+        onDispose(unregister)
+    }
+    return value
+}
+
+@Composable
+fun rememberSettingInt(
+    key: String,
+    defaultValue: Int,
+    settings: SettingsStore = rememberSettingsStore(),
+): Int {
+    var value by remember(settings, key, defaultValue) {
+        mutableStateOf(settings.getInt(key, defaultValue))
+    }
+    DisposableEffect(settings, key, defaultValue) {
+        val unregister = settings.observeKeyChanges { changedKey ->
+            if (changedKey == key) {
+                value = settings.getInt(key, defaultValue)
+            }
+        }
+        onDispose(unregister)
+    }
+    return value
+}
+
+@Composable
 expect fun rememberExternalUrlOpener(): (String) -> Unit
 
 @Composable
@@ -79,6 +144,21 @@ expect fun rememberImageGalleryOpener(): (List<String>, Int) -> Unit
 
 @Composable
 expect fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit
+
+/**
+ * 开发者诊断信息：包名/版本/网络状态等只读快照，以及剪贴板读取、全量配置导出
+ * 这些动作依赖各平台原生 API（Android ConnectivityManager/PackageManager/ClipboardManager/SharedPreferences.all）。
+ */
+data class DeveloperDiagnostics(
+    val appInfo: String,
+    val deviceInfo: String,
+    val networkStatus: String,
+    val readClipboardText: () -> String?,
+    val exportAllSettings: () -> String,
+)
+
+@Composable
+expect fun rememberDeveloperDiagnostics(): DeveloperDiagnostics
 
 data class ScreenSizeDp(
     val width: Float,

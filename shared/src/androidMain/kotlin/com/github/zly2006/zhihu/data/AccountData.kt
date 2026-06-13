@@ -37,6 +37,7 @@ import com.github.zly2006.zhihu.shared.data.buildZhihuReadHistoryBody
 import com.github.zly2006.zhihu.shared.data.fetchVerifiedZhihuSession
 import com.github.zly2006.zhihu.shared.data.fetchZhihuAuthenticatedJson
 import com.github.zly2006.zhihu.shared.data.installZhihuCommonClientConfig
+import com.github.zly2006.zhihu.shared.login.prefetchQrLoginContext
 import com.github.zly2006.zhihu.util.signFetchRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
@@ -171,6 +172,11 @@ object AccountData {
     suspend fun verifyLogin(context: Context, cookies: Map<String, String>): Boolean {
         val map = cookies.toMutableMap()
         val httpClient = httpClient(context, map)
+        // 网页登录(WebView) 抓到的 d_c0 可能是手机版登录页发的、对桌面 zse96 签名无效的值（实测会让知乎回 10003）；
+        // 手动粘 cookie 又常常只带 z_c0。统一用扫码登录同款 udid 预取换一个有效 d_c0 覆盖掉不可靠的值。
+        // udid 失败时（runCatching）保留原 d_c0，不致比原来更差。
+        runCatching { prefetchQrLoginContext(httpClient, map) }
+            .onFailure { Log.e("ZhihuLogin", "udid prefetch failed", it) }
         val session = fetchVerifiedZhihuSession(httpClient, map, data.userAgent) ?: return false
         saveData(
             context,

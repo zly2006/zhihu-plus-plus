@@ -78,12 +78,17 @@ import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.notification.rememberNotificationSettingsStore
 import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
 import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
+import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
+import com.github.zly2006.zhihu.shared.platform.rememberSettingString
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.ui.TopLevelReselectAction
 import com.github.zly2006.zhihu.shared.ui.topLevelReselectAction
+import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.theme.ThemeStyle
 import com.github.zly2006.zhihu.ui.components.AnnouncementCard
 import com.github.zly2006.zhihu.ui.components.AnnouncementCardDefaults
+import com.github.zly2006.zhihu.ui.components.AutoHideTopBar
 import com.github.zly2006.zhihu.ui.components.BlockByKeywordsDialog
 import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
@@ -93,6 +98,7 @@ import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.components.rememberFeedBlockActions
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixAccountSheet
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
 import com.github.zly2006.zhihu.viewmodel.fetchUnreadNotificationCountSigned
@@ -126,15 +132,17 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
     val userMessages = rememberUserMessageSink()
     val openExternalUrl = rememberExternalUrlOpener()
 
-    val duo3HomeAccount = settings.getBoolean("duo3_home_account", false)
-    val showRefreshFab = settings.getBoolean("showRefreshFab", true)
+    val duo3HomeAccount = rememberSettingBoolean("duo3_home_account", false, settings)
+    val showRefreshFab = rememberSettingBoolean("showRefreshFab", true, settings)
+    val recommendationModeKey = rememberSettingString("recommendationMode", RecommendationMode.MIXED.key, settings)
+    val loginForRecommendation = rememberSettingBoolean("loginForRecommendation", true, settings)
     val showUnreadBadge = notificationSettings.getUnreadBadgeEnabled()
     var showAccountBottomSheet by remember { mutableStateOf(false) }
 
     // 获取当前推荐算法设置
     val currentRecommendationMode =
         RecommendationMode.entries.find {
-            it.key == settings.getString("recommendationMode", RecommendationMode.MIXED.key)
+            it.key == recommendationModeKey
         } ?: RecommendationMode.MIXED
 
     val runtime = rememberHomeScreenRuntime(currentRecommendationMode)
@@ -185,9 +193,9 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
     }
 
     // 初始加载
-    LaunchedEffect(currentRecommendationMode, runtime.account.isLoggedIn) {
+    LaunchedEffect(currentRecommendationMode, runtime.account.isLoggedIn, loginForRecommendation) {
         if (!runtime.account.isLoggedIn &&
-            settings.getBoolean("loginForRecommendation", true)
+            loginForRecommendation
         ) {
             runtime.requestLogin()
         } else if (viewModel.displayItems.isEmpty()) {
@@ -221,86 +229,88 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
                 .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
         },
         topBar = {
-            if (duo3HomeAccount) {
-                Box {
-                    Surface(
-                        modifier = Modifier
-                            .height(
-                                WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp + 32.dp,
-                            ).fillMaxWidth(),
-                    ) { }
-                    Row(
-                        modifier = Modifier
-                            .testTag(HOME_TOP_ACTIONS_TAG)
-                            .fillMaxWidth()
-                            .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-                            .padding(16.dp, 8.dp, 16.dp, 0.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
+            AutoHideTopBar {
+                if (duo3HomeAccount) {
+                    Box {
                         Surface(
                             modifier = Modifier
-                                .weight(1f)
-                                .height(64.dp)
-                                .testTag(HOME_SEARCH_BUTTON_TAG),
-                            shape = RoundedCornerShape(32.dp),
-                            color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                            onClick = {
-                                navigator.onNavigate(
-                                    Search(query = ""),
-                                )
-                            },
+                                .height(
+                                    WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp + 32.dp,
+                                ).fillMaxWidth(),
+                        ) { }
+                        Row(
+                            modifier = Modifier
+                                .testTag(HOME_TOP_ACTIONS_TAG)
+                                .fillMaxWidth()
+                                .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+                                .padding(16.dp, 8.dp, 16.dp, 0.dp),
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Row(
+                            Surface(
                                 modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(start = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
+                                    .weight(1f)
+                                    .height(64.dp)
+                                    .testTag(HOME_SEARCH_BUTTON_TAG),
+                                shape = RoundedCornerShape(32.dp),
+                                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                onClick = {
+                                    navigator.onNavigate(
+                                        Search(query = ""),
+                                    )
+                                },
                             ) {
-                                Icon(
-                                    Icons.Default.Search,
-                                    contentDescription = "搜索",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text(
-                                    text = "搜索",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    modifier = Modifier.weight(1f),
-                                )
-
-                                IconButton(
-                                    onClick = { showAccountBottomSheet = true },
+                                Row(
                                     modifier = Modifier
-                                        .size(64.dp)
-                                        .testTag(HOME_ACCOUNT_BUTTON_TAG),
+                                        .fillMaxSize()
+                                        .padding(start = 16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Box(Modifier.padding(12.dp)) {
-                                        BadgedBox(
-                                            badge = {
-                                                if (showUnreadBadge && unreadCount > 0) {
-                                                    Badge { }
+                                    Icon(
+                                        Icons.Default.Search,
+                                        contentDescription = "搜索",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        text = "搜索",
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        modifier = Modifier.weight(1f),
+                                    )
+
+                                    IconButton(
+                                        onClick = { showAccountBottomSheet = true },
+                                        modifier = Modifier
+                                            .size(64.dp)
+                                            .testTag(HOME_ACCOUNT_BUTTON_TAG),
+                                    ) {
+                                        Box(Modifier.padding(12.dp)) {
+                                            BadgedBox(
+                                                badge = {
+                                                    if (showUnreadBadge && unreadCount > 0) {
+                                                        Badge { }
+                                                    }
+                                                },
+                                            ) {
+                                                val avatarUrl = runtime.account.avatarUrl
+                                                if (avatarUrl != null) {
+                                                    AsyncImage(
+                                                        model = avatarUrl,
+                                                        contentDescription = "账号",
+                                                        contentScale = ContentScale.Crop,
+                                                        modifier = Modifier
+                                                            .size(40.dp)
+                                                            .border(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f), CircleShape)
+                                                            .clip(CircleShape),
+                                                    )
+                                                } else {
+                                                    Icon(
+                                                        Icons.Default.AccountCircle,
+                                                        contentDescription = "账号",
+                                                        tint = MaterialTheme.colorScheme.onSurface,
+                                                        modifier = Modifier.size(40.dp),
+                                                    )
                                                 }
-                                            },
-                                        ) {
-                                            val avatarUrl = runtime.account.avatarUrl
-                                            if (avatarUrl != null) {
-                                                AsyncImage(
-                                                    model = avatarUrl,
-                                                    contentDescription = "账号",
-                                                    contentScale = ContentScale.Crop,
-                                                    modifier = Modifier
-                                                        .size(40.dp)
-                                                        .border(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f), CircleShape)
-                                                        .clip(CircleShape),
-                                                )
-                                            } else {
-                                                Icon(
-                                                    Icons.Default.AccountCircle,
-                                                    contentDescription = "账号",
-                                                    tint = MaterialTheme.colorScheme.onSurface,
-                                                    modifier = Modifier.size(40.dp),
-                                                )
                                             }
                                         }
                                     }
@@ -308,65 +318,65 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
                             }
                         }
                     }
-                }
-            } else {
-                Surface(shadowElevation = 4.dp) {
-                    Row(
-                        modifier = Modifier
-                            .testTag(HOME_TOP_ACTIONS_TAG)
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Surface(
+                } else {
+                    Surface(shadowElevation = 4.dp) {
+                        Row(
                             modifier = Modifier
-                                .weight(1f)
-                                .height(36.dp)
-                                .testTag(HOME_SEARCH_BUTTON_TAG),
-                            shape = RoundedCornerShape(24.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            onClick = {
-                                navigator.onNavigate(
-                                    Search(query = ""),
-                                )
-                            },
+                                .testTag(HOME_TOP_ACTIONS_TAG)
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Row(
+                            Surface(
                                 modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Icon(
-                                    Icons.Default.Search,
-                                    contentDescription = "搜索",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text(
-                                    text = "搜索内容",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        IconButton(
-                            onClick = { navigator.onNavigate(Notification) },
-                            modifier = Modifier.testTag(HOME_NOTIFICATION_BUTTON_TAG),
-                        ) {
-                            BadgedBox(
-                                badge = {
-                                    if (showUnreadBadge && unreadCount > 0) {
-                                        Badge { Text("$unreadCount") }
-                                    }
+                                    .weight(1f)
+                                    .height(36.dp)
+                                    .testTag(HOME_SEARCH_BUTTON_TAG),
+                                shape = RoundedCornerShape(24.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                onClick = {
+                                    navigator.onNavigate(
+                                        Search(query = ""),
+                                    )
                                 },
                             ) {
-                                Icon(
-                                    Icons.Default.Notifications,
-                                    contentDescription = "通知",
-                                    tint = MaterialTheme.colorScheme.onSurface,
-                                )
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Icon(
+                                        Icons.Default.Search,
+                                        contentDescription = "搜索",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        text = "搜索内容",
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            IconButton(
+                                onClick = { navigator.onNavigate(Notification) },
+                                modifier = Modifier.testTag(HOME_NOTIFICATION_BUTTON_TAG),
+                            ) {
+                                BadgedBox(
+                                    badge = {
+                                        if (showUnreadBadge && unreadCount > 0) {
+                                            Badge { Text("$unreadCount") }
+                                        }
+                                    },
+                                ) {
+                                    Icon(
+                                        Icons.Default.Notifications,
+                                        contentDescription = "通知",
+                                        tint = MaterialTheme.colorScheme.onSurface,
+                                    )
+                                }
                             }
                         }
                     }
@@ -375,16 +385,24 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
         },
     ) { scaffoldPadding ->
         if (duo3HomeAccount && showAccountBottomSheet) {
-            MyModalBottomSheet(
-                onDismissRequest = { showAccountBottomSheet = false },
-                containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            ) {
-                AccountSettingScreen(
-                    innerPadding = PaddingValues(0.dp),
+            if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                MiuixAccountSheet(
+                    show = showAccountBottomSheet,
                     unreadCount = unreadCount,
-                    showUnreadBadge = showUnreadBadge,
-                    onDismissRequest = { showAccountBottomSheet = false },
+                    onDismiss = { showAccountBottomSheet = false },
                 )
+            } else {
+                MyModalBottomSheet(
+                    onDismissRequest = { showAccountBottomSheet = false },
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                ) {
+                    AccountSettingScreen(
+                        innerPadding = PaddingValues(0.dp),
+                        unreadCount = unreadCount,
+                        showUnreadBadge = showUnreadBadge,
+                        onDismissRequest = { showAccountBottomSheet = false },
+                    )
+                }
             }
         }
 

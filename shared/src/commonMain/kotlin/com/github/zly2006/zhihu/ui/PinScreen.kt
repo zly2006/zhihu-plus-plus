@@ -692,7 +692,7 @@ private fun PinContent(
     }
 }
 
-private fun linkCardTypeLabel(dataContentType: String): String = when (dataContentType.lowercase()) {
+internal fun linkCardTypeLabel(dataContentType: String): String = when (dataContentType.lowercase()) {
     "answer" -> "回答"
     "article" -> "文章"
     "question" -> "问题"
@@ -702,7 +702,7 @@ private fun linkCardTypeLabel(dataContentType: String): String = when (dataConte
     else -> dataContentType
 }
 
-private suspend fun fetchLinkCardPreview(
+internal suspend fun fetchLinkCardPreview(
     fetchDetail: suspend (NavDestination) -> DataHolder.Content?,
     linkCard: DataHolder.Pin.ContentLinkCard,
 ): PinLinkCardPreview? {

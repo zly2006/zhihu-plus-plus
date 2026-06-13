@@ -31,8 +31,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.Button
@@ -59,13 +61,26 @@ import com.github.zly2006.zhihu.shared.login.ZHIHU_DESKTOP_USER_AGENT
 import com.github.zly2006.zhihu.shared.login.ZHIHU_HOME_URL
 import com.github.zly2006.zhihu.shared.login.ZHIHU_SIGNIN_URL
 import com.github.zly2006.zhihu.shared.login.parseCookieAssignments
+import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.theme.ThemeStyle
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.util.telemetry
 import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.basic.TabRow
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.basic.Button as MiuixButton
+import top.yukonga.miuix.kmp.basic.ButtonDefaults as MiuixButtonDefaults
+import top.yukonga.miuix.kmp.basic.Icon as MiuixIcon
+import top.yukonga.miuix.kmp.basic.IconButton as MiuixIconButton
+import top.yukonga.miuix.kmp.basic.Scaffold as MiuixScaffold
+import top.yukonga.miuix.kmp.basic.Text as MiuixText
+import top.yukonga.miuix.kmp.basic.TextButton as MiuixTextButton
+import top.yukonga.miuix.kmp.basic.TopAppBar as MiuixTopAppBar
 
 private const val LOGIN_MODE_WEB = 0
 private const val LOGIN_MODE_QR = 1
@@ -82,63 +97,74 @@ class LoginActivity : ComponentActivity() {
                 var currentNoticeStep by rememberSaveable { mutableIntStateOf(0) }
                 var loginMode by rememberSaveable { mutableIntStateOf(LOGIN_MODE_WEB) }
 
-                Surface(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .systemBarsPadding(),
-                ) {
-                    if (currentNoticeStep >= 3) {
-                        LoginModeScreen(
+                val useMiuix = ThemeManager.getThemeStyle() == ThemeStyle.Miuix
+                if (currentNoticeStep >= 3) {
+                    if (useMiuix) {
+                        MiuixLoginModeScreen(
                             activity = this@LoginActivity,
                             loginMode = loginMode,
                             onModeChanged = { loginMode = it },
                         )
                     } else {
+                        Surface(modifier = Modifier.fillMaxSize().systemBarsPadding()) {
+                            LoginModeScreen(
+                                activity = this@LoginActivity,
+                                loginMode = loginMode,
+                                onModeChanged = { loginMode = it },
+                            )
+                        }
+                    }
+                } else if (useMiuix) {
+                    when (currentNoticeStep) {
+                        0 -> MiuixLoginNotice(
+                            "我清楚，本应用由开源社区开发和维护，不由知乎官方开发并运营，也不受到知乎官方的承认或支持，使用本应用的一切后果由我本人承担。我可以在 https://www.zhihu.com/app/ 下载官方应用。",
+                            step = "1/3",
+                            secondaryButtonText = "下载官方App",
+                            onSecondaryAction = { luoTianYiUrlLauncher(this@LoginActivity, "https://www.zhihu.com/app/".toUri()) },
+                            onConfirm = { currentNoticeStep = 1 },
+                            onBack = { finish() },
+                        )
+                        1 -> MiuixLoginNotice(
+                            "在使用本应用的过程中，我承诺遵守知乎使用协议 https://www.zhihu.com/term/zhihu-terms 。我保证在使用过程中不侵犯知乎及其他作者的著作权，使用本应用产生的一切输出仅用于个人浏览和备份，不会进行传播等其他影响作者著作权的行为。",
+                            step = "2/3",
+                            secondaryButtonText = "查看协议",
+                            onSecondaryAction = { luoTianYiUrlLauncher(this@LoginActivity, "https://www.zhihu.com/term/zhihu-terms".toUri()) },
+                            onConfirm = { currentNoticeStep = 2 },
+                            onBack = { currentNoticeStep = 0 },
+                        )
+                        else -> MiuixLoginNotice(
+                            "我知晓，本应用可能会收集部分匿名化的使用信息来确定使用人数，我可以在设置中随时关闭此项遥测。",
+                            step = "3/3",
+                            secondaryButtonText = "查看设置",
+                            onSecondaryAction = { startActivity(Intent(this@LoginActivity, MainActivity::class.java)) },
+                            onConfirm = { currentNoticeStep = 3 },
+                            onBack = { currentNoticeStep = 1 },
+                        )
+                    }
+                } else {
+                    Surface(modifier = Modifier.fillMaxSize().systemBarsPadding()) {
                         when (currentNoticeStep) {
-                            0 ->
-                                LoginNoticeScreen(
-                                    stepTag = "login_notice_step_1",
-                                    message = "我清楚，本应用由开源社区开发和维护，不由知乎官方开发并运营，也不受到知乎官方的承认或支持，使用本应用的一切后果由我本人承担。我可以在 https://www.zhihu.com/app/ 下载官方应用。",
-                                    secondaryButtonText = "下载官方App",
-                                    onSecondaryAction = {
-                                        luoTianYiUrlLauncher(
-                                            this@LoginActivity,
-                                            "https://www.zhihu.com/app/".toUri(),
-                                        )
-                                    },
-                                    onConfirm = {
-                                        currentNoticeStep = 1
-                                    },
-                                )
-                            1 ->
-                                LoginNoticeScreen(
-                                    stepTag = "login_notice_step_2",
-                                    message = "在使用本应用的过程中，我承诺遵守知乎使用协议 https://www.zhihu.com/term/zhihu-terms 。我保证在使用过程中不侵犯知乎及其他作者的著作权，使用本应用产生的一切输出仅用于个人浏览和备份，不会进行传播等其他影响作者著作权的行为。",
-                                    secondaryButtonText = "查看协议",
-                                    onSecondaryAction = {
-                                        luoTianYiUrlLauncher(
-                                            this@LoginActivity,
-                                            "https://www.zhihu.com/term/zhihu-terms".toUri(),
-                                        )
-                                    },
-                                    onConfirm = {
-                                        currentNoticeStep = 2
-                                    },
-                                )
-                            else ->
-                                LoginNoticeScreen(
-                                    stepTag = "login_notice_step_3",
-                                    message = "我知晓，本应用可能会收集部分匿名化的使用信息来确定使用人数，我可以在设置中随时关闭此项遥测。",
-                                    secondaryButtonText = "查看设置",
-                                    onSecondaryAction = {
-                                        startActivity(
-                                            Intent(this@LoginActivity, MainActivity::class.java),
-                                        )
-                                    },
-                                    onConfirm = {
-                                        currentNoticeStep = 3
-                                    },
-                                )
+                            0 -> LoginNoticeScreen(
+                                stepTag = "login_notice_step_1",
+                                message = "我清楚，本应用由开源社区开发和维护，不由知乎官方开发并运营，也不受到知乎官方的承认或支持，使用本应用的一切后果由我本人承担。我可以在 https://www.zhihu.com/app/ 下载官方应用。",
+                                secondaryButtonText = "下载官方App",
+                                onSecondaryAction = { luoTianYiUrlLauncher(this@LoginActivity, "https://www.zhihu.com/app/".toUri()) },
+                                onConfirm = { currentNoticeStep = 1 },
+                            )
+                            1 -> LoginNoticeScreen(
+                                stepTag = "login_notice_step_2",
+                                message = "在使用本应用的过程中，我承诺遵守知乎使用协议 https://www.zhihu.com/term/zhihu-terms 。我保证在使用过程中不侵犯知乎及其他作者的著作权，使用本应用产生的一切输出仅用于个人浏览和备份，不会进行传播等其他影响作者著作权的行为。",
+                                secondaryButtonText = "查看协议",
+                                onSecondaryAction = { luoTianYiUrlLauncher(this@LoginActivity, "https://www.zhihu.com/term/zhihu-terms".toUri()) },
+                                onConfirm = { currentNoticeStep = 2 },
+                            )
+                            else -> LoginNoticeScreen(
+                                stepTag = "login_notice_step_3",
+                                message = "我知晓，本应用可能会收集部分匿名化的使用信息来确定使用人数，我可以在设置中随时关闭此项遥测。",
+                                secondaryButtonText = "查看设置",
+                                onSecondaryAction = { startActivity(Intent(this@LoginActivity, MainActivity::class.java)) },
+                                onConfirm = { currentNoticeStep = 3 },
+                            )
                         }
                     }
                 }
@@ -253,6 +279,46 @@ class LoginActivity : ComponentActivity() {
 }
 
 @Composable
+private fun MiuixLoginModeScreen(
+    activity: LoginActivity,
+    loginMode: Int,
+    onModeChanged: (Int) -> Unit,
+) {
+    MiuixScaffold(
+        topBar = {
+            MiuixTopAppBar(
+                title = "登录知乎",
+                navigationIcon = {
+                    MiuixIconButton(onClick = { activity.finish() }) {
+                        MiuixIcon(MiuixIconsEmbedded.Back, "返回", tint = MiuixTheme.colorScheme.onBackground)
+                    }
+                },
+            )
+        },
+    ) { padding ->
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            TabRow(
+                tabs = listOf("网页登录", "扫码登录"),
+                selectedTabIndex = loginMode,
+                onTabSelected = onModeChanged,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+            )
+            Spacer(Modifier.height(8.dp))
+            Box(modifier = Modifier.fillMaxWidth().weight(1f).padding(horizontal = 12.dp)) {
+                if (loginMode == LOGIN_MODE_WEB) {
+                    WebviewComp(
+                        modifier = Modifier.fillMaxSize(),
+                        onLoad = { webView -> activity.configureWebLogin(webView) },
+                    )
+                } else {
+                    QrLoginPane(activity = activity)
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun LoginModeScreen(
     activity: LoginActivity,
     loginMode: Int,
@@ -353,6 +419,64 @@ private fun QrLoginPane(activity: LoginActivity) {
             )
         },
     )
+}
+
+@Composable
+private fun MiuixLoginNotice(
+    message: String,
+    step: String,
+    secondaryButtonText: String,
+    onSecondaryAction: () -> Unit,
+    onConfirm: () -> Unit,
+    onBack: () -> Unit,
+) {
+    MiuixScaffold(
+        topBar = {
+            MiuixTopAppBar(
+                title = "登录须知",
+                navigationIcon = {
+                    MiuixIconButton(onClick = onBack) {
+                        MiuixIcon(MiuixIconsEmbedded.Back, "返回", tint = MiuixTheme.colorScheme.onBackground)
+                    }
+                },
+            )
+        },
+    ) { padding ->
+        Column(
+            modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 24.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    MiuixText(
+                        text = message,
+                        style = MiuixTheme.textStyles.body1,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    MiuixText(step, color = MiuixTheme.colorScheme.onSurfaceVariantSummary, style = MiuixTheme.textStyles.body2)
+                }
+            }
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                MiuixTextButton(
+                    text = secondaryButtonText,
+                    onClick = onSecondaryAction,
+                    modifier = Modifier.fillMaxWidth().testTag("login_notice_secondary_action"),
+                )
+                MiuixButton(
+                    onClick = onConfirm,
+                    modifier = Modifier.fillMaxWidth().testTag("login_notice_confirm"),
+                    colors = MiuixButtonDefaults.buttonColorsPrimary(),
+                ) {
+                    MiuixText("确认并继续")
+                }
+            }
+        }
+    }
 }
 
 @Composable

@@ -21,9 +21,16 @@ import com.github.zly2006.zhihu.shared.util.Log
 import io.ktor.http.Url
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import top.yukonga.miuix.kmp.nav.core.NavKey
 
+/**
+ * 应用全部页面 route 的封闭模型，同时作为 miuix-nav 的 [NavKey]，可直接作为导航栈元素。
+ *
+ * 封闭 + `@Serializable` 让 `serializer<List<NavDestination>>()` 是闭合多态序列化，miuix-nav 的
+ * `rememberNavBackStack<NavDestination>` 无需 `SerializersModule` 即可跨进程死亡持久化返回栈。
+ */
 @Serializable
-sealed interface NavDestination
+sealed interface NavDestination : NavKey
 
 /**
  * 底部栏和主 pager 使用的 tab 目标。
@@ -92,7 +99,12 @@ data object History : NavDestination, TopLevelDestination {
  * 主 pager 的历史顶层 tab 目标。
  */
 @Serializable
-data object OnlineHistory : TopLevelDestination {
+data object OnlineHistory :
+    TopLevelDestination,
+    // 同时实现 NavDestination：既能作底栏 tab，也能被 navigator.onNavigate 作为独立页面 push
+    // （composable<OnlineHistory> 路由已注册）。这样账号页/面板的"浏览历史"入口在
+    // OnlineHistory 不在底栏时也能打开，而不是 selectMainTab 回退到首页。
+    NavDestination {
     override val name: String
         get() = "OnlineHistory"
 }
@@ -135,6 +147,9 @@ data object Account : TopLevelDestination {
 
     @Serializable
     data object OpenSourceLicenses : NavDestination
+
+    @Serializable
+    data object About : NavDestination
 
     @Serializable
     data object DeveloperSettings : NavDestination {
@@ -204,9 +219,11 @@ data class Article(
     var avatarSrc: String? = null,
     var excerpt: String? = null,
 ) : NavDestination {
-    override fun hashCode(): Int = id.hashCode()
+    override fun hashCode(): Int = 31 * type.hashCode() + id.hashCode()
 
     override fun equals(other: Any?): Boolean = other is Article && other.id == id && other.type == type
+
+    override fun toString(): String = "Article(type=$type, id=$id)"
 }
 
 @Serializable
@@ -230,6 +247,8 @@ data class Question(
     override fun hashCode(): Int = questionId.hashCode()
 
     override fun equals(other: Any?): Boolean = other is Question && other.questionId == questionId
+
+    override fun toString(): String = "Question(questionId=$questionId)"
 }
 
 @Serializable
@@ -244,24 +263,14 @@ data class Person(
     var urlToken: String,
     val name: String = "loading...",
     val jumpTo: String = "",
+    @SerialName("route_identity")
+    val routeIdentity: String = stablePersonRouteIdentity(id, urlToken),
 ) : NavDestination {
-    override fun hashCode(): Int {
-        if (id != EMPTY_ID) {
-            // 32 位十六进制字符，通常是用户 ID。
-            return id.hashCode()
-        }
-        return urlToken.hashCode()
-    }
+    override fun hashCode(): Int = routeIdentity.hashCode()
 
-    override fun equals(other: Any?): Boolean {
-        if (other is Person) {
-            if (id != EMPTY_ID && other.id != EMPTY_ID) {
-                return other.id == id
-            }
-            return other.urlToken == urlToken
-        }
-        return false
-    }
+    override fun equals(other: Any?): Boolean = other is Person && other.routeIdentity == routeIdentity
+
+    override fun toString(): String = "Person(routeIdentity=$routeIdentity)"
 
     val userTokenOrId get() = urlToken.takeIf { it.isNotEmpty() } ?: id
 
@@ -269,6 +278,13 @@ data class Person(
         const val EMPTY_ID = "00000000000000000000000000000000"
     }
 }
+
+private fun stablePersonRouteIdentity(id: String, urlToken: String): String =
+    if (urlToken.isNotBlank()) {
+        "url:$urlToken"
+    } else {
+        "id:$id"
+    }
 
 @Serializable
 data class Video(

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  AboutLibraries 通过资源名反射加载 res/raw/aboutlibraries.json，R8/资源压缩
+  看不到 R.raw.aboutlibraries 的直接引用，release(isShrinkResources=true) 会把它当
+  未使用资源删掉，导致开源许可证页抛 IllegalStateException。这里显式保留。
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@raw/aboutlibraries" />

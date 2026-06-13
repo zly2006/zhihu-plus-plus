@@ -27,14 +27,15 @@ import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.test.swipeUp
-import androidx.navigation.compose.rememberNavController
 import androidx.test.ext.junit.rules.ActivityScenarioRule
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.navigation.MainTabs
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Navigator
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.AndroidZhihuMain
+import top.yukonga.miuix.kmp.nav.core.rememberNavController
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -89,7 +90,11 @@ fun MainActivityComposeRule.setZhihuMainContent() {
     waitForIdle()
     activity.setContent {
         ZhihuTheme {
-            AndroidZhihuMain(navController = rememberNavController())
+            // 与生产一致：activity.navController 必须是 AndroidZhihuMain 实际渲染的同一实例，
+            // 否则 activity.navigate() 操作的是 onCreate 旧栈，openFrom 等基于 backStack 的判定会出错。
+            val navController = rememberNavController<NavDestination>(MainTabs)
+            activity.navController = navController
+            AndroidZhihuMain(navController = navController)
         }
     }
     waitForIdle()

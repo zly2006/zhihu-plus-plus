@@ -1,0 +1,110 @@
+/*
+ * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
+ *
+ * Licensed under AGPL-3.0-only.
+ */
+
+package com.github.zly2006.zhihu.ui.miuix
+
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
+import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
+import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixListLoadingIndicator
+import com.github.zly2006.zhihu.viewmodel.feed.HistoryViewModel
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.basic.PullToRefresh
+import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.blur.layerBackdrop
+import top.yukonga.miuix.kmp.utils.overScrollVertical
+import top.yukonga.miuix.kmp.utils.scrollEndHaptic
+
+@Composable
+fun MiuixLocalHistoryScreen(
+    innerPadding: PaddingValues,
+) {
+    val viewModel: HistoryViewModel = viewModel()
+    val environment = rememberPaginationEnvironment(allowGuestAccess = viewModel.allowGuestAccess)
+    val scope = rememberCoroutineScope()
+    val listState = rememberLazyListState()
+    val settings = rememberSettingsStore()
+    val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
+    val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
+    val scrollBehavior = MiuixScrollBehavior()
+
+    LaunchedEffect(Unit) {
+        if (viewModel.displayItems.isEmpty()) {
+            viewModel.refresh(environment)
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                modifier = Modifier.installerMiuixBlurEffect(backdrop),
+                color = backdrop.getMiuixAppBarColor(),
+                title = "历史记录",
+                scrollBehavior = scrollBehavior,
+            )
+        },
+    ) { padding ->
+        PullToRefresh(
+            isRefreshing = viewModel.isPullToRefresh && viewModel.isLoading,
+            onRefresh = { scope.launch { viewModel.pullToRefresh(environment) } },
+            contentPadding = PaddingValues(top = padding.calculateTopPadding() + 6.dp),
+            refreshTexts = listOf("下拉刷新", "释放刷新", "正在刷新...", "刷新完成"),
+        ) {
+            Box(
+                modifier = if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier,
+            ) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .fillMaxHeight()
+                        .overScrollVertical()
+                        .scrollEndHaptic()
+                        .nestedScroll(scrollBehavior.nestedScrollConnection),
+                    contentPadding = PaddingValues(
+                        top = padding.calculateTopPadding() + 6.dp,
+                        bottom = innerPadding.calculateBottomPadding() + padding.calculateBottomPadding(),
+                    ),
+                ) {
+                    items(viewModel.displayItems.size, key = { viewModel.displayItems[it].stableKey }) { index ->
+                        MiuixFeedCard(
+                            item = viewModel.displayItems[index],
+                        )
+                    }
+                }
+                MiuixListLoadingIndicator(
+                    isLoading = viewModel.isLoading,
+                    isEmpty = viewModel.displayItems.isEmpty(),
+                    isPullToRefresh = viewModel.isPullToRefresh,
+                )
+            }
+        }
+    }
+}

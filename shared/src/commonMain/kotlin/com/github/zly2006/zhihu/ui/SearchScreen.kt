@@ -75,6 +75,7 @@ import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.platform.SettingsStore
 import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
+import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
@@ -101,17 +102,17 @@ private data class HotSearchItem(
     val label: String = "",
 )
 
-private const val SEARCH_HISTORY_KEY = "searchHistoryQueries"
-private const val SEARCH_HISTORY_MAX_SIZE = 20
+internal const val SEARCH_HISTORY_KEY = "searchHistoryQueries"
+internal const val SEARCH_HISTORY_MAX_SIZE = 20
 
-private fun loadSearchHistory(settings: SettingsStore): List<String> =
+internal fun loadSearchHistory(settings: SettingsStore): List<String> =
     settings
         .getStringOrNull(SEARCH_HISTORY_KEY)
         ?.let { json ->
             runCatching { ZhihuJson.json.decodeFromString<List<String>>(json) }.getOrNull()
         }.orEmpty()
 
-private fun saveSearchHistory(
+internal fun saveSearchHistory(
     settings: SettingsStore,
     history: List<String>,
 ) {
@@ -143,7 +144,7 @@ fun SearchScreen(
     val memberSearchName = search.restrictedMemberName.ifBlank { "TA" }
     val searchPlaceholder = if (isMemberSearch) "搜索 $memberSearchName 的创作" else "搜索内容"
 
-    val showHotSearch = remember { mutableStateOf(!isMemberSearch && settings.getBoolean("showSearchHotSearch", true)) }
+    val showHotSearch = !isMemberSearch && rememberSettingBoolean("showSearchHotSearch", true, settings)
     val hotSearchItems = remember(testHotSearchQueries) {
         mutableStateListOf<HotSearchItem>().apply {
             addAll(testHotSearchQueries.orEmpty().map { query -> HotSearchItem(query = query) })
@@ -153,7 +154,7 @@ fun SearchScreen(
     var historyMoreMenuExpanded by remember { mutableStateOf(false) }
     var filterMenuExpanded by remember { mutableStateOf(false) }
     val useTestHotSearchQueries = testHotSearchQueries != null
-    val showSearchHistory = remember { mutableStateOf(!isMemberSearch && settings.getBoolean("showSearchHistory", true)) }
+    val showSearchHistory = !isMemberSearch && rememberSettingBoolean("showSearchHistory", true, settings)
     val searchHistoryItems = remember {
         mutableStateListOf<String>().apply {
             if (!isMemberSearch) {
@@ -165,7 +166,7 @@ fun SearchScreen(
     fun submitSearch(query: String) {
         val trimmedQuery = query.trim()
         if (trimmedQuery.isEmpty()) return
-        if (showSearchHistory.value) {
+        if (showSearchHistory) {
             searchHistoryItems.remove(trimmedQuery)
             searchHistoryItems.add(0, trimmedQuery)
             while (searchHistoryItems.size > SEARCH_HISTORY_MAX_SIZE) {
@@ -230,8 +231,8 @@ fun SearchScreen(
         }
     }
 
-    LaunchedEffect(showHotSearch.value, useTestHotSearchQueries, isMemberSearch) {
-        if (!isMemberSearch && showHotSearch.value && !useTestHotSearchQueries) {
+    LaunchedEffect(showHotSearch, useTestHotSearchQueries, isMemberSearch) {
+        if (!isMemberSearch && showHotSearch && !useTestHotSearchQueries) {
             runCatching { fetchHotSearch() }
         }
     }
@@ -358,8 +359,8 @@ fun SearchScreen(
                 .padding(innerPadding),
         ) {
             if (viewModel.displayItems.isEmpty() && !viewModel.isLoading && viewModel.searchQuery.isEmpty()) {
-                val shouldShowHistory = showSearchHistory.value && searchHistoryItems.isNotEmpty()
-                val shouldShowHotSearch = showHotSearch.value && hotSearchItems.isNotEmpty()
+                val shouldShowHistory = showSearchHistory && searchHistoryItems.isNotEmpty()
+                val shouldShowHotSearch = showHotSearch && hotSearchItems.isNotEmpty()
                 if (shouldShowHistory || shouldShowHotSearch) {
                     Column(
                         modifier = Modifier
@@ -490,13 +491,13 @@ fun SearchScreen(
                         }
                     }
                 } else {
-                    if (showSearchHistory.value || isMemberSearch) {
+                    if (showSearchHistory || isMemberSearch) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(16.dp),
                         ) {
-                            if (showSearchHistory.value) {
+                            if (showSearchHistory) {
                                 SearchHistoryHeader(showClearAction = false)
                                 Spacer(modifier = Modifier.height(12.dp))
                             }
@@ -544,7 +545,7 @@ fun SearchScreen(
                         FeedCard(item)
                     }
 
-                    val showRefreshFab = remember { settings.getBoolean("showRefreshFab", true) }
+                    val showRefreshFab = rememberSettingBoolean("showRefreshFab", true, settings)
                     if (showRefreshFab) {
                         DraggableRefreshButton(
                             onClick = {

@@ -19,6 +19,7 @@ package com.github.zly2006.zhihu
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
@@ -30,6 +31,7 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.swipeUp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.navigation.Account
@@ -48,6 +50,7 @@ import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_SCROLL_TAG
+import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_START_DESTINATION_ROW_TAG
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_START_DESTINATION_TAG
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_USE_WEBVIEW_TAG
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
@@ -126,7 +129,7 @@ class AppearanceSettingsScreenInstrumentedTest {
     fun bottomBarSelectionAndStartDestinationRemainStableAcrossScrollAndClicks() {
         // This test verifies a multi-step bottom-bar configuration flow: remove one selected item,
         // add another one, pick the new entry as the startup destination, and then perform an extra
-        // scroll cycle to ensure the rendered state still matches the persisted SharedPreferences.
+        // scroll cycle to ensure the rendered state still matches SharedPreferences.
         setUpScreen(setting = APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY)
 
         scrollUntilTagDisplayed(appearanceSettingsBottomBarItemTag(OnlineHistory.name))
@@ -134,18 +137,19 @@ class AppearanceSettingsScreenInstrumentedTest {
         waitUntilStringSetPreference(
             BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
             expected = setOf(Home.name, Follow.name, Daily.name, Account.name),
+            context = "after removing online history",
         )
 
         composeRule.onNodeWithTag(appearanceSettingsBottomBarItemTag(HotList.name)).performClick()
         waitUntilStringSetPreference(
             BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
             expected = setOf(Home.name, Follow.name, Daily.name, HotList.name, Account.name),
+            context = "after adding hot list",
         )
 
-        composeRule.onNodeWithTag(APPEARANCE_SETTINGS_START_DESTINATION_TAG).performClick()
-        composeRule.onNodeWithTag(appearanceSettingsStartDestinationOptionTag(HotList.name)).performClick()
-
+        selectStartDestination(HotList.name)
         waitUntilStringPreference(START_DESTINATION_PREFERENCE_KEY, expected = HotList.name)
+
         scrollContainer().performVerticalSwipeCycle()
         composeRule
             .onNodeWithTag(APPEARANCE_SETTINGS_START_DESTINATION_TAG)
@@ -226,24 +230,38 @@ class AppearanceSettingsScreenInstrumentedTest {
         composeRule.onNodeWithTag(tag).assertIsDisplayed()
     }
 
+    private fun scrollBackUntilTagDisplayed(tag: String, maxSwipes: Int = 12) {
+        repeat(maxSwipes) {
+            if (isTagDisplayed(tag)) {
+                return
+            }
+            scrollContainer().performTouchInput { swipeDown() }
+            composeRule.waitForIdle()
+        }
+        composeRule.onNodeWithTag(tag).assertIsDisplayed()
+    }
+
     private fun waitUntilDisplayed(matcher: SemanticsMatcher, timeoutMillis: Long = 5_000) {
-        composeRule.waitUntil(timeoutMillis) { isDisplayed(matcher) }
+        waitUntilCondition("node matching $matcher is displayed", timeoutMillis) { isDisplayed(matcher) }
         composeRule.onNode(matcher, useUnmergedTree = true).assertIsDisplayed()
     }
 
     private fun waitUntilTagDisplayed(tag: String, timeoutMillis: Long = 5_000) {
-        composeRule.waitUntil(timeoutMillis) { isTagDisplayed(tag) }
+        waitUntilCondition("tag $tag is displayed", timeoutMillis) { isTagDisplayed(tag) }
         composeRule.onNodeWithTag(tag).assertIsDisplayed()
     }
 
     private fun waitUntilTagExists(tag: String, timeoutMillis: Long = 5_000) {
-        composeRule.waitUntil(timeoutMillis) {
-            composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() ||
-                composeRule
-                    .onAllNodesWithTag(tag, useUnmergedTree = true)
-                    .fetchSemanticsNodes(atLeastOneRootRequired = false)
-                    .isNotEmpty()
-        }
+        waitUntilCondition("tag $tag exists", timeoutMillis) { doesTagExist(tag) }
+    }
+
+    private fun selectStartDestination(key: String) {
+        val optionTag = appearanceSettingsStartDestinationOptionTag(key)
+        waitUntilTagExists(APPEARANCE_SETTINGS_START_DESTINATION_ROW_TAG)
+        scrollUntilTagDisplayed(APPEARANCE_SETTINGS_START_DESTINATION_ROW_TAG)
+        composeRule.onNodeWithTag(APPEARANCE_SETTINGS_START_DESTINATION_TAG, useUnmergedTree = true).performClick()
+        waitUntilTagExists(optionTag)
+        composeRule.onNodeWithTag(optionTag, useUnmergedTree = true).performClick()
     }
 
     private fun boundsHeightForTag(tag: String): Float = composeRule
@@ -253,7 +271,7 @@ class AppearanceSettingsScreenInstrumentedTest {
         .height
 
     private fun waitUntilNodeDoesNotExist(matcher: SemanticsMatcher, timeoutMillis: Long = 5_000) {
-        composeRule.waitUntil(timeoutMillis) {
+        waitUntilCondition("node matching $matcher does not exist", timeoutMillis) {
             composeRule
                 .onAllNodes(matcher, useUnmergedTree = true)
                 .fetchSemanticsNodes(atLeastOneRootRequired = false)
@@ -284,7 +302,7 @@ class AppearanceSettingsScreenInstrumentedTest {
     }
 
     private fun waitUntilTagDoesNotExist(tag: String, timeoutMillis: Long = 5_000) {
-        composeRule.waitUntil(timeoutMillis) {
+        waitUntilCondition("tag $tag does not exist", timeoutMillis) {
             composeRule
                 .onAllNodesWithTag(tag)
                 .fetchSemanticsNodes(atLeastOneRootRequired = false)
@@ -297,22 +315,62 @@ class AppearanceSettingsScreenInstrumentedTest {
     }
 
     private fun waitUntilBooleanPreference(key: String, expected: Boolean, timeoutMillis: Long = 5_000) {
-        composeRule.waitUntil(timeoutMillis) { preferences.getBoolean(key, !expected) == expected }
+        waitUntilCondition(
+            "preference $key becomes $expected",
+            timeoutMillis,
+            failureMessage = { "Expected preference $key to be $expected, actual=${preferences.getBoolean(key, !expected)}" },
+        ) {
+            preferences.getBoolean(key, !expected) == expected
+        }
     }
 
     private fun waitUntilStringPreference(key: String, expected: String, timeoutMillis: Long = 5_000) {
-        composeRule.waitUntil(timeoutMillis) { preferences.getString(key, null) == expected }
+        waitUntilCondition(
+            "preference $key becomes $expected",
+            timeoutMillis,
+            failureMessage = { "Expected preference $key to be $expected, actual=${preferences.getString(key, null)}" },
+        ) {
+            preferences.getString(key, null) == expected
+        }
     }
 
     private fun waitUntilStringSetPreference(
         key: String,
         expected: Set<String>,
         timeoutMillis: Long = 5_000,
+        context: String = key,
     ) {
-        composeRule.waitUntil(timeoutMillis) {
+        waitUntilCondition(
+            "preference $key becomes $expected ($context)",
+            timeoutMillis,
+            failureMessage = {
+                "Expected preference $key to be $expected ($context), " +
+                    "actual=${preferences.getStringSet(key, emptySet())?.toSet()}"
+            },
+        ) {
             preferences.getStringSet(key, emptySet())?.toSet() == expected
         }
     }
+
+    private fun waitUntilCondition(
+        description: String,
+        timeoutMillis: Long,
+        failureMessage: () -> String = { "Timed out waiting until $description" },
+        condition: () -> Boolean,
+    ) {
+        try {
+            composeRule.waitUntil(description, timeoutMillis) { condition() }
+        } catch (e: ComposeTimeoutException) {
+            throw AssertionError(failureMessage(), e)
+        }
+    }
+
+    private fun doesTagExist(tag: String): Boolean =
+        composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() ||
+            composeRule
+                .onAllNodesWithTag(tag, useUnmergedTree = true)
+                .fetchSemanticsNodes(atLeastOneRootRequired = false)
+                .isNotEmpty()
 
     private fun isDisplayed(matcher: SemanticsMatcher): Boolean = runCatching {
         composeRule.onNode(matcher, useUnmergedTree = true).assertIsDisplayed()

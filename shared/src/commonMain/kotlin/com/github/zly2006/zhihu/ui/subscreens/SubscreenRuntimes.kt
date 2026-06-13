@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.toArgb
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.theme.ThemeMode
 import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.theme.ThemeStyle
 import com.github.zly2006.zhihu.ui.TtsState
 import kotlinx.coroutines.flow.StateFlow
 
@@ -31,6 +32,7 @@ data class ThemeSettingsRuntime(
     val setUseDynamicColor: (Boolean) -> Unit,
     val setCustomColor: (Color) -> Unit,
     val setBackgroundColor: (Color, Boolean) -> Unit,
+    val setThemeStyle: (ThemeStyle) -> Unit,
 )
 
 @Composable
@@ -47,12 +49,19 @@ fun rememberThemeSettingsRuntime(): ThemeSettingsRuntime {
                 settings.putBoolean("useDynamicColor", enabled)
             },
             setCustomColor = { color ->
+                // 用户主动设置自定义主题色时，联动关闭动态取色，否则自定义 seed 会被 Monet 静默屏蔽。
+                ThemeManager.setUseDynamicColor(false)
+                settings.putBoolean("useDynamicColor", false)
                 ThemeManager.setCustomColor(color)
                 settings.putInt("customThemeColor", color.toArgb())
             },
             setBackgroundColor = { color, isDark ->
                 ThemeManager.setBackgroundColor(color, isDark)
                 settings.putInt(if (isDark) "backgroundColorDark" else "backgroundColorLight", color.toArgb())
+            },
+            setThemeStyle = { style ->
+                ThemeManager.setThemeStyle(style)
+                settings.putString("themeStyle", style.name)
             },
         )
     }

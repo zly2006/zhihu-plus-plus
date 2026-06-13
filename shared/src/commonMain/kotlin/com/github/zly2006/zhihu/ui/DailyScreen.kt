@@ -82,6 +82,7 @@ import com.github.zly2006.zhihu.shared.data.DailySection
 import com.github.zly2006.zhihu.shared.data.DailyStory
 import com.github.zly2006.zhihu.shared.util.formatDailyDate
 import com.github.zly2006.zhihu.shared.viewmodel.DailyViewModel
+import com.github.zly2006.zhihu.ui.components.AutoHideTopBar
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -204,40 +205,42 @@ fun DailyScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            "知乎日报",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                            ),
-                            modifier = Modifier.testTag(DAILY_SCREEN_TITLE_TAG),
-                        )
-                        if (currentViewingDate.isNotEmpty()) {
+            AutoHideTopBar {
+                TopAppBar(
+                    title = {
+                        Column {
                             Text(
-                                currentViewingDate,
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                "知乎日报",
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    fontWeight = FontWeight.Bold,
                                 ),
-                                modifier = Modifier.testTag(DAILY_SCREEN_CURRENT_DATE_TAG),
+                                modifier = Modifier.testTag(DAILY_SCREEN_TITLE_TAG),
                             )
+                            if (currentViewingDate.isNotEmpty()) {
+                                Text(
+                                    currentViewingDate,
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                    ),
+                                    modifier = Modifier.testTag(DAILY_SCREEN_CURRENT_DATE_TAG),
+                                )
+                            }
                         }
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = { showDatePicker = true },
-                        modifier = Modifier.testTag(DAILY_SCREEN_DATE_PICKER_BUTTON_TAG),
-                    ) {
-                        Icon(Icons.Filled.DateRange, contentDescription = "选择日期")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface,
-                ),
-            )
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = { showDatePicker = true },
+                            modifier = Modifier.testTag(DAILY_SCREEN_DATE_PICKER_BUTTON_TAG),
+                        ) {
+                            Icon(Icons.Filled.DateRange, contentDescription = "选择日期")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    ),
+                )
+            }
         },
     ) { scaffoldPadding ->
         PullToRefreshBox(
