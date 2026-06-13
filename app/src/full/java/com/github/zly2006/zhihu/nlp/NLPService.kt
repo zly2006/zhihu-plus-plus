@@ -387,25 +387,4 @@ object NLPService {
         }
     }
 
-    /**
-     * 提取文本摘要（用于显示）
-     * @param text 输入文本
-     * @param maxLength 最大长度
-     * @return 摘要文本
-     */
-    suspend fun extractSummary(text: String, maxLength: Int = 100): String = withContext(Dispatchers.Default) {
-        if (text.length <= maxLength) return@withContext text
-
-        try {
-            // 使用HanLP的自动摘要功能
-            val summary = HanLP.extractSummary(text, 1)
-            if (summary.isNotEmpty()) {
-                summary[0].take(maxLength)
-            } else {
-                text.take(maxLength) + "..."
-            }
-        } catch (e: Exception) {
-            text.take(maxLength) + "..."
-        }
-    }
 }

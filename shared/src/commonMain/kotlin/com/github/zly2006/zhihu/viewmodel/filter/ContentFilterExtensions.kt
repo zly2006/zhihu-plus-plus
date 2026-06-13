@@ -651,9 +651,6 @@ suspend fun applyContentFilterToDisplayItems(
  * 这里不负责定义内容级规则本身，也不负责详情页打开事件；那些逻辑分别在 blocklist/NLP 仓库和已读事件支持类里。
  */
 object ContentFilterExtensions {
-    fun getNLPSimilarityThreshold(settings: SettingsStore): Double =
-        settings.toFeedFilterSettings().nlpSimilarityThreshold
-
     /**
      * 在 feed 中记录某个内容身份被展示了一次。
      * 这里记录的是“内容在 feed 中曝光”，不是内容详情页被打开。
