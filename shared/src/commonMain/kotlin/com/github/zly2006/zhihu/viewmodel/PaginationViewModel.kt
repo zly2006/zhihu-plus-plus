@@ -176,6 +176,9 @@ open class ArticleAnswerSwitchData :
     @kotlin.concurrent.Volatile
     override var navigatingFromAnswerSwitch = false
 
+    // 由 DisposableEffect.onDispose 消费，不受 LaunchedEffect 时序影响
+    override var answerSwitchDisposeInProgress = false
+
     // 导航动画方向
     override var answerTransitionDirection = ArticleAnswerTransitionDirection.DEFAULT
 

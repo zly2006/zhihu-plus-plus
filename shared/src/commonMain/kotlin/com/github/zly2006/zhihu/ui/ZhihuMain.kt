@@ -57,6 +57,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -191,6 +192,16 @@ fun ZhihuMain(
     val reloadBottomBarPreferences = preferenceState::reload
 
     val navEntry by navController.currentBackStackEntryAsState()
+
+    // 离开文章页时恢复系统状态栏（只在实际切换时触发）
+    val isOnArticle = navEntry?.destination?.hasRoute<Article>() == true
+    var wasOnArticle by remember { mutableStateOf(false) }
+    if (!isOnArticle && wasOnArticle) {
+        LeaveImmersiveModeCleanup()
+    }
+    SideEffect {
+        wasOnArticle = isOnArticle
+    }
 
     var scrollToTopTrigger by remember { mutableIntStateOf(0) }
     // 滚动时自动隐藏底部导航栏

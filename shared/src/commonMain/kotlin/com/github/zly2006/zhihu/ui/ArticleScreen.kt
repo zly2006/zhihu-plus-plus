@@ -634,6 +634,17 @@ fun ArticleScreen(
             viewModel.toggleVoteUp(environment, VoteUpState.Up)
         }
     }
+    // 回答切换手势系统
+    val sharedData = if (article.type == ArticleType.Answer) {
+        environment.articleAnswerSwitchState()
+    } else {
+        null
+    }
+
+    // 沉浸式阅读模式
+    var isImmersiveMode by remember(sharedData) {
+        mutableStateOf(sharedData?.isImmersiveMode ?: false)
+    }
 
     fun performAnswerDoubleTapAction(action: AnswerDoubleTapAction) {
         when (action) {
@@ -643,6 +654,9 @@ fun ArticleScreen(
             AnswerDoubleTapAction.OpenComments -> {
                 hapticFeedback.performHapticFeedback(HapticFeedbackType.Confirm)
                 showComments = true
+            }
+            AnswerDoubleTapAction.ToggleImmersive -> {
+                isImmersiveMode = !isImmersiveMode
             }
         }
     }
@@ -846,18 +860,6 @@ fun ArticleScreen(
         }
     }
     val articleBringIntoViewSpec = rememberBottomBarAvoidingBringIntoViewSpec(bottomBarObscuredHeightPx)
-
-    // 回答切换手势系统
-    val sharedData = if (article.type == ArticleType.Answer) {
-        environment.articleAnswerSwitchState()
-    } else {
-        null
-    }
-
-    // 沉浸式阅读模式：使用共享状态以在切换回答时保持
-    var isImmersiveMode by remember(sharedData) {
-        mutableStateOf(sharedData?.isImmersiveMode ?: false)
-    }
     LaunchedEffect(sharedData, isImmersiveMode) {
         if (sharedData != null) sharedData.isImmersiveMode = isImmersiveMode
     }

@@ -537,3 +537,15 @@ actual fun ArticleImmersiveModeEffect(immersive: Boolean) {
         }
     }
 }
+
+@Composable
+actual fun LeaveImmersiveModeCleanup() {
+    val context = LocalContext.current
+    val window = remember(context) { (context as? Activity)?.window }
+    LaunchedEffect(window) {
+        window?.let { w ->
+            WindowInsetsControllerCompat(w, w.decorView)
+                .show(WindowInsetsCompat.Type.statusBars())
+        }
+    }
+}

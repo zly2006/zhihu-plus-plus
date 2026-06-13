@@ -555,6 +555,7 @@ interface ArticleAnswerSwitchState {
     var pendingNavigator: AnswerNavigator?
     var pendingInitialContent: CachedAnswerContent?
     var navigatingFromAnswerSwitch: Boolean
+    var answerSwitchDisposeInProgress: Boolean
     var answerTransitionDirection: ArticleAnswerTransitionDirection
     var isImmersiveMode: Boolean
 
@@ -807,5 +808,13 @@ expect fun rememberZhihuHttpClient(): HttpClient
  */
 @Composable
 expect fun ArticleImmersiveModeEffect(immersive: Boolean)
+
+/**
+ * 离开沉浸式阅读时恢复系统状态栏。
+ * 调用时机：导航目的地从 Article 切换到非 Article 时。
+ * Android 会显示状态栏；Desktop/iOS 为空操作。
+ */
+@Composable
+expect fun LeaveImmersiveModeCleanup()
 
 expect fun Modifier.questionSelectionWorkaround(): Modifier
