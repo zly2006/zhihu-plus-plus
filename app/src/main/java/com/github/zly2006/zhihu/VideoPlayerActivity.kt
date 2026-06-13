@@ -297,8 +297,8 @@ private fun VideoPlayerView(
 
     LaunchedEffect(controlsVisible, isPlayingState.value) {
         while (controlsVisible || isPlayingState.value) {
-            currentPosition = safeGetMediaTime(currentPosition) { currentPosition }
-            duration = safeGetMediaTime(duration) { duration }
+            currentPosition = safeGetMediaTime(currentPosition) { this.currentPosition }
+            duration = safeGetMediaTime(duration) { this.duration }
             delay(200)
         }
     }
@@ -471,7 +471,7 @@ private fun VideoPlayerView(
                         onValueChange = {
                             val pos = (it * duration).toLong()
                             safeSeekTo(pos)
-                            currentPosition = safeGetMediaTime(currentPosition) { currentPosition }
+                            currentPosition = safeGetMediaTime(currentPosition) { this.currentPosition }
                         },
                         modifier = Modifier.fillMaxWidth().height(20.dp),
                         track = {
