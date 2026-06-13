@@ -26,6 +26,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Circle
+import androidx.compose.material.icons.filled.CopyAll
+import androidx.compose.material.icons.filled.MarkChatRead
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -126,11 +131,11 @@ fun MiuixNotificationScreen() {
                                 userMessages.showMessage("已全部标记为已读")
                             }
                         }) {
-                            Icon(MiuixIconsEmbedded.Ok, "已读", tint = MiuixTheme.colorScheme.onBackground)
+                            Icon(Icons.Default.MarkChatRead, "已读", tint = MiuixTheme.colorScheme.onBackground)
                         }
                     }
                     IconButton(onClick = { navigator.onNavigate(Notification.NotificationSettings) }) {
-                        Icon(MiuixIconsEmbedded.Settings, "设置", tint = MiuixTheme.colorScheme.onBackground)
+                        Icon(Icons.Default.Settings, "设置", tint = MiuixTheme.colorScheme.onBackground)
                     }
                 },
                 scrollBehavior = scrollBehavior,
@@ -230,7 +235,7 @@ fun MiuixNotificationScreen() {
                                 userMessages.showMessage("已复制调试数据")
                             },
                         ) {
-                            Icon(MiuixIconsEmbedded.Copy, "复制", tint = MiuixTheme.colorScheme.onBackground)
+                            Icon(Icons.Default.CopyAll, "复制", tint = MiuixTheme.colorScheme.onBackground)
                         }
                     }
                 }
@@ -286,11 +291,11 @@ private fun NotificationItemCard(
                     )
                 }
                 if (!notification.isRead) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(MiuixTheme.colorScheme.primary),
+                    Icon(
+                        imageVector = Icons.Default.Circle,
+                        contentDescription = "未读",
+                        modifier = Modifier.size(8.dp),
+                        tint = MiuixTheme.colorScheme.primary,
                     )
                 }
             }

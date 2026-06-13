@@ -20,6 +20,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -259,7 +262,7 @@ fun MiuixSystemAndUpdateSettingsScreen() {
                             trailingIcon = {
                                 IconButton(onClick = { showPassword = !showPassword }) {
                                     Icon(
-                                        if (showPassword) MiuixIconsEmbedded.Hide else MiuixIconsEmbedded.Show,
+                                        if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
                                         contentDescription = if (showPassword) "隐藏 Token" else "显示 Token",
                                         tint = MiuixTheme.colorScheme.onSurfaceSecondary,
                                     )

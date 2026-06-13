@@ -16,6 +16,19 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Login
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.FilterAlt
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -92,7 +105,7 @@ fun MiuixAccountSheet(
                             Text(data.username, style = AppTokens.text.titleMedium, modifier = Modifier.weight(1f))
                             // 扫码登录：协助电脑端登录，扫到知乎登录二维码后打开 WebView 确认（与 M3 账号页一致）
                             IconButton(onClick = { runtime.requestQrLoginScan() }) {
-                                Icon(MiuixIconsEmbedded.Scan, contentDescription = "扫码登录", tint = MiuixTheme.colorScheme.onSurface)
+                                Icon(Icons.Default.QrCodeScanner, contentDescription = "扫码登录", tint = MiuixTheme.colorScheme.onSurface)
                             }
                         }
                     }
@@ -110,7 +123,7 @@ fun MiuixAccountSheet(
                                 onDismiss()
                                 runtime.requestLogin()
                             },
-                            startAction = { Icon(MiuixIconsEmbedded.ContactsCircle, null) },
+                            startAction = { Icon(Icons.AutoMirrored.Filled.Login, null) },
                         )
                     }
                 }
@@ -127,19 +140,19 @@ fun MiuixAccountSheet(
                         ArrowPreference(title = "收藏夹", onClick = {
                             onDismiss()
                             data.urlToken?.let { navigator.onNavigate(Collections(it)) }
-                        }, startAction = { Icon(MiuixIconsEmbedded.Favorites, null) })
+                        }, startAction = { Icon(Icons.Default.BookmarkBorder, null) })
                         ArrowPreference(title = "关注订阅", onClick = {
                             onDismiss()
                             navigator.onNavigate(Person(id = data.id, urlToken = data.urlToken ?: "", name = data.username, jumpTo = "关注订阅"))
-                        }, startAction = { Icon(MiuixIconsEmbedded.ContactsBook, null) })
+                        }, startAction = { Icon(Icons.Default.Groups, null) })
                         ArrowPreference(title = "通知", summary = if (showUnreadBadge && unreadCount > 0) "$unreadCount 条未读" else null, onClick = {
                             onDismiss()
                             navigator.onNavigate(Notification)
-                        }, startAction = { Icon(MiuixIconsEmbedded.Messages, null) })
+                        }, startAction = { Icon(Icons.Default.Notifications, null) })
                         ArrowPreference(title = "浏览历史", onClick = {
                             onDismiss()
                             navigator.onNavigate(OnlineHistory)
-                        }, startAction = { Icon(MiuixIconsEmbedded.Recent, null) })
+                        }, startAction = { Icon(Icons.Default.History, null) })
                     }
                 }
             }
@@ -154,20 +167,20 @@ fun MiuixAccountSheet(
                     ArrowPreference(title = "外观与阅读体验", summary = "主题颜色、字体大小等", onClick = {
                         onDismiss()
                         navigator.onNavigate(Account.AppearanceSettings())
-                    }, startAction = { Icon(MiuixIconsEmbedded.Theme, null) })
+                    }, startAction = { Icon(Icons.Default.Palette, null) })
                     ArrowPreference(title = "推荐系统与内容过滤", summary = "推荐、智能过滤、关键词屏蔽等", onClick = {
                         onDismiss()
                         navigator.onNavigate(Account.RecommendSettings())
-                    }, startAction = { Icon(MiuixIconsEmbedded.Filter, null) })
+                    }, startAction = { Icon(Icons.Default.FilterAlt, null) })
                     ArrowPreference(title = "系统与更新", summary = "GitHub、更新设置等", onClick = {
                         onDismiss()
                         navigator.onNavigate(Account.SystemAndUpdateSettings)
-                    }, startAction = { Icon(MiuixIconsEmbedded.Settings, null) })
+                    }, startAction = { Icon(Icons.Default.Settings, null) })
                     if (settings.getBoolean("developer", false)) {
                         ArrowPreference(title = "开发者选项", onClick = {
                             onDismiss()
                             navigator.onNavigate(Account.DeveloperSettings)
-                        }, startAction = { Icon(MiuixIconsEmbedded.File, null) })
+                        }, startAction = { Icon(Icons.Default.Code, null) })
                     }
                 }
             }
@@ -181,11 +194,11 @@ fun MiuixAccountSheet(
                     ArrowPreference(title = "关于", onClick = {
                         onDismiss()
                         navigator.onNavigate(Account.About)
-                    }, startAction = { Icon(MiuixIconsEmbedded.Info, null) })
+                    }, startAction = { Icon(Icons.Default.Info, null) })
                     ArrowPreference(title = "开源许可", summary = "查看第三方组件许可证", onClick = {
                         onDismiss()
                         navigator.onNavigate(Account.OpenSourceLicenses)
-                    }, startAction = { Icon(MiuixIconsEmbedded.Info, null) })
+                    }, startAction = { Icon(Icons.Default.Info, null) })
                 }
             }
 
@@ -202,7 +215,7 @@ fun MiuixAccountSheet(
                                 onDismiss()
                                 runtime.logout()
                             },
-                            startAction = { Icon(MiuixIconsEmbedded.Close, null, tint = MiuixTheme.colorScheme.error) },
+                            startAction = { Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MiuixTheme.colorScheme.error) },
                         )
                     }
                 }

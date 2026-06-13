@@ -26,6 +26,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -67,7 +70,6 @@ import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.DailyScreenUiState
 import com.github.zly2006.zhihu.ui.components.AutoHideTopBar
-import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.ui.rememberZhihuHttpClient
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -184,7 +186,7 @@ fun MiuixDailyScreen(
                             onClick = { showDatePicker = true },
                             modifier = Modifier.testTag(DAILY_SCREEN_DATE_PICKER_BUTTON_TAG),
                         ) {
-                            Icon(MiuixIconsEmbedded.Months, contentDescription = "选择日期")
+                            Icon(Icons.Filled.DateRange, contentDescription = "选择日期")
                         }
                     },
                     scrollBehavior = scrollBehavior,
@@ -375,7 +377,7 @@ private fun MiuixDailyStoryCard(
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        imageVector = MiuixIconsEmbedded.Timer,
+                        imageVector = Icons.Filled.AccessTime,
                         contentDescription = null,
                         modifier = Modifier.size(14.dp),
                         tint = MiuixTheme.colorScheme.onSurfaceSecondary,

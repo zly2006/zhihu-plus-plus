@@ -36,6 +36,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -361,7 +363,7 @@ private fun AboutContent(
                         ArrowPreference(
                             title = "系统与更新",
                             summary = "GitHub、更新设置等",
-                            startAction = { Icon(MiuixIconsEmbedded.Settings, null) },
+                            startAction = { Icon(Icons.Filled.Settings, null) },
                             onClick = { navigator.onNavigate(Account.SystemAndUpdateSettings) },
                         )
                     }

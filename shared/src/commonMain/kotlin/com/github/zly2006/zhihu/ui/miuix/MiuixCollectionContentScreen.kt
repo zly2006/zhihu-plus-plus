@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.LinearProgressIndicator
@@ -124,7 +126,7 @@ fun MiuixCollectionContentScreen(
                             },
                             enabled = screenViewModel.exportDialogState?.isCompleted != false,
                         ) {
-                            Icon(MiuixIconsEmbedded.More, "更多", tint = MiuixTheme.colorScheme.onBackground)
+                            Icon(Icons.Filled.MoreVert, "更多", tint = MiuixTheme.colorScheme.onBackground)
                         }
                         WindowListPopup(
                             show = showActionsMenu,

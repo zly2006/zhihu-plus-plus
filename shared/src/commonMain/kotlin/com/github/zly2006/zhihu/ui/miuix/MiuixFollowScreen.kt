@@ -28,6 +28,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -78,7 +80,6 @@ import com.github.zly2006.zhihu.ui.followDynamicItemTag
 import com.github.zly2006.zhihu.ui.followRecommendItemTag
 import com.github.zly2006.zhihu.ui.followingUserItemTag
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
-import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.viewmodel.feed.FollowRecommendViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.FollowViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.RecentMomentsViewModel
@@ -400,7 +401,7 @@ fun MiuixFollowRecommendScreen(
                     if (viewModel.isLoading) {
                         CircularProgressIndicator(modifier = Modifier.size(36.dp))
                     } else {
-                        Icon(MiuixIconsEmbedded.Refresh, contentDescription = "刷新")
+                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
                     }
                 }
             }
@@ -521,7 +522,7 @@ fun MiuixFollowDynamicScreen(
                     if (viewModel.isLoading) {
                         CircularProgressIndicator(modifier = Modifier.size(36.dp))
                     } else {
-                        Icon(MiuixIconsEmbedded.Refresh, contentDescription = "刷新")
+                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
                     }
                 }
             }

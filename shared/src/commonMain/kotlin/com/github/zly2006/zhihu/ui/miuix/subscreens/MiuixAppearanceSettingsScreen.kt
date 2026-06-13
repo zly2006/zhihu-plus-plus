@@ -26,6 +26,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -36,7 +39,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -800,8 +802,7 @@ private fun BottomBarOrderPreference(
                                 stiffness = Spring.StiffnessMediumLow,
                                 dampingRatio = Spring.DampingRatioMediumBouncy,
                             ),
-                        )
-                        .fillMaxWidth()
+                        ).fillMaxWidth()
                         .height(56.dp)
                         .clickable(enabled = isEnabled) { onToggle(key) }
                         .padding(start = 24.dp, end = 12.dp),
@@ -834,9 +835,8 @@ private fun BottomBarOrderPreference(
                                 enabled = canMoveUp,
                             ) {
                                 Icon(
-                                    MiuixIconsEmbedded.ChevronForward,
+                                    Icons.Default.KeyboardArrowUp,
                                     contentDescription = "上移$label",
-                                    modifier = Modifier.rotate(-90f),
                                     tint = MiuixTheme.colorScheme.onBackground.copy(alpha = if (canMoveUp) 1f else 0.35f),
                                 )
                             }
@@ -845,9 +845,8 @@ private fun BottomBarOrderPreference(
                                 enabled = canMoveDown,
                             ) {
                                 Icon(
-                                    MiuixIconsEmbedded.ChevronForward,
+                                    Icons.Default.KeyboardArrowDown,
                                     contentDescription = "下移$label",
-                                    modifier = Modifier.rotate(90f),
                                     tint = MiuixTheme.colorScheme.onBackground.copy(alpha = if (canMoveDown) 1f else 0.35f),
                                 )
                             }

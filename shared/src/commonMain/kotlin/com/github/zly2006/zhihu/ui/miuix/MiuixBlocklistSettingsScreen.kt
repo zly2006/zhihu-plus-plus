@@ -22,6 +22,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -169,7 +172,7 @@ fun MiuixBlocklistSettingsScreen(
                         }
                     },
                 ) {
-                    Icon(MiuixIconsEmbedded.Add, contentDescription = "添加")
+                    Icon(Icons.Default.Add, contentDescription = "添加")
                 }
             }
         },
@@ -372,7 +375,7 @@ private fun KeywordsTab(
                                 }
                             },
                         ) {
-                            Icon(MiuixIconsEmbedded.Delete, "删除", tint = MiuixTheme.colorScheme.error)
+                            Icon(Icons.Default.Delete, "删除", tint = MiuixTheme.colorScheme.error)
                         }
                     },
                 )
@@ -479,7 +482,7 @@ private fun UsersTab(
                                 }
                             },
                         ) {
-                            Icon(MiuixIconsEmbedded.Delete, "删除", tint = MiuixTheme.colorScheme.error)
+                            Icon(Icons.Default.Delete, "删除", tint = MiuixTheme.colorScheme.error)
                         }
                     },
                 )
@@ -578,7 +581,7 @@ private fun TopicsTab(
                                     }
                                 },
                             ) {
-                                Icon(MiuixIconsEmbedded.Delete, "删除", tint = MiuixTheme.colorScheme.error)
+                                Icon(Icons.Default.Delete, "删除", tint = MiuixTheme.colorScheme.error)
                             }
                         },
                     )

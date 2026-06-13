@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -98,7 +100,7 @@ fun MiuixBlockedFeedHistoryScreen() {
                 actions = {
                     if (records.isNotEmpty()) {
                         IconButton(onClick = { showClearDialog = true }) {
-                            Icon(MiuixIconsEmbedded.Delete, "清空记录", tint = MiuixTheme.colorScheme.onBackground)
+                            Icon(Icons.Default.Delete, "清空记录", tint = MiuixTheme.colorScheme.onBackground)
                         }
                     }
                 },
@@ -175,7 +177,7 @@ fun MiuixBlockedFeedHistoryScreen() {
                                 onClick = { coroutineScope.launch { dao.deleteById(record.id) } },
                                 modifier = Modifier.size(36.dp).testTag("blocked_feed_history_delete_${record.id}"),
                             ) {
-                                Icon(MiuixIconsEmbedded.Delete, "删除", tint = MiuixTheme.colorScheme.onSurfaceSecondary)
+                                Icon(Icons.Default.Delete, "删除", tint = MiuixTheme.colorScheme.onSurfaceSecondary)
                             }
                         }
                     }

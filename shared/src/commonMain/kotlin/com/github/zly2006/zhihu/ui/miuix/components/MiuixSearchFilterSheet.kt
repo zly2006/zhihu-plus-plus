@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -86,7 +88,7 @@ private fun <T> FilterSection(
         ) {
             Text(label(option), color = MiuixTheme.colorScheme.onSurface)
             if (option == selected) {
-                Icon(MiuixIconsEmbedded.Ok, "已选", tint = MiuixTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.Check, "已选", tint = MiuixTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
             }
         }
     }

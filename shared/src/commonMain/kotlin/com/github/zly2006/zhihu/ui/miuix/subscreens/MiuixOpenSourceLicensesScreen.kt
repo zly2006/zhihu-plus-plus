@@ -13,6 +13,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DataObject
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -55,42 +58,42 @@ private val fullVariantManualLibraries = listOf(
         "Apache-2.0",
         "用于执行句子嵌入。",
         "https://github.com/shubham0204/Sentence-Embeddings-Android",
-        { Icon(MiuixIconsEmbedded.Folder, null) },
+        { Icon(Icons.Default.Memory, null) },
     ),
     ManualLicenseEntry(
         "huggingface/tokenizers 0.22.2",
         "Apache-2.0",
         "huggingface tokenizer",
         "https://github.com/huggingface/tokenizers",
-        { Icon(MiuixIconsEmbedded.File, null) },
+        { Icon(Icons.Default.DataObject, null) },
     ),
     ManualLicenseEntry(
         "jni 0.21.1",
         "MIT/Apache-2.0",
         "Rust JNI 绑定。",
         "https://github.com/jni-rs/jni-rs",
-        { Icon(MiuixIconsEmbedded.File, null) },
+        { Icon(Icons.Default.DataObject, null) },
     ),
     ManualLicenseEntry(
         "bytes 1.11.1",
         "MIT",
         "Rust bytes 缓冲区库。",
         "https://github.com/tokio-rs/bytes",
-        { Icon(MiuixIconsEmbedded.File, null) },
+        { Icon(Icons.Default.DataObject, null) },
     ),
     ManualLicenseEntry(
         "serde 1.0.228",
         "MIT OR Apache-2.0",
         "Rust 序列化框架。",
         "https://github.com/serde-rs/serde",
-        { Icon(MiuixIconsEmbedded.File, null) },
+        { Icon(Icons.Default.DataObject, null) },
     ),
     ManualLicenseEntry(
         "serde_json 1.0.149",
         "MIT OR Apache-2.0",
         "Rust JSON 序列化实现。",
         "https://github.com/serde-rs/json",
-        { Icon(MiuixIconsEmbedded.File, null) },
+        { Icon(Icons.Default.DataObject, null) },
     ),
 )
 

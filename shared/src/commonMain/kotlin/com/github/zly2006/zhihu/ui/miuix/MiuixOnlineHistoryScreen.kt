@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -118,7 +120,7 @@ fun MiuixOnlineHistoryScreen(showBackButton: Boolean = false) {
                         Box(modifier = Modifier.padding(end = 4.dp)) {
                             IconButton(onClick = { showActionsMenu = true }) {
                                 Icon(
-                                    MiuixIconsEmbedded.More,
+                                    Icons.Filled.MoreVert,
                                     contentDescription = "更多选项",
                                     tint = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onBackground,
                                 )

@@ -21,6 +21,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Comment
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -224,7 +229,7 @@ fun MiuixPinScreen(
                                 ?: handleShareAction(pin, settings, shareRuntime) { showShareDialog = true }
                         }
                     }) {
-                        Icon(MiuixIconsEmbedded.Share, "分享", tint = MiuixTheme.colorScheme.onBackground)
+                        Icon(Icons.Default.Share, "分享", tint = MiuixTheme.colorScheme.onBackground)
                     }
                 },
                 scrollBehavior = scrollBehavior,
@@ -390,7 +395,7 @@ private fun MiuixPinContent(
             Button(onClick = onLikeClick, modifier = Modifier.weight(1f).testTag(PIN_SCREEN_LIKE_BUTTON_TAG), colors = ButtonDefaults.buttonColorsPrimary()) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
                     Icon(
-                        if (isLiked) MiuixIconsEmbedded.FavoritesFill else MiuixIconsEmbedded.Favorites,
+                        if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                         "赞",
                         modifier = Modifier.size(18.dp),
                         tint = MiuixTheme.colorScheme.onPrimary,
@@ -401,7 +406,7 @@ private fun MiuixPinContent(
             }
             Button(onClick = onCommentClick, modifier = Modifier.weight(1f).testTag(PIN_SCREEN_COMMENT_BUTTON_TAG), colors = ButtonDefaults.buttonColorsPrimary()) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                    Icon(MiuixIconsEmbedded.Messages, "评论", modifier = Modifier.size(18.dp), tint = MiuixTheme.colorScheme.onPrimary)
+                    Icon(Icons.AutoMirrored.Filled.Comment, "评论", modifier = Modifier.size(18.dp), tint = MiuixTheme.colorScheme.onPrimary)
                     Spacer(Modifier.width(6.dp))
                     Text("${pin.commentCount}", color = MiuixTheme.colorScheme.onPrimary)
                 }

@@ -24,6 +24,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -294,7 +297,7 @@ fun MiuixQuestionScreen(
                                         ) {
                                             Row(verticalAlignment = Alignment.CenterVertically) {
                                                 Icon(
-                                                    if (isFollowing) MiuixIconsEmbedded.Ok else MiuixIconsEmbedded.Add,
+                                                    if (isFollowing) Icons.Filled.Check else Icons.Filled.Add,
                                                     contentDescription = null,
                                                     modifier = Modifier.width(18.dp),
                                                     tint = MiuixTheme.colorScheme.onPrimary,

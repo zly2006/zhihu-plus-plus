@@ -24,6 +24,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -146,7 +150,7 @@ fun MiuixSearchScreen(search: Search) {
                         .padding(horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(MiuixIconsEmbedded.Search, "搜索", tint = MiuixTheme.colorScheme.onSurfaceSecondary, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.Search, "搜索", tint = MiuixTheme.colorScheme.onSurfaceSecondary, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     BasicTextField(
                         value = searchText,
@@ -169,7 +173,7 @@ fun MiuixSearchScreen(search: Search) {
                     )
                     if (searchText.isNotEmpty()) {
                         Icon(
-                            MiuixIconsEmbedded.Clear,
+                            Icons.Default.Clear,
                             "清除",
                             tint = MiuixTheme.colorScheme.onSurfaceSecondary,
                             modifier = Modifier.size(18.dp).clickable { searchText = "" },
@@ -177,7 +181,7 @@ fun MiuixSearchScreen(search: Search) {
                     }
                 }
                 IconButton(onClick = { showFilter = true }, enabled = search.query.isNotEmpty()) {
-                    Icon(MiuixIconsEmbedded.Filter, "筛选", tint = MiuixTheme.colorScheme.onBackground)
+                    Icon(Icons.Default.FilterList, "筛选", tint = MiuixTheme.colorScheme.onBackground)
                 }
             }
         },

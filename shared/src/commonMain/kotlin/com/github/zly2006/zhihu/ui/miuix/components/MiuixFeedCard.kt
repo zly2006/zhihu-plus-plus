@@ -28,6 +28,10 @@ import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -256,12 +260,12 @@ fun MiuixFeedCard(
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
                         when (currentAction) {
                             "like" -> {
-                                Icon(MiuixIconsEmbedded.FavoritesFill, "喜欢", tint = Color(0xFF4CAF50), modifier = Modifier.size(32.dp).scale(1f + actionAlpha * 0.3f))
+                                Icon(Icons.Default.Favorite, "喜欢", tint = Color(0xFF4CAF50), modifier = Modifier.size(32.dp).scale(1f + actionAlpha * 0.3f))
                                 Spacer(Modifier.width(12.dp))
                                 Text("向上滑动 - 喜欢", color = Color(0xFF4CAF50), fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.scale(1f + actionAlpha * 0.2f))
                             }
                             "dislike" -> {
-                                Icon(MiuixIconsEmbedded.Report, "不喜欢", tint = Color(0xFFFF5722), modifier = Modifier.size(32.dp).scale(1f + actionAlpha * 0.3f))
+                                Icon(Icons.Default.ThumbDown, "不喜欢", tint = Color(0xFFFF5722), modifier = Modifier.size(32.dp).scale(1f + actionAlpha * 0.3f))
                                 Spacer(Modifier.width(12.dp))
                                 Text("向下滑动 - 不喜欢", color = Color(0xFFFF5722), fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.scale(1f + actionAlpha * 0.2f))
                             }
@@ -455,7 +459,7 @@ private fun MiuixFeedCardMenuBox(
 
     Box {
         IconButton(onClick = { onShowMenuChange(true) }, modifier = Modifier.size(24.dp)) {
-            Icon(MiuixIconsEmbedded.More, "更多选项", tint = AppTokens.colors.onSurfaceVariant, modifier = Modifier.size(16.dp))
+            Icon(Icons.Default.MoreVert, "更多选项", tint = AppTokens.colors.onSurfaceVariant, modifier = Modifier.size(16.dp))
         }
         WindowListPopup(
             show = showMenu,

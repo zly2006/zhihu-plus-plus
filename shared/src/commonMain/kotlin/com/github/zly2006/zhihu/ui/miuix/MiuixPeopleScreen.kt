@@ -27,6 +27,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -227,7 +229,7 @@ fun MiuixPeopleScreen(
                                                     horizontalArrangement = Arrangement.Center,
                                                     verticalAlignment = Alignment.CenterVertically,
                                                 ) {
-                                                    Icon(MiuixIconsEmbedded.Search, "搜索 TA 的创作", tint = MiuixTheme.colorScheme.primary)
+                                                    Icon(Icons.Default.Search, "搜索 TA 的创作", tint = MiuixTheme.colorScheme.primary)
                                                     Spacer(Modifier.width(6.dp))
                                                     Text("搜索", fontSize = 14.sp, color = MiuixTheme.colorScheme.primary)
                                                 }
