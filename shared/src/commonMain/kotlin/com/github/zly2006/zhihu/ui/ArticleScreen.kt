@@ -57,6 +57,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Comment
+import androidx.compose.material.icons.filled.FilterCenterFocus
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Bookmark
@@ -517,8 +518,8 @@ fun ArticleActionsMenu(
 
         // 开关沉浸式
         MenuActionButton(
-            icon = Icons.AutoMirrored.Filled.Comment,
-            text = "设置双击开关沉浸式",
+            icon = Icons.Filled.FilterCenterFocus,
+            text = "进入沉浸式",
             onClick = {
                 onDismissRequest()
                 onSetImmersiveDoubleTap()
