@@ -17,19 +17,12 @@
 
 package com.github.zly2006.zhihu.shared.account
 
-import com.github.zly2006.zhihu.shared.data.ZHIHU_READ_HISTORY_ADD_URL
-import com.github.zly2006.zhihu.shared.data.buildZhihuReadHistoryBody
 import com.github.zly2006.zhihu.shared.data.executeZhihuAuthenticatedRequest
 import com.github.zly2006.zhihu.shared.data.fetchVerifiedZhihuSession
 import com.github.zly2006.zhihu.shared.data.fetchZhihuAuthenticatedJson
-import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
-import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
-import io.ktor.http.ContentType
-import io.ktor.http.HttpMethod
-import io.ktor.http.contentType
 import kotlinx.serialization.json.JsonObject
 
 class ZhihuAccountClient(
@@ -148,21 +141,6 @@ class ZhihuAccountClient(
     ): T {
         val currentSession = load()
         return block(httpClient(), currentSession.cookies)
-    }
-
-    suspend fun addReadHistory(
-        contentToken: String,
-        contentTypeName: String,
-    ) {
-        val currentSession = load()
-        if (currentSession.cookies["d_c0"] == null) return
-        val body = buildZhihuReadHistoryBody(contentToken, contentTypeName)
-        fetchAuthenticatedJson(ZHIHU_READ_HISTORY_ADD_URL) {
-            method = HttpMethod.Post
-            contentType(ContentType.Application.Json)
-            setBody(body)
-            signZhihuFetchRequest(currentSession.cookies, body)
-        }
     }
 
     private fun persistCurrentSession() {

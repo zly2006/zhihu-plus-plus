@@ -212,16 +212,6 @@ class DesktopPaginationEnvironment(
 
     override fun articleAnswerSwitchState(): ArticleAnswerSwitchState? = desktopArticleAnswerSwitchState
 
-    override suspend fun addReadHistory(
-        contentToken: String,
-        contentTypeName: String,
-    ) {
-        store.addReadHistory(
-            contentToken = contentToken,
-            contentTypeName = contentTypeName,
-        )
-    }
-
     override suspend fun postHistoryDestination(destination: NavDestination) {
         historyStorage.add(destination)
     }

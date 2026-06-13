@@ -282,17 +282,4 @@ object AccountData {
         method = HttpMethod.Post
     }
 
-    /**
-     * 添加在线阅读历史记录
-     * @param contentType 内容类型 (如 "article", "answer", "profile" 等)
-     */
-    suspend fun addReadHistory(
-        context: Context,
-        contentToken: String,
-        contentType: String,
-    ) {
-        runCatching {
-            accountClient(context).addReadHistory(contentToken, contentType)
-        }
-    }
 }

@@ -17,8 +17,17 @@
 
 package com.github.zly2006.zhihu.shared.data
 
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respond
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.headersOf
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class ZhihuReadHistoryClientTest {
     @Test
@@ -30,5 +39,67 @@ class ZhihuReadHistoryClientTest {
                 contentType = "answer",
             ),
         )
+    }
+
+    @Test
+    fun postReadHistoryUsesSignedJsonRequest() = runTest {
+        var requested = false
+        val client = HttpClient(
+            MockEngine { request ->
+                requested = true
+                assertEquals(ZHIHU_READ_HISTORY_ADD_URL, request.url.toString())
+                assertEquals(HttpMethod.Post, request.method)
+                assertTrue(request.headers["x-zse-96"].orEmpty().startsWith("2.0_"))
+                assertEquals("fetch", request.headers["x-requested-with"])
+                assertEquals("application/json", request.body.contentType?.toString())
+                respond(
+                    content = "{}",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                )
+            },
+        ) {
+            installZhihuCommonClientConfig(
+                cookies = mutableMapOf("d_c0" to "token"),
+                userAgent = "test-agent",
+            )
+        }
+
+        postZhihuReadHistory(
+            client = client,
+            cookies = mapOf("d_c0" to "token"),
+            contentToken = "123",
+            contentTypeName = "answer",
+            lastRefreshMillis = 0L,
+            updateLastRefreshMillis = {},
+        )
+
+        assertTrue(requested)
+    }
+
+    @Test
+    fun postReadHistorySkipsGuestSession() = runTest {
+        var requestCount = 0
+        val client = HttpClient(
+            MockEngine {
+                requestCount++
+                respond(
+                    content = "{}",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                )
+            },
+        )
+
+        postZhihuReadHistory(
+            client = client,
+            cookies = emptyMap(),
+            contentToken = "123",
+            contentTypeName = "answer",
+            lastRefreshMillis = 0L,
+            updateLastRefreshMillis = {},
+        )
+
+        assertEquals(0, requestCount)
     }
 }

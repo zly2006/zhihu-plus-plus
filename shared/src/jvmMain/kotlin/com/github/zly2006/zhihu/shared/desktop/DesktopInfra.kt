@@ -130,15 +130,6 @@ class DesktopAccountStore(
         block: suspend (client: HttpClient, cookies: Map<String, String>) -> T,
     ): T = accountClient.withAuthenticatedClient(block)
 
-    suspend fun addReadHistory(
-        contentToken: String,
-        contentTypeName: String,
-    ) {
-        runCatching {
-            accountClient.addReadHistory(contentToken, contentTypeName)
-        }
-    }
-
     suspend fun verifyAndSave(cookies: MutableMap<String, String>): Boolean =
         accountClient.verifyAndSave(cookies)
 

@@ -37,6 +37,7 @@ import com.github.zly2006.zhihu.shared.data.ZhihuPaging
 import com.github.zly2006.zhihu.shared.data.fetchZhihuAuthenticatedJson
 import com.github.zly2006.zhihu.shared.data.fetchZhihuUnreadNotificationCount
 import com.github.zly2006.zhihu.shared.data.markAllZhihuNotificationsAsRead
+import com.github.zly2006.zhihu.shared.data.postZhihuReadHistory
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
@@ -336,7 +337,21 @@ interface HistoryEnvironment {
     suspend fun addReadHistory(
         contentToken: String,
         contentTypeName: String,
-    ) = Unit
+    ) {
+        val apiEnvironment = this as? ZhihuApiEnvironment ?: return
+        runCatching {
+            apiEnvironment.withAuthenticatedClient { client, cookies ->
+                postZhihuReadHistory(
+                    client = client,
+                    cookies = cookies,
+                    contentToken = contentToken,
+                    contentTypeName = contentTypeName,
+                    lastRefreshMillis = apiEnvironment.lastAuthRefreshMillis(),
+                    updateLastRefreshMillis = apiEnvironment::updateLastAuthRefreshMillis,
+                )
+            }
+        }
+    }
 
     suspend fun clearAllHistory() = Unit
 
