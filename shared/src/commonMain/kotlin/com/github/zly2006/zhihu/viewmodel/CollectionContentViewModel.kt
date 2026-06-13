@@ -107,10 +107,6 @@ class CollectionContentViewModel(
         },
     )
 
-    fun dismissExportDialog() {
-        exportDialogState = null
-    }
-
     override fun refresh(environment: PaginationEnvironment) {
         if (isLoading) return
         displayItems.clear()
