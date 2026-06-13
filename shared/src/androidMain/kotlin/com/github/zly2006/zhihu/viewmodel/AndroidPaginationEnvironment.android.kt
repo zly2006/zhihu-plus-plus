@@ -72,9 +72,10 @@ import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.CollectionItem
 import com.github.zly2006.zhihu.viewmodel.filter.AndroidContentFilterRuntime
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
-import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
 import com.github.zly2006.zhihu.viewmodel.filter.contentFilterSettings
 import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
+import com.github.zly2006.zhihu.viewmodel.filter.filterFeedDisplayItems
+import com.github.zly2006.zhihu.viewmodel.filter.filterForegroundReadItems
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.filter.recordFeedContentInteraction
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
@@ -284,14 +285,12 @@ open class SharedAndroidPaginationEnvironment(
         val settings = feedDisplaySettings()
         val filterSettings = context.contentFilterSettings()
         val filterDatabase = getContentFilterDatabase(context)
-        val foregroundItems = ContentFilterExtensions.applyForegroundReadFilterToDisplayItems(
+        val foregroundItems = filterDatabase.filterForegroundReadItems(
             settings = filterSettings,
-            database = filterDatabase,
             items = items,
         )
-        val filteredItems = ContentFilterExtensions.applyContentFilterToDisplayItems(
+        val filteredItems = filterDatabase.filterFeedDisplayItems(
             settings = filterSettings,
-            database = filterDatabase,
             items = foregroundItems,
             contentDetailProvider = ContentDetailProvider { ContentDetailCache.getOrFetch(context, it) },
             semanticMatcher = AndroidContentFilterRuntime.semanticMatcher,

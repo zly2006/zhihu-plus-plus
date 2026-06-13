@@ -65,11 +65,11 @@ import com.github.zly2006.zhihu.util.sanitizeArticleExportFileNamePart
 import com.github.zly2006.zhihu.viewmodel.CollectionItem
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
 import com.github.zly2006.zhihu.viewmodel.filter.ContentType
-import com.github.zly2006.zhihu.viewmodel.filter.applyContentFilterToDisplayItems
-import com.github.zly2006.zhihu.viewmodel.filter.applyForegroundReadFilterToDisplayItems
 import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
 import com.github.zly2006.zhihu.viewmodel.filter.desktopKeywordSemanticMatcher
+import com.github.zly2006.zhihu.viewmodel.filter.filterFeedDisplayItems
+import com.github.zly2006.zhihu.viewmodel.filter.filterForegroundReadItems
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.filter.recordFeedContentInteraction
 import com.github.zly2006.zhihu.viewmodel.filter.toFeedFilterSettings
@@ -324,14 +324,12 @@ class DesktopPaginationEnvironment(
 
     override suspend fun applyHomeFeedFilters(items: List<FeedDisplayItem>): HomeFeedFilterResult {
         val settings = settingsStore.toFeedFilterSettings()
-        val foregroundItems = applyForegroundReadFilterToDisplayItems(
+        val foregroundItems = contentFilterDatabase.filterForegroundReadItems(
             settings = settings,
-            database = contentFilterDatabase,
             items = items,
         )
-        val filteredItems = applyContentFilterToDisplayItems(
+        val filteredItems = contentFilterDatabase.filterFeedDisplayItems(
             settings = settings,
-            database = contentFilterDatabase,
             items = foregroundItems,
             contentDetailProvider = ContentDetailProvider(::fetchContentDetail),
             semanticMatcher = desktopKeywordSemanticMatcher,
