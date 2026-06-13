@@ -494,6 +494,7 @@ fun extractTopicIds(raw: DataHolder.Content): List<String>? = when (raw) {
     is DataHolder.Answer -> raw.question.topics.map { it.id }
     is DataHolder.Question -> raw.topics.map { it.id }
     is DataHolder.Article -> raw.topics?.map { it.id }
+    is DataHolder.Pin -> raw.topics?.map { it.id }
     else -> null
 }
 
