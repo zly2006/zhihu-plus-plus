@@ -67,15 +67,11 @@ class FeedGeneratorTest {
 
     @Test
     fun getReasonDisplayTextKeepsReasonLabels() {
-        val database = testLocalContentDatabase()
-        val generator = FeedGenerator(database.contentDao())
-
-        assertEquals("关注用户的最新动态", generator.getReasonDisplayText(CrawlingReason.Following))
-        assertEquals("热门推荐", generator.getReasonDisplayText(CrawlingReason.Trending))
-        assertEquals("关注用户点赞的内容", generator.getReasonDisplayText(CrawlingReason.FollowingUpvote))
-        assertEquals("相关问题的优质回答", generator.getReasonDisplayText(CrawlingReason.UpvotedQuestion))
-        assertEquals("相似用户喜欢的内容", generator.getReasonDisplayText(CrawlingReason.CollaborativeFiltering))
-        database.close()
+        assertEquals("关注用户的最新动态", getReasonDisplayText(CrawlingReason.Following))
+        assertEquals("热门推荐", getReasonDisplayText(CrawlingReason.Trending))
+        assertEquals("关注用户点赞的内容", getReasonDisplayText(CrawlingReason.FollowingUpvote))
+        assertEquals("相关问题的优质回答", getReasonDisplayText(CrawlingReason.UpvotedQuestion))
+        assertEquals("相似用户喜欢的内容", getReasonDisplayText(CrawlingReason.CollaborativeFiltering))
     }
 
     private fun testLocalContentDatabase(): LocalContentDatabase =

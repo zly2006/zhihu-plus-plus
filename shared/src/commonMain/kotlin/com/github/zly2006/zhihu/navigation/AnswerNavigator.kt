@@ -61,16 +61,13 @@ fun <T> answerNavigatorPageFromJson(
     val data = response["data"] ?: return AnswerNavigatorPage(emptyList(), "")
     return AnswerNavigatorPage(
         items = decodeItems(data),
-        nextUrl = response.answerNavigatorNextUrl(),
+        nextUrl = response["paging"]
+            ?.jsonObject
+            ?.get("next")
+            ?.jsonPrimitive
+            ?.content ?: "",
     )
 }
-
-private fun JsonObject.answerNavigatorNextUrl(): String =
-    this["paging"]
-        ?.jsonObject
-        ?.get("next")
-        ?.jsonPrimitive
-        ?.content ?: ""
 
 fun zhihuQuestionFeedsUrl(
     questionId: Long,
@@ -554,7 +551,6 @@ class CollectionAnswerNavigator(
 /**
  * 基于回答详情中 [DataHolder.Answer.PaginationInfo] 导航。
  * 利用 nextAnswerIds 作为前进队列，prevAnswerIds 作为后退队列。
- * 每次加载新回答后调用 [updateFromPaginationInfo] 补充队列并去重。
  *
  * @param questionId 问题 ID，用于保持问题上下文
  * @param initialPaginationInfo 当前回答的分页信息
@@ -595,27 +591,6 @@ class PaginationInfoNavigator(
                 sourceLabel = sourceName,
             )
         }
-
-    /**
-     * 每次成功加载回答后调用，将新的 paginationInfo 中的 ids 去重后追加进队列。
-     * nextAnswerIds 追加到队尾；prevAnswerIds 逆序插入队头（最近的排最前）。
-     */
-    fun updateFromPaginationInfo(info: DataHolder.Answer.PaginationInfo) {
-        // nextQueue：追加尾部，去重
-        info.nextAnswerIds.forEach { id ->
-            if (enqueuedNextIds.add(id)) nextQueue.addLast(id)
-        }
-        lastKnownNextId = info.nextAnswerIds.lastOrNull() ?: lastKnownNextId
-
-        // prevQueue：逆序插入头部（prevAnswerIds[0] 是最近的，应排最前）
-        // 同时过滤已在 answerHistory 中的 id，避免重复导航
-        val historyIds = answerHistory.map { it.article.id }.toSet()
-        info.prevAnswerIds.asReversed().forEach { id ->
-            if (enqueuedPrevIds.add(id) && id !in historyIds) {
-                prevQueue.addFirst(id)
-            }
-        }
-    }
 
     private suspend fun ensureNextQueue() {
         val id = lastKnownNextId ?: return

@@ -24,7 +24,6 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.Feed
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class LocalRecommendationSupportTest {
@@ -60,7 +59,7 @@ class LocalRecommendationSupportTest {
 
     @Test
     fun normalizeLocalContentIdUsesTypedValue() {
-        assertEquals("answer:42", normalizeLocalContentId("answer", "42"))
+        assertEquals("answer:42", LocalContentIdentity("answer", "42").value)
     }
 
     @Test
@@ -84,23 +83,47 @@ class LocalRecommendationSupportTest {
     }
 
     @Test
-    fun buildReasonPreferenceRewardsPositiveSignals() {
-        val preference = buildReasonPreference(
-            LocalReasonStats(
-                clicks = 2,
-                likes = 1,
-                dislikes = 0,
-            ),
+    fun buildLocalRecommendationSignalRewardsReasonPreferenceSignals() {
+        val signal = buildLocalRecommendationSignal(
+            clicks = 2,
+            likes = 1,
+            dislikes = 0,
+            clickWeight = 0.12,
+            likeWeight = 0.35,
+            dislikeWeight = 0.45,
+            multiplierRange = 0.55..1.6,
+            likedExplanation = "你最近更偏好这类来源",
+            clickedExplanation = "你经常点开这类来源",
         )
 
-        assertTrue(preference.multiplier > 1.0)
-        assertNotNull(preference.explanation)
+        assertTrue(signal.multiplier > 1.0)
+        assertEquals("你最近更偏好这类来源", signal.explanation)
     }
 
     @Test
-    fun buildContentAffinityPenalizesDislikesAndRewardsLikes() {
-        val liked = buildContentAffinity(LocalContentStats(clicks = 1, likes = 1, dislikes = 0))
-        val disliked = buildContentAffinity(LocalContentStats(clicks = 0, likes = 0, dislikes = 2))
+    fun buildLocalRecommendationSignalPenalizesDislikesAndRewardsLikes() {
+        val liked = buildLocalRecommendationSignal(
+            clicks = 1,
+            likes = 1,
+            dislikes = 0,
+            clickWeight = 0.08,
+            likeWeight = 0.40,
+            dislikeWeight = 0.70,
+            multiplierRange = 0.15..1.8,
+            likedExplanation = "你明确喜欢过类似内容",
+            clickedExplanation = "你最近点开过类似内容",
+        )
+        val disliked = buildLocalRecommendationSignal(
+            clicks = 0,
+            likes = 0,
+            dislikes = 2,
+            clickWeight = 0.08,
+            likeWeight = 0.40,
+            dislikeWeight = 0.70,
+            multiplierRange = 0.15..1.8,
+            likedExplanation = "你明确喜欢过类似内容",
+            clickedExplanation = "你最近点开过类似内容",
+        )
 
         assertTrue(liked.multiplier > 1.0)
         assertTrue(disliked.multiplier < 1.0)

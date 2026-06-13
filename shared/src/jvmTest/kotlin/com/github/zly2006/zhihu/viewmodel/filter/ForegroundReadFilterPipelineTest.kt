@@ -24,6 +24,7 @@ import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.Person
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
@@ -49,7 +50,13 @@ class ForegroundReadFilterPipelineTest {
 
         assertEquals(listOf("item"), result.map { it.title })
         assertEquals(1, fixture.database.contentFilterDao().getRecordCount())
-        assertEquals(emptyList(), fixture.database.blockedFeedRecordDao().getRecent())
+        assertEquals(
+            emptyList(),
+            fixture.database
+                .blockedFeedRecordDao()
+                .observeAll()
+                .first(),
+        )
         fixture.database.close()
     }
 
@@ -66,7 +73,8 @@ class ForegroundReadFilterPipelineTest {
             listOf("已读过且未关注作者"),
             fixture.database
                 .blockedFeedRecordDao()
-                .getRecent()
+                .observeAll()
+                .first()
                 .map { it.blockedReason },
         )
         fixture.database.close()
@@ -81,7 +89,13 @@ class ForegroundReadFilterPipelineTest {
         val result = fixture.pipeline().filter(listOf(item))
 
         assertEquals(listOf("followed"), result.map { it.title })
-        assertEquals(emptyList(), fixture.database.blockedFeedRecordDao().getRecent())
+        assertEquals(
+            emptyList(),
+            fixture.database
+                .blockedFeedRecordDao()
+                .observeAll()
+                .first(),
+        )
         fixture.database.close()
     }
 
@@ -89,7 +103,7 @@ class ForegroundReadFilterPipelineTest {
     fun contentExposureRecorderMarksInteractionAndCleanup() = runTest {
         val fixture = fixture()
 
-        fixture.database.recordContentDisplay(FeedFilterSettings(), "article", "1")
+        fixture.database.createContentExposureRecorder(FeedFilterSettings()).recordDisplay("article", "1")
         fixture.database.recordContentInteraction(FeedFilterSettings(), "article", "1")
 
         val record = fixture.database.contentFilterDao().getViewRecord("article:1")

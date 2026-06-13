@@ -20,7 +20,6 @@ package com.github.zly2006.zhihu.viewmodel
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import io.ktor.client.HttpClient
-import io.ktor.client.request.HttpRequestBuilder
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
@@ -36,6 +35,4 @@ private class IosPaginationEnvironment : PaginationEnvironment {
     override fun logDecodeFailure(tag: String?, item: JsonElement, error: Exception) = Unit // TODO: iOS 解码失败日志
 
     override suspend fun handleFetchFailure(tag: String?, error: Exception) = Unit // TODO: iOS 获取失败处理
-
-    override fun configureSignedRequest(builder: HttpRequestBuilder) = Unit // TODO: iOS 签名请求配置
 }

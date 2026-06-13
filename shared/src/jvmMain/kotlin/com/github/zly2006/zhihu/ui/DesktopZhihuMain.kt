@@ -55,9 +55,9 @@ import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.shared.data.fetchHighestQualityZhihuVideoUrl
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
-import com.github.zly2006.zhihu.shared.desktop.signDesktopRequest
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY
@@ -98,14 +98,6 @@ fun DesktopZhihuMain() {
                 saveState = true
             }
         }
-    }
-
-    fun currentMainTabOpenFrom(): String? = if (
-        runCatching { navController.currentBackStackEntry?.toRoute<MainTabs>() }.getOrNull() != null
-    ) {
-        currentMainTabOpenFrom
-    } else {
-        null
     }
 
     fun currentContentOpenSource(): NavDestination? {
@@ -160,7 +152,7 @@ fun DesktopZhihuMain() {
                                 contentType = contentType,
                                 xsrfToken = cookies["_xsrf"],
                             ) {
-                                signDesktopRequest(cookies)
+                                signZhihuFetchRequest(cookies)
                             }
                         }.getOrNull()
                     }
@@ -178,7 +170,13 @@ fun DesktopZhihuMain() {
             else -> {
                 prepareDesktopPendingContentOpen(
                     target = route,
-                    currentMainTabOpenFrom = currentMainTabOpenFrom(),
+                    currentMainTabOpenFrom = if (
+                        runCatching { navController.currentBackStackEntry?.toRoute<MainTabs>() }.getOrNull() != null
+                    ) {
+                        currentMainTabOpenFrom
+                    } else {
+                        null
+                    },
                     source = currentContentOpenSource(),
                 )
                 navController.navigate(route)

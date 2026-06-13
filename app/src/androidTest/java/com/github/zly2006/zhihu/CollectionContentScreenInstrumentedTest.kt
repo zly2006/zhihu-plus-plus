@@ -42,9 +42,9 @@ import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.Collection
 import com.github.zly2006.zhihu.ui.CollectionContentScreen
 import com.github.zly2006.zhihu.ui.CollectionContentScreenTestOverrides
-import com.github.zly2006.zhihu.ui.formatCollectionUpdatedTime
 import com.github.zly2006.zhihu.viewmodel.CollectionContentViewModel
 import com.github.zly2006.zhihu.viewmodel.CollectionItem
+import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -248,7 +248,7 @@ class CollectionContentScreenInstrumentedTest {
         "${SEEDED_ITEM_COUNT} 条收藏",
         "${SEEDED_LIKE_COUNT} 个赞同",
         "${SEEDED_COMMENT_COUNT} 条评论",
-        "${formatCollectionUpdatedTime(SEEDED_UPDATED_TIME_SECONDS)} 更新",
+        "${formatArticleDateTime(SEEDED_UPDATED_TIME_SECONDS)} 更新",
     ).joinToString(" · ")
 
     private fun seedQuestionDestination(index: Int) = Question(

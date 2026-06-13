@@ -18,20 +18,23 @@
 package com.github.zly2006.zhihu.shared.data
 
 import io.ktor.client.HttpClient
+import io.ktor.client.call.body
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
+import io.ktor.client.request.get
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertFalse
 
 class ZhihuOnlineHistoryClientTest {
     @Test
@@ -48,23 +51,22 @@ class ZhihuOnlineHistoryClientTest {
             assertEquals(zhihuOnlineHistoryUrl(), url)
         }
 
-        val page = fetchOnlineHistoryPage(client)
+        val response = client.get(zhihuOnlineHistoryUrl()).body<JsonObject>()
+        val items = decodeOnlineHistoryItems(response["data"]!!.jsonArray)
 
-        assertEquals("read_history", page.data.single().cardType)
+        assertEquals("read_history", items.single().cardType)
         assertEquals(
             "标题",
-            page.data
+            items
                 .single()
                 .data.header.title,
         )
         assertEquals(
             "123",
-            page.data
+            items
                 .single()
                 .data.extra.contentToken,
         )
-        assertEquals("https://api.zhihu.com/next", page.paging?.next)
-        assertFalse(page.paging?.isEnd ?: true)
     }
 
     @Test

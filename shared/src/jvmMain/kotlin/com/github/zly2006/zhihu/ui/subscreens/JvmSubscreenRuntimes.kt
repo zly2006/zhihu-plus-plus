@@ -17,7 +17,6 @@
 
 package com.github.zly2006.zhihu.ui.subscreens
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
@@ -42,12 +41,7 @@ internal val desktopSystemUpdateState = MutableStateFlow<SystemUpdateState>(Syst
 actual fun rememberSystemUpdateRuntime(): SystemUpdateRuntime {
     val settings = rememberSettingsStore()
     val accountStore = remember { DesktopAccountStore() }
-    val account = remember(accountStore) { accountStore.load() }
-    val client = remember(accountStore, account) { accountStore.createHttpClient(account.cookies) }
-    DisposableEffect(client) {
-        onDispose { client.close() }
-    }
-    return remember(settings, client) {
+    return remember(settings, accountStore) {
         SystemUpdateRuntime(
             state = desktopSystemUpdateState,
             autoCheckEnabled = { settings.getBoolean(PREF_AUTO_CHECK_UPDATES, true) },
@@ -59,7 +53,7 @@ actual fun rememberSystemUpdateRuntime(): SystemUpdateRuntime {
             },
             checkForUpdate = {
                 checkDesktopUpdate(
-                    client = client,
+                    client = accountStore.httpClient(),
                     githubToken = settings.getStringOrNull("githubToken")?.takeIf { it.isNotBlank() },
                     checkNightly = settings.getBoolean("checkNightlyUpdates", false),
                     skippedVersion = settings.getStringOrNull(PREF_SKIPPED_VERSION),
@@ -183,13 +177,11 @@ actual fun rememberDeveloperSettingsRuntime(): DeveloperSettingsRuntime {
                 store.verifyAndSave(cookies.toMutableMap())
             },
             refreshToken = {
-                val account = store.load()
-                store.createHttpClient(account.cookies).use { client ->
-                    ZhihuCredentialRefresher.refreshZhihuToken(
-                        ZhihuCredentialRefresher.fetchRefreshToken(client),
-                        client,
-                    )
-                }
+                val client = store.httpClient()
+                ZhihuCredentialRefresher.refreshZhihuToken(
+                    ZhihuCredentialRefresher.fetchRefreshToken(client),
+                    client,
+                )
             },
             saveCookies = { cookies ->
                 val current = store.load()
@@ -224,10 +216,8 @@ private fun loadDesktopOpenSourceLicenses(): Libs =
         ?.let { json ->
             runCatching {
                 Libs.Builder().withJson(json).build()
-            }.getOrElse { emptyDesktopLibs() }
-        } ?: emptyDesktopLibs()
-
-private fun emptyDesktopLibs(): Libs = Libs(emptyList(), emptySet())
+            }.getOrElse { Libs(emptyList(), emptySet()) }
+        } ?: Libs(emptyList(), emptySet())
 
 private fun loadDesktopAboutLibrariesJson(): String? {
     val resourceJson = Thread

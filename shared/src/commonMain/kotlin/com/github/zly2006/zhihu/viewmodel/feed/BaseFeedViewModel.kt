@@ -22,7 +22,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.GroupFeed
+import com.github.zly2006.zhihu.shared.data.flattenFeeds
 import com.github.zly2006.zhihu.shared.data.toDisplayItem
 import com.github.zly2006.zhihu.viewmodel.FeedDisplayEnvironment
 import com.github.zly2006.zhihu.viewmodel.HomeFeedFilterResult
@@ -38,7 +38,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
 
     override fun processResponse(environment: PaginationEnvironment, data: List<Feed>, rawData: JsonArray) {
         super.processResponse(environment, data, rawData)
-        addDisplayItems(data.flatten().map { createDisplayItem(environment, it) })
+        addDisplayItems(data.flattenFeeds().map { createDisplayItem(environment, it) })
     }
 
     override fun refresh(environment: PaginationEnvironment) {
@@ -78,11 +78,6 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
                 displayItems.add(it)
             }
         }
-    }
-
-    @Suppress("NOTHING_TO_INLINE")
-    inline fun List<Feed>.flatten() = flatMap {
-        (it as? GroupFeed)?.list ?: listOf(it)
     }
 
     // TODO: handleBlockUser - 需要 UserMessageSink 支持
