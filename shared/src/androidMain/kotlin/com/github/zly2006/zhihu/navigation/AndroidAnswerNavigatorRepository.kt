@@ -19,8 +19,7 @@ package com.github.zly2006.zhihu.navigation
 
 import android.content.Context
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.ContentDetailCache
-import com.github.zly2006.zhihu.data.getOrFetch
+import com.github.zly2006.zhihu.data.asApiEnvironment
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
@@ -29,6 +28,7 @@ import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.CollectionItem
 import com.github.zly2006.zhihu.viewmodel.filter.ContentType
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
+import com.github.zly2006.zhihu.viewmodel.getOrFetchContentDetail
 
 class AndroidAnswerNavigatorRepository(
     context: Context,
@@ -36,7 +36,7 @@ class AndroidAnswerNavigatorRepository(
     private val appContext = context.applicationContext
 
     override suspend fun fetchAnswerContent(article: Article): DataHolder.Answer? =
-        ContentDetailCache.getOrFetch(appContext, article) as? DataHolder.Answer
+        appContext.asApiEnvironment().getOrFetchContentDetail(article) as? DataHolder.Answer
 
     override suspend fun fetchQuestionFeeds(
         questionId: Long,

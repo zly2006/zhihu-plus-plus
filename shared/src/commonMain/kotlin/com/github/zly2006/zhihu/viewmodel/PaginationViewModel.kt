@@ -293,6 +293,18 @@ suspend fun ZhihuApiEnvironment.getOrFetchContentDetail(destination: NavDestinat
         null
     }
 
+suspend fun ZhihuApiEnvironment.addReadHistory(
+    contentToken: String,
+    contentTypeName: String,
+) {
+    if (authenticatedCookies()["d_c0"] == null) return
+    runCatching {
+        postSigned("https://www.zhihu.com/api/v4/read_history/add") {
+            contentType(ContentType.Application.Json)
+            setBody(buildZhihuReadHistoryBody(contentToken, contentTypeName))
+        }
+    }
+}
 
 suspend fun ZhihuApiEnvironment.postSigned(
     url: String,
@@ -338,20 +350,6 @@ interface FeedDisplayEnvironment {
 
 interface HistoryEnvironment {
     fun localHistory(): List<NavDestination> = emptyList()
-
-    suspend fun addReadHistory(
-        contentToken: String,
-        contentTypeName: String,
-    ) {
-        val apiEnvironment = this as? ZhihuApiEnvironment ?: return
-        if (apiEnvironment.authenticatedCookies()["d_c0"] == null) return
-        runCatching {
-            apiEnvironment.postSigned("https://www.zhihu.com/api/v4/read_history/add") {
-                contentType(ContentType.Application.Json)
-                setBody(buildZhihuReadHistoryBody(contentToken, contentTypeName))
-            }
-        }
-    }
 
     suspend fun clearAllHistory() = Unit
 

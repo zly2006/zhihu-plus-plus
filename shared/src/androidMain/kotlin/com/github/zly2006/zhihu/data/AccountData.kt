@@ -281,5 +281,4 @@ object AccountData {
         block()
         method = HttpMethod.Post
     }
-
 }

@@ -42,12 +42,9 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.getContentDetail
+import com.github.zly2006.zhihu.data.asApiEnvironment
 import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.Pin
-import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
-import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.data.ZHIHU_ME_URL
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
@@ -55,7 +52,6 @@ import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
-import com.github.zly2006.zhihu.ui.PinLinkCardPreview
 import com.github.zly2006.zhihu.ui.components.CustomWebView
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
@@ -403,14 +399,7 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
     return remember(context) {
         PinScreenRuntime(
             fetchLinkCardPreview = { linkCard ->
-                fetchPinLinkCardPreview(linkCard) { destination ->
-                    when (destination) {
-                        is Article -> DataHolder.getContentDetail(context, destination)
-                        is Question -> DataHolder.getContentDetail(context, destination)
-                        is Pin -> DataHolder.getContentDetail(context, destination)
-                        else -> null
-                    }
-                }
+                fetchPinLinkCardPreview(linkCard, context.asApiEnvironment())
             },
         )
     }

@@ -147,6 +147,7 @@ import com.github.zly2006.zhihu.ui.components.rememberPreferCollapsedExitUntilCo
 import com.github.zly2006.zhihu.util.smoothGradient
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
+import com.github.zly2006.zhihu.viewmodel.addReadHistory
 import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import com.materialkolor.ktx.harmonize
@@ -593,7 +594,6 @@ fun ArticleScreen(
         mutableStateOf(articleSettings.answerSwitchMode)
     }
     var pinAnswerDate by remember { mutableStateOf(articleSettings.pinAnswerDate) }
-    val readHistoryRecorder = rememberArticleReadHistoryRecorder()
     val userMessages = rememberUserMessageSink()
 
     var previousScrollValue by remember { mutableIntStateOf(0) }
@@ -631,7 +631,10 @@ fun ArticleScreen(
     var isBarSnapping by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        readHistoryRecorder.addReadHistory(article)
+        environment.addReadHistory(
+            contentToken = article.id.toString(),
+            contentTypeName = article.type.name.lowercase(),
+        )
     }
 
     fun upVoteFromDoubleTap() {

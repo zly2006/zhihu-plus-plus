@@ -685,23 +685,6 @@ data class HomeScreenRuntime(
 @Composable
 expect fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): HomeScreenRuntime
 
-fun interface ArticleReadHistoryRecorder {
-    suspend fun addReadHistory(article: Article)
-}
-
-@Composable
-fun rememberArticleReadHistoryRecorder(): ArticleReadHistoryRecorder {
-    val environment: HistoryEnvironment = rememberPaginationEnvironment(false)
-    return remember(environment) {
-        ArticleReadHistoryRecorder { article ->
-            environment.addReadHistory(
-                contentToken = article.id.toString(),
-                contentTypeName = article.type.name.lowercase(),
-            )
-        }
-    }
-}
-
 interface CommentScreenRuntime {
     fun saveImage(imageUrl: String)
 
