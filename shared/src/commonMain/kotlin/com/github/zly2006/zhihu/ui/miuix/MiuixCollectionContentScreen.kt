@@ -89,8 +89,7 @@ fun MiuixCollectionContentScreen(
     val onExportAllToHtmlZip = testOverrides?.onExportAllToHtmlZip ?: { includeImages ->
         screenViewModel.exportAllToHtmlZip(environment = collectionEnvironment, includeImages = includeImages)
     }
-    val environment = rememberPaginationEnvironment(allowGuestAccess = false)
-    val sharedData = environment.articleAnswerSwitchState()
+    val sharedData = collectionEnvironment.articleAnswerSwitchState()
     val settings = rememberSettingsStore()
     val blurEnabled = remember { mutableStateOf(settings.getBoolean("blurEnabled", true)) }
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)

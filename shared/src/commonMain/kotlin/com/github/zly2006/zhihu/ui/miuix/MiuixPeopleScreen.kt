@@ -27,6 +27,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -80,6 +82,7 @@ import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 import com.github.zly2006.zhihu.navigation.Pin as PinNav
 import com.github.zly2006.zhihu.navigation.Question as QuestionNav
+import com.github.zly2006.zhihu.navigation.Search as SearchDestination
 
 private val PEOPLE_SCREEN_TITLES = listOf(
     "回答",
@@ -114,6 +117,8 @@ fun MiuixPeopleScreen(
         initialPage = initialPage,
         pageCount = { PEOPLE_SCREEN_TITLES.size },
     )
+    val searchMemberHashId = viewModel.memberHashId
+        .takeUnless { it.isBlank() || it == Person.EMPTY_ID }
 
     LaunchedEffect(viewModel, testOverrides) {
         if (testOverrides != null) return@LaunchedEffect
@@ -208,6 +213,29 @@ fun MiuixPeopleScreen(
                                     }
                                     Spacer(Modifier.height(8.dp))
                                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        if (searchMemberHashId != null) {
+                                            Card(
+                                                modifier = Modifier.weight(1f).clickable {
+                                                    val memberName = viewModel.name.takeIf { it.isNotBlank() } ?: person.name
+                                                    navigator.onNavigate(
+                                                        SearchDestination(
+                                                            restrictedMemberHashId = searchMemberHashId,
+                                                            restrictedMemberName = memberName,
+                                                        ),
+                                                    )
+                                                },
+                                            ) {
+                                                Row(
+                                                    Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                                    horizontalArrangement = Arrangement.Center,
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                ) {
+                                                    Icon(Icons.Default.Search, "搜索 TA 的创作", tint = MiuixTheme.colorScheme.primary)
+                                                    Spacer(Modifier.width(6.dp))
+                                                    Text("搜索", fontSize = 14.sp, color = MiuixTheme.colorScheme.primary)
+                                                }
+                                            }
+                                        }
                                         val followText = if (viewModel.isFollowing) "已关注" else "关注"
                                         Card(
                                             modifier = Modifier.weight(1f).clickable {

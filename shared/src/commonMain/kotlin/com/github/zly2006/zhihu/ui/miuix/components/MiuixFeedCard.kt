@@ -93,6 +93,7 @@ fun MiuixFeedCard(
     onBlockUser: ((FeedDisplayItem) -> Unit)? = null,
     onBlockByKeywords: ((FeedDisplayItem) -> Unit)? = null,
     onBlockTopic: ((topicId: String, topicName: String) -> Unit)? = null,
+    showSourceLabel: Boolean = false,
     onClick: (FeedDisplayItem.() -> Unit)? = null,
 ) {
     val density = LocalDensity.current
@@ -118,9 +119,10 @@ fun MiuixFeedCard(
 
     val resolvedOnClick: FeedDisplayItem.() -> Unit = onClick ?: {
         val self = this
+        val content = self.content
         self.navDestination?.let { navigator.onNavigate(it) }
-            ?: if (self.content?.startsWith("http") == true) {
-                openUrl(self.content!!)
+            ?: if (content?.startsWith("http") == true) {
+                openUrl(content)
             } else {
                 userMessages.showShortMessage("暂不支持打开该内容")
             }
@@ -164,6 +166,7 @@ fun MiuixFeedCard(
                     onBlockUser,
                     onBlockByKeywords,
                     onBlockTopic,
+                    showSourceLabel,
                     navigator,
                 )
             }
@@ -195,8 +198,8 @@ fun MiuixFeedCard(
                                     onDragEnd = {
                                         isDragging = false
                                         when {
-                                            abs(offsetX) >= 75f && currentY - startY < -30f -> onLike?.invoke(item)
-                                            abs(offsetX) >= 75f && currentY - startY > 30f -> onDislike?.invoke(item)
+                                            abs(offsetX) >= 75f && currentY - startY < -30f -> onLike(item)
+                                            abs(offsetX) >= 75f && currentY - startY > 30f -> onDislike(item)
                                         }
                                         kotlinx.coroutines.runBlocking {
                                             offsetX = 0f
@@ -228,6 +231,7 @@ fun MiuixFeedCard(
                         onBlockUser,
                         onBlockByKeywords,
                         onBlockTopic,
+                        showSourceLabel,
                         navigator,
                     )
                 }
@@ -287,6 +291,7 @@ private fun MiuixFeedCardContent(
     onBlockUser: ((FeedDisplayItem) -> Unit)?,
     onBlockByKeywords: ((FeedDisplayItem) -> Unit)?,
     onBlockTopic: ((topicId: String, topicName: String) -> Unit)?,
+    showSourceLabel: Boolean,
     navigator: Navigator,
 ) {
     val colors = AppTokens.colors
@@ -313,6 +318,9 @@ private fun MiuixFeedCardContent(
     }
 
     if (duo3CardLayout) {
+        if (showSourceLabel) {
+            MiuixFeedCardSourceLabel(item.sourceLabel)
+        }
         if (!item.title.isEmpty()) {
             Text(
                 text = parseHtmlTextWithTheme(item.title),
@@ -367,6 +375,9 @@ private fun MiuixFeedCardContent(
             }
         }
     } else {
+        if (showSourceLabel) {
+            MiuixFeedCardSourceLabel(item.sourceLabel)
+        }
         if (!item.title.isEmpty() && !item.isFiltered) {
             Text(parseHtmlTextWithTheme(item.title), fontSize = titleFontSize, fontWeight = FontWeight.Bold, maxLines = titleMaxLines, overflow = TextOverflow.Ellipsis)
         }
@@ -394,6 +405,19 @@ private fun MiuixFeedCardContent(
             }
         }
     }
+}
+
+@Composable
+private fun MiuixFeedCardSourceLabel(sourceLabel: String?) {
+    val label = sourceLabel?.takeIf { it.isNotBlank() } ?: return
+    Text(
+        parseHtmlTextWithTheme(label),
+        style = AppTokens.text.labelMedium,
+        color = AppTokens.colors.primary,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.padding(bottom = 6.dp),
+    )
 }
 
 @Composable

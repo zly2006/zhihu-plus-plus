@@ -27,9 +27,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.ArrowCircleUp
+import androidx.compose.material.icons.filled.CopyAll
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.MarkUnreadChatAlt
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -50,21 +55,30 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
-import com.github.zly2006.zhihu.shared.data.fetchZhihuUnreadNotificationCount
 import com.github.zly2006.zhihu.shared.data.navDestination
+import com.github.zly2006.zhihu.shared.notification.rememberNotificationSettingsStore
+import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
+import com.github.zly2006.zhihu.ui.HOME_REFRESH_BUTTON_TAG
+import com.github.zly2006.zhihu.ui.QQ_GROUP_DISMISSED_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.SEARCH_HISTORY_MAX_SIZE
+import com.github.zly2006.zhihu.ui.components.AnnouncementCard
+import com.github.zly2006.zhihu.ui.components.AnnouncementCardDefaults
 import com.github.zly2006.zhihu.ui.components.AutoHideTopBar
+import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.rememberFeedBlockActions
 import com.github.zly2006.zhihu.ui.loadSearchHistory
@@ -83,8 +97,10 @@ import com.github.zly2006.zhihu.ui.saveSearchHistory
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.SearchViewModel
+import com.github.zly2006.zhihu.viewmodel.fetchUnreadNotificationCountSigned
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -122,9 +138,14 @@ fun MiuixHomeScreen(
     val navigator = LocalNavigator.current
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = true)
     val settings = rememberSettingsStore()
+    val notificationSettings = rememberNotificationSettingsStore()
+    val userMessages = rememberUserMessageSink()
+    val openExternalUrl = rememberExternalUrlOpener()
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
     val duo3HomeAccount = settings.getBoolean("duo3_home_account", false)
+    val showRefreshFab = settings.getBoolean("showRefreshFab", true)
+    val showUnreadBadge = notificationSettings.getUnreadBadgeEnabled()
 
     val currentRecommendationMode = RecommendationMode.entries.find {
         it.key == settings.getString("recommendationMode", RecommendationMode.MIXED.key)
@@ -144,6 +165,13 @@ fun MiuixHomeScreen(
     val showAccountSheet = remember { mutableStateOf(false) }
     var unreadCount by remember { mutableIntStateOf(0) }
     var showSearchFilter by remember { mutableStateOf(false) }
+    var dismissedUpdateVersion by remember { mutableStateOf<String?>(null) }
+    var showFilterExplainDialog by remember {
+        mutableStateOf(!settings.getBoolean("filterExplainDialogShown", false))
+    }
+    var showQQGroup by remember {
+        mutableStateOf(!settings.getBoolean(QQ_GROUP_DISMISSED_PREFERENCE_KEY, false))
+    }
 
     // 屏蔽相关 state（沿用 HomeScreen 逻辑）
     var showBlockUserDialog by remember { mutableStateOf(false) }
@@ -160,9 +188,7 @@ fun MiuixHomeScreen(
     // 拉取未读通知数（与 M3 HomeScreen 行为一致）
     LaunchedEffect(Unit) {
         try {
-            unreadCount = fetchZhihuUnreadNotificationCount(paginationEnvironment.httpClient()) {
-                paginationEnvironment.configureSignedRequest(this)
-            }
+            unreadCount = paginationEnvironment.fetchUnreadNotificationCountSigned()
         } catch (_: Exception) {
         }
     }
@@ -291,7 +317,7 @@ fun MiuixHomeScreen(
                                             )
                                         }
                                     }
-                                    if (unreadCount > 0) {
+                                    if (showUnreadBadge && unreadCount > 0) {
                                         Box(
                                             modifier = Modifier
                                                 .align(Alignment.TopEnd)
@@ -376,6 +402,68 @@ fun MiuixHomeScreen(
                             ),
                             onLoadMore = { viewModel.loadMore(paginationEnvironment) },
                             key = { item -> item.stableKey },
+                            topContent = {
+                                item {
+                                    val availableUpdate = runtime.updateAnnouncement
+
+                                    AnnouncementCard(
+                                        visible = availableUpdate != null && dismissedUpdateVersion != availableUpdate.version,
+                                        title = "发现新版本：${availableUpdate?.version}${if (availableUpdate?.isNightly == true) " (Nightly)" else ""}",
+                                        leadingIcon = {
+                                            androidx.compose.material3.Icon(
+                                                Icons.Default.ArrowCircleUp,
+                                                contentDescription = null,
+                                            )
+                                        },
+                                        accept = { androidx.compose.material3.Text("查看更新") },
+                                        onAccept = { navigator.onNavigate(Account.SystemAndUpdateSettings) },
+                                        dismiss = { androidx.compose.material3.Text("以后") },
+                                        onDismiss = {
+                                            availableUpdate?.version?.let { version ->
+                                                dismissedUpdateVersion = version
+                                            }
+                                        },
+                                        colors = AnnouncementCardDefaults.colorsImportant(),
+                                    )
+                                    AnnouncementCard(
+                                        visible = showQQGroup,
+                                        title = "欢迎加入 QQ 群",
+                                        leadingIcon = {
+                                            androidx.compose.material3.Icon(
+                                                Icons.Default.MarkUnreadChatAlt,
+                                                contentDescription = null,
+                                            )
+                                        },
+                                        content = "欢迎加入 Zhihu++ QQ 群。1 & 2 群已满，我们新建了 3 群。已入群的朋友请不要重复加群。",
+                                        accept = { androidx.compose.material3.Text("加入") },
+                                        onAccept = { openExternalUrl("https://qm.qq.com/q/AaCml6Un4G") },
+                                        dismiss = { androidx.compose.material3.Text("关闭") },
+                                        onDismiss = {
+                                            settings.putBoolean(QQ_GROUP_DISMISSED_PREFERENCE_KEY, true)
+                                            showQQGroup = false
+                                        },
+                                        colors = AnnouncementCardDefaults.colorsVariant(),
+                                    )
+                                    AnnouncementCard(
+                                        visible = showFilterExplainDialog,
+                                        title = "为什么有的内容突然消失了？",
+                                        leadingIcon = {
+                                            androidx.compose.material3.Icon(
+                                                Icons.AutoMirrored.Filled.HelpOutline,
+                                                contentDescription = null,
+                                            )
+                                        },
+                                        content = "知乎++会默认屏蔽知乎盐选、知乎广告平台、知乎学堂、微信公众号文章。" +
+                                            "除此之外，您也可以手动屏蔽的用户、话题、问题等内容。" +
+                                            "由于我们需要更详细的数据来精准屏蔽，而获取数据需要时间，所以他们会闪一下然后消失。",
+                                        dismiss = { androidx.compose.material3.Text("好") },
+                                        onDismiss = {
+                                            settings.putBoolean("filterExplainDialogShown", true)
+                                            showFilterExplainDialog = false
+                                        },
+                                    )
+                                }
+                            },
                         ) { item ->
                             MiuixFeedCard(
                                 item = item,
@@ -487,6 +575,32 @@ fun MiuixHomeScreen(
                 }
             },
         )
+
+        if (showRefreshFab) {
+            if (runtime.isDebuggable) {
+                DraggableRefreshButton(
+                    onClick = {
+                        val data = Json.encodeToString(viewModel.debugData)
+                        paginationEnvironment.setPlainTextClipboard("data", data)
+                        userMessages.showShortMessage("已复制调试数据")
+                    },
+                    preferenceName = "copyAll",
+                ) {
+                    Icon(Icons.Default.CopyAll, contentDescription = "复制")
+                }
+            }
+            DraggableRefreshButton(
+                modifier = Modifier.testTag(HOME_REFRESH_BUTTON_TAG),
+                onClick = { viewModel.refresh(paginationEnvironment) },
+            ) {
+                if (viewModel.isLoading) {
+                    top.yukonga.miuix.kmp.basic
+                        .CircularProgressIndicator()
+                } else {
+                    Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                }
+            }
+        }
     } // 外层 Box 结束
 
     // 内联搜索筛选弹层（排序/内容类型/时间范围），仅在有搜索结果时存在
@@ -536,6 +650,7 @@ fun MiuixHomeScreen(
     MiuixAccountSheet(
         show = showAccountSheet.value,
         unreadCount = unreadCount,
+        showUnreadBadge = showUnreadBadge,
         onDismiss = { showAccountSheet.value = false },
     )
 }

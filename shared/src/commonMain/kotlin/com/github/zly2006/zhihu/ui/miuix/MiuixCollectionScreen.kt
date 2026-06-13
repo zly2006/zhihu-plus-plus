@@ -7,6 +7,7 @@
 package com.github.zly2006.zhihu.ui.miuix
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -44,14 +45,16 @@ import top.yukonga.miuix.kmp.utils.overScrollVertical
 
 @Composable
 fun MiuixCollectionScreen(
-    urlToken: String,
+    urlToken: String?,
     testCollections: List<Collection>? = null,
+    showBackButton: Boolean = true,
+    innerPadding: PaddingValues = PaddingValues(0.dp),
 ) {
     val navigator = LocalNavigator.current
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
-    val viewModel = viewModel { CollectionsViewModel(urlToken) }
+    val viewModel = viewModel(key = urlToken) { CollectionsViewModel(urlToken.orEmpty()) }
     val listState = rememberLazyListState()
-    val useTestCollections = testCollections != null
+    val useTestCollections = testCollections != null || urlToken == null
     val collections = testCollections ?: viewModel.allData
     val settings = rememberSettingsStore()
     val blurEnabled = settings.getBoolean("blurEnabled", true)
@@ -71,8 +74,10 @@ fun MiuixCollectionScreen(
                 color = backdrop.getMiuixAppBarColor(),
                 title = "我的收藏夹",
                 navigationIcon = {
-                    IconButton(onClick = { navigator.onNavigateBack() }) {
-                        Icon(MiuixIconsEmbedded.Back, "返回", tint = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onBackground)
+                    if (showBackButton) {
+                        IconButton(onClick = { navigator.onNavigateBack() }) {
+                            Icon(MiuixIconsEmbedded.Back, "返回", tint = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onBackground)
+                        }
                     }
                 },
                 scrollBehavior = scrollBehavior,
@@ -87,7 +92,10 @@ fun MiuixCollectionScreen(
                     .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
                     .overScrollVertical()
                     .nestedScroll(scrollBehavior.nestedScrollConnection),
-                contentPadding = padding,
+                contentPadding = PaddingValues(
+                    top = padding.calculateTopPadding(),
+                    bottom = padding.calculateBottomPadding() + innerPadding.calculateBottomPadding(),
+                ),
             ) {
                 item { Spacer(Modifier.height(12.dp)) }
                 items(collections, key = { it.id }) { collection ->

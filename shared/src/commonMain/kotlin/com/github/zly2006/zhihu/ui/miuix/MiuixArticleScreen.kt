@@ -60,6 +60,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -87,6 +88,7 @@ import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
+import com.github.zly2006.zhihu.shared.util.formatCompactCount
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
@@ -102,6 +104,7 @@ import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
 import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
+import com.github.zly2006.zhihu.ui.components.VotersSheet
 import com.github.zly2006.zhihu.ui.components.ZhihuTwoRowsTopAppBar
 import com.github.zly2006.zhihu.ui.components.rememberPreferCollapsedExitUntilCollapsedScrollBehavior
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
@@ -168,7 +171,8 @@ fun MiuixArticleScreen(
     val toggleImmersive: () -> Unit = { isImmersiveMode = !isImmersiveMode }
     val userMessages = rememberUserMessageSink()
     val haptic = LocalHapticFeedback.current
-    var showComments by remember { mutableStateOf(false) }
+    var showComments by rememberSaveable(article.type, article.id) { mutableStateOf(false) }
+    var showVoters by rememberSaveable(article.type, article.id) { mutableStateOf(false) }
     val showCollections = remember { mutableStateOf(false) }
     var showActionsMenu by remember { mutableStateOf(false) }
     var showCreateCollection by remember { mutableStateOf(false) }
@@ -572,6 +576,24 @@ fun MiuixArticleScreen(
                                 }
                                 Spacer(Modifier.height(8.dp))
                             }
+                            if (article.type == ArticleType.Answer && viewModel.votersTotal > 0) {
+                                val socialCreditText = viewModel.votersSocialText.ifBlank {
+                                    "${formatCompactCount(viewModel.votersTotal)} 人赞同了该回答"
+                                }
+                                Text(
+                                    socialCreditText,
+                                    style = MiuixTheme.textStyles.footnote1,
+                                    color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                                    modifier = Modifier
+                                        .padding(bottom = 8.dp)
+                                        .clickable {
+                                            showVoters = true
+                                            if (viewModel.voters.isEmpty()) {
+                                                viewModel.loadMoreVoters(environment, reset = true)
+                                            }
+                                        },
+                                )
+                            }
                             if (viewModel.content.isEmpty()) {
                                 Box(Modifier.fillMaxWidth().padding(24.dp), Alignment.Center) {
                                     CircularProgressIndicator()
@@ -688,6 +710,21 @@ fun MiuixArticleScreen(
 
     // 评论区暂未 miuix 化，复用 M3 CommentScreenComponent（与想法/问题页一致）。
     CommentScreenComponent(showComments = showComments, onDismiss = { showComments = false }, content = article)
+    VotersSheet(
+        show = showVoters,
+        title = "${formatCompactCount(viewModel.votersTotal)} 人赞同了该回答",
+        voters = viewModel.voters,
+        isLoading = viewModel.votersLoading,
+        errorMessage = viewModel.votersError,
+        canLoadMore = viewModel.votersNextUrl != null,
+        onDismissRequest = { showVoters = false },
+        onLoadMore = { viewModel.loadMoreVoters(environment) },
+        onRetry = { viewModel.loadMoreVoters(environment, reset = viewModel.voters.isEmpty()) },
+        onNavigate = { person ->
+            showVoters = false
+            navigator.onNavigate(person)
+        },
+    )
 
     // 收藏夹选择（始终留在树里，show 用 MutableState）。
     WindowBottomSheet(

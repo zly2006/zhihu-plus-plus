@@ -436,10 +436,6 @@ class PersonViewModel(
         if (urlToken != null) {
             this.person.urlToken = urlToken
         }
-
-        // 读历史放到资料加载之后（与 master 一致）：登录后首发的这个 POST 可能 401→触发 token 刷新，
-        // 放在前面会阻塞头像/资料拉取，导致用户主页要等好几秒才显示。
-        environment.addReadHistory(person.id, "profile")
     }
 }
 

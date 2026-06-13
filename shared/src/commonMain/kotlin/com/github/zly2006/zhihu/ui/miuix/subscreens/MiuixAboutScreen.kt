@@ -22,6 +22,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -40,6 +41,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -66,6 +68,7 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Navigator
 import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
@@ -99,8 +102,10 @@ fun MiuixAboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
     val lazyListState = rememberLazyListState()
     val scrollBehavior = MiuixScrollBehavior()
     val settings = rememberSettingsStore()
+    val userMessages = rememberUserMessageSink()
     val blurEnabled = settings.getBoolean("blurEnabled", true)
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
+    var developerClickCount by remember { mutableIntStateOf(0) }
 
     val scrollProgress by remember {
         derivedStateOf {
@@ -169,6 +174,14 @@ fun MiuixAboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
             openUrl = openUrl,
             density = density,
             backdrop = backdrop,
+            onDeveloperVersionClick = {
+                developerClickCount++
+                if (developerClickCount == 5) {
+                    developerClickCount = 0
+                    settings.putBoolean("developer", true)
+                    userMessages.showShortMessage("You are now a developer")
+                }
+            },
         )
     }
 }
@@ -187,6 +200,7 @@ private fun AboutContent(
     openUrl: (String) -> Unit,
     density: Density,
     backdrop: top.yukonga.miuix.kmp.blur.LayerBackdrop?,
+    onDeveloperVersionClick: () -> Unit,
 ) {
     var logoHeightDp by remember { mutableStateOf(300.dp) }
     val logoBoxColor = if (darkTheme) MiuixTheme.colorScheme.surface else Color.White
@@ -312,7 +326,12 @@ private fun AboutContent(
             contentPadding = PaddingValues(top = padding.calculateTopPadding()),
         ) {
             item(key = "logoSpacer") {
-                Box(Modifier.fillMaxWidth().height(logoHeightDp + 52.dp + 126.dp))
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(logoHeightDp + 52.dp + 126.dp)
+                        .clickable(onClick = onDeveloperVersionClick),
+                )
             }
             item(key = "about") {
                 Column(modifier = Modifier.fillParentMaxHeight().padding(bottom = padding.calculateBottomPadding())) {

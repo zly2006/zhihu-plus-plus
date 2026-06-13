@@ -29,9 +29,11 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,6 +53,7 @@ import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.shared.util.formatCompactCount
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
@@ -69,18 +72,22 @@ import com.github.zly2006.zhihu.ui.PinScreenUiState
 import com.github.zly2006.zhihu.ui.booleanCompat
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.ShareDialog
+import com.github.zly2006.zhihu.ui.components.VotersSheet
 import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.ui.linkCardTypeLabel
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.ui.rememberPinScreenRuntime
-import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.ContentLoadEnvironment
+import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
+import com.github.zly2006.zhihu.viewmodel.deleteSigned
+import com.github.zly2006.zhihu.viewmodel.loadVotersPage
+import com.github.zly2006.zhihu.viewmodel.nextUrlOrNull
+import com.github.zly2006.zhihu.viewmodel.postSigned
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.replaceOrAppendUniqueVoters
 import io.ktor.client.call.body
-import io.ktor.client.request.delete
-import io.ktor.client.request.get
-import io.ktor.client.request.post
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
@@ -104,15 +111,12 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 
 private suspend fun loadPinDetail(
-    environment: PaginationEnvironment,
+    environment: ContentLoadEnvironment,
     pin: Pin,
 ): PinScreenUiState {
     environment.addReadHistory(pin.id.toString(), "pin")
-    val jsonObject = environment
-        .httpClient()
-        .get("https://www.zhihu.com/api/v4/pins/${pin.id}") {
-            environment.configureSignedRequest(this)
-        }.body<JsonObject>()
+    val jsonObject = environment.fetchJson("https://www.zhihu.com/api/v4/pins/${pin.id}", "")
+        ?: error("想法详情为空")
     val content = decodePinContentDetail(jsonObject)
     environment.postHistoryDestination(pin)
     environment.recordContentOpenEvent(destination = pin)
@@ -125,16 +129,15 @@ private suspend fun loadPinDetail(
 }
 
 private suspend fun togglePinLike(
-    environment: PaginationEnvironment,
+    environment: ZhihuApiEnvironment,
     pin: Pin,
     isLiked: Boolean,
 ): PinLikeResult {
     val endpoint = "https://www.zhihu.com/api/v4/pins/${pin.id}/voters/up"
-    val client = environment.httpClient()
     val jojo = if (isLiked) {
-        client.delete(endpoint) { environment.configureSignedRequest(this) }.body<JsonObject>()
+        environment.deleteSigned(endpoint).body<JsonObject>()
     } else {
-        client.post(endpoint) { environment.configureSignedRequest(this) }.body<JsonObject>()
+        environment.postSigned(endpoint).body<JsonObject>()
     }
     return PinLikeResult(
         isLiked = !isLiked,
@@ -172,7 +175,36 @@ fun MiuixPinScreen(
     }
 
     var showShareDialog by remember { mutableStateOf(false) }
-    var showComments by remember { mutableStateOf(false) }
+    var showComments by rememberSaveable(pin.id) { mutableStateOf(false) }
+    var showVoters by rememberSaveable(pin.id) { mutableStateOf(false) }
+    var votersNextUrl by rememberSaveable(pin.id) { mutableStateOf<String?>(null) }
+    var votersLoading by rememberSaveable(pin.id) { mutableStateOf(false) }
+    var votersError by rememberSaveable(pin.id) { mutableStateOf<String?>(null) }
+    val voters = remember(pin.id) { mutableStateListOf<DataHolder.Author>() }
+
+    fun loadMoreVoters(reset: Boolean = false) {
+        if (votersLoading) return
+        coroutineScope.launch {
+            votersLoading = true
+            votersError = null
+            try {
+                val page = loadVotersPage(
+                    environment = paginationEnvironment,
+                    initialUrl = "https://www.zhihu.com/api/v4/pins/${pin.id}/upvoters?limit=10&offset=0",
+                    nextUrl = votersNextUrl,
+                    reset = reset,
+                )
+                voters.replaceOrAppendUniqueVoters(page.data, reset)
+                val total = page.paging.totals.takeIf { it > 0 } ?: screenState.likeCount
+                screenState = screenState.copy(likeCount = total)
+                votersNextUrl = page.nextUrlOrNull()
+            } catch (e: Exception) {
+                votersError = e.message ?: "加载赞同者失败"
+            } finally {
+                votersLoading = false
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -231,6 +263,12 @@ fun MiuixPinScreen(
                         }
                     },
                     onCommentClick = { showComments = true },
+                    onSocialCreditClick = {
+                        showVoters = true
+                        if (voters.isEmpty()) {
+                            loadMoreVoters(reset = true)
+                        }
+                    },
                     linkCardPreviewOverride = testOverrides?.linkCardPreview,
                 )
             }
@@ -252,6 +290,21 @@ fun MiuixPinScreen(
                     onDismissRequest = { showShareDialog = false },
                 )
         }
+        VotersSheet(
+            show = showVoters,
+            title = "${formatCompactCount(screenState.likeCount)} 人赞同了该想法",
+            voters = voters,
+            isLoading = votersLoading,
+            errorMessage = votersError,
+            canLoadMore = votersNextUrl != null,
+            onDismissRequest = { showVoters = false },
+            onLoadMore = { loadMoreVoters() },
+            onRetry = { loadMoreVoters(reset = voters.isEmpty()) },
+            onNavigate = { person ->
+                showVoters = false
+                navigator.onNavigate(person)
+            },
+        )
     }
 }
 
@@ -262,6 +315,7 @@ private fun MiuixPinContent(
     likeCount: Int,
     onLikeClick: () -> Unit,
     onCommentClick: () -> Unit,
+    onSocialCreditClick: () -> Unit,
     linkCardPreviewOverride: PinLinkCardPreview? = null,
 ) {
     val navigator = LocalNavigator.current
@@ -303,6 +357,20 @@ private fun MiuixPinContent(
 
                 Spacer(Modifier.height(12.dp))
                 Text(formattedDate, style = MiuixTheme.textStyles.footnote1, color = MiuixTheme.colorScheme.onSurfaceSecondary)
+                if (likeCount > 0) {
+                    Spacer(Modifier.height(8.dp))
+                    val firstLiker = pin.likers.firstOrNull()
+                    Text(
+                        text = if (firstLiker != null) {
+                            "${firstLiker.name} 等 ${formatCompactCount(likeCount)} 人赞同了该想法"
+                        } else {
+                            "${formatCompactCount(likeCount)} 人赞同了该想法"
+                        },
+                        style = MiuixTheme.textStyles.footnote1,
+                        color = MiuixTheme.colorScheme.onSurfaceSecondary,
+                        modifier = Modifier.clickable(onClick = onSocialCreditClick),
+                    )
+                }
                 Spacer(Modifier.height(12.dp))
 
                 // 正文

@@ -24,15 +24,21 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.navigation.Account
+import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.loadSearchHistory
+import com.github.zly2006.zhihu.ui.saveSearchHistory
 import com.github.zly2006.zhihu.viewmodel.feed.ZHIHU_HOT_SEARCH_URL
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.serialization.json.JsonArray
@@ -59,14 +65,22 @@ fun MiuixSearchSuggestions(
     onQueryClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val navigator = LocalNavigator.current
     val settings = rememberSettingsStore()
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
     val showHistory = remember { settings.getBoolean("showSearchHistory", true) }
     val showHotSearch = remember { settings.getBoolean("showSearchHotSearch", true) }
-    val historyItems = remember { if (showHistory) loadSearchHistory(settings) else emptyList() }
+    val historyItems = remember {
+        mutableStateListOf<String>().apply {
+            if (showHistory) {
+                addAll(loadSearchHistory(settings))
+            }
+        }
+    }
     val hotItems = remember { mutableStateListOf<MiuixHotQuery>() }
+    var hotRefreshKey by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(showHotSearch) {
+    LaunchedEffect(showHotSearch, hotRefreshKey) {
         if (!showHotSearch) return@LaunchedEffect
         runCatching {
             val json = environment.fetchJson(ZHIHU_HOT_SEARCH_URL, "") ?: return@runCatching
@@ -94,7 +108,18 @@ fun MiuixSearchSuggestions(
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
     ) {
         if (hasHistory) {
-            item { SmallTitle(text = "搜索历史") }
+            item {
+                MiuixSearchSuggestionsHeader(
+                    title = "搜索历史",
+                    primaryAction = "清空",
+                    onPrimaryAction = {
+                        historyItems.clear()
+                        saveSearchHistory(settings, historyItems)
+                    },
+                    secondaryAction = "关闭",
+                    onSecondaryAction = { navigator.onNavigate(Account.AppearanceSettings("showSearchHistory")) },
+                )
+            }
             item {
                 FlowRow(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp),
@@ -119,7 +144,15 @@ fun MiuixSearchSuggestions(
         }
 
         if (hasHot) {
-            item { SmallTitle(text = "热搜") }
+            item {
+                MiuixSearchSuggestionsHeader(
+                    title = "热搜",
+                    primaryAction = "刷新",
+                    onPrimaryAction = { hotRefreshKey++ },
+                    secondaryAction = "关闭",
+                    onSecondaryAction = { navigator.onNavigate(Account.AppearanceSettings("showSearchHotSearch")) },
+                )
+            }
             itemsIndexed(hotItems) { index, item ->
                 Row(
                     modifier = Modifier
@@ -150,5 +183,33 @@ fun MiuixSearchSuggestions(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun MiuixSearchSuggestionsHeader(
+    title: String,
+    primaryAction: String,
+    onPrimaryAction: () -> Unit,
+    secondaryAction: String,
+    onSecondaryAction: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(end = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(modifier = Modifier.weight(1f)) {
+            SmallTitle(text = title)
+        }
+        Text(
+            text = primaryAction,
+            color = MiuixTheme.colorScheme.primary,
+            modifier = Modifier.clickable(onClick = onPrimaryAction).padding(horizontal = 8.dp, vertical = 6.dp),
+        )
+        Text(
+            text = secondaryAction,
+            color = MiuixTheme.colorScheme.primary,
+            modifier = Modifier.clickable(onClick = onSecondaryAction).padding(horizontal = 8.dp, vertical = 6.dp),
+        )
     }
 }

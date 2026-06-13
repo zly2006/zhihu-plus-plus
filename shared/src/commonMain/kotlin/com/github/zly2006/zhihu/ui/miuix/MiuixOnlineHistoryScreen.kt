@@ -85,6 +85,10 @@ fun MiuixOnlineHistoryScreen(showBackButton: Boolean = false) {
         }
     }
 
+    PlatformBackHandler(enabled = showClearHistoryDialog) {
+        showClearHistoryDialog = false
+    }
+
     Scaffold(
         topBar = {
             AutoHideTopBar {

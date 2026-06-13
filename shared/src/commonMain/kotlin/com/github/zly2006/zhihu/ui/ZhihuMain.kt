@@ -758,7 +758,7 @@ private fun MainTabsPager(
             } else {
                 OnlineHistoryScreen()
             }
-            MainTabPage.MyCollectionsPage -> MyCollectionsTopLevelPage()
+            MainTabPage.MyCollectionsPage -> MyCollectionsTopLevelPage(innerPadding)
             MainTabPage.AccountPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
                 MiuixAccountSettingScreen(innerPadding)
             } else {
@@ -769,13 +769,21 @@ private fun MainTabsPager(
 }
 
 @Composable
-private fun MyCollectionsTopLevelPage() {
+private fun MyCollectionsTopLevelPage(innerPadding: PaddingValues) {
     val runtime = rememberAccountSettingsPlatformRuntime()
     val account = runtime.accountState.value
-    CollectionScreen(
-        urlToken = account.urlToken,
-        showBackButton = false,
-    )
+    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+        MiuixCollectionScreen(
+            urlToken = account.urlToken,
+            showBackButton = false,
+            innerPadding = innerPadding,
+        )
+    } else {
+        CollectionScreen(
+            urlToken = account.urlToken,
+            showBackButton = false,
+        )
+    }
 }
 
 private val TopLevelDestination.openFrom: String?

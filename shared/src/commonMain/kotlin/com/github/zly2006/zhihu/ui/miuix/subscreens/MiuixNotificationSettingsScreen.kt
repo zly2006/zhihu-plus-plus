@@ -55,6 +55,7 @@ fun MiuixNotificationSettingsScreen() {
         mutableStateOf(NotificationType.entries.associateWith { store.getDisplayInAppEnabled(it) })
     }
     var autoMarkAsRead by remember { mutableStateOf(store.getAutoMarkAsReadEnabled()) }
+    var unreadBadgeEnabled by remember { mutableStateOf(store.getUnreadBadgeEnabled()) }
 
     Scaffold(
         topBar = {
@@ -93,6 +94,14 @@ fun MiuixNotificationSettingsScreen() {
                         },
                         title = "打开通知自动已读",
                         summary = "进入通知页后，自动把当前通知批次标记为已读",
+                    )
+                    SwitchPreference(
+                        checked = unreadBadgeEnabled,
+                        onCheckedChange = { checked ->
+                            unreadBadgeEnabled = checked
+                            store.setUnreadBadgeEnabled(checked)
+                        },
+                        title = "显示未读红点",
                     )
                 }
             }

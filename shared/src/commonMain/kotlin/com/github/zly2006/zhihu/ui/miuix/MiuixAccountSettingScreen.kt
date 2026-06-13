@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -70,6 +71,7 @@ import top.yukonga.miuix.kmp.utils.overScrollVertical
 fun MiuixAccountSettingScreen(
     innerPadding: PaddingValues = PaddingValues(0.dp),
     unreadCount: Int = 0,
+    showUnreadBadge: Boolean = true,
     testAccountData: AccountSettingsAccountState? = null,
 ) {
     val navigator = LocalNavigator.current
@@ -170,7 +172,7 @@ fun MiuixAccountSettingScreen(
                         )
                         ArrowPreference(
                             title = "通知",
-                            summary = if (unreadCount > 0) "$unreadCount 条未读" else null,
+                            summary = if (showUnreadBadge && unreadCount > 0) "$unreadCount 条未读" else null,
                             onClick = { navigator.onNavigate(Notification) },
                             startAction = { Icon(Icons.Default.Notifications, null) },
                         )
@@ -201,6 +203,12 @@ fun MiuixAccountSettingScreen(
                         onClick = { navigator.onNavigate(Account.RecommendSettings()) },
                         startAction = { Icon(Icons.Default.FilterAlt, null) },
                     )
+                    ArrowPreference(
+                        title = "系统与更新",
+                        summary = "GitHub、更新设置等",
+                        onClick = { navigator.onNavigate(Account.SystemAndUpdateSettings) },
+                        startAction = { Icon(Icons.Default.Settings, null) },
+                    )
                     if (settings.getBoolean("developer", false)) {
                         ArrowPreference(
                             title = "开发者选项",
@@ -221,6 +229,12 @@ fun MiuixAccountSettingScreen(
                         title = "关于",
                         summary = "关于zhihu++",
                         onClick = { navigator.onNavigate(Account.About) },
+                        startAction = { Icon(Icons.Default.Info, null) },
+                    )
+                    ArrowPreference(
+                        title = "开源许可",
+                        summary = "查看第三方组件许可证",
+                        onClick = { navigator.onNavigate(Account.OpenSourceLicenses) },
                         startAction = { Icon(Icons.Default.Info, null) },
                     )
                 }

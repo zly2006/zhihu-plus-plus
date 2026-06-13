@@ -80,13 +80,10 @@ import com.github.zly2006.zhihu.ui.loadedQuestionScreenData
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.ui.questionDetailPreview
-import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.ContentLoadEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
-import io.ktor.client.call.body
-import io.ktor.client.request.get
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.JsonObject
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
@@ -130,7 +127,7 @@ fun MiuixQuestionScreen(
     var followerCount by remember(question.questionId) { mutableIntStateOf(initialUiState.followerCount) }
     var title by remember(question.questionId) { mutableStateOf(initialUiState.title.ifEmpty { question.title }) }
     var isFollowing by remember(question.questionId) { mutableStateOf(initialUiState.isFollowing) }
-    var showComments by remember { mutableStateOf(false) }
+    var showComments by rememberSaveable(question.questionId) { mutableStateOf(false) }
     var showShareDialog by remember { mutableStateOf(false) }
     var isQuestionDetailExpanded by rememberSaveable(question.questionId) { mutableStateOf(initialUiState.isQuestionDetailExpanded) }
     val questionContentPreview = remember(questionContent) { questionDetailPreview(questionContent) }
@@ -382,16 +379,13 @@ fun MiuixQuestionScreen(
 }
 
 private suspend fun loadQuestionData(
-    environment: PaginationEnvironment,
+    environment: ContentLoadEnvironment,
     question: Question,
 ): LoadedQuestionScreenData? {
     environment.addReadHistory(question.questionId.toString(), "question")
     val include = "read_count,visit_count,answer_count,voteup_count,comment_count,follower_count,detail,excerpt,author,relationship.is_following,topics"
-    val url = "https://www.zhihu.com/api/v4/questions/${question.questionId}?include=$include"
-    val jsonObject = environment
-        .httpClient()
-        .get(url) { environment.configureSignedRequest(this) }
-        .body<JsonObject>()
+    val jsonObject = environment.fetchJson("https://www.zhihu.com/api/v4/questions/${question.questionId}", include)
+        ?: return null
     val questionData = decodeQuestionContentDetail(jsonObject)
     val loadedData = loadedQuestionScreenData(question, questionData)
     environment.postHistoryDestination(loadedData.historyDestination)

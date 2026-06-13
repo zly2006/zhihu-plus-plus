@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -62,6 +63,7 @@ import top.yukonga.miuix.kmp.window.WindowBottomSheet
 fun MiuixAccountSheet(
     show: Boolean,
     unreadCount: Int = 0,
+    showUnreadBadge: Boolean = true,
     onDismiss: () -> Unit,
     testAccountData: AccountSettingsAccountState? = null,
 ) {
@@ -143,7 +145,7 @@ fun MiuixAccountSheet(
                             onDismiss()
                             navigator.onNavigate(Person(id = data.id, urlToken = data.urlToken ?: "", name = data.username, jumpTo = "关注订阅"))
                         }, startAction = { Icon(Icons.Default.Groups, null) })
-                        ArrowPreference(title = "通知", summary = if (unreadCount > 0) "$unreadCount 条未读" else null, onClick = {
+                        ArrowPreference(title = "通知", summary = if (showUnreadBadge && unreadCount > 0) "$unreadCount 条未读" else null, onClick = {
                             onDismiss()
                             navigator.onNavigate(Notification)
                         }, startAction = { Icon(Icons.Default.Notifications, null) })
@@ -170,6 +172,10 @@ fun MiuixAccountSheet(
                         onDismiss()
                         navigator.onNavigate(Account.RecommendSettings())
                     }, startAction = { Icon(Icons.Default.FilterAlt, null) })
+                    ArrowPreference(title = "系统与更新", summary = "GitHub、更新设置等", onClick = {
+                        onDismiss()
+                        navigator.onNavigate(Account.SystemAndUpdateSettings)
+                    }, startAction = { Icon(Icons.Default.Settings, null) })
                     if (settings.getBoolean("developer", false)) {
                         ArrowPreference(title = "开发者选项", onClick = {
                             onDismiss()
@@ -188,6 +194,10 @@ fun MiuixAccountSheet(
                     ArrowPreference(title = "关于", onClick = {
                         onDismiss()
                         navigator.onNavigate(Account.About)
+                    }, startAction = { Icon(Icons.Default.Info, null) })
+                    ArrowPreference(title = "开源许可", summary = "查看第三方组件许可证", onClick = {
+                        onDismiss()
+                        navigator.onNavigate(Account.OpenSourceLicenses)
                     }, startAction = { Icon(Icons.Default.Info, null) })
                 }
             }
