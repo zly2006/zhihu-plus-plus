@@ -1527,7 +1527,7 @@ fun ArticleScreen(
                             } else {
                                 ArticleMarkdownContent(
                                     html = viewModel.content,
-                                    modifier = answerDoubleTapModifier.articleMarkdownSelectionWorkaround(),
+                                    modifier = Modifier.articleMarkdownSelectionWorkaround(),
                                     header = {
                                         if (pinAnswerDate) {
                                             Column(
@@ -1597,7 +1597,7 @@ fun ArticleScreen(
     val progressBarBottomPadding = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 96.dp
 
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().then(answerDoubleTapModifier),
     ) {
         // 根据模式渲染
         if (article.type == ArticleType.Answer && answerSwitchMode == "vertical") {
