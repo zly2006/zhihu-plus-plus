@@ -16,6 +16,7 @@
  */
 
 package com.github.zly2006.zhihu.viewmodel
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -24,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.data.ContentDetailCache
+import com.github.zly2006.zhihu.data.fetchZhihuContentDetail
 import com.github.zly2006.zhihu.data.getOrFetchContentDetail
 import com.github.zly2006.zhihu.navigation.AnswerNavigator
 import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
@@ -32,12 +34,11 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
+import com.github.zly2006.zhihu.shared.data.ZhihuJson.decodeJson
+import com.github.zly2006.zhihu.shared.data.ZhihuMeNotifications
 import com.github.zly2006.zhihu.shared.data.ZhihuPaging
+import com.github.zly2006.zhihu.shared.data.buildZhihuReadHistoryBody
 import com.github.zly2006.zhihu.shared.data.fetchZhihuAuthenticatedJson
-import com.github.zly2006.zhihu.shared.data.fetchZhihuUnreadNotificationCount
-import com.github.zly2006.zhihu.shared.data.markAllZhihuNotificationsAsRead
-import com.github.zly2006.zhihu.shared.data.postZhihuReadHistory
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
@@ -49,8 +50,11 @@ import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.delete
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
+import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
+import io.ktor.http.ContentType
 import io.ktor.http.HttpMethod
+import io.ktor.http.contentType
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Job
@@ -125,7 +129,7 @@ abstract class PaginationViewModel<T : Any>(
                     }
                     try {
                         @Suppress("UNCHECKED_CAST")
-                        ZhihuJson.decodeJson(serializer(dataType) as KSerializer<T>, it)
+                        decodeJson(serializer(dataType) as KSerializer<T>, it)
                     } catch (e: Exception) {
                         if (shouldLogDecodeFailures) {
                             environment.logDecodeFailure(this::class.simpleName, it, e)
@@ -136,7 +140,7 @@ abstract class PaginationViewModel<T : Any>(
                 jsonArray,
             )
             if ("paging" in json) {
-                lastPaging = ZhihuJson.decodeJson(json["paging"]!!)
+                lastPaging = decodeJson(json["paging"]!!)
             }
         } catch (e: Exception) {
             if (e is kotlin.coroutines.cancellation.CancellationException) throw e
@@ -265,6 +269,31 @@ interface ZhihuApiEnvironment {
     }
 }
 
+suspend fun ZhihuApiEnvironment.fetchContentDetail(destination: NavDestination): DataHolder.Content? =
+    runCatching {
+        fetchZhihuContentDetail(destination) { url ->
+            fetchJson(url, "")
+        }
+    }.getOrElse { error ->
+        if (error !is CancellationException) {
+            Log.e("ZhihuApiEnvironment", "Failed to fetch content detail for $destination", error)
+        }
+        null
+    }
+
+suspend fun ZhihuApiEnvironment.getOrFetchContentDetail(destination: NavDestination): DataHolder.Content? =
+    runCatching {
+        ContentDetailCache.getOrFetchContentDetail(destination) { url ->
+            fetchJson(url, "")
+        }
+    }.getOrElse { error ->
+        if (error !is CancellationException) {
+            Log.e("ZhihuApiEnvironment", "Failed to fetch content detail for $destination", error)
+        }
+        null
+    }
+
+
 suspend fun ZhihuApiEnvironment.postSigned(
     url: String,
     block: HttpRequestBuilder.() -> Unit = {},
@@ -285,32 +314,8 @@ suspend fun ZhihuApiEnvironment.deleteSigned(
     }
 }
 
-suspend fun ZhihuApiEnvironment.fetchContentDetail(destination: NavDestination): DataHolder.Content? =
-    runCatching {
-        ContentDetailCache.getOrFetchContentDetail(destination) { url ->
-            fetchJson(url, "")
-        }
-    }.getOrElse { error ->
-        if (error !is CancellationException) {
-            Log.e("ContentDetailCache", "Failed to fetch content detail for $destination", error)
-        }
-        null
-    }
-
 suspend fun ZhihuApiEnvironment.fetchUnreadNotificationCountSigned(): Int =
-    withAuthenticatedClient { client, cookies ->
-        fetchZhihuUnreadNotificationCount(client) {
-            signZhihuFetchRequest(cookies)
-        }
-    }
-
-suspend fun ZhihuApiEnvironment.markAllNotificationsAsReadSigned() {
-    withAuthenticatedClient { client, cookies ->
-        markAllZhihuNotificationsAsRead(client) {
-            signZhihuFetchRequest(cookies)
-        }
-    }
-}
+    fetchJson("https://www.zhihu.com/api/v4/me", "")?.let { decodeJson<ZhihuMeNotifications>(it) }?.totalCount ?: 0
 
 interface MobileHomeFeedEnvironment : ZhihuApiEnvironment {
     fun mobileHomeFeedHttpClient(): HttpClient = httpClient()
@@ -339,16 +344,11 @@ interface HistoryEnvironment {
         contentTypeName: String,
     ) {
         val apiEnvironment = this as? ZhihuApiEnvironment ?: return
+        if (apiEnvironment.authenticatedCookies()["d_c0"] == null) return
         runCatching {
-            apiEnvironment.withAuthenticatedClient { client, cookies ->
-                postZhihuReadHistory(
-                    client = client,
-                    cookies = cookies,
-                    contentToken = contentToken,
-                    contentTypeName = contentTypeName,
-                    lastRefreshMillis = apiEnvironment.lastAuthRefreshMillis(),
-                    updateLastRefreshMillis = apiEnvironment::updateLastAuthRefreshMillis,
-                )
+            apiEnvironment.postSigned("https://www.zhihu.com/api/v4/read_history/add") {
+                contentType(ContentType.Application.Json)
+                setBody(buildZhihuReadHistoryBody(contentToken, contentTypeName))
             }
         }
     }
@@ -457,8 +457,6 @@ interface ArticleExportEnvironment {
 
 interface ArticleContentEnvironment : ZhihuApiEnvironment {
     fun accountHttpClient(): HttpClient = httpClient()
-
-    suspend fun getContentDetail(article: Article): DataHolder.Content? = null
 }
 
 interface ArticleExportContentEnvironment :

@@ -38,8 +38,9 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.data.HistoryStorage
-import com.github.zly2006.zhihu.data.getOrFetch
+import com.github.zly2006.zhihu.data.getOrFetchContentDetail
 import com.github.zly2006.zhihu.navigation.AndroidAnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.NavDestination
@@ -255,9 +256,6 @@ open class SharedAndroidPaginationEnvironment(
         )
     }
 
-    override suspend fun getContentDetail(article: ArticleDestination): DataHolder.Content? =
-        fetchContentDetail(article)
-
     override suspend fun followQuestion(
         questionId: Long,
         follow: Boolean,
@@ -280,7 +278,7 @@ open class SharedAndroidPaginationEnvironment(
         val filteredItems = filterDatabase.filterFeedDisplayItems(
             settings = filterSettings,
             items = foregroundItems,
-            contentDetailProvider = ContentDetailProvider { fetchContentDetail(it) },
+            contentDetailProvider = this::getOrFetchContentDetail,
             semanticMatcher = AndroidContentFilterRuntime.semanticMatcher,
             onNlpBlocked = { blockedThisRound ->
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -439,7 +437,9 @@ open class SharedAndroidPaginationEnvironment(
         includeImages: Boolean,
     ): ResolvedCollectionHtmlExportItem? {
         val navDestination = item.content.navDestination as? ArticleDestination ?: return null
-        val content = fetchContentDetail(navDestination)
+        val content = ContentDetailCache.getOrFetchContentDetail(navDestination) { url ->
+            fetchJson(url, "")
+        }
             ?: throw IllegalStateException("无法加载「${item.content.title}」详情")
         if (content !is DataHolder.Answer && content !is DataHolder.Article) {
             return null

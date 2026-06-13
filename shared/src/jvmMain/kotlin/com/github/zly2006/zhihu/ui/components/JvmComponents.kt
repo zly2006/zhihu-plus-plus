@@ -37,6 +37,7 @@ import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFil
 import com.github.zly2006.zhihu.viewmodel.filter.desktopKeywordSemanticMatcher
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.filter.rememberBlocklistManager
+import com.github.zly2006.zhihu.viewmodel.getOrFetchContentDetail
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpMethod
@@ -109,7 +110,7 @@ private fun desktopFeedBlockContentDetailProvider(
     store: DesktopAccountStore,
 ): ContentDetailProvider {
     val environment = DesktopPaginationEnvironment(store)
-    return ContentDetailProvider { destination -> environment.getContentDetail(destination) }
+    return ContentDetailProvider { destination -> environment.getOrFetchContentDetail(destination) }
 }
 
 private fun extractDesktopKeywordsWithWeight(

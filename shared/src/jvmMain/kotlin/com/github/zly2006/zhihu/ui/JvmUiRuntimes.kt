@@ -417,9 +417,7 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
     return remember(environment) {
         PinScreenRuntime(
             fetchLinkCardPreview = { linkCard ->
-                fetchPinLinkCardPreview(linkCard) { destination ->
-                    environment.getContentDetail(destination)
-                }
+                fetchPinLinkCardPreview(linkCard, environment)
             },
         )
     }

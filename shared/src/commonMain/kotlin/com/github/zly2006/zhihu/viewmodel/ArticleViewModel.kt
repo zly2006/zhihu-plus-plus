@@ -190,7 +190,7 @@ class ArticleViewModel(
                 try {
                     if (article.type == ArticleType.Answer) {
                         val sharedData = environment.articleAnswerSwitchState()
-                        val answer = environment.getContentDetail(article) as? DataHolder.Answer
+                        val answer = environment.fetchContentDetail(article) as? DataHolder.Answer
                         if (answer != null) {
                             exportSourceContent = answer
                             title = answer.question.title
@@ -265,7 +265,7 @@ class ArticleViewModel(
                             Log.e("ArticleViewModel", "Answer not found")
                         }
                     } else if (article.type == ArticleType.Article) {
-                        val article = environment.getContentDetail(article) as? DataHolder.Article
+                        val article = environment.fetchContentDetail(article) as? DataHolder.Article
                         if (article != null) {
                             exportSourceContent = article
                             title = article.title

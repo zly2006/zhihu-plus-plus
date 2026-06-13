@@ -18,7 +18,6 @@
 package com.github.zly2006.zhihu.shared.data
 
 import com.github.zly2006.zhihu.shared.util.raiseForStatus
-import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -27,15 +26,11 @@ import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.request
-import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
-import io.ktor.http.ContentType
 import io.ktor.http.Cookie
 import io.ktor.http.CookieEncoding
-import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Url
-import io.ktor.http.contentType
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.plus
@@ -83,7 +78,6 @@ fun zhihuHotListUrl(
     mobile: Boolean = true,
 ): String = "https://www.zhihu.com/api/v3/feed/topstory/hot-lists/total?limit=$limit&mobile=$mobile"
 
-const val ZHIHU_READ_HISTORY_ADD_URL = "https://www.zhihu.com/api/v4/read_history/add"
 const val ZHIHU_LAST_READ_TOUCH_URL = "https://www.zhihu.com/lastread/touch"
 
 fun buildZhihuReadHistoryBody(
@@ -93,29 +87,6 @@ fun buildZhihuReadHistoryBody(
     put("content_token", contentToken)
     put("content_type", contentType)
 }.toString()
-
-suspend fun postZhihuReadHistory(
-    client: HttpClient,
-    cookies: Map<String, String>,
-    contentToken: String,
-    contentTypeName: String,
-    lastRefreshMillis: Long,
-    updateLastRefreshMillis: (Long) -> Unit,
-): JsonObject? {
-    if (cookies["d_c0"] == null) return null
-    val body = buildZhihuReadHistoryBody(contentToken, contentTypeName)
-    return fetchZhihuAuthenticatedJson(
-        client = client,
-        url = ZHIHU_READ_HISTORY_ADD_URL,
-        lastRefreshMillis = lastRefreshMillis,
-        updateLastRefreshMillis = updateLastRefreshMillis,
-    ) {
-        method = HttpMethod.Post
-        contentType(ContentType.Application.Json)
-        setBody(body)
-        signZhihuFetchRequest(cookies, body)
-    }
-}
 
 fun encodeZhihuLastReadTouchItems(items: List<List<String>>): String =
     ZhihuJson.json.encodeToString(items)

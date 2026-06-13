@@ -22,6 +22,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.shared.data.NotificationItem
+import com.github.zly2006.zhihu.shared.data.ZHIHU_NOTIFICATION_READ_ALL_URLS
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.ZhihuPaging
 import com.github.zly2006.zhihu.shared.data.zhihuNotificationDefaultUrl
@@ -204,9 +205,10 @@ class NotificationViewModel :
     /**
      * 标记所有消息为已读
      */
-    @OptIn(DelicateCoroutinesApi::class)
     suspend fun markAllAsRead(environment: ZhihuApiEnvironment) {
-        environment.markAllNotificationsAsReadSigned()
+        ZHIHU_NOTIFICATION_READ_ALL_URLS.forEach { url ->
+            environment.postSigned(url)
+        }
     }
 }
 

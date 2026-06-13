@@ -176,7 +176,7 @@ class DesktopPaginationEnvironment(
     override fun answerNavigatorRepository(): AnswerNavigatorRepository =
         object : AnswerNavigatorRepository {
             override suspend fun fetchAnswerContent(article: Article): DataHolder.Answer? =
-                getContentDetail(article) as? DataHolder.Answer
+                getOrFetchContentDetail(article) as? DataHolder.Answer
 
             override suspend fun fetchQuestionFeeds(
                 questionId: Long,
@@ -269,12 +269,6 @@ class DesktopPaginationEnvironment(
         )
     }
 
-    override suspend fun getContentDetail(article: Article): DataHolder.Content? =
-        fetchContentDetail(article)
-
-    internal suspend fun getContentDetail(destination: NavDestination): DataHolder.Content? =
-        fetchContentDetail(destination)
-
     override suspend fun recordOpenEvent(
         destination: Article,
         questionId: Long?,
@@ -304,7 +298,7 @@ class DesktopPaginationEnvironment(
         val filteredItems = contentFilterDatabase.filterFeedDisplayItems(
             settings = settings,
             items = foregroundItems,
-            contentDetailProvider = ContentDetailProvider(::fetchContentDetail),
+            contentDetailProvider = ContentDetailProvider(::getOrFetchContentDetail),
             semanticMatcher = desktopKeywordSemanticMatcher,
         )
         return HomeFeedFilterResult(
@@ -656,7 +650,7 @@ private suspend fun CollectionItem.resolveDesktopExportContent(
     environment: DesktopPaginationEnvironment,
 ): DataHolder.Content? {
     val destination = content.navDestination as? Article ?: return null
-    return environment.getContentDetail(destination)
+    return environment.fetchContentDetail(destination)
 }
 
 private fun desktopCollectionExportCacheDir(): File =

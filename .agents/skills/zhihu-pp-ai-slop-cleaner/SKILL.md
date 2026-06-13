@@ -45,16 +45,17 @@ rg -n "\bFUNCTION_NAME\b" app shared desktopApp -g '*.kt'
    - `merge`: repeated helpers perform the same operation; replace with one shared helper or add a parameter.
    - `keep`: function is a real contract, domain boundary, parser step, platform actual, override, DAO method, serializer, stable test tag, or improves readability of a complex expression.
 
-7. Edit only after classification. Prefer the nearest existing API over creating a new helper.
-8. Re-run the relevant scan after each batch and check that deleted or merged names disappeared.
-9. Run project verification in the required order before committing:
+7. When a candidate lives in a file that already has several related helpers, switch to a file-level pass before editing. Read the nearby functions and classify the whole helper cluster together instead of deleting one `rg` hit at a time. Example: if one signed request helper in an environment file looks unnecessary, inspect adjacent signed helpers in the same file; keep multi-call primitives, but inline a single-call wrapper that only forwards to the lower-level client and adds no contract.
+8. Edit only after classification. Prefer the nearest existing API over creating a new helper.
+9. Re-run the relevant scan after each batch and check that deleted or merged names disappeared.
+10. Run project verification in the required order before committing:
 
 ```bash
 ./gradlew assembleLiteDebug
 ./gradlew ktlintFormat
 ```
 
-10. Run a final review pass:
+11. Run a final review pass:
 
 ```bash
 git diff --check
