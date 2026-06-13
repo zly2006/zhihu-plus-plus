@@ -57,12 +57,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Comment
-import androidx.compose.material.icons.filled.FilterCenterFocus
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.FilterCenterFocus
 import androidx.compose.material.icons.filled.GetApp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
@@ -1725,7 +1725,8 @@ fun ArticleScreen(
             showActionsMenu = false
             // 沉浸式模式下，按返回键优先退出沉浸式，不会直接退出回答
             toggleImmersive()
-            userMessages.showMessage("已进入沉浸式，按返回键即可退出")        },
+            userMessages.showMessage("已进入沉浸式，按返回键即可退出")
+        },
     )
 
     ArticleSummarySheet(
