@@ -19,8 +19,6 @@ package com.github.zly2006.zhihu.viewmodel
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import com.github.zly2006.zhihu.data.ContentDetailCache
-import com.github.zly2006.zhihu.data.getOrFetchContentDetail
 import com.github.zly2006.zhihu.navigation.AnswerNavigatorPage
 import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.Article
@@ -325,13 +323,6 @@ class DesktopPaginationEnvironment(
             reverseBlock = settings.reverseBlock,
         )
     }
-
-    private suspend fun fetchContentDetail(destination: NavDestination): DataHolder.Content? =
-        runCatching {
-            ContentDetailCache.getOrFetchContentDetail(destination) { url ->
-                fetchJson(url, "")
-            }
-        }.getOrNull()
 
     override suspend fun sendFeedReadStatus(feed: Feed) {
         val payloadItem = zhihuLastReadTouchItem(feed, "read") ?: return

@@ -38,9 +38,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.data.HistoryStorage
-import com.github.zly2006.zhihu.data.getContentDetail
 import com.github.zly2006.zhihu.data.getOrFetch
 import com.github.zly2006.zhihu.navigation.AndroidAnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
@@ -265,7 +263,7 @@ open class SharedAndroidPaginationEnvironment(
     }
 
     override suspend fun getContentDetail(article: ArticleDestination): DataHolder.Content? =
-        DataHolder.getContentDetail(context, article)
+        fetchContentDetail(article)
 
     override suspend fun followQuestion(
         questionId: Long,
@@ -289,7 +287,7 @@ open class SharedAndroidPaginationEnvironment(
         val filteredItems = filterDatabase.filterFeedDisplayItems(
             settings = filterSettings,
             items = foregroundItems,
-            contentDetailProvider = ContentDetailProvider { ContentDetailCache.getOrFetch(context, it) },
+            contentDetailProvider = ContentDetailProvider { fetchContentDetail(it) },
             semanticMatcher = AndroidContentFilterRuntime.semanticMatcher,
             onNlpBlocked = { blockedThisRound ->
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -448,7 +446,7 @@ open class SharedAndroidPaginationEnvironment(
         includeImages: Boolean,
     ): ResolvedCollectionHtmlExportItem? {
         val navDestination = item.content.navDestination as? ArticleDestination ?: return null
-        val content = ContentDetailCache.getOrFetch(context, navDestination)
+        val content = fetchContentDetail(navDestination)
             ?: throw IllegalStateException("无法加载「${item.content.title}」详情")
         if (content !is DataHolder.Answer && content !is DataHolder.Article) {
             return null

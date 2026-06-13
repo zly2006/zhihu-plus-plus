@@ -23,6 +23,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.github.zly2006.zhihu.data.ContentDetailCache
+import com.github.zly2006.zhihu.data.getOrFetchContentDetail
 import com.github.zly2006.zhihu.navigation.AnswerNavigator
 import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.Article
@@ -251,10 +253,6 @@ interface ZhihuApiEnvironment {
         error: Exception,
     )
 
-    fun configureSignedRequest(builder: HttpRequestBuilder) {
-        builder.signZhihuFetchRequest(authenticatedCookies())
-    }
-
     fun xsrfToken(): String = ""
 
     fun logDecodeFailure(
@@ -285,6 +283,18 @@ suspend fun ZhihuApiEnvironment.deleteSigned(
         signZhihuFetchRequest(cookies)
     }
 }
+
+suspend fun ZhihuApiEnvironment.fetchContentDetail(destination: NavDestination): DataHolder.Content? =
+    runCatching {
+        ContentDetailCache.getOrFetchContentDetail(destination) { url ->
+            fetchJson(url, "")
+        }
+    }.getOrElse { error ->
+        if (error !is CancellationException) {
+            Log.e("ContentDetailCache", "Failed to fetch content detail for $destination", error)
+        }
+        null
+    }
 
 suspend fun ZhihuApiEnvironment.fetchUnreadNotificationCountSigned(): Int =
     withAuthenticatedClient { client, cookies ->

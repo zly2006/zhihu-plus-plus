@@ -19,10 +19,9 @@ package com.github.zly2006.zhihu.viewmodel.feed
 
 import android.content.Context
 import androidx.lifecycle.viewModelScope
-import com.github.zly2006.zhihu.data.ContentDetailCache
-import com.github.zly2006.zhihu.data.getOrFetch
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
+import com.github.zly2006.zhihu.viewmodel.fetchContentDetail
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
 import com.github.zly2006.zhihu.viewmodel.filter.getBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.paginationEnvironment
@@ -98,7 +97,9 @@ fun BaseFeedViewModel.handleBlockTopic(
     }
 }
 
-private fun androidContentDetailProvider(context: Context): ContentDetailProvider =
-    ContentDetailProvider { destination ->
-        ContentDetailCache.getOrFetch(context, destination)
+private fun BaseFeedViewModel.androidContentDetailProvider(context: Context): ContentDetailProvider =
+    paginationEnvironment(context).let { environment ->
+        ContentDetailProvider { destination ->
+            environment.fetchContentDetail(destination)
+        }
     }
