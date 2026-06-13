@@ -47,6 +47,7 @@ import com.github.zly2006.zhihu.shared.util.decodeZhidaAnswerData
 import com.github.zly2006.zhihu.shared.util.decodeZhidaStreamErrorMessage
 import com.github.zly2006.zhihu.shared.util.mergeSummaryChunk
 import com.github.zly2006.zhihu.shared.util.parseZhidaSsePayload
+import com.github.zly2006.zhihu.shared.util.serializeZhidaSummaryRequest
 import com.github.zly2006.zhihu.ui.Collection
 import com.github.zly2006.zhihu.ui.CollectionResponse
 import com.github.zly2006.zhihu.ui.VoteUpState
@@ -371,7 +372,7 @@ class ArticleViewModel(
                     accept(ContentType.Text.EventStream)
                     contentType(ContentType.Application.Json)
                     header("x-xsrftoken", environment.xsrfToken())
-                    setBody(request)
+                    setBody(serializeZhidaSummaryRequest(request))
                 }
                 if (!response.status.isSuccess()) {
                     val errorBody = response.bodyAsText()
@@ -643,9 +644,9 @@ class ArticleViewModel(
             return
         }
 
-        if (requiresHtmlExportPermission(environment) && !hasStoragePermission(environment)) {
+        if (environment.requiresHtmlExportPermission() && !environment.hasImageExportPermission()) {
             withContext(Dispatchers.Main) {
-                requestStoragePermission(environment)
+                environment.requestImageExportPermission()
                 permissionRequestCount++
                 userMessages.showShortMessage("需要存储权限才能导出 HTML，正在请求权限")
                 onComplete(false)
@@ -669,16 +670,6 @@ class ArticleViewModel(
                 onComplete(false)
             }
         }
-    }
-
-    private fun requiresHtmlExportPermission(environment: ArticleExportEnvironment): Boolean =
-        environment.requiresHtmlExportPermission()
-
-    private fun hasStoragePermission(environment: ArticleExportEnvironment): Boolean =
-        environment.hasImageExportPermission()
-
-    private fun requestStoragePermission(environment: ArticleExportEnvironment) {
-        environment.requestImageExportPermission()
     }
 
     private suspend fun exportToImageInternal(

@@ -386,11 +386,9 @@ class MainActivity :
         super.onStop()
     }
 
-    fun currentContinuousUsageDurationMs(): Long = continuousUsageReminderManager.currentElapsedForegroundMs()
-
     override val developerRuntimeInfo: DeveloperRuntimeInfo
         get() = DeveloperRuntimeInfo(
-            continuousUsageDurationMs = currentContinuousUsageDurationMs(),
+            continuousUsageDurationMs = continuousUsageReminderManager.currentElapsedForegroundMs(),
             ttsState = ttsState,
             currentTtsEngineLabel = when (ttsEngine) {
                 TtsEngine.Pico -> "Pico TTS"
@@ -606,12 +604,8 @@ class MainActivity :
         }.getOrNull()
     }
 
-    fun postHistory(dest: NavDestination) {
-        history.add(dest)
-    }
-
     override fun postHistoryDestination(destination: NavDestination) {
-        postHistory(destination)
+        history.add(destination)
     }
 
     override fun speakArticleText(
