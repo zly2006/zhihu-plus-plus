@@ -19,8 +19,7 @@ package com.github.zly2006.zhihu.shared.notification
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDataFile
-import java.util.Properties
+import com.github.zly2006.zhihu.shared.desktop.DesktopPropertiesFile
 
 @Composable
 actual fun rememberNotificationSettingsStore(): NotificationSettingsStore = remember { desktopNotificationSettingsStore() }
@@ -28,23 +27,8 @@ actual fun rememberNotificationSettingsStore(): NotificationSettingsStore = reme
 fun desktopNotificationSettingsStore(): NotificationSettingsStore = DesktopNotificationSettingsStore()
 
 private class DesktopNotificationSettingsStore : NotificationSettingsStore {
-    private val settingsFile = desktopZhihuDataFile("notification_settings.properties")
-    private val properties = Properties()
-
-    init {
-        load()
-    }
-
-    private fun load() {
-        if (settingsFile.isFile) settingsFile.inputStream().use(properties::load)
-    }
-
-    private fun save() {
-        settingsFile.parentFile?.mkdirs()
-        settingsFile.outputStream().use { output ->
-            properties.store(output, "Zhihu++ desktop notification settings")
-        }
-    }
+    private val propertiesFile = DesktopPropertiesFile("notification_settings.properties", "Zhihu++ desktop notification settings")
+    private val properties = propertiesFile.properties
 
     override fun getSystemNotificationEnabled(type: NotificationType): Boolean =
         properties.getProperty("$KEY_SYSTEM_NOTIFICATION${type.name}")?.toBooleanStrictOrNull() ?: false
@@ -70,7 +54,7 @@ private class DesktopNotificationSettingsStore : NotificationSettingsStore {
 
     private fun setBoolean(key: String, enabled: Boolean) {
         properties.setProperty(key, enabled.toString())
-        save()
+        propertiesFile.save()
     }
 }
 

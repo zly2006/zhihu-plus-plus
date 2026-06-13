@@ -107,15 +107,11 @@ class CollectionContentViewModel(
         },
     )
 
-    fun dismissExportDialog() {
-        exportDialogState = null
-    }
-
     override fun refresh(environment: PaginationEnvironment) {
         if (isLoading) return
         displayItems.clear()
         viewModelScope.launch {
-            loadCollectionInfo(environment)
+            collection = environment.fetchCollection(collectionId)
         }
         super.refresh(environment)
     }
@@ -206,13 +202,13 @@ class CollectionContentViewModel(
         }
     }
 
-    private suspend fun loadCollectionInfo(environment: ZhihuApiEnvironment) {
-        collection = environment.fetchCollection(collectionId)
+    fun dismissExportDialog() {
+        exportDialogState = null
     }
 
     private suspend fun ensureAllCollectionItemsLoaded(environment: CollectionContentEnvironment): List<CollectionItem> {
         if (collection == null) {
-            loadCollectionInfo(environment)
+            collection = environment.fetchCollection(collectionId)
         }
 
         while (allData.isEmpty() || !isEnd) {

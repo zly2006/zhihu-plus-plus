@@ -72,9 +72,10 @@ import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.CollectionItem
 import com.github.zly2006.zhihu.viewmodel.filter.AndroidContentFilterRuntime
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
-import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
 import com.github.zly2006.zhihu.viewmodel.filter.contentFilterSettings
 import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
+import com.github.zly2006.zhihu.viewmodel.filter.filterFeedDisplayItems
+import com.github.zly2006.zhihu.viewmodel.filter.filterForegroundReadItems
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.filter.recordFeedContentInteraction
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
@@ -84,7 +85,6 @@ import io.ktor.client.plugins.api.createClientPlugin
 import io.ktor.client.plugins.cache.HttpCache
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.cookies.HttpCookies
-import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.forms.MultiPartFormDataContent
 import io.ktor.client.request.forms.formData
 import io.ktor.client.request.header
@@ -98,7 +98,6 @@ import io.ktor.serialization.kotlinx.json.json
 import io.ktor.util.appendAll
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -125,6 +124,7 @@ open class SharedAndroidPaginationEnvironment(
     private val localRecommendationEngine by lazy { LocalRecommendationEngine(context) }
     private val settingsStore by lazy { androidSettingsStore(context) }
     private val userMessageSink by lazy { androidUserMessageSink(context) }
+    private var lastAuthRefreshMillis = 0L
 
     override fun httpClient(): HttpClient {
         val loginForRecommendation = settingsStore.getBoolean("loginForRecommendation", true)
@@ -161,13 +161,20 @@ open class SharedAndroidPaginationEnvironment(
         }
     }
 
-    override suspend fun fetchJson(
-        url: String,
-        include: String,
-    ): JsonObject? =
-        AccountData.fetchGet(context, url) {
-            addIncludeAndSign(include)
+    override fun authenticatedCookies(): Map<String, String> {
+        val loginForRecommendation = settingsStore.getBoolean("loginForRecommendation", true)
+        return if (allowGuestAccess && !loginForRecommendation) {
+            emptyMap()
+        } else {
+            AccountData.data.cookies
         }
+    }
+
+    override fun lastAuthRefreshMillis(): Long = lastAuthRefreshMillis
+
+    override fun updateLastAuthRefreshMillis(value: Long) {
+        lastAuthRefreshMillis = value
+    }
 
     override suspend fun handleFetchFailure(
         tag: String?,
@@ -191,10 +198,6 @@ open class SharedAndroidPaginationEnvironment(
         context.mainExecutor.execute {
             userMessageSink.showShortMessage("安卓端推荐加载失败: ${error.message}")
         }
-    }
-
-    override fun configureSignedRequest(builder: HttpRequestBuilder) {
-        builder.signFetchRequest()
     }
 
     override fun feedDisplaySettings(): FeedDisplaySettings = FeedDisplaySettings(
@@ -279,14 +282,12 @@ open class SharedAndroidPaginationEnvironment(
         val settings = feedDisplaySettings()
         val filterSettings = context.contentFilterSettings()
         val filterDatabase = getContentFilterDatabase(context)
-        val foregroundItems = ContentFilterExtensions.applyForegroundReadFilterToDisplayItems(
+        val foregroundItems = filterDatabase.filterForegroundReadItems(
             settings = filterSettings,
-            database = filterDatabase,
             items = items,
         )
-        val filteredItems = ContentFilterExtensions.applyContentFilterToDisplayItems(
+        val filteredItems = filterDatabase.filterFeedDisplayItems(
             settings = filterSettings,
-            database = filterDatabase,
             items = foregroundItems,
             contentDetailProvider = ContentDetailProvider { ContentDetailCache.getOrFetch(context, it) },
             semanticMatcher = AndroidContentFilterRuntime.semanticMatcher,
@@ -662,10 +663,6 @@ fun PaginationViewModel<*>.notificationEnvironment(
 ): NotificationEnvironment =
     SharedAndroidNotificationEnvironment(context, allowGuestAccess, notificationSettingsStore)
 
-fun PaginationEnvironment.androidContext(): Context =
-    (this as? AndroidContextPaginationEnvironment)?.context
-        ?: error("Android Context is required for this pagination path")
-
 fun PaginationViewModel<*>.refresh(context: Context) {
     refresh(paginationEnvironment(context))
 }
@@ -676,15 +673,6 @@ fun PaginationViewModel<*>.loadMore(context: Context) {
 
 fun PaginationViewModel<*>.httpClient(context: Context): HttpClient =
     paginationEnvironment(context).httpClient()
-
-private fun HttpRequestBuilder.addIncludeAndSign(include: String) {
-    url {
-        if (include.isNotEmpty()) {
-            parameters["include"] = include
-        }
-    }
-    signFetchRequest()
-}
 
 private fun Context.canSafelyShowDialog(): Boolean {
     val activity = this as? Activity ?: return false

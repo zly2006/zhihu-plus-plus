@@ -33,7 +33,7 @@ class FeedGenerator(
      * 从爬虫结果生成推荐内容
      */
     suspend fun generateFeedFromResult(result: CrawlingResult, reasonDisplay: String): LocalFeed = withContext(Dispatchers.Default) {
-        val stableId = generateFeedId(result)
+        val stableId = stableLocalFeedId(result.contentId)
         val existingFeed = dao.getFeedById(stableId)
         val feed = LocalFeed(
             id = stableId,
@@ -41,7 +41,7 @@ class FeedGenerator(
             title = result.title,
             summary = result.summary,
             reasonDisplay = reasonDisplay,
-            navDestination = generateNavDestination(result),
+            navDestination = parseLocalContentIdentity(result.contentId, result.url)?.value,
             userFeedback = existingFeed?.userFeedback ?: 0.0,
             createdAt = existingFeed?.createdAt ?: Clock.System.now().toEpochMilliseconds(),
         )
@@ -49,27 +49,4 @@ class FeedGenerator(
         dao.insertFeed(feed)
         feed
     }
-
-    /**
-     * 批量生成推荐内容
-     */
-    suspend fun generateFeedsFromResults(
-        results: List<CrawlingResult>,
-        reasonDisplay: String,
-    ): List<LocalFeed> = withContext(Dispatchers.Default) {
-        results.map { result ->
-            generateFeedFromResult(result, reasonDisplay)
-        }
-    }
-
-    private fun generateFeedId(result: CrawlingResult): String = stableLocalFeedId(result.contentId)
-
-    private fun generateNavDestination(result: CrawlingResult): String? = parseLocalContentIdentity(result.contentId, result.url)?.value
-
-    /**
-     * 根据推荐原因获取理由显示文本
-     */
-    fun getReasonDisplayText(reason: CrawlingReason): String =
-        com.github.zly2006.zhihu.viewmodel.local
-            .getReasonDisplayText(reason)
 }

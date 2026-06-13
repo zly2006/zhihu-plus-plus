@@ -50,7 +50,7 @@ class FeedAdFilterTest {
             ),
         )
 
-        assertTrue(isFeedAdOrPaidContent(content))
+        assertTrue(getFeedAdBlockReason(content, FeedAdBlockSettings()) != null)
         assertEquals("知乎盐选付费内容", getFeedAdBlockReason(content, FeedAdBlockSettings()))
         assertFalse(getFeedAdBlockReason(content, FeedAdBlockSettings(blockPaidContent = false)) == "知乎盐选付费内容")
     }

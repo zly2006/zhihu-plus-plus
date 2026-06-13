@@ -23,9 +23,7 @@ import androidx.browser.customtabs.CustomTabColorSchemeParams
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.core.net.toUri
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.shared.data.ZhihuJson.json
 import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
-import com.github.zly2006.zhihu.shared.util.ZHIHU_WEB_ZSE93
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.header
@@ -37,23 +35,10 @@ import io.ktor.http.contentType
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import kotlinx.serialization.serializer
 import java.security.MessageDigest
 
 fun HttpRequestBuilder.signFetchRequest() {
-    val body = if (contentType() == ContentType.Application.Json) {
-        body as? String
-            ?: bodyType?.kotlinType?.let { type ->
-                json.encodeToString(serializer(type), body)
-            }
-    } else {
-        null
-    }
-    signZhihuFetchRequest(
-        zse93 = ZHIHU_WEB_ZSE93,
-        dc0 = AccountData.data.cookies["d_c0"] ?: "",
-        body = body,
-    )
+    signZhihuFetchRequest(AccountData.data.cookies)
 }
 
 @OptIn(DelicateCoroutinesApi::class)

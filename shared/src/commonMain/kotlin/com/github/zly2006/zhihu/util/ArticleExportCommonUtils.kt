@@ -20,6 +20,7 @@ package com.github.zly2006.zhihu.util
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Element
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.util.twoDigitString
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.readRawBytes
@@ -122,12 +123,23 @@ fun buildArticleExportCommentsHtml(
     return buildString {
         append("<div class='comments-title'>热门评论$titleSuffix</div>")
         comments.forEach { comment ->
+            val imageHtml = comment.imageSrc
+                .takeIf { it.isNotBlank() }
+                ?.let {
+                    """
+                    <img
+                        class="comment-image"
+                        src="${escapeArticleExportHtml(it)}"
+                        alt="评论图片"
+                    />
+                    """.trimIndent()
+                }.orEmpty()
             append(
                 """
                 <div class="comment">
                     <div class="comment-author">${escapeArticleExportHtml(comment.authorName)}</div>
                     <div class="comment-content">${comment.contentHtml}</div>
-                    ${buildArticleExportCommentImageHtml(comment.imageSrc)}
+                    $imageHtml
                     <div class="comment-time">${escapeArticleExportHtml(comment.createdTimeText)}</div>
                 </div>
                 """.trimIndent(),
@@ -266,24 +278,25 @@ fun renderArticleExportHtml(
         ?.let { "<div class=\"author-bio\">${escapeArticleExportHtml(it)}</div>" }
         .orEmpty()
 
-    return template.replacePlaceholders(
-        mapOf(
-            "{{title}}" to escapeArticleExportHtml(exportData.title),
-            "{{authorAvatar}}" to authorAvatarHtml,
-            "{{authorName}}" to escapeArticleExportHtml(exportData.authorName),
-            "{{authorBio}}" to authorBioHtml,
-            "{{voteCount}}" to exportData.voteUpCount.toString(),
-            "{{commentCount}}" to exportData.commentCount.toString(),
-            "{{bodyHtml}}" to prepareArticleExportContentHtml(exportData.content),
-            "{{extraSections}}" to extraSectionsHtml,
-            "{{exportedDate}}" to footerPlaceholders.exportedDate,
-            "{{publishedDate}}" to footerPlaceholders.publishedDate,
-            "{{editedDate}}" to footerPlaceholders.editedDate,
-            "{{editedDateClass}}" to footerPlaceholders.editedDateClass,
-            "{{appAttributionClass}}" to footerPlaceholders.appAttributionClass,
-            "{{githubUrl}}" to escapeArticleExportHtml(footerPlaceholders.githubUrl),
-        ),
+    val placeholders = mapOf(
+        "{{title}}" to escapeArticleExportHtml(exportData.title),
+        "{{authorAvatar}}" to authorAvatarHtml,
+        "{{authorName}}" to escapeArticleExportHtml(exportData.authorName),
+        "{{authorBio}}" to authorBioHtml,
+        "{{voteCount}}" to exportData.voteUpCount.toString(),
+        "{{commentCount}}" to exportData.commentCount.toString(),
+        "{{bodyHtml}}" to prepareArticleExportContentHtml(exportData.content),
+        "{{extraSections}}" to extraSectionsHtml,
+        "{{exportedDate}}" to footerPlaceholders.exportedDate,
+        "{{publishedDate}}" to footerPlaceholders.publishedDate,
+        "{{editedDate}}" to footerPlaceholders.editedDate,
+        "{{editedDateClass}}" to footerPlaceholders.editedDateClass,
+        "{{appAttributionClass}}" to footerPlaceholders.appAttributionClass,
+        "{{githubUrl}}" to escapeArticleExportHtml(footerPlaceholders.githubUrl),
     )
+    return placeholders.entries.fold(template) { html, entry ->
+        html.replace(entry.key, entry.value)
+    }
 }
 
 @OptIn(ExperimentalEncodingApi::class)
@@ -365,18 +378,6 @@ private fun guessArticleExportImageMimeTypeFromBytes(imageBytes: ByteArray): Str
         else -> null
     }
 }
-
-private fun buildArticleExportCommentImageHtml(imageSrc: String): String = imageSrc
-    .takeIf { it.isNotBlank() }
-    ?.let {
-        """
-        <img
-            class="comment-image"
-            src="${escapeArticleExportHtml(it)}"
-            alt="评论图片"
-        />
-        """.trimIndent()
-    }.orEmpty()
 
 fun prepareArticleExportContentHtml(content: String): String {
     val document = Ksoup.parseBodyFragment(content)
@@ -503,6 +504,15 @@ fun buildArticleExportFileName(
     return "zhihu++_${safeTitle}_${safeAuthorName}的${typeLabel}_${typeKey}_${articleId}_$timestamp.$normalizedExtension"
 }
 
+@OptIn(ExperimentalTime::class)
+fun buildCollectionExportZipFileName(
+    collectionTitle: String,
+    timestampMillis: Long = Clock.System.now().toEpochMilliseconds(),
+): String {
+    val safeTitle = sanitizeArticleExportFileNamePart(collectionTitle).ifBlank { "收藏夹" }
+    return "zhihu++_${safeTitle}_${formatArticleExportFileTimestamp(timestampMillis)}.zip"
+}
+
 fun sanitizeArticleExportFileNamePart(text: String): String = text
     .trim()
     .replace(Regex("\\s+"), "_")
@@ -552,27 +562,24 @@ private fun buildArticleExportFooterPlaceholders(footerData: ArticleExportFooter
     )
 }
 
-private fun String.replacePlaceholders(placeholders: Map<String, String>): String =
-    placeholders.entries.fold(this) { html, entry ->
-        html.replace(entry.key, entry.value)
-    }
-
 private fun extractArticleExportImageUrl(image: Element): String? =
     com.github.zly2006.zhihu.shared.util
         .extractImageUrl(image::attr)
         ?.takeIf { !it.startsWith("data:") }
 
 @OptIn(ExperimentalTime::class)
-private fun formatArticleExportFileTimestamp(): String {
-    val dateTime = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+private fun formatArticleExportFileTimestamp(timestampMillis: Long = Clock.System.now().toEpochMilliseconds()): String {
+    val dateTime = Instant
+        .fromEpochMilliseconds(timestampMillis)
+        .toLocalDateTime(TimeZone.currentSystemDefault())
     return buildString {
         append(dateTime.year.toString().padStart(4, '0'))
-        append((dateTime.month.ordinal + 1).toString().padStart(2, '0'))
-        append(dateTime.day.toString().padStart(2, '0'))
+        append((dateTime.month.ordinal + 1).twoDigitString())
+        append(dateTime.day.twoDigitString())
         append('_')
-        append(dateTime.hour.toString().padStart(2, '0'))
-        append(dateTime.minute.toString().padStart(2, '0'))
-        append(dateTime.second.toString().padStart(2, '0'))
+        append(dateTime.hour.twoDigitString())
+        append(dateTime.minute.twoDigitString())
+        append(dateTime.second.twoDigitString())
     }
 }
 
@@ -584,13 +591,13 @@ fun formatArticleExportDate(epochMillis: Long): String {
     return buildString {
         append(dateTime.year.toString().padStart(4, '0'))
         append('-')
-        append((dateTime.month.ordinal + 1).toString().padStart(2, '0'))
+        append((dateTime.month.ordinal + 1).twoDigitString())
         append('-')
-        append(dateTime.day.toString().padStart(2, '0'))
+        append(dateTime.day.twoDigitString())
         append(' ')
-        append(dateTime.hour.toString().padStart(2, '0'))
+        append(dateTime.hour.twoDigitString())
         append(':')
-        append(dateTime.minute.toString().padStart(2, '0'))
+        append(dateTime.minute.twoDigitString())
     }
 }
 

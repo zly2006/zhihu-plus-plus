@@ -65,9 +65,6 @@ class ContentFilterManager(
         return dao.getViewedContentIdsByIds(idsToCheck).toSet()
     }
 
-    /** 获取曝光记录统计。 */
-    suspend fun getFilterStats(): FilterStats = maintenance.loadFilterStats() ?: ContentFilterStats(0, 0, 0f)
-
     /** 清理过期曝光记录。 */
     suspend fun cleanupOldData() {
         maintenance.cleanupOldData()
@@ -76,19 +73,6 @@ class ContentFilterManager(
     /** 清除所有曝光记录（用于测试或重置）。 */
     suspend fun clearAllData() {
         maintenance.clearAllData()
-    }
-
-    /** 重置某个内容身份的曝光记录。 */
-    suspend fun resetContentRecord(targetType: String, targetId: String) {
-        val recordId = ContentViewRecord.generateId(targetType, targetId)
-        val record = ContentViewRecord(
-            id = recordId,
-            targetType = targetType,
-            targetId = targetId,
-            viewCount = 0,
-            hasInteraction = false,
-        )
-        dao.insertOrUpdateViewRecord(record)
     }
 }
 

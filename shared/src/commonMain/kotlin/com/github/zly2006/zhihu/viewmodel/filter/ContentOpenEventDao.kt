@@ -26,10 +26,6 @@ interface ContentOpenEventDao {
     @Insert
     suspend fun insert(event: ContentOpenEvent): Long
 
-    /** 查询某个内容身份是否曾被真正打开过。 */
-    @Query("SELECT EXISTS(SELECT 1 FROM ${ContentOpenEvent.TABLE_NAME} WHERE contentType = :contentType AND contentId = :contentId)")
-    suspend fun hasOpenedContent(contentType: String, contentId: String): Boolean
-
     /** 批量查询已打开过的内容身份键，供详情页导航或内容级已读判断使用。 */
     @Query(
         """

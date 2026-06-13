@@ -28,9 +28,6 @@ interface BlockedFeedRecordDao {
     @Query("SELECT * FROM ${BlockedFeedRecord.TABLE_NAME} ORDER BY blockedTime DESC")
     fun observeAll(): Flow<List<BlockedFeedRecord>>
 
-    @Query("SELECT * FROM ${BlockedFeedRecord.TABLE_NAME} ORDER BY blockedTime DESC LIMIT :limit")
-    suspend fun getRecent(limit: Int = BlockedFeedRecord.MAX_RECORDS): List<BlockedFeedRecord>
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(record: BlockedFeedRecord): Long
 
