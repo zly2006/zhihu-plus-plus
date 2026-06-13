@@ -491,7 +491,7 @@ class DesktopPaginationEnvironment(
             throw IllegalStateException("无法创建导出缓存目录")
         }
 
-        val outputDir = desktopCollectionExportOutputDir()
+        val outputDir = desktopZhihuDownloadsDir("无法创建导出 ZIP 目录")
         val exportHttpClient = accountHttpClient()
 
         var processedCount = 0
@@ -580,17 +580,16 @@ class DesktopPaginationEnvironment(
         val dao = getLocalContentDatabase(databaseFile).contentDao()
         return buildLocalRecommendationEngine(
             dao = dao,
-            fetchFeedArray = { url -> fetchDesktopLocalFeedArray(url) },
+            fetchFeedArray = { url ->
+                store
+                    .signedFetchJson(url)
+                    ?.get("data")
+                    ?.jsonArray ?: JsonArray(emptyList())
+            },
             logWarning = { message -> Log.w("LocalRecommendationEngine", message) },
             logError = { message, throwable -> Log.e("LocalRecommendationEngine", message, throwable) },
         )
     }
-
-    private suspend fun fetchDesktopLocalFeedArray(url: String): JsonArray =
-        store
-            .signedFetchJson(url)
-            ?.get("data")
-            ?.jsonArray ?: JsonArray(emptyList())
 
     private suspend fun postDesktopLastReadTouch(payload: List<List<String>>): Boolean {
         if (store.load().cookies["d_c0"] == null) return false
@@ -736,9 +735,6 @@ private fun desktopCollectionExportCacheDir(): File =
             directory.mkdirs()
         }
     }
-
-private fun desktopCollectionExportOutputDir(): File =
-    desktopZhihuDownloadsDir("无法创建导出 ZIP 目录")
 
 private suspend fun zipDirectoryContents(
     sourceDir: File,
