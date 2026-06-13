@@ -21,8 +21,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -41,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
@@ -81,8 +80,8 @@ fun MiuixBlockedFeedHistoryScreen() {
     val records by dao.observeAll().collectAsState(initial = emptyList())
     var showClearDialog by remember { mutableStateOf(false) }
     val settings = rememberSettingsStore()
-    val blurEnabled = remember { mutableStateOf(settings.getBoolean("blurEnabled", true)) }
-    val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
+    val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
+    val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
 
     Scaffold(
@@ -99,7 +98,7 @@ fun MiuixBlockedFeedHistoryScreen() {
                 actions = {
                     if (records.isNotEmpty()) {
                         IconButton(onClick = { showClearDialog = true }) {
-                            Icon(Icons.Default.Delete, "清空记录", tint = MiuixTheme.colorScheme.onBackground)
+                            Icon(MiuixIconsEmbedded.Delete, "清空记录", tint = MiuixTheme.colorScheme.onBackground)
                         }
                     }
                 },
@@ -176,7 +175,7 @@ fun MiuixBlockedFeedHistoryScreen() {
                                 onClick = { coroutineScope.launch { dao.deleteById(record.id) } },
                                 modifier = Modifier.size(36.dp).testTag("blocked_feed_history_delete_${record.id}"),
                             ) {
-                                Icon(Icons.Default.Delete, "删除", tint = MiuixTheme.colorScheme.onSurfaceSecondary)
+                                Icon(MiuixIconsEmbedded.Delete, "删除", tint = MiuixTheme.colorScheme.onSurfaceSecondary)
                             }
                         }
                     }

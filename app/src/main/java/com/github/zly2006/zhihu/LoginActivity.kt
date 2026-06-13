@@ -79,6 +79,7 @@ import top.yukonga.miuix.kmp.basic.Icon as MiuixIcon
 import top.yukonga.miuix.kmp.basic.IconButton as MiuixIconButton
 import top.yukonga.miuix.kmp.basic.Scaffold as MiuixScaffold
 import top.yukonga.miuix.kmp.basic.Text as MiuixText
+import top.yukonga.miuix.kmp.basic.TextButton as MiuixTextButton
 import top.yukonga.miuix.kmp.basic.TopAppBar as MiuixTopAppBar
 
 private const val LOGIN_MODE_WEB = 0
@@ -118,18 +119,24 @@ class LoginActivity : ComponentActivity() {
                         0 -> MiuixLoginNotice(
                             "我清楚，本应用由开源社区开发和维护，不由知乎官方开发并运营，也不受到知乎官方的承认或支持，使用本应用的一切后果由我本人承担。我可以在 https://www.zhihu.com/app/ 下载官方应用。",
                             step = "1/3",
+                            secondaryButtonText = "下载官方App",
+                            onSecondaryAction = { luoTianYiUrlLauncher(this@LoginActivity, "https://www.zhihu.com/app/".toUri()) },
                             onConfirm = { currentNoticeStep = 1 },
                             onBack = { finish() },
                         )
                         1 -> MiuixLoginNotice(
                             "在使用本应用的过程中，我承诺遵守知乎使用协议 https://www.zhihu.com/term/zhihu-terms 。我保证在使用过程中不侵犯知乎及其他作者的著作权，使用本应用产生的一切输出仅用于个人浏览和备份，不会进行传播等其他影响作者著作权的行为。",
                             step = "2/3",
+                            secondaryButtonText = "查看协议",
+                            onSecondaryAction = { luoTianYiUrlLauncher(this@LoginActivity, "https://www.zhihu.com/term/zhihu-terms".toUri()) },
                             onConfirm = { currentNoticeStep = 2 },
                             onBack = { currentNoticeStep = 0 },
                         )
                         else -> MiuixLoginNotice(
                             "我知晓，本应用可能会收集部分匿名化的使用信息来确定使用人数，我可以在设置中随时关闭此项遥测。",
                             step = "3/3",
+                            secondaryButtonText = "查看设置",
+                            onSecondaryAction = { startActivity(Intent(this@LoginActivity, MainActivity::class.java)) },
                             onConfirm = { currentNoticeStep = 3 },
                             onBack = { currentNoticeStep = 1 },
                         )
@@ -418,6 +425,8 @@ private fun QrLoginPane(activity: LoginActivity) {
 private fun MiuixLoginNotice(
     message: String,
     step: String,
+    secondaryButtonText: String,
+    onSecondaryAction: () -> Unit,
     onConfirm: () -> Unit,
     onBack: () -> Unit,
 ) {
@@ -449,12 +458,22 @@ private fun MiuixLoginNotice(
                     MiuixText(step, color = MiuixTheme.colorScheme.onSurfaceVariantSummary, style = MiuixTheme.textStyles.body2)
                 }
             }
-            MiuixButton(
-                onClick = onConfirm,
+            Column(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
-                colors = MiuixButtonDefaults.buttonColorsPrimary(),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                MiuixText("确认并继续")
+                MiuixTextButton(
+                    text = secondaryButtonText,
+                    onClick = onSecondaryAction,
+                    modifier = Modifier.fillMaxWidth().testTag("login_notice_secondary_action"),
+                )
+                MiuixButton(
+                    onClick = onConfirm,
+                    modifier = Modifier.fillMaxWidth().testTag("login_notice_confirm"),
+                    colors = MiuixButtonDefaults.buttonColorsPrimary(),
+                ) {
+                    MiuixText("确认并继续")
+                }
             }
         }
     }

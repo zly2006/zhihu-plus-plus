@@ -6,8 +6,10 @@
 
 package com.github.zly2006.zhihu.ui.miuix.subscreens
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,25 +23,34 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.SentenceSimilarityTest
+import com.github.zly2006.zhihu.shared.data.ZHIHU_ME_URL
 import com.github.zly2006.zhihu.shared.platform.rememberDeveloperDiagnostics
 import com.github.zly2006.zhihu.shared.platform.rememberPlainTextClipboard
+import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
+import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
+import com.github.zly2006.zhihu.ui.subscreens.rememberDeveloperSettingsRuntime
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -58,12 +69,26 @@ import top.yukonga.miuix.kmp.utils.overScrollVertical
 fun MiuixDeveloperSettingsScreen() {
     val navigator = LocalNavigator.current
     val settings = rememberSettingsStore()
+    val runtime = rememberDeveloperSettingsRuntime()
     val diagnostics = rememberDeveloperDiagnostics()
     val copyPlainText = rememberPlainTextClipboard()
     val userMessages = rememberUserMessageSink()
-    val blurEnabled = remember { mutableStateOf(settings.getBoolean("blurEnabled", true)) }
-    val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
+    val coroutineScope = rememberCoroutineScope()
+    val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
+    val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
+    var developerModeEnabled by remember { mutableStateOf(settings.getBoolean("developer", false)) }
+    var showCookieDialog by remember { mutableStateOf(false) }
+    var showSignedRequestDialog by remember { mutableStateOf(false) }
+    val continuousUsageDurationMs by produceState(
+        initialValue = runtime.runtimeInfo().continuousUsageDurationMs,
+        key1 = runtime,
+    ) {
+        while (true) {
+            value = runtime.runtimeInfo().continuousUsageDurationMs
+            delay(1_000L)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -94,6 +119,17 @@ fun MiuixDeveloperSettingsScreen() {
             item { SmallTitle(text = "行为开关") }
             item {
                 Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
+                    SwitchPreference(
+                        title = "开发者模式",
+                        checked = developerModeEnabled,
+                        onCheckedChange = {
+                            developerModeEnabled = it
+                            settings.putBoolean("developer", it)
+                            if (!it) {
+                                navigator.onNavigateBack()
+                            }
+                        },
+                    )
                     var enablePredictiveBack by remember { mutableStateOf(settings.getBoolean("enable_predictive_back", true)) }
                     SwitchPreference(title = "预测性返回手势", summary = "Android 14+", checked = enablePredictiveBack, onCheckedChange = {
                         enablePredictiveBack = it
@@ -134,9 +170,44 @@ fun MiuixDeveloperSettingsScreen() {
                     ArrowPreference(title = "App 信息", summary = diagnostics.appInfo, onClick = {})
                     ArrowPreference(
                         title = "网络状态",
-                        summary = diagnostics.networkStatus,
+                        summary = runtime.networkStatus(),
                         onClick = {},
                     )
+                    runtime.powerSaveModeText()?.let { powerSaveMode ->
+                        ArrowPreference(
+                            title = "省电模式",
+                            summary = powerSaveMode,
+                            onClick = {},
+                        )
+                    }
+                    ArrowPreference(
+                        title = "连续使用时长",
+                        summary = formatContinuousUsageDuration(continuousUsageDurationMs),
+                        onClick = {},
+                    )
+                    ArrowPreference(
+                        title = "验证登录",
+                        onClick = {
+                            coroutineScope.launch {
+                                if (runtime.verifyLogin(runtime.cookies())) {
+                                    userMessages.showShortMessage("登录成功")
+                                } else {
+                                    userMessages.showShortMessage("登录失败")
+                                }
+                            }
+                        },
+                    )
+                    ArrowPreference(
+                        title = "刷新 Token",
+                        onClick = {
+                            coroutineScope.launch {
+                                runtime.refreshToken()
+                                userMessages.showShortMessage("刷新成功")
+                            }
+                        },
+                    )
+                    ArrowPreference(title = "手动设置 Cookie", onClick = { showCookieDialog = true })
+                    ArrowPreference(title = "签名请求", onClick = { showSignedRequestDialog = true })
                     ArrowPreference(title = "句子相似度测试", summary = "NLP 模型测试", onClick = { navigator.onNavigate(SentenceSimilarityTest) })
                     ArrowPreference(title = "配色方案查看器", summary = "查看 M3 ColorScheme token", onClick = { navigator.onNavigate(Account.DeveloperSettings.ColorScheme) })
 
@@ -148,10 +219,27 @@ fun MiuixDeveloperSettingsScreen() {
                 }
             }
 
+            item { SmallTitle(text = "语音朗读引擎") }
+            item {
+                Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
+                    val runtimeInfo = runtime.runtimeInfo()
+                    DeveloperInfoRow("当前引擎", runtimeInfo.currentTtsEngineLabel)
+                    DeveloperInfoRow(
+                        "引擎状态",
+                        when {
+                            runtimeInfo.ttsState.isSpeaking -> "正在朗读"
+                            runtimeInfo.ttsState != TtsState.Uninitialized -> "就绪"
+                            else -> "未就绪"
+                        },
+                    )
+                    DeveloperInfoRow("引擎列表", runtimeInfo.availableTtsEngineLabels.joinToString().ifEmpty { "无" })
+                }
+            }
+
             // GitHub Token
             item { SmallTitle(text = "GitHub Token") }
             item {
-                var githubToken by remember { mutableStateOf(settings.getString("githubToken", "") ?: "") }
+                var githubToken by remember { mutableStateOf(settings.getString("githubToken", "")) }
                 var showGithubToken by remember { mutableStateOf(false) }
                 Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
                     ArrowPreference(
@@ -178,7 +266,7 @@ fun MiuixDeveloperSettingsScreen() {
             item { SmallTitle(text = "设备标识") }
             item {
                 Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
-                    var zse96Key by remember { mutableStateOf(settings.getString("zse96_key", "") ?: "") }
+                    var zse96Key by remember { mutableStateOf(settings.getString("zse96_key", "")) }
                     var showZse96 by remember { mutableStateOf(false) }
                     ArrowPreference(
                         title = "ZSE-96 签名密钥",
@@ -235,5 +323,168 @@ fun MiuixDeveloperSettingsScreen() {
                 }
             }
         }
+    }
+
+    if (showCookieDialog) {
+        var cookieInputText by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = {
+                showCookieDialog = false
+                cookieInputText = ""
+            },
+            title = { Text("手动设置 Cookie") },
+            text = {
+                Column {
+                    Text("请输入完整 Cookie 字符串，使用 \"; \" 分割各个 cookie 项。")
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = cookieInputText,
+                        onValueChange = { cookieInputText = it },
+                        label = { Text("Cookie 字符串") },
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth(),
+                        maxLines = 5,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val cookies = cookieInputText
+                            .split("; ")
+                            .mapNotNull { item ->
+                                val parts = item.split("=", limit = 2)
+                                if (parts.size == 2) parts[0].trim() to parts[1].trim() else null
+                            }.toMap()
+                        if (cookies.isEmpty()) {
+                            userMessages.showShortMessage("未能解析有效的 Cookie 数据")
+                            return@TextButton
+                        }
+                        runtime.saveCookies(cookies)
+                        coroutineScope.launch {
+                            if (runtime.verifyLogin(cookies)) {
+                                userMessages.showShortMessage("Cookie 设置成功并验证登录状态")
+                            } else {
+                                userMessages.showShortMessage("Cookie 设置成功，但验证登录失败")
+                            }
+                        }
+                        showCookieDialog = false
+                        cookieInputText = ""
+                    },
+                ) { Text("确认设置") }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showCookieDialog = false
+                        cookieInputText = ""
+                    },
+                ) { Text("取消") }
+            },
+        )
+    }
+
+    if (showSignedRequestDialog) {
+        var urlInput by remember { mutableStateOf(ZHIHU_ME_URL) }
+        var responseText by remember { mutableStateOf("") }
+        var isLoading by remember { mutableStateOf(false) }
+        AlertDialog(
+            onDismissRequest = {
+                showSignedRequestDialog = false
+                urlInput = ZHIHU_ME_URL
+                responseText = ""
+                isLoading = false
+            },
+            title = { Text("签名 GET 请求") },
+            text = {
+                Column {
+                    Text("输入需要签名的 GET 请求 URL，将自动添加签名头并发送请求。")
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = urlInput,
+                        onValueChange = { urlInput = it },
+                        label = { Text("请求 URL") },
+                        modifier = Modifier.fillMaxWidth(),
+                        maxLines = 3,
+                        enabled = !isLoading,
+                    )
+                    if (responseText.isNotEmpty()) {
+                        Spacer(Modifier.height(12.dp))
+                        SelectionContainer {
+                            Text(responseText, fontSize = 12.sp)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (urlInput.isBlank() || isLoading) {
+                            userMessages.showShortMessage("请输入有效的 URL")
+                            return@TextButton
+                        }
+                        isLoading = true
+                        coroutineScope.launch {
+                            try {
+                                val body = runtime.signedGet(urlInput)
+                                copyPlainText("Signed Request Response", body)
+                                responseText = body
+                                userMessages.showShortMessage("响应已复制到剪贴板")
+                            } catch (e: Exception) {
+                                responseText = "错误: ${e.message}"
+                                userMessages.showShortMessage("请求失败: ${e.message}")
+                            } finally {
+                                isLoading = false
+                            }
+                        }
+                    },
+                    enabled = !isLoading,
+                ) { Text(if (isLoading) "请求中..." else "发送请求") }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showSignedRequestDialog = false
+                        urlInput = ZHIHU_ME_URL
+                        responseText = ""
+                        isLoading = false
+                    },
+                    enabled = !isLoading,
+                ) { Text("关闭") }
+            },
+        )
+    }
+}
+
+@Composable
+private fun DeveloperInfoRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            label,
+            modifier = Modifier.weight(1f),
+            color = MiuixTheme.colorScheme.onBackground,
+        )
+        Text(
+            value,
+            modifier = Modifier.weight(1.4f).padding(start = 16.dp),
+            color = MiuixTheme.colorScheme.primary,
+            textAlign = TextAlign.End,
+        )
+    }
+}
+
+private fun formatContinuousUsageDuration(durationMs: Long): String {
+    val safeDurationMs = durationMs.coerceAtLeast(0L)
+    val totalSeconds = safeDurationMs / 1_000L
+    val hours = totalSeconds / 3_600L
+    val minutes = (totalSeconds % 3_600L) / 60L
+    val seconds = totalSeconds % 60L
+    return when {
+        hours > 0 -> "${hours}小时${minutes}分${seconds}秒"
+        minutes > 0 -> "${minutes}分${seconds}秒"
+        else -> "${seconds}秒"
     }
 }

@@ -20,9 +20,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -46,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
+import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.util.ContinuousUsageReminderPolicy
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
@@ -85,8 +83,8 @@ fun MiuixSystemAndUpdateSettingsScreen() {
     val settings = rememberSettingsStore()
     val updates = rememberSystemUpdateRuntime()
     val openExternalUrl = rememberExternalUrlOpener()
-    val blurEnabled = remember { mutableStateOf(settings.getBoolean("blurEnabled", true)) }
-    val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
+    val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
+    val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
     val updateState by updates.state.collectAsState()
     val coroutineScope = rememberCoroutineScope()
@@ -261,7 +259,7 @@ fun MiuixSystemAndUpdateSettingsScreen() {
                             trailingIcon = {
                                 IconButton(onClick = { showPassword = !showPassword }) {
                                     Icon(
-                                        if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        if (showPassword) MiuixIconsEmbedded.Hide else MiuixIconsEmbedded.Show,
                                         contentDescription = if (showPassword) "隐藏 Token" else "显示 Token",
                                         tint = MiuixTheme.colorScheme.onSurfaceSecondary,
                                     )

@@ -33,6 +33,7 @@ import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.filter.ContentFilterStats
 import com.github.zly2006.zhihu.shared.filter.rememberContentFilterMaintenance
 import com.github.zly2006.zhihu.shared.platform.SettingsStore
+import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
@@ -70,8 +71,8 @@ fun MiuixContentFilterSettingsScreen(
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()
     val filterMaintenance = rememberContentFilterMaintenance()
-    val blurEnabled = remember { mutableStateOf(settings.getBoolean("blurEnabled", true)) }
-    val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
+    val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
+    val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
     var filterStats by remember { mutableStateOf<ContentFilterStats?>(null) }
     val showStatsSheet = remember { mutableStateOf(false) }

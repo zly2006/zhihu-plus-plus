@@ -67,6 +67,7 @@ import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Navigator
 import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
+import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.ThemeManager
@@ -103,7 +104,7 @@ fun MiuixAboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
     val scrollBehavior = MiuixScrollBehavior()
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()
-    val blurEnabled = settings.getBoolean("blurEnabled", true)
+    val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     var developerClickCount by remember { mutableIntStateOf(0) }
 

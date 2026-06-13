@@ -1282,6 +1282,7 @@ fun AppearanceSettingsScreen(
                 settings.putBoolean("duo3_nav_style", true)
                 settings.putBoolean("duo3_card_appearance", true)
                 settings.putBoolean("duo3_card_layout", true)
+                settings.putBoolean(DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY, true)
                 settings.putBoolean("duo3_article_bar", true)
                 settings.putBoolean("duo3_article_actions", true)
                 settings.putBoolean("showRefreshFab", false)
@@ -1290,13 +1291,14 @@ fun AppearanceSettingsScreen(
                 duo3NavStyle.value = true
                 duo3CardAppearance.value = true
                 duo3CardLayout.value = true
+                duo3CardLargeTitle.value = true
                 duo3ArticleBar.value = true
                 duo3ArticleActions.value = true
                 // 123duo3 改动中会移除 FAB。
                 showRefreshFab.value = false
                 buttonSkipAnswer.value = false
                 val updatedSelection = if (Home.name !in selectedBottomBarItemKeys.value) {
-                    selectedBottomBarItemKeys.value + Account.name
+                    selectedBottomBarItemKeys.value + Home.name
                 } else {
                     selectedBottomBarItemKeys.value
                 }
@@ -1308,12 +1310,14 @@ fun AppearanceSettingsScreen(
                 settings.putBoolean("duo3_nav_style", false)
                 settings.putBoolean("duo3_card_appearance", false)
                 settings.putBoolean("duo3_card_layout", false)
+                settings.putBoolean(DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY, false)
                 settings.putBoolean("duo3_article_bar", false)
                 settings.putBoolean("duo3_article_actions", false)
                 duo3HomeAccount.value = false
                 duo3NavStyle.value = false
                 duo3CardAppearance.value = false
                 duo3CardLayout.value = false
+                duo3CardLargeTitle.value = false
                 duo3ArticleBar.value = false
                 duo3ArticleActions.value = false
                 persistBottomBarSelection(selectedBottomBarItemKeys.value, duo3HomeAccountEnabled = false)
@@ -1368,7 +1372,7 @@ fun AppearanceSettingsScreen(
                         duo3HomeAccount.value = it
                         settings.putBoolean("duo3_home_account", it)
                         val updatedSelection = if (it && Home.name !in selectedBottomBarItemKeys.value) {
-                            selectedBottomBarItemKeys.value + Account.name
+                            selectedBottomBarItemKeys.value + Home.name
                         } else {
                             selectedBottomBarItemKeys.value
                         }

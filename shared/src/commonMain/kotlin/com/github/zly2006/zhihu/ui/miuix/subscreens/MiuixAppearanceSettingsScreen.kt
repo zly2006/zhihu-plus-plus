@@ -7,22 +7,25 @@
 
 package com.github.zly2006.zhihu.ui.miuix.subscreens
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -33,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -60,13 +64,13 @@ import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixColorPickerSheet
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixExpandableArrowPreference
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixWebViewCustomFontSettings
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
 import com.github.zly2006.zhihu.ui.subscreens.START_DESTINATION_PREFERENCE_KEY
-import com.github.zly2006.zhihu.ui.subscreens.WebViewCustomFontSettings
 import com.github.zly2006.zhihu.ui.subscreens.bottomBarItemOrderFromPreference
 import com.github.zly2006.zhihu.ui.subscreens.bottomBarItemOrderPreferenceValue
 import com.github.zly2006.zhihu.ui.subscreens.defaultBottomBarSelectionKeys
@@ -402,7 +406,7 @@ fun MiuixAppearanceSettingsScreen(
                             onExpandedChange = { showWebViewFontSettings.value = !showWebViewFontSettings.value },
                         ) {
                             Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                                WebViewCustomFontSettings(
+                                MiuixWebViewCustomFontSettings(
                                     customFontName = customWebViewFontName.value,
                                     onCustomFontNameChange = { name ->
                                         if (name == null) {
@@ -766,12 +770,22 @@ private fun BottomBarOrderPreference(
         expanded = expanded,
         onExpandedChange = { expanded = !expanded },
     ) {
-        Column {
-            orderedKeys.forEach { key ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp * orderedKeys.size),
+            userScrollEnabled = false,
+        ) {
+            items(
+                items = orderedKeys,
+                key = { it },
+            ) { key ->
                 val label = bottomBarItemLabels[key] ?: key
                 val isChecked = key in selectedKeySet
                 val selectedIndex = selectedKeys.indexOf(key)
                 val isEnabled = key != Account.name
+                val canMoveUp = selectedIndex > 0
+                val canMoveDown = selectedIndex in 0 until selectedKeys.lastIndex
 
                 HorizontalDivider(
                     thickness = 0.5.dp,
@@ -779,19 +793,23 @@ private fun BottomBarOrderPreference(
                 )
                 Row(
                     modifier = Modifier
+                        .animateItem(
+                            fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                            fadeOutSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                            placementSpec = spring(
+                                stiffness = Spring.StiffnessMediumLow,
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                            ),
+                        )
                         .fillMaxWidth()
+                        .height(56.dp)
                         .clickable(enabled = isEnabled) { onToggle(key) }
-                        .padding(horizontal = 24.dp, vertical = 12.dp),
+                        .padding(start = 24.dp, end = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Checkbox(
-                        state = if (isChecked) ToggleableState.On else ToggleableState.Off,
-                        onClick = { if (isEnabled) onToggle(key) },
-                        enabled = isEnabled,
-                    )
                     Text(
                         text = label,
-                        modifier = Modifier.weight(1f).padding(start = 8.dp),
+                        modifier = Modifier.weight(1f),
                         style = MiuixTheme.textStyles.body1,
                         color = if (isEnabled) {
                             MiuixTheme.colorScheme.onBackground
@@ -799,18 +817,40 @@ private fun BottomBarOrderPreference(
                             MiuixTheme.colorScheme.onBackground.copy(alpha = 0.4f)
                         },
                     )
-                    if (isChecked) {
-                        IconButton(
-                            onClick = { onMove(key, -1) },
-                            enabled = selectedIndex > 0,
-                        ) {
-                            Icon(Icons.Default.KeyboardArrowUp, contentDescription = "上移$label")
-                        }
-                        IconButton(
-                            onClick = { onMove(key, 1) },
-                            enabled = selectedIndex in 0 until selectedKeys.lastIndex,
-                        ) {
-                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = "下移$label")
+                    Checkbox(
+                        state = if (isChecked) ToggleableState.On else ToggleableState.Off,
+                        onClick = { if (isEnabled) onToggle(key) },
+                        enabled = isEnabled,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Row(
+                        modifier = Modifier.width(88.dp),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        if (isChecked) {
+                            IconButton(
+                                onClick = { onMove(key, -1) },
+                                enabled = canMoveUp,
+                            ) {
+                                Icon(
+                                    MiuixIconsEmbedded.ChevronForward,
+                                    contentDescription = "上移$label",
+                                    modifier = Modifier.rotate(-90f),
+                                    tint = MiuixTheme.colorScheme.onBackground.copy(alpha = if (canMoveUp) 1f else 0.35f),
+                                )
+                            }
+                            IconButton(
+                                onClick = { onMove(key, 1) },
+                                enabled = canMoveDown,
+                            ) {
+                                Icon(
+                                    MiuixIconsEmbedded.ChevronForward,
+                                    contentDescription = "下移$label",
+                                    modifier = Modifier.rotate(90f),
+                                    tint = MiuixTheme.colorScheme.onBackground.copy(alpha = if (canMoveDown) 1f else 0.35f),
+                                )
+                            }
                         }
                     }
                 }

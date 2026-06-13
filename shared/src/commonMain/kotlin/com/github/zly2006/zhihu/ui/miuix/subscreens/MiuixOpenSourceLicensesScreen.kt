@@ -13,19 +13,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DataObject
-import androidx.compose.material.icons.filled.Memory
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
+import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
@@ -59,42 +55,42 @@ private val fullVariantManualLibraries = listOf(
         "Apache-2.0",
         "用于执行句子嵌入。",
         "https://github.com/shubham0204/Sentence-Embeddings-Android",
-        { Icon(Icons.Default.Memory, null) },
+        { Icon(MiuixIconsEmbedded.Folder, null) },
     ),
     ManualLicenseEntry(
         "huggingface/tokenizers 0.22.2",
         "Apache-2.0",
         "huggingface tokenizer",
         "https://github.com/huggingface/tokenizers",
-        { Icon(Icons.Default.DataObject, null) },
+        { Icon(MiuixIconsEmbedded.File, null) },
     ),
     ManualLicenseEntry(
         "jni 0.21.1",
         "MIT/Apache-2.0",
         "Rust JNI 绑定。",
         "https://github.com/jni-rs/jni-rs",
-        { Icon(Icons.Default.DataObject, null) },
+        { Icon(MiuixIconsEmbedded.File, null) },
     ),
     ManualLicenseEntry(
         "bytes 1.11.1",
         "MIT",
         "Rust bytes 缓冲区库。",
         "https://github.com/tokio-rs/bytes",
-        { Icon(Icons.Default.DataObject, null) },
+        { Icon(MiuixIconsEmbedded.File, null) },
     ),
     ManualLicenseEntry(
         "serde 1.0.228",
         "MIT OR Apache-2.0",
         "Rust 序列化框架。",
         "https://github.com/serde-rs/serde",
-        { Icon(Icons.Default.DataObject, null) },
+        { Icon(MiuixIconsEmbedded.File, null) },
     ),
     ManualLicenseEntry(
         "serde_json 1.0.149",
         "MIT OR Apache-2.0",
         "Rust JSON 序列化实现。",
         "https://github.com/serde-rs/json",
-        { Icon(Icons.Default.DataObject, null) },
+        { Icon(MiuixIconsEmbedded.File, null) },
     ),
 )
 
@@ -105,8 +101,8 @@ fun MiuixOpenSourceLicensesScreen() {
     val settings = rememberSettingsStore()
     val libraries = rememberOpenSourceLicensesLibraries()
     val manualLibraries = if (rememberShowFullVariantLicenses()) fullVariantManualLibraries else emptyList()
-    val blurEnabled = remember { mutableStateOf(settings.getBoolean("blurEnabled", true)) }
-    val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
+    val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
+    val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
     val body2FontSize = MiuixTheme.textStyles.body2.fontSize
     val summaryColor = MiuixTheme.colorScheme.onSurfaceVariantActions
