@@ -49,11 +49,4 @@ class FeedGenerator(
         dao.insertFeed(feed)
         feed
     }
-
-    /**
-     * 根据推荐原因获取理由显示文本
-     */
-    fun getReasonDisplayText(reason: CrawlingReason): String =
-        com.github.zly2006.zhihu.viewmodel.local
-            .getReasonDisplayText(reason)
 }

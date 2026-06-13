@@ -386,5 +386,4 @@ object NLPService {
             emptyList()
         }
     }
-
 }
