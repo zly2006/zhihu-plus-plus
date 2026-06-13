@@ -137,15 +137,16 @@ import com.github.zly2006.zhihu.viewmodel.comment.CommentSortOrder
 import com.github.zly2006.zhihu.viewmodel.comment.RootCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.time.Clock
+import kotlin.time.Instant
 
 typealias CommentModel = CommentItem
 
@@ -1203,8 +1204,8 @@ private fun formatCommentTime(createdTimeSeconds: Long): String {
     val now = Clock.System.now().toLocalDateTime(zone)
     return when {
         dateTime.date == now.date -> dateTime.formatHms()
-        dateTime.year == now.year -> "${dateTime.monthNumber.twoDigitString()}-${dateTime.day.twoDigitString()} ${dateTime.formatHms()}"
-        else -> "${dateTime.year}-${dateTime.monthNumber.twoDigitString()}-${dateTime.day.twoDigitString()} ${dateTime.formatHms()}"
+        dateTime.year == now.year -> "${dateTime.month.number.twoDigitString()}-${dateTime.day.twoDigitString()} ${dateTime.formatHms()}"
+        else -> "${dateTime.year}-${dateTime.month.number.twoDigitString()}-${dateTime.day.twoDigitString()} ${dateTime.formatHms()}"
     }
 }
 

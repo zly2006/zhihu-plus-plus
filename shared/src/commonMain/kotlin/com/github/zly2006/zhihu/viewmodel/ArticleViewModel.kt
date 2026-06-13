@@ -74,6 +74,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
@@ -980,12 +981,12 @@ class ArticleViewModel(
 }
 
 fun formatArticleDateTime(seconds: Long): String {
-    val instant = kotlinx.datetime.Instant.fromEpochSeconds(seconds)
+    val instant = kotlin.time.Instant.fromEpochSeconds(seconds)
     val dateTime = instant.toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
     return buildString {
         append(dateTime.year.toString().padStart(4, '0'))
         append('-')
-        append((dateTime.month.ordinal + 1).twoDigitString())
+        append(dateTime.month.number.twoDigitString())
         append('-')
         append(dateTime.day.twoDigitString())
         append(' ')
