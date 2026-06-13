@@ -28,9 +28,6 @@ interface ContentFilterDao {
     @Query("SELECT * FROM ${ContentViewRecord.TABLE_NAME} WHERE id = :id")
     suspend fun getViewRecord(id: String): ContentViewRecord?
 
-    @Query("SELECT * FROM ${ContentViewRecord.TABLE_NAME} WHERE targetType = :targetType AND targetId = :targetId")
-    suspend fun getViewRecordByTarget(targetType: String, targetId: String): ContentViewRecord?
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrUpdateViewRecord(record: ContentViewRecord)
 
@@ -42,12 +39,6 @@ interface ContentFilterDao {
 
     @Query("SELECT * FROM ${ContentViewRecord.TABLE_NAME} WHERE viewCount > :maxCount")
     suspend fun getFilteredContent(maxCount: Int = ContentViewRecord.MAX_VIEW_COUNT_WITHOUT_INTERACTION): List<ContentViewRecord>
-
-    @Query("SELECT id FROM ${ContentViewRecord.TABLE_NAME} WHERE viewCount > :maxCount AND hasInteraction = 0")
-    suspend fun getFilteredContentIds(maxCount: Int = ContentViewRecord.MAX_VIEW_COUNT_WITHOUT_INTERACTION): List<String>
-
-    @Query("SELECT id FROM ${ContentViewRecord.TABLE_NAME} WHERE id IN (:ids) AND viewCount > :maxCount AND hasInteraction = 0")
-    suspend fun getFilteredContentIdsByIds(ids: List<String>, maxCount: Int = ContentViewRecord.MAX_VIEW_COUNT_WITHOUT_INTERACTION): List<String>
 
     @Query("SELECT id FROM ${ContentViewRecord.TABLE_NAME} WHERE id IN (:ids)")
     suspend fun getViewedContentIdsByIds(ids: List<String>): List<String>

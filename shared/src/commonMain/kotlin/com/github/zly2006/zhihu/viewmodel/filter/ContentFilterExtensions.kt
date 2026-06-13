@@ -31,14 +31,6 @@ import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.platform.SettingsStore
 import kotlinx.serialization.json.Json
 
-suspend fun ContentFilterDatabase.recordContentDisplay(
-    settings: FeedFilterSettings,
-    targetType: String,
-    targetId: String,
-) {
-    createContentExposureRecorder(settings).recordDisplay(targetType, targetId)
-}
-
 suspend fun ContentFilterDatabase.recordContentInteraction(
     settings: FeedFilterSettings,
     targetType: String,
