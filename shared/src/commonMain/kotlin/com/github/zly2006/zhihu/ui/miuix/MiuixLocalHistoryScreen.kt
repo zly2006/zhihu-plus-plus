@@ -18,14 +18,13 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
@@ -52,8 +51,8 @@ fun MiuixLocalHistoryScreen(
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val settings = rememberSettingsStore()
-    val blurEnabled = remember { mutableStateOf(settings.getBoolean("blurEnabled", true)) }
-    val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
+    val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
+    val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
 
     LaunchedEffect(Unit) {

@@ -28,11 +28,18 @@ import java.util.Properties
 @Composable
 actual fun rememberSettingsStore(): SettingsStore = remember { desktopSettingsStore() }
 
+private val desktopSettingsChangeListeners = mutableSetOf<(String) -> Unit>()
+
+private fun notifyDesktopSettingChanged(key: String) {
+    desktopSettingsChangeListeners.toList().forEach { it(key) }
+}
+
 fun desktopSettingsStore(): SettingsStore {
     val settingsFile = desktopZhihuDataFile("settings.properties")
     val properties = Properties()
 
     fun load() {
+        properties.clear()
         if (settingsFile.isFile) settingsFile.inputStream().use(properties::load)
     }
 
@@ -52,6 +59,7 @@ fun desktopSettingsStore(): SettingsStore {
         putBoolean = { key, value ->
             properties.setProperty(key, value.toString())
             save()
+            notifyDesktopSettingChanged(key)
         },
         getString = { key, defaultValue ->
             properties.getProperty(key) ?: defaultValue
@@ -59,6 +67,7 @@ fun desktopSettingsStore(): SettingsStore {
         putString = { key, value ->
             properties.setProperty(key, value)
             save()
+            notifyDesktopSettingChanged(key)
         },
         getStringOrNull = { key ->
             properties.getProperty(key)
@@ -66,6 +75,7 @@ fun desktopSettingsStore(): SettingsStore {
         putStringSet = { key, value ->
             properties.setProperty(key, value.joinToString("\u001F"))
             save()
+            notifyDesktopSettingChanged(key)
         },
         getStringSet = { key, defaultValue ->
             properties
@@ -80,6 +90,7 @@ fun desktopSettingsStore(): SettingsStore {
         putInt = { key, value ->
             properties.setProperty(key, value.toString())
             save()
+            notifyDesktopSettingChanged(key)
         },
         getLong = { key, defaultValue ->
             properties.getProperty(key)?.toLongOrNull() ?: defaultValue
@@ -87,6 +98,7 @@ fun desktopSettingsStore(): SettingsStore {
         putLong = { key, value ->
             properties.setProperty(key, value.toString())
             save()
+            notifyDesktopSettingChanged(key)
         },
         getFloat = { key, defaultValue ->
             properties.getProperty(key)?.toFloatOrNull() ?: defaultValue
@@ -94,10 +106,20 @@ fun desktopSettingsStore(): SettingsStore {
         putFloat = { key, value ->
             properties.setProperty(key, value.toString())
             save()
+            notifyDesktopSettingChanged(key)
         },
         remove = { key ->
             properties.remove(key)
             save()
+            notifyDesktopSettingChanged(key)
+        },
+        observeKeyChanges = { onChanged ->
+            val listener: (String) -> Unit = { key ->
+                load()
+                onChanged(key)
+            }
+            desktopSettingsChangeListeners += listener
+            { desktopSettingsChangeListeners -= listener }
         },
     )
 }

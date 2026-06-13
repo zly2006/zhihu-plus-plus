@@ -36,6 +36,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.loadSearchHistory
 import com.github.zly2006.zhihu.ui.saveSearchHistory
@@ -68,9 +69,9 @@ fun MiuixSearchSuggestions(
     val navigator = LocalNavigator.current
     val settings = rememberSettingsStore()
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
-    val showHistory = remember { settings.getBoolean("showSearchHistory", true) }
-    val showHotSearch = remember { settings.getBoolean("showSearchHotSearch", true) }
-    val historyItems = remember {
+    val showHistory = rememberSettingBoolean("showSearchHistory", true, settings)
+    val showHotSearch = rememberSettingBoolean("showSearchHotSearch", true, settings)
+    val historyItems = remember(showHistory) {
         mutableStateListOf<String>().apply {
             if (showHistory) {
                 addAll(loadSearchHistory(settings))

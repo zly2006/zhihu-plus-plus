@@ -18,8 +18,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.LinearProgressIndicator
@@ -46,6 +44,7 @@ import com.github.zly2006.zhihu.navigation.CollectionAnswerNavigator
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
+import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
@@ -91,8 +90,8 @@ fun MiuixCollectionContentScreen(
     }
     val sharedData = collectionEnvironment.articleAnswerSwitchState()
     val settings = rememberSettingsStore()
-    val blurEnabled = remember { mutableStateOf(settings.getBoolean("blurEnabled", true)) }
-    val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
+    val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
+    val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
 
     LaunchedEffect(testOverrides) {
@@ -125,7 +124,7 @@ fun MiuixCollectionContentScreen(
                             },
                             enabled = screenViewModel.exportDialogState?.isCompleted != false,
                         ) {
-                            Icon(Icons.Filled.MoreVert, "更多", tint = MiuixTheme.colorScheme.onBackground)
+                            Icon(MiuixIconsEmbedded.More, "更多", tint = MiuixTheme.colorScheme.onBackground)
                         }
                         WindowListPopup(
                             show = showActionsMenu,

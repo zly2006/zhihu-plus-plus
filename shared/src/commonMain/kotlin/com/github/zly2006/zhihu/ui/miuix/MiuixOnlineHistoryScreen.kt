@@ -17,8 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -37,6 +35,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.navigation.History
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
+import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
@@ -75,8 +74,8 @@ fun MiuixOnlineHistoryScreen(showBackButton: Boolean = false) {
     var showClearHistoryDialog by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
     val settings = rememberSettingsStore()
-    val blurEnabled = remember { mutableStateOf(settings.getBoolean("blurEnabled", true)) }
-    val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
+    val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
+    val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
 
     LaunchedEffect(Unit) {
@@ -119,7 +118,7 @@ fun MiuixOnlineHistoryScreen(showBackButton: Boolean = false) {
                         Box(modifier = Modifier.padding(end = 4.dp)) {
                             IconButton(onClick = { showActionsMenu = true }) {
                                 Icon(
-                                    Icons.Filled.MoreVert,
+                                    MiuixIconsEmbedded.More,
                                     contentDescription = "更多选项",
                                     tint = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onBackground,
                                 )

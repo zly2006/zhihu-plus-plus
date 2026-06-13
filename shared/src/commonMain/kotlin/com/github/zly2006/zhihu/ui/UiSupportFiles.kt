@@ -582,7 +582,24 @@ class ZhihuMainPreferenceState(
 @Composable
 fun rememberZhihuMainPreferenceState(
     readSnapshot: () -> ZhihuMainPreferenceSnapshot,
-): ZhihuMainPreferenceState = remember { ZhihuMainPreferenceState(readSnapshot) }
+    settings: SettingsStore? = null,
+    observedKeys: Set<String> = emptySet(),
+): ZhihuMainPreferenceState {
+    val state = remember { ZhihuMainPreferenceState(readSnapshot) }
+    DisposableEffect(settings, observedKeys, state) {
+        if (settings == null || observedKeys.isEmpty()) {
+            onDispose {}
+        } else {
+            val unregister = settings.observeKeyChanges { key ->
+                if (key in observedKeys) {
+                    state.reload()
+                }
+            }
+            onDispose(unregister)
+        }
+    }
+    return state
+}
 
 /**
  * 当前平台注入 [ZhihuMain] 的导航回调。

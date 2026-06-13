@@ -24,10 +24,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -48,6 +44,7 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
+import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
@@ -93,7 +90,7 @@ fun MiuixSearchScreen(search: Search) {
     val keyboard = LocalSoftwareKeyboardController.current
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
-    val blurEnabled = settings.getBoolean("blurEnabled", true)
+    val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
 
     var searchText by remember { mutableStateOf(search.query) }
@@ -101,7 +98,7 @@ fun MiuixSearchScreen(search: Search) {
     val isMember = search.isRestrictedToMember
     val memberName = search.restrictedMemberName.ifBlank { "TA" }
     val placeholder = if (isMember) "搜索 $memberName 的创作" else "搜索内容"
-    val showSearchHistory = settings.getBoolean("showSearchHistory", true)
+    val showSearchHistory = rememberSettingBoolean("showSearchHistory", true, settings)
 
     fun submitSearch(query: String) {
         val trimmed = query.trim()
@@ -149,7 +146,7 @@ fun MiuixSearchScreen(search: Search) {
                         .padding(horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.Default.Search, "搜索", tint = MiuixTheme.colorScheme.onSurfaceSecondary, modifier = Modifier.size(18.dp))
+                    Icon(MiuixIconsEmbedded.Search, "搜索", tint = MiuixTheme.colorScheme.onSurfaceSecondary, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     BasicTextField(
                         value = searchText,
@@ -172,7 +169,7 @@ fun MiuixSearchScreen(search: Search) {
                     )
                     if (searchText.isNotEmpty()) {
                         Icon(
-                            Icons.Default.Clear,
+                            MiuixIconsEmbedded.Clear,
                             "清除",
                             tint = MiuixTheme.colorScheme.onSurfaceSecondary,
                             modifier = Modifier.size(18.dp).clickable { searchText = "" },
@@ -180,7 +177,7 @@ fun MiuixSearchScreen(search: Search) {
                     }
                 }
                 IconButton(onClick = { showFilter = true }, enabled = search.query.isNotEmpty()) {
-                    Icon(Icons.Default.FilterList, "筛选", tint = MiuixTheme.colorScheme.onBackground)
+                    Icon(MiuixIconsEmbedded.Filter, "筛选", tint = MiuixTheme.colorScheme.onBackground)
                 }
             }
         },

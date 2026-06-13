@@ -22,9 +22,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -44,6 +41,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
@@ -137,7 +135,7 @@ fun MiuixBlocklistSettingsScreen(
 
     val showFab = selectedTab == 0 || selectedTab == 2 || selectedTab == 3
     val settings = rememberSettingsStore()
-    val blurEnabled = settings.getBoolean("blurEnabled", true)
+    val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
 
@@ -171,7 +169,7 @@ fun MiuixBlocklistSettingsScreen(
                         }
                     },
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "添加")
+                    Icon(MiuixIconsEmbedded.Add, contentDescription = "添加")
                 }
             }
         },
@@ -374,7 +372,7 @@ private fun KeywordsTab(
                                 }
                             },
                         ) {
-                            Icon(Icons.Default.Delete, "删除", tint = MiuixTheme.colorScheme.error)
+                            Icon(MiuixIconsEmbedded.Delete, "删除", tint = MiuixTheme.colorScheme.error)
                         }
                     },
                 )
@@ -481,7 +479,7 @@ private fun UsersTab(
                                 }
                             },
                         ) {
-                            Icon(Icons.Default.Delete, "删除", tint = MiuixTheme.colorScheme.error)
+                            Icon(MiuixIconsEmbedded.Delete, "删除", tint = MiuixTheme.colorScheme.error)
                         }
                     },
                 )
@@ -580,7 +578,7 @@ private fun TopicsTab(
                                     }
                                 },
                             ) {
-                                Icon(Icons.Default.Delete, "删除", tint = MiuixTheme.colorScheme.error)
+                                Icon(MiuixIconsEmbedded.Delete, "删除", tint = MiuixTheme.colorScheme.error)
                             }
                         },
                     )

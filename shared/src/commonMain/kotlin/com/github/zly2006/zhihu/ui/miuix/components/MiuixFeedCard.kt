@@ -28,10 +28,6 @@ import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -62,6 +58,9 @@ import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberIsLiteVariant
+import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
+import com.github.zly2006.zhihu.shared.platform.rememberSettingInt
+import com.github.zly2006.zhihu.shared.platform.rememberSettingString
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.AppTokens
@@ -108,13 +107,13 @@ fun MiuixFeedCard(
     var showMenu by remember { mutableStateOf(false) }
     val coroutineScope = remember { kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main) }
     // 直读（不 remember）：设置项改动后返回信息流即重组生效，避免被 remember 缓存住。
-    val enableSwipeReaction = settings.getBoolean("enableSwipeReaction", false) && onLike != null && onDislike != null
-    val showFeedThumbnail = settings.getBoolean("showFeedThumbnail", true)
-    val feedCardStyle = settings.getString("feedCardStyle", "card")
-    val duo3CardAppearance = settings.getBoolean("duo3_card_appearance", false)
-    val duo3CardLayout = settings.getBoolean("duo3_card_layout", false)
-    val duo3CardLargeTitle = settings.getBoolean(DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY, true)
-    val fontSizePercent = settings.getInt("contentFontSize", 100)
+    val enableSwipeReaction = rememberSettingBoolean("enableSwipeReaction", false, settings) && onLike != null && onDislike != null
+    val showFeedThumbnail = rememberSettingBoolean("showFeedThumbnail", true, settings)
+    val feedCardStyle = rememberSettingString("feedCardStyle", "card", settings)
+    val duo3CardAppearance = rememberSettingBoolean("duo3_card_appearance", false, settings)
+    val duo3CardLayout = rememberSettingBoolean("duo3_card_layout", false, settings)
+    val duo3CardLargeTitle = rememberSettingBoolean(DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY, true, settings)
+    val fontSizePercent = rememberSettingInt("contentFontSize", 100, settings)
     val titleFontSize = (15.sp * fontSizePercent / 100)
 
     val resolvedOnClick: FeedDisplayItem.() -> Unit = onClick ?: {
@@ -257,12 +256,12 @@ fun MiuixFeedCard(
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
                         when (currentAction) {
                             "like" -> {
-                                Icon(Icons.Default.Favorite, "喜欢", tint = Color(0xFF4CAF50), modifier = Modifier.size(32.dp).scale(1f + actionAlpha * 0.3f))
+                                Icon(MiuixIconsEmbedded.FavoritesFill, "喜欢", tint = Color(0xFF4CAF50), modifier = Modifier.size(32.dp).scale(1f + actionAlpha * 0.3f))
                                 Spacer(Modifier.width(12.dp))
                                 Text("向上滑动 - 喜欢", color = Color(0xFF4CAF50), fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.scale(1f + actionAlpha * 0.2f))
                             }
                             "dislike" -> {
-                                Icon(Icons.Default.ThumbDown, "不喜欢", tint = Color(0xFFFF5722), modifier = Modifier.size(32.dp).scale(1f + actionAlpha * 0.3f))
+                                Icon(MiuixIconsEmbedded.Report, "不喜欢", tint = Color(0xFFFF5722), modifier = Modifier.size(32.dp).scale(1f + actionAlpha * 0.3f))
                                 Spacer(Modifier.width(12.dp))
                                 Text("向下滑动 - 不喜欢", color = Color(0xFFFF5722), fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.scale(1f + actionAlpha * 0.2f))
                             }
@@ -456,7 +455,7 @@ private fun MiuixFeedCardMenuBox(
 
     Box {
         IconButton(onClick = { onShowMenuChange(true) }, modifier = Modifier.size(24.dp)) {
-            Icon(Icons.Default.MoreVert, "更多选项", tint = AppTokens.colors.onSurfaceVariant, modifier = Modifier.size(16.dp))
+            Icon(MiuixIconsEmbedded.More, "更多选项", tint = AppTokens.colors.onSurfaceVariant, modifier = Modifier.size(16.dp))
         }
         WindowListPopup(
             show = showMenu,

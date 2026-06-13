@@ -24,9 +24,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -49,6 +46,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.data.decodeQuestionContentDetail
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberZhihuWebUrlOpener
@@ -133,8 +131,8 @@ fun MiuixQuestionScreen(
     val questionContentPreview = remember(questionContent) { questionDetailPreview(questionContent) }
     val shareText = getShareText(question, title)
 
-    val blurEnabled = remember { mutableStateOf(settings.getBoolean("blurEnabled", true)) }
-    val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
+    val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
+    val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = rememberPreferCollapsedExitUntilCollapsedScrollBehavior()
 
     LaunchedEffect(question.questionId, testOverrides) {
@@ -296,7 +294,7 @@ fun MiuixQuestionScreen(
                                         ) {
                                             Row(verticalAlignment = Alignment.CenterVertically) {
                                                 Icon(
-                                                    if (isFollowing) Icons.Filled.Check else Icons.Filled.Add,
+                                                    if (isFollowing) MiuixIconsEmbedded.Ok else MiuixIconsEmbedded.Add,
                                                     contentDescription = null,
                                                     modifier = Modifier.width(18.dp),
                                                     tint = MiuixTheme.colorScheme.onPrimary,

@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.shared.data.HotListFeed
 import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
+import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.ThemeManager
@@ -137,7 +138,7 @@ fun HotListScreen(
                         )
                     }
                 }
-                val showRefreshFab = remember { settings.getBoolean("showRefreshFab", true) }
+                val showRefreshFab = rememberSettingBoolean("showRefreshFab", true, settings)
                 if (showRefreshFab) {
                     DraggableRefreshButton(
                         modifier = Modifier.testTag(HOT_LIST_REFRESH_BUTTON_TAG),
@@ -167,7 +168,7 @@ fun HotListScreen(
                     )
                 }
 
-                val showRefreshFab = remember { settings.getBoolean("showRefreshFab", true) }
+                val showRefreshFab = rememberSettingBoolean("showRefreshFab", true, settings)
                 if (showRefreshFab) {
                     DraggableRefreshButton(
                         modifier = Modifier.testTag(HOT_LIST_REFRESH_BUTTON_TAG),

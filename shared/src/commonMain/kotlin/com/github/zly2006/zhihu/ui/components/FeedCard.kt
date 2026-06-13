@@ -83,6 +83,8 @@ import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
 import com.github.zly2006.zhihu.shared.platform.rememberIsLiteVariant
+import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
+import com.github.zly2006.zhihu.shared.platform.rememberSettingString
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.util.parseHtmlTextWithTheme
@@ -132,12 +134,12 @@ fun FeedCard(
     var showMenu by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     // 直读（不 remember）：设置项改动后返回信息流即重组生效，避免被 remember 缓存住。
-    val enableSwipeReaction = settings.getBoolean("enableSwipeReaction", false) && onLike != null && onDislike != null
-    val showFeedThumbnail = settings.getBoolean("showFeedThumbnail", true)
-    val feedCardStyle = settings.getString("feedCardStyle", "card")
-    val duo3CardAppearance = settings.getBoolean("duo3_card_appearance", false)
-    val duo3CardLayout = settings.getBoolean("duo3_card_layout", false)
-    val duo3CardLargeTitle = settings.getBoolean("duo3_card_large_title", true)
+    val enableSwipeReaction = rememberSettingBoolean("enableSwipeReaction", false, settings) && onLike != null && onDislike != null
+    val showFeedThumbnail = rememberSettingBoolean("showFeedThumbnail", true, settings)
+    val feedCardStyle = rememberSettingString("feedCardStyle", "card", settings)
+    val duo3CardAppearance = rememberSettingBoolean("duo3_card_appearance", false, settings)
+    val duo3CardLayout = rememberSettingBoolean("duo3_card_layout", false, settings)
+    val duo3CardLargeTitle = rememberSettingBoolean("duo3_card_large_title", true, settings)
     val onClick = onClick ?: {
         this.navDestination?.let {
             navigator.onNavigate(it)
@@ -240,10 +242,10 @@ fun FeedCard(
                                     onDragEnd = {
                                         isDragging = false
                                         when {
-                                            abs(offsetX) >= 75f && currentY - startY < -30f && onLike != null -> {
+                                            abs(offsetX) >= 75f && currentY - startY < -30f -> {
                                                 onLike(item)
                                             }
-                                            abs(offsetX) >= 75f && currentY - startY > 30f && onDislike != null -> {
+                                            abs(offsetX) >= 75f && currentY - startY > 30f -> {
                                                 onDislike(item)
                                             }
                                         }

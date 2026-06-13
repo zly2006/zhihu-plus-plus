@@ -26,11 +26,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Circle
-import androidx.compose.material.icons.filled.CopyAll
-import androidx.compose.material.icons.filled.MarkChatRead
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -62,6 +57,7 @@ import com.github.zly2006.zhihu.shared.data.NotificationItem
 import com.github.zly2006.zhihu.shared.data.NotificationTarget
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.notification.rememberNotificationSettingsStore
+import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.formatRelativeTime
@@ -95,8 +91,8 @@ fun MiuixNotificationScreen() {
     val runtime = rememberNotificationScreenRuntime(viewModel, settingsStore)
     val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
-    val blurEnabled = remember { mutableStateOf(settings.getBoolean("blurEnabled", true)) }
-    val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
+    val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
+    val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
     val listState = rememberLazyListState()
     // 区分“下拉刷新”和“首次加载”：下拉刷新时不显示中心转圈，避免与刷新动画叠加
@@ -130,11 +126,11 @@ fun MiuixNotificationScreen() {
                                 userMessages.showMessage("已全部标记为已读")
                             }
                         }) {
-                            Icon(Icons.Default.MarkChatRead, "已读", tint = MiuixTheme.colorScheme.onBackground)
+                            Icon(MiuixIconsEmbedded.Ok, "已读", tint = MiuixTheme.colorScheme.onBackground)
                         }
                     }
                     IconButton(onClick = { navigator.onNavigate(Notification.NotificationSettings) }) {
-                        Icon(Icons.Default.Settings, "设置", tint = MiuixTheme.colorScheme.onBackground)
+                        Icon(MiuixIconsEmbedded.Settings, "设置", tint = MiuixTheme.colorScheme.onBackground)
                     }
                 },
                 scrollBehavior = scrollBehavior,
@@ -234,7 +230,7 @@ fun MiuixNotificationScreen() {
                                 userMessages.showMessage("已复制调试数据")
                             },
                         ) {
-                            Icon(Icons.Default.CopyAll, "复制", tint = MiuixTheme.colorScheme.onBackground)
+                            Icon(MiuixIconsEmbedded.Copy, "复制", tint = MiuixTheme.colorScheme.onBackground)
                         }
                     }
                 }
@@ -290,11 +286,11 @@ private fun NotificationItemCard(
                     )
                 }
                 if (!notification.isRead) {
-                    Icon(
-                        imageVector = Icons.Default.Circle,
-                        contentDescription = "未读",
-                        modifier = Modifier.size(8.dp),
-                        tint = MiuixTheme.colorScheme.primary,
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(MiuixTheme.colorScheme.primary),
                     )
                 }
             }

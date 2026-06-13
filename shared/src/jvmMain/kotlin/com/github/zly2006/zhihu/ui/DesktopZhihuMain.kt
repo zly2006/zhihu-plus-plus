@@ -64,6 +64,17 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.nav.core.rememberNavController
 
+private val desktopMainPreferenceKeys = setOf(
+    "duo3_home_account",
+    BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
+    BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY,
+    "duo3_nav_style",
+    "bottomBarTapScrollToTop",
+    "autoHideBottomBar",
+    "autoHideTopBar",
+    START_DESTINATION_PREFERENCE_KEY,
+)
+
 /**
  * Desktop 平台的 Zhihu++ 主界面入口。
  *
@@ -97,10 +108,6 @@ fun DesktopZhihuMain() {
 
     fun navigate(route: NavDestination) {
         when (route) {
-            is TopLevelDestination -> {
-                mainTabNavigationTarget = route
-                navigateToMainTabs()
-            }
             is Video -> {
                 val top = navController.backStack.lastOrNull()
                 val current = top as? Article ?: top as? Question
@@ -190,33 +197,37 @@ private fun rememberDesktopZhihuMainPreferenceState(): ZhihuMainPreferenceState 
     val allBottomBarItemKeys = remember {
         listOf(Home.name, Follow.name, HotList.name, Daily.name, OnlineHistory.name, MyCollections.name, Account.name)
     }
-    return rememberZhihuMainPreferenceState {
-        val duo3HomeAccount = settings.getBoolean("duo3_home_account", false)
-        val selectedKeys = normalizeBottomBarSelection(
-            settings.getStringSet(
-                BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
-                defaultBottomBarSelectionKeys(duo3HomeAccount),
-            ),
-            duo3HomeAccount,
-            enforceMinimumSelection = true,
-        )
-        val orderedSelectedKeys = bottomBarItemOrderFromPreference(
-            settings.getStringOrNull(BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY),
-            selectedKeys,
-        )
-        ZhihuMainPreferenceSnapshot(
-            duo3HomeAccount = duo3HomeAccount,
-            duo3NavStyle = settings.getBoolean("duo3_nav_style", false),
-            tapToScrollToTopEnabled = settings.getBoolean("bottomBarTapScrollToTop", true),
-            autoHideBottomBar = settings.getBoolean("autoHideBottomBar", false),
-            autoHideTopBar = settings.getBoolean("autoHideTopBar", false),
-            selectedBottomBarItemKeys = orderedSelectedKeys,
-            startDestination = navDestinationFromName(
-                resolveValidStartDestinationKey(
-                    settings.getString(START_DESTINATION_PREFERENCE_KEY, Home.name),
-                    orderedSelectedKeys.ifEmpty { allBottomBarItemKeys.filter { it in selectedKeys } },
+    return rememberZhihuMainPreferenceState(
+        settings = settings,
+        observedKeys = desktopMainPreferenceKeys,
+        readSnapshot = {
+            val duo3HomeAccount = settings.getBoolean("duo3_home_account", false)
+            val selectedKeys = normalizeBottomBarSelection(
+                settings.getStringSet(
+                    BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
+                    defaultBottomBarSelectionKeys(duo3HomeAccount),
                 ),
-            ),
-        )
-    }
+                duo3HomeAccount,
+                enforceMinimumSelection = true,
+            )
+            val orderedSelectedKeys = bottomBarItemOrderFromPreference(
+                settings.getStringOrNull(BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY),
+                selectedKeys,
+            )
+            ZhihuMainPreferenceSnapshot(
+                duo3HomeAccount = duo3HomeAccount,
+                duo3NavStyle = settings.getBoolean("duo3_nav_style", false),
+                tapToScrollToTopEnabled = settings.getBoolean("bottomBarTapScrollToTop", true),
+                autoHideBottomBar = settings.getBoolean("autoHideBottomBar", false),
+                autoHideTopBar = settings.getBoolean("autoHideTopBar", false),
+                selectedBottomBarItemKeys = orderedSelectedKeys,
+                startDestination = navDestinationFromName(
+                    resolveValidStartDestinationKey(
+                        settings.getString(START_DESTINATION_PREFERENCE_KEY, Home.name),
+                        orderedSelectedKeys.ifEmpty { allBottomBarItemKeys.filter { it in selectedKeys } },
+                    ),
+                ),
+            )
+        },
+    )
 }

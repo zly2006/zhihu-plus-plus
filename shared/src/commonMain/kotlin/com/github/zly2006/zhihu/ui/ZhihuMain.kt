@@ -94,6 +94,7 @@ import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.navigation.SentenceSimilarityTest
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
+import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ThemeStyle
@@ -249,10 +250,10 @@ fun ZhihuMain(
 
     val useMiuix = ThemeManager.getThemeStyle() == ThemeStyle.Miuix
     val settings = rememberSettingsStore()
-    val blurEnabled = settings.getBoolean("blurEnabled", true)
+    val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
     val bottomBarBackdrop = rememberMiuixBlurBackdrop(useMiuix && blurEnabled)
     // 设置项“启用预测性返回”：关闭后系统返回仍可用，但不跟手播放预测返回动画（返回设置页后下次重组生效）。
-    val enablePredictiveBack = settings.getBoolean("enable_predictive_back", true)
+    val enablePredictiveBack = rememberSettingBoolean("enable_predictive_back", true, settings)
 
     val allBottomBarItems = listOf(
         Triple(Home, "主页", Icons.Filled.Home),

@@ -28,8 +28,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -55,6 +53,7 @@ import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
+import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.ui.TopLevelReselectAction
@@ -79,6 +78,7 @@ import com.github.zly2006.zhihu.ui.followDynamicItemTag
 import com.github.zly2006.zhihu.ui.followRecommendItemTag
 import com.github.zly2006.zhihu.ui.followingUserItemTag
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.viewmodel.feed.FollowRecommendViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.FollowViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.RecentMomentsViewModel
@@ -113,7 +113,7 @@ fun MiuixFollowScreen(
     val settings = rememberSettingsStore()
     // 模糊开关只在这里用一次：blurEnabled=false 时 backdrop 为 null，
     // 之后 getMiuixAppBarColor()/installerMiuixBlurEffect() 自动按 null 处理，调用处不再判 blurEnabled
-    val blurEnabled = settings.getBoolean("blurEnabled", true)
+    val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
 
@@ -181,7 +181,7 @@ fun MiuixFollowTopLevelPage(
     isActive: Boolean = true,
 ) {
     val settings = rememberSettingsStore()
-    val blurEnabled = settings.getBoolean("blurEnabled", true)
+    val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
     Scaffold(
@@ -320,7 +320,7 @@ fun MiuixFollowRecommendScreen(
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()
     val feedBlockActions = rememberFeedBlockActions()
-    val showRefreshFab = settings.getBoolean("showRefreshFab", true)
+    val showRefreshFab = rememberSettingBoolean("showRefreshFab", true, settings)
     val listState = rememberLazyListState()
     var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
 
@@ -400,7 +400,7 @@ fun MiuixFollowRecommendScreen(
                     if (viewModel.isLoading) {
                         CircularProgressIndicator(modifier = Modifier.size(36.dp))
                     } else {
-                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                        Icon(MiuixIconsEmbedded.Refresh, contentDescription = "刷新")
                     }
                 }
             }
@@ -438,7 +438,7 @@ fun MiuixFollowDynamicScreen(
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()
     val feedBlockActions = rememberFeedBlockActions()
-    val showRefreshFab = settings.getBoolean("showRefreshFab", true)
+    val showRefreshFab = rememberSettingBoolean("showRefreshFab", true, settings)
     val listState = rememberLazyListState()
     var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
 
@@ -521,7 +521,7 @@ fun MiuixFollowDynamicScreen(
                     if (viewModel.isLoading) {
                         CircularProgressIndicator(modifier = Modifier.size(36.dp))
                     } else {
-                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                        Icon(MiuixIconsEmbedded.Refresh, contentDescription = "刷新")
                     }
                 }
             }

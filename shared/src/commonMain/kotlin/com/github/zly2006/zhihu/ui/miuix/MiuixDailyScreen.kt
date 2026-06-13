@@ -26,9 +26,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -61,6 +58,7 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.data.DailyStory
+import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.util.formatDailyDate
 import com.github.zly2006.zhihu.shared.viewmodel.DailyViewModel
@@ -69,6 +67,7 @@ import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.DailyScreenUiState
 import com.github.zly2006.zhihu.ui.components.AutoHideTopBar
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.ui.rememberZhihuHttpClient
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -118,8 +117,8 @@ fun MiuixDailyScreen(
         error = viewModel.error,
     )
     val settings = rememberSettingsStore()
-    val blurEnabled = remember { mutableStateOf(settings.getBoolean("blurEnabled", true)) }
-    val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
+    val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
+    val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
 
     LaunchedEffect(listState, isTestMode, onTestLoadMore) {
@@ -185,7 +184,7 @@ fun MiuixDailyScreen(
                             onClick = { showDatePicker = true },
                             modifier = Modifier.testTag(DAILY_SCREEN_DATE_PICKER_BUTTON_TAG),
                         ) {
-                            Icon(Icons.Filled.DateRange, contentDescription = "选择日期")
+                            Icon(MiuixIconsEmbedded.Months, contentDescription = "选择日期")
                         }
                     },
                     scrollBehavior = scrollBehavior,
@@ -231,7 +230,7 @@ fun MiuixDailyScreen(
                             modifier = Modifier.fillMaxSize().testTag(DAILY_SCREEN_ERROR_TAG),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text(uiState.error ?: "未知错误", color = MiuixTheme.colorScheme.error)
+                            Text(uiState.error, color = MiuixTheme.colorScheme.error)
                         }
                     }
 
@@ -376,7 +375,7 @@ private fun MiuixDailyStoryCard(
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        imageVector = Icons.Filled.AccessTime,
+                        imageVector = MiuixIconsEmbedded.Timer,
                         contentDescription = null,
                         modifier = Modifier.size(14.dp),
                         tint = MiuixTheme.colorScheme.onSurfaceSecondary,

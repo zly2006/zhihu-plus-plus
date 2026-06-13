@@ -78,6 +78,8 @@ import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.notification.rememberNotificationSettingsStore
 import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
 import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
+import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
+import com.github.zly2006.zhihu.shared.platform.rememberSettingString
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.ui.TopLevelReselectAction
@@ -130,15 +132,17 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
     val userMessages = rememberUserMessageSink()
     val openExternalUrl = rememberExternalUrlOpener()
 
-    val duo3HomeAccount = settings.getBoolean("duo3_home_account", false)
-    val showRefreshFab = settings.getBoolean("showRefreshFab", true)
+    val duo3HomeAccount = rememberSettingBoolean("duo3_home_account", false, settings)
+    val showRefreshFab = rememberSettingBoolean("showRefreshFab", true, settings)
+    val recommendationModeKey = rememberSettingString("recommendationMode", RecommendationMode.MIXED.key, settings)
+    val loginForRecommendation = rememberSettingBoolean("loginForRecommendation", true, settings)
     val showUnreadBadge = notificationSettings.getUnreadBadgeEnabled()
     var showAccountBottomSheet by remember { mutableStateOf(false) }
 
     // 获取当前推荐算法设置
     val currentRecommendationMode =
         RecommendationMode.entries.find {
-            it.key == settings.getString("recommendationMode", RecommendationMode.MIXED.key)
+            it.key == recommendationModeKey
         } ?: RecommendationMode.MIXED
 
     val runtime = rememberHomeScreenRuntime(currentRecommendationMode)
@@ -189,9 +193,9 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
     }
 
     // 初始加载
-    LaunchedEffect(currentRecommendationMode, runtime.account.isLoggedIn) {
+    LaunchedEffect(currentRecommendationMode, runtime.account.isLoggedIn, loginForRecommendation) {
         if (!runtime.account.isLoggedIn &&
-            settings.getBoolean("loginForRecommendation", true)
+            loginForRecommendation
         ) {
             runtime.requestLogin()
         } else if (viewModel.displayItems.isEmpty()) {

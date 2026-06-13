@@ -69,6 +69,7 @@ import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
+import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.ui.TopLevelReselectAction
@@ -362,7 +363,7 @@ fun FollowRecommendScreen(
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()
     val feedBlockActions = rememberFeedBlockActions()
-    val showRefreshFab = remember { settings.getBoolean("showRefreshFab", true) }
+    val showRefreshFab = rememberSettingBoolean("showRefreshFab", true, settings)
     val listState = rememberLazyListState()
     var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
 
@@ -472,7 +473,7 @@ fun FollowDynamicScreen(
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()
     val feedBlockActions = rememberFeedBlockActions()
-    val showRefreshFab = remember { settings.getBoolean("showRefreshFab", true) }
+    val showRefreshFab = rememberSettingBoolean("showRefreshFab", true, settings)
     val listState = rememberLazyListState()
     var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
 

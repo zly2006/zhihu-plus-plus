@@ -27,13 +27,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -55,6 +51,7 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
+import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
@@ -108,8 +105,8 @@ fun MiuixPeopleScreen(
     val viewModel = viewModel { PersonViewModel(person) }
     val coroutineScope = rememberCoroutineScope()
     val settings = rememberSettingsStore()
-    val blurEnabled = remember { mutableStateOf(settings.getBoolean("blurEnabled", true)) }
-    val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
+    val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
+    val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
 
     val initialPage = testOverrides?.initialPage ?: 0
@@ -230,7 +227,7 @@ fun MiuixPeopleScreen(
                                                     horizontalArrangement = Arrangement.Center,
                                                     verticalAlignment = Alignment.CenterVertically,
                                                 ) {
-                                                    Icon(Icons.Default.Search, "搜索 TA 的创作", tint = MiuixTheme.colorScheme.primary)
+                                                    Icon(MiuixIconsEmbedded.Search, "搜索 TA 的创作", tint = MiuixTheme.colorScheme.primary)
                                                     Spacer(Modifier.width(6.dp))
                                                     Text("搜索", fontSize = 14.sp, color = MiuixTheme.colorScheme.primary)
                                                 }

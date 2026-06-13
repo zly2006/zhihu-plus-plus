@@ -19,19 +19,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Login
-import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.FilterAlt
-import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -47,12 +34,14 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.AccountSettingsAccountState
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.ui.rememberAccountSettingsPlatformRuntime
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
@@ -80,7 +69,7 @@ fun MiuixAccountSettingScreen(
     val accountState by runtime.accountState
     val data = testAccountData ?: accountState
     val userMessages = rememberUserMessageSink()
-    val blurEnabled = settings.getBoolean("blurEnabled", true)
+    val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
 
@@ -139,14 +128,14 @@ fun MiuixAccountSettingScreen(
                             Text(data.username, style = MiuixTheme.textStyles.title3, modifier = Modifier.weight(1f))
                             // 扫码登录：协助电脑端登录，扫到知乎登录二维码后打开 WebView 确认（与 M3 账号页一致）
                             IconButton(onClick = { runtime.requestQrLoginScan() }) {
-                                Icon(Icons.Default.QrCodeScanner, contentDescription = "扫码登录", tint = MiuixTheme.colorScheme.onSurface)
+                                Icon(MiuixIconsEmbedded.Scan, contentDescription = "扫码登录", tint = MiuixTheme.colorScheme.onSurface)
                             }
                         }
                     } else {
                         ArrowPreference(
                             title = "登录知乎",
                             summary = "登录后体验完整功能",
-                            startAction = { Icon(Icons.AutoMirrored.Filled.Login, null, tint = MiuixTheme.colorScheme.primary) },
+                            startAction = { Icon(MiuixIconsEmbedded.ContactsCircle, null, tint = MiuixTheme.colorScheme.primary) },
                             onClick = { runtime.requestLogin() },
                         )
                     }
@@ -163,23 +152,23 @@ fun MiuixAccountSettingScreen(
                         ArrowPreference(
                             title = "收藏夹",
                             onClick = { data.urlToken?.let { navigator.onNavigate(Collections(it)) } },
-                            startAction = { Icon(Icons.Default.BookmarkBorder, null) },
+                            startAction = { Icon(MiuixIconsEmbedded.Favorites, null) },
                         )
                         ArrowPreference(
                             title = "关注订阅",
                             onClick = { navigator.onNavigate(Person(id = data.id, urlToken = data.urlToken ?: "", name = data.username, jumpTo = "关注订阅")) },
-                            startAction = { Icon(Icons.Default.Groups, null) },
+                            startAction = { Icon(MiuixIconsEmbedded.ContactsBook, null) },
                         )
                         ArrowPreference(
                             title = "通知",
                             summary = if (showUnreadBadge && unreadCount > 0) "$unreadCount 条未读" else null,
                             onClick = { navigator.onNavigate(Notification) },
-                            startAction = { Icon(Icons.Default.Notifications, null) },
+                            startAction = { Icon(MiuixIconsEmbedded.Messages, null) },
                         )
                         ArrowPreference(
                             title = "浏览历史",
                             onClick = { navigator.onNavigate(OnlineHistory) },
-                            startAction = { Icon(Icons.Default.History, null) },
+                            startAction = { Icon(MiuixIconsEmbedded.Recent, null) },
                         )
                     }
                 }
@@ -195,25 +184,25 @@ fun MiuixAccountSettingScreen(
                         title = "外观与阅读体验",
                         summary = "主题颜色、字体大小等",
                         onClick = { navigator.onNavigate(Account.AppearanceSettings()) },
-                        startAction = { Icon(Icons.Default.Palette, null) },
+                        startAction = { Icon(MiuixIconsEmbedded.Theme, null) },
                     )
                     ArrowPreference(
                         title = "推荐系统与内容过滤",
                         summary = "推荐、智能过滤、关键词屏蔽等",
                         onClick = { navigator.onNavigate(Account.RecommendSettings()) },
-                        startAction = { Icon(Icons.Default.FilterAlt, null) },
+                        startAction = { Icon(MiuixIconsEmbedded.Filter, null) },
                     )
                     ArrowPreference(
                         title = "系统与更新",
                         summary = "GitHub、更新设置等",
                         onClick = { navigator.onNavigate(Account.SystemAndUpdateSettings) },
-                        startAction = { Icon(Icons.Default.Settings, null) },
+                        startAction = { Icon(MiuixIconsEmbedded.Settings, null) },
                     )
                     if (settings.getBoolean("developer", false)) {
                         ArrowPreference(
                             title = "开发者选项",
                             onClick = { navigator.onNavigate(Account.DeveloperSettings) },
-                            startAction = { Icon(Icons.Default.Code, null) },
+                            startAction = { Icon(MiuixIconsEmbedded.File, null) },
                         )
                     }
                 }
@@ -229,13 +218,13 @@ fun MiuixAccountSettingScreen(
                         title = "关于",
                         summary = "关于zhihu++",
                         onClick = { navigator.onNavigate(Account.About) },
-                        startAction = { Icon(Icons.Default.Info, null) },
+                        startAction = { Icon(MiuixIconsEmbedded.Info, null) },
                     )
                     ArrowPreference(
                         title = "开源许可",
                         summary = "查看第三方组件许可证",
                         onClick = { navigator.onNavigate(Account.OpenSourceLicenses) },
-                        startAction = { Icon(Icons.Default.Info, null) },
+                        startAction = { Icon(MiuixIconsEmbedded.Info, null) },
                     )
                 }
             }
@@ -249,7 +238,7 @@ fun MiuixAccountSettingScreen(
                         ArrowPreference(
                             title = "退出登录",
                             onClick = { runtime.logout() },
-                            startAction = { Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MiuixTheme.colorScheme.error) },
+                            startAction = { Icon(MiuixIconsEmbedded.Close, null, tint = MiuixTheme.colorScheme.error) },
                         )
                     }
                 }

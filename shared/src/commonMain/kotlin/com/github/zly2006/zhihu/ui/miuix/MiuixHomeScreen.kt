@@ -26,15 +26,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.ArrowCircleUp
-import androidx.compose.material.icons.filled.CopyAll
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.MarkUnreadChatAlt
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -67,6 +58,8 @@ import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.notification.rememberNotificationSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
+import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
+import com.github.zly2006.zhihu.shared.platform.rememberSettingString
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
@@ -84,6 +77,7 @@ import com.github.zly2006.zhihu.ui.components.rememberFeedBlockActions
 import com.github.zly2006.zhihu.ui.loadSearchHistory
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixAccountSheet
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixListLoadingIndicator
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixSearchFilterSheet
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixSearchSuggestions
@@ -143,12 +137,13 @@ fun MiuixHomeScreen(
     val openExternalUrl = rememberExternalUrlOpener()
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
-    val duo3HomeAccount = settings.getBoolean("duo3_home_account", false)
-    val showRefreshFab = settings.getBoolean("showRefreshFab", true)
+    val duo3HomeAccount = rememberSettingBoolean("duo3_home_account", false, settings)
+    val showRefreshFab = rememberSettingBoolean("showRefreshFab", true, settings)
     val showUnreadBadge = notificationSettings.getUnreadBadgeEnabled()
+    val recommendationModeKey = rememberSettingString("recommendationMode", RecommendationMode.MIXED.key, settings)
 
     val currentRecommendationMode = RecommendationMode.entries.find {
-        it.key == settings.getString("recommendationMode", RecommendationMode.MIXED.key)
+        it.key == recommendationModeKey
     } ?: RecommendationMode.MIXED
     val runtime = rememberHomeScreenRuntime(currentRecommendationMode)
     val feedBlockActions = rememberFeedBlockActions()
@@ -236,7 +231,7 @@ fun MiuixHomeScreen(
         }
     }
     // 搜索结果加载完成后切换 SHOW / EMPTY
-    val showSearchHistory = settings.getBoolean("showSearchHistory", true)
+    val showSearchHistory = rememberSettingBoolean("showSearchHistory", true, settings)
     LaunchedEffect(searchViewModel?.displayItems?.size, searchViewModel?.isLoading) {
         val vm = searchViewModel ?: return@LaunchedEffect
         if (!vm.isLoading) {
@@ -255,7 +250,7 @@ fun MiuixHomeScreen(
         }
     }
 
-    val blurEnabled = settings.getBoolean("blurEnabled", true)
+    val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
 
@@ -302,7 +297,7 @@ fun MiuixHomeScreen(
                                                 )
                                             } else {
                                                 Icon(
-                                                    imageVector = Icons.Default.AccountCircle,
+                                                    imageVector = MiuixIconsEmbedded.ContactsCircle,
                                                     contentDescription = "账号",
                                                     tint = MiuixTheme.colorScheme.onBackground,
                                                     modifier = Modifier.size(32.dp),
@@ -310,7 +305,7 @@ fun MiuixHomeScreen(
                                             }
                                         } else {
                                             Icon(
-                                                imageVector = Icons.Default.Notifications,
+                                                imageVector = MiuixIconsEmbedded.Messages,
                                                 contentDescription = "通知",
                                                 tint = MiuixTheme.colorScheme.onBackground,
                                                 modifier = Modifier.size(28.dp),
@@ -411,7 +406,7 @@ fun MiuixHomeScreen(
                                         title = "发现新版本：${availableUpdate?.version}${if (availableUpdate?.isNightly == true) " (Nightly)" else ""}",
                                         leadingIcon = {
                                             androidx.compose.material3.Icon(
-                                                Icons.Default.ArrowCircleUp,
+                                                MiuixIconsEmbedded.Forward,
                                                 contentDescription = null,
                                             )
                                         },
@@ -430,7 +425,7 @@ fun MiuixHomeScreen(
                                         title = "欢迎加入 QQ 群",
                                         leadingIcon = {
                                             androidx.compose.material3.Icon(
-                                                Icons.Default.MarkUnreadChatAlt,
+                                                MiuixIconsEmbedded.Messages,
                                                 contentDescription = null,
                                             )
                                         },
@@ -449,7 +444,7 @@ fun MiuixHomeScreen(
                                         title = "为什么有的内容突然消失了？",
                                         leadingIcon = {
                                             androidx.compose.material3.Icon(
-                                                Icons.AutoMirrored.Filled.HelpOutline,
+                                                MiuixIconsEmbedded.Info,
                                                 contentDescription = null,
                                             )
                                         },
@@ -550,7 +545,7 @@ fun MiuixHomeScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     Icon(
-                                        Icons.Default.FilterList,
+                                        MiuixIconsEmbedded.Filter,
                                         contentDescription = "筛选",
                                         tint = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                                         modifier = Modifier.size(18.dp),
@@ -586,7 +581,7 @@ fun MiuixHomeScreen(
                     },
                     preferenceName = "copyAll",
                 ) {
-                    Icon(Icons.Default.CopyAll, contentDescription = "复制")
+                    Icon(MiuixIconsEmbedded.Copy, contentDescription = "复制")
                 }
             }
             DraggableRefreshButton(
@@ -597,7 +592,7 @@ fun MiuixHomeScreen(
                     top.yukonga.miuix.kmp.basic
                         .CircularProgressIndicator()
                 } else {
-                    Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                    Icon(MiuixIconsEmbedded.Refresh, contentDescription = "刷新")
                 }
             }
         }

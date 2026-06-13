@@ -32,23 +32,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Comment
-import androidx.compose.material.icons.automirrored.filled.VolumeOff
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.DesktopWindows
-import androidx.compose.material.icons.filled.FilterCenterFocus
-import androidx.compose.material.icons.filled.GetApp
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.Summarize
-import androidx.compose.material.icons.filled.ThumbDown
-import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TopAppBarDefaults
@@ -85,6 +68,7 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
+import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
@@ -155,7 +139,7 @@ fun MiuixArticleScreen(
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
     val articleActions = rememberArticleActionsRuntime()
     val settings = rememberSettingsStore()
-    val blurEnabled = settings.getBoolean("blurEnabled", true)
+    val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = rememberPreferCollapsedExitUntilCollapsedScrollBehavior()
     val scrollState = rememberScrollState()
@@ -362,7 +346,7 @@ fun MiuixArticleScreen(
                             IconButton(onClick = {
                                 articleActions.shareArticle(article, viewModel.questionId, viewModel.title, viewModel.authorName)
                             }) {
-                                Icon(Icons.Default.Share, "分享", tint = MiuixTheme.colorScheme.onBackground)
+                                Icon(MiuixIconsEmbedded.Share, "分享", tint = MiuixTheme.colorScheme.onBackground)
                             }
                         },
                         title = { expanded ->
@@ -418,7 +402,7 @@ fun MiuixArticleScreen(
                                     .padding(horizontal = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Icon(Icons.Default.ThumbUp, "赞同", modifier = Modifier.size(18.dp), tint = if (up) Color.White else MiuixTheme.colorScheme.onSurface)
+                                Icon(MiuixIconsEmbedded.Ok, "赞同", modifier = Modifier.size(18.dp), tint = if (up) Color.White else MiuixTheme.colorScheme.onSurface)
                                 Spacer(Modifier.width(4.dp))
                                 Text(viewModel.voteUpCount.toString(), color = if (up) Color.White else MiuixTheme.colorScheme.onSurface, fontSize = 13.sp)
                             }
@@ -431,7 +415,7 @@ fun MiuixArticleScreen(
                                     .padding(horizontal = 12.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Icon(Icons.Default.ThumbDown, "反对", modifier = Modifier.size(18.dp), tint = if (down) Color.White else MiuixTheme.colorScheme.onSurface)
+                                Icon(MiuixIconsEmbedded.Report, "反对", modifier = Modifier.size(18.dp), tint = if (down) Color.White else MiuixTheme.colorScheme.onSurface)
                             }
                         }
 
@@ -447,7 +431,7 @@ fun MiuixArticleScreen(
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
-                                if (viewModel.isFavorited) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                                if (viewModel.isFavorited) MiuixIconsEmbedded.FavoritesFill else MiuixIconsEmbedded.Favorites,
                                 "收藏",
                                 modifier = Modifier.size(20.dp),
                                 tint = if (viewModel.isFavorited) Color.White else MiuixTheme.colorScheme.onSurface,
@@ -466,7 +450,7 @@ fun MiuixArticleScreen(
                                     },
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Icon(Icons.AutoMirrored.Filled.VolumeOff, "停止朗读", modifier = Modifier.size(20.dp), tint = Color.White)
+                                Icon(MiuixIconsEmbedded.VolumeOff, "停止朗读", modifier = Modifier.size(20.dp), tint = Color.White)
                             }
                         }
                         // 评论
@@ -479,7 +463,7 @@ fun MiuixArticleScreen(
                                 .padding(horizontal = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Icon(Icons.AutoMirrored.Filled.Comment, "评论", modifier = Modifier.size(18.dp), tint = MiuixTheme.colorScheme.onSurface)
+                            Icon(MiuixIconsEmbedded.Messages, "评论", modifier = Modifier.size(18.dp), tint = MiuixTheme.colorScheme.onSurface)
                             Spacer(Modifier.width(4.dp))
                             Text(viewModel.commentCount.toString(), color = MiuixTheme.colorScheme.onSurface, fontSize = 13.sp)
                         }
@@ -492,7 +476,7 @@ fun MiuixArticleScreen(
                                 .clickable { showActionsMenu = true },
                             contentAlignment = Alignment.Center,
                         ) {
-                            Icon(Icons.Default.MoreVert, "更多操作", modifier = Modifier.size(20.dp), tint = MiuixTheme.colorScheme.onSurface)
+                            Icon(MiuixIconsEmbedded.More, "更多操作", modifier = Modifier.size(20.dp), tint = MiuixTheme.colorScheme.onSurface)
                         }
                     }
                 }
@@ -702,7 +686,7 @@ fun MiuixArticleScreen(
                 if (navigatingToNextAnswer) {
                     CircularProgressIndicator(modifier = Modifier.size(30.dp))
                 } else {
-                    Icon(Icons.Default.SkipNext, "下一个回答", tint = MiuixTheme.colorScheme.onSurface)
+                    Icon(MiuixIconsEmbedded.Forward, "下一个回答", tint = MiuixTheme.colorScheme.onSurface)
                 }
             }
         }
@@ -741,7 +725,7 @@ fun MiuixArticleScreen(
                     .padding(vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Default.Add, "新建", tint = MiuixTheme.colorScheme.primary)
+                Icon(MiuixIconsEmbedded.Add, "新建", tint = MiuixTheme.colorScheme.primary)
                 Spacer(Modifier.width(12.dp))
                 Text("新建收藏夹", color = MiuixTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
             }
@@ -792,7 +776,7 @@ fun MiuixArticleScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Icon(
-                            if (collection.isFavorited) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                            if (collection.isFavorited) MiuixIconsEmbedded.FavoritesFill else MiuixIconsEmbedded.Favorites,
                             null,
                             tint = MiuixTheme.colorScheme.primary,
                         )
@@ -815,31 +799,31 @@ fun MiuixArticleScreen(
         val ttsEnabled = articleActions.ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
             MiuixActionMenuRow(
-                if (speaking) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                if (speaking) MiuixIconsEmbedded.VolumeOff else MiuixIconsEmbedded.VolumeUp,
                 if (speaking) "停止朗读" else "开始朗读",
                 enabled = ttsEnabled,
             ) {
                 showActionsMenu = false
                 articleActions.toggleSpeech(viewModel.title, viewModel.content)
             }
-            MiuixActionMenuRow(Icons.Default.Summarize, "总结本文") {
+            MiuixActionMenuRow(MiuixIconsEmbedded.Notes, "总结本文") {
                 showActionsMenu = false
                 showSummarySheet = true
                 viewModel.requestAiSummary(environment)
             }
-            MiuixActionMenuRow(Icons.Default.ContentCopy, "复制链接") {
+            MiuixActionMenuRow(MiuixIconsEmbedded.Copy, "复制链接") {
                 showActionsMenu = false
                 articleActions.copyArticleLink(article, viewModel.questionId, viewModel.title, viewModel.authorName)
             }
-            MiuixActionMenuRow(Icons.Default.GetApp, "导出文章 (Markdown、图片、HTML、PDF)") {
+            MiuixActionMenuRow(MiuixIconsEmbedded.FileDownloads, "导出文章 (Markdown、图片、HTML、PDF)") {
                 showActionsMenu = false
                 showExportDialog = true
             }
-            MiuixActionMenuRow(Icons.Default.DesktopWindows, "在电脑中打开") {
+            MiuixActionMenuRow(MiuixIconsEmbedded.ScreenMirroring, "在电脑中打开") {
                 showActionsMenu = false
                 articleActions.openArticleInBrowser(article)
             }
-            MiuixActionMenuRow(Icons.Default.FilterCenterFocus, "沉浸式阅读") {
+            MiuixActionMenuRow(MiuixIconsEmbedded.Show, "沉浸式阅读") {
                 showActionsMenu = false
                 toggleImmersive()
                 userMessages.showMessage("已进入沉浸式，按返回键即可退出")
@@ -974,7 +958,7 @@ private fun MiuixCachedAnswerPreview(cached: CachedAnswerContent) {
                     }
                     Spacer(Modifier.weight(1f))
                     IconButton(onClick = {}) {
-                        Icon(Icons.Default.Share, "分享", tint = MiuixTheme.colorScheme.onBackground)
+                        Icon(MiuixIconsEmbedded.Share, "分享", tint = MiuixTheme.colorScheme.onBackground)
                     }
                 }
                 M3Text(
@@ -1002,7 +986,7 @@ private fun MiuixCachedAnswerPreview(cached: CachedAnswerContent) {
                         .padding(horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.Default.ThumbUp, "赞同", modifier = Modifier.size(18.dp), tint = MiuixTheme.colorScheme.onSurface)
+                    Icon(MiuixIconsEmbedded.Ok, "赞同", modifier = Modifier.size(18.dp), tint = MiuixTheme.colorScheme.onSurface)
                     Spacer(Modifier.width(4.dp))
                     Text(cached.voteUpCount.toString(), color = MiuixTheme.colorScheme.onSurface, fontSize = 13.sp)
                 }
@@ -1015,7 +999,7 @@ private fun MiuixCachedAnswerPreview(cached: CachedAnswerContent) {
                         .padding(horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.AutoMirrored.Filled.Comment, "评论", modifier = Modifier.size(18.dp), tint = MiuixTheme.colorScheme.onSurface)
+                    Icon(MiuixIconsEmbedded.Messages, "评论", modifier = Modifier.size(18.dp), tint = MiuixTheme.colorScheme.onSurface)
                     Spacer(Modifier.width(4.dp))
                     Text(cached.commentCount.toString(), color = MiuixTheme.colorScheme.onSurface, fontSize = 13.sp)
                 }

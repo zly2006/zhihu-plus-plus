@@ -21,11 +21,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Comment
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -52,6 +47,7 @@ import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
+import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.util.formatCompactCount
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
@@ -155,8 +151,8 @@ fun MiuixPinScreen(
     val settings = rememberSettingsStore()
     val shareRuntime = rememberShareDialogRuntime()
     val coroutineScope = rememberCoroutineScope()
-    val blurEnabled = remember { mutableStateOf(settings.getBoolean("blurEnabled", true)) }
-    val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
+    val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
+    val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
 
     var screenState by remember(pin.id, testOverrides) {
@@ -228,7 +224,7 @@ fun MiuixPinScreen(
                                 ?: handleShareAction(pin, settings, shareRuntime) { showShareDialog = true }
                         }
                     }) {
-                        Icon(Icons.Default.Share, "分享", tint = MiuixTheme.colorScheme.onBackground)
+                        Icon(MiuixIconsEmbedded.Share, "分享", tint = MiuixTheme.colorScheme.onBackground)
                     }
                 },
                 scrollBehavior = scrollBehavior,
@@ -394,7 +390,7 @@ private fun MiuixPinContent(
             Button(onClick = onLikeClick, modifier = Modifier.weight(1f).testTag(PIN_SCREEN_LIKE_BUTTON_TAG), colors = ButtonDefaults.buttonColorsPrimary()) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
                     Icon(
-                        if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        if (isLiked) MiuixIconsEmbedded.FavoritesFill else MiuixIconsEmbedded.Favorites,
                         "赞",
                         modifier = Modifier.size(18.dp),
                         tint = MiuixTheme.colorScheme.onPrimary,
@@ -405,7 +401,7 @@ private fun MiuixPinContent(
             }
             Button(onClick = onCommentClick, modifier = Modifier.weight(1f).testTag(PIN_SCREEN_COMMENT_BUTTON_TAG), colors = ButtonDefaults.buttonColorsPrimary()) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                    Icon(Icons.AutoMirrored.Filled.Comment, "评论", modifier = Modifier.size(18.dp), tint = MiuixTheme.colorScheme.onPrimary)
+                    Icon(MiuixIconsEmbedded.Messages, "评论", modifier = Modifier.size(18.dp), tint = MiuixTheme.colorScheme.onPrimary)
                     Spacer(Modifier.width(6.dp))
                     Text("${pin.commentCount}", color = MiuixTheme.colorScheme.onPrimary)
                 }
