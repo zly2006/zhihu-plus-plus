@@ -93,7 +93,13 @@ class FeedDisplayFilterPipelineTest {
 
         assertEquals(listOf("followed"), result.map { it.title })
         assertEquals(0, fetchCount)
-        assertEquals(emptyList(), fixture.database.blockedFeedRecordDao().observeAll().first())
+        assertEquals(
+            emptyList(),
+            fixture.database
+                .blockedFeedRecordDao()
+                .observeAll()
+                .first(),
+        )
         fixture.database.close()
     }
 
@@ -122,7 +128,13 @@ class FeedDisplayFilterPipelineTest {
             ).filter(listOf(paidItem, normalItem, advertisementItem))
 
         assertEquals(listOf("paid", "ad feed"), result.map { it.title })
-        assertEquals(emptyList(), fixture.database.blockedFeedRecordDao().observeAll().first())
+        assertEquals(
+            emptyList(),
+            fixture.database
+                .blockedFeedRecordDao()
+                .observeAll()
+                .first(),
+        )
         fixture.database.close()
     }
 
@@ -137,7 +149,13 @@ class FeedDisplayFilterPipelineTest {
             )
 
         assertEquals(emptyList(), result)
-        assertEquals(emptyList(), fixture.database.blockedFeedRecordDao().observeAll().first())
+        assertEquals(
+            emptyList(),
+            fixture.database
+                .blockedFeedRecordDao()
+                .observeAll()
+                .first(),
+        )
         fixture.database.close()
     }
 

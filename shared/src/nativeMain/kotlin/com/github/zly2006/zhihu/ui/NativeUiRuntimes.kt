@@ -35,7 +35,6 @@ import com.github.zly2006.zhihu.viewmodel.NotificationEnvironment
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
 import io.ktor.client.HttpClient
-import io.ktor.client.request.HttpRequestBuilder
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import platform.Foundation.NSURL
@@ -80,8 +79,6 @@ private class IosNotificationEnvironment(
     override fun logDecodeFailure(tag: String?, item: JsonElement, error: Exception) = Unit // TODO: iOS 解码失败日志
 
     override suspend fun handleFetchFailure(tag: String?, error: Exception) = Unit // TODO: iOS 获取失败处理
-
-    override fun configureSignedRequest(builder: HttpRequestBuilder) = Unit // TODO: iOS 签名请求配置
 }
 
 @Composable
@@ -183,8 +180,7 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
 @Composable
 actual fun rememberZhihuHttpClient(): HttpClient {
     val store = remember { IosAccountStore() }
-    val session = remember { store.load() }
-    return remember(store, session) { store.createHttpClient(session.cookies.toMutableMap()) }
+    return store.httpClient()
 }
 
 internal fun openIosUrl(url: String) {

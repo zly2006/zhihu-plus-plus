@@ -96,20 +96,18 @@ private suspend fun downloadDesktopMathFont(
     store: DesktopAccountStore,
     fontFile: File,
 ) {
-    val account = store.load()
     var lastError: Exception? = null
-    store.createHttpClient(account.cookies).use { client ->
-        for (url in LM_MATH_URLS) {
-            try {
-                val bytes = client.get(url).body<ByteArray>()
-                if (isOpenTypeFont(bytes)) {
-                    fontFile.parentFile.mkdirs()
-                    fontFile.writeBytes(bytes)
-                    return
-                }
-            } catch (e: Exception) {
-                lastError = e
+    val client = store.httpClient()
+    for (url in LM_MATH_URLS) {
+        try {
+            val bytes = client.get(url).body<ByteArray>()
+            if (isOpenTypeFont(bytes)) {
+                fontFile.parentFile.mkdirs()
+                fontFile.writeBytes(bytes)
+                return
             }
+        } catch (e: Exception) {
+            lastError = e
         }
     }
     throw lastError ?: IllegalStateException("Failed to download Latin Modern Math")

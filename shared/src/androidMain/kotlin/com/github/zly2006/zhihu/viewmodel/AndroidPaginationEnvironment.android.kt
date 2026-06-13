@@ -85,7 +85,6 @@ import io.ktor.client.plugins.api.createClientPlugin
 import io.ktor.client.plugins.cache.HttpCache
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.cookies.HttpCookies
-import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.forms.MultiPartFormDataContent
 import io.ktor.client.request.forms.formData
 import io.ktor.client.request.header
@@ -99,7 +98,6 @@ import io.ktor.serialization.kotlinx.json.json
 import io.ktor.util.appendAll
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -126,6 +124,7 @@ open class SharedAndroidPaginationEnvironment(
     private val localRecommendationEngine by lazy { LocalRecommendationEngine(context) }
     private val settingsStore by lazy { androidSettingsStore(context) }
     private val userMessageSink by lazy { androidUserMessageSink(context) }
+    private var lastAuthRefreshMillis = 0L
 
     override fun httpClient(): HttpClient {
         val loginForRecommendation = settingsStore.getBoolean("loginForRecommendation", true)
@@ -162,18 +161,20 @@ open class SharedAndroidPaginationEnvironment(
         }
     }
 
-    override suspend fun fetchJson(
-        url: String,
-        include: String,
-    ): JsonObject? =
-        AccountData.fetchGet(context, url) {
-            url {
-                if (include.isNotEmpty()) {
-                    parameters["include"] = include
-                }
-            }
-            signFetchRequest()
+    override fun authenticatedCookies(): Map<String, String> {
+        val loginForRecommendation = settingsStore.getBoolean("loginForRecommendation", true)
+        return if (allowGuestAccess && !loginForRecommendation) {
+            emptyMap()
+        } else {
+            AccountData.data.cookies
         }
+    }
+
+    override fun lastAuthRefreshMillis(): Long = lastAuthRefreshMillis
+
+    override fun updateLastAuthRefreshMillis(value: Long) {
+        lastAuthRefreshMillis = value
+    }
 
     override suspend fun handleFetchFailure(
         tag: String?,
@@ -197,10 +198,6 @@ open class SharedAndroidPaginationEnvironment(
         context.mainExecutor.execute {
             userMessageSink.showShortMessage("安卓端推荐加载失败: ${error.message}")
         }
-    }
-
-    override fun configureSignedRequest(builder: HttpRequestBuilder) {
-        builder.signFetchRequest()
     }
 
     override fun feedDisplaySettings(): FeedDisplaySettings = FeedDisplaySettings(

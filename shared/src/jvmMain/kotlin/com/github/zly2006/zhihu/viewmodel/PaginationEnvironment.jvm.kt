@@ -20,16 +20,11 @@ package com.github.zly2006.zhihu.viewmodel
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.data.ContentDetailCache
-import com.github.zly2006.zhihu.data.decodeArticleContentDetail
-import com.github.zly2006.zhihu.data.decodePinContentDetail
-import com.github.zly2006.zhihu.data.decodeQuestionContentDetail
+import com.github.zly2006.zhihu.data.getOrFetchContentDetail
 import com.github.zly2006.zhihu.navigation.AnswerNavigatorPage
 import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.navigation.Pin
-import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.answerNavigatorPageFromJson
 import com.github.zly2006.zhihu.navigation.zhihuQuestionFeedsUrl
 import com.github.zly2006.zhihu.shared.data.DataHolder
@@ -48,8 +43,6 @@ import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
 import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDataFile
 import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDownloadsDir
-import com.github.zly2006.zhihu.shared.desktop.signDesktopRequest
-import com.github.zly2006.zhihu.shared.desktop.signedFetchJson
 import com.github.zly2006.zhihu.shared.desktop.signedWithResponse
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
@@ -77,11 +70,9 @@ import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import com.github.zly2006.zhihu.viewmodel.local.buildLocalRecommendationEngine
 import com.github.zly2006.zhihu.viewmodel.local.getLocalContentDatabase
 import io.ktor.client.HttpClient
-import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.forms.MultiPartFormDataContent
 import io.ktor.client.request.forms.formData
 import io.ktor.client.request.header
-import io.ktor.client.request.parameter
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpMethod
@@ -92,7 +83,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import java.awt.image.BufferedImage
 import java.io.File
@@ -149,20 +139,23 @@ class DesktopPaginationEnvironment(
     private val historyStorage = DesktopHistoryStorage()
     private val contentFilterDatabase = getContentFilterDatabase(desktopContentFilterDatabaseFile())
     private val localRecommendationEngine by lazy { createLocalRecommendationEngine() }
+    private var lastAuthRefreshMillis = 0L
 
-    override fun httpClient(): HttpClient = store.createHttpClient(store.load().cookies)
+    override fun httpClient(): HttpClient = store.httpClient()
 
     override fun xsrfToken(): String = store.load().cookies["_xsrf"] ?: ""
 
-    override suspend fun fetchJson(
-        url: String,
-        include: String,
-    ): JsonObject? = store.signedFetchJson(url) {
-        if (include.isNotEmpty()) {
-            parameter("include", include)
-        }
-        method = HttpMethod.Get
+    override fun authenticatedCookies(): Map<String, String> = store.load().cookies
+
+    override fun lastAuthRefreshMillis(): Long = lastAuthRefreshMillis
+
+    override fun updateLastAuthRefreshMillis(value: Long) {
+        lastAuthRefreshMillis = value
     }
+
+    override suspend fun <T> withAuthenticatedClient(
+        block: suspend (client: HttpClient, cookies: Map<String, String>) -> T,
+    ): T = store.withAuthenticatedClient(block)
 
     override suspend fun handleFetchFailure(
         tag: String?,
@@ -180,10 +173,6 @@ class DesktopPaginationEnvironment(
     override fun localHistory(): List<NavDestination> =
         historyStorage.history
 
-    override fun configureSignedRequest(builder: HttpRequestBuilder) {
-        builder.signDesktopRequest(store.load().cookies)
-    }
-
     override fun accountHttpClient(): HttpClient = httpClient()
 
     override fun answerNavigatorRepository(): AnswerNavigatorRepository =
@@ -196,10 +185,7 @@ class DesktopPaginationEnvironment(
                 pageUrl: String?,
             ): AnswerNavigatorPage<Feed> {
                 val url = pageUrl ?: zhihuQuestionFeedsUrl(questionId, limit = 6)
-                val jojo = store.signedFetchJson(url) {
-                    method = HttpMethod.Get
-                    configureSignedRequest(this)
-                } ?: return AnswerNavigatorPage(emptyList(), "")
+                val jojo = fetchJson(url, "") ?: return AnswerNavigatorPage(emptyList(), "")
                 return answerNavigatorPageFromJson(jojo) { data ->
                     data.jsonArray.mapNotNull { element ->
                         runCatching { ZhihuJson.decodeJson<Feed>(element) }.getOrNull()
@@ -208,17 +194,13 @@ class DesktopPaginationEnvironment(
             }
 
             override suspend fun fetchCollectionItems(pageUrl: String): AnswerNavigatorPage<CollectionItem> =
-                store
-                    .signedFetchJson(pageUrl) {
-                        method = HttpMethod.Get
-                        configureSignedRequest(this)
-                    }?.let { jojo ->
-                        answerNavigatorPageFromJson(jojo) { data ->
-                            data.jsonArray.mapNotNull { element ->
-                                runCatching { ZhihuJson.decodeJson<CollectionItem>(element) }.getOrNull()
-                            }
+                fetchJson(pageUrl, "")?.let { jojo ->
+                    answerNavigatorPageFromJson(jojo) { data ->
+                        data.jsonArray.mapNotNull { element ->
+                            runCatching { ZhihuJson.decodeJson<CollectionItem>(element) }.getOrNull()
                         }
-                    } ?: AnswerNavigatorPage(emptyList(), "")
+                    }
+                } ?: AnswerNavigatorPage(emptyList(), "")
 
             override suspend fun getAlreadyOpenedAnswerIds(answerIds: List<Long>): Set<Long> =
                 ContentOpenEventSupport
@@ -317,8 +299,11 @@ class DesktopPaginationEnvironment(
         follow: Boolean,
     ) {
         if (store.load().cookies["d_c0"] == null) return
-        store.signedFetchJson("https://www.zhihu.com/api/v4/questions/$questionId/followers") {
-            method = if (follow) HttpMethod.Post else HttpMethod.Delete
+        val url = "https://www.zhihu.com/api/v4/questions/$questionId/followers"
+        if (follow) {
+            postSigned(url)
+        } else {
+            deleteSigned(url)
         }
     }
 
@@ -342,39 +327,11 @@ class DesktopPaginationEnvironment(
     }
 
     private suspend fun fetchContentDetail(destination: NavDestination): DataHolder.Content? =
-        ContentDetailCache.getOrFetch(destination) { navDestination ->
-            when (navDestination) {
-                is Article -> fetchDesktopArticleContentDetail(navDestination)
-                is Question -> fetchDesktopQuestionContentDetail(navDestination)
-                is Pin -> fetchDesktopPinContentDetail(navDestination)
-                else -> null
+        runCatching {
+            ContentDetailCache.getOrFetchContentDetail(destination) { url ->
+                fetchJson(url, "")
             }
-        }
-
-    private suspend fun fetchDesktopArticleContentDetail(article: Article): DataHolder.Content? = runCatching {
-        val jo = store.signedFetchJson(
-            when (article.type) {
-                ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${article.id}?include=content,topics,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,relationship,ip_info,relationship.vote,author.badge_v2"
-                ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${article.id}?include=content,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,attachment,reaction,ip_info,pagination_info,question.topics,reaction.relation.voting,author.badge_v2"
-            },
-        ) {
-            method = HttpMethod.Get
-        } ?: return@runCatching null
-        decodeArticleContentDetail(article, jo)
-    }.getOrNull()
-
-    private suspend fun fetchDesktopQuestionContentDetail(question: Question): DataHolder.Question? = runCatching {
-        val jo = store.signedFetchJson("https://www.zhihu.com/api/v4/questions/${question.questionId}?include=read_count,visit_count,answer_count,voteup_count,comment_count,follower_count,detail,excerpt,author,relationship.is_following,topics")
-            ?: return@runCatching null
-        decodeQuestionContentDetail(jo)
-    }.getOrNull()
-
-    private suspend fun fetchDesktopPinContentDetail(pin: Pin): DataHolder.Pin? = runCatching {
-        val json = store.signedFetchJson("https://www.zhihu.com/api/v4/pins/${pin.id}") {
-            method = HttpMethod.Get
-        } ?: return@runCatching null
-        decodePinContentDetail(json)
-    }.getOrNull()
+        }.getOrNull()
 
     override suspend fun sendFeedReadStatus(feed: Feed) {
         val payloadItem = zhihuLastReadTouchItem(feed, "read") ?: return
@@ -400,10 +357,9 @@ class DesktopPaginationEnvironment(
         historyStorage.clearAndSave()
         if (store.load().cookies["d_c0"] == null) return
         val bodyText = encodeZhihuClearOnlineHistoryBody()
-        store.signedFetchJson(ZHIHU_CLEAR_ONLINE_HISTORY_URL) {
+        postSigned(ZHIHU_CLEAR_ONLINE_HISTORY_URL) {
             contentType(KtorContentType.Application.Json)
             setBody(bodyText)
-            method = HttpMethod.Post
         }
     }
 
@@ -513,36 +469,32 @@ class DesktopPaginationEnvironment(
 
         emitProgress()
 
-        try {
-            items.forEach { item ->
-                currentTitle = item.content.title
-                try {
-                    val content = item.resolveDesktopExportContent(this)
-                    if (content == null) {
-                        skippedCount++
-                    } else {
-                        val htmlContent = buildSharedOfflineArticleExportHtml(
-                            loadAssetText = ::loadExportAssetText,
-                            content = content,
-                            includeAppAttribution = true,
-                            httpClient = exportHttpClient,
-                            includeImages = includeImages,
-                            useOriginalOnImageFetchFailure = true,
-                        )
-                        File(stagingDir, buildArticleExportFileName(content, "html")).writeText(htmlContent)
-                        successCount++
-                    }
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    failedCount++
-                    Log.e("CollectionContentViewModel", "Failed to export collection item: ${item.content.title}", e)
-                } finally {
-                    processedCount++
-                    emitProgress()
+        items.forEach { item ->
+            currentTitle = item.content.title
+            try {
+                val content = item.resolveDesktopExportContent(this)
+                if (content == null) {
+                    skippedCount++
+                } else {
+                    val htmlContent = buildSharedOfflineArticleExportHtml(
+                        loadAssetText = ::loadExportAssetText,
+                        content = content,
+                        includeAppAttribution = true,
+                        httpClient = exportHttpClient,
+                        includeImages = includeImages,
+                        useOriginalOnImageFetchFailure = true,
+                    )
+                    File(stagingDir, buildArticleExportFileName(content, "html")).writeText(htmlContent)
+                    successCount++
                 }
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                failedCount++
+                Log.e("CollectionContentViewModel", "Failed to export collection item: ${item.content.title}", e)
+            } finally {
+                processedCount++
+                emitProgress()
             }
-        } finally {
-            exportHttpClient.close()
         }
 
         val zipFile = if (successCount > 0) {
@@ -579,8 +531,7 @@ class DesktopPaginationEnvironment(
         return buildLocalRecommendationEngine(
             dao = dao,
             fetchFeedArray = { url ->
-                store
-                    .signedFetchJson(url)
+                fetchJson(url, "")
                     ?.get("data")
                     ?.jsonArray ?: JsonArray(emptyList())
             },

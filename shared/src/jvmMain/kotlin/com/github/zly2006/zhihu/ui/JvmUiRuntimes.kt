@@ -20,7 +20,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,7 +38,6 @@ import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
-import com.github.zly2006.zhihu.shared.data.fetchVerifiedZhihuSession
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopLoginRequests
 import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
@@ -352,11 +350,8 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
         accountState = accountState,
         refreshProfile = {
             val account = store.load()
-            val refreshed = store.createHttpClient(account.cookies).use { client ->
-                fetchVerifiedZhihuSession(client, account.cookies, account.userAgent)
-            }
+            val refreshed = store.refreshAndSaveProfile()
             if (refreshed != null) {
-                store.save(refreshed)
                 accountState.value = refreshed.toAccountSettingsAccountState()
             } else {
                 accountState.value = account.toAccountSettingsAccountState()
@@ -458,12 +453,7 @@ actual fun rememberNotificationScreenRuntime(
 @Composable
 actual fun rememberZhihuHttpClient(): HttpClient {
     val store = remember { DesktopAccountStore() }
-    val session = remember { store.load() }
-    val client = remember(store, session) { store.createHttpClient(session.cookies) }
-    DisposableEffect(client) {
-        onDispose { client.close() }
-    }
-    return client
+    return store.httpClient()
 }
 
 @Composable

@@ -50,7 +50,13 @@ class ForegroundReadFilterPipelineTest {
 
         assertEquals(listOf("item"), result.map { it.title })
         assertEquals(1, fixture.database.contentFilterDao().getRecordCount())
-        assertEquals(emptyList(), fixture.database.blockedFeedRecordDao().observeAll().first())
+        assertEquals(
+            emptyList(),
+            fixture.database
+                .blockedFeedRecordDao()
+                .observeAll()
+                .first(),
+        )
         fixture.database.close()
     }
 
@@ -83,7 +89,13 @@ class ForegroundReadFilterPipelineTest {
         val result = fixture.pipeline().filter(listOf(item))
 
         assertEquals(listOf("followed"), result.map { it.title })
-        assertEquals(emptyList(), fixture.database.blockedFeedRecordDao().observeAll().first())
+        assertEquals(
+            emptyList(),
+            fixture.database
+                .blockedFeedRecordDao()
+                .observeAll()
+                .first(),
+        )
         fixture.database.close()
     }
 

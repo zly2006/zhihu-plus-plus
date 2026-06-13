@@ -19,8 +19,12 @@
 
 package com.github.zly2006.zhihu.shared.util
 
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.header
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
+import kotlinx.serialization.serializer
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.sin
@@ -37,6 +41,25 @@ fun HttpRequestBuilder.signZhihuFetchRequest(
     header("x-zse-96", ZhihuFetchSignature.createZse96Header(zse93, requestUrl, dc0, body))
     header("x-requested-with", "fetch")
 }
+
+fun HttpRequestBuilder.signZhihuFetchRequest(
+    cookies: Map<String, String>,
+    body: String? = null,
+) {
+    val dc0 = cookies["d_c0"]?.takeIf { it.isNotBlank() } ?: return
+    val requestBody = body ?: signedJsonBodyOrNull()
+    signZhihuFetchRequest(dc0 = dc0, body = requestBody)
+}
+
+private fun HttpRequestBuilder.signedJsonBodyOrNull(): String? =
+    if (contentType() == ContentType.Application.Json) {
+        body as? String
+            ?: bodyType?.kotlinType?.let { type ->
+                ZhihuJson.json.encodeToString(serializer(type), body)
+            }
+    } else {
+        null
+    }
 
 object ZhihuFetchSignature {
     fun createZse96Header(
