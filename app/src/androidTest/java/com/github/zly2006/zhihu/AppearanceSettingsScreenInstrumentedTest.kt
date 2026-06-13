@@ -271,7 +271,7 @@ class AppearanceSettingsScreenInstrumentedTest {
             if (doesTagExist(optionTag)) {
                 true
             } else {
-                composeRule.onNodeWithTag(APPEARANCE_SETTINGS_START_DESTINATION_ROW_TAG).performClick()
+                composeRule.onNodeWithTag(APPEARANCE_SETTINGS_START_DESTINATION_TAG, useUnmergedTree = true).performClick()
                 composeRule.waitForIdle()
                 doesTagExist(optionTag)
             }
