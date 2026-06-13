@@ -278,24 +278,26 @@ fun renderArticleExportHtml(
         ?.let { "<div class=\"author-bio\">${escapeArticleExportHtml(it)}</div>" }
         .orEmpty()
 
-    return template.replacePlaceholders(
-        mapOf(
-            "{{title}}" to escapeArticleExportHtml(exportData.title),
-            "{{authorAvatar}}" to authorAvatarHtml,
-            "{{authorName}}" to escapeArticleExportHtml(exportData.authorName),
-            "{{authorBio}}" to authorBioHtml,
-            "{{voteCount}}" to exportData.voteUpCount.toString(),
-            "{{commentCount}}" to exportData.commentCount.toString(),
-            "{{bodyHtml}}" to prepareArticleExportContentHtml(exportData.content),
-            "{{extraSections}}" to extraSectionsHtml,
-            "{{exportedDate}}" to footerPlaceholders.exportedDate,
-            "{{publishedDate}}" to footerPlaceholders.publishedDate,
-            "{{editedDate}}" to footerPlaceholders.editedDate,
-            "{{editedDateClass}}" to footerPlaceholders.editedDateClass,
-            "{{appAttributionClass}}" to footerPlaceholders.appAttributionClass,
-            "{{githubUrl}}" to escapeArticleExportHtml(footerPlaceholders.githubUrl),
-        ),
+    return mapOf(
+        "{{title}}" to escapeArticleExportHtml(exportData.title),
+        "{{authorAvatar}}" to authorAvatarHtml,
+        "{{authorName}}" to escapeArticleExportHtml(exportData.authorName),
+        "{{authorBio}}" to authorBioHtml,
+        "{{voteCount}}" to exportData.voteUpCount.toString(),
+        "{{commentCount}}" to exportData.commentCount.toString(),
+        "{{bodyHtml}}" to prepareArticleExportContentHtml(exportData.content),
+        "{{extraSections}}" to extraSectionsHtml,
+        "{{exportedDate}}" to footerPlaceholders.exportedDate,
+        "{{publishedDate}}" to footerPlaceholders.publishedDate,
+        "{{editedDate}}" to footerPlaceholders.editedDate,
+        "{{editedDateClass}}" to footerPlaceholders.editedDateClass,
+        "{{appAttributionClass}}" to footerPlaceholders.appAttributionClass,
+        "{{githubUrl}}" to escapeArticleExportHtml(footerPlaceholders.githubUrl),
     )
+        .entries
+        .fold(template) { html, entry ->
+            html.replace(entry.key, entry.value)
+        }
 }
 
 @OptIn(ExperimentalEncodingApi::class)
@@ -560,11 +562,6 @@ private fun buildArticleExportFooterPlaceholders(footerData: ArticleExportFooter
         githubUrl = footerData.githubUrl,
     )
 }
-
-private fun String.replacePlaceholders(placeholders: Map<String, String>): String =
-    placeholders.entries.fold(this) { html, entry ->
-        html.replace(entry.key, entry.value)
-    }
 
 private fun extractArticleExportImageUrl(image: Element): String? =
     com.github.zly2006.zhihu.shared.util
