@@ -50,6 +50,7 @@ import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_SCROLL_TAG
+import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_START_DESTINATION_ANCHOR_TAG
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_START_DESTINATION_ROW_TAG
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_START_DESTINATION_TAG
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_USE_WEBVIEW_TAG
@@ -271,7 +272,7 @@ class AppearanceSettingsScreenInstrumentedTest {
             if (doesTagExist(optionTag)) {
                 true
             } else {
-                composeRule.onNodeWithTag(APPEARANCE_SETTINGS_START_DESTINATION_TAG).performClick()
+                composeRule.onNodeWithTag(APPEARANCE_SETTINGS_START_DESTINATION_ANCHOR_TAG).performClick()
                 composeRule.waitForIdle()
                 doesTagExist(optionTag)
             }
