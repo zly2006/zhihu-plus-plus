@@ -154,7 +154,7 @@ fun MiuixFeedCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { resolvedOnClick(item) }
-                    .padding(horizontal = horizontalPadding, vertical = 8.dp),
+                    .padding(horizontal = horizontalPadding, vertical = 12.dp),
             ) {
                 MiuixFeedCardContent(
                     item,

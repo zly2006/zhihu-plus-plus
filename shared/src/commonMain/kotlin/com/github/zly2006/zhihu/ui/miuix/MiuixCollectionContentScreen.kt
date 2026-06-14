@@ -60,6 +60,7 @@ import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.viewmodel.CollectionContentEnvironment
 import com.github.zly2006.zhihu.viewmodel.CollectionContentViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.ListPopupColumn
@@ -224,27 +225,30 @@ fun MiuixCollectionContentScreen(
                 contentPadding = PaddingValues(
                     top = innerPadding.calculateTopPadding() + 8.dp,
                     bottom = innerPadding.calculateBottomPadding(),
-                    start = 12.dp,
-                    end = 12.dp,
                 ),
                 footer = ProgressIndicatorFooter,
                 topContent = {
                     item(0) {
-                        Text(
-                            listOfNotNull(
-                                "${screenViewModel.collection?.itemCount} 条收藏",
-                                "${screenViewModel.collection?.likeCount} 个赞同",
-                                "${screenViewModel.collection?.commentCount} 条评论",
-                                screenViewModel.collection?.updatedTime?.let { "${formatCollectionUpdatedTime(it)} 更新" },
-                            ).fastJoinToString(" · "),
-                        )
+                        // 收藏夹统计单独包一张卡，左右/内边距对齐信息流卡片（horizontal=12, inside=12）。
+                        Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)) {
+                            Card(modifier = Modifier.fillMaxWidth()) {
+                                Text(
+                                    listOfNotNull(
+                                        "${screenViewModel.collection?.itemCount} 条收藏",
+                                        "${screenViewModel.collection?.likeCount} 个赞同",
+                                        "${screenViewModel.collection?.commentCount} 条评论",
+                                        screenViewModel.collection?.updatedTime?.let { "${formatCollectionUpdatedTime(it)} 更新" },
+                                    ).fastJoinToString(" · "),
+                                    modifier = Modifier.padding(12.dp),
+                                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                    fontSize = 13.sp,
+                                )
+                            }
+                        }
                     }
                 },
             ) { item ->
-                MiuixFeedCard(
-                    item = item,
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                ) {
+                MiuixFeedCard(item = item) {
                     val dest = navDestination
                     val repository = collectionEnvironment.answerNavigatorRepository()
                     if (dest is Article && dest.type == ArticleType.Answer && sharedData != null && repository != null) {

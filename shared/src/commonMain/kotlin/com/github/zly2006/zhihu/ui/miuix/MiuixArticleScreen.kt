@@ -105,13 +105,13 @@ import com.github.zly2006.zhihu.ui.VoteUpState
 import com.github.zly2006.zhihu.ui.components.AnswerHorizontalOverscroll
 import com.github.zly2006.zhihu.ui.components.AnswerVerticalOverscroll
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
-import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
-import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
 import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
 import com.github.zly2006.zhihu.ui.components.VotersSheet
 import com.github.zly2006.zhihu.ui.components.ZhihuTwoRowsTopAppBar
 import com.github.zly2006.zhihu.ui.components.rememberPreferCollapsedExitUntilCollapsedScrollBehavior
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixCommentSheet
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixExportSheet
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixSheetActionRow
 import com.github.zly2006.zhihu.ui.rememberArticleActionsRuntime
@@ -143,9 +143,9 @@ import androidx.compose.material3.Text as M3Text
  * 回答/文章页的 miuix 版本。
  *
  * 已迁移：加载、顶栏（标题/返回/分享/更多）、作者卡（含徽章）、正文（RenderMarkdown）、底部操作栏
- * （赞同/反对/收藏/朗读停止/评论）、收藏夹选择、评论（复用 M3 CommentScreenComponent）、
+ * （赞同/反对/收藏/朗读停止/评论）、收藏夹选择、评论（miuix MiuixCommentSheet）、
  * 标题/底栏自动隐藏、答案切换手势（横/竖）、跳转下一答按钮、双击回答动作、置顶日期、阅读进度条、
- * 更多操作菜单（朗读/AI 总结/复制链接/导出/电脑打开）、AI 总结弹层、导出对话框。
+ * 更多操作菜单（朗读/AI 总结/复制链接/导出/电脑打开）、AI 总结弹层、导出弹层（miuix MiuixExportSheet）。
  *
  * 按项目约定，miuix 正文只走 Compose（RenderMarkdown），不接 WebView。
  */
@@ -714,8 +714,7 @@ fun MiuixArticleScreen(
         }
     }
 
-    // 评论区暂未 miuix 化，复用 M3 CommentScreenComponent（与想法/问题页一致）。
-    CommentScreenComponent(showComments = showComments, onDismiss = { showComments = false }, content = article)
+    MiuixCommentSheet(showComments = showComments, onDismiss = { showComments = false }, content = article)
     VotersSheet(
         show = showVoters,
         title = "${formatCompactCount(viewModel.votersTotal)} 人赞同了该回答",
@@ -902,9 +901,9 @@ fun MiuixArticleScreen(
         }
     }
 
-    // 导出对话框（复用 M3 共享组件）。
-    ExportDialogComponent(
-        showDialog = showExportDialog,
+    // 导出弹层（miuix）。
+    MiuixExportSheet(
+        show = showExportDialog,
         onDismiss = { showExportDialog = false },
         onExportHtml = { includeAppAttribution, onComplete -> viewModel.exportToHtml(environment, includeAppAttribution, onComplete) },
         onExportImage = { includeAppAttribution, onComplete -> viewModel.exportToImage(environment, includeAppAttribution, onComplete) },

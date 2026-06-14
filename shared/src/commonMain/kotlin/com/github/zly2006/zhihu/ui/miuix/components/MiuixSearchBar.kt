@@ -72,6 +72,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.currentStateAsState
 import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import top.yukonga.miuix.kmp.basic.Icon
@@ -157,8 +160,12 @@ fun SearchStatus.SearchPager(
     )
     val surfaceColor = colorScheme.surface
 
-    // 展开时按返回先收起搜索（替代 KernelSU 的 navigationevent）
-    PlatformBackHandler(enabled = searchStatus.shouldExpand()) {
+    // 展开时按返回先收起搜索（替代 KernelSU 的 navigationevent）。
+    // 必须叠加 RESUMED 判定：miuix-nav 的转场 opaqueDepth=1，进入详情后首页这层（d=1）仍处于 composition
+    // （只降到 STARTED），若不判生命周期，这个 BackHandler 会在后台仍然 enabled，导致从详情返回时被它
+    // 抢先“收起搜索”，搜索浮层因此丢失（旧 androidx NavHost 会 dispose 被覆盖页，故无此问题）。
+    val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
+    PlatformBackHandler(enabled = searchStatus.shouldExpand() && lifecycleState.isAtLeast(Lifecycle.State.RESUMED)) {
         onSearchStatusChange(searchStatus.copy(searchText = "", current = SearchStatus.Status.COLLAPSING))
     }
 

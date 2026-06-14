@@ -257,7 +257,9 @@ fun MiuixSystemAndUpdateSettingsScreen() {
                             },
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 12.dp),
                             singleLine = true,
+                            // 用占位符代替浮动标签：展开项标题已写「GitHub Token」，浮动标签会在输入框顶部多占一段空白。
                             label = "Token",
+                            useLabelAsPlaceholder = true,
                             visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
                             trailingIcon = {
                                 IconButton(onClick = { showPassword = !showPassword }) {
