@@ -109,7 +109,7 @@ class NotificationViewModel :
                 }
             }
 
-            if (shouldReportNotificationFetchFailure(successfulSourceCount, sourceFailures.size)) {
+            if (successfulSourceCount == 0 && sourceFailures.isNotEmpty()) {
                 environment.handleFetchFailure(this::class.simpleName, sourceFailures.first())
                 return
             }
@@ -145,7 +145,9 @@ class NotificationViewModel :
 
     override fun processResponse(environment: PaginationEnvironment, data: List<NotificationItem>, rawData: JsonArray) {
         debugData.addAll(rawData)
-        val merged = mergeNotificationsByCreateTime(allData, data)
+        val existingIds = allData.mapTo(mutableSetOf()) { it.id }
+        val merged = (allData + data.filter { existingIds.add(it.id) })
+            .sortedByDescending { it.createTime }
         allData.clear()
         allData.addAll(merged)
     }
@@ -193,17 +195,3 @@ class NotificationViewModel :
         }
     }
 }
-
-internal fun mergeNotificationsByCreateTime(
-    existing: List<NotificationItem>,
-    incoming: List<NotificationItem>,
-): List<NotificationItem> {
-    val existingIds = existing.mapTo(mutableSetOf()) { it.id }
-    return (existing + incoming.filter { existingIds.add(it.id) })
-        .sortedByDescending { it.createTime }
-}
-
-internal fun shouldReportNotificationFetchFailure(
-    successfulSourceCount: Int,
-    failureCount: Int,
-): Boolean = successfulSourceCount == 0 && failureCount > 0

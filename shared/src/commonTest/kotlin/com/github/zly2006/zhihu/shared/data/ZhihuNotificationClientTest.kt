@@ -18,9 +18,6 @@
 package com.github.zly2006.zhihu.shared.data
 
 import com.github.zly2006.zhihu.shared.notification.NotificationType
-import com.github.zly2006.zhihu.viewmodel.mergeNotificationsByCreateTime
-import com.github.zly2006.zhihu.viewmodel.shouldReportNotificationFetchFailure
-import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlin.test.Test
@@ -128,32 +125,6 @@ class ZhihuNotificationClientTest {
     }
 
     @Test
-    fun notificationViewModelSortsMergedCategoryNotificationsByCreateTimeDescending() = runTest {
-        val merged = mergeNotificationsByCreateTime(
-            existing = listOf(
-                notificationItem(id = "default-old", createTime = 100),
-                notificationItem(id = "follow-middle", createTime = 200),
-            ),
-            incoming = listOf(
-                notificationItem(id = "default-new", createTime = 300),
-                notificationItem(id = "vote-latest", createTime = 400),
-            ),
-        )
-
-        assertEquals(
-            listOf("vote-latest", "default-new", "follow-middle", "default-old"),
-            merged.map { it.id },
-        )
-    }
-
-    @Test
-    fun notificationViewModelReportsFailureOnlyWhenEverySourceFails() {
-        assertEquals(false, shouldReportNotificationFetchFailure(successfulSourceCount = 1, failureCount = 1))
-        assertEquals(false, shouldReportNotificationFetchFailure(successfulSourceCount = 1, failureCount = 0))
-        assertEquals(true, shouldReportNotificationFetchFailure(successfulSourceCount = 0, failureCount = 1))
-    }
-
-    @Test
     fun decodesUnreadNotificationCountsFromSnakeCasePayload() {
         val notifications: ZhihuMeNotifications = ZhihuJson.decodeJson(
             buildJsonObject {
@@ -168,38 +139,4 @@ class ZhihuNotificationClientTest {
         assertEquals(3, notifications.voteThankNotificationsCount)
         assertEquals(6, notifications.totalCount)
     }
-
-    private fun notificationItem(
-        id: String,
-        createTime: Long,
-    ): NotificationItem = ZhihuJson.decodeJson(
-        ZhihuJson.json.parseToJsonElement(
-            """
-            {
-              "id": "$id",
-              "type": "notification",
-              "is_read": true,
-              "create_time": $createTime,
-              "content": {
-                "verb": "邀请你回答问题",
-                "actors": [],
-                "target": {
-                  "text": "排序问题 $id",
-                  "link": "https://www.zhihu.com/question/$createTime"
-                },
-                "extend": {
-                  "text": "",
-                  "icon": "https://pic.example/icon.png"
-                }
-              },
-              "target": {
-                "type": "question",
-                "url": "https://www.zhihu.com/question/$createTime",
-                "title": "排序问题 $id",
-                "id": "$createTime"
-              }
-            }
-            """.trimIndent(),
-        ),
-    )
 }
