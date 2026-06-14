@@ -29,7 +29,6 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
-import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
@@ -481,47 +480,34 @@ open class SharedAndroidPaginationEnvironment(
     override fun saveHtmlToDownloads(
         displayName: String,
         htmlContent: String,
-    ): String = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-        saveHtmlToDownloadsWithMediaStore(displayName, htmlContent)
-    } else {
-        saveHtmlToLegacyDownloads(displayName, htmlContent)
-    }
-
-    @RequiresApi(Build.VERSION_CODES.Q)
-    private fun saveHtmlToDownloadsWithMediaStore(
-        displayName: String,
-        htmlContent: String,
     ): String {
-        val resolver = context.contentResolver
-        val contentValues = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
-            put(MediaStore.MediaColumns.MIME_TYPE, "text/html")
-            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Zhihu++")
-            put(MediaStore.MediaColumns.IS_PENDING, 1)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val resolver = context.contentResolver
+            val contentValues = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
+                put(MediaStore.MediaColumns.MIME_TYPE, "text/html")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Zhihu++")
+                put(MediaStore.MediaColumns.IS_PENDING, 1)
+            }
+            val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+                ?: throw IllegalStateException("无法创建下载文件")
+
+            return try {
+                resolver.openOutputStream(uri)?.bufferedWriter(Charsets.UTF_8)?.use { writer ->
+                    writer.write(htmlContent)
+                } ?: throw IllegalStateException("无法打开下载文件")
+
+                contentValues.clear()
+                contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
+                resolver.update(uri, contentValues, null, null)
+                "Zhihu++/$displayName"
+            } catch (e: Exception) {
+                resolver.delete(uri, null, null)
+                throw e
+            }
         }
-        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
-            ?: throw IllegalStateException("无法创建下载文件")
 
-        return try {
-            resolver.openOutputStream(uri)?.bufferedWriter(Charsets.UTF_8)?.use { writer ->
-                writer.write(htmlContent)
-            } ?: throw IllegalStateException("无法打开下载文件")
-
-            contentValues.clear()
-            contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
-            resolver.update(uri, contentValues, null, null)
-            "Zhihu++/$displayName"
-        } catch (e: Exception) {
-            resolver.delete(uri, null, null)
-            throw e
-        }
-    }
-
-    @Suppress("DEPRECATION")
-    private fun saveHtmlToLegacyDownloads(
-        displayName: String,
-        htmlContent: String,
-    ): String {
+        @Suppress("DEPRECATION")
         val downloadsDir = File(
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
             "Zhihu++",
@@ -529,7 +515,6 @@ open class SharedAndroidPaginationEnvironment(
         if (!downloadsDir.exists() && !downloadsDir.mkdirs()) {
             throw IllegalStateException("无法创建下载目录")
         }
-
         val file = File(downloadsDir, displayName)
         file.writeText(htmlContent)
         return file.absolutePath
