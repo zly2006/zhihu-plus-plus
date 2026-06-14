@@ -325,7 +325,11 @@ class DesktopPaginationEnvironment(
     ): CollectionHtmlExportResult {
         val timestampMillis = System.currentTimeMillis()
         val stagingDir = File(
-            desktopCollectionExportCacheDir(),
+            desktopZhihuDataFile("collection-html-export-cache").also { directory ->
+                if (!directory.exists()) {
+                    directory.mkdirs()
+                }
+            },
             "collection_html_export_${sanitizeArticleExportFileNamePart(collectionTitle).ifBlank { "collection" }}_$timestampMillis",
         )
         if (stagingDir.exists()) {
@@ -542,13 +546,6 @@ private suspend fun CollectionItem.resolveDesktopExportContent(
     val destination = content.navDestination as? Article ?: return null
     return environment.fetchContentDetail(destination)
 }
-
-private fun desktopCollectionExportCacheDir(): File =
-    desktopZhihuDataFile("collection-html-export-cache").also { directory ->
-        if (!directory.exists()) {
-            directory.mkdirs()
-        }
-    }
 
 private suspend fun zipDirectoryContents(
     sourceDir: File,
