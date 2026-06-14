@@ -19,21 +19,15 @@ package com.github.zly2006.zhihu.viewmodel.feed
 
 import android.content.Context
 import androidx.lifecycle.viewModelScope
-import com.github.zly2006.zhihu.data.ContentDetailCache
-import com.github.zly2006.zhihu.data.getOrFetchContentDetail
+import com.github.zly2006.zhihu.data.asApiEnvironment
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
-import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
 import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
-import com.github.zly2006.zhihu.viewmodel.paginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.getOrFetchContentDetail
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-
-suspend fun BaseFeedViewModel.pullToRefresh(context: Context) {
-    pullToRefresh(paginationEnvironment(context))
-}
 
 /**
  * 处理用户屏蔽（包含数据获取和屏蔽逻辑）
@@ -46,7 +40,7 @@ fun BaseFeedViewModel.handleBlockUser(
     val userMessages = androidUserMessageSink(context)
     viewModelScope.launch {
         val authorInfo = withContext(Dispatchers.IO) {
-            resolveFeedBlockAuthorInfo(feedItem, androidContentDetailProvider(context))
+            resolveFeedBlockAuthorInfo(feedItem, context.asApiEnvironment()::getOrFetchContentDetail)
         }
         if (authorInfo != null) {
             onShowDialog(authorInfo)
@@ -67,7 +61,7 @@ fun BaseFeedViewModel.handleBlockByKeywords(
     val userMessages = androidUserMessageSink(context)
     viewModelScope.launch {
         val contentInfo = withContext(Dispatchers.IO) {
-            resolveFeedKeywordBlockingContent(feedItem, androidContentDetailProvider(context))
+            resolveFeedKeywordBlockingContent(feedItem, context.asApiEnvironment()::getOrFetchContentDetail)
         }
         if (contentInfo != null) {
             onShowDialog(feedItem to contentInfo)
@@ -98,12 +92,3 @@ fun BaseFeedViewModel.handleBlockTopic(
         }
     }
 }
-
-private fun BaseFeedViewModel.androidContentDetailProvider(context: Context): ContentDetailProvider =
-    paginationEnvironment(context).let { environment ->
-        ContentDetailProvider { destination ->
-            ContentDetailCache.getOrFetchContentDetail(destination) { url ->
-                environment.fetchJson(url, "")
-            }
-        }
-    }
