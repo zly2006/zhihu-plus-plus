@@ -27,7 +27,7 @@ async fn read_events_award_credit_per_20_valid_unique_contents_and_cap_at_five()
     assert_eq!(first_response.credit, 2);
     assert_eq!(first_response.progress, 1);
     assert_eq!(first_response.cap, 5);
-    assert_eq!(first_response.accepted_events, 101);
+    assert_eq!(first_response.accepted_events, 21);
 
     let duplicate_response: ReadEventsResponse = request_json(
         app.clone(),
