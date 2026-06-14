@@ -62,8 +62,8 @@ import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.FilterCenterFocus
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.GetApp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
@@ -373,12 +373,14 @@ private fun AigcFlagSheet(
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                text = "每浏览 100 篇内容获得 1 点投票积分，最多保留 ${viewModel.aigcVoteCap} 点。标记会上传当前正文 HTML、编辑时间和投票人身份，服务端按内容版本统计。",
+                text = "每浏览 20 篇内容获得 1 点投票积分，最多保留 ${viewModel.aigcVoteCap} 点。标记会上传当前正文 HTML、编辑时间和投票人身份，服务端按内容版本统计。",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                text = if (viewModel.aigcVoterName.isBlank()) {
+                text = if (!viewModel.aigcVoteAvailable) {
+                    "AIGC 标记未启用"
+                } else if (viewModel.aigcVoterName.isBlank()) {
                     "未登录，无法记名投票"
                 } else {
                     "投票人：${viewModel.aigcVoterName}"
@@ -390,7 +392,7 @@ private fun AigcFlagSheet(
                 text = if (viewModel.aigcCreditBypassAvailable) {
                     "积分 ${viewModel.aigcVoteCredit}/${viewModel.aigcVoteCap} · 当前账号可免积分标记"
                 } else {
-                    "积分 ${viewModel.aigcVoteCredit}/${viewModel.aigcVoteCap} · 进度 ${viewModel.aigcVoteProgress}/100"
+                    "积分 ${viewModel.aigcVoteCredit}/${viewModel.aigcVoteCap} · 进度 ${viewModel.aigcVoteProgress}/20"
                 },
                 style = MaterialTheme.typography.titleMedium,
             )
@@ -437,6 +439,7 @@ private fun AigcFlagSheet(
                 ) {
                     Text(
                         when {
+                            !viewModel.aigcVoteAvailable -> "未启用"
                             viewModel.aigcFlagged -> "已标记"
                             viewModel.aigcVoteLoading -> "提交中"
                             viewModel.aigcVoterName.isBlank() -> "需登录"

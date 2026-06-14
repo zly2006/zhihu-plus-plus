@@ -30,6 +30,7 @@ import kotlinx.serialization.Serializable
 
 private const val MIN_CREDIT_DURATION_MS = 15_000L
 private const val MIN_CREDIT_SCROLL_RATIO = 0.25
+const val AIGC_MARKING_ENABLED_PREFERENCE_KEY = "enableAigcMarking"
 
 class AigcVoteClient(
     private val httpClient: HttpClient,

@@ -9,7 +9,7 @@ use serde_json::json;
 use tower::ServiceExt;
 
 #[tokio::test]
-async fn read_events_award_credit_per_100_valid_unique_contents_and_cap_at_five() {
+async fn read_events_award_credit_per_20_valid_unique_contents_and_cap_at_five() {
     let state = AppState::new_in_memory().expect("state");
     let app = app(state);
 
@@ -19,7 +19,7 @@ async fn read_events_award_credit_per_100_valid_unique_contents_and_cap_at_five(
         "/v1/read-events:batch",
         &ReadEventsRequest {
             client_id: "client-a".to_string(),
-            events: build_read_events(101, 30_000, 0.75),
+            events: build_read_events(21, 30_000, 0.75),
         },
     )
     .await;
@@ -35,7 +35,7 @@ async fn read_events_award_credit_per_100_valid_unique_contents_and_cap_at_five(
         "/v1/read-events:batch",
         &ReadEventsRequest {
             client_id: "client-a".to_string(),
-            events: build_read_events(101, 30_000, 0.75),
+            events: build_read_events(21, 30_000, 0.75),
         },
     )
     .await;
@@ -50,7 +50,7 @@ async fn read_events_award_credit_per_100_valid_unique_contents_and_cap_at_five(
         "/v1/read-events:batch",
         &ReadEventsRequest {
             client_id: "client-a".to_string(),
-            events: build_read_events_from(101, 600, 30_000, 0.75),
+            events: build_read_events_from(21, 120, 30_000, 0.75),
         },
     )
     .await;
@@ -125,7 +125,7 @@ async fn aigc_flag_uploads_content_snapshot_consumes_credit_and_is_idempotent() 
         "/v1/read-events:batch",
         &ReadEventsRequest {
             client_id: "client-a".to_string(),
-            events: build_read_events(100, 30_000, 0.75),
+            events: build_read_events(20, 30_000, 0.75),
         },
     )
     .await;
@@ -190,7 +190,7 @@ async fn different_named_voters_on_same_client_can_flag_the_same_content() {
         "/v1/read-events:batch",
         &ReadEventsRequest {
             client_id: "shared-client".to_string(),
-            events: build_read_events(200, 30_000, 0.75),
+            events: build_read_events(40, 30_000, 0.75),
         },
     )
     .await;

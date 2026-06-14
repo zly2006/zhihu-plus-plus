@@ -45,6 +45,7 @@ import com.github.zly2006.zhihu.data.getOrFetch
 import com.github.zly2006.zhihu.navigation.AndroidAnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.shared.aigc.AIGC_MARKING_ENABLED_PREFERENCE_KEY
 import com.github.zly2006.zhihu.shared.aigc.AigcVoteClient
 import com.github.zly2006.zhihu.shared.aigc.AigcVoteVoter
 import com.github.zly2006.zhihu.shared.data.DataHolder
@@ -182,7 +183,12 @@ open class SharedAndroidPaginationEnvironment(
         }
     }
 
-    override fun aigcVoteClient(): AigcVoteClient = aigcVoteClient
+    override fun aigcVoteClient(): AigcVoteClient? =
+        if (settingsStore.getBoolean(AIGC_MARKING_ENABLED_PREFERENCE_KEY, false)) {
+            aigcVoteClient
+        } else {
+            null
+        }
 
     override fun aigcVoteVoter(): AigcVoteVoter? =
         AccountData.data.self?.let { self ->

@@ -19,7 +19,7 @@ use sqlx::{PgPool, Postgres, Row, Transaction};
 
 const CREDIT_CAP: i64 = 5;
 const INITIAL_CREDIT: i64 = 1;
-const READS_PER_CREDIT: i64 = 100;
+const READS_PER_CREDIT: i64 = 20;
 const MIN_READ_DURATION_MS: i64 = 15_000;
 const MIN_READ_SCROLL_RATIO: f64 = 0.25;
 const MIN_FLAG_DURATION_MS: i64 = 15_000;
