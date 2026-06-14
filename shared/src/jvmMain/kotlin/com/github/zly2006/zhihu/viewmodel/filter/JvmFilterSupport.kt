@@ -50,16 +50,12 @@ private fun extractDesktopSemanticTokens(text: String): List<String> =
         .filter { it.length >= 2 }
         .toList()
 
-@Composable
-actual fun rememberBlockedFeedRecordDao(): BlockedFeedRecordDao =
-    remember { getContentFilterDatabase(desktopContentFilterDatabaseFile()).blockedFeedRecordDao() }
-
 fun desktopContentFilterDatabaseFile(): File =
     desktopZhihuDataFile("content-filter.db")
 
 @Composable
-actual fun rememberBlocklistManager(): BlocklistManager = remember {
-    getContentFilterDatabase(desktopContentFilterDatabaseFile().also { it.parentFile?.mkdirs() }).createBlocklistManager()
+actual fun getContentFilterDatabase(): ContentFilterDatabase = remember {
+    getContentFilterDatabase(desktopContentFilterDatabaseFile().also { it.parentFile?.mkdirs() })
 }
 
 fun getContentFilterDatabase(databaseFile: File): ContentFilterDatabase =

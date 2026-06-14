@@ -58,7 +58,8 @@ import com.github.zly2006.zhihu.ui.QuestionScreenTestOverrides
 import com.github.zly2006.zhihu.ui.QuestionScreenUiState
 import com.github.zly2006.zhihu.ui.questionFeedItemTag
 import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.filter.getBlocklistManager
+import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.paginationEnvironment
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonArray
@@ -79,12 +80,12 @@ class QuestionScreenInstrumentedTest {
     @Before
     fun setUp() = runBlocking {
         composeRule.resetAppPreferences()
-        getBlocklistManager(composeRule.activity).clearAllBlockedUsers()
+        getContentFilterDatabase(composeRule.activity).createBlocklistManager().clearAllBlockedUsers()
     }
 
     @After
     fun tearDown() = runBlocking {
-        getBlocklistManager(composeRule.activity).clearAllBlockedUsers()
+        getContentFilterDatabase(composeRule.activity).createBlocklistManager().clearAllBlockedUsers()
     }
 
     @Test
@@ -207,7 +208,8 @@ class QuestionScreenInstrumentedTest {
          */
         val viewModel = TestableQuestionFeedViewModel(123456789L)
         runBlocking {
-            getBlocklistManager(composeRule.activity)
+            getContentFilterDatabase(composeRule.activity)
+                .createBlocklistManager()
                 .addBlockedUser("blocked-answer-author", "被屏蔽回答作者")
             viewModel.processForTest(
                 composeRule.activity,

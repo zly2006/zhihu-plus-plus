@@ -33,10 +33,10 @@ import com.github.zly2006.zhihu.viewmodel.feed.resolveFeedBlockAuthorInfo
 import com.github.zly2006.zhihu.viewmodel.feed.resolveFeedKeywordBlockingContent
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeywordService
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
+import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
 import com.github.zly2006.zhihu.viewmodel.filter.desktopKeywordSemanticMatcher
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
-import com.github.zly2006.zhihu.viewmodel.filter.rememberBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.getOrFetchContentDetail
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -46,7 +46,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 actual fun rememberFeedBlockActions(): FeedBlockActions {
-    val blocklistManager = rememberBlocklistManager()
+    val blocklistManager = getContentFilterDatabase().createBlocklistManager()
     val userMessages = rememberUserMessageSink()
     val store = remember { DesktopAccountStore() }
     val contentDetailProvider = remember(store) { desktopFeedBlockContentDetailProvider(store) }

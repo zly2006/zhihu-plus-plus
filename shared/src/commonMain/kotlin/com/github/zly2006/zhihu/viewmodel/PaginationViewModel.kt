@@ -28,7 +28,6 @@ import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.data.fetchZhihuContentDetail
 import com.github.zly2006.zhihu.data.getOrFetchContentDetail
 import com.github.zly2006.zhihu.navigation.AnswerNavigator
-import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.data.DataHolder
@@ -462,8 +461,6 @@ interface ArticleExportContentEnvironment :
     ArticleContentEnvironment
 
 interface ArticleNavigationEnvironment {
-    fun answerNavigatorRepository(): AnswerNavigatorRepository? = null
-
     fun articleAnswerSwitchState(): ArticleAnswerSwitchState? = null
 }
 

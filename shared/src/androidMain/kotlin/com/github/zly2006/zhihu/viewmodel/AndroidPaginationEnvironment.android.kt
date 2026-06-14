@@ -41,8 +41,6 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.data.HistoryStorage
 import com.github.zly2006.zhihu.data.getOrFetchContentDetail
-import com.github.zly2006.zhihu.navigation.AndroidAnswerNavigatorRepository
-import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
@@ -367,8 +365,6 @@ open class SharedAndroidPaginationEnvironment(
                 .show()
         }
     }
-
-    override fun answerNavigatorRepository(): AnswerNavigatorRepository = AndroidAnswerNavigatorRepository(context)
 
     override fun articleAnswerSwitchState() = context.articleHost()?.articleAnswerSwitchState
 

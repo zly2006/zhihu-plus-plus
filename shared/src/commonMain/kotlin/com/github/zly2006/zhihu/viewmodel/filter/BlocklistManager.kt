@@ -17,13 +17,7 @@
 
 package com.github.zly2006.zhihu.viewmodel.filter
 
-import androidx.compose.runtime.Composable
 import com.github.zly2006.zhihu.shared.util.Log
-import com.github.zly2006.zhihu.viewmodel.filter.BlocklistBackup
-import com.github.zly2006.zhihu.viewmodel.filter.KeywordBackup
-import com.github.zly2006.zhihu.viewmodel.filter.NlpKeywordBackup
-import com.github.zly2006.zhihu.viewmodel.filter.TopicBackup
-import com.github.zly2006.zhihu.viewmodel.filter.UserBackup
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -420,6 +414,3 @@ fun ContentFilterDatabase.createBlocklistManager(): BlocklistManager = Blocklist
         topicDao = blockedTopicDao(),
     ),
 )
-
-@Composable
-expect fun rememberBlocklistManager(): BlocklistManager

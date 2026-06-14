@@ -76,7 +76,8 @@ import com.github.zly2006.zhihu.ui.commentRowTag
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
-import com.github.zly2006.zhihu.viewmodel.filter.getBlocklistManager
+import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.paginationEnvironment
 import io.ktor.client.HttpClient
 import io.ktor.http.HttpMethod
@@ -100,7 +101,7 @@ class CommentScreenInstrumentedTest {
         composeRule.resetAppPreferences()
         ZhihuMockApi.install(enabled = true)
         ZhihuMockApi.reset()
-        getBlocklistManager(composeRule.activity).clearAllBlockedUsers()
+        getContentFilterDatabase(composeRule.activity).createBlocklistManager().clearAllBlockedUsers()
         ZhihuMockApi.mockJsonPrefix(
             method = HttpMethod.Post,
             urlPrefix = "https://www.zhihu.com/api/v4/comments/",
@@ -115,7 +116,7 @@ class CommentScreenInstrumentedTest {
 
     @After
     fun tearDown() = runBlocking {
-        getBlocklistManager(composeRule.activity).clearAllBlockedUsers()
+        getContentFilterDatabase(composeRule.activity).createBlocklistManager().clearAllBlockedUsers()
         ZhihuMockApi.install(enabled = InstrumentedTestEnvironment.isMockMode())
     }
 
@@ -410,7 +411,7 @@ class CommentScreenInstrumentedTest {
             seededComments = emptyList(),
         )
         runBlocking {
-            val blocklistManager = getBlocklistManager(composeRule.activity)
+            val blocklistManager = getContentFilterDatabase(composeRule.activity).createBlocklistManager()
             blocklistManager.addBlockedUser("blocked-root-author", "被屏蔽根评论作者")
             blocklistManager.addBlockedUser("blocked-child-author", "被屏蔽子评论作者")
             viewModel.processForTest(

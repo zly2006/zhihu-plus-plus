@@ -19,18 +19,13 @@ package com.github.zly2006.zhihu.viewmodel
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import com.github.zly2006.zhihu.navigation.AnswerNavigatorPage
-import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.navigation.answerNavigatorPageFromJson
-import com.github.zly2006.zhihu.navigation.zhihuQuestionFeedsUrl
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.ZHIHU_CLEAR_ONLINE_HISTORY_URL
 import com.github.zly2006.zhihu.shared.data.ZHIHU_LAST_READ_TOUCH_URL
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.encodeZhihuClearOnlineHistoryBody
 import com.github.zly2006.zhihu.shared.data.encodeZhihuLastReadTouchItems
 import com.github.zly2006.zhihu.shared.data.navDestination
@@ -55,7 +50,6 @@ import com.github.zly2006.zhihu.util.buildCollectionExportZipFileName
 import com.github.zly2006.zhihu.util.sanitizeArticleExportFileNamePart
 import com.github.zly2006.zhihu.viewmodel.CollectionItem
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
-import com.github.zly2006.zhihu.viewmodel.filter.ContentType
 import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
 import com.github.zly2006.zhihu.viewmodel.filter.desktopKeywordSemanticMatcher
@@ -95,6 +89,7 @@ import com.github.zly2006.zhihu.util.buildArticleExportHtml as buildSharedArticl
 import com.github.zly2006.zhihu.util.buildOfflineArticleExportHtml as buildSharedOfflineArticleExportHtml
 import io.ktor.http.ContentType as KtorContentType
 
+private val desktopContentFilterDb = getContentFilterDatabase(desktopContentFilterDatabaseFile())
 internal val desktopArticleAnswerSwitchState = ArticleAnswerSwitchData()
 private var desktopPendingContentOpenIdentity: TrackedContentIdentity? = null
 private var desktopPendingContentOpenFrom: String? = null
@@ -135,7 +130,7 @@ class DesktopPaginationEnvironment(
     NotificationEnvironment {
     private val settingsStore = desktopSettingsStore()
     private val historyStorage = DesktopHistoryStorage()
-    private val contentFilterDatabase = getContentFilterDatabase(desktopContentFilterDatabaseFile())
+    private val contentFilterDb = desktopContentFilterDb
     private val localRecommendationEngine by lazy { createLocalRecommendationEngine() }
     private var lastAuthRefreshMillis = 0L
 
@@ -173,43 +168,6 @@ class DesktopPaginationEnvironment(
 
     override fun accountHttpClient(): HttpClient = httpClient()
 
-    override fun answerNavigatorRepository(): AnswerNavigatorRepository =
-        object : AnswerNavigatorRepository {
-            override suspend fun fetchCachedAnswerContent(article: Article): DataHolder.Answer? =
-                getOrFetchContentDetail(article) as? DataHolder.Answer
-
-            override suspend fun fetchQuestionFeeds(
-                questionId: Long,
-                pageUrl: String?,
-            ): AnswerNavigatorPage<Feed> {
-                val url = pageUrl ?: zhihuQuestionFeedsUrl(questionId, limit = 6)
-                val jojo = fetchJson(url, "") ?: return AnswerNavigatorPage(emptyList(), "")
-                return answerNavigatorPageFromJson(jojo) { data ->
-                    data.jsonArray.mapNotNull { element ->
-                        runCatching { ZhihuJson.decodeJson<Feed>(element) }.getOrNull()
-                    }
-                }
-            }
-
-            override suspend fun fetchCollectionItems(pageUrl: String): AnswerNavigatorPage<CollectionItem> =
-                fetchJson(pageUrl, "")?.let { jojo ->
-                    answerNavigatorPageFromJson(jojo) { data ->
-                        data.jsonArray.mapNotNull { element ->
-                            runCatching { ZhihuJson.decodeJson<CollectionItem>(element) }.getOrNull()
-                        }
-                    }
-                } ?: AnswerNavigatorPage(emptyList(), "")
-
-            override suspend fun getAlreadyOpenedAnswerIds(answerIds: List<Long>): Set<Long> =
-                ContentOpenEventSupport
-                    .getAlreadyOpenedContentIds(
-                        database = contentFilterDatabase,
-                        content = answerIds.map { ContentType.ANSWER to it.toString() },
-                    ).mapNotNullTo(mutableSetOf()) { key ->
-                        key.substringAfter(':', "").toLongOrNull()
-                    }
-        }
-
     override fun articleAnswerSwitchState(): ArticleAnswerSwitchState? = desktopArticleAnswerSwitchState
 
     override suspend fun postHistoryDestination(destination: NavDestination) {
@@ -224,11 +182,11 @@ class DesktopPaginationEnvironment(
     }
 
     override suspend fun isUserBlocked(userId: String): Boolean =
-        contentFilterDatabase.createBlocklistManager().isUserBlocked(userId)
+        contentFilterDb.createBlocklistManager().isUserBlocked(userId)
 
     override fun blockedUserIds(): Set<String> =
         runBlocking {
-            contentFilterDatabase
+            contentFilterDb
                 .createBlocklistManager()
                 .getAllBlockedUsers()
                 .map { it.userId }
@@ -241,7 +199,7 @@ class DesktopPaginationEnvironment(
         urlToken: String?,
         avatarUrl: String?,
     ) {
-        contentFilterDatabase.createBlocklistManager().addBlockedUser(
+        contentFilterDb.createBlocklistManager().addBlockedUser(
             userId = userId,
             userName = userName,
             urlToken = urlToken,
@@ -250,7 +208,7 @@ class DesktopPaginationEnvironment(
     }
 
     override suspend fun removeBlockedUser(userId: String) {
-        contentFilterDatabase.createBlocklistManager().removeBlockedUser(userId)
+        contentFilterDb.createBlocklistManager().removeBlockedUser(userId)
     }
 
     override suspend fun recordContentOpenEvent(
@@ -262,7 +220,7 @@ class DesktopPaginationEnvironment(
             consumeDesktopPendingContentOpenFrom(destination)
         }
         ContentOpenEventSupport.recordOpenEvent(
-            database = contentFilterDatabase,
+            database = contentFilterDb,
             destination = destination,
             questionId = questionId,
             openFrom = resolvedOpenFrom.ifBlank { "unknown" },
@@ -291,11 +249,11 @@ class DesktopPaginationEnvironment(
 
     override suspend fun applyHomeFeedFilters(items: List<FeedDisplayItem>): HomeFeedFilterResult {
         val settings = settingsStore.toFeedFilterSettings()
-        val foregroundItems = contentFilterDatabase.filterForegroundReadItems(
+        val foregroundItems = contentFilterDb.filterForegroundReadItems(
             settings = settings,
             items = items,
         )
-        val filteredItems = contentFilterDatabase.filterFeedDisplayItems(
+        val filteredItems = contentFilterDb.filterFeedDisplayItems(
             settings = settings,
             items = foregroundItems,
             contentDetailProvider = ContentDetailProvider(::getOrFetchContentDetail),
@@ -315,7 +273,7 @@ class DesktopPaginationEnvironment(
 
     override suspend fun recordContentInteraction(feed: Feed) {
         val settings = settingsStore.toFeedFilterSettings()
-        recordFeedContentInteraction(settings, contentFilterDatabase, feed)
+        recordFeedContentInteraction(settings, contentFilterDb, feed)
     }
 
     override suspend fun markItemsAsTouched(items: Set<Pair<String, String>>): Set<Pair<String, String>> {

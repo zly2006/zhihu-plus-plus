@@ -28,18 +28,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 
-@Volatile
-private var blocklistManager: BlocklistManager? = null
-
-fun getBlocklistManager(context: Context): BlocklistManager =
-    blocklistManager ?: synchronized(BlocklistManager::class) {
-        blocklistManager ?: getContentFilterDatabase(context.applicationContext)
-            .createBlocklistManager()
-            .also {
-                blocklistManager = it
-            }
-    }
-
 suspend fun BlocklistManager.exportAllBlocklistToJson(context: Context): File = withContext(Dispatchers.IO) {
     val dir = context.getExternalFilesDir(null) ?: context.filesDir
     val file = File(dir, "zhihupp_blocklist.json")
@@ -79,15 +67,9 @@ object AndroidContentFilterRuntime {
 }
 
 @Composable
-actual fun rememberBlockedFeedRecordDao(): BlockedFeedRecordDao {
+actual fun getContentFilterDatabase(): ContentFilterDatabase {
     val context = LocalContext.current
-    return remember(context) { getContentFilterDatabase(context).blockedFeedRecordDao() }
-}
-
-@Composable
-actual fun rememberBlocklistManager(): BlocklistManager {
-    val context = LocalContext.current
-    return remember(context) { getBlocklistManager(context) }
+    return remember(context) { getContentFilterDatabase(context) }
 }
 
 fun Context.contentFilterSettings(): FeedFilterSettings =
