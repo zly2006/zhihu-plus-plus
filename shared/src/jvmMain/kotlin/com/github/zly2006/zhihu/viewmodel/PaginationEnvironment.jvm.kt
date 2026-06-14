@@ -122,19 +122,12 @@ class DesktopPaginationEnvironment(
     private val historyStorage = DesktopHistoryStorage()
     private val contentFilterDb = desktopContentFilterDb
     private val localRecommendationEngine by lazy { createLocalRecommendationEngine() }
-    private var lastAuthRefreshMillis = 0L
 
     override fun httpClient(): HttpClient = store.httpClient()
 
     override fun xsrfToken(): String = store.load().cookies["_xsrf"] ?: ""
 
     override fun authenticatedCookies(): Map<String, String> = store.load().cookies
-
-    override fun lastAuthRefreshMillis(): Long = lastAuthRefreshMillis
-
-    override fun updateLastAuthRefreshMillis(value: Long) {
-        lastAuthRefreshMillis = value
-    }
 
     override suspend fun <T> withAuthenticatedClient(
         block: suspend (client: HttpClient, cookies: Map<String, String>) -> T,

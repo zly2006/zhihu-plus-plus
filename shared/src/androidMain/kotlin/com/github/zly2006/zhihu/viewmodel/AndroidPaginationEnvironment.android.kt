@@ -370,9 +370,7 @@ open class SharedAndroidPaginationEnvironment(
         includeImages: Boolean,
     ): ResolvedCollectionHtmlExportItem? {
         val navDestination = item.content.navDestination as? ArticleDestination ?: return null
-        val content = ContentDetailCache.getOrFetchContentDetail(navDestination) { url ->
-            fetchJson(url, "")
-        }
+        val content = getOrFetchContentDetail(navDestination)
             ?: throw IllegalStateException("无法加载「${item.content.title}」详情")
         if (content !is DataHolder.Answer && content !is DataHolder.Article) {
             return null
