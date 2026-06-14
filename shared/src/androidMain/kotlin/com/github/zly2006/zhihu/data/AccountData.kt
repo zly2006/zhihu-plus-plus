@@ -31,7 +31,6 @@ import com.github.zly2006.zhihu.shared.account.ZhihuAccountRepository
 import com.github.zly2006.zhihu.shared.account.ZhihuAccountSession
 import com.github.zly2006.zhihu.shared.account.ZhihuAccountSessionStore
 import com.github.zly2006.zhihu.shared.data.Person
-import com.github.zly2006.zhihu.shared.data.ZhihuCookieStorage
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.installZhihuCommonClientConfig
 import io.ktor.client.HttpClient
@@ -85,13 +84,6 @@ object AccountData {
         dataState.value = data
         accountClient(context).save(data.toSession())
     }
-
-    fun cookieStorage(context: Context, cookies: MutableMap<String, String>? = null) =
-        ZhihuCookieStorage(cookies ?: data.cookies) {
-            if (cookies == null) {
-                saveData(context, data)
-            }
-        }
 
     private var accountClient: ZhihuAccountClient? = null
     private var observedLifecycleClient: HttpClient? = null
@@ -170,7 +162,9 @@ object AccountData {
         accountClient?.let { return it }
         val appContext = context.applicationContext
         return ZhihuAccountClient(
-            repository = accountRepository(appContext),
+            repository = ZhihuAccountRepository(
+                AndroidAccountSessionStore(File(appContext.filesDir, "account.json")),
+            ),
             createClient = { cookies, _, onCookieChanged, isTemporary ->
                 httpClientFactoryOverride?.invoke(appContext, if (isTemporary) cookies else null)
                     ?: createConfiguredHttpClient(
@@ -186,10 +180,6 @@ object AccountData {
             accountClient = it
         }
     }
-
-    private fun accountRepository(context: Context) = ZhihuAccountRepository(
-        AndroidAccountSessionStore(File(context.filesDir, "account.json")),
-    )
 
     private fun Data.toSession(): ZhihuAccountSession = ZhihuAccountSession(
         login = login,

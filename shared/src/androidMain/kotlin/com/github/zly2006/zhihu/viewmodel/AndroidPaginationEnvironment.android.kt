@@ -44,6 +44,7 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.ZHIHU_CLEAR_ONLINE_HISTORY_URL
+import com.github.zly2006.zhihu.shared.data.ZhihuCookieStorage
 import com.github.zly2006.zhihu.shared.data.ZhihuJson.json
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
@@ -137,7 +138,9 @@ open class SharedAndroidPaginationEnvironment(
             install(ZHIHU_PP_ANDROID_HEADERS)
             if (loginForRecommendation) {
                 install(HttpCookies) {
-                    storage = AccountData.cookieStorage(context, null)
+                    storage = ZhihuCookieStorage(AccountData.data.cookies) {
+                        AccountData.saveData(context, AccountData.data)
+                    }
                 }
             }
         }
