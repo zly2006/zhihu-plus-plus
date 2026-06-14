@@ -244,6 +244,8 @@ class ArticleScreenInstrumentedTest {
         val NO_OP_API_ENVIRONMENT = object : ZhihuApiEnvironment {
             override fun httpClient(): HttpClient = error("No HTTP client in offline navigator test")
 
+            override fun authenticatedCookies(): Map<String, String> = emptyMap()
+
             override suspend fun handleFetchFailure(
                 tag: String?,
                 error: Exception,
