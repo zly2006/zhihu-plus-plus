@@ -54,11 +54,11 @@ import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.CollectionContentScreenTestOverrides
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
-import com.github.zly2006.zhihu.ui.formatCollectionUpdatedTime
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.viewmodel.CollectionContentEnvironment
 import com.github.zly2006.zhihu.viewmodel.CollectionContentViewModel
+import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
@@ -237,7 +237,7 @@ fun MiuixCollectionContentScreen(
                                         "${screenViewModel.collection?.itemCount} 条收藏",
                                         "${screenViewModel.collection?.likeCount} 个赞同",
                                         "${screenViewModel.collection?.commentCount} 条评论",
-                                        screenViewModel.collection?.updatedTime?.let { "${formatCollectionUpdatedTime(it)} 更新" },
+                                        screenViewModel.collection?.updatedTime?.let { "${formatArticleDateTime(it)} 更新" },
                                     ).fastJoinToString(" · "),
                                     modifier = Modifier.padding(12.dp),
                                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary,

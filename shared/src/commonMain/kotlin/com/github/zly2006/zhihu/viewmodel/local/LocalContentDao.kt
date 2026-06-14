@@ -33,9 +33,6 @@ interface LocalContentDao {
     suspend fun getTaskCountByReasonAndStatus(reason: CrawlingReason, status: CrawlingStatus): Int
 
     @Insert
-    suspend fun insertTask(task: CrawlingTask): Long
-
-    @Insert
     suspend fun insertTasks(tasks: List<CrawlingTask>)
 
     @Update
@@ -54,12 +51,6 @@ interface LocalContentDao {
     @Query("SELECT COUNT(*) FROM crawling_results WHERE reason = :reason")
     suspend fun getResultCountByReason(reason: CrawlingReason): Int
 
-    @Query("SELECT * FROM crawling_results WHERE contentId = :contentId LIMIT 1")
-    suspend fun getResultByContentId(contentId: String): CrawlingResult?
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertResult(result: CrawlingResult): Long
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertResults(results: List<CrawlingResult>)
 
@@ -70,20 +61,8 @@ interface LocalContentDao {
     @Query("SELECT * FROM local_feeds WHERE id = :feedId LIMIT 1")
     suspend fun getFeedById(feedId: String): LocalFeed?
 
-    @Query("SELECT * FROM local_feeds WHERE resultId = :resultId LIMIT 1")
-    suspend fun getFeedByResultId(resultId: Long): LocalFeed?
-
-    @Query("SELECT * FROM local_feeds ORDER BY userFeedback DESC, createdAt DESC LIMIT :limit")
-    suspend fun getTopRatedFeeds(limit: Int): List<LocalFeed>
-
-    @Query("SELECT * FROM local_feeds ORDER BY createdAt DESC LIMIT :limit")
-    suspend fun getRecentFeeds(limit: Int): List<LocalFeed>
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertFeed(feed: LocalFeed)
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertFeeds(feeds: List<LocalFeed>)
 
     @Query("UPDATE local_feeds SET userFeedback = :feedback WHERE id = :feedId")
     suspend fun updateFeedFeedback(feedId: String, feedback: Double)
@@ -94,9 +73,6 @@ interface LocalContentDao {
     // UserBehavior 相关操作
     @Insert
     suspend fun insertBehavior(behavior: UserBehavior)
-
-    @Query("SELECT * FROM user_behaviors WHERE contentId = :contentId ORDER BY timestamp DESC")
-    suspend fun getBehaviorsByContentId(contentId: String): List<UserBehavior>
 
     @Query("SELECT * FROM user_behaviors WHERE action = :action AND timestamp > :since")
     suspend fun getBehaviorsByActionSince(action: String, since: Long): List<UserBehavior>

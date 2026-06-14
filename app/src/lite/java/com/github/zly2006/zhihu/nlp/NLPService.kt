@@ -25,6 +25,4 @@ object NLPService {
     suspend fun extractKeywordsWithWeight(text: String, topN: Int = 5): List<KeywordWithWeight> = emptyList()
 
     suspend fun checkBlockedPhrases(text: String, blockedPhrases: List<String>, threshold: Double = 0.8): List<Pair<String, Double>> = emptyList()
-
-    suspend fun extractSummary(text: String, maxLength: Int = 100): String = text.take(maxLength)
 }

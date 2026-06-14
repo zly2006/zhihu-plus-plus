@@ -43,53 +43,12 @@ class BlockedKeywordService(
     suspend fun getAllKeywords(): List<BlockedKeyword> = keywordDao.getAllKeywords()
 
     /**
-     * 获取精确匹配关键词
-     */
-    suspend fun getExactMatchKeywords(): List<BlockedKeyword> =
-        keywordDao.getAllKeywords().filter {
-            it.getKeywordTypeEnum() == KeywordType.EXACT_MATCH
-        }
-
-    /**
      * 获取NLP语义关键词
      */
     suspend fun getNLPSemanticKeywords(): List<BlockedKeyword> =
         keywordDao.getAllKeywords().filter {
             it.getKeywordTypeEnum() == KeywordType.NLP_SEMANTIC
         }
-
-    /**
-     * 添加屏蔽词
-     */
-    suspend fun addKeyword(
-        keyword: String,
-        keywordType: KeywordType = KeywordType.NLP_SEMANTIC,
-    ): Long {
-        val blockedKeyword = BlockedKeyword(
-            keyword = keyword.trim(),
-            keywordType = keywordType.name,
-            caseSensitive = false,
-            isRegex = false,
-        )
-        return keywordDao.insertKeyword(blockedKeyword)
-    }
-
-    /**
-     * 添加精确匹配关键词
-     */
-    suspend fun addExactMatchKeyword(
-        keyword: String,
-        caseSensitive: Boolean = false,
-        isRegex: Boolean = false,
-    ): Long {
-        val blockedKeyword = BlockedKeyword(
-            keyword = keyword.trim(),
-            keywordType = KeywordType.EXACT_MATCH.name,
-            caseSensitive = caseSensitive,
-            isRegex = isRegex,
-        )
-        return keywordDao.insertKeyword(blockedKeyword)
-    }
 
     /**
      * 添加NLP语义短语（空格分隔的多个关键词）

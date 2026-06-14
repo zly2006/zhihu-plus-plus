@@ -269,6 +269,12 @@ fun interface ArticlePreviewPreloader {
     )
 }
 
+internal fun defaultArticleScreenRuntime(): ArticleScreenRuntime =
+    object : ArticleScreenRuntime {
+        override val articleHost: ArticleHost? = null
+        override val previewPreloader = ArticlePreviewPreloader { _, _, _, _ -> }
+    }
+
 @Composable
 expect fun rememberArticleScreenRuntime(): ArticleScreenRuntime
 
@@ -324,8 +330,6 @@ data class LoadedQuestionScreenData(
     val uiState: QuestionScreenUiState,
     val historyDestination: Question,
 )
-
-fun questionDetailPreview(html: String): String = Ksoup.parse(html).text().trim()
 
 internal fun loadedQuestionScreenData(
     question: Question,
@@ -395,24 +399,6 @@ interface ArticleActionsRuntime {
         title: String,
         content: String,
     )
-
-    fun shareArticle(
-        article: Article,
-        questionId: Long,
-        title: String,
-        authorName: String,
-    ) {
-        shareRuntime.share(article, articleActionText(article, questionId, title, authorName))
-    }
-
-    fun copyArticleLink(
-        article: Article,
-        questionId: Long,
-        title: String,
-        authorName: String,
-    ) {
-        shareRuntime.copyLink(article, articleActionText(article, questionId, title, authorName))
-    }
 
     fun openArticleInBrowser(article: Article)
 }

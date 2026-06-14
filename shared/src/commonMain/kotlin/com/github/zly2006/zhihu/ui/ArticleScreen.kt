@@ -64,6 +64,7 @@ import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.FilterCenterFocus
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.GetApp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
@@ -339,12 +340,129 @@ private fun ArticleSummarySheet(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+private fun AigcFlagSheet(
+    showDialog: Boolean,
+    viewModel: ArticleViewModel,
+    onDismissRequest: () -> Unit,
+    onSubmitRequest: () -> Unit,
+) {
+    if (!showDialog) return
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    MyModalBottomSheet(
+        onDismissRequest = onDismissRequest,
+        sheetState = sheetState,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            val canSubmitAigcFlag = viewModel.aigcVoteAvailable &&
+                !viewModel.aigcVoteLoading &&
+                !viewModel.aigcFlagged &&
+                viewModel.aigcVoterName.isNotBlank() &&
+                (
+                    viewModel.aigcCreditBypassAvailable ||
+                        (viewModel.aigcVoteCredit > 0 && viewModel.isAigcFlagEvidenceReady())
+                )
+            Text(
+                text = "标记疑似 AIGC",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = "每浏览 20 篇内容获得 1 点投票积分，最多保留 ${viewModel.aigcVoteCap} 点。标记会上传当前正文 HTML、编辑时间和投票人身份，服务端按内容版本统计。",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = if (!viewModel.aigcVoteAvailable) {
+                    "AIGC 标记未启用"
+                } else if (viewModel.aigcVoterName.isBlank()) {
+                    "未登录，无法记名投票"
+                } else {
+                    "投票人：${viewModel.aigcVoterName}"
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = if (viewModel.aigcCreditBypassAvailable) {
+                    "积分 ${viewModel.aigcVoteCredit}/${viewModel.aigcVoteCap} · 当前账号可免积分标记"
+                } else {
+                    "积分 ${viewModel.aigcVoteCredit}/${viewModel.aigcVoteCap} · 进度 ${viewModel.aigcVoteProgress}/20"
+                },
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                text = if (viewModel.aigcEffectiveFlagCount > 0) {
+                    "已有 ${viewModel.aigcEffectiveFlagCount} 个有效标记"
+                } else {
+                    "当前还没有有效标记"
+                },
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            if (viewModel.aigcNamedVoters.isNotEmpty()) {
+                Text(
+                    text = "记名投票：" + viewModel.aigcNamedVoters.joinToString("、") { voter ->
+                        if (voter.creditBypassed) {
+                            "${voter.voterName}（免积分）"
+                        } else {
+                            voter.voterName
+                        }
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            viewModel.aigcVoteError?.let { error ->
+                Text(
+                    text = error,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextButton(onClick = onDismissRequest) {
+                    Text("关闭")
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(
+                    onClick = onSubmitRequest,
+                    enabled = canSubmitAigcFlag,
+                ) {
+                    Text(
+                        when {
+                            !viewModel.aigcVoteAvailable -> "未启用"
+                            viewModel.aigcFlagged -> "已标记"
+                            viewModel.aigcVoteLoading -> "提交中"
+                            viewModel.aigcVoterName.isBlank() -> "需登录"
+                            viewModel.aigcCreditBypassAvailable -> "免积分标记"
+                            viewModel.aigcVoteCredit <= 0 -> "积分不足"
+                            !viewModel.isAigcFlagEvidenceReady() -> "继续阅读"
+                            else -> "消耗 1 点标记"
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 fun ArticleActionsMenu(
     article: Article,
     viewModel: ArticleViewModel,
     showMenu: Boolean,
     onDismissRequest: () -> Unit,
     onSummaryRequest: () -> Unit,
+    onAigcFlagRequest: () -> Unit,
     onExportRequest: () -> Unit,
     onSetImmersiveDoubleTap: () -> Unit = {},
 ) {
@@ -468,16 +586,10 @@ fun ArticleActionsMenu(
             text = "分享",
             onClick = {
                 onDismissRequest()
-                val text = when (article.type) {
-                    ArticleType.Answer -> {
-                        "https://www.zhihu.com/question/${viewModel.questionId}/answer/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的回答】"
-                    }
-
-                    ArticleType.Article -> {
-                        "https://zhuanlan.zhihu.com/p/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的文章】"
-                    }
-                }
-                articleActionsRuntime.shareArticle(article, viewModel.questionId, viewModel.title, viewModel.authorName)
+                articleActionsRuntime.shareRuntime.share(
+                    article,
+                    articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName),
+                )
             },
         )
 
@@ -494,22 +606,27 @@ fun ArticleActionsMenu(
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        MenuActionButton(
+            icon = Icons.Filled.Flag,
+            text = "标记疑似 AIGC",
+            onClick = {
+                onDismissRequest()
+                onAigcFlagRequest()
+            },
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
         // 复制链接按钮
         MenuActionButton(
             icon = Icons.Filled.ContentCopy,
             text = "复制链接",
             onClick = {
                 onDismissRequest()
-                val text = when (article.type) {
-                    ArticleType.Answer -> {
-                        "https://www.zhihu.com/question/${viewModel.questionId}/answer/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的回答】"
-                    }
-
-                    ArticleType.Article -> {
-                        "https://zhuanlan.zhihu.com/p/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的文章】"
-                    }
-                }
-                articleActionsRuntime.copyArticleLink(article, viewModel.questionId, viewModel.title, viewModel.authorName)
+                articleActionsRuntime.shareRuntime.copyLink(
+                    article,
+                    articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName),
+                )
             },
         )
 
@@ -619,6 +736,7 @@ fun ArticleScreen(
     var showCollectionDialog by remember { mutableStateOf(false) }
     var showActionsMenu by remember { mutableStateOf(false) }
     var showSummaryDialog by remember { mutableStateOf(false) }
+    var showAigcFlagSheet by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
     var showDoubleTapActionDialog by remember { mutableStateOf(false) }
     var showVoters by rememberSaveable(article.type, article.id) { mutableStateOf(false) }
@@ -784,6 +902,9 @@ fun ArticleScreen(
         }
         previousScrollForBarOffset = currentScroll
 
+        viewModel.updateAigcReadProgress(currentScroll, scrollState.maxValue)
+        viewModel.syncAigcReadEventIfEligible(environment)
+
         if (viewModel.rememberedScrollYSync) {
             viewModel.rememberedScrollY = currentScroll
         }
@@ -910,6 +1031,21 @@ fun ArticleScreen(
         }
         viewModel.loadArticle(environment)
         viewModel.loadCollections(environment)
+        viewModel.loadAigcFlagStatus(environment)
+    }
+
+    LaunchedEffect(article.type, article.id, viewModel.content) {
+        if (viewModel.content.isNotBlank()) {
+            viewModel.updateAigcReadProgress(scrollState.value, scrollState.maxValue)
+            delay(15_000)
+            viewModel.updateAigcReadProgress(scrollState.value, scrollState.maxValue)
+            viewModel.syncAigcReadEventIfEligible(environment)
+        }
+    }
+    LaunchedEffect(scrollState.maxValue, viewModel.content) {
+        if (viewModel.content.isNotBlank()) {
+            viewModel.updateAigcReadProgress(scrollState.value, scrollState.maxValue)
+        }
     }
 
     val navigateToPrevious: () -> Unit = {
@@ -1458,30 +1594,52 @@ fun ArticleScreen(
                         }
 
                         @Composable
-                        fun ColumnScope.AnswerVotersSocialCredit() {
-                            if (article.type != ArticleType.Answer || viewModel.votersTotal <= 0) return
-                            val text = viewModel.votersSocialText.ifBlank {
-                                "${formatCompactCount(viewModel.votersTotal)} 人赞同了该回答"
+                        fun ColumnScope.ArticleVotersSocialCredit() {
+                            val contentLabel = when (article.type) {
+                                ArticleType.Answer -> "回答"
+                                ArticleType.Article -> "文章"
                             }
+                            val hasVotersSocialCredit = viewModel.votersTotal > 0
+                            val aigcSupportVoterCount = viewModel.aigcSupportVoterCount
+                            if (!hasVotersSocialCredit && aigcSupportVoterCount <= 0) return
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = text,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier
-                                    .clickable {
+                            if (hasVotersSocialCredit) {
+                                val text = viewModel.votersSocialText.ifBlank {
+                                    "${formatCompactCount(viewModel.votersTotal)} 人赞同了该$contentLabel"
+                                }
+                                val votersTextModifier = if (article.type == ArticleType.Answer) {
+                                    Modifier.clickable {
                                         showVoters = true
                                         if (viewModel.voters.isEmpty()) {
                                             viewModel.loadMoreVoters(environment, reset = true)
                                         }
-                                    },
-                            )
+                                    }
+                                } else {
+                                    Modifier
+                                }
+                                Text(
+                                    text = text,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = votersTextModifier,
+                                )
+                            }
+                            if (aigcSupportVoterCount > 0) {
+                                if (hasVotersSocialCredit) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                }
+                                Text(
+                                    text = "有 ${formatCompactCount(aigcSupportVoterCount)} 人认为此${contentLabel}包含AIGC内容",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                            }
                         }
 
                         @Composable
                         fun ColumnScope.AnswerLeadingMeta() {
                             val hasPinnedDate = pinAnswerDate
-                            val hasSocialCredit = article.type == ArticleType.Answer && viewModel.votersTotal > 0
+                            val hasSocialCredit = viewModel.votersTotal > 0 || viewModel.aigcSupportVoterCount > 0
                             if (!hasPinnedDate && !hasSocialCredit) return
                             Column(
                                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
@@ -1490,7 +1648,7 @@ fun ArticleScreen(
                                 if (hasPinnedDate) {
                                     DateTexts()
                                 }
-                                AnswerVotersSocialCredit()
+                                ArticleVotersSocialCredit()
                             }
                             Spacer(modifier = Modifier.height(16.dp))
                         }
@@ -1685,6 +1843,10 @@ fun ArticleScreen(
             showSummaryDialog = true
             viewModel.requestAiSummary(environment)
         },
+        onAigcFlagRequest = {
+            showAigcFlagSheet = true
+            viewModel.loadAigcFlagStatus(environment)
+        },
         onExportRequest = { showExportDialog = true },
         onSetImmersiveDoubleTap = {
             showActionsMenu = false
@@ -1716,6 +1878,13 @@ fun ArticleScreen(
     PlatformBackHandler(showActionsMenu) {
         showActionsMenu = false
     }
+
+    AigcFlagSheet(
+        showDialog = showAigcFlagSheet,
+        viewModel = viewModel,
+        onDismissRequest = { showAigcFlagSheet = false },
+        onSubmitRequest = { viewModel.submitAigcFlag(environment) },
+    )
 
     // 使用新的收藏夹对话框组件
     CollectionDialogComponent(

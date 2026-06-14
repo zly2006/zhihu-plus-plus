@@ -20,6 +20,7 @@ package com.github.zly2006.zhihu.shared.account
 import com.github.zly2006.zhihu.shared.data.installZhihuCommonClientConfig
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.darwin.Darwin
+import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
@@ -32,27 +33,36 @@ import platform.Foundation.create
 import platform.Foundation.dataUsingEncoding
 
 class IosAccountStore {
-    private val repository = ZhihuAccountRepository(IosFileAccountSessionStore())
+    private val accountClient = defaultIosAccountClient
 
-    fun load(): ZhihuAccountSession = repository.load()
+    fun load(): ZhihuAccountSession = accountClient.load()
 
-    fun save(session: ZhihuAccountSession) = repository.save(session)
+    fun save(session: ZhihuAccountSession) = accountClient.save(session)
 
-    fun clear() = repository.clear()
+    fun clear() = accountClient.clear()
 
-    fun createHttpClient(cookies: MutableMap<String, String>): HttpClient = HttpClient(Darwin) {
-        val savedData = load()
-        installZhihuCommonClientConfig(
-            cookies = cookies,
-            userAgent = savedData.userAgent,
-            onCookieChanged = {
-                save(savedData.copy(cookies = cookies.toMutableMap()))
-            },
-        )
-    }
+    fun httpClient(): HttpClient = accountClient.httpClient()
+
+    fun createHttpClient(cookies: MutableMap<String, String>): HttpClient =
+        accountClient.temporaryHttpClient(cookies)
 }
 
-@OptIn(ExperimentalForeignApi::class)
+private val defaultIosAccountClient by lazy {
+    ZhihuAccountClient(
+        repository = ZhihuAccountRepository(IosFileAccountSessionStore()),
+        createClient = { cookies, session, onCookieChanged, _ ->
+            HttpClient(Darwin) {
+                installZhihuCommonClientConfig(
+                    cookies = cookies,
+                    userAgent = session.userAgent,
+                    onCookieChanged = onCookieChanged,
+                )
+            }
+        },
+    )
+}
+
+@OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
 private class IosFileAccountSessionStore : ZhihuAccountSessionStore {
     private val filePath: String by lazy {
         val fm = NSFileManager.defaultManager

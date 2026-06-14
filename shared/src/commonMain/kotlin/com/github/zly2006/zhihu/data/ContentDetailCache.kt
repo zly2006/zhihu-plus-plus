@@ -78,7 +78,7 @@ object ContentDetailCache {
 
         // 缓存未命中，从 API 获取
         Log.d("ContentDetailCache", "Cache miss for $contentType:$contentId, fetching...")
-        val content = fetchContent(navDestination, fetcher) ?: return null
+        val content = fetcher(navDestination) ?: return null
 
         // 存入缓存
         mutex.withLock {
@@ -112,54 +112,43 @@ object ContentDetailCache {
         }
         else -> null
     }
+}
 
-    /**
-     * 根据 NavDestination 类型调用对应的 getContentDetail
-     */
-    private suspend fun fetchContent(
-        navDestination: NavDestination,
-        fetcher: suspend (NavDestination) -> DataHolder.Content?,
-    ): DataHolder.Content? = when (navDestination) {
-        is Article -> fetcher(navDestination)
-        is Question -> fetcher(navDestination)
-        is Pin -> fetcher(navDestination)
+fun zhihuContentDetailUrl(destination: NavDestination): String? = when (destination) {
+    is Article -> when (destination.type) {
+        ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${destination.id}?include=content,topics,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,relationship,ip_info,relationship.vote,author.badge_v2"
+        ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${destination.id}?include=content,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,attachment,reaction,ip_info,pagination_info,question.topics,reaction.relation.voting,author.badge_v2"
+    }
+    is Question -> "https://www.zhihu.com/api/v4/questions/${destination.questionId}?include=read_count,visit_count,answer_count,voteup_count,comment_count,follower_count,detail,excerpt,author,relationship.is_following,topics"
+    is Pin -> "https://www.zhihu.com/api/v4/pins/${destination.id}?include=topics"
+    else -> null
+}
+
+suspend fun fetchZhihuContentDetail(
+    destination: NavDestination,
+    fetchJson: suspend (String) -> JsonObject?,
+): DataHolder.Content? {
+    val json = fetchJson(zhihuContentDetailUrl(destination) ?: return null) ?: return null
+    return when (destination) {
+        is Article -> decodeArticleContentDetail(destination, json)
+        is Question -> decodeQuestionContentDetail(json)
+        is Pin -> decodePinContentDetail(json)
         else -> null
-    }
-
-    /**
-     * 清除过期缓存
-     */
-    suspend fun clearExpired() {
-        mutex.withLock {
-            val now = Clock.System.now().toEpochMilliseconds()
-            val expiredKeys = cache.entries
-                .filter { (_, entry) -> now - entry.timestamp >= CACHE_EXPIRY_MS }
-                .map { (key, _) -> key }
-            expiredKeys.forEach { cache.remove(it) }
-        }
-    }
-
-    /**
-     * 清空所有缓存
-     */
-    suspend fun clearAll() {
-        mutex.withLock {
-            cache.clear()
-        }
     }
 }
 
-fun normalizeArticleContentDetailJson(jo: JsonObject): JsonObject =
-    normalizeLongIdContentDetailJson(jo)
-
-fun normalizeQuestionDetailJson(jo: JsonObject): JsonObject =
-    normalizeLongIdContentDetailJson(jo)
+suspend fun ContentDetailCache.getOrFetchContentDetail(
+    destination: NavDestination,
+    fetchJson: suspend (String) -> JsonObject?,
+): DataHolder.Content? = getOrFetch(destination) { navDestination ->
+    fetchZhihuContentDetail(navDestination, fetchJson)
+}
 
 fun decodeArticleContentDetail(
     article: Article,
     json: JsonObject,
 ): DataHolder.Content {
-    val normalizedJson = normalizeArticleContentDetailJson(json)
+    val normalizedJson = normalizeLongIdContentDetailJson(json)
     return when (article.type) {
         ArticleType.Answer -> ZhihuJson.decodeJson<DataHolder.Answer>(normalizedJson)
         ArticleType.Article -> ZhihuJson.decodeJson<DataHolder.Article>(normalizedJson)
@@ -167,7 +156,7 @@ fun decodeArticleContentDetail(
 }
 
 fun decodeQuestionContentDetail(json: JsonObject): DataHolder.Question =
-    ZhihuJson.decodeJson(normalizeQuestionDetailJson(json))
+    ZhihuJson.decodeJson(normalizeLongIdContentDetailJson(json))
 
 fun decodePinContentDetail(json: JsonObject): DataHolder.Pin =
     ZhihuJson.decodeJson(json)

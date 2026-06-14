@@ -102,6 +102,7 @@ import com.github.zly2006.zhihu.ui.ArticleVideoAttachmentContent
 import com.github.zly2006.zhihu.ui.LocalArticleAnswerSwitcher
 import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.ui.VoteUpState
+import com.github.zly2006.zhihu.ui.articleActionText
 import com.github.zly2006.zhihu.ui.components.AnswerHorizontalOverscroll
 import com.github.zly2006.zhihu.ui.components.AnswerVerticalOverscroll
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
@@ -366,7 +367,7 @@ fun MiuixArticleScreen(
                         },
                         actions = {
                             IconButton(onClick = {
-                                articleActions.shareArticle(article, viewModel.questionId, viewModel.title, viewModel.authorName)
+                                articleActions.shareRuntime.share(article, articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName))
                             }) {
                                 Icon(Icons.Default.Share, "分享", tint = MiuixTheme.colorScheme.onBackground)
                             }
@@ -814,7 +815,7 @@ fun MiuixArticleScreen(
             }
             MiuixActionMenuRow(Icons.Default.ContentCopy, "复制链接") {
                 showActionsMenu = false
-                articleActions.copyArticleLink(article, viewModel.questionId, viewModel.title, viewModel.authorName)
+                articleActions.shareRuntime.copyLink(article, articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName))
             }
             MiuixActionMenuRow(Icons.Default.GetApp, "导出文章 (Markdown、图片、HTML、PDF)") {
                 showActionsMenu = false

@@ -16,26 +16,21 @@
  */
 
 package com.github.zly2006.zhihu.shared.data
-import com.github.zly2006.zhihu.shared.util.ZHIHU_WEB_ZSE93
+
 import com.github.zly2006.zhihu.shared.util.raiseForStatus
-import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.cookies.CookiesStorage
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
-import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.request
-import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
-import io.ktor.http.ContentType
 import io.ktor.http.Cookie
 import io.ktor.http.CookieEncoding
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Url
-import io.ktor.http.contentType
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.plus
@@ -44,19 +39,11 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import kotlin.time.Clock
 
 const val ZHIHU_ONLINE_HISTORY_URL = "https://api.zhihu.com/unify-consumption/read_history"
 const val ZHIHU_CLEAR_ONLINE_HISTORY_URL = "https://api.zhihu.com/read_history/batch_del"
-
-@Serializable
-data class OnlineHistoryPage(
-    val data: List<OnlineHistoryItem>,
-    val paging: ZhihuPaging? = null,
-)
 
 fun zhihuOnlineHistoryUrl(
     offset: Int = 0,
@@ -70,20 +57,6 @@ fun buildZhihuClearOnlineHistoryBody(): JsonObject = buildJsonObject {
 
 fun encodeZhihuClearOnlineHistoryBody(): String =
     ZhihuJson.json.encodeToString(JsonObject.serializer(), buildZhihuClearOnlineHistoryBody())
-
-suspend fun fetchOnlineHistoryPage(
-    client: HttpClient,
-    url: String = zhihuOnlineHistoryUrl(),
-): OnlineHistoryPage = decodeOnlineHistoryPage(client.get(url).body())
-
-fun decodeOnlineHistoryPage(response: JsonObject): OnlineHistoryPage {
-    val data = response["data"]
-        ?.jsonArray
-        ?.let(::decodeOnlineHistoryItems)
-        .orEmpty()
-    val paging = response["paging"]?.let { ZhihuJson.decodeJson<ZhihuPaging>(it.jsonObject) }
-    return OnlineHistoryPage(data = data, paging = paging)
-}
 
 fun decodeOnlineHistoryItems(
     data: JsonArray,
@@ -100,58 +73,10 @@ fun decodeOnlineHistoryItems(
     }
 }
 
-const val ZHIHU_HOT_LIST_TOTAL_URL = "https://www.zhihu.com/api/v3/feed/topstory/hot-lists/total"
-const val ZHIHU_HOT_LIST_INCLUDE = "data[*].content,excerpt,headline,target.author.badge_v2"
-
 fun zhihuHotListUrl(
     limit: Int = 50,
     mobile: Boolean = true,
 ): String = "https://www.zhihu.com/api/v3/feed/topstory/hot-lists/total?limit=$limit&mobile=$mobile"
-
-data class ZhihuHotListPage(
-    val data: List<Feed>,
-    val rawData: JsonArray,
-    val paging: ZhihuPaging?,
-)
-
-suspend fun fetchHotListPage(
-    client: HttpClient,
-    cookies: Map<String, String> = emptyMap(),
-    url: String = zhihuHotListUrl(),
-    include: String = ZHIHU_HOT_LIST_INCLUDE,
-): ZhihuHotListPage {
-    val response = client
-        .get(url.replace("http://", "https://")) {
-            if (include.isNotEmpty()) {
-                parameter("include", include)
-            }
-            cookies["d_c0"]?.let { dc0 ->
-                signZhihuFetchRequest(dc0 = dc0)
-            }
-        }.body<JsonObject>()
-
-    val rawData = response["data"]?.jsonArray ?: JsonArray(emptyList())
-    return ZhihuHotListPage(
-        data = decodeHotListFeeds(rawData),
-        rawData = rawData,
-        paging = response["paging"]?.let { ZhihuJson.decodeJson<ZhihuPaging>(it) },
-    )
-}
-
-fun decodeHotListFeeds(
-    data: JsonArray,
-    ignoreInvalid: Boolean = true,
-): List<Feed> = data.mapNotNull { item ->
-    runCatching {
-        ZhihuJson.decodeJson<Feed>(item)
-    }.getOrElse { error ->
-        if (ignoreInvalid) {
-            null
-        } else {
-            throw error
-        }
-    }
-}
 
 const val ZHIHU_READ_HISTORY_ADD_URL = "https://www.zhihu.com/api/v4/read_history/add"
 const val ZHIHU_LAST_READ_TOUCH_URL = "https://www.zhihu.com/lastread/touch"
@@ -182,25 +107,6 @@ fun zhihuLastReadTouchItems(
     action: String,
 ): List<List<String>> = items.map { (type, id) ->
     listOf(type, id, action)
-}
-
-suspend fun addZhihuReadHistory(
-    client: HttpClient,
-    contentToken: String,
-    contentType: String,
-    dc0: String,
-    zse93: String = ZHIHU_WEB_ZSE93,
-) {
-    val body = buildZhihuReadHistoryBody(contentToken, contentType)
-    client.post(ZHIHU_READ_HISTORY_ADD_URL) {
-        contentType(ContentType.Application.Json)
-        setBody(body)
-        signZhihuFetchRequest(
-            zse93 = zse93,
-            dc0 = dc0,
-            body = body,
-        )
-    }
 }
 
 const val ZHIHU_NOTIFICATION_RECENT_URL = "https://www.zhihu.com/api/v4/notifications/v2/recent"
@@ -236,15 +142,12 @@ fun zhihuNotificationVoteThankUrl(
     limit: Int = 20,
 ): String = "https://www.zhihu.com/api/v4/notifications/v2/vote_thank?limit=$limit"
 
-fun decodeZhihuMeNotifications(response: JsonObject): ZhihuMeNotifications =
-    ZhihuJson.decodeJson(response)
-
 suspend fun fetchZhihuUnreadNotificationCount(
     client: HttpClient,
     configureRequest: HttpRequestBuilder.() -> Unit = {},
 ): Int {
     val response = client.get(ZHIHU_ME_URL, configureRequest).body<JsonObject>()
-    return decodeZhihuMeNotifications(response).totalCount
+    return ZhihuJson.decodeJson<ZhihuMeNotifications>(response).totalCount
 }
 
 suspend fun markAllZhihuNotificationsAsRead(
@@ -258,20 +161,7 @@ suspend fun markAllZhihuNotificationsAsRead(
 
 const val ZHIHU_DAILY_LATEST_URL = "https://news-at.zhihu.com/api/4/stories/latest"
 
-suspend fun fetchLatestDailyStories(client: HttpClient): DailyStoriesResponse =
-    client.get(ZHIHU_DAILY_LATEST_URL).body()
-
-suspend fun fetchDailyStoriesBefore(
-    client: HttpClient,
-    date: String,
-): DailyStoriesResponse = client.get("https://news-at.zhihu.com/api/4/stories/before/$date").body()
-
 fun zhihuDailyBeforeUrl(date: String): String = "https://news-at.zhihu.com/api/4/stories/before/$date"
-
-suspend fun fetchDailyStoriesForDate(
-    client: HttpClient,
-    date: String,
-): DailyStoriesResponse = fetchDailyStoriesBefore(client, nextDailyApiDate(date))
 
 fun nextDailyApiDate(date: String): String {
     require(date.length == 8 && date.all { it.isDigit() }) {

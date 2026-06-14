@@ -1,0 +1,6 @@
+interface:
+  display_name: "Zhihu++ Slop Cleaner"
+  short_description: "清理 Zhihu++ 低价值包装与重复代码"
+  default_prompt: "Use $zhihu-pp-ai-slop-cleaner to scan Zhihu++ for low-call wrappers and dead code before refactoring."
+policy:
+  allow_implicit_invocation: true

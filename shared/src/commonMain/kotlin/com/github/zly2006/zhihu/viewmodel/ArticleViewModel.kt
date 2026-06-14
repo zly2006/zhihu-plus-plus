@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.viewmodel
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -33,6 +34,12 @@ import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionAnswerNavigator
 import com.github.zly2006.zhihu.navigation.PaginationInfoNavigator
 import com.github.zly2006.zhihu.navigation.QuestionAnswerNavigator
+import com.github.zly2006.zhihu.shared.aigc.AigcVoteFlagResponse
+import com.github.zly2006.zhihu.shared.aigc.AigcVoteFlagStatusResponse
+import com.github.zly2006.zhihu.shared.aigc.AigcVoteFlagSubmission
+import com.github.zly2006.zhihu.shared.aigc.AigcVoteNamedVoter
+import com.github.zly2006.zhihu.shared.aigc.AigcVoteReadEvent
+import com.github.zly2006.zhihu.shared.aigc.AigcVoteReadEvidence
 import com.github.zly2006.zhihu.shared.comment.decodeZhihuCommentData
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.OfficialBadge
@@ -41,12 +48,15 @@ import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.shared.util.ZhidaSummarySsePayload
+import com.github.zly2006.zhihu.shared.util.ZhihuFetchSignature
 import com.github.zly2006.zhihu.shared.util.applySegmentInfosToHtml
 import com.github.zly2006.zhihu.shared.util.buildZhidaSummaryRequest
 import com.github.zly2006.zhihu.shared.util.decodeZhidaAnswerData
 import com.github.zly2006.zhihu.shared.util.decodeZhidaStreamErrorMessage
 import com.github.zly2006.zhihu.shared.util.mergeSummaryChunk
 import com.github.zly2006.zhihu.shared.util.parseZhidaSsePayload
+import com.github.zly2006.zhihu.shared.util.serializeZhidaSummaryRequest
+import com.github.zly2006.zhihu.shared.util.twoDigitString
 import com.github.zly2006.zhihu.ui.Collection
 import com.github.zly2006.zhihu.ui.CollectionResponse
 import com.github.zly2006.zhihu.ui.VoteUpState
@@ -82,6 +92,7 @@ import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import kotlin.time.Clock
 
 class ArticleViewModel(
     private val article: Article,
@@ -124,6 +135,43 @@ class ArticleViewModel(
         private set
     var aiSummaryLoading by mutableStateOf(false)
         private set
+    var aigcVoteAvailable by mutableStateOf(false)
+        private set
+    var aigcVoteLoading by mutableStateOf(false)
+        private set
+    var aigcVoteError by mutableStateOf<String?>(null)
+        private set
+    var aigcVoteCredit by mutableIntStateOf(0)
+        private set
+    var aigcVoteProgress by mutableIntStateOf(0)
+        private set
+    var aigcVoteCap by mutableIntStateOf(5)
+        private set
+    var aigcCreditBypassAvailable by mutableStateOf(false)
+        private set
+    var aigcVoterName by mutableStateOf("")
+        private set
+    var aigcNamedVoters by mutableStateOf<List<AigcVoteNamedVoter>>(emptyList())
+        private set
+
+    /** 自家后端支持人数：在 Zhihu++ 服务中把该内容标记为 AIGC 的有效用户数。 */
+    var aigcEffectiveFlagCount by mutableIntStateOf(0)
+        private set
+    var aigcCurrentVersionFlagCount by mutableIntStateOf(0)
+        private set
+
+    /** 外部来源支持人数：仅来自 zhihuai.sx349.xyz 的支持票投票人数。 */
+    var zhihuaiAigcSupportVoterCount by mutableIntStateOf(0)
+        private set
+
+    /** 展示用 AIGC 支持总人数：自家后端支持人数 + zhihuai 外部支持人数。 */
+    val aigcSupportVoterCount: Int
+        get() = aigcEffectiveFlagCount + zhihuaiAigcSupportVoterCount
+    var aigcFlagged by mutableStateOf(false)
+        private set
+    private var aigcMaxScrollRatio by mutableFloatStateOf(0f)
+    private var aigcReadSyncStarted = false
+    private val openedAtEpochSeconds = Clock.System.now().epochSeconds
     private var aiSummaryJob: Job? = null
     private var exportSourceContent: DataHolder.Content? = null
 
@@ -371,7 +419,7 @@ class ArticleViewModel(
                     accept(ContentType.Text.EventStream)
                     contentType(ContentType.Application.Json)
                     header("x-xsrftoken", environment.xsrfToken())
-                    setBody(request)
+                    setBody(serializeZhidaSummaryRequest(request))
                 }
                 if (!response.status.isSuccess()) {
                     val errorBody = response.bodyAsText()
@@ -558,6 +606,189 @@ class ArticleViewModel(
         }
     }
 
+    fun updateAigcReadProgress(
+        currentScroll: Int,
+        maxScroll: Int,
+    ) {
+        val ratio = when {
+            content.isBlank() -> 0f
+            maxScroll <= 0 -> 1f
+            else -> (currentScroll.toFloat() / maxScroll.toFloat()).coerceIn(0f, 1f)
+        }
+        if (ratio > aigcMaxScrollRatio) {
+            aigcMaxScrollRatio = ratio
+        }
+    }
+
+    fun isAigcFlagEvidenceReady(): Boolean = currentAigcReadEvidence().isEligibleForCredit()
+
+    fun loadAigcFlagStatus(environment: AigcVoteEnvironment) {
+        val client = environment.aigcVoteClient()
+        aigcVoteAvailable = client != null
+        val voter = environment.aigcVoteVoter()
+        aigcVoterName = voter?.name.orEmpty()
+        if (client == null) return
+
+        viewModelScope.launch {
+            aigcVoteLoading = true
+            aigcVoteError = null
+            try {
+                applyAigcStatus(
+                    client.getFlagStatus(
+                        contentType = aigcContentType(),
+                        contentId = article.id.toString(),
+                        voter = voter,
+                    ),
+                )
+            } catch (e: Exception) {
+                Log.e("ArticleViewModel", "Failed to load AIGC vote status", e)
+                aigcVoteError = e.message ?: "AIGC 投票状态加载失败"
+            } finally {
+                aigcVoteLoading = false
+            }
+        }
+    }
+
+    fun syncAigcReadEventIfEligible(environment: AigcVoteEnvironment) {
+        val client = environment.aigcVoteClient()
+        aigcVoteAvailable = client != null
+        if (client == null || aigcReadSyncStarted || content.isBlank()) return
+
+        val evidence = currentAigcReadEvidence()
+        val contentUpdatedAt = currentContentUpdatedAt()
+        if (!evidence.isEligibleForCredit() || contentUpdatedAt <= 0) return
+        aigcReadSyncStarted = true
+
+        viewModelScope.launch {
+            try {
+                val response = client.syncReadEvent(
+                    AigcVoteReadEvent(
+                        contentType = aigcContentType(),
+                        contentId = article.id.toString(),
+                        title = title,
+                        authorHash = currentAuthorHash(),
+                        contentHtml = content,
+                        contentUpdatedAt = contentUpdatedAt,
+                        evidence = evidence,
+                    ),
+                )
+                aigcVoteCredit = response.credit
+                aigcVoteProgress = response.progress
+                aigcVoteCap = response.cap
+                aigcVoteError = null
+            } catch (e: Exception) {
+                Log.e("ArticleViewModel", "Failed to sync AIGC read event", e)
+                aigcVoteError = e.message ?: "AIGC 阅读积分同步失败"
+                aigcReadSyncStarted = false
+            }
+        }
+    }
+
+    fun submitAigcFlag(environment: AigcVoteEnvironment) {
+        val client = environment.aigcVoteClient()
+        aigcVoteAvailable = client != null
+        if (client == null) {
+            aigcVoteError = "未配置 AIGC 投票服务"
+            userMessages.showShortMessage(aigcVoteError!!)
+            return
+        }
+        if (content.isBlank()) {
+            aigcVoteError = "正文尚未加载完成"
+            userMessages.showShortMessage(aigcVoteError!!)
+            return
+        }
+        val voter = environment.aigcVoteVoter()
+        aigcVoterName = voter?.name.orEmpty()
+        if (voter == null) {
+            aigcVoteError = "需要登录后才能记名投票"
+            userMessages.showShortMessage(aigcVoteError!!)
+            return
+        }
+        if (aigcVoteCredit <= 0 && !aigcFlagged && !aigcCreditBypassAvailable) {
+            aigcVoteError = "投票积分不足"
+            userMessages.showShortMessage(aigcVoteError!!)
+            return
+        }
+        if (!aigcCreditBypassAvailable && !isAigcFlagEvidenceReady()) {
+            aigcVoteError = "需要继续阅读后才能标记"
+            userMessages.showShortMessage(aigcVoteError!!)
+            return
+        }
+
+        viewModelScope.launch {
+            aigcVoteLoading = true
+            aigcVoteError = null
+            try {
+                applyAigcFlagResponse(
+                    client.submitFlag(
+                        AigcVoteFlagSubmission(
+                            contentType = aigcContentType(),
+                            contentId = article.id.toString(),
+                            voter = voter,
+                            title = title,
+                            authorHash = currentAuthorHash(),
+                            contentHtml = content,
+                            contentUpdatedAt = currentContentUpdatedAt(),
+                            evidence = currentAigcReadEvidence(),
+                        ),
+                    ),
+                )
+                userMessages.showShortMessage("已标记疑似 AIGC")
+            } catch (e: Exception) {
+                Log.e("ArticleViewModel", "AIGC flag failed", e)
+                aigcVoteError = e.message ?: "AIGC 标记失败"
+                userMessages.showShortMessage("AIGC 标记失败: ${e.message}")
+            } finally {
+                aigcVoteLoading = false
+            }
+        }
+    }
+
+    private fun applyAigcStatus(response: AigcVoteFlagStatusResponse) {
+        aigcFlagged = response.myFlagged
+        aigcVoteCredit = response.credit
+        aigcVoteProgress = response.progress
+        aigcVoteCap = response.cap
+        aigcCreditBypassAvailable = response.creditBypassAvailable
+        aigcEffectiveFlagCount = response.effectiveFlagCount
+        aigcNamedVoters = response.voters
+        zhihuaiAigcSupportVoterCount = response.externalSource?.voterCount ?: 0
+    }
+
+    private fun applyAigcFlagResponse(response: AigcVoteFlagResponse) {
+        aigcFlagged = response.myFlagged
+        aigcVoteCredit = response.credit
+        aigcCreditBypassAvailable = response.creditBypassAvailable
+        aigcEffectiveFlagCount = response.effectiveFlagCount
+        aigcCurrentVersionFlagCount = response.currentVersionFlagCount
+        aigcNamedVoters = response.voters
+        zhihuaiAigcSupportVoterCount = response.externalSource?.voterCount ?: 0
+    }
+
+    private fun currentAigcReadEvidence(): AigcVoteReadEvidence {
+        val nowEpochSeconds = Clock.System.now().epochSeconds
+        return AigcVoteReadEvidence(
+            foregroundDurationMs = (nowEpochSeconds - openedAtEpochSeconds).coerceAtLeast(0) * 1_000,
+            maxScrollRatio = aigcMaxScrollRatio.toDouble(),
+            openedAtEpochSeconds = openedAtEpochSeconds,
+        )
+    }
+
+    private fun currentContentUpdatedAt(): Long = when {
+        updatedAt > 0L -> updatedAt
+        createdAt > 0L -> createdAt
+        else -> 0L
+    }
+
+    private fun currentAuthorHash(): String = ZhihuFetchSignature.md5Hex(
+        authorId.ifBlank { authorUrlToken.ifBlank { authorName } },
+    )
+
+    private fun aigcContentType(): String = when (article.type) {
+        ArticleType.Answer -> "answer"
+        ArticleType.Article -> "article"
+    }
+
     fun loadMoreVoters(environment: ZhihuApiEnvironment, reset: Boolean = false) {
         if (article.type != ArticleType.Answer || votersLoading) return
         viewModelScope.launch {
@@ -643,9 +874,9 @@ class ArticleViewModel(
             return
         }
 
-        if (requiresHtmlExportPermission(environment) && !hasStoragePermission(environment)) {
+        if (environment.requiresHtmlExportPermission() && !environment.hasImageExportPermission()) {
             withContext(Dispatchers.Main) {
-                requestStoragePermission(environment)
+                environment.requestImageExportPermission()
                 permissionRequestCount++
                 userMessages.showShortMessage("需要存储权限才能导出 HTML，正在请求权限")
                 onComplete(false)
@@ -656,7 +887,13 @@ class ArticleViewModel(
         try {
             val htmlContent = createOfflineHtmlContent(environment, includeAppAttribution)
             val savedLocation = withContext(Dispatchers.Default) {
-                saveHtmlToDownloads(environment, htmlContent)
+                environment.saveHtmlToDownloads(
+                    displayName = buildArticleExportFileName(
+                        content = requireExportSourceContent(),
+                        extension = "html",
+                    ),
+                    htmlContent = htmlContent,
+                )
             }
             withContext(Dispatchers.Main) {
                 userMessages.showLongMessage("HTML 已保存到 $savedLocation")
@@ -669,16 +906,6 @@ class ArticleViewModel(
                 onComplete(false)
             }
         }
-    }
-
-    private fun requiresHtmlExportPermission(environment: ArticleExportEnvironment): Boolean =
-        environment.requiresHtmlExportPermission()
-
-    private fun hasStoragePermission(environment: ArticleExportEnvironment): Boolean =
-        environment.hasImageExportPermission()
-
-    private fun requestStoragePermission(environment: ArticleExportEnvironment) {
-        environment.requestImageExportPermission()
     }
 
     private suspend fun exportToImageInternal(
@@ -709,10 +936,16 @@ class ArticleViewModel(
 
         var preparedWebView: PreparedArticleExportContent? = null
         var bitmap: Any? = null
-        val renderer = articleImageExportRenderer(environment)!!
+        val renderer = environment.articleImageExportRenderer { fileName ->
+            try {
+                environment.loadExportAssetText(fileName)
+            } catch (e: Exception) {
+                Log.e("ArticleViewModel", "Failed to load export asset: $fileName", e)
+                ""
+            }
+        }!!
         try {
-            preparedWebView = prepareExportWebView(
-                renderer = renderer,
+            preparedWebView = renderer.prepareExportWebView(
                 htmlContent = createHtmlContent(
                     environment = environment,
                     includeComments = includeComments,
@@ -721,9 +954,16 @@ class ArticleViewModel(
                 ),
                 timeoutMs = if (includeComments) 18_000L else 15_000L,
             )
-            bitmap = captureExportBitmap(renderer, preparedWebView)
+            val capturedBitmap = renderer.captureExportBitmap(preparedWebView)
+            bitmap = capturedBitmap
             withContext(Dispatchers.Default) {
-                saveImageToMediaStore(environment, bitmap)
+                environment.saveImageToMediaStore(
+                    displayName = buildArticleExportFileName(
+                        content = requireExportSourceContent(),
+                        extension = "jpg",
+                    ),
+                    bitmap = capturedBitmap,
+                )
             }
             withContext(Dispatchers.Main) {
                 userMessages.showLongMessage(successMessage)
@@ -737,41 +977,10 @@ class ArticleViewModel(
                 onComplete(false)
             }
         } finally {
-            bitmap?.let { recycleExportBitmap(renderer, it) }
-            preparedWebView?.let { destroyExportWebView(renderer, it) }
+            bitmap?.let { renderer.recycleExportBitmap(it) }
+            preparedWebView?.let { renderer.destroyExportWebView(it) }
         }
     }
-
-    private suspend fun prepareExportWebView(
-        renderer: ArticleImageExportRenderer,
-        htmlContent: String,
-        timeoutMs: Long,
-    ): PreparedArticleExportContent = renderer.prepareExportWebView(htmlContent, timeoutMs)
-
-    private fun loadExportAssetText(environment: ArticleExportEnvironment, fileName: String): String = try {
-        environment.loadExportAssetText(fileName)
-    } catch (e: Exception) {
-        Log.e("ArticleViewModel", "Failed to load export asset: $fileName", e)
-        ""
-    }
-
-    private suspend fun captureExportBitmap(
-        renderer: ArticleImageExportRenderer,
-        preparedWebView: PreparedArticleExportContent,
-    ): Any = renderer.captureExportBitmap(preparedWebView)
-
-    private suspend fun destroyExportWebView(
-        renderer: ArticleImageExportRenderer,
-        preparedWebView: PreparedArticleExportContent,
-    ) = renderer.destroyExportWebView(preparedWebView)
-
-    private fun recycleExportBitmap(renderer: ArticleImageExportRenderer, bitmap: Any) =
-        renderer.recycleExportBitmap(bitmap)
-
-    private fun articleImageExportRenderer(environment: ArticleExportEnvironment): ArticleImageExportRenderer? =
-        environment.articleImageExportRenderer { fileName ->
-            loadExportAssetText(environment, fileName)
-        }
 
     // 创建HTML内容
     private suspend fun createHtmlContent(
@@ -823,33 +1032,17 @@ class ArticleViewModel(
             include = "data[*].content,excerpt,headline",
         ) ?: return emptyList()
         return decodeZhihuCommentData(json, safeRequestedCount)
-            .map(::mapExportComment)
+            .map { comment ->
+                prepareArticleExportComment(
+                    authorName = comment.author.name,
+                    content = comment.content,
+                    createdTimeText = formatArticleDateTime(comment.createdTime).dropLast(3),
+                )
+            }
     }
-
-    private fun mapExportComment(comment: DataHolder.Comment): ArticleExportComment = prepareArticleExportComment(
-        authorName = comment.author.name,
-        content = comment.content,
-        createdTimeText = formatArticleDateTime(comment.createdTime).dropLast(3),
-    )
-
-    private fun buildExportFileName(extension: String): String = buildArticleExportFileName(
-        content = requireExportSourceContent(),
-        extension = extension,
-    )
 
     private fun requireExportSourceContent(): DataHolder.Content = exportSourceContent
         ?: throw IllegalStateException("内容未加载完成")
-
-    // 使用MediaStore保存图片到公共目录
-    private fun saveImageToMediaStore(environment: ArticleExportEnvironment, bitmap: Any) {
-        val displayName = buildExportFileName("jpg")
-        environment.saveImageToMediaStore(displayName, bitmap)
-    }
-
-    private fun saveHtmlToDownloads(environment: ArticleExportEnvironment, htmlContent: String): String {
-        val displayName = buildExportFileName("html")
-        return environment.saveHtmlToDownloads(displayName, htmlContent)
-    }
 
     // 转换为Markdown格式
     fun convertToMarkdown(): String {
@@ -1021,15 +1214,15 @@ fun formatArticleDateTime(seconds: Long): String {
     return buildString {
         append(dateTime.year.toString().padStart(4, '0'))
         append('-')
-        append((dateTime.month.ordinal + 1).toString().padStart(2, '0'))
+        append((dateTime.month.ordinal + 1).twoDigitString())
         append('-')
-        append(dateTime.day.toString().padStart(2, '0'))
+        append(dateTime.day.twoDigitString())
         append(' ')
-        append(dateTime.hour.toString().padStart(2, '0'))
+        append(dateTime.hour.twoDigitString())
         append(':')
-        append(dateTime.minute.toString().padStart(2, '0'))
+        append(dateTime.minute.twoDigitString())
         append(':')
-        append(dateTime.second.toString().padStart(2, '0'))
+        append(dateTime.second.twoDigitString())
     }
 }
 

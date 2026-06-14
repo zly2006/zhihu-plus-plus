@@ -44,7 +44,9 @@ fun BaseFeedViewModel.handleBlockUser(
 ) {
     val userMessages = androidUserMessageSink(context)
     viewModelScope.launch {
-        val authorInfo = ensureAuthorInfo(context, feedItem)
+        val authorInfo = withContext(Dispatchers.IO) {
+            resolveFeedBlockAuthorInfo(feedItem, androidContentDetailProvider(context))
+        }
         if (authorInfo != null) {
             onShowDialog(authorInfo)
         } else {
@@ -63,7 +65,9 @@ fun BaseFeedViewModel.handleBlockByKeywords(
 ) {
     val userMessages = androidUserMessageSink(context)
     viewModelScope.launch {
-        val contentInfo = ensureContentForKeywordBlocking(context, feedItem)
+        val contentInfo = withContext(Dispatchers.IO) {
+            resolveFeedKeywordBlockingContent(feedItem, androidContentDetailProvider(context))
+        }
         if (contentInfo != null) {
             onShowDialog(feedItem to contentInfo)
         } else {
@@ -92,20 +96,6 @@ fun BaseFeedViewModel.handleBlockTopic(
             userMessages.showShortMessage(message)
         }
     }
-}
-
-private suspend fun ensureAuthorInfo(
-    context: Context,
-    feedItem: FeedDisplayItem,
-): Pair<String, String>? = withContext(Dispatchers.IO) {
-    resolveFeedBlockAuthorInfo(feedItem, androidContentDetailProvider(context))
-}
-
-private suspend fun ensureContentForKeywordBlocking(
-    context: Context,
-    feedItem: FeedDisplayItem,
-): Triple<String, String, String?>? = withContext(Dispatchers.IO) {
-    resolveFeedKeywordBlockingContent(feedItem, androidContentDetailProvider(context))
 }
 
 private fun androidContentDetailProvider(context: Context): ContentDetailProvider =

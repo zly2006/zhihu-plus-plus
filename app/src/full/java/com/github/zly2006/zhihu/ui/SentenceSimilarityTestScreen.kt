@@ -106,12 +106,6 @@ fun SentenceSimilarityTestScreen() {
         }
     }
 
-    fun unloadModel() {
-        coroutineScope.launch {
-            SentenceEmbeddingManager.unload()
-        }
-    }
-
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
@@ -225,7 +219,11 @@ fun SentenceSimilarityTestScreen() {
                         Text(if (isModelLoading) "加载中..." else "加载模型")
                     }
                     TextButton(
-                        onClick = { unloadModel() },
+                        onClick = {
+                            coroutineScope.launch {
+                                SentenceEmbeddingManager.unload()
+                            }
+                        },
                         enabled = isModelReady && !isComputing,
                     ) {
                         Text("卸载模型")

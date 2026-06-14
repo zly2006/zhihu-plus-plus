@@ -73,10 +73,6 @@ fun getContentFilterDatabase(context: Context): ContentFilterDatabase =
         }
     }
 
-fun clearContentFilterDatabaseInstance() {
-    contentFilterDatabase = null
-}
-
 object AndroidContentFilterRuntime {
     var semanticMatcher: KeywordSemanticMatcher = KeywordSemanticMatcher { _, _, _ -> emptyList() }
     var keywordWeightExtractor: KeywordWeightExtractor = KeywordWeightExtractor { _, _ -> emptyList() }

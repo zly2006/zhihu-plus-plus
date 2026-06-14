@@ -100,9 +100,6 @@ suspend fun fetchVerifiedZhihuAccount(client: HttpClient): JsonObject? {
     return response.body<JsonObject>()
 }
 
-suspend fun fetchVerifiedZhihuProfile(client: HttpClient): ZhihuAccountProfile? =
-    fetchVerifiedZhihuAccount(client)?.let { ZhihuJson.decodeJson<ZhihuAccountProfile>(it) }
-
 suspend fun fetchVerifiedZhihuSession(
     client: HttpClient,
     cookies: Map<String, String>,
