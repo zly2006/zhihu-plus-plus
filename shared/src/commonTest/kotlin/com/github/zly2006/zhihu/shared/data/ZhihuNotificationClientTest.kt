@@ -20,13 +20,6 @@ package com.github.zly2006.zhihu.shared.data
 import com.github.zly2006.zhihu.shared.notification.NotificationType
 import com.github.zly2006.zhihu.viewmodel.mergeNotificationsByCreateTime
 import com.github.zly2006.zhihu.viewmodel.shouldReportNotificationFetchFailure
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
-import io.ktor.client.engine.mock.respond
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpMethod
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.headersOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -174,59 +167,6 @@ class ZhihuNotificationClientTest {
         assertEquals(2, notifications.followNotificationsCount)
         assertEquals(3, notifications.voteThankNotificationsCount)
         assertEquals(6, notifications.totalCount)
-    }
-
-    @Test
-    fun fetchUnreadNotificationCountUsesMeEndpoint() = runTest {
-        val client = HttpClient(
-            MockEngine { request ->
-                assertEquals(ZHIHU_ME_URL, request.url.toString())
-                respond(
-                    content =
-                        """
-                        {
-                          "default_notifications_count": 4,
-                          "follow_notifications_count": 5,
-                          "vote_thank_notifications_count": 6
-                        }
-                        """.trimIndent(),
-                    status = HttpStatusCode.OK,
-                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
-                )
-            },
-        ) {
-            installZhihuCommonClientConfig(
-                cookies = mutableMapOf(),
-                userAgent = "test-agent",
-            )
-        }
-
-        assertEquals(15, fetchZhihuUnreadNotificationCount(client))
-    }
-
-    @Test
-    fun markAllNotificationsAsReadPostsEveryCategoryInOrder() = runTest {
-        val requestedUrls = mutableListOf<String>()
-        val client = HttpClient(
-            MockEngine { request ->
-                assertEquals(HttpMethod.Post, request.method)
-                requestedUrls += request.url.toString()
-                respond(
-                    content = "{}",
-                    status = HttpStatusCode.OK,
-                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
-                )
-            },
-        ) {
-            installZhihuCommonClientConfig(
-                cookies = mutableMapOf(),
-                userAgent = "test-agent",
-            )
-        }
-
-        markAllZhihuNotificationsAsRead(client)
-
-        assertEquals(ZHIHU_NOTIFICATION_READ_ALL_URLS, requestedUrls)
     }
 
     private fun notificationItem(

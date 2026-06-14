@@ -23,8 +23,6 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.cookies.CookiesStorage
 import io.ktor.client.request.HttpRequestBuilder
-import io.ktor.client.request.get
-import io.ktor.client.request.post
 import io.ktor.client.request.request
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.Cookie
@@ -38,7 +36,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlin.time.Clock
 
 const val ZHIHU_CLEAR_ONLINE_HISTORY_URL = "https://api.zhihu.com/read_history/batch_del"
 
@@ -72,23 +69,6 @@ val ZHIHU_NOTIFICATION_READ_ALL_URLS = listOf(
     ZHIHU_NOTIFICATION_VOTE_THANK_READ_ALL_URL,
 )
 
-suspend fun fetchZhihuUnreadNotificationCount(
-    client: HttpClient,
-    configureRequest: HttpRequestBuilder.() -> Unit = {},
-): Int {
-    val response = client.get(ZHIHU_ME_URL, configureRequest).body<JsonObject>()
-    return ZhihuJson.decodeJson<ZhihuMeNotifications>(response).totalCount
-}
-
-suspend fun markAllZhihuNotificationsAsRead(
-    client: HttpClient,
-    configureRequest: HttpRequestBuilder.() -> Unit = {},
-) {
-    ZHIHU_NOTIFICATION_READ_ALL_URLS.forEach { url ->
-        client.post(url, configureRequest)
-    }
-}
-
 const val ZHIHU_DAILY_LATEST_URL = "https://news-at.zhihu.com/api/4/stories/latest"
 
 fun nextDailyApiDate(date: String): String {
@@ -100,8 +80,6 @@ fun nextDailyApiDate(date: String): String {
     return nextDate.toString().replace("-", "")
 }
 
-private var lastRefreshMillis: Long = 0
-
 suspend fun executeZhihuAuthenticatedRequest(
     client: HttpClient,
     url: String,
@@ -112,12 +90,8 @@ suspend fun executeZhihuAuthenticatedRequest(
     }
     if (response.status != HttpStatusCode.Unauthorized) return response
 
-    if (Clock.System.now().toEpochMilliseconds() - lastRefreshMillis < 10_000) {
-        return response
-    }
     val refreshToken = ZhihuCredentialRefresher.fetchRefreshToken(client)
     ZhihuCredentialRefresher.refreshZhihuToken(refreshToken, client)
-    lastRefreshMillis = Clock.System.now().toEpochMilliseconds()
     return client
         .request(url) {
             block()
