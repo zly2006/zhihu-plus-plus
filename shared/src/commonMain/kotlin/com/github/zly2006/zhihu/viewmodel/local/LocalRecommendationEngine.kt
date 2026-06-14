@@ -18,7 +18,6 @@
 package com.github.zly2006.zhihu.viewmodel.local
 
 import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.navigation.zhihuQuestionFeedsUrl
 import com.github.zly2006.zhihu.shared.data.CommonFeed
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
@@ -359,52 +358,6 @@ internal fun isVoteupFeed(feed: Feed): Boolean {
 internal fun extractQuestionIdFromUrl(url: String): String? {
     val regex = """question/(\d+)""".toRegex()
     return regex.find(url)?.groupValues?.get(1)
-}
-
-internal fun createFollowingTasks(count: Int): List<CrawlingTask> = (0 until count).map { index ->
-    CrawlingTask(
-        url = zhihuFollowingRecommendUrl(offset = index * 10),
-        reason = CrawlingReason.Following,
-        priority = 8,
-    )
-}
-
-internal fun createTrendingTasks(count: Int): List<CrawlingTask> = (0 until count).map { index ->
-    CrawlingTask(
-        url = zhihuTopstoryRecommendUrl(limit = 20, offset = index * 20),
-        reason = CrawlingReason.Trending,
-        priority = 7,
-    )
-}
-
-internal fun createDefaultUpvotedQuestionTasks(count: Int): List<CrawlingTask> = (0 until count).map { index ->
-    CrawlingTask(
-        url = zhihuTopstoryRecommendUrl(limit = 10, offset = index * 10),
-        reason = CrawlingReason.UpvotedQuestion,
-        priority = 6,
-    )
-}
-
-internal fun createQuestionFeedTask(questionId: String): CrawlingTask = CrawlingTask(
-    url = zhihuQuestionFeedsUrl(questionId, limit = 20),
-    reason = CrawlingReason.UpvotedQuestion,
-    priority = 6,
-)
-
-internal fun createFollowingUpvoteTasks(count: Int): List<CrawlingTask> = (0 until count).map { index ->
-    CrawlingTask(
-        url = zhihuFollowingUpvoteRecommendUrl(limit = 20, offset = index * 20),
-        reason = CrawlingReason.FollowingUpvote,
-        priority = 5,
-    )
-}
-
-internal fun createCollaborativeFilteringTasks(count: Int): List<CrawlingTask> = (0 until count).map { index ->
-    CrawlingTask(
-        url = zhihuTopstoryRecommendUrl(limit = 15, offset = index * 15),
-        reason = CrawlingReason.CollaborativeFiltering,
-        priority = 4,
-    )
 }
 
 internal fun extractQuestionIdFromContentId(contentId: String): String? {
