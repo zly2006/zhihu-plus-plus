@@ -130,18 +130,6 @@ actual fun rememberUserMessageSink(): UserMessageSink = remember {
 }
 
 @Composable
-actual fun rememberScreenSizeDp(): ScreenSizeDp {
-    val density = LocalDensity.current
-    val containerSize = LocalWindowInfo.current.containerSize
-    return with(density) {
-        ScreenSizeDp(
-            width = containerSize.width.toDp().value,
-            height = containerSize.height.toDp().value,
-        )
-    }
-}
-
-@Composable
 actual fun PlatformBackHandler(
     enabled: Boolean,
     onBack: () -> Unit,

@@ -24,7 +24,6 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.edit
 import androidx.core.net.toUri
@@ -140,15 +139,6 @@ actual fun rememberIsLiteVariant(): Boolean {
 }
 
 internal fun isAndroidLiteVariantPackageName(packageName: String): Boolean = packageName.endsWith(".lite")
-
-@Composable
-actual fun rememberScreenSizeDp(): ScreenSizeDp {
-    val configuration = LocalConfiguration.current
-    return ScreenSizeDp(
-        width = configuration.screenWidthDp.toFloat(),
-        height = configuration.screenHeightDp.toFloat(),
-    )
-}
 
 @Composable
 actual fun PlatformBackHandler(
