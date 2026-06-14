@@ -45,6 +45,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.shared.aigc.AIGC_MARKING_ENABLED_PREFERENCE_KEY
 import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
@@ -307,6 +308,16 @@ fun MiuixSystemAndUpdateSettingsScreen() {
                         onCheckedChange = {
                             allowTelemetry = it
                             settings.putBoolean("allowTelemetry", it)
+                        },
+                    )
+                    var aigcMarkingEnabled by remember { mutableStateOf(settings.getBoolean(AIGC_MARKING_ENABLED_PREFERENCE_KEY, false)) }
+                    SwitchPreference(
+                        title = "启用 AIGC 标记",
+                        summary = "如果启用，会把你正在浏览的内容发送到我们的服务器，这样你可以知道其他用户是否认为其疑似 AIGC。默认关闭，不会发送隐私信息。",
+                        checked = aigcMarkingEnabled,
+                        onCheckedChange = {
+                            aigcMarkingEnabled = it
+                            settings.putBoolean(AIGC_MARKING_ENABLED_PREFERENCE_KEY, it)
                         },
                     )
                 }

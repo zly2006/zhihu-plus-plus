@@ -45,6 +45,7 @@ import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DesktopWindows
 import androidx.compose.material.icons.filled.FilterCenterFocus
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.GetApp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
@@ -125,6 +126,7 @@ import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.Icon
@@ -186,6 +188,7 @@ fun MiuixArticleScreen(
     var newCollectionTitle by remember { mutableStateOf("") }
     var newCollectionPublic by remember { mutableStateOf(false) }
     var showSummarySheet by remember { mutableStateOf(false) }
+    var showAigcSheet by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
     var showDoubleTapActionDialog by remember { mutableStateOf(false) }
     var navigatingToNextAnswer by remember { mutableStateOf(false) }
@@ -813,6 +816,11 @@ fun MiuixArticleScreen(
                 showSummarySheet = true
                 viewModel.requestAiSummary(environment)
             }
+            MiuixActionMenuRow(Icons.Default.Flag, "标记疑似 AIGC") {
+                showActionsMenu = false
+                showAigcSheet = true
+                viewModel.loadAigcFlagStatus(environment)
+            }
             MiuixActionMenuRow(Icons.Default.ContentCopy, "复制链接") {
                 showActionsMenu = false
                 articleActions.shareRuntime.copyLink(article, articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName))
@@ -862,6 +870,81 @@ fun MiuixArticleScreen(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 if (!viewModel.aiSummaryLoading) {
                     TextButton(text = "重新总结", onClick = { viewModel.requestAiSummary(environment) })
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+
+    // 标记疑似 AIGC 弹层（对齐 M3 AigcFlagSheet）。
+    WindowBottomSheet(
+        show = showAigcSheet,
+        onDismissRequest = { showAigcSheet = false },
+        title = "标记疑似 AIGC",
+    ) {
+        val canSubmitAigc = viewModel.aigcVoteAvailable &&
+            !viewModel.aigcVoteLoading &&
+            !viewModel.aigcFlagged &&
+            viewModel.aigcVoterName.isNotBlank() &&
+            (viewModel.aigcCreditBypassAvailable || (viewModel.aigcVoteCredit > 0 && viewModel.isAigcFlagEvidenceReady()))
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                "每浏览 20 篇内容获得 1 点投票积分，最多保留 ${viewModel.aigcVoteCap} 点。标记会上传当前正文 HTML、编辑时间和投票人身份，服务端按内容版本统计。",
+                style = MiuixTheme.textStyles.body2,
+                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            )
+            Text(
+                if (!viewModel.aigcVoteAvailable) {
+                    "AIGC 标记未启用"
+                } else if (viewModel.aigcVoterName.isBlank()) {
+                    "未登录，无法记名投票"
+                } else {
+                    "投票人：${viewModel.aigcVoterName}"
+                },
+                color = MiuixTheme.colorScheme.onSurface,
+            )
+            Text(
+                if (viewModel.aigcCreditBypassAvailable) {
+                    "积分 ${viewModel.aigcVoteCredit}/${viewModel.aigcVoteCap} · 当前账号可免积分标记"
+                } else {
+                    "积分 ${viewModel.aigcVoteCredit}/${viewModel.aigcVoteCap} · 进度 ${viewModel.aigcVoteProgress}/20"
+                },
+                color = MiuixTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                if (viewModel.aigcEffectiveFlagCount > 0) "已有 ${viewModel.aigcEffectiveFlagCount} 个有效标记" else "当前还没有有效标记",
+                color = MiuixTheme.colorScheme.onSurface,
+            )
+            if (viewModel.aigcNamedVoters.isNotEmpty()) {
+                Text(
+                    "记名投票：" + viewModel.aigcNamedVoters.joinToString("、") { voter ->
+                        if (voter.creditBypassed) "${voter.voterName}（免积分）" else voter.voterName
+                    },
+                    style = MiuixTheme.textStyles.body2,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                )
+            }
+            viewModel.aigcVoteError?.let { Text(it, color = MiuixTheme.colorScheme.primary) }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                TextButton(text = "关闭", onClick = { showAigcSheet = false })
+                Spacer(Modifier.width(8.dp))
+                Button(onClick = { viewModel.submitAigcFlag(environment) }, enabled = canSubmitAigc) {
+                    Text(
+                        when {
+                            !viewModel.aigcVoteAvailable -> "未启用"
+                            viewModel.aigcFlagged -> "已标记"
+                            viewModel.aigcVoteLoading -> "提交中"
+                            viewModel.aigcVoterName.isBlank() -> "需登录"
+                            viewModel.aigcCreditBypassAvailable -> "免积分标记"
+                            viewModel.aigcVoteCredit <= 0 -> "积分不足"
+                            !viewModel.isAigcFlagEvidenceReady() -> "继续阅读"
+                            else -> "消耗 1 点标记"
+                        },
+                    )
                 }
             }
             Spacer(Modifier.height(8.dp))
