@@ -657,7 +657,13 @@ class ArticleViewModel(
         }
 
         try {
-            val htmlContent = createOfflineHtmlContent(environment, includeAppAttribution)
+            val htmlContent = withContext(Dispatchers.Default) {
+                environment.buildOfflineArticleExportHtml(
+                    content = requireExportSourceContent(),
+                    includeAppAttribution = includeAppAttribution,
+                    httpClient = httpClient ?: environment.accountHttpClient(),
+                )
+            }
             val savedLocation = withContext(Dispatchers.Default) {
                 environment.saveHtmlToDownloads(
                     displayName = buildArticleExportFileName(
@@ -774,17 +780,6 @@ class ArticleViewModel(
             content = requireExportSourceContent(),
             includeAppAttribution = includeAppAttribution,
             extraSectionsHtml = commentsHtml,
-        )
-    }
-
-    private suspend fun createOfflineHtmlContent(
-        environment: ArticleExportContentEnvironment,
-        includeAppAttribution: Boolean,
-    ): String = withContext(Dispatchers.Default) {
-        environment.buildOfflineArticleExportHtml(
-            content = requireExportSourceContent(),
-            includeAppAttribution = includeAppAttribution,
-            httpClient = httpClient ?: environment.accountHttpClient(),
         )
     }
 
