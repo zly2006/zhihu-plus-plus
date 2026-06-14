@@ -36,16 +36,6 @@ data class OfficialBadge(
         get() = !isGenericCertification
 }
 
-fun mcnOfficialBadge(mcnCompany: String?): OfficialBadge? {
-    val normalized = mcnCompany?.trim()?.takeIf { it.isNotBlank() } ?: return null
-    return OfficialBadge(
-        title = "MCN",
-        description = normalized,
-        type = "mcn",
-        detailType = "mcn",
-    )
-}
-
 fun DataHolder.BadgeV2?.officialBadge(): OfficialBadge? {
     this ?: return null
     val details = officialBadgeDetails()

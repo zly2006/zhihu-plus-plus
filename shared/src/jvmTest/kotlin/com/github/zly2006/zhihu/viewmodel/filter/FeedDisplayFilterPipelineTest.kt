@@ -24,6 +24,7 @@ import com.github.zly2006.zhihu.shared.data.CommonFeed
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.OfficialBadge
 import com.github.zly2006.zhihu.shared.data.Person
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import kotlinx.coroutines.flow.first
@@ -160,6 +161,110 @@ class FeedDisplayFilterPipelineTest {
     }
 
     @Test
+    fun databaseHydratesCachedAuthorBadgeFromFeedAuthorToken() = runTest {
+        val fixture = fixture()
+        fixture.database
+            .createBlocklistManager()
+            .cacheAuthorOfficialBadge(
+                urlToken = "cached-author",
+                userName = "cached author",
+                badge = OfficialBadge(
+                    title = "优秀答主",
+                    description = "数码话题下的优秀答主",
+                    iconUrl = "https://pic.example/cached-badge.png",
+                ),
+            )
+        val feedItem = item(
+            title = "cached badge",
+            id = 1,
+            feed = articleFeed(author = person(isFollowing = false, urlToken = "cached-author")),
+        )
+
+        val result = fixture.database.hydrateCachedAuthorBadges(listOf(feedItem))
+
+        assertEquals("https://pic.example/cached-badge.png", result.single().authorOfficialBadge?.iconUrl)
+        fixture.database.close()
+    }
+
+    @Test
+    fun cachedBadgeDoesNotReplaceExistingAuthorBadge() = runTest {
+        val fixture = fixture()
+        fixture.database
+            .createBlocklistManager()
+            .cacheAuthorOfficialBadge(
+                urlToken = "cached-author",
+                userName = "cached author",
+                badge = OfficialBadge(
+                    title = "缓存徽章",
+                    description = "缓存徽章",
+                    iconUrl = "https://pic.example/cached-badge.png",
+                ),
+            )
+        val existingBadge = OfficialBadge(
+            title = "接口徽章",
+            description = "接口徽章",
+            iconUrl = "https://pic.example/api-badge.png",
+        )
+        val feedItem = item(
+            title = "existing badge",
+            id = 1,
+            feed = articleFeed(author = person(isFollowing = false, urlToken = "cached-author")),
+        ).copy(authorOfficialBadge = existingBadge)
+
+        val result = fixture.database.hydrateCachedAuthorBadges(listOf(feedItem))
+
+        assertEquals("https://pic.example/api-badge.png", result.single().authorOfficialBadge?.iconUrl)
+        fixture.database.close()
+    }
+
+    @Test
+    fun feedDisplayPipelineHydratesCachedBadgeForFollowedItemsSkippedByFilters() = runTest {
+        val fixture = fixture()
+        fixture.database
+            .createBlocklistManager()
+            .cacheAuthorOfficialBadge(
+                urlToken = "followed-author",
+                userName = "followed author",
+                badge = OfficialBadge(
+                    title = "社区成就",
+                    description = "知势榜领域影响力榜答主",
+                    iconUrl = "https://pic.example/followed-badge.png",
+                ),
+            )
+        val followedItem = item(
+            title = "followed",
+            id = 1,
+            feed = articleFeed(author = person(isFollowing = true, urlToken = "followed-author")),
+        )
+        var fetchCount = 0
+
+        val result = fixture.database.filterFeedDisplayItems(
+            settings = FeedFilterSettings(),
+            items = listOf(followedItem),
+            contentDetailProvider = ContentDetailProvider {
+                fetchCount++
+                article("unexpected")
+            },
+            semanticMatcher = KeywordSemanticMatcher { _, _, _ -> emptyList() },
+        )
+
+        assertEquals(0, fetchCount)
+        assertEquals("https://pic.example/followed-badge.png", result.single().authorOfficialBadge?.iconUrl)
+        fixture.database.close()
+    }
+
+    @Test
+    fun authorCacheWithOnlyBadgeUsesPositiveTtl() {
+        val cache = McnAuthorCache(
+            urlToken = "cached-author",
+            badgeIconUrl = "https://pic.example/cached-badge.png",
+            checkedTime = 1_000L,
+        )
+
+        assertEquals(false, cache.isExpired(nowMillis = 2L * 24 * 60 * 60 * 1000 + 1_000L))
+    }
+
+    @Test
     fun databaseFactoryWiresFeedDisplayPipelineServices() = runTest {
         val fixture = fixture()
         val keywordService = BlockedKeywordService(
@@ -248,6 +353,20 @@ class FeedDisplayFilterPipelineTest {
         navDestinationJson = Article(type = ArticleType.Article, id = id).toFeedDisplayItemNavDestinationJson(),
     )
 
+    private fun articleFeed(author: Person): Feed = CommonFeed(
+        target = Feed.ArticleTarget(
+            id = 1,
+            author = author,
+            title = "title",
+            content = "",
+            excerpt = "",
+            url = "",
+            created = 1,
+            updated = 1,
+            voteupCount = 10,
+        ),
+    )
+
     private fun article(
         title: String,
         content: String = title,
@@ -281,10 +400,14 @@ class FeedDisplayFilterPipelineTest {
         userType = "people",
     )
 
-    private fun person(isFollowing: Boolean): Person = Person(
+    private fun person(
+        isFollowing: Boolean,
+        urlToken: String = "author",
+    ): Person = Person(
         id = "author-id",
         url = "",
         userType = "people",
+        urlToken = urlToken,
         name = "author",
         headline = "",
         avatarUrl = "",

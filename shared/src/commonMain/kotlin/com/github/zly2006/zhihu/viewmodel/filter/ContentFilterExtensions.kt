@@ -27,6 +27,7 @@ import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.OfficialBadge
 import com.github.zly2006.zhihu.shared.data.navDestination
+import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.platform.SettingsStore
@@ -315,30 +316,35 @@ fun ContentFilterDatabase.createFeedDisplayFilterPipeline(
     onNlpBlocked: suspend (List<FilterableContent>) -> Unit = {},
     onDetailFetchFailed: (FeedDisplayItem) -> Unit = {},
     onDetailsKeywordFiltered: (FeedDisplayItem, String) -> Unit = { _, _ -> },
-): FeedDisplayFilterPipeline = FeedDisplayFilterPipeline(
-    settings = settings,
-    contentDetailProvider = contentDetailProvider,
-    contentFilterPipeline = FeedContentFilterPipeline(
+): FeedDisplayFilterPipeline = BlocklistService(
+    keywordDao = blockedKeywordDao(),
+    userDao = blockedUserDao(),
+    topicDao = blockedTopicDao(),
+    mcnOrganizationDao = blockedMcnOrganizationDao(),
+    mcnAuthorCacheDao = mcnAuthorCacheDao(),
+).let { blocklistService ->
+    FeedDisplayFilterPipeline(
         settings = settings,
-        blocklistService = BlocklistService(
-            keywordDao = blockedKeywordDao(),
-            userDao = blockedUserDao(),
-            topicDao = blockedTopicDao(),
-            mcnOrganizationDao = blockedMcnOrganizationDao(),
-            mcnAuthorCacheDao = mcnAuthorCacheDao(),
+        contentDetailProvider = contentDetailProvider,
+        contentFilterPipeline = FeedContentFilterPipeline(
+            settings = settings,
+            blocklistService = blocklistService,
+            blockedKeywordService = BlockedKeywordService(
+                keywordDao = blockedKeywordDao(),
+                recordDao = blockedContentRecordDao(),
+                semanticMatcher = semanticMatcher,
+            ),
+            onNlpBlocked = onNlpBlocked,
+            mcnAndBadgeProvider = mcnAndBadgeProvider,
         ),
-        blockedKeywordService = BlockedKeywordService(
-            keywordDao = blockedKeywordDao(),
-            recordDao = blockedContentRecordDao(),
-            semanticMatcher = semanticMatcher,
-        ),
-        onNlpBlocked = onNlpBlocked,
-        mcnAndBadgeProvider = mcnAndBadgeProvider,
-    ),
-    blockedFeedRecordDao = blockedFeedRecordDao(),
-    onDetailFetchFailed = onDetailFetchFailed,
-    onDetailsKeywordFiltered = onDetailsKeywordFiltered,
-)
+        blockedFeedRecordDao = blockedFeedRecordDao(),
+        onDetailFetchFailed = onDetailFetchFailed,
+        onDetailsKeywordFiltered = onDetailsKeywordFiltered,
+        cachedAuthorBadgeProvider = { token ->
+            blocklistService.getCachedMcnAuthor(token)?.officialBadge
+        },
+    )
+}
 
 suspend fun ContentFilterDatabase.filterFeedDisplayItems(
     settings: FeedFilterSettings,
@@ -366,6 +372,7 @@ class FeedDisplayFilterPipeline(
     private val blockedFeedRecordDao: BlockedFeedRecordDao,
     private val onDetailFetchFailed: (FeedDisplayItem) -> Unit = {},
     private val onDetailsKeywordFiltered: (FeedDisplayItem, String) -> Unit = { _, _ -> },
+    private val cachedAuthorBadgeProvider: suspend (String) -> OfficialBadge? = { null },
 ) {
     suspend fun filter(items: List<FeedDisplayItem>): List<FeedDisplayItem> {
         val (followedUserItems, otherItems) = if (!settings.filterFollowedUserContent) {
@@ -432,7 +439,8 @@ class FeedDisplayFilterPipeline(
             saveBlockedFeedRecords(blockedFeedRecordDao, allBlocked)
         }
 
-        return (followedUserItems + filteredOtherItems).filterDetailsKeywords()
+        return hydrateCachedAuthorBadges(followedUserItems + filteredOtherItems, cachedAuthorBadgeProvider)
+            .filterDetailsKeywords()
     }
 
     private suspend fun resolveRawContent(item: FeedDisplayItem): DataHolder.Content = when (val dest = item.navDestination) {
@@ -451,6 +459,58 @@ class FeedDisplayFilterPipeline(
         }
     }
 }
+
+suspend fun ContentFilterDatabase.hydrateCachedAuthorBadges(items: List<FeedDisplayItem>): List<FeedDisplayItem> {
+    val blocklistService = BlocklistService(
+        keywordDao = blockedKeywordDao(),
+        userDao = blockedUserDao(),
+        topicDao = blockedTopicDao(),
+        mcnOrganizationDao = blockedMcnOrganizationDao(),
+        mcnAuthorCacheDao = mcnAuthorCacheDao(),
+    )
+    return hydrateCachedAuthorBadges(items) { token ->
+        blocklistService.getCachedMcnAuthor(token)?.officialBadge
+    }
+}
+
+private suspend fun hydrateCachedAuthorBadges(
+    items: List<FeedDisplayItem>,
+    cachedAuthorBadgeProvider: suspend (String) -> OfficialBadge?,
+): List<FeedDisplayItem> {
+    val tokens = items
+        .filterNot(FeedDisplayItem::hasAuthorBadge)
+        .mapNotNull(FeedDisplayItem::authorUrlToken)
+        .distinct()
+    if (tokens.isEmpty()) return items
+
+    val badgesByToken = tokens
+        .mapNotNull { token ->
+            val badge = cachedAuthorBadgeProvider(token) ?: return@mapNotNull null
+            token to badge
+        }.toMap()
+    if (badgesByToken.isEmpty()) return items
+
+    return items.map { item ->
+        if (item.hasAuthorBadge()) return@map item
+        val badge = item.authorUrlToken()?.let(badgesByToken::get) ?: return@map item
+        item.copy(authorOfficialBadge = badge)
+    }
+}
+
+private fun FeedDisplayItem.hasAuthorBadge(): Boolean =
+    authorBadgeV2.officialBadge() != null || authorOfficialBadge != null
+
+private fun FeedDisplayItem.authorUrlToken(): String? =
+    raw.authorUrlToken()
+        ?: feed?.target?.author?.urlToken
+
+private fun DataHolder.Content?.authorUrlToken(): String? = when (this) {
+    is DataHolder.Answer -> author.urlToken
+    is DataHolder.Article -> author.urlToken
+    is DataHolder.Question -> author.urlToken
+    is DataHolder.Pin -> author.urlToken
+    else -> null
+}?.takeIf { it.isNotBlank() }
 
 suspend fun saveBlockedFeedRecords(
     dao: BlockedFeedRecordDao,

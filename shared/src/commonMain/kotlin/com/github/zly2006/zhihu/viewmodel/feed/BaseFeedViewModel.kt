@@ -20,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.flattenFeeds
@@ -28,6 +29,7 @@ import com.github.zly2006.zhihu.viewmodel.FeedDisplayEnvironment
 import com.github.zly2006.zhihu.viewmodel.HomeFeedFilterResult
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonArray
 import kotlin.reflect.typeOf
 
@@ -38,7 +40,10 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
 
     override fun processResponse(environment: PaginationEnvironment, data: List<Feed>, rawData: JsonArray) {
         super.processResponse(environment, data, rawData)
-        addDisplayItems(data.flattenFeeds().map { createDisplayItem(environment, it) })
+        val newItems = data.flattenFeeds().map { createDisplayItem(environment, it) }
+        viewModelScope.launch {
+            addDisplayItems(environment.hydrateFeedDisplayItems(newItems))
+        }
     }
 
     override fun refresh(environment: PaginationEnvironment) {

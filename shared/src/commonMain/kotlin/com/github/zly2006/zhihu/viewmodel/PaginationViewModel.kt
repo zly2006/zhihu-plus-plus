@@ -32,6 +32,7 @@ import com.github.zly2006.zhihu.shared.aigc.AigcVoteVoter
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.OfficialBadge
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.ZhihuPaging
 import com.github.zly2006.zhihu.shared.data.fetchZhihuAuthenticatedJson
@@ -314,6 +315,8 @@ interface MobileHomeFeedEnvironment : ZhihuApiEnvironment {
 interface FeedDisplayEnvironment {
     fun feedDisplaySettings(): FeedDisplaySettings = FeedDisplaySettings()
 
+    suspend fun hydrateFeedDisplayItems(items: List<FeedDisplayItem>): List<FeedDisplayItem> = items
+
     suspend fun applyHomeFeedFilters(items: List<FeedDisplayItem>): HomeFeedFilterResult =
         HomeFeedFilterResult(
             foregroundItems = items,
@@ -385,6 +388,12 @@ interface ContentBlocklistEnvironment {
     ) = Unit
 
     suspend fun removeBlockedUser(userId: String) = Unit
+
+    suspend fun cacheAuthorOfficialBadge(
+        urlToken: String,
+        userName: String?,
+        badge: OfficialBadge,
+    ) = Unit
 }
 
 interface LocalRecommendationEnvironment : ZhihuApiEnvironment {

@@ -33,11 +33,11 @@ data class McnAuthorCache(
     val badgeNightIconUrl: String? = null,
     val checkedTime: Long = Clock.System.now().toEpochMilliseconds(),
 ) {
-    private val hasMcn: Boolean
-        get() = !mcnCompany.isNullOrBlank()
+    private val hasPositiveProfile: Boolean
+        get() = !mcnCompany.isNullOrBlank() || !badgeIconUrl.isNullOrBlank()
 
     fun isExpired(nowMillis: Long = Clock.System.now().toEpochMilliseconds()): Boolean {
-        val ttlMillis = if (hasMcn) POSITIVE_MCN_CACHE_TTL_MILLIS else NEGATIVE_MCN_CACHE_TTL_MILLIS
+        val ttlMillis = if (hasPositiveProfile) POSITIVE_MCN_CACHE_TTL_MILLIS else NEGATIVE_MCN_CACHE_TTL_MILLIS
         return checkedTime <= 0L || nowMillis - checkedTime >= ttlMillis
     }
 

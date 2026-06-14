@@ -214,22 +214,6 @@ class OfficialBadgeDetailedTest {
     }
 
     @Test
-    fun createsMcnBadgeFromMcnCompany() {
-        val badge = mcnOfficialBadge("杭州含章文化传播有限公司")
-
-        assertEquals(
-            OfficialBadge(
-                title = "MCN",
-                description = "杭州含章文化传播有限公司",
-                type = "mcn",
-                detailType = "mcn",
-            ),
-            badge,
-        )
-        assertEquals(true, badge?.isUsefulInList)
-    }
-
-    @Test
     fun decodesZhihuAdminOfficialAccountCertification() {
         val badgeV2 = ZhihuJson.decodeJson<DataHolder.BadgeV2>(
             Json.parseToJsonElement(

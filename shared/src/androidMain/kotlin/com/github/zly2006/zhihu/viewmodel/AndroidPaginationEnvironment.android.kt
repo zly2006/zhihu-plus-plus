@@ -51,6 +51,7 @@ import com.github.zly2006.zhihu.shared.aigc.AigcVoteVoter
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.OfficialBadge
 import com.github.zly2006.zhihu.shared.data.ZHIHU_CLEAR_ONLINE_HISTORY_URL
 import com.github.zly2006.zhihu.shared.data.ZHIHU_LAST_READ_TOUCH_URL
 import com.github.zly2006.zhihu.shared.data.ZhihuJson.json
@@ -81,6 +82,7 @@ import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.filterFeedDisplayItems
 import com.github.zly2006.zhihu.viewmodel.filter.filterForegroundReadItems
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
+import com.github.zly2006.zhihu.viewmodel.filter.hydrateCachedAuthorBadges
 import com.github.zly2006.zhihu.viewmodel.filter.recordFeedContentInteraction
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import io.ktor.client.HttpClient
@@ -259,6 +261,9 @@ open class SharedAndroidPaginationEnvironment(
         reverseBlock = settingsStore.getBoolean("reverseBlock", false),
     )
 
+    override suspend fun hydrateFeedDisplayItems(items: List<FeedDisplayItem>): List<FeedDisplayItem> =
+        getContentFilterDatabase(context).hydrateCachedAuthorBadges(items)
+
     override fun localHistory(): List<NavDestination> = HistoryStorage(context).history
 
     override suspend fun addReadHistory(
@@ -300,6 +305,14 @@ open class SharedAndroidPaginationEnvironment(
 
     override suspend fun removeBlockedUser(userId: String) {
         getContentFilterDatabase(context).createBlocklistManager().removeBlockedUser(userId)
+    }
+
+    override suspend fun cacheAuthorOfficialBadge(
+        urlToken: String,
+        userName: String?,
+        badge: OfficialBadge,
+    ) {
+        getContentFilterDatabase(context).createBlocklistManager().cacheAuthorOfficialBadge(urlToken, userName, badge)
     }
 
     override suspend fun recordContentOpenEvent(

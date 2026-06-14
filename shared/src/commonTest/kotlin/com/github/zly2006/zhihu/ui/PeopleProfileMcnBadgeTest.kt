@@ -18,15 +18,15 @@
 package com.github.zly2006.zhihu.ui
 
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.data.OfficialBadge
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.shared.data.mcnOfficialBadge
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class PeopleProfileMcnBadgeTest {
     @Test
-    fun mapsMcnCompanyToProfileBadge() {
+    fun mapsMcnCompanyToSeparateProfileFieldAndKeepsOfficialBadge() {
         val people = ZhihuJson.decodeJson<DataHolder.People>(
             Json.parseToJsonElement(
                 """
@@ -39,6 +39,20 @@ class PeopleProfileMcnBadgeTest {
                   "gender": 1,
                   "url": "https://www.zhihu.com/api/v4/members/ddaa117",
                   "mcn_company": "杭州含章文化传播有限公司",
+                  "badge_v2": {
+                    "title": "已认证的个人",
+                    "icon": "https://picx.zhimg.com/official.png",
+                    "merged_badges": [
+                      {
+                        "type": "identity",
+                        "detail_type": "identity_people",
+                        "title": "已认证的个人",
+                        "description": "官方认证说明",
+                        "icon": "https://picx.zhimg.com/detail.png",
+                        "badge_status": "passed"
+                      }
+                    ]
+                  },
                   "follower_count": 100,
                   "following_count": 2,
                   "answer_count": 3,
@@ -52,8 +66,29 @@ class PeopleProfileMcnBadgeTest {
 
         val profile = toPeopleProfileLoadResult(people, isBlockedInRecommendations = false).profile
 
-        assertEquals(mcnOfficialBadge("杭州含章文化传播有限公司"), profile.officialBadge)
-        assertEquals(listOf(mcnOfficialBadge("杭州含章文化传播有限公司")), profile.officialBadgeDetails)
+        assertEquals("杭州含章文化传播有限公司", profile.mcnCompany)
+        assertEquals(
+            OfficialBadge(
+                title = "已认证的个人",
+                description = "官方认证说明",
+                iconUrl = "https://picx.zhimg.com/official.png",
+                type = "identity",
+                detailType = "identity_people",
+            ),
+            profile.officialBadge,
+        )
+        assertEquals(
+            listOf(
+                OfficialBadge(
+                    title = "已认证的个人",
+                    description = "官方认证说明",
+                    iconUrl = "https://picx.zhimg.com/detail.png",
+                    type = "identity",
+                    detailType = "identity_people",
+                ),
+            ),
+            profile.officialBadgeDetails,
+        )
         assertEquals(5, people.questionCount)
         assertEquals(6, people.pinsCount)
     }

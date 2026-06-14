@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.viewmodel.filter
 
 import androidx.compose.runtime.Composable
+import com.github.zly2006.zhihu.shared.data.OfficialBadge
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.viewmodel.filter.BlocklistBackup
 import com.github.zly2006.zhihu.viewmodel.filter.KeywordBackup
@@ -341,6 +342,25 @@ class BlocklistService(
             ),
         )
     }
+
+    suspend fun cacheAuthorOfficialBadge(
+        urlToken: String,
+        userName: String?,
+        badge: OfficialBadge,
+    ) {
+        val existing = mcnAuthorCacheDao?.getByUrlToken(urlToken)
+        mcnAuthorCacheDao?.insert(
+            McnAuthorCache(
+                urlToken = urlToken,
+                userName = userName ?: existing?.userName,
+                mcnCompany = existing?.mcnCompany.normalizeMcnCompany(),
+                badgeTitle = badge.title,
+                badgeDescription = badge.description,
+                badgeIconUrl = badge.iconUrl,
+                badgeNightIconUrl = badge.nightIconUrl,
+            ),
+        )
+    }
 }
 
 /**
@@ -490,6 +510,14 @@ class BlocklistManager(
 
     suspend fun isMcnOrganizationBlocked(organizationName: String?): Boolean = withContext(Dispatchers.Default) {
         service.isMcnOrganizationBlocked(organizationName)
+    }
+
+    suspend fun cacheAuthorOfficialBadge(
+        urlToken: String,
+        userName: String?,
+        badge: OfficialBadge,
+    ) = withContext(Dispatchers.Default) {
+        service.cacheAuthorOfficialBadge(urlToken, userName, badge)
     }
 }
 

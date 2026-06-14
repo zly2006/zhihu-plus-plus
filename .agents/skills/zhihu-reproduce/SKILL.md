@@ -144,6 +144,8 @@ https://www.zhihu.com/api/v4/comment_v5/{contentType}/{contentId}/root_comment
 
 本技能的失败经验：如果只实现 title/description 的 Compose 文字胶囊，会明显偏离官方样式；正确方向是“列表/详情用户名旁用官方 icon，PeopleScreen 展开具体认证/成就信息”。做完后应增加解析测试覆盖顶层 icon、detail badge icon、identity 与 reward/community badge 的优先级。
 
+本技能的失败经验：新增一个非官方身份标识时，不能把它塞进官方 badge 的主显示槽或用 `A ?: B` 改变既有优先级。官方认证、MCN、会员等属于不同信息层级，应先复刻原需求里的并列/独立展示方式，再决定是否复用组件。例子：用户同时有官方认证和 MCN 时，用户名旁的官方图标应保留，MCN 应作为单独标识或详情项展示；不能让无图标的 MCN 占掉官方图标位置。
+
 ## 7. 测试与验证
 
 优先用真实采集到的内容 ID 做回归测试。测试输入只保留必要 ID，不把整份真实响应硬编码进测试，除非测试目标就是解析兼容性。
