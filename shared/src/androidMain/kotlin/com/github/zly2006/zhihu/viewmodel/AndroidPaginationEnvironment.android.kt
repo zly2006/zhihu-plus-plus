@@ -109,7 +109,6 @@ open class SharedAndroidPaginationEnvironment(
     private val localRecommendationEngine by lazy { LocalRecommendationEngine(context) }
     private val settingsStore by lazy { androidSettingsStore(context) }
     private val userMessageSink by lazy { androidUserMessageSink(context) }
-    private var lastAuthRefreshMillis = 0L
 
     override fun httpClient(): HttpClient {
         val loginForRecommendation = settingsStore.getBoolean("loginForRecommendation", true)
@@ -153,12 +152,6 @@ open class SharedAndroidPaginationEnvironment(
         } else {
             AccountData.data.cookies
         }
-    }
-
-    override fun lastAuthRefreshMillis(): Long = lastAuthRefreshMillis
-
-    override fun updateLastAuthRefreshMillis(value: Long) {
-        lastAuthRefreshMillis = value
     }
 
     override suspend fun handleFetchFailure(

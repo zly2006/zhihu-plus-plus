@@ -28,19 +28,11 @@ fun Context.asApiEnvironment(): ZhihuApiEnvironment {
     AccountData.loadData(appContext)
 
     return object : ZhihuApiEnvironment {
-        private var lastAuthRefreshMillis = 0L
-
         override fun httpClient(): HttpClient = AccountData.httpClient(appContext)
 
         override fun authenticatedCookies(): Map<String, String> = AccountData.data.cookies
 
         override fun xsrfToken(): String = AccountData.data.cookies["_xsrf"] ?: ""
-
-        override fun lastAuthRefreshMillis(): Long = lastAuthRefreshMillis
-
-        override fun updateLastAuthRefreshMillis(value: Long) {
-            lastAuthRefreshMillis = value
-        }
 
         override suspend fun handleFetchFailure(
             tag: String?,
