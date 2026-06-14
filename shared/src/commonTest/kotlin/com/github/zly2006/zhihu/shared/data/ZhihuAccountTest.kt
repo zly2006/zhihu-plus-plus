@@ -28,11 +28,17 @@ import io.ktor.http.headersOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class ZhihuAccountTest {
+    @BeforeTest
+    fun resetAuthRefreshThrottle() {
+        resetZhihuAuthenticatedRequestRefreshThrottleForTesting()
+    }
+
     @Test
     fun fetchVerifiedSessionReturnsNullForUnauthorizedResponse() = runTest {
         val client = mockClient(

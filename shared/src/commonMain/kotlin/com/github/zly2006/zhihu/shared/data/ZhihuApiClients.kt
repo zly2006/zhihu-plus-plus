@@ -36,6 +36,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlin.time.Clock
 
 const val ZHIHU_CLEAR_ONLINE_HISTORY_URL = "https://api.zhihu.com/read_history/batch_del"
 
@@ -80,6 +81,12 @@ fun nextDailyApiDate(date: String): String {
     return nextDate.toString().replace("-", "")
 }
 
+private var lastRefreshMillis: Long = 0
+
+internal fun resetZhihuAuthenticatedRequestRefreshThrottleForTesting() {
+    lastRefreshMillis = 0
+}
+
 suspend fun executeZhihuAuthenticatedRequest(
     client: HttpClient,
     url: String,
@@ -90,8 +97,12 @@ suspend fun executeZhihuAuthenticatedRequest(
     }
     if (response.status != HttpStatusCode.Unauthorized) return response
 
+    if (Clock.System.now().toEpochMilliseconds() - lastRefreshMillis < 10_000) {
+        return response
+    }
     val refreshToken = ZhihuCredentialRefresher.fetchRefreshToken(client)
     ZhihuCredentialRefresher.refreshZhihuToken(refreshToken, client)
+    lastRefreshMillis = Clock.System.now().toEpochMilliseconds()
     return client
         .request(url) {
             block()

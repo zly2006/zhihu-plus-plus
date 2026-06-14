@@ -15,6 +15,8 @@ When merging duplicated platform implementations, do not stop at moving the dupl
 
 Do not push platform or storage dependencies upward just because the current accessor is only convenient from UI code. If a lower-level navigation or filtering component owns the query, make the cross-platform dependency available at that level instead of threading a database or platform handle through screen and ViewModel calls. Example: answer switching should ask its own support layer for already-opened content, not force the article loading call to accept a database parameter that exists only to be forwarded.
 
+Do not delete runtime guards just to make tests pass or to simplify state. If a throttle, retry limiter, debounce, permission gate, or cache invalidation guard protects production behavior, keep it and make tests reset or inject the relevant state explicitly. Example: an authenticated request refresh throttle should be reset in tests; removing the throttle changes runtime semantics.
+
 ## Workflow
 
 1. Record the current time and inspect `git status --short --branch`.
