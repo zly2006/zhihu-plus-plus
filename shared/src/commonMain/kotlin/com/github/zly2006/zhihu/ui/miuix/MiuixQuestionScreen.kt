@@ -68,7 +68,6 @@ import com.github.zly2006.zhihu.ui.QUESTION_VIEW_LOG_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.QuestionDetailContent
 import com.github.zly2006.zhihu.ui.QuestionScreenTestOverrides
 import com.github.zly2006.zhihu.ui.QuestionScreenUiState
-import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.components.ShareDialog
@@ -78,6 +77,7 @@ import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.rememberPreferCollapsedExitUntilCollapsedScrollBehavior
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.ui.loadedQuestionScreenData
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixCommentSheet
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.ui.questionDetailPreview
@@ -361,7 +361,7 @@ fun MiuixQuestionScreen(
 
     testOverrides?.commentSheetContent?.let { content ->
         if (showComments) content { showComments = false }
-    } ?: CommentScreenComponent(
+    } ?: MiuixCommentSheet(
         showComments = showComments,
         onDismiss = { showComments = false },
         content = question,

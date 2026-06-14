@@ -71,13 +71,13 @@ import com.github.zly2006.zhihu.ui.PinLinkCardPreview
 import com.github.zly2006.zhihu.ui.PinScreenTestOverrides
 import com.github.zly2006.zhihu.ui.PinScreenUiState
 import com.github.zly2006.zhihu.ui.booleanCompat
-import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.VotersSheet
 import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.ui.linkCardTypeLabel
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixCommentSheet
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.ui.rememberPinScreenRuntime
 import com.github.zly2006.zhihu.viewmodel.ContentLoadEnvironment
@@ -277,9 +277,8 @@ fun MiuixPinScreen(
     }
 
     if (screenState.pinContent != null) {
-        // TODO: 评论区尚未 miuix 化，暂复用 M3 CommentScreenComponent（与问题页一致）
         testOverrides?.commentScreenContent?.invoke(showComments, { showComments = false }, pin)
-            ?: CommentScreenComponent(showComments = showComments, onDismiss = { showComments = false }, content = pin)
+            ?: MiuixCommentSheet(showComments = showComments, onDismiss = { showComments = false }, content = pin)
 
         val shareText = getShareText(pin)
         if (shareText != null) {

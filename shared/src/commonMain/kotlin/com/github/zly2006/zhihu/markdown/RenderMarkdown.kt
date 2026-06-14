@@ -68,11 +68,14 @@ import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberImageGalleryOpener
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.theme.AppTokens
+import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.theme.ThemeStyle
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.LocalSegmentActionSheetHost
 import com.github.zly2006.zhihu.ui.components.LocalSegmentCommentHost
 import com.github.zly2006.zhihu.ui.components.SegmentActionSheet
 import com.github.zly2006.zhihu.ui.components.SegmentActionSheetState
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixCommentSheet
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
 import com.hrm.markdown.renderer.Markdown
@@ -315,11 +318,19 @@ fun RenderMarkdown(
         }
     }
     segmentCommentTarget?.let { target ->
-        CommentScreenComponent(
-            showComments = true,
-            onDismiss = { segmentCommentTarget = null },
-            content = target,
-        )
+        if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+            MiuixCommentSheet(
+                showComments = true,
+                onDismiss = { segmentCommentTarget = null },
+                content = target,
+            )
+        } else {
+            CommentScreenComponent(
+                showComments = true,
+                onDismiss = { segmentCommentTarget = null },
+                content = target,
+            )
+        }
     }
     segmentActionSheetState?.let { state ->
         SegmentActionSheet(state)

@@ -336,7 +336,7 @@ fun SwipeToReplyContainer(
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ClickableImageWithMenu(
+internal fun ClickableImageWithMenu(
     imageUrl: String,
     runtime: CommentScreenRuntime,
     modifier: Modifier = Modifier,
@@ -935,7 +935,7 @@ fun CommentScreen(
     }
 }
 
-private fun commentViewModelKey(content: NavDestination): String = when (content) {
+internal fun commentViewModelKey(content: NavDestination): String = when (content) {
     is Article -> "article:${content.type}:${content.id}"
     is Pin -> "pin:${content.id}"
     is Question -> "question:${content.questionId}"
@@ -1198,7 +1198,7 @@ private fun CommentItem(
     }
 }
 
-private fun formatCommentTime(createdTimeSeconds: Long): String {
+internal fun formatCommentTime(createdTimeSeconds: Long): String {
     val zone = TimeZone.currentSystemDefault()
     val dateTime = Instant.fromEpochSeconds(createdTimeSeconds).toLocalDateTime(zone)
     val now = Clock.System.now().toLocalDateTime(zone)
@@ -1263,7 +1263,7 @@ private fun AnnotatedString.Builder.processTextWithEmoji(
     }
 }
 
-private fun AnnotatedString.Builder.dfsSimple(
+internal fun AnnotatedString.Builder.dfsSimple(
     node: Node,
     onNavigate: (NavDestination) -> Unit,
     openExternalUrl: (String) -> Unit,
