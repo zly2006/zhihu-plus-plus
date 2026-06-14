@@ -301,7 +301,7 @@ fun DeveloperSettingsScreen() {
             text = {
                 Column {
                     Text(
-                        "请输入完整的Cookie字符串，格式类似于document.cookie，使用 \"; \" 分割各个cookie项",
+                        "请输入完整的Cookie字符串，格式类似于document.cookie，使用 \";\" 分割各个cookie项",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 16.dp),
@@ -330,14 +330,7 @@ fun DeveloperSettingsScreen() {
                     onClick = {
                         if (cookieInputText.isNotBlank()) {
                             try {
-                                // 解析cookie字符串
-                                val cookies = mutableMapOf<String, String>()
-                                cookieInputText.split("; ").forEach { cookieItem ->
-                                    val parts = cookieItem.split("=", limit = 2)
-                                    if (parts.size == 2) {
-                                        cookies[parts[0].trim()] = parts[1].trim()
-                                    }
-                                }
+                                val cookies = parseCookieString(cookieInputText)
 
                                 if (cookies.isNotEmpty()) {
                                     runtime.saveCookies(cookies)

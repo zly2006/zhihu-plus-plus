@@ -48,6 +48,7 @@ import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
+import com.github.zly2006.zhihu.ui.subscreens.parseCookieString
 import com.github.zly2006.zhihu.ui.subscreens.rememberDeveloperSettingsRuntime
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -335,7 +336,7 @@ fun MiuixDeveloperSettingsScreen() {
             title = { Text("手动设置 Cookie") },
             text = {
                 Column {
-                    Text("请输入完整 Cookie 字符串，使用 \"; \" 分割各个 cookie 项。")
+                    Text("请输入完整 Cookie 字符串，使用 \";\" 分割各个 cookie 项。")
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
                         value = cookieInputText,
@@ -350,12 +351,7 @@ fun MiuixDeveloperSettingsScreen() {
             confirmButton = {
                 TextButton(
                     onClick = {
-                        val cookies = cookieInputText
-                            .split("; ")
-                            .mapNotNull { item ->
-                                val parts = item.split("=", limit = 2)
-                                if (parts.size == 2) parts[0].trim() to parts[1].trim() else null
-                            }.toMap()
+                        val cookies = parseCookieString(cookieInputText)
                         if (cookies.isEmpty()) {
                             userMessages.showShortMessage("未能解析有效的 Cookie 数据")
                             return@TextButton

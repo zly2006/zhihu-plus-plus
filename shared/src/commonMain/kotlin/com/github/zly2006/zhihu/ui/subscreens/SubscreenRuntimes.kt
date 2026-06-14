@@ -137,3 +137,23 @@ data class DeveloperSettingsRuntime(
 
 @Composable
 expect fun rememberDeveloperSettingsRuntime(): DeveloperSettingsRuntime
+
+fun parseCookieString(cookieText: String): Map<String, String> =
+    cookieText
+        .split(";")
+        .asSequence()
+        .map { it.trim() }
+        .filter { it.isNotEmpty() }
+        .mapNotNull { item ->
+            val separatorIndex = item.indexOf('=')
+            if (separatorIndex <= 0) {
+                return@mapNotNull null
+            }
+
+            val name = item.substring(0, separatorIndex).trim()
+            if (name.isEmpty()) {
+                null
+            } else {
+                name to item.substring(separatorIndex + 1).trim()
+            }
+        }.toMap()
