@@ -90,11 +90,6 @@ import org.jsoup.nodes.Element
 private const val MAIN_ACTIVITY_CLASS = "com.github.zly2006.zhihu.MainActivity"
 private const val WEBVIEW_ACTIVITY_CLASS = "com.github.zly2006.zhihu.WebviewActivity"
 
-// HTML 点击事件监听器接口
-fun interface HtmlClickListener {
-    fun onElementClick(element: Element)
-}
-
 private tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
     is ContextWrapper -> baseContext.findActivity()
@@ -152,7 +147,20 @@ class CustomWebView : WebView {
         }
         this.setupUpWebviewClient {
         }
-        this.setHtmlClickListener(this.defaultHtmlClickListener())
+        htmlClickListener = { clicked ->
+            if (clicked.tagName() == "img") {
+                val url = extractImageUrl(clicked::attr)
+                if (url != null) {
+                    OpenImageDialog(context, AccountData.httpClient(context), url).show()
+                }
+            } else if (clicked.tagName() == "a" && clicked.hasClass("video-box")) {
+                val videoId = clicked.attr("data-lens-id")
+                context.navigateInMainActivity(Video(videoId.toLong()))
+            }
+        }
+        addJavascriptInterface(JsInterface(), "AndroidInterface")
+        @Suppress("SetJavaScriptEnabled")
+        settings.javaScriptEnabled = true
         onLoad(this)
         setOnLongClickListener { view ->
             view.showContextMenu()
@@ -167,7 +175,7 @@ class CustomWebView : WebView {
                     ?: result.extra?.takeIf { !it.startsWith("data") }
                 if (url != null) {
                     menu.add("查看图片").setOnMenuItemClickListener {
-                        openImage(AccountData.httpClient(context), url)
+                        OpenImageDialog(context, AccountData.httpClient(context), url).show()
                         true
                     }
                     menu.add("在浏览器中打开").setOnMenuItemClickListener {
@@ -194,7 +202,7 @@ class CustomWebView : WebView {
     var document: Document? = null
         private set
     var contentId: String? = null
-    internal var htmlClickListener: HtmlClickListener? = null
+    internal var htmlClickListener: ((Element) -> Unit)? = null
         private set
     var scrollToHeightCallback: ((Int, Int) -> Unit)? = null
     var onContentHeightCallback: ((Int) -> Unit)? = null
@@ -237,7 +245,7 @@ class CustomWebView : WebView {
         fun onElementClick(outerHtml: String) {
             val clicked = Jsoup.parse(outerHtml).body().child(0)
             findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
-                htmlClickListener?.onElementClick(clicked)
+                htmlClickListener?.invoke(clicked)
             }
         }
 
@@ -250,50 +258,6 @@ class CustomWebView : WebView {
         fun onContentHeight(height: Int) {
             onContentHeightCallback?.invoke(height)
         }
-    }
-
-    /**
-     * 设置 HTML 点击事件监听器
-     * 通过注入 JavaScript 监听页面中所有元素的点击事件
-     */
-    fun setHtmlClickListener(listener: HtmlClickListener?) {
-        this.htmlClickListener = listener
-
-        if (listener != null) {
-            // 添加 JavaScript 接口
-            addJavascriptInterface(JsInterface(), "AndroidInterface")
-
-            // 启用 JavaScript
-            @Suppress("SetJavaScriptEnabled")
-            settings.javaScriptEnabled = true
-        } else {
-            // 移除 JavaScript 接口
-            removeJavascriptInterface("AndroidInterface")
-        }
-    }
-
-    fun defaultHtmlClickListener(): HtmlClickListener = HtmlClickListener { clicked ->
-        if (clicked.tagName() == "img") {
-            val url = extractImageUrl(clicked::attr)
-            if (url != null) {
-                val httpClient = AccountData.httpClient(context)
-                this.openImage(httpClient, url)
-            }
-        } else if (clicked.tagName() == "a" && clicked.hasClass("video-box")) {
-            // 处理视频链接点击
-            val videoId = clicked.attr("data-lens-id")
-            context.navigateInMainActivity(Video(videoId.toLong()))
-        }
-    }
-
-    fun applyThemeStyle() {
-        val jsCode = if (ThemeManager.isDarkTheme) {
-            "document.body.classList.add('dark-theme');"
-        } else {
-            "document.body.classList.remove('dark-theme');"
-        }
-
-        evaluateJavascript(jsCode, null)
     }
 
     /**
@@ -346,10 +310,6 @@ class CustomWebView : WebView {
             })();
             """.trimIndent()
         evaluateJavascript(js, null)
-    }
-
-    fun openImage(httpClient: HttpClient, url: String) {
-        OpenImageDialog(context, httpClient, url).show()
     }
 
     fun loadZhihu(
@@ -715,7 +675,14 @@ fun WebView.setupUpWebviewClient(onPageFinished: ((String) -> Unit)? = null) {
                 if (footnoteScript.isNotEmpty()) {
                     view.evaluateJavascript(footnoteScript, null)
                 }
-                view.applyThemeStyle()
+                view.evaluateJavascript(
+                    if (ThemeManager.isDarkTheme) {
+                        "document.body.classList.add('dark-theme');"
+                    } else {
+                        "document.body.classList.remove('dark-theme');"
+                    },
+                    null,
+                )
                 view.injectContentHeightReporter()
             }
 
