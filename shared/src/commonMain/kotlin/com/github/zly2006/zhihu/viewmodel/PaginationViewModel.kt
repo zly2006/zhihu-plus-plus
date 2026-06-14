@@ -439,13 +439,9 @@ interface ArticleExportEnvironment {
     fun articleImageExportRenderer(loadAssetText: (String) -> String): ArticleImageExportRenderer? = null
 }
 
-interface ArticleContentEnvironment : ZhihuApiEnvironment {
-    fun accountHttpClient(): HttpClient = httpClient()
-}
-
 interface ArticleExportContentEnvironment :
     ArticleExportEnvironment,
-    ArticleContentEnvironment
+    ZhihuApiEnvironment
 
 interface ArticleNavigationEnvironment {
     fun articleAnswerSwitchState(): ArticleAnswerSwitchState? = null
@@ -461,7 +457,7 @@ interface ProfileLoadEnvironment :
     ContentBlocklistEnvironment
 
 interface ArticleLoadEnvironment :
-    ArticleContentEnvironment,
+    ZhihuApiEnvironment,
     ContentLoadEnvironment,
     ArticleNavigationEnvironment
 

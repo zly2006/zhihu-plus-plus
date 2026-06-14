@@ -52,7 +52,11 @@ suspend fun ContentFilterDatabase.performContentFilterMaintenanceCleanup(
 suspend fun ContentFilterDatabase.filterForegroundReadItems(
     settings: FeedFilterSettings,
     items: List<FeedDisplayItem>,
-): List<FeedDisplayItem> = createForegroundReadFilterPipeline(settings).filter(items)
+): List<FeedDisplayItem> = ForegroundReadFilterPipeline(
+    settings = settings,
+    contentFilterManager = ContentFilterManager(contentFilterDao()),
+    blockedFeedRecordDao = blockedFeedRecordDao(),
+).filter(items)
 
 class ForegroundReadFilterPipeline(
     private val settings: FeedFilterSettings,
@@ -196,14 +200,6 @@ class FeedContentFilterPipeline(
 fun interface ContentDetailProvider {
     suspend fun get(navDestination: NavDestination): DataHolder.Content?
 }
-
-fun ContentFilterDatabase.createForegroundReadFilterPipeline(
-    settings: FeedFilterSettings,
-): ForegroundReadFilterPipeline = ForegroundReadFilterPipeline(
-    settings = settings,
-    contentFilterManager = ContentFilterManager(contentFilterDao()),
-    blockedFeedRecordDao = blockedFeedRecordDao(),
-)
 
 fun ContentFilterDatabase.createFeedDisplayFilterPipeline(
     settings: FeedFilterSettings,

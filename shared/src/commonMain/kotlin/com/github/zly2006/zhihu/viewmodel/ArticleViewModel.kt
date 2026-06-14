@@ -661,7 +661,7 @@ class ArticleViewModel(
                 environment.buildOfflineArticleExportHtml(
                     content = requireExportSourceContent(),
                     includeAppAttribution = includeAppAttribution,
-                    httpClient = httpClient ?: environment.accountHttpClient(),
+                    httpClient = httpClient ?: environment.httpClient(),
                 )
             }
             val savedLocation = withContext(Dispatchers.Default) {

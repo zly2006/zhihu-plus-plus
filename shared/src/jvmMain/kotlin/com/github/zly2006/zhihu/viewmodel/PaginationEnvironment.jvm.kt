@@ -149,8 +149,6 @@ class DesktopPaginationEnvironment(
     override fun localHistory(): List<NavDestination> =
         historyStorage.history
 
-    override fun accountHttpClient(): HttpClient = httpClient()
-
     override fun articleAnswerSwitchState(): ArticleAnswerSwitchState? = desktopArticleAnswerSwitchState
 
     override suspend fun postHistoryDestination(destination: NavDestination) {
@@ -338,7 +336,7 @@ class DesktopPaginationEnvironment(
         }
 
         val outputDir = desktopZhihuDownloadsDir("无法创建导出 ZIP 目录")
-        val exportHttpClient = accountHttpClient()
+        val exportHttpClient = httpClient()
 
         var processedCount = 0
         var successCount = 0

@@ -332,12 +332,6 @@ class AndroidArticlePreviewWebViewStore : ArticlePreviewWebViewStore {
             }
     }
 
-    fun clearContentIds() {
-        mainWebView?.contentId = null
-        previousPreviewWebView?.contentId = null
-        nextPreviewWebView?.contentId = null
-    }
-
     fun destroyAll() {
         mainWebView?.destroy()
         mainWebView = null
@@ -390,7 +384,9 @@ class AndroidArticlesSharedData :
 
     override fun reset() {
         super.reset()
-        previewWebViews.clearContentIds()
+        previewWebViews.mainWebView?.contentId = null
+        previewWebViews.previousPreviewWebView?.contentId = null
+        previewWebViews.nextPreviewWebView?.contentId = null
     }
 
     override fun onCleared() {
