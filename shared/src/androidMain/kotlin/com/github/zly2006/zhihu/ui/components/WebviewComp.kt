@@ -194,7 +194,8 @@ class CustomWebView : WebView {
     var document: Document? = null
         private set
     var contentId: String? = null
-    private var htmlClickListener: HtmlClickListener? = null
+    internal var htmlClickListener: HtmlClickListener? = null
+        private set
     var scrollToHeightCallback: ((Int, Int) -> Unit)? = null
     var onContentHeightCallback: ((Int) -> Unit)? = null
     var onPageStartedCallback: (() -> Unit)? = null
@@ -298,7 +299,7 @@ class CustomWebView : WebView {
     /**
      * 从 assets 文件夹加载 JavaScript 文件内容
      */
-    private fun loadJavaScriptFromAssets(fileName: String): String = try {
+    internal fun loadJavaScriptFromAssets(fileName: String): String = try {
         context.assets.open(fileName).use { inputStream ->
             inputStream.bufferedReader().use { reader ->
                 reader.readText()
@@ -307,19 +308,6 @@ class CustomWebView : WebView {
     } catch (e: Exception) {
         Log.e("WebView-Assets", "Failed to load JavaScript file: $fileName", e)
         ""
-    }
-
-    /**
-     * 注入点击监听的 JavaScript 代码
-     * 这个方法应该在页面加载完成后调用
-     */
-    fun injectClickListenerScript() {
-        if (htmlClickListener != null) {
-            val jsCode = loadJavaScriptFromAssets("click-listener.js")
-            if (jsCode.isNotEmpty()) {
-                evaluateJavascript(jsCode, null)
-            }
-        }
     }
 
     /**
@@ -358,13 +346,6 @@ class CustomWebView : WebView {
             })();
             """.trimIndent()
         evaluateJavascript(js, null)
-    }
-
-    fun injectFootnoteScript() {
-        val jsCode = loadJavaScriptFromAssets("footnotes.js")
-        if (jsCode.isNotEmpty()) {
-            evaluateJavascript(jsCode, null)
-        }
     }
 
     fun openImage(httpClient: HttpClient, url: String) {
@@ -723,14 +704,18 @@ fun WebView.setupUpWebviewClient(onPageFinished: ((String) -> Unit)? = null) {
             super.onPageFinished(view, url)
             Log.i("WebView-Page", "Page finished loading: $url")
 
-            // 如果是 CustomWebView，在页面加载完成后注入点击监听脚本和主题样式
             if (view is CustomWebView) {
-                view.injectClickListenerScript()
-                // 注入脚注处理脚本
-                view.injectFootnoteScript()
-                // 注入主题样式
+                if (view.htmlClickListener != null) {
+                    val clickListenerScript = view.loadJavaScriptFromAssets("click-listener.js")
+                    if (clickListenerScript.isNotEmpty()) {
+                        view.evaluateJavascript(clickListenerScript, null)
+                    }
+                }
+                val footnoteScript = view.loadJavaScriptFromAssets("footnotes.js")
+                if (footnoteScript.isNotEmpty()) {
+                    view.evaluateJavascript(footnoteScript, null)
+                }
                 view.applyThemeStyle()
-                // 上报内容高度（图片加载完成后再上报一次）
                 view.injectContentHeightReporter()
             }
 
