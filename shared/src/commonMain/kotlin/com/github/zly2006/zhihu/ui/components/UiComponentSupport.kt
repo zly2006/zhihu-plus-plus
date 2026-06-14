@@ -50,7 +50,7 @@ import com.github.zly2006.zhihu.shared.nlp.KeywordWithWeight
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
+import com.github.zly2006.zhihu.viewmodel.filter.BlocklistService
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.launch
 
@@ -96,7 +96,14 @@ fun BlockUserConfirmDialog(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val userMessages = rememberUserMessageSink()
-    val blocklistManager = getContentFilterDatabase().createBlocklistManager()
+    val blocklistService = remember {
+        val database = getContentFilterDatabase()
+        BlocklistService(
+            keywordDao = database.blockedKeywordDao(),
+            userDao = database.blockedUserDao(),
+            topicDao = database.blockedTopicDao(),
+        )
+    }
     BlockUserConfirmDialogContent(
         showDialog = showDialog,
         userToBlock = userToBlock,
@@ -105,7 +112,7 @@ fun BlockUserConfirmDialog(
         onConfirmBlock = { author ->
             coroutineScope.launch {
                 try {
-                    blocklistManager.addBlockedUser(
+                    blocklistService.addBlockedUser(
                         userId = author.id,
                         userName = author.name,
                         urlToken = author.urlToken,

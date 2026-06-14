@@ -160,26 +160,32 @@ class FeedDisplayFilterPipelineTest {
     }
 
     @Test
-    fun databaseFactoryWiresFeedDisplayPipelineServices() = runTest {
+    fun feedDisplayPipelineWiresFilteringServices() = runTest {
         val fixture = fixture()
+        val semanticMatcher = KeywordSemanticMatcher { text, phrases, _ ->
+            phrases.filter { text.contains("semantic body") }.map { it to 0.95 }
+        }
         val keywordService = BlockedKeywordService(
             keywordDao = fixture.database.blockedKeywordDao(),
             recordDao = fixture.database.blockedContentRecordDao(),
-            semanticMatcher = KeywordSemanticMatcher { text, phrases, _ ->
-                phrases.filter { text.contains("semantic body") }.map { it to 0.95 }
-            },
+            semanticMatcher = semanticMatcher,
         )
         keywordService.addNLPPhrase("semantic phrase")
 
-        val result = fixture.database
-            .filterFeedDisplayItems(
+        val result = FeedDisplayFilterPipeline(
+            settings = FeedFilterSettings(),
+            contentDetailProvider = provider(1L to article("semantic", content = "<p>semantic body</p>")),
+            contentFilterPipeline = FeedContentFilterPipeline(
                 settings = FeedFilterSettings(),
-                items = listOf(item("semantic", 1)),
-                contentDetailProvider = provider(1L to article("semantic", content = "<p>semantic body</p>")),
-                semanticMatcher = KeywordSemanticMatcher { text, phrases, _ ->
-                    phrases.filter { text.contains("semantic body") }.map { it to 0.95 }
-                },
-            )
+                blocklistService = BlocklistService(
+                    keywordDao = fixture.database.blockedKeywordDao(),
+                    userDao = fixture.database.blockedUserDao(),
+                    topicDao = fixture.database.blockedTopicDao(),
+                ),
+                blockedKeywordService = keywordService,
+            ),
+            blockedFeedRecordDao = fixture.database.blockedFeedRecordDao(),
+        ).filter(listOf(item("semantic", 1)))
 
         assertEquals(emptyList(), result)
         assertEquals(

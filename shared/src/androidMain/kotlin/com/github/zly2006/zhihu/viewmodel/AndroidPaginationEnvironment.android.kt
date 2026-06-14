@@ -46,6 +46,7 @@ import com.github.zly2006.zhihu.shared.data.ZHIHU_CLEAR_ONLINE_HISTORY_URL
 import com.github.zly2006.zhihu.shared.data.ZhihuCookieStorage
 import com.github.zly2006.zhihu.shared.data.ZhihuJson.json
 import com.github.zly2006.zhihu.shared.data.navDestination
+import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
@@ -59,12 +60,15 @@ import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.exportCollectionItemsToZip
 import com.github.zly2006.zhihu.util.saveBitmapToGallery
 import com.github.zly2006.zhihu.viewmodel.filter.AndroidContentFilterRuntime
+import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeywordService
+import com.github.zly2006.zhihu.viewmodel.filter.BlocklistService
+import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterManager
+import com.github.zly2006.zhihu.viewmodel.filter.ContentType
+import com.github.zly2006.zhihu.viewmodel.filter.FeedContentFilterPipeline
+import com.github.zly2006.zhihu.viewmodel.filter.FeedDisplayFilterPipeline
+import com.github.zly2006.zhihu.viewmodel.filter.ForegroundReadFilterPipeline
 import com.github.zly2006.zhihu.viewmodel.filter.contentFilterSettings
-import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
-import com.github.zly2006.zhihu.viewmodel.filter.filterFeedDisplayItems
-import com.github.zly2006.zhihu.viewmodel.filter.filterForegroundReadItems
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
-import com.github.zly2006.zhihu.viewmodel.filter.recordFeedContentInteraction
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.UserAgent
@@ -190,13 +194,22 @@ open class SharedAndroidPaginationEnvironment(
     }
 
     override suspend fun isUserBlocked(userId: String): Boolean =
-        getContentFilterDatabase(context).createBlocklistManager().isUserBlocked(userId)
+        getContentFilterDatabase(context).let { database ->
+            BlocklistService(
+                keywordDao = database.blockedKeywordDao(),
+                userDao = database.blockedUserDao(),
+                topicDao = database.blockedTopicDao(),
+            ).isUserBlocked(userId)
+        }
 
     override fun blockedUserIds(): Set<String> =
         kotlinx.coroutines.runBlocking {
-            getContentFilterDatabase(context)
-                .createBlocklistManager()
-                .getAllBlockedUsers()
+            val database = getContentFilterDatabase(context)
+            BlocklistService(
+                keywordDao = database.blockedKeywordDao(),
+                userDao = database.blockedUserDao(),
+                topicDao = database.blockedTopicDao(),
+            ).getAllBlockedUsers()
                 .map { it.userId }
                 .toSet()
         }
@@ -207,7 +220,12 @@ open class SharedAndroidPaginationEnvironment(
         urlToken: String?,
         avatarUrl: String?,
     ) {
-        getContentFilterDatabase(context).createBlocklistManager().addBlockedUser(
+        val database = getContentFilterDatabase(context)
+        BlocklistService(
+            keywordDao = database.blockedKeywordDao(),
+            userDao = database.blockedUserDao(),
+            topicDao = database.blockedTopicDao(),
+        ).addBlockedUser(
             userId = userId,
             userName = userName,
             urlToken = urlToken,
@@ -216,7 +234,12 @@ open class SharedAndroidPaginationEnvironment(
     }
 
     override suspend fun removeBlockedUser(userId: String) {
-        getContentFilterDatabase(context).createBlocklistManager().removeBlockedUser(userId)
+        val database = getContentFilterDatabase(context)
+        BlocklistService(
+            keywordDao = database.blockedKeywordDao(),
+            userDao = database.blockedUserDao(),
+            topicDao = database.blockedTopicDao(),
+        ).removeBlockedUser(userId)
     }
 
     override suspend fun recordContentOpenEvent(
@@ -239,29 +262,42 @@ open class SharedAndroidPaginationEnvironment(
         val settings = feedDisplaySettings()
         val filterSettings = context.contentFilterSettings()
         val filterDatabase = getContentFilterDatabase(context)
-        val foregroundItems = filterDatabase.filterForegroundReadItems(
+        val foregroundItems = ForegroundReadFilterPipeline(
             settings = filterSettings,
-            items = items,
-        )
-        val filteredItems = filterDatabase.filterFeedDisplayItems(
+            contentFilterManager = ContentFilterManager(filterDatabase.contentFilterDao()),
+            blockedFeedRecordDao = filterDatabase.blockedFeedRecordDao(),
+        ).filter(items)
+        val filteredItems = FeedDisplayFilterPipeline(
             settings = filterSettings,
-            items = foregroundItems,
             contentDetailProvider = this::getOrFetchContentDetail,
-            semanticMatcher = AndroidContentFilterRuntime.semanticMatcher,
-            onNlpBlocked = { blockedThisRound ->
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                    context.mainExecutor.execute {
-                        userMessageSink.showShortMessage("NLP 已屏蔽 ${blockedThisRound.first().title.take(10)}... 等 ${blockedThisRound.size} 条内容")
+            contentFilterPipeline = FeedContentFilterPipeline(
+                settings = filterSettings,
+                blocklistService = BlocklistService(
+                    keywordDao = filterDatabase.blockedKeywordDao(),
+                    userDao = filterDatabase.blockedUserDao(),
+                    topicDao = filterDatabase.blockedTopicDao(),
+                ),
+                blockedKeywordService = BlockedKeywordService(
+                    keywordDao = filterDatabase.blockedKeywordDao(),
+                    recordDao = filterDatabase.blockedContentRecordDao(),
+                    semanticMatcher = AndroidContentFilterRuntime.semanticMatcher,
+                ),
+                onNlpBlocked = { blockedThisRound ->
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        context.mainExecutor.execute {
+                            userMessageSink.showShortMessage("NLP 已屏蔽 ${blockedThisRound.first().title.take(10)}... 等 ${blockedThisRound.size} 条内容")
+                        }
                     }
-                }
-            },
+                },
+            ),
+            blockedFeedRecordDao = filterDatabase.blockedFeedRecordDao(),
             onDetailFetchFailed = { item ->
                 Log.w("ContentFilterExtensions", "Failed to fetch content details for item '${item.title}'. Using dummy content for filtering.")
             },
             onDetailsKeywordFiltered = { item, keyword ->
                 Log.e("ContentFilterExtensions", "Filtered item '${item.title}' due to keyword '$keyword' in details: ${item.content}")
             },
-        )
+        ).filter(foregroundItems)
         return HomeFeedFilterResult(
             foregroundItems = foregroundItems,
             filteredItems = filteredItems,
@@ -271,8 +307,17 @@ open class SharedAndroidPaginationEnvironment(
 
     override suspend fun recordContentInteraction(feed: Feed) {
         val settings = context.contentFilterSettings()
+        if (!settings.enableContentFilter) return
         val database = getContentFilterDatabase(context)
-        recordFeedContentInteraction(settings, database, feed)
+        val target = feed.target ?: return
+        val (targetType, targetId) = when (target) {
+            is Feed.AnswerTarget -> ContentType.ANSWER to target.id.toString()
+            is Feed.ArticleTarget -> ContentType.ARTICLE to target.id.toString()
+            is Feed.QuestionTarget -> ContentType.QUESTION to target.id.toString()
+            is Feed.PinTarget -> ContentType.PIN to target.id.toString()
+            else -> return
+        }
+        ContentFilterManager(database.contentFilterDao()).recordContentInteraction(targetType, targetId)
     }
 
     override suspend fun clearAllHistory() {

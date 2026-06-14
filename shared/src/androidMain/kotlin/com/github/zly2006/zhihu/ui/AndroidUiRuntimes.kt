@@ -66,10 +66,8 @@ import com.github.zly2006.zhihu.util.shareImage
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
-import com.github.zly2006.zhihu.viewmodel.filter.exportAllBlocklistToJson
+import com.github.zly2006.zhihu.viewmodel.filter.BlocklistService
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
-import com.github.zly2006.zhihu.viewmodel.filter.importAllBlocklistFromJson
 import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.notificationEnvironment
 import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
@@ -80,6 +78,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
+import java.io.File
 
 private const val LOGIN_ACTIVITY_CLASS = "com.github.zly2006.zhihu.LoginActivity"
 private const val QR_CODE_SCAN_ACTIVITY_CLASS = "com.github.zly2006.zhihu.QRCodeScanActivity"
@@ -348,7 +347,14 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
     userMessages: UserMessageSink,
 ): BlocklistSettingsRuntime {
     val context = LocalContext.current
-    val manager = remember(context) { getContentFilterDatabase(context).createBlocklistManager() }
+    val blocklistService = remember(context) {
+        val database = getContentFilterDatabase(context)
+        BlocklistService(
+            keywordDao = database.blockedKeywordDao(),
+            userDao = database.blockedUserDao(),
+            topicDao = database.blockedTopicDao(),
+        )
+    }
     val coroutineScope = rememberCoroutineScope()
     var importCallback by remember { mutableStateOf<((String) -> Unit)?>(null) }
     val importLauncher = rememberLauncherForActivityResult(
@@ -357,7 +363,14 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
         if (uri != null) {
             coroutineScope.launch {
                 try {
-                    val summary = manager.importAllBlocklistFromJson(context, uri)
+                    val summary = withContext(Dispatchers.IO) {
+                        val text = context.contentResolver
+                            .openInputStream(uri)
+                            ?.bufferedReader()
+                            ?.readText()
+                            ?: return@withContext "读取文件失败"
+                        blocklistService.importAllBlocklistFromJsonText(text)
+                    }
                     importCallback?.invoke(summary)
                 } catch (e: Exception) {
                     Log.e("BlocklistSettingsRuntime", "Failed to import blocklist", e)
@@ -366,14 +379,19 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
             }
         }
     }
-    return remember(context, manager, userMessages, importLauncher) {
+    return remember(context, blocklistService, userMessages, importLauncher) {
         BlocklistSettingsRuntime(
             requestImport = { onImported ->
                 importCallback = onImported
                 importLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
             },
             exportRules = {
-                val file = manager.exportAllBlocklistToJson(context)
+                val file = withContext(Dispatchers.IO) {
+                    val dir = context.getExternalFilesDir(null) ?: context.filesDir
+                    val file = File(dir, "zhihupp_blocklist.json")
+                    file.writeText(blocklistService.encodeAllBlocklistToJson())
+                    file
+                }
                 val intent = Intent().apply {
                     action = Intent.ACTION_VIEW
                     setDataAndType(

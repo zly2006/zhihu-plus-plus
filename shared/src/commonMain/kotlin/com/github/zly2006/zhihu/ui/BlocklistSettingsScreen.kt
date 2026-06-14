@@ -74,9 +74,9 @@ import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeyword
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedTopic
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedUser
+import com.github.zly2006.zhihu.viewmodel.filter.BlocklistService
 import com.github.zly2006.zhihu.viewmodel.filter.BlocklistStats
 import com.github.zly2006.zhihu.viewmodel.filter.KeywordType
-import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.launch
 
@@ -145,7 +145,14 @@ fun BlocklistSettingsScreen(
     val navigator = LocalNavigator.current
     val userMessages = rememberUserMessageSink()
     val runtime = rememberBlocklistSettingsPlatformRuntime(userMessages)
-    val blocklistManager = getContentFilterDatabase().createBlocklistManager()
+    val blocklistService = remember {
+        val database = getContentFilterDatabase()
+        BlocklistService(
+            keywordDao = database.blockedKeywordDao(),
+            userDao = database.blockedUserDao(),
+            topicDao = database.blockedTopicDao(),
+        )
+    }
     val coroutineScope = rememberCoroutineScope()
 
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -170,12 +177,12 @@ fun BlocklistSettingsScreen(
         coroutineScope.launch {
             try {
                 // 只获取精确匹配的关键词
-                loadedBlockedKeywords = blocklistManager
+                loadedBlockedKeywords = blocklistService
                     .getAllBlockedKeywords()
                     .filter { it.getKeywordTypeEnum() == KeywordType.EXACT_MATCH }
-                loadedBlockedUsers = blocklistManager.getAllBlockedUsers()
-                loadedBlockedTopics = blocklistManager.getAllBlockedTopics()
-                loadedStats = blocklistManager.getBlocklistStats()
+                loadedBlockedUsers = blocklistService.getAllBlockedUsers()
+                loadedBlockedTopics = blocklistService.getAllBlockedTopics()
+                loadedStats = blocklistService.getBlocklistStats()
             } catch (e: Exception) {
                 Log.e("BlocklistSettingsScreen", "Blocklist settings action failed", e)
                 userMessages.showShortMessage("加载数据失败: ${e.message}")
@@ -348,7 +355,7 @@ fun BlocklistSettingsScreen(
                         } else {
                             coroutineScope.launch {
                                 try {
-                                    blocklistManager.removeBlockedKeyword(keyword.id)
+                                    blocklistService.removeBlockedKeyword(keyword.id)
                                     userMessages.showShortMessage("已删除关键词")
                                     loadData()
                                 } catch (e: Exception) {
@@ -365,7 +372,7 @@ fun BlocklistSettingsScreen(
                         } else {
                             coroutineScope.launch {
                                 try {
-                                    blocklistManager.clearAllBlockedKeywords()
+                                    blocklistService.clearAllBlockedKeywords()
                                     userMessages.showShortMessage("已清空所有关键词")
                                     loadData()
                                 } catch (e: Exception) {
@@ -393,7 +400,7 @@ fun BlocklistSettingsScreen(
                         } else {
                             coroutineScope.launch {
                                 try {
-                                    blocklistManager.removeBlockedUser(user.userId)
+                                    blocklistService.removeBlockedUser(user.userId)
                                     userMessages.showShortMessage("已删除用户")
                                     loadData()
                                 } catch (e: Exception) {
@@ -410,7 +417,7 @@ fun BlocklistSettingsScreen(
                         } else {
                             coroutineScope.launch {
                                 try {
-                                    blocklistManager.clearAllBlockedUsers()
+                                    blocklistService.clearAllBlockedUsers()
                                     userMessages.showShortMessage("已清空所有用户")
                                     loadData()
                                 } catch (e: Exception) {
@@ -439,7 +446,7 @@ fun BlocklistSettingsScreen(
                         } else {
                             coroutineScope.launch {
                                 try {
-                                    blocklistManager.removeBlockedTopic(topic.topicId)
+                                    blocklistService.removeBlockedTopic(topic.topicId)
                                     userMessages.showShortMessage("已删除主题")
                                     loadData()
                                 } catch (e: Exception) {
@@ -456,7 +463,7 @@ fun BlocklistSettingsScreen(
                         } else {
                             coroutineScope.launch {
                                 try {
-                                    blocklistManager.clearAllBlockedTopics()
+                                    blocklistService.clearAllBlockedTopics()
                                     userMessages.showShortMessage("已清空所有主题")
                                     loadData()
                                 } catch (e: Exception) {
@@ -483,7 +490,7 @@ fun BlocklistSettingsScreen(
                 } else {
                     coroutineScope.launch {
                         try {
-                            blocklistManager.addBlockedKeyword(keyword, caseSensitive, isRegex)
+                            blocklistService.addBlockedKeyword(keyword, caseSensitive, isRegex)
                             userMessages.showShortMessage("已添加关键词")
                             loadData()
                             showAddKeywordDialog = false
@@ -509,7 +516,7 @@ fun BlocklistSettingsScreen(
                 } else {
                     coroutineScope.launch {
                         try {
-                            blocklistManager.addBlockedTopic(topicId, topicName)
+                            blocklistService.addBlockedTopic(topicId, topicName)
                             userMessages.showShortMessage("已添加主题")
                             loadData()
                             showAddTopicDialog = false
@@ -535,7 +542,7 @@ fun BlocklistSettingsScreen(
                 } else {
                     coroutineScope.launch {
                         try {
-                            blocklistManager.addBlockedUser(userId, userName)
+                            blocklistService.addBlockedUser(userId, userName)
                             userMessages.showShortMessage("已添加用户")
                             loadData()
                             showAddUserDialog = false

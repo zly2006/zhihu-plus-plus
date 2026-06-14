@@ -23,40 +23,12 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.shared.data.AdvertisementFeed
 import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.platform.SettingsStore
 import kotlinx.serialization.json.Json
-
-suspend fun ContentFilterDatabase.recordContentInteraction(
-    settings: FeedFilterSettings,
-    targetType: String,
-    targetId: String,
-) {
-    if (settings.enableContentFilter) {
-        ContentFilterManager(contentFilterDao()).recordContentInteraction(targetType, targetId)
-    }
-}
-
-suspend fun ContentFilterDatabase.performContentFilterMaintenanceCleanup(
-    settings: FeedFilterSettings,
-) {
-    if (settings.enableContentFilter) {
-        ContentFilterManager(contentFilterDao()).cleanupOldData()
-    }
-}
-
-suspend fun ContentFilterDatabase.filterForegroundReadItems(
-    settings: FeedFilterSettings,
-    items: List<FeedDisplayItem>,
-): List<FeedDisplayItem> = ForegroundReadFilterPipeline(
-    settings = settings,
-    contentFilterManager = ContentFilterManager(contentFilterDao()),
-    blockedFeedRecordDao = blockedFeedRecordDao(),
-).filter(items)
 
 class ForegroundReadFilterPipeline(
     private val settings: FeedFilterSettings,
@@ -201,52 +173,6 @@ fun interface ContentDetailProvider {
     suspend fun get(navDestination: NavDestination): DataHolder.Content?
 }
 
-fun ContentFilterDatabase.createFeedDisplayFilterPipeline(
-    settings: FeedFilterSettings,
-    contentDetailProvider: ContentDetailProvider,
-    semanticMatcher: KeywordSemanticMatcher,
-    onNlpBlocked: suspend (List<FilterableContent>) -> Unit = {},
-    onDetailFetchFailed: (FeedDisplayItem) -> Unit = {},
-    onDetailsKeywordFiltered: (FeedDisplayItem, String) -> Unit = { _, _ -> },
-): FeedDisplayFilterPipeline = FeedDisplayFilterPipeline(
-    settings = settings,
-    contentDetailProvider = contentDetailProvider,
-    contentFilterPipeline = FeedContentFilterPipeline(
-        settings = settings,
-        blocklistService = BlocklistService(
-            keywordDao = blockedKeywordDao(),
-            userDao = blockedUserDao(),
-            topicDao = blockedTopicDao(),
-        ),
-        blockedKeywordService = BlockedKeywordService(
-            keywordDao = blockedKeywordDao(),
-            recordDao = blockedContentRecordDao(),
-            semanticMatcher = semanticMatcher,
-        ),
-        onNlpBlocked = onNlpBlocked,
-    ),
-    blockedFeedRecordDao = blockedFeedRecordDao(),
-    onDetailFetchFailed = onDetailFetchFailed,
-    onDetailsKeywordFiltered = onDetailsKeywordFiltered,
-)
-
-suspend fun ContentFilterDatabase.filterFeedDisplayItems(
-    settings: FeedFilterSettings,
-    items: List<FeedDisplayItem>,
-    contentDetailProvider: ContentDetailProvider,
-    semanticMatcher: KeywordSemanticMatcher,
-    onNlpBlocked: suspend (List<FilterableContent>) -> Unit = {},
-    onDetailFetchFailed: (FeedDisplayItem) -> Unit = {},
-    onDetailsKeywordFiltered: (FeedDisplayItem, String) -> Unit = { _, _ -> },
-): List<FeedDisplayItem> = createFeedDisplayFilterPipeline(
-    settings = settings,
-    contentDetailProvider = contentDetailProvider,
-    semanticMatcher = semanticMatcher,
-    onNlpBlocked = onNlpBlocked,
-    onDetailFetchFailed = onDetailFetchFailed,
-    onDetailsKeywordFiltered = onDetailsKeywordFiltered,
-).filter(items)
-
 class FeedDisplayFilterPipeline(
     private val settings: FeedFilterSettings,
     private val contentDetailProvider: ContentDetailProvider,
@@ -364,22 +290,6 @@ suspend fun saveBlockedFeedRecords(
 }
 
 private val detailsPostFilterKeywords = listOf("感兴趣", "购买")
-
-suspend fun recordFeedContentInteraction(
-    settings: FeedFilterSettings,
-    database: ContentFilterDatabase,
-    feed: Feed,
-) {
-    val target = feed.target ?: return
-    val (targetType, targetId) = when (target) {
-        is Feed.AnswerTarget -> ContentType.ANSWER to target.id.toString()
-        is Feed.ArticleTarget -> ContentType.ARTICLE to target.id.toString()
-        is Feed.QuestionTarget -> ContentType.QUESTION to target.id.toString()
-        is Feed.PinTarget -> ContentType.PIN to target.id.toString()
-        else -> return
-    }
-    database.recordContentInteraction(settings, targetType, targetId)
-}
 
 /**
  * 常见内容身份类型。

@@ -22,7 +22,7 @@ import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.data.asApiEnvironment
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
-import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
+import com.github.zly2006.zhihu.viewmodel.filter.BlocklistService
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.getOrFetchContentDetail
 import kotlinx.coroutines.Dispatchers
@@ -82,8 +82,12 @@ fun BaseFeedViewModel.handleBlockTopic(
     val userMessages = androidUserMessageSink(context)
     viewModelScope.launch {
         try {
-            val blocklistManager = getContentFilterDatabase(context).createBlocklistManager()
-            blocklistManager.addBlockedTopic(topicId, topicName)
+            val database = getContentFilterDatabase(context)
+            BlocklistService(
+                keywordDao = database.blockedKeywordDao(),
+                userDao = database.blockedUserDao(),
+                topicDao = database.blockedTopicDao(),
+            ).addBlockedTopic(topicId, topicName)
             userMessages.showShortMessage("已屏蔽主题「$topicName」")
             removeFeedItemsByBlockedTopic(this@handleBlockTopic, topicId)
         } catch (e: Exception) {

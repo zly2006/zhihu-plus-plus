@@ -93,9 +93,9 @@ import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import com.github.zly2006.zhihu.util.telemetry
 import com.github.zly2006.zhihu.viewmodel.AndroidArticlesSharedData
 import com.github.zly2006.zhihu.viewmodel.filter.AndroidContentFilterRuntime
+import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterManager
 import com.github.zly2006.zhihu.viewmodel.filter.contentFilterSettings
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
-import com.github.zly2006.zhihu.viewmodel.filter.performContentFilterMaintenanceCleanup
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
@@ -233,8 +233,9 @@ class MainActivity :
         // 应用启动时执行内容过滤数据库清理
         lifecycleScope.launch {
             try {
-                getContentFilterDatabase(this@MainActivity)
-                    .performContentFilterMaintenanceCleanup(contentFilterSettings())
+                if (contentFilterSettings().enableContentFilter) {
+                    ContentFilterManager(getContentFilterDatabase(this@MainActivity).contentFilterDao()).cleanupOldData()
+                }
                 Log.i(TAG, "Content filter maintenance cleanup completed")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to perform content filter cleanup", e)

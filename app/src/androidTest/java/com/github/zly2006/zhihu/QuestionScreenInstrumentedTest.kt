@@ -57,7 +57,7 @@ import com.github.zly2006.zhihu.ui.QuestionScreen
 import com.github.zly2006.zhihu.ui.QuestionScreenTestOverrides
 import com.github.zly2006.zhihu.ui.QuestionScreenUiState
 import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
+import com.github.zly2006.zhihu.viewmodel.filter.BlocklistService
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.paginationEnvironment
 import kotlinx.coroutines.runBlocking
@@ -79,12 +79,22 @@ class QuestionScreenInstrumentedTest {
     @Before
     fun setUp() = runBlocking {
         composeRule.resetAppPreferences()
-        getContentFilterDatabase(composeRule.activity).createBlocklistManager().clearAllBlockedUsers()
+        val database = getContentFilterDatabase(composeRule.activity)
+        BlocklistService(
+            keywordDao = database.blockedKeywordDao(),
+            userDao = database.blockedUserDao(),
+            topicDao = database.blockedTopicDao(),
+        ).clearAllBlockedUsers()
     }
 
     @After
     fun tearDown() = runBlocking {
-        getContentFilterDatabase(composeRule.activity).createBlocklistManager().clearAllBlockedUsers()
+        val database = getContentFilterDatabase(composeRule.activity)
+        BlocklistService(
+            keywordDao = database.blockedKeywordDao(),
+            userDao = database.blockedUserDao(),
+            topicDao = database.blockedTopicDao(),
+        ).clearAllBlockedUsers()
     }
 
     @Test
@@ -207,9 +217,12 @@ class QuestionScreenInstrumentedTest {
          */
         val viewModel = TestableQuestionFeedViewModel(123456789L)
         runBlocking {
-            getContentFilterDatabase(composeRule.activity)
-                .createBlocklistManager()
-                .addBlockedUser("blocked-answer-author", "被屏蔽回答作者")
+            val database = getContentFilterDatabase(composeRule.activity)
+            BlocklistService(
+                keywordDao = database.blockedKeywordDao(),
+                userDao = database.blockedUserDao(),
+                topicDao = database.blockedTopicDao(),
+            ).addBlockedUser("blocked-answer-author", "被屏蔽回答作者")
             viewModel.processForTest(
                 composeRule.activity,
                 listOf(

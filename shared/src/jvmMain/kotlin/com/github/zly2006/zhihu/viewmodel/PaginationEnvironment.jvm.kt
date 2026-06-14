@@ -26,6 +26,7 @@ import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.ZHIHU_CLEAR_ONLINE_HISTORY_URL
 import com.github.zly2006.zhihu.shared.data.navDestination
+import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
@@ -43,14 +44,17 @@ import com.github.zly2006.zhihu.util.buildArticleExportFileName
 import com.github.zly2006.zhihu.util.buildCollectionExportZipFileName
 import com.github.zly2006.zhihu.util.sanitizeArticleExportFileNamePart
 import com.github.zly2006.zhihu.viewmodel.CollectionItem
+import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeywordService
+import com.github.zly2006.zhihu.viewmodel.filter.BlocklistService
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
-import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
+import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterManager
+import com.github.zly2006.zhihu.viewmodel.filter.ContentType
+import com.github.zly2006.zhihu.viewmodel.filter.FeedContentFilterPipeline
+import com.github.zly2006.zhihu.viewmodel.filter.FeedDisplayFilterPipeline
+import com.github.zly2006.zhihu.viewmodel.filter.ForegroundReadFilterPipeline
 import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
 import com.github.zly2006.zhihu.viewmodel.filter.desktopKeywordSemanticMatcher
-import com.github.zly2006.zhihu.viewmodel.filter.filterFeedDisplayItems
-import com.github.zly2006.zhihu.viewmodel.filter.filterForegroundReadItems
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
-import com.github.zly2006.zhihu.viewmodel.filter.recordFeedContentInteraction
 import com.github.zly2006.zhihu.viewmodel.filter.toFeedFilterSettings
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import com.github.zly2006.zhihu.viewmodel.local.buildLocalRecommendationEngine
@@ -163,13 +167,19 @@ class DesktopPaginationEnvironment(
     }
 
     override suspend fun isUserBlocked(userId: String): Boolean =
-        contentFilterDb.createBlocklistManager().isUserBlocked(userId)
+        BlocklistService(
+            keywordDao = contentFilterDb.blockedKeywordDao(),
+            userDao = contentFilterDb.blockedUserDao(),
+            topicDao = contentFilterDb.blockedTopicDao(),
+        ).isUserBlocked(userId)
 
     override fun blockedUserIds(): Set<String> =
         runBlocking {
-            contentFilterDb
-                .createBlocklistManager()
-                .getAllBlockedUsers()
+            BlocklistService(
+                keywordDao = contentFilterDb.blockedKeywordDao(),
+                userDao = contentFilterDb.blockedUserDao(),
+                topicDao = contentFilterDb.blockedTopicDao(),
+            ).getAllBlockedUsers()
                 .map { it.userId }
                 .toSet()
         }
@@ -180,7 +190,11 @@ class DesktopPaginationEnvironment(
         urlToken: String?,
         avatarUrl: String?,
     ) {
-        contentFilterDb.createBlocklistManager().addBlockedUser(
+        BlocklistService(
+            keywordDao = contentFilterDb.blockedKeywordDao(),
+            userDao = contentFilterDb.blockedUserDao(),
+            topicDao = contentFilterDb.blockedTopicDao(),
+        ).addBlockedUser(
             userId = userId,
             userName = userName,
             urlToken = urlToken,
@@ -189,7 +203,11 @@ class DesktopPaginationEnvironment(
     }
 
     override suspend fun removeBlockedUser(userId: String) {
-        contentFilterDb.createBlocklistManager().removeBlockedUser(userId)
+        BlocklistService(
+            keywordDao = contentFilterDb.blockedKeywordDao(),
+            userDao = contentFilterDb.blockedUserDao(),
+            topicDao = contentFilterDb.blockedTopicDao(),
+        ).removeBlockedUser(userId)
     }
 
     override suspend fun recordContentOpenEvent(
@@ -217,16 +235,29 @@ class DesktopPaginationEnvironment(
 
     override suspend fun applyHomeFeedFilters(items: List<FeedDisplayItem>): HomeFeedFilterResult {
         val settings = settingsStore.toFeedFilterSettings()
-        val foregroundItems = contentFilterDb.filterForegroundReadItems(
+        val foregroundItems = ForegroundReadFilterPipeline(
             settings = settings,
-            items = items,
-        )
-        val filteredItems = contentFilterDb.filterFeedDisplayItems(
+            contentFilterManager = ContentFilterManager(contentFilterDb.contentFilterDao()),
+            blockedFeedRecordDao = contentFilterDb.blockedFeedRecordDao(),
+        ).filter(items)
+        val filteredItems = FeedDisplayFilterPipeline(
             settings = settings,
-            items = foregroundItems,
             contentDetailProvider = ContentDetailProvider(::getOrFetchContentDetail),
-            semanticMatcher = desktopKeywordSemanticMatcher,
-        )
+            contentFilterPipeline = FeedContentFilterPipeline(
+                settings = settings,
+                blocklistService = BlocklistService(
+                    keywordDao = contentFilterDb.blockedKeywordDao(),
+                    userDao = contentFilterDb.blockedUserDao(),
+                    topicDao = contentFilterDb.blockedTopicDao(),
+                ),
+                blockedKeywordService = BlockedKeywordService(
+                    keywordDao = contentFilterDb.blockedKeywordDao(),
+                    recordDao = contentFilterDb.blockedContentRecordDao(),
+                    semanticMatcher = desktopKeywordSemanticMatcher,
+                ),
+            ),
+            blockedFeedRecordDao = contentFilterDb.blockedFeedRecordDao(),
+        ).filter(foregroundItems)
         return HomeFeedFilterResult(
             foregroundItems = foregroundItems,
             filteredItems = filteredItems,
@@ -236,7 +267,16 @@ class DesktopPaginationEnvironment(
 
     override suspend fun recordContentInteraction(feed: Feed) {
         val settings = settingsStore.toFeedFilterSettings()
-        recordFeedContentInteraction(settings, contentFilterDb, feed)
+        if (!settings.enableContentFilter) return
+        val target = feed.target ?: return
+        val (targetType, targetId) = when (target) {
+            is Feed.AnswerTarget -> ContentType.ANSWER to target.id.toString()
+            is Feed.ArticleTarget -> ContentType.ARTICLE to target.id.toString()
+            is Feed.QuestionTarget -> ContentType.QUESTION to target.id.toString()
+            is Feed.PinTarget -> ContentType.PIN to target.id.toString()
+            else -> return
+        }
+        ContentFilterManager(contentFilterDb.contentFilterDao()).recordContentInteraction(targetType, targetId)
     }
 
     override suspend fun clearAllHistory() {

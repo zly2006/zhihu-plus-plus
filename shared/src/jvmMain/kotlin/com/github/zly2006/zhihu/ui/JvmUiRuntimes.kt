@@ -55,7 +55,7 @@ import com.github.zly2006.zhihu.viewmodel.DesktopPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
+import com.github.zly2006.zhihu.viewmodel.filter.BlocklistService
 import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
@@ -297,21 +297,25 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
 actual fun rememberBlocklistSettingsPlatformRuntime(
     userMessages: UserMessageSink,
 ): BlocklistSettingsRuntime {
-    val manager = remember {
+    val blocklistService = remember {
         val databaseFile = desktopContentFilterDatabaseFile()
         databaseFile.parentFile?.mkdirs()
         val database = getContentFilterDatabase(databaseFile)
-        database.createBlocklistManager()
+        BlocklistService(
+            keywordDao = database.blockedKeywordDao(),
+            userDao = database.blockedUserDao(),
+            topicDao = database.blockedTopicDao(),
+        )
     }
     val coroutineScope = rememberCoroutineScope()
-    return remember(manager, userMessages) {
+    return remember(blocklistService, userMessages) {
         BlocklistSettingsRuntime(
             requestImport = { onImported ->
                 val selectedFile = chooseBlocklistImportFile()
                 if (selectedFile != null) {
                     coroutineScope.launch {
                         try {
-                            val summary = manager.importAllBlocklistFromJsonText(selectedFile.readText())
+                            val summary = blocklistService.importAllBlocklistFromJsonText(selectedFile.readText())
                             onImported(summary)
                         } catch (e: Exception) {
                             Log.e("BlocklistSettingsRuntime", "Failed to import blocklist", e)
@@ -322,7 +326,7 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
             },
             exportRules = {
                 val file = File(desktopContentFilterDatabaseFile().parentFile, "zhihupp_blocklist.json")
-                file.writeText(manager.exportAllBlocklistToJsonText())
+                file.writeText(blocklistService.encodeAllBlocklistToJson())
                 "已导出到 ${file.absolutePath}"
             },
         )

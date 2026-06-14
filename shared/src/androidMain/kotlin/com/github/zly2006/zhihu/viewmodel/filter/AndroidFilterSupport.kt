@@ -16,30 +16,11 @@
  */
 
 package com.github.zly2006.zhihu.viewmodel.filter
+
 import android.content.Context
-import android.net.Uri
 import androidx.room.Room
 import com.github.zly2006.zhihu.shared.nlp.KeywordWeightExtractor
 import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import java.io.File
-
-suspend fun BlocklistManager.exportAllBlocklistToJson(context: Context): File = withContext(Dispatchers.IO) {
-    val dir = context.getExternalFilesDir(null) ?: context.filesDir
-    val file = File(dir, "zhihupp_blocklist.json")
-    file.writeText(exportAllBlocklistToJsonText())
-    file
-}
-
-suspend fun BlocklistManager.importAllBlocklistFromJson(context: Context, uri: Uri): String = withContext(Dispatchers.IO) {
-    val text = context.contentResolver
-        .openInputStream(uri)
-        ?.bufferedReader()
-        ?.readText()
-        ?: return@withContext "读取文件失败"
-    importAllBlocklistFromJsonText(text)
-}
 
 private const val CONTENT_FILTER_DATABASE_NAME = "content_filter_database"
 

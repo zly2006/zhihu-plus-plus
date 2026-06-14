@@ -32,8 +32,8 @@ import com.github.zly2006.zhihu.viewmodel.feed.removeFeedItemsByBlockedTopic
 import com.github.zly2006.zhihu.viewmodel.feed.resolveFeedBlockAuthorInfo
 import com.github.zly2006.zhihu.viewmodel.feed.resolveFeedKeywordBlockingContent
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeywordService
+import com.github.zly2006.zhihu.viewmodel.filter.BlocklistService
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
-import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
 import com.github.zly2006.zhihu.viewmodel.filter.desktopKeywordSemanticMatcher
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
@@ -46,11 +46,18 @@ import kotlinx.coroutines.launch
 
 @Composable
 actual fun rememberFeedBlockActions(): FeedBlockActions {
-    val blocklistManager = getContentFilterDatabase().createBlocklistManager()
+    val blocklistService = remember {
+        val database = getContentFilterDatabase()
+        BlocklistService(
+            keywordDao = database.blockedKeywordDao(),
+            userDao = database.blockedUserDao(),
+            topicDao = database.blockedTopicDao(),
+        )
+    }
     val userMessages = rememberUserMessageSink()
     val store = remember { DesktopAccountStore() }
     val contentDetailProvider = remember(store) { desktopFeedBlockContentDetailProvider(store) }
-    return remember(blocklistManager, userMessages, contentDetailProvider) {
+    return remember(blocklistService, userMessages, contentDetailProvider) {
         FeedBlockActions(
             handleBlockUser = { viewModel, feedItem, onShowDialog ->
                 viewModel.viewModelScope.launch {
@@ -65,7 +72,7 @@ actual fun rememberFeedBlockActions(): FeedBlockActions {
             handleBlockTopic = { viewModel, topicId, topicName ->
                 viewModel.viewModelScope.launch {
                     try {
-                        blocklistManager.addBlockedTopic(topicId, topicName)
+                        blocklistService.addBlockedTopic(topicId, topicName)
                         userMessages.showShortMessage("已屏蔽主题「$topicName」")
                         removeFeedItemsByBlockedTopic(viewModel, topicId)
                     } catch (e: Exception) {

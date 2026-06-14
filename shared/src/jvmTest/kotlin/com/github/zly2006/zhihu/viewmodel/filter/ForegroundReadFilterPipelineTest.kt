@@ -104,7 +104,7 @@ class ForegroundReadFilterPipelineTest {
         val fixture = fixture()
 
         fixture.pipeline().filter(listOf(item("item", 1, details = "文章 · 100 赞")))
-        fixture.database.recordContentInteraction(FeedFilterSettings(), "article", "1")
+        fixture.manager.recordContentInteraction("article", "1")
 
         val record = fixture.database.contentFilterDao().getViewRecord("article:1")
         assertEquals(true, record?.hasInteraction)
@@ -117,7 +117,7 @@ class ForegroundReadFilterPipelineTest {
                 lastViewTime = 0L,
             ),
         )
-        fixture.database.performContentFilterMaintenanceCleanup(FeedFilterSettings())
+        fixture.manager.cleanupOldData()
         assertEquals(null, fixture.database.contentFilterDao().getViewRecord("article:old"))
         fixture.database.close()
     }

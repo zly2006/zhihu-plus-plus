@@ -69,7 +69,7 @@ import com.github.zly2006.zhihu.ui.CommentScreenTestOverrides
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
-import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
+import com.github.zly2006.zhihu.viewmodel.filter.BlocklistService
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.paginationEnvironment
 import io.ktor.client.HttpClient
@@ -94,7 +94,12 @@ class CommentScreenInstrumentedTest {
         composeRule.resetAppPreferences()
         ZhihuMockApi.install(enabled = true)
         ZhihuMockApi.reset()
-        getContentFilterDatabase(composeRule.activity).createBlocklistManager().clearAllBlockedUsers()
+        val database = getContentFilterDatabase(composeRule.activity)
+        BlocklistService(
+            keywordDao = database.blockedKeywordDao(),
+            userDao = database.blockedUserDao(),
+            topicDao = database.blockedTopicDao(),
+        ).clearAllBlockedUsers()
         ZhihuMockApi.mockJsonPrefix(
             method = HttpMethod.Post,
             urlPrefix = "https://www.zhihu.com/api/v4/comments/",
@@ -109,7 +114,12 @@ class CommentScreenInstrumentedTest {
 
     @After
     fun tearDown() = runBlocking {
-        getContentFilterDatabase(composeRule.activity).createBlocklistManager().clearAllBlockedUsers()
+        val database = getContentFilterDatabase(composeRule.activity)
+        BlocklistService(
+            keywordDao = database.blockedKeywordDao(),
+            userDao = database.blockedUserDao(),
+            topicDao = database.blockedTopicDao(),
+        ).clearAllBlockedUsers()
         ZhihuMockApi.install(enabled = InstrumentedTestEnvironment.isMockMode())
     }
 
@@ -404,9 +414,14 @@ class CommentScreenInstrumentedTest {
             seededComments = emptyList(),
         )
         runBlocking {
-            val blocklistManager = getContentFilterDatabase(composeRule.activity).createBlocklistManager()
-            blocklistManager.addBlockedUser("blocked-root-author", "被屏蔽根评论作者")
-            blocklistManager.addBlockedUser("blocked-child-author", "被屏蔽子评论作者")
+            val database = getContentFilterDatabase(composeRule.activity)
+            val blocklistService = BlocklistService(
+                keywordDao = database.blockedKeywordDao(),
+                userDao = database.blockedUserDao(),
+                topicDao = database.blockedTopicDao(),
+            )
+            blocklistService.addBlockedUser("blocked-root-author", "被屏蔽根评论作者")
+            blocklistService.addBlockedUser("blocked-child-author", "被屏蔽子评论作者")
             viewModel.processForTest(
                 composeRule.activity,
                 listOf(
