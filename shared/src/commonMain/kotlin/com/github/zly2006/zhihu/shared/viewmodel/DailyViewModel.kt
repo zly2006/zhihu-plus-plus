@@ -25,7 +25,6 @@ import com.github.zly2006.zhihu.shared.data.DailySection
 import com.github.zly2006.zhihu.shared.data.DailyStoriesResponse
 import com.github.zly2006.zhihu.shared.data.ZHIHU_DAILY_LATEST_URL
 import com.github.zly2006.zhihu.shared.data.nextDailyApiDate
-import com.github.zly2006.zhihu.shared.data.zhihuDailyBeforeUrl
 import com.github.zly2006.zhihu.shared.util.Log
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -60,7 +59,9 @@ class DailyViewModel : ViewModel() {
         isLoading = true
         sections = emptyList()
         try {
-            val data: DailyStoriesResponse = httpClient.get(zhihuDailyBeforeUrl(nextDailyApiDate(date))).body()
+            val data: DailyStoriesResponse = httpClient.get(
+                "https://news-at.zhihu.com/api/4/stories/before/${nextDailyApiDate(date)}",
+            ).body()
             sections = listOf(DailySection(data.date, data.stories))
             nextDate = data.date
             error = null
@@ -76,7 +77,7 @@ class DailyViewModel : ViewModel() {
         if (isLoadingMore) return
         isLoadingMore = true
         try {
-            val data: DailyStoriesResponse = httpClient.get(zhihuDailyBeforeUrl(date)).body()
+            val data: DailyStoriesResponse = httpClient.get("https://news-at.zhihu.com/api/4/stories/before/$date").body()
             sections = sections + DailySection(data.date, data.stories)
             nextDate = data.date
         } catch (e: Exception) {

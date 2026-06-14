@@ -36,34 +36,6 @@ import kotlin.test.assertIs
 
 class ZhihuNotificationClientTest {
     @Test
-    fun buildsRecentNotificationUrl() {
-        assertEquals(
-            "https://www.zhihu.com/api/v4/notifications/v2/recent?limit=20",
-            zhihuNotificationRecentUrl(),
-        )
-        assertEquals(
-            "https://www.zhihu.com/api/v4/notifications/v2/recent?limit=50",
-            zhihuNotificationRecentUrl(limit = 50),
-        )
-    }
-
-    @Test
-    fun buildsNotificationCategoryUrls() {
-        assertEquals(
-            "https://www.zhihu.com/api/v4/notifications/v2/default?limit=20",
-            zhihuNotificationDefaultUrl(),
-        )
-        assertEquals(
-            "https://www.zhihu.com/api/v4/notifications/v2/follow?limit=30",
-            zhihuNotificationFollowUrl(limit = 30),
-        )
-        assertEquals(
-            "https://www.zhihu.com/api/v4/notifications/v2/vote_thank?limit=40",
-            zhihuNotificationVoteThankUrl(limit = 40),
-        )
-    }
-
-    @Test
     fun inviteAnswerNotificationsKeepOptInDisplayDefault() {
         assertEquals(false, NotificationType.INVITE_ANSWER.defaultValue)
     }

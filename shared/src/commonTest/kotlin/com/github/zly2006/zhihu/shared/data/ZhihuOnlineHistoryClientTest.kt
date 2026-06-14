@@ -38,20 +38,12 @@ import kotlin.test.assertFailsWith
 
 class ZhihuOnlineHistoryClientTest {
     @Test
-    fun buildsOnlineHistoryUrl() {
-        assertEquals(
-            "https://api.zhihu.com/unify-consumption/read_history?offset=20&limit=10",
-            zhihuOnlineHistoryUrl(offset = 20, limit = 10),
-        )
-    }
-
-    @Test
     fun fetchOnlineHistoryPageDecodesSnakeCasePayload() = runTest {
         val client = onlineHistoryMockClient { url ->
-            assertEquals(zhihuOnlineHistoryUrl(), url)
+            assertEquals("https://api.zhihu.com/unify-consumption/read_history?offset=0&limit=10", url)
         }
 
-        val response = client.get(zhihuOnlineHistoryUrl()).body<JsonObject>()
+        val response = client.get("https://api.zhihu.com/unify-consumption/read_history?offset=0&limit=10").body<JsonObject>()
         val items = decodeOnlineHistoryItems(response["data"]!!.jsonArray)
 
         assertEquals("read_history", items.single().cardType)

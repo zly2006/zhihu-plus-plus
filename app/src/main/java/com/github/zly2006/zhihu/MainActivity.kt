@@ -200,6 +200,7 @@ class MainActivity :
         AndroidContentFilterRuntime.keywordWeightExtractor = KeywordWeightExtractor { text, topN ->
             NLPService.extractKeywordsWithWeight(text, topN)
         }
+        getContentFilterDatabase(this)
 
         val settings = androidSettingsStore(this)
         val lastLaunchTimestamp = settings.getLong(KEY_LAST_LAUNCH_TIMESTAMP, 0L)

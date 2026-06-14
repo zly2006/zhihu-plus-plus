@@ -48,10 +48,12 @@ class ZhihuDailyClientTest {
     @Test
     fun fetchDailyStoriesForDateRequestsNextDayBeforeEndpoint() = runTest {
         val client = dailyMockClient { url ->
-            assertEquals(zhihuDailyBeforeUrl("20260521"), url)
+            assertEquals("https://news-at.zhihu.com/api/4/stories/before/20260521", url)
         }
 
-        val response: DailyStoriesResponse = client.get(zhihuDailyBeforeUrl(nextDailyApiDate("20260520"))).body()
+        val response: DailyStoriesResponse = client
+            .get("https://news-at.zhihu.com/api/4/stories/before/${nextDailyApiDate("20260520")}")
+            .body()
 
         assertEquals("20260520", response.date)
         assertEquals(1L, response.stories.single().id)

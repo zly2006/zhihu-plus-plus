@@ -148,7 +148,6 @@ import com.github.zly2006.zhihu.util.smoothGradient
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import com.github.zly2006.zhihu.viewmodel.addReadHistory
-import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import com.materialkolor.ktx.harmonize
@@ -579,7 +578,6 @@ fun ArticleScreen(
     val navigator = LocalNavigator.current
     val articleScreenRuntime = rememberArticleScreenRuntime()
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
-    val contentFilterDatabase = getContentFilterDatabase()
     val articleHost = articleScreenRuntime.articleHost
     val previewPreloader = articleScreenRuntime.previewPreloader
     val backStackEntry by articleHost?.articleNavController?.currentBackStackEntryAsState()
@@ -900,7 +898,7 @@ fun ArticleScreen(
                 sharedData.pendingInitialContent = null
             }
         }
-        viewModel.loadArticle(environment, contentFilterDatabase)
+        viewModel.loadArticle(environment)
         viewModel.loadCollections(environment)
     }
 

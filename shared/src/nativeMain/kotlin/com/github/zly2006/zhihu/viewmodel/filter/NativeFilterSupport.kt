@@ -17,14 +17,11 @@
 
 package com.github.zly2006.zhihu.viewmodel.filter
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.room.InvalidationTracker
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 
-@Composable
-actual fun getContentFilterDatabase(): ContentFilterDatabase = remember { emptyContentFilterDatabase }
+actual fun getContentFilterDatabase(): ContentFilterDatabase = emptyContentFilterDatabase
 
 private val emptyContentFilterDatabase = object : ContentFilterDatabase() {
     override fun createInvalidationTracker(): InvalidationTracker =

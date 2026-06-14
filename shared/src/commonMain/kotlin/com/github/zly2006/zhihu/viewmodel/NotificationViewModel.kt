@@ -25,10 +25,6 @@ import com.github.zly2006.zhihu.shared.data.NotificationItem
 import com.github.zly2006.zhihu.shared.data.ZHIHU_NOTIFICATION_READ_ALL_URLS
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.ZhihuPaging
-import com.github.zly2006.zhihu.shared.data.zhihuNotificationDefaultUrl
-import com.github.zly2006.zhihu.shared.data.zhihuNotificationFollowUrl
-import com.github.zly2006.zhihu.shared.data.zhihuNotificationRecentUrl
-import com.github.zly2006.zhihu.shared.data.zhihuNotificationVoteThankUrl
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.notification.matchNotificationType
 import com.github.zly2006.zhihu.shared.util.Log
@@ -53,11 +49,11 @@ class NotificationViewModel :
     PaginationViewModel<NotificationItem>(
         dataType = typeOf<NotificationItem>(),
     ) {
-    override val initialUrl = zhihuNotificationRecentUrl()
+    override val initialUrl = "https://www.zhihu.com/api/v4/notifications/v2/recent?limit=20"
     private val notificationSourceUrls = listOf(
-        zhihuNotificationDefaultUrl(),
-        zhihuNotificationFollowUrl(),
-        zhihuNotificationVoteThankUrl(),
+        "https://www.zhihu.com/api/v4/notifications/v2/default?limit=20",
+        "https://www.zhihu.com/api/v4/notifications/v2/follow?limit=20",
+        "https://www.zhihu.com/api/v4/notifications/v2/vote_thank?limit=20",
     )
     private val notificationSourcePaging = mutableMapOf<String, ZhihuPaging?>()
     private val endedNotificationSources = mutableSetOf<String>()

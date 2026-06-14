@@ -18,9 +18,6 @@
 package com.github.zly2006.zhihu.viewmodel.filter
 import android.content.Context
 import android.net.Uri
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
 import androidx.room.Room
 import com.github.zly2006.zhihu.shared.nlp.KeywordWeightExtractor
 import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
@@ -66,11 +63,9 @@ object AndroidContentFilterRuntime {
     var keywordWeightExtractor: KeywordWeightExtractor = KeywordWeightExtractor { _, _ -> emptyList() }
 }
 
-@Composable
-actual fun getContentFilterDatabase(): ContentFilterDatabase {
-    val context = LocalContext.current
-    return remember(context) { getContentFilterDatabase(context) }
-}
+actual fun getContentFilterDatabase(): ContentFilterDatabase =
+    contentFilterDatabase
+        ?: error("Content filter database is not initialized")
 
 fun Context.contentFilterSettings(): FeedFilterSettings =
     androidSettingsStore(this).toFeedFilterSettings()

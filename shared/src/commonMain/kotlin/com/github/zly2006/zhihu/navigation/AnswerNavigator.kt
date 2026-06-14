@@ -33,8 +33,8 @@ import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import com.github.zly2006.zhihu.viewmodel.CollectionItem
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
-import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.filter.ContentType
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.getOrFetchContentDetail
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -208,7 +208,6 @@ abstract class AnswerNavigator(
 class QuestionAnswerNavigator(
     val questionId: Long,
     environment: ZhihuApiEnvironment,
-    private val contentFilterDatabase: ContentFilterDatabase,
 ) : AnswerNavigator("此问题", environment) {
     private val destinations = ArrayDeque<Article>()
     private val previousQueue = mutableStateListOf<Article>()
@@ -282,7 +281,7 @@ class QuestionAnswerNavigator(
             if (idsToLookup.isNotEmpty()) {
                 knownOpenedIds += ContentOpenEventSupport
                     .getAlreadyOpenedContentIds(
-                        database = contentFilterDatabase,
+                        database = getContentFilterDatabase(),
                         content = idsToLookup.map { ContentType.ANSWER to it.toString() },
                     ).mapNotNull { key ->
                         key.substringAfter(':', "").toLongOrNull()

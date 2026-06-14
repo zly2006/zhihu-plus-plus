@@ -56,7 +56,6 @@ import com.github.zly2006.zhihu.util.ArticleExportComment
 import com.github.zly2006.zhihu.util.buildArticleExportCommentsHtml
 import com.github.zly2006.zhihu.util.buildArticleExportFileName
 import com.github.zly2006.zhihu.util.prepareArticleExportComment
-import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterDatabase
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.accept
@@ -185,10 +184,7 @@ class ArticleViewModel(
     open class ArticlesSharedData : ArticleAnswerSwitchData()
 
     @OptIn(ExperimentalStdlibApi::class)
-    fun loadArticle(
-        environment: ArticleLoadEnvironment,
-        contentFilterDatabase: ContentFilterDatabase,
-    ) {
+    fun loadArticle(environment: ArticleLoadEnvironment) {
         if (httpClient == null) return
         viewModelScope.launch {
             withContext(Dispatchers.Default) {
@@ -251,7 +247,6 @@ class ArticleViewModel(
                                     sharedData?.navigator = QuestionAnswerNavigator(
                                         questionId = questionId,
                                         environment = environment,
-                                        contentFilterDatabase = contentFilterDatabase,
                                     )
                                 }
                             }

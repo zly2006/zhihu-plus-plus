@@ -17,7 +17,6 @@
 
 package com.github.zly2006.zhihu.viewmodel.filter
 
-import androidx.compose.runtime.Composable
 import androidx.room.ConstructedBy
 import androidx.room.Database
 import androidx.room.RoomDatabase
@@ -54,7 +53,6 @@ abstract class ContentFilterDatabase : RoomDatabase() {
 @Suppress("NO_ACTUAL_FOR_EXPECT")
 expect object ContentFilterDatabaseConstructor : RoomDatabaseConstructor<ContentFilterDatabase>
 
-@Composable
 expect fun getContentFilterDatabase(): ContentFilterDatabase
 
 private val migration2To3 = object : Migration(2, 3) {

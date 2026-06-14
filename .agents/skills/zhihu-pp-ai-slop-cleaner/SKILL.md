@@ -13,6 +13,8 @@ Delete or inline a function only after inspecting its declaration, every real ca
 
 When merging duplicated platform implementations, do not stop at moving the duplicated body into an environment/interface default if there is still only one real semantic caller. If a ViewModel is the only place that owns the workflow, put the request logic in that ViewModel and let the environment expose only lower-level capabilities such as authenticated cookies and signed requests. Example: a question follow action should live in the question feed ViewModel that catches its errors, not as a one-call `environment.follow...()` wrapper that only chooses POST or DELETE.
 
+Do not push platform or storage dependencies upward just because the current accessor is only convenient from UI code. If a lower-level navigation or filtering component owns the query, make the cross-platform dependency available at that level instead of threading a database or platform handle through screen and ViewModel calls. Example: answer switching should ask its own support layer for already-opened content, not force the article loading call to accept a database parameter that exists only to be forwarded.
+
 ## Workflow
 
 1. Record the current time and inspect `git status --short --branch`.

@@ -42,11 +42,6 @@ import kotlin.time.Clock
 
 const val ZHIHU_CLEAR_ONLINE_HISTORY_URL = "https://api.zhihu.com/read_history/batch_del"
 
-fun zhihuOnlineHistoryUrl(
-    offset: Int = 0,
-    limit: Int = 10,
-): String = "https://api.zhihu.com/unify-consumption/read_history?offset=$offset&limit=$limit"
-
 fun decodeOnlineHistoryItems(
     data: JsonArray,
     ignoreInvalid: Boolean = false,
@@ -62,11 +57,6 @@ fun decodeOnlineHistoryItems(
     }
 }
 
-fun zhihuHotListUrl(
-    limit: Int = 50,
-    mobile: Boolean = true,
-): String = "https://www.zhihu.com/api/v3/feed/topstory/hot-lists/total?limit=$limit&mobile=$mobile"
-
 const val ZHIHU_LAST_READ_TOUCH_URL = "https://www.zhihu.com/lastread/touch"
 
 const val ZHIHU_NOTIFICATION_DEFAULT_READ_ALL_URL =
@@ -81,22 +71,6 @@ val ZHIHU_NOTIFICATION_READ_ALL_URLS = listOf(
     ZHIHU_NOTIFICATION_FOLLOW_READ_ALL_URL,
     ZHIHU_NOTIFICATION_VOTE_THANK_READ_ALL_URL,
 )
-
-fun zhihuNotificationRecentUrl(
-    limit: Int = 20,
-): String = "https://www.zhihu.com/api/v4/notifications/v2/recent?limit=$limit"
-
-fun zhihuNotificationDefaultUrl(
-    limit: Int = 20,
-): String = "https://www.zhihu.com/api/v4/notifications/v2/default?limit=$limit"
-
-fun zhihuNotificationFollowUrl(
-    limit: Int = 20,
-): String = "https://www.zhihu.com/api/v4/notifications/v2/follow?limit=$limit"
-
-fun zhihuNotificationVoteThankUrl(
-    limit: Int = 20,
-): String = "https://www.zhihu.com/api/v4/notifications/v2/vote_thank?limit=$limit"
 
 suspend fun fetchZhihuUnreadNotificationCount(
     client: HttpClient,
@@ -116,8 +90,6 @@ suspend fun markAllZhihuNotificationsAsRead(
 }
 
 const val ZHIHU_DAILY_LATEST_URL = "https://news-at.zhihu.com/api/4/stories/latest"
-
-fun zhihuDailyBeforeUrl(date: String): String = "https://news-at.zhihu.com/api/4/stories/before/$date"
 
 fun nextDailyApiDate(date: String): String {
     require(date.length == 8 && date.all { it.isDigit() }) {

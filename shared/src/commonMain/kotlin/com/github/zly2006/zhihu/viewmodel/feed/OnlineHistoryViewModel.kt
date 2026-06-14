@@ -23,12 +23,11 @@ import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.decodeOnlineHistoryItems
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
-import com.github.zly2006.zhihu.shared.data.zhihuOnlineHistoryUrl
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import kotlinx.serialization.json.JsonArray
 
 class OnlineHistoryViewModel : BaseFeedViewModel() {
-    override val initialUrl: String = zhihuOnlineHistoryUrl()
+    override val initialUrl: String = "https://api.zhihu.com/unify-consumption/read_history?offset=0&limit=10"
     override val shouldLogDecodeFailures: Boolean = false
 
     override fun processResponse(environment: PaginationEnvironment, data: List<Feed>, rawData: JsonArray) {
