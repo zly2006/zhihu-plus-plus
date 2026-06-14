@@ -28,6 +28,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
@@ -127,8 +128,7 @@ fun MiuixFollowScreen(
         topBar = {
             Column(
                 modifier = Modifier
-                    .installerMiuixBlurEffect(backdrop)
-                    .padding(bottom = 8.dp),
+                    .installerMiuixBlurEffect(backdrop),
             ) {
                 TopAppBar(
                     color = backdrop.getMiuixAppBarColor(),
@@ -190,8 +190,7 @@ fun MiuixFollowTopLevelPage(
             AutoHideTopBar {
                 Column(
                     modifier = Modifier
-                        .installerMiuixBlurEffect(backdrop)
-                        .padding(bottom = 8.dp),
+                        .installerMiuixBlurEffect(backdrop),
                 ) {
                     TopAppBar(
                         color = backdrop.getMiuixAppBarColor(),
@@ -224,14 +223,21 @@ fun MiuixFollowTopLevelPage(
 
 @Composable
 private fun MiuixFollowTabRow(selectedTabIndex: Int, onTabSelected: (Int) -> Unit, modifier: Modifier = Modifier) {
-    TabRow(
-        tabs = listOf("推荐", "动态"),
-        selectedTabIndex = selectedTabIndex,
-        onTabSelected = onTabSelected,
+    Box(
         modifier = modifier
             .padding(horizontal = 12.dp)
+            .padding(bottom = 8.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(MiuixTheme.colorScheme.surfaceContainerHigh)
             .testTag(FOLLOW_SCREEN_TAB_ROW_TAG),
-    )
+    ) {
+        TabRow(
+            tabs = listOf("推荐", "动态"),
+            selectedTabIndex = selectedTabIndex,
+            onTabSelected = onTabSelected,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
 }
 
 @Composable
