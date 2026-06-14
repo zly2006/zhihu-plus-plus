@@ -277,16 +277,6 @@ class AndroidArticlePreviewWebViewStore : ArticlePreviewWebViewStore {
     var nextTag: String? = null
         private set
 
-    fun getOrCreateMainWebView(context: Context, answerId: Long): CustomWebView {
-        mainWebView?.let { return it }
-        return createCachedWebView(context)
-            .also {
-                mainWebView = it
-                mainTag = "wv_main_$answerId"
-                it.tag = mainTag
-            }
-    }
-
     fun promoteForNavigation(direction: ArticleAnswerTransitionDirection) {
         when (direction) {
             ArticleAnswerTransitionDirection.HORIZONTAL_NEXT, ArticleAnswerTransitionDirection.VERTICAL_NEXT -> {
@@ -362,9 +352,6 @@ class AndroidArticlesSharedData :
     ArticleViewModel.ArticlesSharedData(),
     ArticlePreviewWebViewStore {
     private val previewWebViews = AndroidArticlePreviewWebViewStore()
-
-    fun getOrCreateMainWebView(context: Context, answerId: Long) =
-        previewWebViews.getOrCreateMainWebView(context, answerId)
 
     /**
      * 导航时旋转三个 WebView：

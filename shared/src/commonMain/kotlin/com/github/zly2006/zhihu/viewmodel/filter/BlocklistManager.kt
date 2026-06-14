@@ -159,15 +159,6 @@ class BlocklistService(
         )
 
     /**
-     * 清空所有屏蔽数据
-     */
-    suspend fun clearAllBlocklists() {
-        keywordDao.clearAllKeywords()
-        userDao.clearAllUsers()
-        topicDao.clearAllTopics()
-    }
-
-    /**
      * 添加屏蔽主题
      */
     suspend fun addBlockedTopic(
@@ -355,12 +346,6 @@ class BlocklistManager(
 
     suspend fun getBlocklistStats(): BlocklistStats = withContext(Dispatchers.Default) {
         service.getBlocklistStats()
-    }
-
-    suspend fun clearAllBlocklists() {
-        withContext(Dispatchers.Default) {
-            service.clearAllBlocklists()
-        }
     }
 
     suspend fun addBlockedTopic(

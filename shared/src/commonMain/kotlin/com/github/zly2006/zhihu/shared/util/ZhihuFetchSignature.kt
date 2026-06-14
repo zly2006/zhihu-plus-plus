@@ -47,19 +47,16 @@ fun HttpRequestBuilder.signZhihuFetchRequest(
     body: String? = null,
 ) {
     val dc0 = cookies["d_c0"]?.takeIf { it.isNotBlank() } ?: return
-    val requestBody = body ?: signedJsonBodyOrNull()
-    signZhihuFetchRequest(dc0 = dc0, body = requestBody)
-}
-
-private fun HttpRequestBuilder.signedJsonBodyOrNull(): String? =
-    if (contentType() == ContentType.Application.Json) {
-        body as? String
+    val requestBody = body ?: if (contentType() == ContentType.Application.Json) {
+        this.body as? String
             ?: bodyType?.kotlinType?.let { type ->
-                ZhihuJson.json.encodeToString(serializer(type), body)
+                ZhihuJson.json.encodeToString(serializer(type), this.body)
             }
     } else {
         null
     }
+    signZhihuFetchRequest(dc0 = dc0, body = requestBody)
+}
 
 object ZhihuFetchSignature {
     fun createZse96Header(
