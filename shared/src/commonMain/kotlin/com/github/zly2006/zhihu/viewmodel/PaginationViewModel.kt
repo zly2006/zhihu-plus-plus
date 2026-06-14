@@ -34,7 +34,6 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.ZhihuJson.decodeJson
-import com.github.zly2006.zhihu.shared.data.ZhihuMeNotifications
 import com.github.zly2006.zhihu.shared.data.ZhihuPaging
 import com.github.zly2006.zhihu.shared.data.fetchZhihuAuthenticatedJson
 import com.github.zly2006.zhihu.shared.util.Log
@@ -324,9 +323,6 @@ suspend fun ZhihuApiEnvironment.deleteSigned(
         signZhihuFetchRequest(cookies)
     }
 }
-
-suspend fun ZhihuApiEnvironment.fetchUnreadNotificationCountSigned(): Int =
-    fetchJson("https://www.zhihu.com/api/v4/me", "")?.let { decodeJson<ZhihuMeNotifications>(it) }?.totalCount ?: 0
 
 interface MobileHomeFeedEnvironment : ZhihuApiEnvironment {
     fun mobileHomeFeedHttpClient(): HttpClient = httpClient()

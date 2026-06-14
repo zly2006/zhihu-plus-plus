@@ -73,6 +73,9 @@ import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
+import com.github.zly2006.zhihu.shared.data.ZHIHU_ME_URL
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
+import com.github.zly2006.zhihu.shared.data.ZhihuMeNotifications
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.notification.rememberNotificationSettingsStore
@@ -95,7 +98,6 @@ import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.components.rememberFeedBlockActions
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
-import com.github.zly2006.zhihu.viewmodel.fetchUnreadNotificationCountSigned
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.serialization.json.Json
 
@@ -178,7 +180,10 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
     var unreadCount by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) {
         try {
-            unreadCount = paginationEnvironment.fetchUnreadNotificationCountSigned()
+            unreadCount = paginationEnvironment
+                .fetchJson(ZHIHU_ME_URL, "")
+                ?.let { ZhihuJson.decodeJson<ZhihuMeNotifications>(it) }
+                ?.totalCount ?: 0
         } catch (_: Exception) {
             // 忽略错误
         }

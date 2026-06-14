@@ -21,8 +21,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import com.github.zly2006.zhihu.shared.data.NotificationItem
+import com.github.zly2006.zhihu.shared.data.ZHIHU_ME_URL
 import com.github.zly2006.zhihu.shared.data.ZHIHU_NOTIFICATION_READ_ALL_URLS
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
+import com.github.zly2006.zhihu.shared.data.ZhihuMeNotifications
 import com.github.zly2006.zhihu.shared.data.ZhihuPaging
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.notification.matchNotificationType
@@ -122,7 +124,10 @@ class NotificationViewModel :
 
             // 获取未读消息数量
             unreadCount = try {
-                environment.fetchUnreadNotificationCountSigned()
+                environment
+                    .fetchJson(ZHIHU_ME_URL, "")
+                    ?.let { ZhihuJson.decodeJson<ZhihuMeNotifications>(it) }
+                    ?.totalCount ?: 0
             } catch (_: Exception) {
                 0
             }
