@@ -36,7 +36,6 @@ import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.ZhihuJson.decodeJson
 import com.github.zly2006.zhihu.shared.data.ZhihuMeNotifications
 import com.github.zly2006.zhihu.shared.data.ZhihuPaging
-import com.github.zly2006.zhihu.shared.data.buildZhihuReadHistoryBody
 import com.github.zly2006.zhihu.shared.data.fetchZhihuAuthenticatedJson
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
@@ -62,9 +61,11 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import kotlinx.serialization.serializer
 import kotlin.reflect.KType
 
@@ -300,7 +301,12 @@ suspend fun ZhihuApiEnvironment.addReadHistory(
     runCatching {
         postSigned("https://www.zhihu.com/api/v4/read_history/add") {
             contentType(ContentType.Application.Json)
-            setBody(buildZhihuReadHistoryBody(contentToken, contentTypeName))
+            setBody(
+                buildJsonObject {
+                    put("content_token", contentToken)
+                    put("content_type", contentTypeName)
+                }.toString(),
+            )
         }
     }
 }
@@ -356,16 +362,7 @@ interface HistoryEnvironment {
 }
 
 interface ContentInteractionEnvironment : ZhihuApiEnvironment {
-    suspend fun followQuestion(
-        questionId: Long,
-        follow: Boolean,
-    ) = Unit
-
-    suspend fun sendFeedReadStatus(feed: Feed) = Unit
-
     suspend fun recordContentInteraction(feed: Feed) = Unit
-
-    suspend fun markItemsAsTouched(items: Set<Pair<String, String>>): Set<Pair<String, String>> = emptySet()
 }
 
 interface ContentOpenEnvironment {

@@ -21,17 +21,28 @@ import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.ZHIHU_LAST_READ_TOUCH_URL
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.flattenFeeds
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
+import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.viewmodel.ContentInteractionEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
 import com.github.zly2006.zhihu.viewmodel.filter.extractTopicIds
+import com.github.zly2006.zhihu.viewmodel.postSigned
+import io.ktor.client.request.forms.MultiPartFormDataContent
+import io.ktor.client.request.forms.formData
+import io.ktor.client.request.header
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.isSuccess
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonArray
 
 suspend fun resolveFeedBlockAuthorInfo(
@@ -165,7 +176,26 @@ class HomeFeedViewModel :
      */
     override fun onUiContentClick(environment: ContentInteractionEnvironment, feed: Feed, item: FeedDisplayItem) {
         viewModelScope.launch(Dispatchers.Default) {
-            environment.sendFeedReadStatus(feed)
+            if (environment.authenticatedCookies()["d_c0"] != null) {
+                val payloadItem = when (val target = feed.target) {
+                    is Feed.AnswerTarget -> listOf("answer", target.id.toString(), "read")
+                    is Feed.ArticleTarget -> listOf("article", target.id.toString(), "read")
+                    is Feed.PinTarget -> listOf("pin", target.id.toString(), "read")
+                    else -> null
+                }
+                if (payloadItem != null) {
+                    environment.postSigned(ZHIHU_LAST_READ_TOUCH_URL) {
+                        header("x-requested-with", "fetch")
+                        setBody(
+                            MultiPartFormDataContent(
+                                formData {
+                                    append("items", ZhihuJson.json.encodeToString(listOf(payloadItem)))
+                                },
+                            ),
+                        )
+                    }
+                }
+            }
             recordContentInteraction(environment, feed)
         }
     }
@@ -174,6 +204,7 @@ class HomeFeedViewModel :
         environment: ContentInteractionEnvironment,
     ) {
         try {
+            if (environment.authenticatedCookies()["d_c0"] == null) return
             val currentTouchItems = displayItems
                 .asSequence()
                 .filterNot { it.isFiltered }
@@ -189,7 +220,22 @@ class HomeFeedViewModel :
             val untouchedItemSet = currentTouchItems - reportedTouchedItems
 
             if (untouchedItemSet.isNotEmpty()) {
-                reportedTouchedItems.addAll(environment.markItemsAsTouched(untouchedItemSet.toSet()))
+                val payload = untouchedItemSet.map { (type, id) -> listOf(type, id, "touch") }
+                val response = environment.postSigned(ZHIHU_LAST_READ_TOUCH_URL) {
+                    header("x-requested-with", "fetch")
+                    setBody(
+                        MultiPartFormDataContent(
+                            formData {
+                                append("items", ZhihuJson.json.encodeToString(payload))
+                            },
+                        ),
+                    )
+                }
+                if (response.status.isSuccess()) {
+                    reportedTouchedItems.addAll(untouchedItemSet)
+                } else {
+                    Log.e("Browse-Touch", response.bodyAsText())
+                }
             }
         } catch (e: Exception) {
             environment.handleFetchFailure("FeedViewModel", e)

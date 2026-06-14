@@ -25,12 +25,7 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.ZHIHU_CLEAR_ONLINE_HISTORY_URL
-import com.github.zly2006.zhihu.shared.data.ZHIHU_LAST_READ_TOUCH_URL
-import com.github.zly2006.zhihu.shared.data.encodeZhihuClearOnlineHistoryBody
-import com.github.zly2006.zhihu.shared.data.encodeZhihuLastReadTouchItems
 import com.github.zly2006.zhihu.shared.data.navDestination
-import com.github.zly2006.zhihu.shared.data.zhihuLastReadTouchItem
-import com.github.zly2006.zhihu.shared.data.zhihuLastReadTouchItems
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
@@ -62,20 +57,16 @@ import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import com.github.zly2006.zhihu.viewmodel.local.buildLocalRecommendationEngine
 import com.github.zly2006.zhihu.viewmodel.local.getLocalContentDatabase
 import io.ktor.client.HttpClient
-import io.ktor.client.request.forms.MultiPartFormDataContent
-import io.ktor.client.request.forms.formData
-import io.ktor.client.request.header
 import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.HttpMethod
 import io.ktor.http.contentType
-import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.put
 import java.awt.image.BufferedImage
 import java.io.File
 import java.util.zip.ZipEntry
@@ -234,19 +225,6 @@ class DesktopPaginationEnvironment(
         recordContentOpenEvent(destination, questionId)
     }
 
-    override suspend fun followQuestion(
-        questionId: Long,
-        follow: Boolean,
-    ) {
-        if (store.load().cookies["d_c0"] == null) return
-        val url = "https://www.zhihu.com/api/v4/questions/$questionId/followers"
-        if (follow) {
-            postSigned(url)
-        } else {
-            deleteSigned(url)
-        }
-    }
-
     override suspend fun applyHomeFeedFilters(items: List<FeedDisplayItem>): HomeFeedFilterResult {
         val settings = settingsStore.toFeedFilterSettings()
         val foregroundItems = contentFilterDb.filterForegroundReadItems(
@@ -266,33 +244,22 @@ class DesktopPaginationEnvironment(
         )
     }
 
-    override suspend fun sendFeedReadStatus(feed: Feed) {
-        val payloadItem = zhihuLastReadTouchItem(feed, "read") ?: return
-        postDesktopLastReadTouch(listOf(payloadItem))
-    }
-
     override suspend fun recordContentInteraction(feed: Feed) {
         val settings = settingsStore.toFeedFilterSettings()
         recordFeedContentInteraction(settings, contentFilterDb, feed)
     }
 
-    override suspend fun markItemsAsTouched(items: Set<Pair<String, String>>): Set<Pair<String, String>> {
-        if (items.isEmpty()) return emptySet()
-        val payload = zhihuLastReadTouchItems(items, "touch")
-        return if (postDesktopLastReadTouch(payload)) {
-            items
-        } else {
-            emptySet()
-        }
-    }
-
     override suspend fun clearAllHistory() {
         historyStorage.clearAndSave()
         if (store.load().cookies["d_c0"] == null) return
-        val bodyText = encodeZhihuClearOnlineHistoryBody()
         postSigned(ZHIHU_CLEAR_ONLINE_HISTORY_URL) {
             contentType(KtorContentType.Application.Json)
-            setBody(bodyText)
+            setBody(
+                buildJsonObject {
+                    put("pairs", JsonArray(emptyList()))
+                    put("clear", true)
+                }.toString(),
+            )
         }
     }
 
@@ -473,30 +440,6 @@ class DesktopPaginationEnvironment(
         )
     }
 
-    private suspend fun postDesktopLastReadTouch(payload: List<List<String>>): Boolean {
-        if (store.load().cookies["d_c0"] == null) return false
-        return store.signedWithResponse(
-            url = ZHIHU_LAST_READ_TOUCH_URL,
-            block = {
-                method = HttpMethod.Post
-                header("x-requested-with", "fetch")
-                setBody(
-                    MultiPartFormDataContent(
-                        formData {
-                            append("items", encodeZhihuLastReadTouchItems(payload))
-                        },
-                    ),
-                )
-            },
-        ) { response ->
-            if (response.status.isSuccess()) {
-                true
-            } else {
-                Log.e("Browse-Touch", response.bodyAsText())
-                false
-            }
-        }
-    }
 }
 
 private data class DesktopPreparedExportContent(

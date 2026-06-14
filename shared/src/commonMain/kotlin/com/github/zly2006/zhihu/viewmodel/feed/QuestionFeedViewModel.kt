@@ -25,10 +25,12 @@ import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.viewmodel.ContentBlocklistEnvironment
-import com.github.zly2006.zhihu.viewmodel.ContentInteractionEnvironment
 import com.github.zly2006.zhihu.viewmodel.FeedDisplayEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
+import com.github.zly2006.zhihu.viewmodel.deleteSigned
 import com.github.zly2006.zhihu.viewmodel.filter.fetchBlockedUserIds
+import com.github.zly2006.zhihu.viewmodel.postSigned
 
 open class QuestionFeedViewModel(
     private val questionId: Long,
@@ -60,9 +62,15 @@ open class QuestionFeedViewModel(
         return super.createDisplayItem(environment, feed)
     }
 
-    suspend fun followQuestion(environment: ContentInteractionEnvironment, questionId: Long, follow: Boolean) {
+    suspend fun followQuestion(environment: ZhihuApiEnvironment, questionId: Long, follow: Boolean) {
         try {
-            environment.followQuestion(questionId, follow)
+            if (environment.authenticatedCookies()["d_c0"] == null) return
+            val url = "https://www.zhihu.com/api/v4/questions/$questionId/followers"
+            if (follow) {
+                environment.postSigned(url)
+            } else {
+                environment.deleteSigned(url)
+            }
         } catch (e: Exception) {
             environment.handleFetchFailure("QuestionFeedViewModel", e)
         }

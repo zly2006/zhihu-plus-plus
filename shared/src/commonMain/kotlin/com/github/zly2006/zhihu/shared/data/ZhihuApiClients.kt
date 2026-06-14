@@ -38,25 +38,14 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 import kotlin.time.Clock
 
-const val ZHIHU_ONLINE_HISTORY_URL = "https://api.zhihu.com/unify-consumption/read_history"
 const val ZHIHU_CLEAR_ONLINE_HISTORY_URL = "https://api.zhihu.com/read_history/batch_del"
 
 fun zhihuOnlineHistoryUrl(
     offset: Int = 0,
     limit: Int = 10,
 ): String = "https://api.zhihu.com/unify-consumption/read_history?offset=$offset&limit=$limit"
-
-fun buildZhihuClearOnlineHistoryBody(): JsonObject = buildJsonObject {
-    put("pairs", JsonArray(emptyList()))
-    put("clear", true)
-}
-
-fun encodeZhihuClearOnlineHistoryBody(): String =
-    ZhihuJson.json.encodeToString(JsonObject.serializer(), buildZhihuClearOnlineHistoryBody())
 
 fun decodeOnlineHistoryItems(
     data: JsonArray,
@@ -80,38 +69,6 @@ fun zhihuHotListUrl(
 
 const val ZHIHU_LAST_READ_TOUCH_URL = "https://www.zhihu.com/lastread/touch"
 
-fun buildZhihuReadHistoryBody(
-    contentToken: String,
-    contentType: String,
-): String = buildJsonObject {
-    put("content_token", contentToken)
-    put("content_type", contentType)
-}.toString()
-
-fun encodeZhihuLastReadTouchItems(items: List<List<String>>): String =
-    ZhihuJson.json.encodeToString(items)
-
-fun zhihuLastReadTouchItem(
-    feed: Feed,
-    action: String,
-): List<String>? = when (val target = feed.target) {
-    is Feed.AnswerTarget -> listOf("answer", target.id.toString(), action)
-    is Feed.ArticleTarget -> listOf("article", target.id.toString(), action)
-    is Feed.PinTarget -> listOf("pin", target.id.toString(), action)
-    else -> null
-}
-
-fun zhihuLastReadTouchItems(
-    items: Set<Pair<String, String>>,
-    action: String,
-): List<List<String>> = items.map { (type, id) ->
-    listOf(type, id, action)
-}
-
-const val ZHIHU_NOTIFICATION_RECENT_URL = "https://www.zhihu.com/api/v4/notifications/v2/recent"
-const val ZHIHU_NOTIFICATION_DEFAULT_URL = "https://www.zhihu.com/api/v4/notifications/v2/default"
-const val ZHIHU_NOTIFICATION_FOLLOW_URL = "https://www.zhihu.com/api/v4/notifications/v2/follow"
-const val ZHIHU_NOTIFICATION_VOTE_THANK_URL = "https://www.zhihu.com/api/v4/notifications/v2/vote_thank"
 const val ZHIHU_NOTIFICATION_DEFAULT_READ_ALL_URL =
     "https://www.zhihu.com/api/v4/notifications/v2/default/actions/readall"
 const val ZHIHU_NOTIFICATION_FOLLOW_READ_ALL_URL =

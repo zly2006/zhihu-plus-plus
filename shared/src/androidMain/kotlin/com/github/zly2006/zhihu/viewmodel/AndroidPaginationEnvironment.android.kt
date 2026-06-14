@@ -46,13 +46,8 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.ZHIHU_CLEAR_ONLINE_HISTORY_URL
-import com.github.zly2006.zhihu.shared.data.ZHIHU_LAST_READ_TOUCH_URL
 import com.github.zly2006.zhihu.shared.data.ZhihuJson.json
-import com.github.zly2006.zhihu.shared.data.buildZhihuClearOnlineHistoryBody
-import com.github.zly2006.zhihu.shared.data.encodeZhihuLastReadTouchItems
 import com.github.zly2006.zhihu.shared.data.navDestination
-import com.github.zly2006.zhihu.shared.data.zhihuLastReadTouchItem
-import com.github.zly2006.zhihu.shared.data.zhihuLastReadTouchItems
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
@@ -65,7 +60,6 @@ import com.github.zly2006.zhihu.util.buildOfflineArticleExportHtml
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.exportCollectionItemsToZip
 import com.github.zly2006.zhihu.util.saveBitmapToGallery
-import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.filter.AndroidContentFilterRuntime
 import com.github.zly2006.zhihu.viewmodel.filter.contentFilterSettings
 import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
@@ -80,22 +74,18 @@ import io.ktor.client.plugins.api.createClientPlugin
 import io.ktor.client.plugins.cache.HttpCache
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.cookies.HttpCookies
-import io.ktor.client.request.forms.MultiPartFormDataContent
-import io.ktor.client.request.forms.formData
-import io.ktor.client.request.header
-import io.ktor.client.request.post
 import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.HttpMethod
 import io.ktor.http.contentType
-import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.util.appendAll
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import java.io.File
 import com.github.zly2006.zhihu.navigation.Article as ArticleDestination
 import com.github.zly2006.zhihu.util.buildArticleExportHtml as buildAndroidArticleExportHtml
@@ -252,17 +242,6 @@ open class SharedAndroidPaginationEnvironment(
         )
     }
 
-    override suspend fun followQuestion(
-        questionId: Long,
-        follow: Boolean,
-    ) {
-        val url = "https://www.zhihu.com/api/v4/questions/$questionId/followers"
-        AccountData.fetch(context, url) {
-            signFetchRequest()
-            method = if (follow) HttpMethod.Post else HttpMethod.Delete
-        }
-    }
-
     override suspend fun applyHomeFeedFilters(items: List<FeedDisplayItem>): HomeFeedFilterResult {
         val settings = feedDisplaySettings()
         val filterSettings = context.contentFilterSettings()
@@ -297,55 +276,22 @@ open class SharedAndroidPaginationEnvironment(
         )
     }
 
-    override suspend fun sendFeedReadStatus(feed: Feed) {
-        val payloadItem = zhihuLastReadTouchItem(feed, "read") ?: return
-        AccountData.fetchPost(context, ZHIHU_LAST_READ_TOUCH_URL) {
-            signFetchRequest()
-            header("x-requested-with", "fetch")
-            setBody(
-                MultiPartFormDataContent(
-                    formData {
-                        append("items", encodeZhihuLastReadTouchItems(listOf(payloadItem)))
-                    },
-                ),
-            )
-        }
-    }
-
     override suspend fun recordContentInteraction(feed: Feed) {
         val settings = context.contentFilterSettings()
         val database = getContentFilterDatabase(context)
         recordFeedContentInteraction(settings, database, feed)
     }
 
-    override suspend fun markItemsAsTouched(items: Set<Pair<String, String>>): Set<Pair<String, String>> {
-        if (items.isEmpty()) return emptySet()
-        val response = AccountData.httpClient(context).post(ZHIHU_LAST_READ_TOUCH_URL) {
-            header("x-requested-with", "fetch")
-            signFetchRequest()
-            setBody(
-                MultiPartFormDataContent(
-                    formData {
-                        val payload = zhihuLastReadTouchItems(items, "touch")
-                        append("items", encodeZhihuLastReadTouchItems(payload))
-                    },
-                ),
-            )
-        }
-        return if (response.status.isSuccess()) {
-            items
-        } else {
-            Log.e("Browse-Touch", response.bodyAsText())
-            emptySet()
-        }
-    }
-
     override suspend fun clearAllHistory() {
         HistoryStorage(context).clearAndSave()
-        AccountData.fetchPost(context, ZHIHU_CLEAR_ONLINE_HISTORY_URL) {
-            signFetchRequest()
+        postSigned(ZHIHU_CLEAR_ONLINE_HISTORY_URL) {
             contentType(KtorContentType.Application.Json)
-            setBody(buildZhihuClearOnlineHistoryBody())
+            setBody(
+                buildJsonObject {
+                    put("pairs", JsonArray(emptyList()))
+                    put("clear", true)
+                }.toString(),
+            )
         }
     }
 
