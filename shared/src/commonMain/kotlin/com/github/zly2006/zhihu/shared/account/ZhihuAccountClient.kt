@@ -39,7 +39,6 @@ class ZhihuAccountClient(
     private var httpClient: HttpClient? = null
     private var httpClientCookies: Map<String, String>? = null
     private var httpClientUserAgent: String? = null
-    private var lastRefreshMillis = 0L
 
     fun load(): ZhihuAccountSession {
         val cached = session
@@ -116,8 +115,6 @@ class ZhihuAccountClient(
         fetchZhihuAuthenticatedJson(
             client = httpClient(),
             url = url,
-            lastRefreshMillis = lastRefreshMillis,
-            updateLastRefreshMillis = { lastRefreshMillis = it },
             block = block,
         )
 
@@ -129,8 +126,6 @@ class ZhihuAccountClient(
         val response = executeZhihuAuthenticatedRequest(
             client = httpClient(),
             url = url,
-            lastRefreshMillis = lastRefreshMillis,
-            updateLastRefreshMillis = { lastRefreshMillis = it },
             block = block,
         )
         return transform(response)

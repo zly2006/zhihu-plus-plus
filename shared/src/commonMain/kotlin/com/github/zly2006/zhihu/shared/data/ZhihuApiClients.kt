@@ -128,12 +128,11 @@ fun nextDailyApiDate(date: String): String {
     return nextDate.toString().replace("-", "")
 }
 
+private var lastRefreshMillis: Long = 0
+
 suspend fun executeZhihuAuthenticatedRequest(
     client: HttpClient,
     url: String,
-    lastRefreshMillis: Long,
-    updateLastRefreshMillis: (Long) -> Unit,
-    nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() },
     block: suspend HttpRequestBuilder.() -> Unit = {},
 ): HttpResponse {
     val response = client.request(url) {
@@ -141,13 +140,12 @@ suspend fun executeZhihuAuthenticatedRequest(
     }
     if (response.status != HttpStatusCode.Unauthorized) return response
 
-    if (nowMillis() - lastRefreshMillis < 10_000) {
+    if (Clock.System.now().toEpochMilliseconds() - lastRefreshMillis < 10_000) {
         return response
     }
     val refreshToken = ZhihuCredentialRefresher.fetchRefreshToken(client)
     ZhihuCredentialRefresher.refreshZhihuToken(refreshToken, client)
-    val refreshedAt = nowMillis()
-    updateLastRefreshMillis(refreshedAt)
+    lastRefreshMillis = Clock.System.now().toEpochMilliseconds()
     return client
         .request(url) {
             block()
@@ -157,17 +155,11 @@ suspend fun executeZhihuAuthenticatedRequest(
 suspend fun fetchZhihuAuthenticatedJson(
     client: HttpClient,
     url: String,
-    lastRefreshMillis: Long,
-    updateLastRefreshMillis: (Long) -> Unit,
-    nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() },
     block: suspend HttpRequestBuilder.() -> Unit = {},
 ): JsonObject? {
     val response = executeZhihuAuthenticatedRequest(
         client = client,
         url = url,
-        lastRefreshMillis = lastRefreshMillis,
-        updateLastRefreshMillis = updateLastRefreshMillis,
-        nowMillis = nowMillis,
         block = block,
     )
     if (response.status == HttpStatusCode.NoContent) {

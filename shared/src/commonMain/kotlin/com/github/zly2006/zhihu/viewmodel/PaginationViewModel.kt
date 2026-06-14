@@ -225,11 +225,7 @@ interface ArticleImageExportRenderer {
 interface ZhihuApiEnvironment {
     fun httpClient(): HttpClient
 
-    fun authenticatedCookies(): Map<String, String> = emptyMap()
-
-    fun lastAuthRefreshMillis(): Long = 0L
-
-    fun updateLastAuthRefreshMillis(value: Long) = Unit
+    fun authenticatedCookies(): Map<String, String>
 
     suspend fun <T> withAuthenticatedClient(
         block: suspend (client: HttpClient, cookies: Map<String, String>) -> T,
@@ -242,8 +238,6 @@ interface ZhihuApiEnvironment {
         fetchZhihuAuthenticatedJson(
             client = client,
             url = url.replace("http://", "https://"),
-            lastRefreshMillis = lastAuthRefreshMillis(),
-            updateLastRefreshMillis = ::updateLastAuthRefreshMillis,
         ) {
             method = HttpMethod.Get
             signZhihuFetchRequest(cookies)
