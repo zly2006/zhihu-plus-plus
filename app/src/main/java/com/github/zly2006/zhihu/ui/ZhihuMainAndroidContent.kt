@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.ui
 
+import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -46,7 +47,7 @@ import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
  */
 @Composable
 fun AndroidZhihuMain(navController: NavHostController) {
-    val activity = rememberAndroidZhihuMainActivity()
+    val activity = LocalActivity.current as MainActivity
     ZhihuMain(
         navController = navController,
         navigationState = rememberAndroidZhihuMainNavigationState(),

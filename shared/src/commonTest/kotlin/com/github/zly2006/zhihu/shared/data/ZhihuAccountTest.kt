@@ -34,27 +34,13 @@ import kotlin.test.assertNull
 
 class ZhihuAccountTest {
     @Test
-    fun fetchVerifiedProfileDecodesSnakeCaseResponse() = runTest {
-        val client = mockClient(
-            status = HttpStatusCode.OK,
-            body = """{"id":"1","name":"Alice","url_token":"alice-token","user_type":"people"}""",
-        )
-
-        val profile = fetchVerifiedZhihuProfile(client)
-
-        assertEquals("Alice", profile?.name)
-        assertEquals("alice-token", profile?.urlToken)
-        assertEquals("people", profile?.userType)
-    }
-
-    @Test
-    fun fetchVerifiedProfileReturnsNullForUnauthorizedResponse() = runTest {
+    fun fetchVerifiedSessionReturnsNullForUnauthorizedResponse() = runTest {
         val client = mockClient(
             status = HttpStatusCode.Unauthorized,
             body = """{"error":"unauthorized"}""",
         )
 
-        assertNull(fetchVerifiedZhihuProfile(client))
+        assertNull(fetchVerifiedZhihuSession(client, emptyMap(), "test-agent"))
     }
 
     @Test

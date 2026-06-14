@@ -27,7 +27,7 @@ suspend fun loadVotersPage(
     nextUrl: String?,
     reset: Boolean,
 ): ZhihuVotersResponse {
-    val url = (if (reset || nextUrl == null) initialUrl else nextUrl).toHttps()
+    val url = (if (reset || nextUrl == null) initialUrl else nextUrl).replace("http://", "https://")
     val response = environment.fetchJson(url, "") ?: error("赞同者信息为空")
     return ZhihuJson.decodeJson(response)
 }
@@ -46,6 +46,4 @@ fun MutableList<DataHolder.Author>.replaceOrAppendUniqueVoters(
 fun ZhihuVotersResponse.nextUrlOrNull(): String? =
     paging.next
         .takeUnless { paging.isEnd || it.isBlank() }
-        ?.toHttps()
-
-private fun String.toHttps(): String = replace("http://", "https://")
+        ?.replace("http://", "https://")

@@ -22,7 +22,6 @@ import com.github.zly2006.zhihu.viewmodel.filter.BlockedContentRecord
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeyword
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeywordService
 import com.github.zly2006.zhihu.viewmodel.filter.KeywordSemanticMatcher
-import com.github.zly2006.zhihu.viewmodel.filter.KeywordType
 import com.github.zly2006.zhihu.viewmodel.filter.MatchedKeywordInfo
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.Dispatchers
@@ -47,27 +46,8 @@ class BlockedKeywordRepository(
         service.getAllKeywords()
     }
 
-    suspend fun getExactMatchKeywords(): List<BlockedKeyword> = withContext(Dispatchers.IO) {
-        service.getExactMatchKeywords()
-    }
-
     suspend fun getNLPSemanticKeywords(): List<BlockedKeyword> = withContext(Dispatchers.IO) {
         service.getNLPSemanticKeywords()
-    }
-
-    suspend fun addKeyword(
-        keyword: String,
-        keywordType: KeywordType = KeywordType.NLP_SEMANTIC,
-    ): Long = withContext(Dispatchers.IO) {
-        service.addKeyword(keyword, keywordType)
-    }
-
-    suspend fun addExactMatchKeyword(
-        keyword: String,
-        caseSensitive: Boolean = false,
-        isRegex: Boolean = false,
-    ): Long = withContext(Dispatchers.IO) {
-        service.addExactMatchKeyword(keyword, caseSensitive, isRegex)
     }
 
     suspend fun addNLPPhrase(phrase: String): Long = withContext(Dispatchers.IO) {

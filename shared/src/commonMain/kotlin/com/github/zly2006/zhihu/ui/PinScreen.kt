@@ -83,6 +83,7 @@ import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.util.formatCompactCount
+import com.github.zly2006.zhihu.shared.util.twoDigitString
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.ShareDialog
@@ -136,7 +137,7 @@ private suspend fun loadPinDetail(
     pin: Pin,
 ): PinScreenUiState {
     environment.addReadHistory(pin.id.toString(), "pin")
-    val jsonObject = environment.fetchJson("https://www.zhihu.com/api/v4/pins/${pin.id}", "")
+    val jsonObject = environment.fetchJson("https://www.zhihu.com/api/v4/pins/${pin.id}?include=topics", "")
         ?: error("想法详情为空")
     val content = decodePinContentDetail(jsonObject)
     environment.postHistoryDestination(pin)
@@ -501,10 +502,10 @@ private fun PinContent(
         Text(
             buildString {
                 append("发布于")
-                append(Instant.fromEpochSeconds(pin.created).toLocalDateTime(TimeZone.currentSystemDefault()).run { "$year-${(month.ordinal + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')} ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}" })
+                append(Instant.fromEpochSeconds(pin.created).toLocalDateTime(TimeZone.currentSystemDefault()).run { "$year-${(month.ordinal + 1).twoDigitString()}-${day.twoDigitString()} ${hour.twoDigitString()}:${minute.twoDigitString()}" })
                 if (pin.updated > pin.created) {
                     append(" · 编辑于")
-                    append(Instant.fromEpochSeconds(pin.updated).toLocalDateTime(TimeZone.currentSystemDefault()).run { "$year-${(month.ordinal + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')} ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}" })
+                    append(Instant.fromEpochSeconds(pin.updated).toLocalDateTime(TimeZone.currentSystemDefault()).run { "$year-${(month.ordinal + 1).twoDigitString()}-${day.twoDigitString()} ${hour.twoDigitString()}:${minute.twoDigitString()}" })
                 }
             },
             style = MaterialTheme.typography.bodySmall,
@@ -700,45 +701,6 @@ private fun linkCardTypeLabel(dataContentType: String): String = when (dataConte
     "people" -> "用户"
     "video", "zvideo" -> "视频"
     else -> dataContentType
-}
-
-private suspend fun fetchLinkCardPreview(
-    fetchDetail: suspend (NavDestination) -> DataHolder.Content?,
-    linkCard: DataHolder.Pin.ContentLinkCard,
-): PinLinkCardPreview? {
-    val destination = resolveLinkCardDestination(linkCard) ?: return null
-    return when (destination) {
-        is Article -> {
-            when (val detail = fetchDetail(destination)) {
-                is DataHolder.Article -> PinLinkCardPreview(
-                    title = compactTitle(detail.title),
-                    preview = compactPreview(detail.excerpt.ifBlank { detail.content }),
-                )
-                is DataHolder.Answer -> PinLinkCardPreview(
-                    title = compactTitle(detail.question.title),
-                    preview = compactPreview(detail.excerpt.ifBlank { detail.content }),
-                )
-                else -> null
-            }
-        }
-        is Question -> {
-            (fetchDetail(destination) as? DataHolder.Question)?.let { detail ->
-                PinLinkCardPreview(
-                    title = compactTitle(detail.title),
-                    preview = compactPreview(detail.detail),
-                )
-            }
-        }
-        is Pin -> {
-            (fetchDetail(destination) as? DataHolder.Pin)?.let { detail ->
-                PinLinkCardPreview(
-                    title = "${detail.author.name} 的想法",
-                    preview = compactPreview(detail.contentHtml),
-                )
-            }
-        }
-        else -> null
-    }
 }
 
 internal fun resolveLinkCardDestination(linkCard: DataHolder.Pin.ContentLinkCard): NavDestination? {

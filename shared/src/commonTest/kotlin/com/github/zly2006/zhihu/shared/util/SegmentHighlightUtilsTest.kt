@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.shared.util
 
+import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.shared.data.SegmentInfoMark
 import com.github.zly2006.zhihu.shared.data.SegmentInfoMeta
 import com.github.zly2006.zhihu.shared.data.SegmentInfoParagraph
@@ -84,22 +85,25 @@ class SegmentHighlightUtilsTest {
 
     @Test
     fun parseSegmentTextParagraphHtmlShouldReadInjectedHighlightSpan() {
-        val paragraph = parseSegmentTextParagraphHtml(
-            """
-            <p data-pid="seg-1"><span class="highlight-wrap other has-comments"
-                data-highlight-id="abc,def"
-                data-highlight-like-count="5"
-                data-highlight-comment-count="1"
-                data-highlight-my-comment-count="0"
-                data-highlight-is-like="true"
-                data-highlight-is-span="false"
-                data-highlight-content-id="42"
-                data-highlight-content-type="answer"
-                data-highlight-pid="seg-1"
-                data-highlight-start-offset="0"
-                data-highlight-end-offset="7">第一句需要划线</span>，第二句保持原样。</p>
-            """.trimIndent(),
-        )
+        val element = Ksoup
+            .parseBodyFragment(
+                """
+                <p data-pid="seg-1"><span class="highlight-wrap other has-comments"
+                    data-highlight-id="abc,def"
+                    data-highlight-like-count="5"
+                    data-highlight-comment-count="1"
+                    data-highlight-my-comment-count="0"
+                    data-highlight-is-like="true"
+                    data-highlight-is-span="false"
+                    data-highlight-content-id="42"
+                    data-highlight-content-type="answer"
+                    data-highlight-pid="seg-1"
+                    data-highlight-start-offset="0"
+                    data-highlight-end-offset="7">第一句需要划线</span>，第二句保持原样。</p>
+                """.trimIndent(),
+            ).body()
+            .firstElementChild()
+        val paragraph = element?.let(::parseSegmentTextParagraph)
 
         assertNotNull(paragraph)
         assertEquals("seg-1", paragraph.pid)

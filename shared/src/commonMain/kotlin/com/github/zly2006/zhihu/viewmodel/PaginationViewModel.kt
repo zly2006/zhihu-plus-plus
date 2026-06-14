@@ -34,21 +34,22 @@ import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.ZhihuPaging
+import com.github.zly2006.zhihu.shared.data.fetchZhihuAuthenticatedJson
 import com.github.zly2006.zhihu.shared.data.fetchZhihuUnreadNotificationCount
 import com.github.zly2006.zhihu.shared.data.markAllZhihuNotificationsAsRead
 import com.github.zly2006.zhihu.shared.util.Log
+import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
 import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import io.ktor.client.HttpClient
-import io.ktor.client.call.body
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.delete
-import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.statement.HttpResponse
+import io.ktor.http.HttpMethod
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Job
@@ -184,14 +185,21 @@ open class ArticleAnswerSwitchData :
     @kotlin.concurrent.Volatile
     override var navigatingFromAnswerSwitch = false
 
+    // 由 DisposableEffect.onDispose 消费，不受 LaunchedEffect 时序影响
+    override var answerSwitchDisposeInProgress = false
+
     // 导航动画方向
     override var answerTransitionDirection = ArticleAnswerTransitionDirection.DEFAULT
+
+    // 沉浸式阅读模式
+    override var isImmersiveMode by mutableStateOf(false)
 
     override fun reset() {
         navigator = pendingNavigator
         pendingNavigator = null
         pendingInitialContent = null
         navigatingFromAnswerSwitch = false
+        isImmersiveMode = false
     }
 
     override fun promoteForNavigation(direction: ArticleAnswerTransitionDirection) = Unit
@@ -212,24 +220,42 @@ interface ArticleImageExportRenderer {
 interface ZhihuApiEnvironment {
     fun httpClient(): HttpClient
 
+    fun authenticatedCookies(): Map<String, String> = emptyMap()
+
+    fun lastAuthRefreshMillis(): Long = 0L
+
+    fun updateLastAuthRefreshMillis(value: Long) = Unit
+
+    suspend fun <T> withAuthenticatedClient(
+        block: suspend (client: HttpClient, cookies: Map<String, String>) -> T,
+    ): T = block(httpClient(), authenticatedCookies())
+
     suspend fun fetchJson(
         url: String,
         include: String,
-    ): JsonObject? =
-        httpClient()
-            .get(url.replace("http://", "https://")) {
-                if (include.isNotEmpty()) {
-                    parameter("include", include)
-                }
-                configureSignedRequest(this)
-            }.body<JsonObject>()
+    ): JsonObject? = withAuthenticatedClient { client, cookies ->
+        fetchZhihuAuthenticatedJson(
+            client = client,
+            url = url.replace("http://", "https://"),
+            lastRefreshMillis = lastAuthRefreshMillis(),
+            updateLastRefreshMillis = ::updateLastAuthRefreshMillis,
+        ) {
+            method = HttpMethod.Get
+            signZhihuFetchRequest(cookies)
+            if (include.isNotEmpty()) {
+                parameter("include", include)
+            }
+        }
+    }
 
     suspend fun handleFetchFailure(
         tag: String?,
         error: Exception,
     )
 
-    fun configureSignedRequest(builder: HttpRequestBuilder) = Unit
+    fun configureSignedRequest(builder: HttpRequestBuilder) {
+        builder.signZhihuFetchRequest(authenticatedCookies())
+    }
 
     fun xsrfToken(): String = ""
 
@@ -245,29 +271,35 @@ interface ZhihuApiEnvironment {
 suspend fun ZhihuApiEnvironment.postSigned(
     url: String,
     block: HttpRequestBuilder.() -> Unit = {},
-): HttpResponse =
-    httpClient().post(url) {
+): HttpResponse = withAuthenticatedClient { client, cookies ->
+    client.post(url) {
         block()
-        configureSignedRequest(this)
+        signZhihuFetchRequest(cookies)
     }
+}
 
 suspend fun ZhihuApiEnvironment.deleteSigned(
     url: String,
     block: HttpRequestBuilder.() -> Unit = {},
-): HttpResponse =
-    httpClient().delete(url) {
+): HttpResponse = withAuthenticatedClient { client, cookies ->
+    client.delete(url) {
         block()
-        configureSignedRequest(this)
+        signZhihuFetchRequest(cookies)
     }
+}
 
 suspend fun ZhihuApiEnvironment.fetchUnreadNotificationCountSigned(): Int =
-    fetchZhihuUnreadNotificationCount(httpClient()) {
-        configureSignedRequest(this)
+    withAuthenticatedClient { client, cookies ->
+        fetchZhihuUnreadNotificationCount(client) {
+            signZhihuFetchRequest(cookies)
+        }
     }
 
 suspend fun ZhihuApiEnvironment.markAllNotificationsAsReadSigned() {
-    markAllZhihuNotificationsAsRead(httpClient()) {
-        configureSignedRequest(this)
+    withAuthenticatedClient { client, cookies ->
+        markAllZhihuNotificationsAsRead(client) {
+            signZhihuFetchRequest(cookies)
+        }
     }
 }
 

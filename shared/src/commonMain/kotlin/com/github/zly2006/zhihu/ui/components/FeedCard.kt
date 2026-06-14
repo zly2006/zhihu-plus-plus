@@ -429,6 +429,7 @@ private fun FeedCardMenuBox(
                     is com.github.zly2006.zhihu.shared.data.DataHolder.Answer -> raw.question.topics
                     is com.github.zly2006.zhihu.shared.data.DataHolder.Question -> raw.topics
                     is com.github.zly2006.zhihu.shared.data.DataHolder.Article -> raw.topics ?: emptyList()
+                    is com.github.zly2006.zhihu.shared.data.DataHolder.Pin -> raw.topics ?: emptyList()
                     else -> emptyList()
                 }
                 topics.forEach { topic ->

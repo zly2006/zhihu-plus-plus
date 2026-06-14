@@ -16,6 +16,7 @@
  */
 
 package com.github.zly2006.zhihu.ui
+import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
@@ -26,6 +27,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,6 +38,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.getContentDetail
@@ -95,7 +99,12 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
     ) scan@{ result ->
         if (result.resultCode == android.app.Activity.RESULT_OK) {
             val scanResult = result.data?.getStringExtra(QR_SCAN_RESULT_EXTRA) ?: return@scan
-            context.startActivity(context.webviewActivityIntent(scanResult))
+            context.startActivity(
+                Intent().apply {
+                    setClassName(context.packageName, WEBVIEW_ACTIVITY_CLASS)
+                    data = scanResult.toUri()
+                },
+            )
         }
     }
     val accountState = remember(accountDataState.value) {
@@ -113,8 +122,12 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
                 AccountData.saveData(context, data.copy(self = self))
             }
         },
-        requestLogin = { context.startActivity(context.loginActivityIntent()) },
-        requestQrLoginScan = { scanActivityLauncher.launch(context.qrCodeScanActivityIntent()) },
+        requestLogin = {
+            context.startActivity(Intent().setClassName(context.packageName, LOGIN_ACTIVITY_CLASS))
+        },
+        requestQrLoginScan = {
+            scanActivityLauncher.launch(Intent().setClassName(context.packageName, QR_CODE_SCAN_ACTIVITY_CLASS))
+        },
         logout = { AccountData.delete(context) },
         appVersionInfo = { context.zhihuVersionInfo() },
         selectMainTab = { destination -> context.navigateMainTab(destination) },
@@ -141,15 +154,6 @@ private fun Context.zhihuVersionInfo(): String {
         ?: if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) "debug" else "release"
     val gitHash = metaData?.getString("com.github.zly2006.zhihu.GIT_HASH") ?: "unknown"
     return "$versionName $buildType, $gitHash"
-}
-
-private fun Context.loginActivityIntent(): Intent = Intent().setClassName(packageName, LOGIN_ACTIVITY_CLASS)
-
-private fun Context.qrCodeScanActivityIntent(): Intent = Intent().setClassName(packageName, QR_CODE_SCAN_ACTIVITY_CLASS)
-
-private fun Context.webviewActivityIntent(url: String): Intent = Intent().apply {
-    setClassName(packageName, WEBVIEW_ACTIVITY_CLASS)
-    data = url.toUri()
 }
 
 private fun Context.navigateMainTab(destination: TopLevelDestination) {
@@ -399,7 +403,14 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
     return remember(context) {
         PinScreenRuntime(
             fetchLinkCardPreview = { linkCard ->
-                fetchAndroidLinkCardPreview(context, linkCard)
+                fetchPinLinkCardPreview(linkCard) { destination ->
+                    when (destination) {
+                        is Article -> DataHolder.getContentDetail(context, destination)
+                        is Question -> DataHolder.getContentDetail(context, destination)
+                        is Pin -> DataHolder.getContentDetail(context, destination)
+                        else -> null
+                    }
+                }
             },
         )
     }
@@ -418,24 +429,6 @@ actual fun PinHtmlWebViewContent(html: String) {
 }
 
 actual fun supportsPinHtmlWebView(): Boolean = true
-
-private suspend fun fetchAndroidLinkCardPreview(
-    context: Context,
-    linkCard: DataHolder.Pin.ContentLinkCard,
-): PinLinkCardPreview? = fetchPinLinkCardPreview(linkCard) { destination ->
-    when (destination) {
-        is Article -> {
-            DataHolder.getContentDetail(context, destination)
-        }
-        is Question -> {
-            DataHolder.getContentDetail(context, destination)
-        }
-        is Pin -> {
-            DataHolder.getContentDetail(context, destination)
-        }
-        else -> null
-    }
-}
 
 @Composable
 actual fun rememberCommentScreenRuntime(): CommentScreenRuntime {
@@ -515,3 +508,33 @@ actual fun supportsQuestionDetailWebView(): Boolean = true
 actual fun rememberZhihuHttpClient(): HttpClient = AccountData.httpClient(LocalContext.current)
 
 actual fun Modifier.questionSelectionWorkaround(): Modifier = fuckHonorService()
+
+@Composable
+actual fun ArticleImmersiveModeEffect(immersive: Boolean) {
+    val context = LocalContext.current
+    val window = remember(context) { (context as? Activity)?.window }
+    LaunchedEffect(window, immersive) {
+        window?.let { w ->
+            val ctrl = WindowInsetsControllerCompat(w, w.decorView)
+            if (immersive) {
+                ctrl.hide(WindowInsetsCompat.Type.statusBars())
+                ctrl.systemBarsBehavior =
+                    WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            } else {
+                ctrl.show(WindowInsetsCompat.Type.statusBars())
+            }
+        }
+    }
+}
+
+@Composable
+actual fun LeaveImmersiveModeCleanup() {
+    val context = LocalContext.current
+    val window = remember(context) { (context as? Activity)?.window }
+    LaunchedEffect(window) {
+        window?.let { w ->
+            WindowInsetsControllerCompat(w, w.decorView)
+                .show(WindowInsetsCompat.Type.statusBars())
+        }
+    }
+}

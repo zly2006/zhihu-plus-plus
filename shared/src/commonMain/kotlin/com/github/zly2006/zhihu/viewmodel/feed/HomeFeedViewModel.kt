@@ -23,6 +23,7 @@ import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.flattenFeeds
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.viewmodel.ContentInteractionEnvironment
@@ -127,7 +128,7 @@ class HomeFeedViewModel :
 
         viewModelScope.launch {
             val newItems = data
-                .flatten()
+                .flattenFeeds()
                 .map { feed -> createDisplayItem(environment, feed) }
 
             val filterResult = environment.applyHomeFeedFilters(newItems)
@@ -137,21 +138,13 @@ class HomeFeedViewModel :
                 }
             }
 
-            val newDestinations = filterResult.foregroundItems.map { it.navDestination }.toSet()
-
             if (filterResult.reverseBlock) {
                 addDisplayItems(filterResult.filteredItems)
             }
 
             // 移除被过滤的条目，并更新已保留条目的 raw 内容
             withContext(Dispatchers.Main) {
-                displayItems.removeAll { item ->
-                    if (item.navDestination !in newDestinations) return@removeAll false
-                    val filteredVersion = filterResult.filteredItems.find { it.navDestination == item.navDestination }
-                    item.raw = filteredVersion?.raw ?: item.raw
-                    // remove if no filtered version exists, which means it was filtered out
-                    filteredVersion == null
-                }
+                displayItems.replaceHomeFeedItemsWithFilteredResult(filterResult)
             }
         }
     }

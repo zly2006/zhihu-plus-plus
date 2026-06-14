@@ -190,7 +190,7 @@ class ZhihuNotificationClientTest {
 
     @Test
     fun decodesUnreadNotificationCountsFromSnakeCasePayload() {
-        val notifications = decodeZhihuMeNotifications(
+        val notifications: ZhihuMeNotifications = ZhihuJson.decodeJson(
             buildJsonObject {
                 put("default_notifications_count", 1)
                 put("follow_notifications_count", 2)

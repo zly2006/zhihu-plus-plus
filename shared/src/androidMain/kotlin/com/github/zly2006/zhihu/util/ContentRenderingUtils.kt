@@ -115,7 +115,7 @@ fun saveBitmapToGallery(
         mimeType = "image/jpeg",
         relativePath = Environment.DIRECTORY_PICTURES + "/Zhihu++",
     ) { outputStream ->
-        if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 70, outputStream)) {
+        if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)) {
             throw IllegalStateException("Failed to encode image")
         }
     }

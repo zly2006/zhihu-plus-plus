@@ -29,8 +29,6 @@ actual fun rememberBlocklistManager(): BlocklistManager = remember {
             keywordDao = object : BlockedKeywordDao {
                 override suspend fun getAllKeywords(): List<BlockedKeyword> = emptyList()
 
-                override suspend fun getKeywordById(id: Long): BlockedKeyword? = null
-
                 override suspend fun insertKeyword(keyword: BlockedKeyword): Long = 0L
 
                 override suspend fun deleteKeyword(keyword: BlockedKeyword) = Unit
@@ -44,13 +42,7 @@ actual fun rememberBlocklistManager(): BlocklistManager = remember {
             userDao = object : BlockedUserDao {
                 override suspend fun getAllUsers(): List<BlockedUser> = emptyList()
 
-                override suspend fun getUserById(userId: String): BlockedUser? = null
-
-                override suspend fun getAllUserIds(): List<String> = emptyList()
-
                 override suspend fun insertUser(user: BlockedUser) = Unit
-
-                override suspend fun deleteUser(user: BlockedUser) = Unit
 
                 override suspend fun deleteUserById(userId: String) = Unit
 
@@ -85,8 +77,6 @@ actual fun rememberBlocklistManager(): BlocklistManager = remember {
 actual fun rememberBlockedFeedRecordDao(): BlockedFeedRecordDao = remember {
     object : BlockedFeedRecordDao {
         override fun observeAll(): Flow<List<BlockedFeedRecord>> = emptyFlow() // TODO: iOS 观察所有记录
-
-        override suspend fun getRecent(limit: Int): List<BlockedFeedRecord> = emptyList() // TODO: iOS 获取最近记录
 
         override suspend fun insert(record: BlockedFeedRecord): Long = 0L // TODO: iOS 插入记录
 
