@@ -59,9 +59,10 @@ class DailyViewModel : ViewModel() {
         isLoading = true
         sections = emptyList()
         try {
-            val data: DailyStoriesResponse = httpClient.get(
-                "https://news-at.zhihu.com/api/4/stories/before/${nextDailyApiDate(date)}",
-            ).body()
+            val data: DailyStoriesResponse = httpClient
+                .get(
+                    "https://news-at.zhihu.com/api/4/stories/before/${nextDailyApiDate(date)}",
+                ).body()
             sections = listOf(DailySection(data.date, data.stories))
             nextDate = data.date
             error = null
