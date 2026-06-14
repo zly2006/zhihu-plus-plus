@@ -126,21 +126,21 @@ class AppearanceSettingsScreenInstrumentedTest {
         // scroll cycle to ensure the rendered state still matches the persisted SharedPreferences.
         setUpScreen(setting = APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY)
 
-        scrollUntilTagDisplayed("appearanceSettings.bottomBarItem.${OnlineHistory.name}")
-        composeRule.onNodeWithTag("appearanceSettings.bottomBarItem.${OnlineHistory.name}").performClick()
+        scrollUntilTagDisplayed("appearanceSettings:bottomBar:item:${OnlineHistory.name}")
+        composeRule.onNodeWithTag("appearanceSettings:bottomBar:item:${OnlineHistory.name}").performClick()
         waitUntilStringSetPreference(
             BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
             expected = setOf(Home.name, Follow.name, Daily.name, Account.name),
         )
 
-        composeRule.onNodeWithTag("appearanceSettings.bottomBarItem.${HotList.name}").performClick()
+        composeRule.onNodeWithTag("appearanceSettings:bottomBar:item:${HotList.name}").performClick()
         waitUntilStringSetPreference(
             BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
             expected = setOf(Home.name, Follow.name, Daily.name, HotList.name, Account.name),
         )
 
         composeRule.onNodeWithTag(APPEARANCE_SETTINGS_START_DESTINATION_TAG).performClick()
-        composeRule.onNodeWithTag("appearanceSettings.startDestinationOption.${HotList.name}").performClick()
+        composeRule.onNodeWithTag("appearanceSettings:startDestination:option:${HotList.name}").performClick()
 
         waitUntilStringPreference(START_DESTINATION_PREFERENCE_KEY, expected = HotList.name)
         scrollContainer().performVerticalSwipeCycle()
@@ -159,15 +159,15 @@ class AppearanceSettingsScreenInstrumentedTest {
         // row. They should keep the same touch target height while reorder actions still persist.
         setUpScreen(setting = APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY)
 
-        scrollUntilTagDisplayed("appearanceSettings.bottomBarItem.${HotList.name}")
-        val selectedHeight = boundsHeightForTag("appearanceSettings.bottomBarItem.${Daily.name}")
-        val unselectedHeight = boundsHeightForTag("appearanceSettings.bottomBarItem.${HotList.name}")
-        val lockedHeight = boundsHeightForTag("appearanceSettings.bottomBarItem.${Account.name}")
+        scrollUntilTagDisplayed("appearanceSettings:bottomBar:item:${HotList.name}")
+        val selectedHeight = boundsHeightForTag("appearanceSettings:bottomBar:item:${Daily.name}")
+        val unselectedHeight = boundsHeightForTag("appearanceSettings:bottomBar:item:${HotList.name}")
+        val lockedHeight = boundsHeightForTag("appearanceSettings:bottomBar:item:${Account.name}")
 
         assertEquals(selectedHeight.toDouble(), unselectedHeight.toDouble(), 0.5)
         assertEquals(selectedHeight.toDouble(), lockedHeight.toDouble(), 0.5)
 
-        composeRule.onNodeWithTag("appearanceSettings.bottomBarItem.${Daily.name}.moveDown").performClick()
+        composeRule.onNodeWithTag("appearanceSettings:bottomBar:moveDown:${Daily.name}").performClick()
         waitUntilStringPreference(
             BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY,
             expected = listOf(Home.name, Follow.name, OnlineHistory.name, Daily.name, Account.name).joinToString(","),
