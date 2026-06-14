@@ -103,7 +103,7 @@ class ForegroundReadFilterPipelineTest {
     fun contentExposureRecorderMarksInteractionAndCleanup() = runTest {
         val fixture = fixture()
 
-        fixture.database.createContentExposureRecorder(FeedFilterSettings()).recordDisplay("article", "1")
+        fixture.pipeline().filter(listOf(item("item", 1, details = "文章 · 100 赞")))
         fixture.database.recordContentInteraction(FeedFilterSettings(), "article", "1")
 
         val record = fixture.database.contentFilterDao().getViewRecord("article:1")

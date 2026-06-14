@@ -54,15 +54,6 @@ class ContentExposureRecorder(
     private val settings: FeedFilterSettings,
     private val contentFilterManager: ContentFilterManager,
 ) {
-    suspend fun recordDisplay(
-        targetType: String,
-        targetId: String,
-    ) {
-        if (settings.enableContentFilter) {
-            contentFilterManager.recordContentView(targetType, targetId)
-        }
-    }
-
     suspend fun recordInteraction(
         targetType: String,
         targetId: String,
