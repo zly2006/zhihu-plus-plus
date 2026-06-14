@@ -56,7 +56,6 @@ import com.github.zly2006.zhihu.ui.QUESTION_VIEW_LOG_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.QuestionScreen
 import com.github.zly2006.zhihu.ui.QuestionScreenTestOverrides
 import com.github.zly2006.zhihu.ui.QuestionScreenUiState
-import com.github.zly2006.zhihu.ui.questionFeedItemTag
 import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
@@ -171,19 +170,19 @@ class QuestionScreenInstrumentedTest {
         composeRule.onNodeWithTag(QUESTION_SCREEN_LIST_TAG).assertIsDisplayed()
         composeRule
             .onNodeWithTag(QUESTION_SCREEN_LIST_TAG)
-            .performScrollToNode(hasTestTag(questionFeedItemTag("offline-question-item-18")))
-        composeRule.onNodeWithTag(questionFeedItemTag("offline-question-item-18")).assertIsDisplayed()
+            .performScrollToNode(hasTestTag("question_feed_item_offline-question-item-18"))
+        composeRule.onNodeWithTag("question_feed_item_offline-question-item-18").assertIsDisplayed()
         composeRule.onNodeWithTag(QUESTION_SCREEN_LIST_TAG).performVerticalSwipeCycle()
         composeRule.onNodeWithTag(QUESTION_SCREEN_LIST_TAG).performHorizontalSwipeCycle()
         composeRule
             .onNodeWithTag(QUESTION_SCREEN_LIST_TAG)
-            .performScrollToNode(hasTestTag(questionFeedItemTag("offline-question-item-18")))
-        composeRule.onNodeWithTag(questionFeedItemTag("offline-question-item-18")).assertIsDisplayed()
+            .performScrollToNode(hasTestTag("question_feed_item_offline-question-item-18"))
+        composeRule.onNodeWithTag("question_feed_item_offline-question-item-18").assertIsDisplayed()
 
         composeRule
             .onNodeWithTag(QUESTION_SCREEN_LIST_TAG)
-            .performScrollToNode(hasTestTag(questionFeedItemTag("offline-question-item-3")))
-        composeRule.onNodeWithTag(questionFeedItemTag("offline-question-item-3")).performClick()
+            .performScrollToNode(hasTestTag("question_feed_item_offline-question-item-3"))
+        composeRule.onNodeWithTag("question_feed_item_offline-question-item-3").performClick()
 
         assertTrue("Scrolling near the end should trigger the offline load-more seam", loadMoreCount > 0)
         assertEquals(

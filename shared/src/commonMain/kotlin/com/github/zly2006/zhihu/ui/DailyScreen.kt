@@ -313,14 +313,14 @@ fun DailyScreen(
                             item(key = "header_${section.date}") {
                                 DateHeader(
                                     date = formatDailyDate(section.date),
-                                    modifier = Modifier.testTag(dailySectionHeaderTag(section.date)),
+                                    modifier = Modifier.testTag("daily_screen_section_${section.date}"),
                                 )
                             }
                             // 当前日期的日报条目。
                             items(section.stories, key = { "story_${it.id}" }) { story ->
                                 DailyStoryCard(
                                     story = story,
-                                    modifier = Modifier.testTag(dailyStoryCardTag(story.id)),
+                                    modifier = Modifier.testTag("daily_screen_story_${story.id}"),
                                     onClick = {
                                         if (!isTestMode) {
                                             scope.launch {
@@ -508,10 +508,6 @@ private suspend fun fetchDailyStoryDestination(
     val url = Ksoup.parse(body).selectFirst("a")?.attr("href")
     url?.let(::resolveContent)
 }
-
-private fun dailySectionHeaderTag(date: String) = "daily_screen_section_$date"
-
-private fun dailyStoryCardTag(storyId: Long) = "daily_screen_story_$storyId"
 
 private const val DAILY_SCREEN_TITLE_TAG = "daily_screen_title"
 private const val DAILY_SCREEN_CURRENT_DATE_TAG = "daily_screen_current_date"

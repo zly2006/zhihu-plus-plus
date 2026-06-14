@@ -126,8 +126,6 @@ const val QUESTION_SHARE_BUTTON_TAG = "question_share_button"
 const val QUESTION_COMMENTS_BUTTON_TAG = "question_comments_button"
 const val QUESTION_STATS_TAG = "question_stats"
 
-fun questionFeedItemTag(stableKey: String) = "question_feed_item_$stableKey"
-
 private suspend fun loadQuestion(
     environment: ContentLoadEnvironment,
     question: Question,
@@ -480,7 +478,7 @@ fun QuestionScreen(
             ) { item ->
                 FeedCard(
                     item = item,
-                    modifier = Modifier.testTag(questionFeedItemTag(item.stableKey)),
+                    modifier = Modifier.testTag("question_feed_item_${item.stableKey}"),
                 )
             }
         }

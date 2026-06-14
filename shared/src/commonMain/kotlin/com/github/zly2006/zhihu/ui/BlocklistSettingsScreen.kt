@@ -110,20 +110,6 @@ object BlocklistSettingsTestTags {
     const val TOPIC_DIALOG_NAME_INPUT = "blocklistSettings:topicDialog:topicName"
     const val TOPIC_DIALOG_CONFIRM = "blocklistSettings:topicDialog:confirm"
     const val TOPIC_DIALOG_DISMISS = "blocklistSettings:topicDialog:dismiss"
-
-    fun tab(index: Int) = "blocklistSettings:tab:$index"
-
-    fun keywordItem(keywordId: Long) = "blocklistSettings:keywords:item:$keywordId"
-
-    fun keywordDelete(keywordId: Long) = "blocklistSettings:keywords:delete:$keywordId"
-
-    fun userItem(userId: String) = "blocklistSettings:users:item:$userId"
-
-    fun userDelete(userId: String) = "blocklistSettings:users:delete:$userId"
-
-    fun topicItem(topicId: String) = "blocklistSettings:topics:item:$topicId"
-
-    fun topicDelete(topicId: String) = "blocklistSettings:topics:delete:$topicId"
 }
 
 data class BlocklistSettingsTestConfig(
@@ -343,7 +329,7 @@ fun BlocklistSettingsScreen(
             ) {
                 tabs.forEachIndexed { index, title ->
                     Tab(
-                        modifier = Modifier.testTag(BlocklistSettingsTestTags.tab(index)),
+                        modifier = Modifier.testTag("blocklistSettings:tab:$index"),
                         selected = selectedTab == index,
                         onClick = { selectedTab = index },
                         text = { Text(title) },
@@ -617,7 +603,7 @@ fun BlockedKeywordsList(
             ) {
                 items(keywords, key = { it.id }) { keyword ->
                     ListItem(
-                        modifier = Modifier.testTag(BlocklistSettingsTestTags.keywordItem(keyword.id)),
+                        modifier = Modifier.testTag("blocklistSettings:keywords:item:${keyword.id}"),
                         headlineContent = { Text(keyword.keyword) },
                         supportingContent = {
                             val options = mutableListOf<String>()
@@ -631,7 +617,7 @@ fun BlockedKeywordsList(
                         },
                         trailingContent = {
                             IconButton(
-                                modifier = Modifier.testTag(BlocklistSettingsTestTags.keywordDelete(keyword.id)),
+                                modifier = Modifier.testTag("blocklistSettings:keywords:delete:${keyword.id}"),
                                 onClick = { onDeleteKeyword(keyword) },
                             ) {
                                 Icon(
@@ -703,7 +689,7 @@ fun BlockedUsersList(
                 items(users, key = { it.userId }) { user ->
                     ListItem(
                         modifier = Modifier
-                            .testTag(BlocklistSettingsTestTags.userItem(user.userId))
+                            .testTag("blocklistSettings:users:item:${user.userId}")
                             .clickable { onNavigateToUser(user) },
                         headlineContent = { Text(user.userName) },
                         supportingContent = { Text("ID: ${user.userId}") },
@@ -718,7 +704,7 @@ fun BlockedUsersList(
                         },
                         trailingContent = {
                             IconButton(
-                                modifier = Modifier.testTag(BlocklistSettingsTestTags.userDelete(user.userId)),
+                                modifier = Modifier.testTag("blocklistSettings:users:delete:${user.userId}"),
                                 onClick = { onDeleteUser(user) },
                             ) {
                                 Icon(
@@ -936,12 +922,12 @@ fun BlockedTopicsList(
             ) {
                 items(topics, key = { it.topicId }) { topic ->
                     ListItem(
-                        modifier = Modifier.testTag(BlocklistSettingsTestTags.topicItem(topic.topicId)),
+                        modifier = Modifier.testTag("blocklistSettings:topics:item:${topic.topicId}"),
                         headlineContent = { Text(topic.topicName) },
                         supportingContent = { Text("ID: ${topic.topicId}") },
                         trailingContent = {
                             IconButton(
-                                modifier = Modifier.testTag(BlocklistSettingsTestTags.topicDelete(topic.topicId)),
+                                modifier = Modifier.testTag("blocklistSettings:topics:delete:${topic.topicId}"),
                                 onClick = { onDeleteTopic(topic) },
                             ) {
                                 Icon(

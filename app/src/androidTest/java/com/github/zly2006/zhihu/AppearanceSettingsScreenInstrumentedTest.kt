@@ -54,9 +54,6 @@ import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.START_DESTINATION_PREFERENCE_KEY
-import com.github.zly2006.zhihu.ui.subscreens.appearanceSettingsBottomBarItemTag
-import com.github.zly2006.zhihu.ui.subscreens.appearanceSettingsBottomBarMoveDownTag
-import com.github.zly2006.zhihu.ui.subscreens.appearanceSettingsStartDestinationOptionTag
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -129,21 +126,21 @@ class AppearanceSettingsScreenInstrumentedTest {
         // scroll cycle to ensure the rendered state still matches the persisted SharedPreferences.
         setUpScreen(setting = APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY)
 
-        scrollUntilTagDisplayed(appearanceSettingsBottomBarItemTag(OnlineHistory.name))
-        composeRule.onNodeWithTag(appearanceSettingsBottomBarItemTag(OnlineHistory.name)).performClick()
+        scrollUntilTagDisplayed("appearanceSettings.bottomBarItem.${OnlineHistory.name}")
+        composeRule.onNodeWithTag("appearanceSettings.bottomBarItem.${OnlineHistory.name}").performClick()
         waitUntilStringSetPreference(
             BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
             expected = setOf(Home.name, Follow.name, Daily.name, Account.name),
         )
 
-        composeRule.onNodeWithTag(appearanceSettingsBottomBarItemTag(HotList.name)).performClick()
+        composeRule.onNodeWithTag("appearanceSettings.bottomBarItem.${HotList.name}").performClick()
         waitUntilStringSetPreference(
             BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
             expected = setOf(Home.name, Follow.name, Daily.name, HotList.name, Account.name),
         )
 
         composeRule.onNodeWithTag(APPEARANCE_SETTINGS_START_DESTINATION_TAG).performClick()
-        composeRule.onNodeWithTag(appearanceSettingsStartDestinationOptionTag(HotList.name)).performClick()
+        composeRule.onNodeWithTag("appearanceSettings.startDestinationOption.${HotList.name}").performClick()
 
         waitUntilStringPreference(START_DESTINATION_PREFERENCE_KEY, expected = HotList.name)
         scrollContainer().performVerticalSwipeCycle()
@@ -162,15 +159,15 @@ class AppearanceSettingsScreenInstrumentedTest {
         // row. They should keep the same touch target height while reorder actions still persist.
         setUpScreen(setting = APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY)
 
-        scrollUntilTagDisplayed(appearanceSettingsBottomBarItemTag(HotList.name))
-        val selectedHeight = boundsHeightForTag(appearanceSettingsBottomBarItemTag(Daily.name))
-        val unselectedHeight = boundsHeightForTag(appearanceSettingsBottomBarItemTag(HotList.name))
-        val lockedHeight = boundsHeightForTag(appearanceSettingsBottomBarItemTag(Account.name))
+        scrollUntilTagDisplayed("appearanceSettings.bottomBarItem.${HotList.name}")
+        val selectedHeight = boundsHeightForTag("appearanceSettings.bottomBarItem.${Daily.name}")
+        val unselectedHeight = boundsHeightForTag("appearanceSettings.bottomBarItem.${HotList.name}")
+        val lockedHeight = boundsHeightForTag("appearanceSettings.bottomBarItem.${Account.name}")
 
         assertEquals(selectedHeight.toDouble(), unselectedHeight.toDouble(), 0.5)
         assertEquals(selectedHeight.toDouble(), lockedHeight.toDouble(), 0.5)
 
-        composeRule.onNodeWithTag(appearanceSettingsBottomBarMoveDownTag(Daily.name)).performClick()
+        composeRule.onNodeWithTag("appearanceSettings.bottomBarItem.${Daily.name}.moveDown").performClick()
         waitUntilStringPreference(
             BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY,
             expected = listOf(Home.name, Follow.name, OnlineHistory.name, Daily.name, Account.name).joinToString(","),

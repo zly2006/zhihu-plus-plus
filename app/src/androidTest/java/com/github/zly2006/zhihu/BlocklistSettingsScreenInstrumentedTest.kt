@@ -101,7 +101,7 @@ class BlocklistSettingsScreenInstrumentedTest {
         assertEquals(1, importCount)
         assertEquals(1, exportCount)
 
-        composeRule.onNodeWithTag(BlocklistSettingsTestTags.tab(1)).performClick()
+        composeRule.onNodeWithTag("blocklistSettings:tab:1").performClick()
         assertTagAbsent(BlocklistSettingsTestTags.FAB)
         composeRule.onNodeWithText("离线 NLP 内容").assertIsDisplayed().performClick()
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.ROOT).performVerticalSwipeCycle()
@@ -141,7 +141,7 @@ class BlocklistSettingsScreenInstrumentedTest {
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.KEYWORD_LIST).assertIsDisplayed()
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.KEYWORD_LIST).performVerticalSwipeCycle()
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.KEYWORD_LIST).performHorizontalSwipeCycle()
-        composeRule.onNodeWithTag(BlocklistSettingsTestTags.keywordDelete(1)).performClick()
+        composeRule.onNodeWithTag("blocklistSettings:keywords:delete:1").performClick()
         assertEquals(listOf(1L), deletedKeywordIds)
 
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.FAB).performClick()
@@ -194,13 +194,13 @@ class BlocklistSettingsScreenInstrumentedTest {
             ),
         )
 
-        composeRule.onNodeWithTag(BlocklistSettingsTestTags.tab(2)).performClick()
+        composeRule.onNodeWithTag("blocklistSettings:tab:2").performClick()
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.FAB).assertIsDisplayed()
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.USER_LIST).assertIsDisplayed()
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.USER_LIST).performVerticalSwipeCycle()
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.USER_LIST).performHorizontalSwipeCycle()
         navigator.reset()
-        composeRule.onNodeWithTag(BlocklistSettingsTestTags.userItem("offline-user-1")).performClick()
+        composeRule.onNodeWithTag("blocklistSettings:users:item:offline-user-1").performClick()
         assertEquals(
             listOf(
                 Person(
@@ -212,7 +212,7 @@ class BlocklistSettingsScreenInstrumentedTest {
             navigator.destinations,
         )
 
-        composeRule.onNodeWithTag(BlocklistSettingsTestTags.userDelete("offline-user-1")).performClick()
+        composeRule.onNodeWithTag("blocklistSettings:users:delete:offline-user-1").performClick()
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.USER_CLEAR_BUTTON).performClick()
         assertEquals(listOf("offline-user-1"), deletedUserIds)
         assertEquals(1, clearCount)
@@ -254,11 +254,11 @@ class BlocklistSettingsScreenInstrumentedTest {
             ),
         )
 
-        composeRule.onNodeWithTag(BlocklistSettingsTestTags.tab(3)).performClick()
+        composeRule.onNodeWithTag("blocklistSettings:tab:3").performClick()
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.TOPIC_LIST).assertIsDisplayed()
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.TOPIC_LIST).performVerticalSwipeCycle()
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.TOPIC_LIST).performHorizontalSwipeCycle()
-        composeRule.onNodeWithTag(BlocklistSettingsTestTags.topicDelete("topic-1")).performClick()
+        composeRule.onNodeWithTag("blocklistSettings:topics:delete:topic-1").performClick()
         assertEquals(listOf("topic-1"), deletedTopicIds)
 
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.TOPIC_CLEAR_BUTTON).performClick()

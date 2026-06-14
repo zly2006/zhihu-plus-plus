@@ -17,6 +17,8 @@ Do not push platform or storage dependencies upward just because the current acc
 
 Do not delete runtime guards just to make tests pass or to simplify state. If a throttle, retry limiter, debounce, permission gate, or cache invalidation guard protects production behavior, keep it and make tests reset or inject the relevant state explicitly. Example: an authenticated request refresh throttle should be reset in tests; removing the throttle changes runtime semantics.
 
+When the user asks for a second-stage or broad cleanup, do not continue with tiny one-helper batches. Put the cleanup branch in its own worktree so the main checkout remains available, then process whole-file helper clusters at once. A valid batch should remove or inline at least one complete file's helper cluster and cover at least 30 helper functions unless the user explicitly narrows the scope. If one suspicious helper is found, inspect its surrounding file-level cluster and remove adjacent useless wrappers together instead of deleting one isolated function per commit.
+
 ## Workflow
 
 1. Record the current time and inspect `git status --short --branch`.
