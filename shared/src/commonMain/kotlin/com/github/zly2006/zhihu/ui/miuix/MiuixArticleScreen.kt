@@ -11,9 +11,12 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -417,7 +420,7 @@ fun MiuixArticleScreen(
                                     .fillMaxHeight()
                                     .clip(RoundedCornerShape(50))
                                     .background(if (up) voteUpNeutralContent() else Color.Transparent)
-                                    .clickable { viewModel.toggleVoteUp(environment, if (up) VoteUpState.Neutral else VoteUpState.Up) }
+                                    .miuixArticleBottomAction { viewModel.toggleVoteUp(environment, if (up) VoteUpState.Neutral else VoteUpState.Up) }
                                     .padding(horizontal = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
@@ -430,7 +433,7 @@ fun MiuixArticleScreen(
                                     .fillMaxHeight()
                                     .clip(RoundedCornerShape(50))
                                     .background(if (down) voteUpNeutralContent() else Color.Transparent)
-                                    .clickable { viewModel.toggleVoteUp(environment, if (down) VoteUpState.Neutral else VoteUpState.Down) }
+                                    .miuixArticleBottomAction { viewModel.toggleVoteUp(environment, if (down) VoteUpState.Neutral else VoteUpState.Down) }
                                     .padding(horizontal = 12.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
@@ -446,7 +449,7 @@ fun MiuixArticleScreen(
                                 .size(barH)
                                 .clip(RoundedCornerShape(50))
                                 .background(if (viewModel.isFavorited) voteUpNeutralContent() else MiuixTheme.colorScheme.surfaceContainerHigh)
-                                .clickable { showCollections.value = true },
+                                .miuixArticleBottomAction { showCollections.value = true },
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
@@ -463,7 +466,7 @@ fun MiuixArticleScreen(
                                     .size(barH)
                                     .clip(RoundedCornerShape(50))
                                     .background(voteUpNeutralContent())
-                                    .clickable {
+                                    .miuixArticleBottomAction {
                                         articleActions.toggleSpeech(viewModel.title, viewModel.content)
                                         userMessages.showMessage("已停止朗读")
                                     },
@@ -478,7 +481,7 @@ fun MiuixArticleScreen(
                                 .height(barH)
                                 .clip(RoundedCornerShape(50))
                                 .background(MiuixTheme.colorScheme.surfaceContainerHigh)
-                                .clickable { showComments = true }
+                                .miuixArticleBottomAction { showComments = true }
                                 .padding(horizontal = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -492,7 +495,7 @@ fun MiuixArticleScreen(
                                 .size(barH)
                                 .clip(RoundedCornerShape(50))
                                 .background(MiuixTheme.colorScheme.surfaceContainerHigh)
-                                .clickable { showActionsMenu = true },
+                                .miuixArticleBottomAction { showActionsMenu = true },
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(Icons.Default.MoreVert, "更多操作", modifier = Modifier.size(20.dp), tint = MiuixTheme.colorScheme.onSurface)
@@ -913,6 +916,26 @@ fun MiuixArticleScreen(
 
     PlatformBackHandler(enabled = isImmersiveMode) { toggleImmersive() }
     PlatformBackHandler(showActionsMenu) { showActionsMenu = false }
+}
+
+@Composable
+private fun Modifier.miuixArticleBottomAction(onClick: () -> Unit): Modifier {
+    val interactionSource = remember { MutableInteractionSource() }
+    val indication = LocalIndication.current
+    val pressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.94f else 1f,
+        animationSpec = tween(90),
+        label = "miuixArticleBottomActionScale",
+    )
+    return graphicsLayer {
+        scaleX = scale
+        scaleY = scale
+    }.clickable(
+        interactionSource = interactionSource,
+        indication = indication,
+        onClick = onClick,
+    )
 }
 
 /** 更多操作菜单的单行（图标 + 文字，整行可点）。 */
