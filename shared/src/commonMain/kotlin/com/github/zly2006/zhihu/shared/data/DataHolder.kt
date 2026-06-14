@@ -629,10 +629,13 @@ object DataHolder {
         val followingCount: Int = 0,
         val answerCount: Int = 0,
         val articlesCount: Int = 0,
+        val questionCount: Int = 0,
+        val pinsCount: Int = 0,
         val availableMedalsCount: Int = 0,
         val orgVerifyStatus: JsonElement? = null,
         val isRealname: Boolean = false,
         val hasApplyingColumn: Boolean = false,
+        val mcnCompany: String? = null,
     ) {
         val badgeV2: BadgeV2?
             get() = injectZhPlusAuthorBadge(id, apiBadgeV2)

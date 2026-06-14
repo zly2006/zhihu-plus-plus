@@ -526,7 +526,7 @@ private fun peopleScreenInitialPage(person: Person): Int {
 
 internal fun peopleProfileUrl(person: Person): String {
     val identifier = person.urlToken.takeIf { it.isNotBlank() } ?: person.id
-    return "https://api.zhihu.com/people/$identifier"
+    return "https://www.zhihu.com/api/v4/members/$identifier"
 }
 
 /**

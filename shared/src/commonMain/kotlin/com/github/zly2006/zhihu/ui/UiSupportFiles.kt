@@ -43,6 +43,7 @@ import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
+import com.github.zly2006.zhihu.shared.data.mcnOfficialBadge
 import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.shared.data.officialBadgeDetails
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
@@ -629,7 +630,7 @@ data class PeopleProfileLoadResult(
 )
 
 internal const val PEOPLE_PROFILE_INCLUDE_PATH =
-    "allow_message,is_followed,is_following,is_org,is_blocking,badge_v2,answer_count,follower_count,following_count,articles_count,question_count,pins_count"
+    "allow_message,is_followed,is_following,is_org,is_blocking,badge,mcn_company,answer_count,follower_count,following_count,articles_count,question_count,pins_count"
 
 internal fun toPeopleProfileLoadResult(
     loadedPerson: DataHolder.People,
@@ -639,8 +640,8 @@ internal fun toPeopleProfileLoadResult(
         avatar = loadedPerson.avatarUrl,
         name = loadedPerson.name,
         headline = loadedPerson.headline,
-        officialBadge = loadedPerson.badgeV2.officialBadge(),
-        officialBadgeDetails = loadedPerson.badgeV2.officialBadgeDetails(),
+        officialBadge = mcnOfficialBadge(loadedPerson.mcnCompany) ?: loadedPerson.badgeV2.officialBadge(),
+        officialBadgeDetails = listOfNotNull(mcnOfficialBadge(loadedPerson.mcnCompany)) + loadedPerson.badgeV2.officialBadgeDetails(),
         followerCount = loadedPerson.followerCount,
         followingCount = loadedPerson.followingCount,
         answerCount = loadedPerson.answerCount,

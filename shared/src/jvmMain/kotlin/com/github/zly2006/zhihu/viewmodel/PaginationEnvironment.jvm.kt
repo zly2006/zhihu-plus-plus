@@ -58,6 +58,7 @@ import com.github.zly2006.zhihu.util.sanitizeArticleExportFileNamePart
 import com.github.zly2006.zhihu.viewmodel.CollectionItem
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
 import com.github.zly2006.zhihu.viewmodel.filter.ContentType
+import com.github.zly2006.zhihu.viewmodel.filter.ZhihuMcnAndBadgeProvider
 import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
 import com.github.zly2006.zhihu.viewmodel.filter.desktopKeywordSemanticMatcher
@@ -318,6 +319,9 @@ class DesktopPaginationEnvironment(
             items = foregroundItems,
             contentDetailProvider = ContentDetailProvider(::fetchContentDetail),
             semanticMatcher = desktopKeywordSemanticMatcher,
+            mcnAndBadgeProvider = ZhihuMcnAndBadgeProvider(httpClient()) { request ->
+                configureSignedRequest(request)
+            },
         )
         return HomeFeedFilterResult(
             foregroundItems = foregroundItems,

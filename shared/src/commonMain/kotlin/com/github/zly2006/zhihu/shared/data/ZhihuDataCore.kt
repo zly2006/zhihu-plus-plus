@@ -26,6 +26,7 @@ data class FeedDisplayItem(
     val avatarSrc: String? = null,
     val authorName: String? = null,
     val authorBadgeV2: DataHolder.BadgeV2? = null,
+    val authorOfficialBadge: OfficialBadge? = null,
     val isFiltered: Boolean = false,
     val content: String? = null,
     var raw: DataHolder.Content? = null,

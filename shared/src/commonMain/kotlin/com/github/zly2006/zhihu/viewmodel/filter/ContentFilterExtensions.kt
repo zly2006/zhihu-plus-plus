@@ -25,10 +25,16 @@ import com.github.zly2006.zhihu.shared.data.AdvertisementFeed
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.OfficialBadge
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.platform.SettingsStore
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.serialization.json.Json
 
 suspend fun ContentFilterDatabase.recordContentInteraction(
@@ -139,6 +145,7 @@ class FeedContentFilterPipeline(
     private val blockedKeywordService: BlockedKeywordService,
     private val htmlToText: (String) -> String = { html -> Ksoup.parse(html).text() },
     private val onNlpBlocked: suspend (List<FilterableContent>) -> Unit = {},
+    private val mcnAndBadgeProvider: McnAndBadgeProvider = NoopMcnAndBadgeProvider,
 ) {
     suspend fun filter(contents: List<FilterableContent>): FeedContentFilterResult {
         val blocked = mutableListOf<Pair<FilterableContent, String>>()
@@ -197,6 +204,23 @@ class FeedContentFilterPipeline(
             filteredContents = finalFilteredContents
         }
 
+        if (settings.enableMcnBlocking && (settings.blockAllMcnAuthors || blocklistService.hasBlockedMcnOrganizations())) {
+            val mcnProfileByToken = resolveMcnProfiles(filteredContents)
+            val kept = mutableListOf<FilterableContent>()
+            filteredContents.forEach { content ->
+                val mcnProfile = content.authorUrlToken?.let(mcnProfileByToken::get)
+                val mcnCompany = mcnProfile?.mcnCompany
+                val shouldBlock = !mcnCompany.isNullOrBlank() &&
+                    (settings.blockAllMcnAuthors || blocklistService.isMcnOrganizationBlocked(mcnCompany))
+                if (shouldBlock) {
+                    blocked.add(content to "屏蔽MCN机构：$mcnCompany")
+                } else {
+                    kept.add(content.copy(authorOfficialBadge = content.authorOfficialBadge ?: mcnProfile?.officialBadge))
+                }
+            }
+            filteredContents = kept
+        }
+
         if (settings.enableTopicBlocking) {
             filteredContents = filteredContents.filter { content ->
                 val topicIds = extractTopicIds(content.raw)
@@ -216,7 +240,53 @@ class FeedContentFilterPipeline(
 
         return FeedContentFilterResult(filteredContents, blocked)
     }
+
+    private suspend fun resolveMcnProfiles(contents: List<FilterableContent>): Map<String, McnAuthorProfile> = coroutineScope {
+        val authorNamesByToken = mutableMapOf<String, String?>()
+        contents.forEach { content ->
+            val token = content.authorUrlToken?.takeIf { it.isNotBlank() } ?: return@forEach
+            if (token !in authorNamesByToken) {
+                authorNamesByToken[token] = content.authorName
+            }
+        }
+
+        val resolvedProfiles = mutableMapOf<String, McnAuthorProfile>()
+        val tokensToFetch = mutableListOf<String>()
+        authorNamesByToken.keys.forEach { token ->
+            val cachedAuthor = blocklistService.getCachedMcnAuthor(token)
+            if (cachedAuthor != null) {
+                resolvedProfiles[token] = McnAuthorProfile(
+                    mcnCompany = cachedAuthor.mcnCompany.normalizeMcnCompany(),
+                    officialBadge = cachedAuthor.officialBadge,
+                )
+            } else {
+                tokensToFetch.add(token)
+            }
+        }
+
+        val semaphore = Semaphore(MCN_LOOKUP_CONCURRENCY)
+        val fetchedProfiles = tokensToFetch
+            .map { token ->
+                async {
+                    token to semaphore.withPermit {
+                        runCatching {
+                            mcnAndBadgeProvider
+                                .getAuthorProfile(token)
+                                .let { profile ->
+                                    profile.copy(mcnCompany = profile.mcnCompany.normalizeMcnCompany())
+                                }.also { profile ->
+                                    blocklistService.cacheMcnAuthorProfile(token, authorNamesByToken[token], profile)
+                                }
+                        }.getOrNull() ?: McnAuthorProfile()
+                    }
+                }
+            }.awaitAll()
+
+        resolvedProfiles + fetchedProfiles
+    }
 }
+
+private const val MCN_LOOKUP_CONCURRENCY = 4
 
 fun interface ContentDetailProvider {
     suspend fun get(navDestination: NavDestination): DataHolder.Content?
@@ -241,6 +311,7 @@ fun ContentFilterDatabase.createFeedDisplayFilterPipeline(
     settings: FeedFilterSettings,
     contentDetailProvider: ContentDetailProvider,
     semanticMatcher: KeywordSemanticMatcher,
+    mcnAndBadgeProvider: McnAndBadgeProvider = NoopMcnAndBadgeProvider,
     onNlpBlocked: suspend (List<FilterableContent>) -> Unit = {},
     onDetailFetchFailed: (FeedDisplayItem) -> Unit = {},
     onDetailsKeywordFiltered: (FeedDisplayItem, String) -> Unit = { _, _ -> },
@@ -253,6 +324,8 @@ fun ContentFilterDatabase.createFeedDisplayFilterPipeline(
             keywordDao = blockedKeywordDao(),
             userDao = blockedUserDao(),
             topicDao = blockedTopicDao(),
+            mcnOrganizationDao = blockedMcnOrganizationDao(),
+            mcnAuthorCacheDao = mcnAuthorCacheDao(),
         ),
         blockedKeywordService = BlockedKeywordService(
             keywordDao = blockedKeywordDao(),
@@ -260,6 +333,7 @@ fun ContentFilterDatabase.createFeedDisplayFilterPipeline(
             semanticMatcher = semanticMatcher,
         ),
         onNlpBlocked = onNlpBlocked,
+        mcnAndBadgeProvider = mcnAndBadgeProvider,
     ),
     blockedFeedRecordDao = blockedFeedRecordDao(),
     onDetailFetchFailed = onDetailFetchFailed,
@@ -271,6 +345,7 @@ suspend fun ContentFilterDatabase.filterFeedDisplayItems(
     items: List<FeedDisplayItem>,
     contentDetailProvider: ContentDetailProvider,
     semanticMatcher: KeywordSemanticMatcher,
+    mcnAndBadgeProvider: McnAndBadgeProvider = NoopMcnAndBadgeProvider,
     onNlpBlocked: suspend (List<FilterableContent>) -> Unit = {},
     onDetailFetchFailed: (FeedDisplayItem) -> Unit = {},
     onDetailsKeywordFiltered: (FeedDisplayItem, String) -> Unit = { _, _ -> },
@@ -278,6 +353,7 @@ suspend fun ContentFilterDatabase.filterFeedDisplayItems(
     settings = settings,
     contentDetailProvider = contentDetailProvider,
     semanticMatcher = semanticMatcher,
+    mcnAndBadgeProvider = mcnAndBadgeProvider,
     onNlpBlocked = onNlpBlocked,
     onDetailFetchFailed = onDetailFetchFailed,
     onDetailsKeywordFiltered = onDetailsKeywordFiltered,
@@ -336,17 +412,16 @@ class FeedDisplayFilterPipeline(
         }
 
         val contentFilterResult = contentFilterPipeline.filter(nonAdContents)
-        val filteredContentIds = contentFilterResult.kept.map { it.contentId }.toSet()
-
-        val itemToRawMap = itemToFilterableMap.entries.associate { (item, filterable) ->
-            filterable.contentId to Pair(item, filterable.raw)
-        }
+        val filteredContentById = contentFilterResult.kept.associateBy { it.contentId }
 
         val filteredOtherItems = otherItems.mapNotNull { item ->
             val contentId = item.resolveContentIdentity().id
-            if (contentId in filteredContentIds) {
-                val (_, raw) = itemToRawMap[contentId] ?: (null to null)
-                item.copy(raw = raw)
+            val filteredContent = filteredContentById[contentId]
+            if (filteredContent != null) {
+                item.copy(
+                    raw = filteredContent.raw,
+                    authorOfficialBadge = filteredContent.authorOfficialBadge,
+                )
             } else {
                 null
             }
@@ -444,11 +519,13 @@ data class FilterableContent(
     val contentId: String,
     val contentType: String,
     val raw: DataHolder.Content,
+    val authorUrlToken: String? = null,
     val isFollowing: Boolean = false,
     val questionId: Long? = null,
     val url: String? = null,
     val feedJson: String? = null,
     val navDestinationJson: String? = null,
+    val authorOfficialBadge: OfficialBadge? = null,
 )
 
 data class FeedContentIdentity(
@@ -479,6 +556,7 @@ fun FeedDisplayItem.toFilterableContent(
     } ?: content ?: summary,
     authorName = authorName,
     authorId = rawContent.author?.id,
+    authorUrlToken = rawContent.author?.urlToken ?: feed?.target?.author?.urlToken,
     contentId = identity.id,
     contentType = identity.type,
     raw = rawContent,
@@ -487,6 +565,7 @@ fun FeedDisplayItem.toFilterableContent(
     url = feed?.target?.url,
     feedJson = feed?.let { runCatching { feedFilterRecordJson.encodeToString(it) }.getOrNull() },
     navDestinationJson = navDestination?.let { runCatching { feedFilterRecordJson.encodeToString(it) }.getOrNull() },
+    authorOfficialBadge = authorOfficialBadge,
 )
 
 /** 从内容实体中提取主题 ID 列表，供 feed 过滤阶段的主题规则使用。 */
@@ -559,6 +638,8 @@ data class FeedFilterSettings(
     val enableNlpBlocking: Boolean = true,
     val nlpSimilarityThreshold: Double = 0.8,
     val enableUserBlocking: Boolean = true,
+    val enableMcnBlocking: Boolean = true,
+    val blockAllMcnAuthors: Boolean = false,
     val enableTopicBlocking: Boolean = true,
     val topicBlockingThreshold: Int = 1,
     val adBlockSettings: FeedAdBlockSettings = FeedAdBlockSettings(),
@@ -572,6 +653,8 @@ fun SettingsStore.toFeedFilterSettings(): FeedFilterSettings = FeedFilterSetting
     enableNlpBlocking = getBoolean("enableNLPBlocking", true),
     nlpSimilarityThreshold = getFloat("nlpSimilarityThreshold", 0.8f).toDouble(),
     enableUserBlocking = getBoolean("enableUserBlocking", true),
+    enableMcnBlocking = getBoolean("enableMcnBlocking", true),
+    blockAllMcnAuthors = getBoolean("blockAllMcnAuthors", false),
     enableTopicBlocking = getBoolean("enableTopicBlocking", true),
     topicBlockingThreshold = getInt("topicBlockingThreshold", 1),
     adBlockSettings = FeedAdBlockSettings(

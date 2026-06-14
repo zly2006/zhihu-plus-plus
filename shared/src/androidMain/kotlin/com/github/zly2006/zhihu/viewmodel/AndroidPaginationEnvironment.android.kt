@@ -75,6 +75,7 @@ import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.CollectionItem
 import com.github.zly2006.zhihu.viewmodel.filter.AndroidContentFilterRuntime
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
+import com.github.zly2006.zhihu.viewmodel.filter.ZhihuMcnAndBadgeProvider
 import com.github.zly2006.zhihu.viewmodel.filter.contentFilterSettings
 import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.filterFeedDisplayItems
@@ -344,6 +345,9 @@ open class SharedAndroidPaginationEnvironment(
             items = foregroundItems,
             contentDetailProvider = ContentDetailProvider { ContentDetailCache.getOrFetch(context, it) },
             semanticMatcher = AndroidContentFilterRuntime.semanticMatcher,
+            mcnAndBadgeProvider = ZhihuMcnAndBadgeProvider(httpClient()) { request ->
+                configureSignedRequest(request)
+            },
             onNlpBlocked = { blockedThisRound ->
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                     context.mainExecutor.execute {

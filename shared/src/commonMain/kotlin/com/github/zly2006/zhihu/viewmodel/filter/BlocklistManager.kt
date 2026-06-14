@@ -36,6 +36,8 @@ class BlocklistService(
     private val keywordDao: BlockedKeywordDao,
     private val userDao: BlockedUserDao,
     private val topicDao: BlockedTopicDao,
+    private val mcnOrganizationDao: BlockedMcnOrganizationDao? = null,
+    private val mcnAuthorCacheDao: McnAuthorCacheDao? = null,
 ) {
     /**
      * 添加屏蔽关键词
@@ -162,6 +164,7 @@ class BlocklistService(
             keywordCount = keywordDao.getKeywordCount(),
             userCount = userDao.getUserCount(),
             topicCount = topicDao.getTopicCount(),
+            mcnOrganizationCount = mcnOrganizationDao?.getOrganizationCount() ?: 0,
         )
 
     /**
@@ -171,6 +174,7 @@ class BlocklistService(
         keywordDao.clearAllKeywords()
         userDao.clearAllUsers()
         topicDao.clearAllTopics()
+        mcnOrganizationDao?.clearAllOrganizations()
     }
 
     /**
@@ -231,6 +235,7 @@ class BlocklistService(
         val allKeywords = keywordDao.getAllKeywords()
         val users = userDao.getAllUsers()
         val topics = topicDao.getAllTopics()
+        val mcnOrganizations = getAllBlockedMcnOrganizations()
 
         val backup = BlocklistBackup(
             keywords = allKeywords
@@ -241,6 +246,7 @@ class BlocklistService(
                 .map { NlpKeywordBackup(it.keyword) },
             users = users.map { UserBackup(it.userId, it.userName, it.urlToken ?: "", it.avatarUrl ?: "") },
             topics = topics.map { TopicBackup(it.topicId, it.topicName) },
+            mcnOrganizations = mcnOrganizations.map { McnOrganizationBackup(it.organizationName) },
         )
 
         return json.encodeToString(BlocklistBackup.serializer(), backup)
@@ -277,11 +283,64 @@ class BlocklistService(
         backup.topics.filter { it.topicId.isNotBlank() }.forEach { t ->
             topicDao.insertTopic(BlockedTopic(topicId = t.topicId, topicName = t.topicName))
         }
+        backup.mcnOrganizations
+            .mapNotNull { it.organizationName.normalizeMcnCompany() }
+            .forEach { organizationName ->
+                mcnOrganizationDao?.insertOrganization(BlockedMcnOrganization(organizationName))
+            }
 
-        return "关键词 ${backup.keywords.size} · NLP ${backup.nlpKeywords.size} · 用户 ${backup.users.size} · 主题 ${backup.topics.size}"
+        return "关键词 ${backup.keywords.size} · NLP ${backup.nlpKeywords.size} · 用户 ${backup.users.size} · 主题 ${backup.topics.size} · MCN ${backup.mcnOrganizations.size}"
     }
 
     suspend fun getTopicName(topicId: String): String = topicDao.getTopicNameById(topicId)
+
+    suspend fun addBlockedMcnOrganization(organizationName: String) {
+        val normalized = organizationName.normalizeMcnCompany() ?: return
+        mcnOrganizationDao?.insertOrganization(BlockedMcnOrganization(normalized))
+    }
+
+    suspend fun removeBlockedMcnOrganization(organizationName: String) {
+        mcnOrganizationDao?.deleteOrganizationByName(organizationName)
+    }
+
+    suspend fun getAllBlockedMcnOrganizations(): List<BlockedMcnOrganization> =
+        mcnOrganizationDao?.getAllOrganizations().orEmpty()
+
+    suspend fun clearAllBlockedMcnOrganizations() {
+        mcnOrganizationDao?.clearAllOrganizations()
+    }
+
+    suspend fun hasBlockedMcnOrganizations(): Boolean = mcnOrganizationDao?.hasOrganizations() == true
+
+    suspend fun isMcnOrganizationBlocked(organizationName: String?): Boolean {
+        val normalized = organizationName.normalizeMcnCompany() ?: return false
+        return getAllBlockedMcnOrganizations().any { blocked ->
+            blocked.organizationName.matchesMcnOrganization(normalized)
+        }
+    }
+
+    suspend fun getCachedMcnAuthor(urlToken: String): McnAuthorCache? = mcnAuthorCacheDao
+        ?.getByUrlToken(urlToken)
+        ?.takeUnless { it.isExpired() }
+
+    suspend fun cacheMcnAuthorProfile(
+        urlToken: String,
+        userName: String?,
+        profile: McnAuthorProfile,
+    ) {
+        val badge = profile.officialBadge
+        mcnAuthorCacheDao?.insert(
+            McnAuthorCache(
+                urlToken = urlToken,
+                userName = userName,
+                mcnCompany = profile.mcnCompany.normalizeMcnCompany(),
+                badgeTitle = badge?.title,
+                badgeDescription = badge?.description,
+                badgeIconUrl = badge?.iconUrl,
+                badgeNightIconUrl = badge?.nightIconUrl,
+            ),
+        )
+    }
 }
 
 /**
@@ -291,6 +350,7 @@ data class BlocklistStats(
     val keywordCount: Int,
     val userCount: Int,
     val topicCount: Int,
+    val mcnOrganizationCount: Int = 0,
 )
 
 /**
@@ -411,6 +471,26 @@ class BlocklistManager(
     suspend fun getTopicName(topicId: String): String = withContext(Dispatchers.Default) {
         service.getTopicName(topicId)
     }
+
+    suspend fun addBlockedMcnOrganization(organizationName: String) = withContext(Dispatchers.Default) {
+        service.addBlockedMcnOrganization(organizationName)
+    }
+
+    suspend fun removeBlockedMcnOrganization(organizationName: String) = withContext(Dispatchers.Default) {
+        service.removeBlockedMcnOrganization(organizationName)
+    }
+
+    suspend fun getAllBlockedMcnOrganizations(): List<BlockedMcnOrganization> = withContext(Dispatchers.Default) {
+        service.getAllBlockedMcnOrganizations()
+    }
+
+    suspend fun clearAllBlockedMcnOrganizations() = withContext(Dispatchers.Default) {
+        service.clearAllBlockedMcnOrganizations()
+    }
+
+    suspend fun isMcnOrganizationBlocked(organizationName: String?): Boolean = withContext(Dispatchers.Default) {
+        service.isMcnOrganizationBlocked(organizationName)
+    }
 }
 
 fun ContentFilterDatabase.createBlocklistManager(): BlocklistManager = BlocklistManager(
@@ -418,6 +498,8 @@ fun ContentFilterDatabase.createBlocklistManager(): BlocklistManager = Blocklist
         keywordDao = blockedKeywordDao(),
         userDao = blockedUserDao(),
         topicDao = blockedTopicDao(),
+        mcnOrganizationDao = blockedMcnOrganizationDao(),
+        mcnAuthorCacheDao = mcnAuthorCacheDao(),
     ),
 )
 

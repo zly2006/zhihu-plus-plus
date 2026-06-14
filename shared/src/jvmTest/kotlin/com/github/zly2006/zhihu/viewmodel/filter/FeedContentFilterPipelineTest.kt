@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.viewmodel.filter
 
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.data.OfficialBadge
 import kotlinx.coroutines.test.runTest
 import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
@@ -117,17 +118,87 @@ class FeedContentFilterPipelineTest {
         database.close()
     }
 
+    @Test
+    fun filtersByBlockedMcnOrganizationFromAuthorTokenAndCachesLookup() = runTest {
+        val database = getContentFilterDatabase(
+            createTempDirectory("feed-content-filter-mcn").resolve("content-filter.db").toFile(),
+        )
+        val blocklistService = BlocklistService(
+            keywordDao = database.blockedKeywordDao(),
+            userDao = database.blockedUserDao(),
+            topicDao = database.blockedTopicDao(),
+            mcnOrganizationDao = database.blockedMcnOrganizationDao(),
+            mcnAuthorCacheDao = database.mcnAuthorCacheDao(),
+        )
+        blocklistService.addBlockedMcnOrganization("杭州含章文化传播有限公司")
+        blocklistService.cacheMcnAuthorProfile(
+            "cached-token",
+            "cached author",
+            McnAuthorProfile(mcnCompany = "杭州含章文化传播有限公司"),
+        )
+
+        val fetchedTokens = mutableListOf<String>()
+        val result = FeedContentFilterPipeline(
+            settings = FeedFilterSettings(enableMcnBlocking = true),
+            blocklistService = blocklistService,
+            blockedKeywordService = BlockedKeywordService(
+                keywordDao = database.blockedKeywordDao(),
+                recordDao = database.blockedContentRecordDao(),
+                semanticMatcher = KeywordSemanticMatcher { _, _, _ -> emptyList() },
+            ),
+            mcnAndBadgeProvider = McnAndBadgeProvider { token ->
+                fetchedTokens += token
+                when (token) {
+                    "network-token" -> McnAuthorProfile(mcnCompany = "杭州含章文化传播有限公司")
+                    "plain-token" -> McnAuthorProfile(
+                        officialBadge = OfficialBadge(
+                            title = "已认证的个人",
+                            description = "电脑吧评测室",
+                            iconUrl = "https://pic.example/badge.png",
+                        ),
+                    )
+                    else -> McnAuthorProfile()
+                }
+            },
+        ).filter(
+            listOf(
+                filterable("cached mcn", authorId = "cached-user", authorUrlToken = "cached-token"),
+                filterable("network mcn", authorId = "network-user", authorUrlToken = "network-token"),
+                filterable("plain author", authorId = "plain-user", authorUrlToken = "plain-token"),
+            ),
+        )
+
+        assertEquals(listOf("plain author"), result.kept.map { it.title })
+        assertEquals(
+            listOf("屏蔽MCN机构：杭州含章文化传播有限公司", "屏蔽MCN机构：杭州含章文化传播有限公司"),
+            result.blocked.map { it.second },
+        )
+        assertEquals(listOf("network-token", "plain-token"), fetchedTokens)
+        assertEquals(
+            "https://pic.example/badge.png",
+            result.kept
+                .single()
+                .authorOfficialBadge
+                ?.iconUrl,
+        )
+        assertEquals("杭州含章文化传播有限公司", blocklistService.getCachedMcnAuthor("network-token")?.mcnCompany)
+        assertEquals("https://pic.example/badge.png", blocklistService.getCachedMcnAuthor("plain-token")?.officialBadge?.iconUrl)
+        database.close()
+    }
+
     private fun filterable(
         title: String,
         content: String = title,
         authorId: String,
         topicId: String? = null,
+        authorUrlToken: String = "author",
     ): FilterableContent = FilterableContent(
         title = title,
         summary = null,
         content = content,
         authorName = "author",
         authorId = authorId,
+        authorUrlToken = authorUrlToken,
         contentId = title,
         contentType = "article",
         raw = article(title, content, topicId),

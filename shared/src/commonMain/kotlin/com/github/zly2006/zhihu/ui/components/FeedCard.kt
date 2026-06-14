@@ -560,7 +560,7 @@ private fun FeedCardContent(
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.weight(1f, fill = false),
                             )
-                            val authorBadge = item.authorBadgeV2.officialBadge()
+                            val authorBadge = item.authorBadgeV2.officialBadge() ?: item.authorOfficialBadge
                             if (authorBadge?.isUsefulInList == true) {
                                 Spacer(Modifier.width(4.dp))
                                 AuthorBadge(authorBadge, compact = true)
@@ -622,7 +622,7 @@ private fun FeedCardContent(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false),
                 )
-                val authorBadge = item.authorBadgeV2.officialBadge()
+                val authorBadge = item.authorBadgeV2.officialBadge() ?: item.authorOfficialBadge
                 if (authorBadge?.isUsefulInList == true) {
                     Spacer(Modifier.width(4.dp))
                     AuthorBadge(authorBadge, compact = true)
