@@ -239,7 +239,7 @@ fun MiuixSystemAndUpdateSettingsScreen() {
             // GitHub Token
             item { SmallTitle(text = "GitHub") }
             item {
-                var githubToken by remember { mutableStateOf(settings.getString("githubToken", "") ?: "") }
+                var githubToken by remember { mutableStateOf(settings.getString("githubToken", "")) }
                 var showGithubToken by remember { mutableStateOf(false) }
                 var showPassword by remember { mutableStateOf(false) }
                 Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
