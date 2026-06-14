@@ -36,39 +36,23 @@ suspend fun ContentFilterDatabase.recordContentInteraction(
     targetType: String,
     targetId: String,
 ) {
-    createContentExposureRecorder(settings).recordInteraction(targetType, targetId)
+    if (settings.enableContentFilter) {
+        ContentFilterManager(contentFilterDao()).recordContentInteraction(targetType, targetId)
+    }
 }
 
 suspend fun ContentFilterDatabase.performContentFilterMaintenanceCleanup(
     settings: FeedFilterSettings,
 ) {
-    createContentExposureRecorder(settings).performMaintenanceCleanup()
+    if (settings.enableContentFilter) {
+        ContentFilterManager(contentFilterDao()).cleanupOldData()
+    }
 }
 
 suspend fun ContentFilterDatabase.filterForegroundReadItems(
     settings: FeedFilterSettings,
     items: List<FeedDisplayItem>,
 ): List<FeedDisplayItem> = createForegroundReadFilterPipeline(settings).filter(items)
-
-class ContentExposureRecorder(
-    private val settings: FeedFilterSettings,
-    private val contentFilterManager: ContentFilterManager,
-) {
-    suspend fun recordInteraction(
-        targetType: String,
-        targetId: String,
-    ) {
-        if (settings.enableContentFilter) {
-            contentFilterManager.recordContentInteraction(targetType, targetId)
-        }
-    }
-
-    suspend fun performMaintenanceCleanup() {
-        if (settings.enableContentFilter) {
-            contentFilterManager.cleanupOldData()
-        }
-    }
-}
 
 class ForegroundReadFilterPipeline(
     private val settings: FeedFilterSettings,
@@ -212,13 +196,6 @@ class FeedContentFilterPipeline(
 fun interface ContentDetailProvider {
     suspend fun get(navDestination: NavDestination): DataHolder.Content?
 }
-
-fun ContentFilterDatabase.createContentExposureRecorder(
-    settings: FeedFilterSettings,
-): ContentExposureRecorder = ContentExposureRecorder(
-    settings = settings,
-    contentFilterManager = ContentFilterManager(contentFilterDao()),
-)
 
 fun ContentFilterDatabase.createForegroundReadFilterPipeline(
     settings: FeedFilterSettings,
