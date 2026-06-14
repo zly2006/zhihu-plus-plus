@@ -63,7 +63,6 @@ import com.github.zly2006.zhihu.util.createEmojiInlineContent
 import com.github.zly2006.zhihu.util.fuckHonorService
 import com.github.zly2006.zhihu.util.saveImageToGallery
 import com.github.zly2006.zhihu.util.shareImage
-import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
@@ -114,7 +113,7 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
         refreshProfile = {
             val data = AccountData.data
             if (data.login) {
-                val response = AccountData.fetchGet(context, ZHIHU_ME_URL) { signFetchRequest() }!!
+                val response = context.asApiEnvironment().fetchJson(ZHIHU_ME_URL, "")!!
                 val self = ZhihuJson.decodeJson<com.github.zly2006.zhihu.shared.data.Person>(response)
                 AccountData.saveData(context, data.copy(self = self))
             }

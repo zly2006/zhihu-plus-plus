@@ -38,14 +38,11 @@ import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.HttpClientEngineConfig
-import io.ktor.client.request.HttpRequestBuilder
-import io.ktor.http.HttpMethod
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 import java.io.File
@@ -268,17 +265,5 @@ object AccountData {
         } catch (e: SerializationException) {
             throw ZhPlusJsonSerializationException(convertedJson, "Failed to parse JSON: ${e.message}", e)
         }
-    }
-
-    suspend fun fetch(context: Context, url: String, block: suspend HttpRequestBuilder.() -> Unit = {}): JsonObject? = accountClient(context).fetchAuthenticatedJson(url, block)
-
-    suspend fun fetchGet(context: Context, url: String, block: suspend HttpRequestBuilder.() -> Unit = {}) = fetch(context, url) {
-        block()
-        method = HttpMethod.Get
-    }
-
-    suspend fun fetchPost(context: Context, url: String, block: suspend HttpRequestBuilder.() -> Unit = {}) = fetch(context, url) {
-        block()
-        method = HttpMethod.Post
     }
 }
