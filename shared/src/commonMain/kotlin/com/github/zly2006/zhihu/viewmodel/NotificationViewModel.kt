@@ -20,7 +20,6 @@ package com.github.zly2006.zhihu.viewmodel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.shared.data.NotificationItem
 import com.github.zly2006.zhihu.shared.data.ZHIHU_NOTIFICATION_READ_ALL_URLS
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
@@ -28,8 +27,6 @@ import com.github.zly2006.zhihu.shared.data.ZhihuPaging
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.notification.matchNotificationType
 import com.github.zly2006.zhihu.shared.util.Log
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.buildJsonArray
@@ -68,7 +65,8 @@ class NotificationViewModel :
     @Suppress("HttpUrlsUsage")
     override suspend fun fetchFeeds(environment: PaginationEnvironment) {
         try {
-            val notificationSettingsEnvironment = environment.requireNotificationSettingsEnvironment()
+            val notificationSettingsEnvironment = environment as? NotificationSettingsEnvironment
+                ?: error("NotificationSettingsStore is required for notification pagination")
             val rawData = mutableListOf<JsonElement>()
             val decodedData = mutableListOf<NotificationItem>()
             val sourceFailures = mutableListOf<Exception>()
@@ -123,7 +121,11 @@ class NotificationViewModel :
             )
 
             // 获取未读消息数量
-            unreadCount = getUnreadCount(environment)
+            unreadCount = try {
+                environment.fetchUnreadNotificationCountSigned()
+            } catch (_: Exception) {
+                0
+            }
             checkAndMarkAllAsRead(environment, notificationSettingsEnvironment)
         } finally {
             isLoading = false
@@ -141,18 +143,6 @@ class NotificationViewModel :
         val merged = mergeNotificationsByCreateTime(allData, data)
         allData.clear()
         allData.addAll(merged)
-    }
-
-    /**
-     * 更新未读消息数量
-     */
-    private suspend fun getUnreadCount(environment: ZhihuApiEnvironment): Int {
-        try {
-            return environment.fetchUnreadNotificationCountSigned()
-        } catch (_: Exception) {
-            // 忽略错误
-            return 0
-        }
     }
 
     /**
@@ -190,15 +180,6 @@ class NotificationViewModel :
     }
 
     /**
-     * 标记消息为已读
-     */
-    @OptIn(DelicateCoroutinesApi::class)
-    fun markAsRead(notificationId: String) {
-        viewModelScope.launch {
-        }
-    }
-
-    /**
      * 标记所有消息为已读
      */
     suspend fun markAllAsRead(environment: ZhihuApiEnvironment) {
@@ -207,10 +188,6 @@ class NotificationViewModel :
         }
     }
 }
-
-private fun PaginationEnvironment.requireNotificationSettingsEnvironment(): NotificationSettingsEnvironment =
-    this as? NotificationSettingsEnvironment
-        ?: error("NotificationSettingsStore is required for notification pagination")
 
 internal fun mergeNotificationsByCreateTime(
     existing: List<NotificationItem>,
