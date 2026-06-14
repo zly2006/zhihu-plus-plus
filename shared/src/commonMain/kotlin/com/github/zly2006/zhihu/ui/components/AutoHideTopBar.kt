@@ -38,8 +38,8 @@ val LocalAutoHideTopBarHeightChanged = compositionLocalOf<(Int) -> Unit> { {} }
  * 不用 AnimatedVisibility：它在动画期间增删/重挂载内容并依赖 Scaffold 逐帧重测，
  * 进入首帧会闪一下全高、退出结束会塌一下，与底栏不同步导致信息流跳变。
  * 这里用单个 [Animatable] 驱动一个 0..1 的 fraction：内容始终按全高测量，
- * 包装层也始终向 Scaffold 上报完整高度，避免顶栏动画额外改变内容 padding。
- * 收起时只把顶栏内容在固定高度的裁切区域内向上平移，信息流位移只来自用户滚动。
+ * 但包装层只向 Scaffold 上报当前可见高度，让顶栏和内容 inset 使用同一个速度。
+ * 收起时顶栏内容在裁切区域内向上平移，松手结算也沿同一 fraction 连续过渡。
  */
 @Composable
 fun AutoHideTopBar(content: @Composable () -> Unit) {
@@ -58,15 +58,17 @@ fun AutoHideTopBar(content: @Composable () -> Unit) {
     Box(
         Modifier
             .clipToBounds()
-            .onSizeChanged { onHeightChanged(it.height) }
             .layout { measurable, constraints ->
                 val placeable = measurable.measure(constraints)
-                layout(placeable.width, placeable.height) {
-                    val y = ((fraction.value - 1f) * placeable.height).roundToInt()
+                val visibleHeight = (placeable.height * fraction.value).roundToInt().coerceIn(0, placeable.height)
+                layout(placeable.width, visibleHeight) {
+                    val y = visibleHeight - placeable.height
                     placeable.place(0, y)
                 }
             },
     ) {
-        content()
+        Box(Modifier.onSizeChanged { onHeightChanged(it.height) }) {
+            content()
+        }
     }
 }
