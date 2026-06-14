@@ -15,6 +15,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
 import com.github.zly2006.zhihu.ui.commentViewModelKey
@@ -43,6 +45,9 @@ fun MiuixCommentSheet(
     WindowBottomSheet(
         show = showComments,
         title = "评论",
+        // 评论列表自带 12dp 左右内边距；去掉弹层默认的 24dp 横向 insideMargin，
+        // 否则两者叠加 36dp 会让评论挤成中间窄条。
+        insideMargin = DpSize(0.dp, 0.dp),
         onDismissRequest = {
             activeChildComment = null
             rootListResetToken += 1
@@ -59,6 +64,7 @@ fun MiuixCommentSheet(
     WindowBottomSheet(
         show = showComments && activeChildComment != null && childTarget != null,
         title = "回复",
+        insideMargin = DpSize(0.dp, 0.dp),
         onDismissRequest = { activeChildComment = null },
     ) {
         if (childTarget != null) {
