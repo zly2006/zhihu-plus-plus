@@ -53,6 +53,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -69,6 +70,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.zly2006.zhihu.navigation.Account
@@ -101,6 +103,8 @@ import com.github.zly2006.zhihu.theme.ThemeStyle
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
+import com.github.zly2006.zhihu.ui.components.LocalAutoHideTopBarHeightChanged
+import com.github.zly2006.zhihu.ui.components.LocalAutoHideTopBarScrollFraction
 import com.github.zly2006.zhihu.ui.components.LocalAutoHideTopBarVisible
 import com.github.zly2006.zhihu.ui.miuix.MiuixAccountSettingScreen
 import com.github.zly2006.zhihu.ui.miuix.MiuixBlocklistSettingsScreen
@@ -230,7 +234,16 @@ fun ZhihuMain(
     var scrollToTopTrigger by remember { mutableIntStateOf(0) }
     // 滚动时自动隐藏底部导航栏（顶栏自动隐藏复用同一信号，见 LocalAutoHideTopBarVisible）
     var isBottomBarVisible by remember { mutableStateOf(true) }
-    val bottomBarScrollConnection = remember {
+    var autoHideTopBarScrollFraction by remember { mutableStateOf<Float?>(null) }
+    var autoHideTopBarHeightPx by remember { mutableFloatStateOf(0f) }
+
+    fun settleAutoHideTopBar() {
+        val fraction = autoHideTopBarScrollFraction ?: return
+        val shouldShow = fraction >= 0.5f
+        if (isBottomBarVisible != shouldShow) isBottomBarVisible = shouldShow
+        autoHideTopBarScrollFraction = null
+    }
+    val bottomBarScrollConnection = remember(autoHideTopBar, currentTopDestination) {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 // 只响应用户拖动：fling 惯性与 miuix overScroll 回弹会产生正负交替的 available.y，
@@ -238,12 +251,28 @@ fun ZhihuMain(
                 // 且只在状态真正变化时赋值，避免每帧 set 触发顶层重组。
                 // 阈值提高到 10f + 滞回：prevents overscroll 回弹小幅振荡触发反复 toggle
                 if (source == NestedScrollSource.UserInput) {
+                    if (autoHideTopBar && currentTopDestination is MainTabs && autoHideTopBarHeightPx > 0f) {
+                        val baseFraction = autoHideTopBarScrollFraction ?: if (isBottomBarVisible) 1f else 0f
+                        val nextFraction = (baseFraction + available.y / autoHideTopBarHeightPx).coerceIn(0f, 1f)
+                        if (nextFraction != baseFraction) {
+                            autoHideTopBarScrollFraction = nextFraction
+                        }
+                        when (nextFraction) {
+                            0f -> if (isBottomBarVisible) isBottomBarVisible = false
+                            1f -> if (!isBottomBarVisible) isBottomBarVisible = true
+                        }
+                    }
                     when {
                         available.y < -10f -> if (isBottomBarVisible) isBottomBarVisible = false
                         available.y > 10f -> if (!isBottomBarVisible) isBottomBarVisible = true
                     }
                 }
                 return Offset.Zero
+            }
+
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                settleAutoHideTopBar()
+                return Velocity.Zero
             }
         }
     }
@@ -360,7 +389,10 @@ fun ZhihuMain(
         bottomBar = {
             run {
                 // 页面切换时重置底部导航栏可见状态（顶栏复用此信号，一并恢复）
-                LaunchedEffect(currentTopDestination) { isBottomBarVisible = true }
+                LaunchedEffect(currentTopDestination) {
+                    isBottomBarVisible = true
+                    autoHideTopBarScrollFraction = null
+                }
                 val currentBottomDestination = mainTabPages
                     .getOrNull(mainPagerState.targetPage)
                     ?.bottomDestination
@@ -498,6 +530,8 @@ fun ZhihuMain(
                 entry<MainTabs> {
                     CompositionLocalProvider(
                         LocalAutoHideTopBarVisible provides (!autoHideTopBar || isBottomBarVisible),
+                        LocalAutoHideTopBarScrollFraction provides autoHideTopBarScrollFraction,
+                        LocalAutoHideTopBarHeightChanged provides { height -> autoHideTopBarHeightPx = height.toFloat() },
                     ) {
                         MainTabsPager(
                             pagerState = mainPagerState,
