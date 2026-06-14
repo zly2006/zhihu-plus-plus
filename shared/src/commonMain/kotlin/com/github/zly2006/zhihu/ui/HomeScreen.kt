@@ -39,6 +39,7 @@ import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.ArrowCircleUp
 import androidx.compose.material.icons.filled.CopyAll
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.MarkUnreadChatAlt
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
@@ -71,6 +72,7 @@ import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Search
+import com.github.zly2006.zhihu.shared.aigc.AIGC_MARKING_ENABLED_PREFERENCE_KEY
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.data.navDestination
@@ -102,6 +104,7 @@ import kotlinx.serialization.json.Json
 const val PREFERENCE_NAME = "com.github.zly2006.zhihu_preferences"
 const val ARTICLE_USE_WEBVIEW_PREFERENCE_KEY = "webviewRender"
 const val QQ_GROUP_DISMISSED_PREFERENCE_KEY = "dismissQQGroup3"
+const val AIGC_MARKING_ANNOUNCEMENT_DISMISSED_PREFERENCE_KEY = "dismissAigcMarkingAnnouncement"
 const val HOME_TOP_ACTIONS_TAG = "home_top_actions"
 const val HOME_SEARCH_BUTTON_TAG = "home_search_button"
 const val HOME_NOTIFICATION_BUTTON_TAG = "home_notification_button"
@@ -144,6 +147,12 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
     val keySurveyDone = "survey_feedback_done"
     val installed3Hours = !settings.getBoolean(keySurveyDone, false) && runtime.installedAtLeastThreeHours
     var dismissedUpdateVersion by remember { mutableStateOf<String?>(null) }
+    var aigcMarkingEnabled by remember {
+        mutableStateOf(settings.getBoolean(AIGC_MARKING_ENABLED_PREFERENCE_KEY, false))
+    }
+    var showAigcMarkingAnnouncement by remember {
+        mutableStateOf(!settings.getBoolean(AIGC_MARKING_ANNOUNCEMENT_DISMISSED_PREFERENCE_KEY, false))
+    }
 
     // 首次启动提示
     var showFilterExplainDialog by remember {
@@ -435,6 +444,24 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
                                 showQQGroup = false
                             },
                             colors = AnnouncementCardDefaults.colorsVariant(),
+                        )
+                        AnnouncementCard(
+                            visible = !aigcMarkingEnabled && showAigcMarkingAnnouncement,
+                            title = "AIGC 标记",
+                            leadingIcon = { Icon(Icons.Default.Flag, contentDescription = null) },
+                            content = "为了减轻知乎上 AI 生成的文章对用户的困扰，你可以加入我们一起标记 AIGC。开启后会把你正在浏览的内容发送到我们的服务器，用来显示其他用户是否认为其疑似 AIGC。此功能默认关闭，不会发送隐私信息。",
+                            accept = { Text("开启") },
+                            onAccept = {
+                                settings.putBoolean(AIGC_MARKING_ENABLED_PREFERENCE_KEY, true)
+                                settings.putBoolean(AIGC_MARKING_ANNOUNCEMENT_DISMISSED_PREFERENCE_KEY, true)
+                                aigcMarkingEnabled = true
+                                showAigcMarkingAnnouncement = false
+                            },
+                            dismiss = { Text("关闭") },
+                            onDismiss = {
+                                settings.putBoolean(AIGC_MARKING_ANNOUNCEMENT_DISMISSED_PREFERENCE_KEY, true)
+                                showAigcMarkingAnnouncement = false
+                            },
                         )
                         AnnouncementCard(
                             visible = showFilterExplainDialog,
