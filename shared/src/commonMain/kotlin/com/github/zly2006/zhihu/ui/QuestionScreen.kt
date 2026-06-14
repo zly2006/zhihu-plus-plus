@@ -377,7 +377,6 @@ fun QuestionScreen(
                                         val nextFollowing = !isFollowing
                                         testOverrides?.onFollowQuestion?.invoke(nextFollowing) ?: viewModel.followQuestion(
                                             paginationEnvironment,
-                                            question.questionId,
                                             nextFollowing,
                                         )
                                         isFollowing = nextFollowing
