@@ -12,6 +12,8 @@
 
 除非用户明确要求，本地不要跑完整的 instrument test；全量 Android instrument test 应交给 GitHub CI 验证。本地只做必要的构建、格式化，以及针对当前失败点的定向用例或诊断。例子：修复某个页面的单个失败用例时，可以本地跑该 class 或 method 辅助定位，但不能默认执行完整 `connectedLiteDebugAndroidTest` 来占用模拟器和拖慢反馈。
 
+不要等待远端 Instrumented Tests 跑完。检查 PR 或 CI 状态时，只看当前已经可见的失败；如果剩下的是 instrumented job 正在运行、排队或耗时过长，应直接进入下一步，不要 `watch` 到结束。例子：清理重构 PR 推送后可以看一眼 checks 是否已有非 instrument 失败，但不能因为 Mock/Android Instrumented Tests 还在跑就停住等绿。
+
 ### Desktop release jar 运行验证
 
 打包桌面单体 jar 时，不能只验证任务成功、文件大小和 manifest。ProGuard 会改变运行时可达性，尤其会删除 `ServiceLoader` 发现的 provider 类、Room/KSP 生成实现，或改名 JNI 需要按原签名查找的 native 方法，导致启动后才报错。例子：桌面 release jar 必须实际执行 `java -jar` 到数据库和网络初始化路径，并为服务 provider、反射生成类、native 方法添加 keep 规则；否则一个看起来更小的 jar 可能只是被错误裁剪了。
