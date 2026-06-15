@@ -71,7 +71,6 @@ import com.github.zly2006.zhihu.ui.QuestionScreenTestOverrides
 import com.github.zly2006.zhihu.ui.QuestionScreenUiState
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
-import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.ZhihuTwoRowsTopAppBar
 import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.ui.components.handleShareAction
@@ -81,6 +80,7 @@ import com.github.zly2006.zhihu.ui.loadedQuestionScreenData
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixCommentSheet
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixShareSheet
 import com.github.zly2006.zhihu.viewmodel.ContentLoadEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
@@ -370,7 +370,7 @@ fun MiuixQuestionScreen(
     if (shareText != null) {
         testOverrides?.shareDialogContent?.let { content ->
             if (showShareDialog) content { showShareDialog = false }
-        } ?: ShareDialog(
+        } ?: MiuixShareSheet(
             content = question,
             shareText = shareText,
             showDialog = showShareDialog,

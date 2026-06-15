@@ -8,6 +8,7 @@
 package com.github.zly2006.zhihu.ui.miuix
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -17,13 +18,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -60,19 +58,25 @@ import com.github.zly2006.zhihu.viewmodel.CollectionContentEnvironment
 import com.github.zly2006.zhihu.viewmodel.CollectionContentViewModel
 import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
 import top.yukonga.miuix.kmp.basic.ListPopupColumn
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.PopupPositionProvider
 import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.Switch
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.theme.LocalDismissState
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
+import top.yukonga.miuix.kmp.window.WindowDialog
 import top.yukonga.miuix.kmp.window.WindowListPopup
 
 @Composable
@@ -156,57 +160,71 @@ fun MiuixCollectionContentScreen(
             )
         },
     ) { innerPadding ->
-        if (showExportOptionsDialog) {
-            var includeImages by remember { mutableStateOf(true) }
-            AlertDialog(
-                onDismissRequest = { showExportOptionsDialog = false },
-                title = { Text("导出收藏夹 HTML") },
-                text = {
-                    Column {
-                        Text("可以选择是否一并导出图片。导出图片会把图片下载并内嵌到 HTML 中，速度可能更慢。")
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(checked = includeImages, onCheckedChange = { includeImages = it })
-                            Column(Modifier.weight(1f)) {
-                                Text("导出图片（更慢）")
-                                Text("关闭后保留原始图片链接", fontSize = MiuixTheme.textStyles.body2.fontSize, color = MiuixTheme.colorScheme.onSurfaceSecondary)
+        var includeImages by remember { mutableStateOf(true) }
+        WindowDialog(
+            show = showExportOptionsDialog,
+            title = "导出收藏夹 HTML",
+            summary = "可以选择是否一并导出图片。导出图片会把图片下载并内嵌到 HTML 中，速度可能更慢。",
+            onDismissRequest = { showExportOptionsDialog = false },
+        ) {
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("导出图片（更慢）", color = MiuixTheme.colorScheme.onSurface)
+                        Text("关闭后保留原始图片链接", style = MiuixTheme.textStyles.body2, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Switch(checked = includeImages, onCheckedChange = { includeImages = it })
+                }
+                Spacer(Modifier.height(16.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    TextButton(text = "取消", onClick = { showExportOptionsDialog = false }, modifier = Modifier.weight(1f))
+                    Button(
+                        onClick = {
+                            showExportOptionsDialog = false
+                            onExportAllToHtmlZip(includeImages)
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColorsPrimary(),
+                    ) { Text("开始导出", color = androidx.compose.ui.graphics.Color.White) }
+                }
+            }
+        }
+        screenViewModel.exportDialogState?.let { state ->
+            WindowDialog(
+                show = true,
+                title = if (state.isCompleted) state.phaseText else "正在导出收藏夹",
+                onDismissRequest = { if (state.isCompleted) screenViewModel.dismissExportDialog() },
+            ) {
+                Column {
+                    if (state.currentTitle.isNotBlank()) {
+                        Text("当前：${state.currentTitle}", color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+                        Spacer(Modifier.height(8.dp))
+                    }
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth(),
+                        progress = state.progress.takeUnless { state.isIndeterminate },
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Text("成功 ${state.successCount} · 跳过 ${state.skippedCount} · 失败 ${state.failedCount}", color = MiuixTheme.colorScheme.onSurface)
+                    state.resultMessage?.takeIf { it.isNotBlank() }?.let {
+                        Spacer(Modifier.height(4.dp))
+                        Text(it, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+                    }
+                    state.zipFilePath?.takeIf { it.isNotBlank() }?.let {
+                        Spacer(Modifier.height(4.dp))
+                        Text(it, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+                    }
+                    if (state.isCompleted) {
+                        Spacer(Modifier.height(16.dp))
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            Button(onClick = screenViewModel::dismissExportDialog, colors = ButtonDefaults.buttonColorsPrimary()) {
+                                Text("确定", color = androidx.compose.ui.graphics.Color.White)
                             }
                         }
                     }
-                },
-                confirmButton = {
-                    TextButton(onClick = {
-                        showExportOptionsDialog = false
-                        onExportAllToHtmlZip(includeImages)
-                    }) { Text("开始导出") }
-                },
-                dismissButton = { TextButton(onClick = { showExportOptionsDialog = false }) { Text("取消") } },
-            )
-        }
-        screenViewModel.exportDialogState?.let { state ->
-            AlertDialog(
-                onDismissRequest = { if (state.isCompleted) screenViewModel.dismissExportDialog() },
-                title = { Text(if (state.isCompleted) state.phaseText else "正在导出收藏夹") },
-                text = {
-                    Column {
-                        Text(state.phaseText)
-                        if (state.currentTitle.isNotBlank()) {
-                            Text("当前：${state.currentTitle}")
-                        }
-                        Spacer(modifier = Modifier.height(12.dp))
-                        if (state.isIndeterminate) {
-                            LinearProgressIndicator(Modifier.fillMaxWidth())
-                        } else {
-                            LinearProgressIndicator(progress = { state.progress }, modifier = Modifier.fillMaxWidth())
-                        }
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text("成功 ${state.successCount} · 跳过 ${state.skippedCount} · 失败 ${state.failedCount}")
-                        state.resultMessage?.takeIf { it.isNotBlank() }?.let { Text(it) }
-                        state.zipFilePath?.takeIf { it.isNotBlank() }?.let { Text(it) }
-                    }
-                },
-                confirmButton = { if (state.isCompleted) TextButton(onClick = screenViewModel::dismissExportDialog) { Text("确定") } },
-            )
+                }
+            }
         }
 
         Box(

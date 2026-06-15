@@ -71,14 +71,14 @@ import com.github.zly2006.zhihu.ui.PinLinkCardPreview
 import com.github.zly2006.zhihu.ui.PinScreenTestOverrides
 import com.github.zly2006.zhihu.ui.PinScreenUiState
 import com.github.zly2006.zhihu.ui.booleanCompat
-import com.github.zly2006.zhihu.ui.components.ShareDialog
-import com.github.zly2006.zhihu.ui.components.VotersSheet
 import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.ui.linkCardTypeLabel
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixCommentSheet
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixShareSheet
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixVotersSheet
 import com.github.zly2006.zhihu.ui.rememberPinScreenRuntime
 import com.github.zly2006.zhihu.viewmodel.ContentLoadEnvironment
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
@@ -283,14 +283,14 @@ fun MiuixPinScreen(
         val shareText = getShareText(pin)
         if (shareText != null) {
             testOverrides?.shareDialogContent?.invoke(showShareDialog, { showShareDialog = false }, pin, shareText)
-                ?: ShareDialog(
+                ?: MiuixShareSheet(
                     content = pin,
                     shareText = shareText,
                     showDialog = showShareDialog,
                     onDismissRequest = { showShareDialog = false },
                 )
         }
-        VotersSheet(
+        MiuixVotersSheet(
             show = showVoters,
             title = "${formatCompactCount(screenState.likeCount)} 人赞同了该想法",
             voters = voters,

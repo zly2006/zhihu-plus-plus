@@ -109,13 +109,13 @@ import com.github.zly2006.zhihu.ui.components.AnswerVerticalOverscroll
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
-import com.github.zly2006.zhihu.ui.components.VotersSheet
 import com.github.zly2006.zhihu.ui.components.ZhihuTwoRowsTopAppBar
 import com.github.zly2006.zhihu.ui.components.rememberPreferCollapsedExitUntilCollapsedScrollBehavior
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixCommentSheet
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixExportSheet
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixSheetActionRow
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixVotersSheet
 import com.github.zly2006.zhihu.ui.rememberArticleActionsRuntime
 import com.github.zly2006.zhihu.ui.rememberArticleScreenRuntime
 import com.github.zly2006.zhihu.ui.rememberArticleScreenSettingsState
@@ -719,7 +719,7 @@ fun MiuixArticleScreen(
     }
 
     MiuixCommentSheet(showComments = showComments, onDismiss = { showComments = false }, content = article)
-    VotersSheet(
+    MiuixVotersSheet(
         show = showVoters,
         title = "${formatCompactCount(viewModel.votersTotal)} 人赞同了该回答",
         voters = viewModel.voters,

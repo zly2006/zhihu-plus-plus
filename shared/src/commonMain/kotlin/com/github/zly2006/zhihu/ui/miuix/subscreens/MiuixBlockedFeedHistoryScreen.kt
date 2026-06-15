@@ -23,7 +23,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -46,6 +45,7 @@ import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixConfirmDialog
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.viewmodel.filter.rememberBlockedFeedRecordDao
 import kotlinx.coroutines.launch
@@ -186,24 +186,15 @@ fun MiuixBlockedFeedHistoryScreen() {
         }
     }
 
-    if (showClearDialog) {
-        AlertDialog(
-            onDismissRequest = { showClearDialog = false },
-            title = { Text("清空屏蔽记录") },
-            text = { Text("确定要清空所有屏蔽记录吗？此操作不可撤销。") },
-            confirmButton = {
-                androidx.compose.material3.TextButton(
-                    onClick = {
-                        coroutineScope.launch { dao.clearAll() }
-                        showClearDialog = false
-                    },
-                ) { Text("清空") }
-            },
-            dismissButton = {
-                androidx.compose.material3.TextButton(onClick = { showClearDialog = false }) {
-                    Text("取消")
-                }
-            },
-        )
-    }
+    MiuixConfirmDialog(
+        show = showClearDialog,
+        title = "清空屏蔽记录",
+        summary = "确定要清空所有屏蔽记录吗？此操作不可撤销。",
+        confirmText = "清空",
+        onConfirm = {
+            coroutineScope.launch { dao.clearAll() }
+            showClearDialog = false
+        },
+        onDismiss = { showClearDialog = false },
+    )
 }

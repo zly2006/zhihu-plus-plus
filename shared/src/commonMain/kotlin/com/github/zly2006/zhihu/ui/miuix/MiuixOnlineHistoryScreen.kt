@@ -19,7 +19,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -44,6 +43,7 @@ import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.components.AutoHideTopBar
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixConfirmDialog
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixListLoadingIndicator
@@ -169,30 +169,22 @@ fun MiuixOnlineHistoryScreen(showBackButton: Boolean = false) {
             }
         },
     ) { padding ->
-        if (showClearHistoryDialog) {
-            AlertDialog(
-                onDismissRequest = { showClearHistoryDialog = false },
-                title = { Text("确认清除历史记录") },
-                text = { Text("此操作会清除当前账号的在线和本地的全部历史记录。") },
-                confirmButton = {
-                    androidx.compose.material3.TextButton(onClick = {
-                        showClearHistoryDialog = false
-                        coroutineScope.launch {
-                            environment.clearAllHistory()
-                            viewModel.displayItems.clear()
-                            userMessages.showShortMessage("已清除所有历史记录")
-                        }
-                    }) {
-                        Text("确认")
-                    }
-                },
-                dismissButton = {
-                    androidx.compose.material3.TextButton(onClick = { showClearHistoryDialog = false }) {
-                        Text("我再想想")
-                    }
-                },
-            )
-        }
+        MiuixConfirmDialog(
+            show = showClearHistoryDialog,
+            title = "确认清除历史记录",
+            summary = "此操作会清除当前账号的在线和本地的全部历史记录。",
+            confirmText = "确认",
+            cancelText = "我再想想",
+            onConfirm = {
+                showClearHistoryDialog = false
+                coroutineScope.launch {
+                    environment.clearAllHistory()
+                    viewModel.displayItems.clear()
+                    userMessages.showShortMessage("已清除所有历史记录")
+                }
+            },
+            onDismiss = { showClearHistoryDialog = false },
+        )
 
         PullToRefresh(
             isRefreshing = viewModel.isPullToRefresh && viewModel.isLoading,

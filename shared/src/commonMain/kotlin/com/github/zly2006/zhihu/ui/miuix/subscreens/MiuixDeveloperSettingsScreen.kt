@@ -17,9 +17,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,6 +49,8 @@ import com.github.zly2006.zhihu.ui.subscreens.parseCookieString
 import com.github.zly2006.zhihu.ui.subscreens.rememberDeveloperSettingsRuntime
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -59,12 +58,15 @@ import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
+import top.yukonga.miuix.kmp.window.WindowDialog
 
 @Composable
 fun MiuixDeveloperSettingsScreen() {
@@ -249,12 +251,14 @@ fun MiuixDeveloperSettingsScreen() {
                         onClick = { showGithubToken = !showGithubToken },
                     )
                     if (showGithubToken) {
-                        OutlinedTextField(
+                        TextField(
                             value = githubToken,
                             onValueChange = {
                                 githubToken = it
                                 settings.putString("githubToken", it)
                             },
+                            label = "GitHub Token",
+                            useLabelAsPlaceholder = true,
                             visualTransformation = if (showGithubToken) VisualTransformation.None else PasswordVisualTransformation(),
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                             singleLine = true,
@@ -275,12 +279,14 @@ fun MiuixDeveloperSettingsScreen() {
                         onClick = { showZse96 = !showZse96 },
                     )
                     if (showZse96) {
-                        OutlinedTextField(
+                        TextField(
                             value = zse96Key,
                             onValueChange = {
                                 zse96Key = it
                                 settings.putString("zse96_key", it)
                             },
+                            label = "ZSE-96 签名密钥",
+                            useLabelAsPlaceholder = true,
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                             singleLine = true,
                         )
@@ -297,19 +303,19 @@ fun MiuixDeveloperSettingsScreen() {
                     ArrowPreference(title = "设备信息", onClick = { showDeviceInfo = !showDeviceInfo })
 
                     var showClipboardDebug by remember { mutableStateOf(false) }
-                    if (showClipboardDebug) {
-                        AlertDialog(
-                            onDismissRequest = { showClipboardDebug = false },
-                            title = { Text("剪贴板调试") },
-                            text = {
-                                Column {
-                                    Text("当前剪贴板内容：")
-                                    Spacer(Modifier.height(8.dp))
-                                    Text(diagnostics.readClipboardText() ?: "(空)", color = MiuixTheme.colorScheme.onSurface)
-                                }
-                            },
-                            confirmButton = { TextButton(onClick = { showClipboardDebug = false }) { Text("关闭") } },
-                        )
+                    WindowDialog(
+                        show = showClipboardDebug,
+                        title = "剪贴板调试",
+                        summary = "当前剪贴板内容：",
+                        onDismissRequest = { showClipboardDebug = false },
+                    ) {
+                        Column {
+                            Text(diagnostics.readClipboardText() ?: "(空)", color = MiuixTheme.colorScheme.onSurface)
+                            Spacer(Modifier.height(16.dp))
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                                TextButton(text = "关闭", onClick = { showClipboardDebug = false })
+                            }
+                        }
                     }
                     ArrowPreference(title = "剪贴板调试", onClick = { showClipboardDebug = true })
 
@@ -326,35 +332,42 @@ fun MiuixDeveloperSettingsScreen() {
         }
     }
 
-    if (showCookieDialog) {
-        var cookieInputText by remember { mutableStateOf("") }
-        AlertDialog(
-            onDismissRequest = {
-                showCookieDialog = false
-                cookieInputText = ""
-            },
-            title = { Text("手动设置 Cookie") },
-            text = {
-                Column {
-                    Text("请输入完整 Cookie 字符串，使用 \";\" 分割各个 cookie 项。")
-                    Spacer(Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = cookieInputText,
-                        onValueChange = { cookieInputText = it },
-                        label = { Text("Cookie 字符串") },
-                        visualTransformation = PasswordVisualTransformation(),
-                        modifier = Modifier.fillMaxWidth(),
-                        maxLines = 5,
-                    )
-                }
-            },
-            confirmButton = {
+    var cookieInputText by remember { mutableStateOf("") }
+    WindowDialog(
+        show = showCookieDialog,
+        title = "手动设置 Cookie",
+        summary = "请输入完整 Cookie 字符串，使用 \";\" 分割各个 cookie 项。",
+        onDismissRequest = {
+            showCookieDialog = false
+            cookieInputText = ""
+        },
+    ) {
+        Column {
+            TextField(
+                value = cookieInputText,
+                onValueChange = { cookieInputText = it },
+                label = "Cookie 字符串",
+                useLabelAsPlaceholder = true,
+                visualTransformation = PasswordVisualTransformation(),
+                modifier = Modifier.fillMaxWidth(),
+                maxLines = 5,
+            )
+            Spacer(Modifier.height(16.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 TextButton(
+                    text = "取消",
+                    onClick = {
+                        showCookieDialog = false
+                        cookieInputText = ""
+                    },
+                    modifier = Modifier.weight(1f),
+                )
+                Button(
                     onClick = {
                         val cookies = parseCookieString(cookieInputText)
                         if (cookies.isEmpty()) {
                             userMessages.showShortMessage("未能解析有效的 Cookie 数据")
-                            return@TextButton
+                            return@Button
                         }
                         runtime.saveCookies(cookies)
                         coroutineScope.launch {
@@ -367,57 +380,61 @@ fun MiuixDeveloperSettingsScreen() {
                         showCookieDialog = false
                         cookieInputText = ""
                     },
-                ) { Text("确认设置") }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        showCookieDialog = false
-                        cookieInputText = ""
-                    },
-                ) { Text("取消") }
-            },
-        )
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColorsPrimary(),
+                ) { Text("确认设置", color = androidx.compose.ui.graphics.Color.White) }
+            }
+        }
     }
 
-    if (showSignedRequestDialog) {
-        var urlInput by remember { mutableStateOf(ZHIHU_ME_URL) }
-        var responseText by remember { mutableStateOf("") }
-        var isLoading by remember { mutableStateOf(false) }
-        AlertDialog(
-            onDismissRequest = {
-                showSignedRequestDialog = false
-                urlInput = ZHIHU_ME_URL
-                responseText = ""
-                isLoading = false
-            },
-            title = { Text("签名 GET 请求") },
-            text = {
-                Column {
-                    Text("输入需要签名的 GET 请求 URL，将自动添加签名头并发送请求。")
-                    Spacer(Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = urlInput,
-                        onValueChange = { urlInput = it },
-                        label = { Text("请求 URL") },
-                        modifier = Modifier.fillMaxWidth(),
-                        maxLines = 3,
-                        enabled = !isLoading,
-                    )
-                    if (responseText.isNotEmpty()) {
-                        Spacer(Modifier.height(12.dp))
-                        SelectionContainer {
-                            Text(responseText, fontSize = 12.sp)
-                        }
-                    }
+    var urlInput by remember { mutableStateOf(ZHIHU_ME_URL) }
+    var responseText by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
+    WindowDialog(
+        show = showSignedRequestDialog,
+        title = "签名 GET 请求",
+        summary = "输入需要签名的 GET 请求 URL，将自动添加签名头并发送请求。",
+        onDismissRequest = {
+            showSignedRequestDialog = false
+            urlInput = ZHIHU_ME_URL
+            responseText = ""
+            isLoading = false
+        },
+    ) {
+        Column {
+            TextField(
+                value = urlInput,
+                onValueChange = { urlInput = it },
+                label = "请求 URL",
+                useLabelAsPlaceholder = true,
+                modifier = Modifier.fillMaxWidth(),
+                maxLines = 3,
+                enabled = !isLoading,
+            )
+            if (responseText.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                SelectionContainer {
+                    Text(responseText, fontSize = 12.sp, color = MiuixTheme.colorScheme.onSurface)
                 }
-            },
-            confirmButton = {
+            }
+            Spacer(Modifier.height(16.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 TextButton(
+                    text = "关闭",
+                    onClick = {
+                        showSignedRequestDialog = false
+                        urlInput = ZHIHU_ME_URL
+                        responseText = ""
+                        isLoading = false
+                    },
+                    enabled = !isLoading,
+                    modifier = Modifier.weight(1f),
+                )
+                Button(
                     onClick = {
                         if (urlInput.isBlank() || isLoading) {
                             userMessages.showShortMessage("请输入有效的 URL")
-                            return@TextButton
+                            return@Button
                         }
                         isLoading = true
                         coroutineScope.launch {
@@ -435,20 +452,11 @@ fun MiuixDeveloperSettingsScreen() {
                         }
                     },
                     enabled = !isLoading,
-                ) { Text(if (isLoading) "请求中..." else "发送请求") }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        showSignedRequestDialog = false
-                        urlInput = ZHIHU_ME_URL
-                        responseText = ""
-                        isLoading = false
-                    },
-                    enabled = !isLoading,
-                ) { Text("关闭") }
-            },
-        )
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColorsPrimary(),
+                ) { Text(if (isLoading) "请求中..." else "发送请求", color = androidx.compose.ui.graphics.Color.White) }
+            }
+        }
     }
 }
 
