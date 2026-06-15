@@ -170,18 +170,21 @@ class FeedDisplayFilterPipelineTest {
             recordDao = fixture.database.blockedContentRecordDao(),
             semanticMatcher = semanticMatcher,
         )
-        keywordService.addNLPPhrase("semantic phrase")
+        fixture.database.blockedKeywordDao().insertKeyword(
+            BlockedKeyword(
+                keyword = "semantic phrase",
+                keywordType = KeywordType.NLP_SEMANTIC.name,
+            ),
+        )
 
         val result = FeedDisplayFilterPipeline(
             settings = FeedFilterSettings(),
             contentDetailProvider = provider(1L to article("semantic", content = "<p>semantic body</p>")),
             contentFilterPipeline = FeedContentFilterPipeline(
                 settings = FeedFilterSettings(),
-                blocklistService = BlocklistService(
-                    keywordDao = fixture.database.blockedKeywordDao(),
-                    userDao = fixture.database.blockedUserDao(),
-                    topicDao = fixture.database.blockedTopicDao(),
-                ),
+                blockedKeywordDao = fixture.database.blockedKeywordDao(),
+                blockedUserDao = fixture.database.blockedUserDao(),
+                blockedTopicDao = fixture.database.blockedTopicDao(),
                 blockedKeywordService = keywordService,
             ),
             blockedFeedRecordDao = fixture.database.blockedFeedRecordDao(),
@@ -217,11 +220,9 @@ class FeedDisplayFilterPipelineTest {
             contentDetailProvider = detailProvider,
             contentFilterPipeline = FeedContentFilterPipeline(
                 settings = settings,
-                blocklistService = BlocklistService(
-                    keywordDao = database.blockedKeywordDao(),
-                    userDao = database.blockedUserDao(),
-                    topicDao = database.blockedTopicDao(),
-                ),
+                blockedKeywordDao = database.blockedKeywordDao(),
+                blockedUserDao = database.blockedUserDao(),
+                blockedTopicDao = database.blockedTopicDao(),
                 blockedKeywordService = BlockedKeywordService(
                     keywordDao = database.blockedKeywordDao(),
                     recordDao = database.blockedContentRecordDao(),

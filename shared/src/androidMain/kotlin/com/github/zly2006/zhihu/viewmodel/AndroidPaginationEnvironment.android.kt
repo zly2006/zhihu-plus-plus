@@ -61,7 +61,7 @@ import com.github.zly2006.zhihu.util.exportCollectionItemsToZip
 import com.github.zly2006.zhihu.util.saveBitmapToGallery
 import com.github.zly2006.zhihu.viewmodel.filter.AndroidContentFilterRuntime
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeywordService
-import com.github.zly2006.zhihu.viewmodel.filter.BlocklistService
+import com.github.zly2006.zhihu.viewmodel.filter.BlockedUser
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterManager
 import com.github.zly2006.zhihu.viewmodel.filter.ContentType
 import com.github.zly2006.zhihu.viewmodel.filter.FeedContentFilterPipeline
@@ -195,21 +195,15 @@ open class SharedAndroidPaginationEnvironment(
 
     override suspend fun isUserBlocked(userId: String): Boolean =
         getContentFilterDatabase(context).let { database ->
-            BlocklistService(
-                keywordDao = database.blockedKeywordDao(),
-                userDao = database.blockedUserDao(),
-                topicDao = database.blockedTopicDao(),
-            ).isUserBlocked(userId)
+            database.blockedUserDao().isUserBlocked(userId)
         }
 
     override fun blockedUserIds(): Set<String> =
         kotlinx.coroutines.runBlocking {
             val database = getContentFilterDatabase(context)
-            BlocklistService(
-                keywordDao = database.blockedKeywordDao(),
-                userDao = database.blockedUserDao(),
-                topicDao = database.blockedTopicDao(),
-            ).getAllBlockedUsers()
+            database
+                .blockedUserDao()
+                .getAllUsers()
                 .map { it.userId }
                 .toSet()
         }
@@ -221,25 +215,19 @@ open class SharedAndroidPaginationEnvironment(
         avatarUrl: String?,
     ) {
         val database = getContentFilterDatabase(context)
-        BlocklistService(
-            keywordDao = database.blockedKeywordDao(),
-            userDao = database.blockedUserDao(),
-            topicDao = database.blockedTopicDao(),
-        ).addBlockedUser(
-            userId = userId,
-            userName = userName,
-            urlToken = urlToken,
-            avatarUrl = avatarUrl,
+        database.blockedUserDao().insertUser(
+            BlockedUser(
+                userId = userId,
+                userName = userName,
+                urlToken = urlToken,
+                avatarUrl = avatarUrl,
+            ),
         )
     }
 
     override suspend fun removeBlockedUser(userId: String) {
         val database = getContentFilterDatabase(context)
-        BlocklistService(
-            keywordDao = database.blockedKeywordDao(),
-            userDao = database.blockedUserDao(),
-            topicDao = database.blockedTopicDao(),
-        ).removeBlockedUser(userId)
+        database.blockedUserDao().deleteUserById(userId)
     }
 
     override suspend fun recordContentOpenEvent(
@@ -272,11 +260,9 @@ open class SharedAndroidPaginationEnvironment(
             contentDetailProvider = this::getOrFetchContentDetail,
             contentFilterPipeline = FeedContentFilterPipeline(
                 settings = filterSettings,
-                blocklistService = BlocklistService(
-                    keywordDao = filterDatabase.blockedKeywordDao(),
-                    userDao = filterDatabase.blockedUserDao(),
-                    topicDao = filterDatabase.blockedTopicDao(),
-                ),
+                blockedKeywordDao = filterDatabase.blockedKeywordDao(),
+                blockedUserDao = filterDatabase.blockedUserDao(),
+                blockedTopicDao = filterDatabase.blockedTopicDao(),
                 blockedKeywordService = BlockedKeywordService(
                     keywordDao = filterDatabase.blockedKeywordDao(),
                     recordDao = filterDatabase.blockedContentRecordDao(),

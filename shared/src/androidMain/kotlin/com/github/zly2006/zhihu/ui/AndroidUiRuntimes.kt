@@ -66,8 +66,9 @@ import com.github.zly2006.zhihu.util.shareImage
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.filter.BlocklistService
+import com.github.zly2006.zhihu.viewmodel.filter.encodeBlocklistBackup
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
+import com.github.zly2006.zhihu.viewmodel.filter.importBlocklistBackupFromJsonText
 import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.notificationEnvironment
 import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
@@ -347,14 +348,7 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
     userMessages: UserMessageSink,
 ): BlocklistSettingsRuntime {
     val context = LocalContext.current
-    val blocklistService = remember(context) {
-        val database = getContentFilterDatabase(context)
-        BlocklistService(
-            keywordDao = database.blockedKeywordDao(),
-            userDao = database.blockedUserDao(),
-            topicDao = database.blockedTopicDao(),
-        )
-    }
+    val database = remember(context) { getContentFilterDatabase(context) }
     val coroutineScope = rememberCoroutineScope()
     var importCallback by remember { mutableStateOf<((String) -> Unit)?>(null) }
     val importLauncher = rememberLauncherForActivityResult(
@@ -369,7 +363,12 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
                             ?.bufferedReader()
                             ?.readText()
                             ?: return@withContext "读取文件失败"
-                        blocklistService.importAllBlocklistFromJsonText(text)
+                        importBlocklistBackupFromJsonText(
+                            keywordDao = database.blockedKeywordDao(),
+                            userDao = database.blockedUserDao(),
+                            topicDao = database.blockedTopicDao(),
+                            text = text,
+                        )
                     }
                     importCallback?.invoke(summary)
                 } catch (e: Exception) {
@@ -379,7 +378,7 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
             }
         }
     }
-    return remember(context, blocklistService, userMessages, importLauncher) {
+    return remember(context, database, userMessages, importLauncher) {
         BlocklistSettingsRuntime(
             requestImport = { onImported ->
                 importCallback = onImported
@@ -389,7 +388,13 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
                 val file = withContext(Dispatchers.IO) {
                     val dir = context.getExternalFilesDir(null) ?: context.filesDir
                     val file = File(dir, "zhihupp_blocklist.json")
-                    file.writeText(blocklistService.encodeAllBlocklistToJson())
+                    file.writeText(
+                        encodeBlocklistBackup(
+                            keywordDao = database.blockedKeywordDao(),
+                            userDao = database.blockedUserDao(),
+                            topicDao = database.blockedTopicDao(),
+                        ),
+                    )
                     file
                 }
                 val intent = Intent().apply {

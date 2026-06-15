@@ -37,7 +37,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.graphics.drawable.toDrawable
 import androidx.core.net.toUri
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.nlp.BlockedKeywordRepository
 import com.github.zly2006.zhihu.shared.data.SegmentInfoMeta
 import com.github.zly2006.zhihu.shared.nlp.KeywordAnalyzerCore
 import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
@@ -52,6 +51,9 @@ import com.github.zly2006.zhihu.viewmodel.feed.handleBlockByKeywords
 import com.github.zly2006.zhihu.viewmodel.feed.handleBlockTopic
 import com.github.zly2006.zhihu.viewmodel.feed.handleBlockUser
 import com.github.zly2006.zhihu.viewmodel.filter.AndroidContentFilterRuntime
+import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeyword
+import com.github.zly2006.zhihu.viewmodel.filter.KeywordType
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.delete
@@ -227,8 +229,8 @@ actual fun rememberShareDialogRuntime(): ShareDialogRuntime {
 @Composable
 actual fun rememberBlockByKeywordsRuntime(): BlockByKeywordsRuntime {
     val context = LocalContext.current
-    val repository = remember { BlockedKeywordRepository(context) }
-    return remember(repository) {
+    val database = remember(context) { getContentFilterDatabase(context) }
+    return remember(database) {
         BlockByKeywordsRuntime(
             extractKeywords = { title, excerpt ->
                 KeywordAnalyzerCore.extractFromFeedWithWeight(
@@ -240,7 +242,12 @@ actual fun rememberBlockByKeywordsRuntime(): BlockByKeywordsRuntime {
                 )
             },
             addNlpPhrase = { phrase ->
-                repository.addNLPPhrase(phrase)
+                database.blockedKeywordDao().insertKeyword(
+                    BlockedKeyword(
+                        keyword = phrase.trim(),
+                        keywordType = KeywordType.NLP_SEMANTIC.name,
+                    ),
+                )
             },
         )
     }

@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.viewmodel.filter
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import kotlin.time.Clock
 
 @Serializable
@@ -55,3 +56,77 @@ data class TopicBackup(
     val topicId: String,
     val topicName: String,
 )
+
+data class BlocklistStats(
+    val keywordCount: Int,
+    val userCount: Int,
+    val topicCount: Int,
+)
+
+private val blocklistBackupJson = Json {
+    ignoreUnknownKeys = true
+    prettyPrint = true
+}
+
+suspend fun encodeBlocklistBackup(
+    keywordDao: BlockedKeywordDao,
+    userDao: BlockedUserDao,
+    topicDao: BlockedTopicDao,
+): String {
+    val allKeywords = keywordDao.getAllKeywords()
+    val users = userDao.getAllUsers()
+    val topics = topicDao.getAllTopics()
+
+    val backup = BlocklistBackup(
+        keywords = allKeywords
+            .filter { it.getKeywordTypeEnum() == KeywordType.EXACT_MATCH }
+            .map { KeywordBackup(it.keyword, it.caseSensitive, it.isRegex) },
+        nlpKeywords = allKeywords
+            .filter { it.getKeywordTypeEnum() == KeywordType.NLP_SEMANTIC }
+            .map { NlpKeywordBackup(it.keyword) },
+        users = users.map { UserBackup(it.userId, it.userName, it.urlToken ?: "", it.avatarUrl ?: "") },
+        topics = topics.map { TopicBackup(it.topicId, it.topicName) },
+    )
+
+    return blocklistBackupJson.encodeToString(BlocklistBackup.serializer(), backup)
+}
+
+suspend fun importBlocklistBackupFromJsonText(
+    keywordDao: BlockedKeywordDao,
+    userDao: BlockedUserDao,
+    topicDao: BlockedTopicDao,
+    text: String,
+): String {
+    val backup = blocklistBackupJson.decodeFromString(BlocklistBackup.serializer(), text)
+
+    backup.keywords.filter { it.keyword.isNotBlank() }.forEach { kw ->
+        keywordDao.insertKeyword(
+            BlockedKeyword(
+                keyword = kw.keyword,
+                keywordType = KeywordType.EXACT_MATCH.name,
+                caseSensitive = kw.caseSensitive,
+                isRegex = kw.isRegex,
+            ),
+        )
+    }
+    backup.nlpKeywords.filter { it.keyword.isNotBlank() }.forEach { kw ->
+        keywordDao.insertKeyword(
+            BlockedKeyword(keyword = kw.keyword, keywordType = KeywordType.NLP_SEMANTIC.name),
+        )
+    }
+    backup.users.filter { it.userId.isNotBlank() }.forEach { user ->
+        userDao.insertUser(
+            BlockedUser(
+                userId = user.userId,
+                userName = user.userName,
+                urlToken = user.urlToken.takeIf { it.isNotBlank() },
+                avatarUrl = user.avatarUrl.takeIf { it.isNotBlank() },
+            ),
+        )
+    }
+    backup.topics.filter { it.topicId.isNotBlank() }.forEach { topic ->
+        topicDao.insertTopic(BlockedTopic(topicId = topic.topicId, topicName = topic.topicName))
+    }
+
+    return "关键词 ${backup.keywords.size} · NLP ${backup.nlpKeywords.size} · 用户 ${backup.users.size} · 主题 ${backup.topics.size}"
+}

@@ -57,7 +57,7 @@ import com.github.zly2006.zhihu.ui.QuestionScreen
 import com.github.zly2006.zhihu.ui.QuestionScreenTestOverrides
 import com.github.zly2006.zhihu.ui.QuestionScreenUiState
 import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.filter.BlocklistService
+import com.github.zly2006.zhihu.viewmodel.filter.BlockedUser
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.paginationEnvironment
 import kotlinx.coroutines.runBlocking
@@ -80,21 +80,13 @@ class QuestionScreenInstrumentedTest {
     fun setUp() = runBlocking {
         composeRule.resetAppPreferences()
         val database = getContentFilterDatabase(composeRule.activity)
-        BlocklistService(
-            keywordDao = database.blockedKeywordDao(),
-            userDao = database.blockedUserDao(),
-            topicDao = database.blockedTopicDao(),
-        ).clearAllBlockedUsers()
+        database.blockedUserDao().clearAllUsers()
     }
 
     @After
     fun tearDown() = runBlocking {
         val database = getContentFilterDatabase(composeRule.activity)
-        BlocklistService(
-            keywordDao = database.blockedKeywordDao(),
-            userDao = database.blockedUserDao(),
-            topicDao = database.blockedTopicDao(),
-        ).clearAllBlockedUsers()
+        database.blockedUserDao().clearAllUsers()
     }
 
     @Test
@@ -218,11 +210,7 @@ class QuestionScreenInstrumentedTest {
         val viewModel = TestableQuestionFeedViewModel(123456789L)
         runBlocking {
             val database = getContentFilterDatabase(composeRule.activity)
-            BlocklistService(
-                keywordDao = database.blockedKeywordDao(),
-                userDao = database.blockedUserDao(),
-                topicDao = database.blockedTopicDao(),
-            ).addBlockedUser("blocked-answer-author", "被屏蔽回答作者")
+            database.blockedUserDao().insertUser(BlockedUser("blocked-answer-author", "被屏蔽回答作者"))
             viewModel.processForTest(
                 composeRule.activity,
                 listOf(

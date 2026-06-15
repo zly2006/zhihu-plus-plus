@@ -45,7 +45,7 @@ import com.github.zly2006.zhihu.util.buildCollectionExportZipFileName
 import com.github.zly2006.zhihu.util.sanitizeArticleExportFileNamePart
 import com.github.zly2006.zhihu.viewmodel.CollectionItem
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeywordService
-import com.github.zly2006.zhihu.viewmodel.filter.BlocklistService
+import com.github.zly2006.zhihu.viewmodel.filter.BlockedUser
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterManager
 import com.github.zly2006.zhihu.viewmodel.filter.ContentType
@@ -167,19 +167,13 @@ class DesktopPaginationEnvironment(
     }
 
     override suspend fun isUserBlocked(userId: String): Boolean =
-        BlocklistService(
-            keywordDao = contentFilterDb.blockedKeywordDao(),
-            userDao = contentFilterDb.blockedUserDao(),
-            topicDao = contentFilterDb.blockedTopicDao(),
-        ).isUserBlocked(userId)
+        contentFilterDb.blockedUserDao().isUserBlocked(userId)
 
     override fun blockedUserIds(): Set<String> =
         runBlocking {
-            BlocklistService(
-                keywordDao = contentFilterDb.blockedKeywordDao(),
-                userDao = contentFilterDb.blockedUserDao(),
-                topicDao = contentFilterDb.blockedTopicDao(),
-            ).getAllBlockedUsers()
+            contentFilterDb
+                .blockedUserDao()
+                .getAllUsers()
                 .map { it.userId }
                 .toSet()
         }
@@ -190,24 +184,18 @@ class DesktopPaginationEnvironment(
         urlToken: String?,
         avatarUrl: String?,
     ) {
-        BlocklistService(
-            keywordDao = contentFilterDb.blockedKeywordDao(),
-            userDao = contentFilterDb.blockedUserDao(),
-            topicDao = contentFilterDb.blockedTopicDao(),
-        ).addBlockedUser(
-            userId = userId,
-            userName = userName,
-            urlToken = urlToken,
-            avatarUrl = avatarUrl,
+        contentFilterDb.blockedUserDao().insertUser(
+            BlockedUser(
+                userId = userId,
+                userName = userName,
+                urlToken = urlToken,
+                avatarUrl = avatarUrl,
+            ),
         )
     }
 
     override suspend fun removeBlockedUser(userId: String) {
-        BlocklistService(
-            keywordDao = contentFilterDb.blockedKeywordDao(),
-            userDao = contentFilterDb.blockedUserDao(),
-            topicDao = contentFilterDb.blockedTopicDao(),
-        ).removeBlockedUser(userId)
+        contentFilterDb.blockedUserDao().deleteUserById(userId)
     }
 
     override suspend fun recordContentOpenEvent(
@@ -245,11 +233,9 @@ class DesktopPaginationEnvironment(
             contentDetailProvider = ContentDetailProvider(::getOrFetchContentDetail),
             contentFilterPipeline = FeedContentFilterPipeline(
                 settings = settings,
-                blocklistService = BlocklistService(
-                    keywordDao = contentFilterDb.blockedKeywordDao(),
-                    userDao = contentFilterDb.blockedUserDao(),
-                    topicDao = contentFilterDb.blockedTopicDao(),
-                ),
+                blockedKeywordDao = contentFilterDb.blockedKeywordDao(),
+                blockedUserDao = contentFilterDb.blockedUserDao(),
+                blockedTopicDao = contentFilterDb.blockedTopicDao(),
                 blockedKeywordService = BlockedKeywordService(
                     keywordDao = contentFilterDb.blockedKeywordDao(),
                     recordDao = contentFilterDb.blockedContentRecordDao(),

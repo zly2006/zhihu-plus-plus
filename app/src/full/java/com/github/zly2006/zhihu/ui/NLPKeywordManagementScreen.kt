@@ -75,14 +75,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.github.zly2006.zhihu.nlp.BlockedKeywordRepository
 import com.github.zly2006.zhihu.nlp.ModelState
 import com.github.zly2006.zhihu.nlp.NLPService
 import com.github.zly2006.zhihu.nlp.SentenceEmbeddingManager
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedContentRecord
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeyword
+import com.github.zly2006.zhihu.viewmodel.filter.KeywordType
+import com.github.zly2006.zhihu.viewmodel.filter.MatchedKeywordInfo
 import com.github.zly2006.zhihu.viewmodel.filter.contentFilterSettings
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.Json
 
 private const val NLP_KEYWORD_MANAGEMENT_TAG = "NLPKeywordManagement"
 
@@ -98,7 +104,7 @@ fun NLPKeywordManagementScreen(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val repository = remember { BlockedKeywordRepository(context) }
+    val database = remember(context) { getContentFilterDatabase(context) }
     val modelState by SentenceEmbeddingManager.state.collectAsState()
 
     var isExtracting by remember { mutableStateOf(false) }
@@ -126,8 +132,15 @@ fun NLPKeywordManagementScreen(
     fun loadData() {
         coroutineScope.launch {
             try {
-                blockedKeywords = repository.getNLPSemanticKeywords()
-                blockedRecords = repository.getRecentBlockedRecords(100)
+                blockedKeywords = withContext(Dispatchers.IO) {
+                    database
+                        .blockedKeywordDao()
+                        .getAllKeywords()
+                        .filter { it.getKeywordTypeEnum() == KeywordType.NLP_SEMANTIC }
+                }
+                blockedRecords = withContext(Dispatchers.IO) {
+                    database.blockedContentRecordDao().getRecentBlockedRecords(100)
+                }
             } catch (e: Exception) {
                 Log.e(NLP_KEYWORD_MANAGEMENT_TAG, "Load NLP keyword data failed", e)
                 Toast.makeText(context, "加载失败: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -190,7 +203,14 @@ fun NLPKeywordManagementScreen(
                             try {
                                 // 将所有关键词组合成一个短语
                                 val phrase = extractedKeywords.joinToString(" ")
-                                repository.addNLPPhrase(phrase)
+                                withContext(Dispatchers.IO) {
+                                    database.blockedKeywordDao().insertKeyword(
+                                        BlockedKeyword(
+                                            keyword = phrase.trim(),
+                                            keywordType = KeywordType.NLP_SEMANTIC.name,
+                                        ),
+                                    )
+                                }
                                 Toast.makeText(context, "已添加短语: $phrase", Toast.LENGTH_SHORT).show()
                                 loadData()
                                 extractedKeywords = emptyList()
@@ -209,7 +229,9 @@ fun NLPKeywordManagementScreen(
                     onDeleteKeyword = { keyword ->
                         coroutineScope.launch {
                             try {
-                                repository.deleteKeyword(keyword)
+                                withContext(Dispatchers.IO) {
+                                    database.blockedKeywordDao().deleteKeyword(keyword)
+                                }
                                 Toast.makeText(context, "已删除", Toast.LENGTH_SHORT).show()
                                 loadData()
                             } catch (e: Exception) {
@@ -221,7 +243,9 @@ fun NLPKeywordManagementScreen(
                     onClearAll = {
                         coroutineScope.launch {
                             try {
-                                repository.clearAllKeywords()
+                                withContext(Dispatchers.IO) {
+                                    database.blockedKeywordDao().clearAllKeywords()
+                                }
                                 Toast.makeText(context, "已清空所有NLP短语", Toast.LENGTH_SHORT).show()
                                 loadData()
                             } catch (e: Exception) {
@@ -252,11 +276,12 @@ fun NLPKeywordManagementScreen(
                 )
                 1 -> BlockedRecordsTab(
                     records = blockedRecords,
-                    repository = repository,
                     onDeleteRecord = { record ->
                         coroutineScope.launch {
                             try {
-                                repository.deleteBlockedRecord(record.id)
+                                withContext(Dispatchers.IO) {
+                                    database.blockedContentRecordDao().deleteRecord(record.id)
+                                }
                                 Toast.makeText(context, "已删除记录", Toast.LENGTH_SHORT).show()
                                 loadData()
                             } catch (e: Exception) {
@@ -268,7 +293,9 @@ fun NLPKeywordManagementScreen(
                     onClearAll = {
                         coroutineScope.launch {
                             try {
-                                repository.clearAllBlockedRecords()
+                                withContext(Dispatchers.IO) {
+                                    database.blockedContentRecordDao().clearAllRecords()
+                                }
                                 Toast.makeText(context, "已清空所有记录", Toast.LENGTH_SHORT).show()
                                 loadData()
                             } catch (e: Exception) {
@@ -289,7 +316,14 @@ fun NLPKeywordManagementScreen(
             onConfirm = { phrase ->
                 coroutineScope.launch {
                     try {
-                        repository.addNLPPhrase(phrase)
+                        withContext(Dispatchers.IO) {
+                            database.blockedKeywordDao().insertKeyword(
+                                BlockedKeyword(
+                                    keyword = phrase.trim(),
+                                    keywordType = KeywordType.NLP_SEMANTIC.name,
+                                ),
+                            )
+                        }
                         Toast.makeText(context, "已添加短语", Toast.LENGTH_SHORT).show()
                         loadData()
                         showAddDialog = false
@@ -314,7 +348,9 @@ fun NLPKeywordManagementScreen(
                 coroutineScope.launch {
                     try {
                         val updated = keywordToEdit!!.copy(keyword = newPhrase.trim())
-                        repository.updateKeyword(updated)
+                        withContext(Dispatchers.IO) {
+                            database.blockedKeywordDao().insertKeyword(updated)
+                        }
                         Toast.makeText(context, "已更新短语", Toast.LENGTH_SHORT).show()
                         loadData()
                         showEditDialog = false
@@ -642,7 +678,6 @@ fun NLPPhraseManagementTab(
 @Composable
 fun BlockedRecordsTab(
     records: List<BlockedContentRecord>,
-    repository: BlockedKeywordRepository,
     onDeleteRecord: (BlockedContentRecord) -> Unit,
     onClearAll: () -> Unit,
 ) {
@@ -694,7 +729,6 @@ fun BlockedRecordsTab(
             items(records) { record ->
                 BlockedRecordItem(
                     record = record,
-                    repository = repository,
                     onDelete = { onDeleteRecord(record) },
                 )
             }
@@ -705,12 +739,19 @@ fun BlockedRecordsTab(
 @Composable
 fun BlockedRecordItem(
     record: BlockedContentRecord,
-    repository: BlockedKeywordRepository,
     onDelete: () -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     val matchedKeywords = remember(record.matchedKeywords) {
-        repository.parseMatchedKeywords(record.matchedKeywords)
+        runCatching {
+            Json.decodeFromString(
+                ListSerializer(MatchedKeywordInfo.serializer()),
+                record.matchedKeywords,
+            )
+        }.getOrElse { e ->
+            Log.e(NLP_KEYWORD_MANAGEMENT_TAG, "Failed to parse matched keywords", e)
+            emptyList()
+        }
     }
 
     Card(

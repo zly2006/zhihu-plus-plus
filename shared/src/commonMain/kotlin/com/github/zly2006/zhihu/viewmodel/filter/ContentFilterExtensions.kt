@@ -86,7 +86,9 @@ data class FeedContentFilterResult(
 
 class FeedContentFilterPipeline(
     private val settings: FeedFilterSettings,
-    private val blocklistService: BlocklistService,
+    private val blockedKeywordDao: BlockedKeywordDao,
+    private val blockedUserDao: BlockedUserDao,
+    private val blockedTopicDao: BlockedTopicDao,
     private val blockedKeywordService: BlockedKeywordService,
     private val htmlToText: (String) -> String = { html -> Ksoup.parse(html).text() },
     private val onNlpBlocked: suspend (List<FilterableContent>) -> Unit = {},
@@ -96,16 +98,21 @@ class FeedContentFilterPipeline(
         var filteredContents = contents
 
         if (settings.enableUserBlocking) {
-            val (kept, removed) = filteredContents.partition { !blocklistService.isUserBlocked(it.authorId) }
+            val (kept, removed) = filteredContents.partition { content ->
+                content.authorId.isNullOrBlank() || !blockedUserDao.isUserBlocked(content.authorId)
+            }
             removed.forEach { blocked.add(it to "屏蔽作者：${it.authorName ?: it.authorId}") }
             filteredContents = kept
         }
 
         if (settings.enableKeywordBlocking) {
+            val exactKeywords = blockedKeywordDao
+                .getAllKeywords()
+                .filter { it.getKeywordTypeEnum() == KeywordType.EXACT_MATCH }
             val (kept, removed) = filteredContents.partition { content ->
-                !blocklistService.containsBlockedKeyword(content.title) &&
-                    !blocklistService.containsBlockedKeyword(content.summary ?: "") &&
-                    !blocklistService.containsBlockedKeyword(content.content ?: "")
+                !containsBlockedKeyword(content.title, exactKeywords) &&
+                    !containsBlockedKeyword(content.summary, exactKeywords) &&
+                    !containsBlockedKeyword(content.content, exactKeywords)
             }
             removed.forEach { blocked.add(it to "关键词屏蔽") }
             filteredContents = kept
@@ -151,14 +158,15 @@ class FeedContentFilterPipeline(
         if (settings.enableTopicBlocking) {
             filteredContents = filteredContents.filter { content ->
                 val topicIds = extractTopicIds(content.raw)
-                val kept = blocklistService.countBlockedTopics(topicIds) < settings.topicBlockingThreshold
+                val blockedTopicIds = topicIds
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.let { blockedTopicDao.getBlockedTopicIds(it) }
+                    .orEmpty()
+                val kept = blockedTopicIds.size < settings.topicBlockingThreshold
                 if (!kept) {
-                    val topicName = topicIds
-                        ?.first { topicId ->
-                            blocklistService.isTopicBlocked(topicId)
-                        }?.let { topicId ->
-                            blocklistService.getTopicName(topicId)
-                        }
+                    val topicName = blockedTopicIds
+                        .firstOrNull()
+                        ?.let { topicId -> blockedTopicDao.getTopicNameById(topicId) }
                     blocked.add(content to "屏蔽主题：$topicName")
                 }
                 kept
@@ -166,6 +174,30 @@ class FeedContentFilterPipeline(
         }
 
         return FeedContentFilterResult(filteredContents, blocked)
+    }
+}
+
+private fun containsBlockedKeyword(
+    text: String?,
+    keywords: List<BlockedKeyword>,
+): Boolean {
+    if (text.isNullOrBlank()) return false
+
+    return keywords.any { blockedKeyword ->
+        runCatching {
+            when {
+                blockedKeyword.isRegex -> {
+                    val pattern = if (blockedKeyword.caseSensitive) {
+                        Regex(blockedKeyword.keyword)
+                    } else {
+                        Regex(blockedKeyword.keyword, RegexOption.IGNORE_CASE)
+                    }
+                    pattern.containsMatchIn(text)
+                }
+                blockedKeyword.caseSensitive -> text.contains(blockedKeyword.keyword)
+                else -> text.contains(blockedKeyword.keyword, ignoreCase = true)
+            }
+        }.getOrDefault(false)
     }
 }
 

@@ -67,7 +67,7 @@ class BlocklistSettingsScreenInstrumentedTest {
         /*
          * Expected behavior:
          * 1. The screen must render the locally injected stats card, import button, export button,
-         *    and keyword tab contents without reaching BlocklistService or storage.
+         *    and keyword tab contents without reaching storage.
          * 2. Import and export buttons should call their injected callbacks exactly once each,
          *    which proves the top action row remains interactive in test mode.
          * 3. Switching to the NLP tab should hide the add FAB, render injected custom content, and
