@@ -77,20 +77,6 @@ import com.github.zly2006.zhihu.ui.PeopleScreen
 import com.github.zly2006.zhihu.ui.PeopleScreenTestOverrides
 import com.github.zly2006.zhihu.ui.PeopleScreenUiState
 import com.github.zly2006.zhihu.ui.PeopleSortedListUiState
-import com.github.zly2006.zhihu.ui.peopleScreenAnswerItemTag
-import com.github.zly2006.zhihu.ui.peopleScreenArticleItemTag
-import com.github.zly2006.zhihu.ui.peopleScreenCollectionItemTag
-import com.github.zly2006.zhihu.ui.peopleScreenColumnItemTag
-import com.github.zly2006.zhihu.ui.peopleScreenFollowedQuestionItemTag
-import com.github.zly2006.zhihu.ui.peopleScreenFollowedTopicItemTag
-import com.github.zly2006.zhihu.ui.peopleScreenFollowerActionTag
-import com.github.zly2006.zhihu.ui.peopleScreenFollowerItemTag
-import com.github.zly2006.zhihu.ui.peopleScreenFollowingActionTag
-import com.github.zly2006.zhihu.ui.peopleScreenFollowingItemTag
-import com.github.zly2006.zhihu.ui.peopleScreenPinItemTag
-import com.github.zly2006.zhihu.ui.peopleScreenQuestionItemTag
-import com.github.zly2006.zhihu.ui.peopleScreenSubscriptionTabTag
-import com.github.zly2006.zhihu.ui.peopleScreenTabTag
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -158,26 +144,26 @@ class PeopleScreenInstrumentedTest {
         composeRule.onNodeWithTag(PEOPLE_SCREEN_ANSWERS_LIST_TAG).assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_ANSWERS_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenAnswerItemTag(12)))
-        composeRule.onNodeWithTag(peopleScreenAnswerItemTag(12)).assertIsDisplayed()
+            .performScrollToNode(hasTestTag("people_screen_answer_item_12"))
+        composeRule.onNodeWithTag("people_screen_answer_item_12").assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_ANSWERS_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenAnswerItemTag(2)))
-        composeRule.onNodeWithTag(peopleScreenAnswerItemTag(2)).performClick()
+            .performScrollToNode(hasTestTag("people_screen_answer_item_2"))
+        composeRule.onNodeWithTag("people_screen_answer_item_2").performClick()
         assertEquals(listOf("created", "voteups"), answerSorts)
 
-        composeRule.onNodeWithTag(peopleScreenTabTag(1)).performClick()
+        composeRule.onNodeWithTag("people_screen_tab_1").performClick()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_ARTICLE_SORT_HOT_TAG).performClick()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_ARTICLE_SORT_TIME_TAG).performClick()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_ARTICLES_LIST_TAG).assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_ARTICLES_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenArticleItemTag(12)))
-        composeRule.onNodeWithTag(peopleScreenArticleItemTag(12)).assertIsDisplayed()
+            .performScrollToNode(hasTestTag("people_screen_article_item_12"))
+        composeRule.onNodeWithTag("people_screen_article_item_12").assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_ARTICLES_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenArticleItemTag(2)))
-        composeRule.onNodeWithTag(peopleScreenArticleItemTag(2)).performClick()
+            .performScrollToNode(hasTestTag("people_screen_article_item_2"))
+        composeRule.onNodeWithTag("people_screen_article_item_2").performClick()
         assertEquals(listOf("voteups", "created"), articleSorts)
 
         assertEquals(
@@ -221,7 +207,7 @@ class PeopleScreenInstrumentedTest {
             ),
         )
 
-        composeRule.onNodeWithTag(peopleScreenTabTag(2)).performClick()
+        composeRule.onNodeWithTag("people_screen_tab_2").performClick()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_ACTIVITIES_LIST_TAG).assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_ACTIVITIES_LIST_TAG)
@@ -233,73 +219,73 @@ class PeopleScreenInstrumentedTest {
             .performScrollToNode(hasTestTag("people_screen_activity_item_activity-2"))
         composeRule.onNodeWithTag("people_screen_activity_item_activity-2").performClick()
 
-        composeRule.onNodeWithTag(peopleScreenTabTag(3)).performClick()
+        composeRule.onNodeWithTag("people_screen_tab_3").performClick()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_COLLECTIONS_LIST_TAG).assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_COLLECTIONS_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenCollectionItemTag("collection-18")))
+            .performScrollToNode(hasTestTag("people_screen_collection_item_collection-18"))
         composeRule.waitUntilLoadMore("collections") { collectionsLoadMore }
         composeRule.onNodeWithTag(PEOPLE_SCREEN_COLLECTIONS_LIST_TAG).performVerticalSwipeCycle()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_COLLECTIONS_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenCollectionItemTag("collection-18")))
-        composeRule.onNodeWithTag(peopleScreenCollectionItemTag("collection-18")).assertIsDisplayed()
+            .performScrollToNode(hasTestTag("people_screen_collection_item_collection-18"))
+        composeRule.onNodeWithTag("people_screen_collection_item_collection-18").assertIsDisplayed()
 
-        composeRule.onNodeWithTag(peopleScreenTabTag(4)).performClick()
+        composeRule.onNodeWithTag("people_screen_tab_4").performClick()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_QUESTIONS_LIST_TAG).assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_QUESTIONS_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenQuestionItemTag(18)))
+            .performScrollToNode(hasTestTag("people_screen_question_item_18"))
         composeRule.waitUntilLoadMore("questions") { questionsLoadMore }
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_QUESTIONS_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenQuestionItemTag(2)))
-        composeRule.onNodeWithTag(peopleScreenQuestionItemTag(2)).performClick()
+            .performScrollToNode(hasTestTag("people_screen_question_item_2"))
+        composeRule.onNodeWithTag("people_screen_question_item_2").performClick()
 
-        composeRule.onNodeWithTag(peopleScreenTabTag(5)).performClick()
+        composeRule.onNodeWithTag("people_screen_tab_5").performClick()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_PINS_LIST_TAG).assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_PINS_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenPinItemTag("18")))
+            .performScrollToNode(hasTestTag("people_screen_pin_item_18"))
         composeRule.waitUntilLoadMore("pins") { pinsLoadMore }
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_PINS_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenPinItemTag("2")))
-        composeRule.onNodeWithTag(peopleScreenPinItemTag("2")).performClick()
+            .performScrollToNode(hasTestTag("people_screen_pin_item_2"))
+        composeRule.onNodeWithTag("people_screen_pin_item_2").performClick()
 
-        composeRule.onNodeWithTag(peopleScreenTabTag(6)).performClick()
+        composeRule.onNodeWithTag("people_screen_tab_6").performClick()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_COLUMNS_LIST_TAG).assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_COLUMNS_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenColumnItemTag("column-18")))
+            .performScrollToNode(hasTestTag("people_screen_column_item_column-18"))
         composeRule.waitUntilLoadMore("columns") { columnsLoadMore }
         composeRule.onNodeWithTag(PEOPLE_SCREEN_COLUMNS_LIST_TAG).performVerticalSwipeCycle()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_COLUMNS_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenColumnItemTag("column-18")))
-        composeRule.onNodeWithTag(peopleScreenColumnItemTag("column-18")).assertIsDisplayed()
+            .performScrollToNode(hasTestTag("people_screen_column_item_column-18"))
+        composeRule.onNodeWithTag("people_screen_column_item_column-18").assertIsDisplayed()
 
-        composeRule.onNodeWithTag(peopleScreenTabTag(7)).performClick()
+        composeRule.onNodeWithTag("people_screen_tab_7").performClick()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_FOLLOWERS_LIST_TAG).assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_FOLLOWERS_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenFollowerItemTag("follower-18")))
+            .performScrollToNode(hasTestTag("people_screen_follower_item_follower-18"))
         composeRule.waitUntilLoadMore("followers") { followersLoadMore }
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_FOLLOWERS_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenFollowerActionTag("follower-2")))
-        composeRule.onNodeWithTag(peopleScreenFollowerActionTag("follower-2")).performClick()
+            .performScrollToNode(hasTestTag("people_screen_follower_action_follower-2"))
+        composeRule.onNodeWithTag("people_screen_follower_action_follower-2").performClick()
 
-        composeRule.onNodeWithTag(peopleScreenTabTag(8)).performClick()
+        composeRule.onNodeWithTag("people_screen_tab_8").performClick()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_FOLLOWING_LIST_TAG).assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_FOLLOWING_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenFollowingItemTag("following-18")))
+            .performScrollToNode(hasTestTag("people_screen_following_item_following-18"))
         composeRule.waitUntilLoadMore("following") { followingLoadMore }
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_FOLLOWING_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenFollowingActionTag("following-2")))
-        composeRule.onNodeWithTag(peopleScreenFollowingActionTag("following-2")).performClick()
+            .performScrollToNode(hasTestTag("people_screen_following_action_following-2"))
+        composeRule.onNodeWithTag("people_screen_following_action_following-2").performClick()
 
         assertTrue(activitiesLoadMore > 0)
         assertTrue(collectionsLoadMore > 0)
@@ -351,7 +337,7 @@ class PeopleScreenInstrumentedTest {
         composeRule.onNodeWithTag(PEOPLE_SCREEN_ANSWERS_LIST_TAG).assertIsDisplayed()
         composeRule.onNodeWithText("重复 key 问题 A").assertIsDisplayed()
         composeRule.onNodeWithText("重复 key 问题 B").assertIsDisplayed()
-        composeRule.onAllNodesWithTag(peopleScreenAnswerItemTag(duplicatedAnswerId)).assertCountEquals(2)
+        composeRule.onAllNodesWithTag("people_screen_answer_item_$duplicatedAnswerId").assertCountEquals(2)
     }
 
     @Test
@@ -418,19 +404,19 @@ class PeopleScreenInstrumentedTest {
         )
 
         composeRule.onNodeWithTag(PEOPLE_SCREEN_SUBSCRIPTIONS_LIST_TAG).assertIsDisplayed()
-        composeRule.onNodeWithTag(peopleScreenSubscriptionTabTag(0)).assertExists()
-        composeRule.onNodeWithTag(peopleScreenSubscriptionTabTag(1)).assertExists()
-        composeRule.onNodeWithTag(peopleScreenSubscriptionTabTag(2)).assertExists()
-        composeRule.onNodeWithTag(peopleScreenSubscriptionTabTag(3)).assertExists()
+        composeRule.onNodeWithTag("people_screen_subscription_tab_0").assertExists()
+        composeRule.onNodeWithTag("people_screen_subscription_tab_1").assertExists()
+        composeRule.onNodeWithTag("people_screen_subscription_tab_2").assertExists()
+        composeRule.onNodeWithTag("people_screen_subscription_tab_3").assertExists()
 
-        composeRule.onNodeWithTag(peopleScreenSubscriptionTabTag(1)).performClick()
-        composeRule.onNodeWithTag(peopleScreenFollowedTopicItemTag("topic-1")).assertIsDisplayed()
+        composeRule.onNodeWithTag("people_screen_subscription_tab_1").performClick()
+        composeRule.onNodeWithTag("people_screen_followed_topic_item_topic-1").assertIsDisplayed()
 
-        composeRule.onNodeWithTag(peopleScreenSubscriptionTabTag(2)).performClick()
-        composeRule.onNodeWithTag(peopleScreenFollowedQuestionItemTag("1")).performClick()
+        composeRule.onNodeWithTag("people_screen_subscription_tab_2").performClick()
+        composeRule.onNodeWithTag("people_screen_followed_question_item_1").performClick()
 
-        composeRule.onNodeWithTag(peopleScreenSubscriptionTabTag(3)).performClick()
-        composeRule.onNodeWithTag(peopleScreenCollectionItemTag("follow-collection-1")).performClick()
+        composeRule.onNodeWithTag("people_screen_subscription_tab_3").performClick()
+        composeRule.onNodeWithTag("people_screen_collection_item_follow-collection-1").performClick()
 
         assertEquals(
             listOf(

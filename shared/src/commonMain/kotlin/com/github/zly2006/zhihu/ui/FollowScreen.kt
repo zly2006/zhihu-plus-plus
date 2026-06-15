@@ -98,14 +98,6 @@ const val FOLLOW_RECOMMEND_REFRESH_BUTTON_TAG = "follow_recommend_refresh_button
 const val FOLLOW_DYNAMIC_LIST_TAG = "follow_dynamic_list"
 const val FOLLOW_DYNAMIC_REFRESH_BUTTON_TAG = "follow_dynamic_refresh_button"
 
-fun followScreenTabTag(index: Int) = "follow_screen_tab_$index"
-
-fun followingUserItemTag(userId: String) = "following_users_item_$userId"
-
-fun followRecommendItemTag(stableKey: String) = "follow_recommend_item_$stableKey"
-
-fun followDynamicItemTag(stableKey: String) = "follow_dynamic_item_$stableKey"
-
 /**
  * 关注顶层页的生产入口。
  *
@@ -263,7 +255,7 @@ private fun FollowTabRow(
     ) {
         titles.forEachIndexed { index, title ->
             Tab(
-                modifier = Modifier.testTag(followScreenTabTag(index)),
+                modifier = Modifier.testTag("follow_screen_tab_$index"),
                 selected = selectedTabIndex == index,
                 onClick = { onTabSelected(index) },
                 text = { Text(text = title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
@@ -307,7 +299,7 @@ fun FollowingUsersRow() {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
-                            .testTag(followingUserItemTag(user.actor.id))
+                            .testTag("following_users_item_${user.actor.id}")
                             .clickable {
                                 navigator.onNavigate(
                                     Person(
@@ -413,7 +405,7 @@ fun FollowRecommendScreen(
             ) { item ->
                 FeedCard(
                     item = item,
-                    modifier = Modifier.testTag(followRecommendItemTag(item.stableKey)),
+                    modifier = Modifier.testTag("follow_recommend_item_${item.stableKey}"),
                     onBlockUser = { feedItem ->
                         feedBlockActions.handleBlockUser(viewModel, feedItem) { authorInfo ->
                             userToBlock = authorInfo
@@ -523,7 +515,7 @@ fun FollowDynamicScreen(
             ) { item ->
                 FeedCard(
                     item = item,
-                    modifier = Modifier.testTag(followDynamicItemTag(item.stableKey)),
+                    modifier = Modifier.testTag("follow_dynamic_item_${item.stableKey}"),
                     showSourceLabel = true,
                     onLike = {
                         userMessages.showShortMessage("收到喜欢，功能正在优化")

@@ -32,6 +32,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Clock
 
 /**
@@ -140,9 +141,16 @@ suspend fun fetchZhihuContentDetail(
 suspend fun ContentDetailCache.getOrFetchContentDetail(
     destination: NavDestination,
     fetchJson: suspend (String) -> JsonObject?,
-): DataHolder.Content? = getOrFetch(destination) { navDestination ->
-    fetchZhihuContentDetail(navDestination, fetchJson)
-}
+): DataHolder.Content? =
+    runCatching {
+        getOrFetch(destination) { navDestination ->
+            fetchZhihuContentDetail(navDestination, fetchJson)
+        }
+    }.getOrElse { error ->
+        if (error is CancellationException) throw error
+        Log.e("ContentDetailCache", "Failed to fetch content detail for $destination", error)
+        null
+    }
 
 fun decodeArticleContentDetail(
     article: Article,

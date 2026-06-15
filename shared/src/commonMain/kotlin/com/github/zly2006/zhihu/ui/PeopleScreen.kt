@@ -101,6 +101,7 @@ import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
 import com.github.zly2006.zhihu.viewmodel.ProfileLoadEnvironment
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
+import com.github.zly2006.zhihu.viewmodel.addReadHistory
 import com.github.zly2006.zhihu.viewmodel.deleteSigned
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.postSigned
@@ -489,36 +490,6 @@ const val PEOPLE_SCREEN_ARTICLE_SORT_HOT_TAG = "people_screen_article_sort_voteu
 const val PEOPLE_SCREEN_ARTICLE_SORT_TIME_TAG = "people_screen_article_sort_created"
 const val PEOPLE_SCREEN_OFFICIAL_BADGE_TAG = "people_screen_official_badge"
 
-fun peopleScreenTabTag(index: Int): String = "people_screen_tab_$index"
-
-fun peopleScreenPageTag(index: Int): String = "people_screen_page_$index"
-
-fun peopleScreenAnswerItemTag(id: Long): String = "people_screen_answer_item_$id"
-
-fun peopleScreenArticleItemTag(id: Long): String = "people_screen_article_item_$id"
-
-fun peopleScreenCollectionItemTag(id: String): String = "people_screen_collection_item_$id"
-
-fun peopleScreenQuestionItemTag(id: Long): String = "people_screen_question_item_$id"
-
-fun peopleScreenPinItemTag(id: String): String = "people_screen_pin_item_$id"
-
-fun peopleScreenColumnItemTag(id: String): String = "people_screen_column_item_$id"
-
-fun peopleScreenFollowerItemTag(id: String): String = "people_screen_follower_item_$id"
-
-fun peopleScreenFollowerActionTag(id: String): String = "people_screen_follower_action_$id"
-
-fun peopleScreenFollowingItemTag(id: String): String = "people_screen_following_item_$id"
-
-fun peopleScreenFollowingActionTag(id: String): String = "people_screen_following_action_$id"
-
-fun peopleScreenSubscriptionTabTag(index: Int): String = "people_screen_subscription_tab_$index"
-
-fun peopleScreenFollowedQuestionItemTag(id: String): String = "people_screen_followed_question_item_$id"
-
-fun peopleScreenFollowedTopicItemTag(id: String): String = "people_screen_followed_topic_item_$id"
-
 private fun peopleScreenInitialPage(person: Person): Int {
     val jumpToIndex = PEOPLE_SCREEN_TITLES.indexOf(person.jumpTo)
     return if (jumpToIndex >= 0) jumpToIndex else 0
@@ -839,7 +810,7 @@ private fun PeopleScreenContent(
                                 pagerState.animateScrollToPage(index)
                             }
                         },
-                        modifier = Modifier.testTag(peopleScreenTabTag(index)),
+                        modifier = Modifier.testTag("people_screen_tab_$index"),
                     ) {
                         Text(
                             text = title,
@@ -862,7 +833,7 @@ private fun PeopleScreenContent(
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .testTag(peopleScreenPageTag(page)),
+                                .testTag("people_screen_page_$page"),
                         ) {
                             SortBar(
                                 currentSort = uiState.answers.sortBy,
@@ -890,7 +861,7 @@ private fun PeopleScreenContent(
                                         details = "回答 · ${it.voteupCount} 赞同 · ${it.commentCount} 评论",
                                         feed = null,
                                     ),
-                                    modifier = Modifier.testTag(peopleScreenAnswerItemTag(it.id)),
+                                    modifier = Modifier.testTag("people_screen_answer_item_${it.id}"),
                                     horizontalPadding = 4.dp,
                                 ) {
                                     navigator.onNavigate(
@@ -911,7 +882,7 @@ private fun PeopleScreenContent(
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .testTag(peopleScreenPageTag(page)),
+                                .testTag("people_screen_page_$page"),
                         ) {
                             SortBar(
                                 currentSort = uiState.articles.sortBy,
@@ -939,7 +910,7 @@ private fun PeopleScreenContent(
                                         details = "文章 · ${it.voteupCount} 赞同 · ${it.commentCount} 评论",
                                         feed = null,
                                     ),
-                                    modifier = Modifier.testTag(peopleScreenArticleItemTag(it.id)),
+                                    modifier = Modifier.testTag("people_screen_article_item_${it.id}"),
                                     horizontalPadding = 4.dp,
                                 ) {
                                     navigator.onNavigate(
@@ -994,7 +965,7 @@ private fun PeopleScreenContent(
                         ) { collection ->
                             CollectionListItem(
                                 collection = collection,
-                                itemTag = peopleScreenCollectionItemTag(collection.id),
+                                itemTag = "people_screen_collection_item_${collection.id}",
                             )
                         }
                     }
@@ -1016,7 +987,7 @@ private fun PeopleScreenContent(
                         ) { question ->
                             QuestionListItem(
                                 question = question,
-                                itemTag = peopleScreenQuestionItemTag(question.id),
+                                itemTag = "people_screen_question_item_${question.id}",
                             )
                         }
                     }
@@ -1038,7 +1009,7 @@ private fun PeopleScreenContent(
                         ) { pin ->
                             PinListItem(
                                 pin = pin,
-                                itemTag = peopleScreenPinItemTag(pin.id),
+                                itemTag = "people_screen_pin_item_${pin.id}",
                             )
                         }
                     }
@@ -1060,7 +1031,7 @@ private fun PeopleScreenContent(
                         ) { column ->
                             ColumnListItem(
                                 column = column,
-                                itemTag = peopleScreenColumnItemTag(column.id),
+                                itemTag = "people_screen_column_item_${column.id}",
                             )
                         }
                     }
@@ -1082,8 +1053,8 @@ private fun PeopleScreenContent(
                         ) { people ->
                             PeopleListItem(
                                 people = people,
-                                itemTag = peopleScreenFollowerItemTag(people.id),
-                                actionTag = peopleScreenFollowerActionTag(people.id),
+                                itemTag = "people_screen_follower_item_${people.id}",
+                                actionTag = "people_screen_follower_action_${people.id}",
                             )
                         }
                     }
@@ -1105,8 +1076,8 @@ private fun PeopleScreenContent(
                         ) { people ->
                             PeopleListItem(
                                 people = people,
-                                itemTag = peopleScreenFollowingItemTag(people.id),
-                                actionTag = peopleScreenFollowingActionTag(people.id),
+                                itemTag = "people_screen_following_item_${people.id}",
+                                actionTag = "people_screen_following_action_${people.id}",
                             )
                         }
                     }
@@ -1131,7 +1102,7 @@ private fun PeopleScreenContent(
                                     }
                                 }
                             },
-                            modifier = Modifier.testTag(peopleScreenPageTag(page)),
+                            modifier = Modifier.testTag("people_screen_page_$page"),
                         )
                     }
                 }
@@ -1167,7 +1138,7 @@ private fun FollowingSubscriptionsPage(
             PEOPLE_SCREEN_SUBSCRIPTION_TITLES.forEachIndexed { index, title ->
                 OutlinedButton(
                     onClick = { selectedPage = index },
-                    modifier = Modifier.testTag(peopleScreenSubscriptionTabTag(index)),
+                    modifier = Modifier.testTag("people_screen_subscription_tab_$index"),
                     shape = RoundedCornerShape(8.dp),
                     colors = if (selectedPage == index) {
                         ButtonDefaults.outlinedButtonColors(
@@ -1196,7 +1167,7 @@ private fun FollowingSubscriptionsPage(
             ) { column ->
                 ColumnListItem(
                     column = column,
-                    itemTag = peopleScreenColumnItemTag(column.id),
+                    itemTag = "people_screen_column_item_${column.id}",
                 )
             }
 
@@ -1238,7 +1209,7 @@ private fun FollowingSubscriptionsPage(
             ) { collection ->
                 CollectionListItem(
                     collection = collection,
-                    itemTag = peopleScreenCollectionItemTag(collection.id),
+                    itemTag = "people_screen_collection_item_${collection.id}",
                 )
             }
         }
@@ -1375,7 +1346,7 @@ private fun FollowedQuestionListItem(question: FollowedQuestion) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .testTag(peopleScreenFollowedQuestionItemTag(question.id))
+            .testTag("people_screen_followed_question_item_${question.id}")
             .clickable {
                 question.id.toLongOrNull()?.let {
                     navigator.onNavigate(Question(it, question.title))
@@ -1395,7 +1366,7 @@ private fun FollowedTopicListItem(topic: FollowedTopic) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .testTag(peopleScreenFollowedTopicItemTag(topic.displayId))
+            .testTag("people_screen_followed_topic_item_${topic.displayId}")
             .clickable {
                 openZhihuWebUrl("https://www.zhihu.com/topic/${topic.displayId}")
             }.padding(vertical = 8.dp, horizontal = 4.dp),

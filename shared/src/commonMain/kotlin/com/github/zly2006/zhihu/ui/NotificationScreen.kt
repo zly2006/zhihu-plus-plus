@@ -171,7 +171,6 @@ fun NotificationScreen() {
                     NotificationItemView(
                         notification = notification,
                         onClick = {
-                            viewModel.markAsRead(notification.id)
                             // 处理点击事件 - 跳转到对应内容
                             when (notification.target) {
                                 is NotificationTarget

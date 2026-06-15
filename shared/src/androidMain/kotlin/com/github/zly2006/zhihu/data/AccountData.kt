@@ -31,21 +31,17 @@ import com.github.zly2006.zhihu.shared.account.ZhihuAccountRepository
 import com.github.zly2006.zhihu.shared.account.ZhihuAccountSession
 import com.github.zly2006.zhihu.shared.account.ZhihuAccountSessionStore
 import com.github.zly2006.zhihu.shared.data.Person
-import com.github.zly2006.zhihu.shared.data.ZhihuCookieStorage
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.installZhihuCommonClientConfig
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.HttpClientEngineConfig
-import io.ktor.client.request.HttpRequestBuilder
-import io.ktor.http.HttpMethod
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 import java.io.File
@@ -88,13 +84,6 @@ object AccountData {
         dataState.value = data
         accountClient(context).save(data.toSession())
     }
-
-    fun cookieStorage(context: Context, cookies: MutableMap<String, String>? = null) =
-        ZhihuCookieStorage(cookies ?: data.cookies) {
-            if (cookies == null) {
-                saveData(context, data)
-            }
-        }
 
     private var accountClient: ZhihuAccountClient? = null
     private var observedLifecycleClient: HttpClient? = null
@@ -173,7 +162,9 @@ object AccountData {
         accountClient?.let { return it }
         val appContext = context.applicationContext
         return ZhihuAccountClient(
-            repository = accountRepository(appContext),
+            repository = ZhihuAccountRepository(
+                AndroidAccountSessionStore(File(appContext.filesDir, "account.json")),
+            ),
             createClient = { cookies, _, onCookieChanged, isTemporary ->
                 httpClientFactoryOverride?.invoke(appContext, if (isTemporary) cookies else null)
                     ?: createConfiguredHttpClient(
@@ -189,10 +180,6 @@ object AccountData {
             accountClient = it
         }
     }
-
-    private fun accountRepository(context: Context) = ZhihuAccountRepository(
-        AndroidAccountSessionStore(File(context.filesDir, "account.json")),
-    )
 
     private fun Data.toSession(): ZhihuAccountSession = ZhihuAccountSession(
         login = login,
@@ -267,32 +254,6 @@ object AccountData {
             return this.json.decodeFromJsonElement(serializer, convertedJson)
         } catch (e: SerializationException) {
             throw ZhPlusJsonSerializationException(convertedJson, "Failed to parse JSON: ${e.message}", e)
-        }
-    }
-
-    suspend fun fetch(context: Context, url: String, block: suspend HttpRequestBuilder.() -> Unit = {}): JsonObject? = accountClient(context).fetchAuthenticatedJson(url, block)
-
-    suspend fun fetchGet(context: Context, url: String, block: suspend HttpRequestBuilder.() -> Unit = {}) = fetch(context, url) {
-        block()
-        method = HttpMethod.Get
-    }
-
-    suspend fun fetchPost(context: Context, url: String, block: suspend HttpRequestBuilder.() -> Unit = {}) = fetch(context, url) {
-        block()
-        method = HttpMethod.Post
-    }
-
-    /**
-     * 添加在线阅读历史记录
-     * @param contentType 内容类型 (如 "article", "answer", "profile" 等)
-     */
-    suspend fun addReadHistory(
-        context: Context,
-        contentToken: String,
-        contentType: String,
-    ) {
-        runCatching {
-            accountClient(context).addReadHistory(contentToken, contentType)
         }
     }
 }

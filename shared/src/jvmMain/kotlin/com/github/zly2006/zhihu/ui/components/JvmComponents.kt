@@ -31,12 +31,12 @@ import com.github.zly2006.zhihu.viewmodel.DesktopPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.removeFeedItemsByBlockedTopic
 import com.github.zly2006.zhihu.viewmodel.feed.resolveFeedBlockAuthorInfo
 import com.github.zly2006.zhihu.viewmodel.feed.resolveFeedKeywordBlockingContent
-import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeywordService
+import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeyword
+import com.github.zly2006.zhihu.viewmodel.filter.BlockedTopic
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
-import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
-import com.github.zly2006.zhihu.viewmodel.filter.desktopKeywordSemanticMatcher
+import com.github.zly2006.zhihu.viewmodel.filter.KeywordType
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
-import com.github.zly2006.zhihu.viewmodel.filter.rememberBlocklistManager
+import com.github.zly2006.zhihu.viewmodel.getOrFetchContentDetail
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpMethod
@@ -45,11 +45,11 @@ import kotlinx.coroutines.launch
 
 @Composable
 actual fun rememberFeedBlockActions(): FeedBlockActions {
-    val blocklistManager = rememberBlocklistManager()
+    val database = remember { getContentFilterDatabase() }
     val userMessages = rememberUserMessageSink()
     val store = remember { DesktopAccountStore() }
     val contentDetailProvider = remember(store) { desktopFeedBlockContentDetailProvider(store) }
-    return remember(blocklistManager, userMessages, contentDetailProvider) {
+    return remember(database, userMessages, contentDetailProvider) {
         FeedBlockActions(
             handleBlockUser = { viewModel, feedItem, onShowDialog ->
                 viewModel.viewModelScope.launch {
@@ -64,7 +64,7 @@ actual fun rememberFeedBlockActions(): FeedBlockActions {
             handleBlockTopic = { viewModel, topicId, topicName ->
                 viewModel.viewModelScope.launch {
                     try {
-                        blocklistManager.addBlockedTopic(topicId, topicName)
+                        database.blockedTopicDao().insertTopic(BlockedTopic(topicId = topicId, topicName = topicName))
                         userMessages.showShortMessage("已屏蔽主题「$topicName」")
                         removeFeedItemsByBlockedTopic(viewModel, topicId)
                     } catch (e: Exception) {
@@ -88,7 +88,7 @@ actual fun rememberFeedBlockActions(): FeedBlockActions {
 
 @Composable
 actual fun rememberBlockByKeywordsRuntime(): BlockByKeywordsRuntime = remember {
-    val blockedKeywordService = createDesktopBlockedKeywordService()
+    val database = getContentFilterDatabase()
     BlockByKeywordsRuntime(
         extractKeywords = { title, excerpt ->
             KeywordAnalyzerCore.extractFromFeedWithWeight(
@@ -100,7 +100,12 @@ actual fun rememberBlockByKeywordsRuntime(): BlockByKeywordsRuntime = remember {
             )
         },
         addNlpPhrase = { phrase ->
-            blockedKeywordService.addNLPPhrase(phrase)
+            database.blockedKeywordDao().insertKeyword(
+                BlockedKeyword(
+                    keyword = phrase.trim(),
+                    keywordType = KeywordType.NLP_SEMANTIC.name,
+                ),
+            )
         },
     )
 }
@@ -109,7 +114,7 @@ private fun desktopFeedBlockContentDetailProvider(
     store: DesktopAccountStore,
 ): ContentDetailProvider {
     val environment = DesktopPaginationEnvironment(store)
-    return ContentDetailProvider { destination -> environment.getContentDetail(destination) }
+    return ContentDetailProvider { destination -> environment.getOrFetchContentDetail(destination) }
 }
 
 private fun extractDesktopKeywordsWithWeight(
@@ -129,17 +134,6 @@ private fun extractDesktopKeywordsWithWeight(
         .map { (keyword, count) -> KeywordWithWeight(keyword, count.toDouble()) }
         .sortedByDescending { it.weight }
         .take(topN)
-}
-
-private fun createDesktopBlockedKeywordService(): BlockedKeywordService {
-    val databaseFile = desktopContentFilterDatabaseFile()
-    databaseFile.parentFile?.mkdirs()
-    val database = getContentFilterDatabase(databaseFile)
-    return BlockedKeywordService(
-        keywordDao = database.blockedKeywordDao(),
-        recordDao = database.blockedContentRecordDao(),
-        semanticMatcher = desktopKeywordSemanticMatcher,
-    )
 }
 
 @Composable

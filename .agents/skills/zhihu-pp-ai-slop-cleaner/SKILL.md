@@ -11,6 +11,14 @@ Treat low call count as a queue for review, not proof of deletion.
 
 Delete or inline a function only after inspecting its declaration, every real call site, and the surrounding contract. Keep small functions that are framework entry points, stable UI/test selectors, platform contracts, interface defaults, Room/serialization hooks, navigation hooks, or meaningful domain boundaries.
 
+When merging duplicated platform implementations, do not stop at moving the duplicated body into an environment/interface default if there is still only one real semantic caller. If a ViewModel is the only place that owns the workflow, put the request logic in that ViewModel and let the environment expose only lower-level capabilities such as authenticated cookies and signed requests. Example: a question follow action should live in the question feed ViewModel that catches its errors, not as a one-call `environment.follow...()` wrapper that only chooses POST or DELETE.
+
+Do not push platform or storage dependencies upward just because the current accessor is only convenient from UI code. If a lower-level navigation or filtering component owns the query, make the cross-platform dependency available at that level instead of threading a database or platform handle through screen and ViewModel calls. Example: answer switching should ask its own support layer for already-opened content, not force the article loading call to accept a database parameter that exists only to be forwarded.
+
+Do not delete runtime guards just to make tests pass or to simplify state. If a throttle, retry limiter, debounce, permission gate, or cache invalidation guard protects production behavior, keep it and make tests reset or inject the relevant state explicitly. Example: an authenticated request refresh throttle should be reset in tests; removing the throttle changes runtime semantics.
+
+When the user asks for a second-stage or broad cleanup, do not continue with tiny one-helper batches. Put the cleanup branch in its own worktree so the main checkout remains available, then process whole-file helper clusters at once. A valid batch should remove or inline at least one complete file's helper cluster and cover at least 30 helper functions unless the user explicitly narrows the scope. If one suspicious helper is found, inspect its surrounding file-level cluster and remove adjacent useless wrappers together instead of deleting one isolated function per commit.
+
 ## Workflow
 
 1. Record the current time and inspect `git status --short --branch`.
@@ -45,16 +53,17 @@ rg -n "\bFUNCTION_NAME\b" app shared desktopApp -g '*.kt'
    - `merge`: repeated helpers perform the same operation; replace with one shared helper or add a parameter.
    - `keep`: function is a real contract, domain boundary, parser step, platform actual, override, DAO method, serializer, stable test tag, or improves readability of a complex expression.
 
-7. Edit only after classification. Prefer the nearest existing API over creating a new helper.
-8. Re-run the relevant scan after each batch and check that deleted or merged names disappeared.
-9. Run project verification in the required order before committing:
+7. When a candidate lives in a file that already has several related helpers, switch to a file-level pass before editing. Read the nearby functions and classify the whole helper cluster together instead of deleting one `rg` hit at a time. Example: if one signed request helper in an environment file looks unnecessary, inspect adjacent signed helpers in the same file; keep multi-call primitives, but inline a single-call wrapper that only forwards to the lower-level client and adds no contract.
+8. Edit only after classification. Prefer the nearest existing API over creating a new helper.
+9. Re-run the relevant scan after each batch and check that deleted or merged names disappeared.
+10. Run project verification in the required order before committing:
 
 ```bash
 ./gradlew assembleLiteDebug
 ./gradlew ktlintFormat
 ```
 
-10. Run a final review pass:
+11. Run a final review pass:
 
 ```bash
 git diff --check
@@ -69,6 +78,12 @@ rg -n "TODO|unused|deprecated wrapper|pure forwarding" app shared desktopApp -g 
 - Same-file helper names that only rename an environment/platform method with no branch, state, permission, or lifecycle boundary.
 - Cross-platform duplicate helpers that do identical formatting, parsing, URL normalization, or ID construction.
 - Dead debug helpers, stale reset hooks, stale bulk methods, and comment-referenced methods with no production caller.
+
+## Merge Conflict Boundary
+
+During slop cleanup, do not reintroduce platform/environment state just because `master` has a newer conflict-side implementation. If the cleanup intentionally pushed a cache/throttle into a lower-level helper to keep API surface small, preserve that direction when resolving conflicts. Example: when a lower-level authenticated request helper owns a short refresh throttle, do not add per-platform `last...` getters/setters back onto the environment interface merely to satisfy one merge side; keep the throttle at the lower layer and adapt the conflicting code around it.
+
+After a user points out one bad conflict direction, audit the whole merge intersection before continuing. Check every file changed on both sides, search for deleted helper families that may have been reintroduced under the same or similar names, and verify new master-side behavior is still present. Example: if a conflict around an environment interface accidentally brings back one state accessor, also inspect adjacent files for old repositories, URL helpers, wrapper methods, and newly added feature interfaces instead of fixing only the named accessor.
 
 ## What To Keep
 

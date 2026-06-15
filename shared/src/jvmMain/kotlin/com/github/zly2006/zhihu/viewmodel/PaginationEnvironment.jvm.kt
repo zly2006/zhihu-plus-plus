@@ -19,31 +19,18 @@ package com.github.zly2006.zhihu.viewmodel
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import com.github.zly2006.zhihu.data.ContentDetailCache
-import com.github.zly2006.zhihu.data.getOrFetchContentDetail
-import com.github.zly2006.zhihu.navigation.AnswerNavigatorPage
-import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.navigation.answerNavigatorPageFromJson
-import com.github.zly2006.zhihu.navigation.zhihuQuestionFeedsUrl
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.ZHIHU_CLEAR_ONLINE_HISTORY_URL
-import com.github.zly2006.zhihu.shared.data.ZHIHU_LAST_READ_TOUCH_URL
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.shared.data.encodeZhihuClearOnlineHistoryBody
-import com.github.zly2006.zhihu.shared.data.encodeZhihuLastReadTouchItems
 import com.github.zly2006.zhihu.shared.data.navDestination
-import com.github.zly2006.zhihu.shared.data.zhihuLastReadTouchItem
-import com.github.zly2006.zhihu.shared.data.zhihuLastReadTouchItems
+import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
 import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDataFile
 import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDownloadsDir
-import com.github.zly2006.zhihu.shared.desktop.signedWithResponse
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.shared.filter.TrackedContentIdentity
@@ -56,34 +43,32 @@ import com.github.zly2006.zhihu.util.buildArticleExportFileName
 import com.github.zly2006.zhihu.util.buildCollectionExportZipFileName
 import com.github.zly2006.zhihu.util.sanitizeArticleExportFileNamePart
 import com.github.zly2006.zhihu.viewmodel.CollectionItem
+import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeywordService
+import com.github.zly2006.zhihu.viewmodel.filter.BlockedUser
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
+import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterManager
 import com.github.zly2006.zhihu.viewmodel.filter.ContentType
-import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
+import com.github.zly2006.zhihu.viewmodel.filter.FeedContentFilterPipeline
+import com.github.zly2006.zhihu.viewmodel.filter.FeedDisplayFilterPipeline
+import com.github.zly2006.zhihu.viewmodel.filter.ForegroundReadFilterPipeline
 import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
 import com.github.zly2006.zhihu.viewmodel.filter.desktopKeywordSemanticMatcher
-import com.github.zly2006.zhihu.viewmodel.filter.filterFeedDisplayItems
-import com.github.zly2006.zhihu.viewmodel.filter.filterForegroundReadItems
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
-import com.github.zly2006.zhihu.viewmodel.filter.recordFeedContentInteraction
 import com.github.zly2006.zhihu.viewmodel.filter.toFeedFilterSettings
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import com.github.zly2006.zhihu.viewmodel.local.buildLocalRecommendationEngine
 import com.github.zly2006.zhihu.viewmodel.local.getLocalContentDatabase
 import io.ktor.client.HttpClient
-import io.ktor.client.request.forms.MultiPartFormDataContent
-import io.ktor.client.request.forms.formData
-import io.ktor.client.request.header
 import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.HttpMethod
 import io.ktor.http.contentType
-import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.put
 import java.awt.image.BufferedImage
 import java.io.File
 import java.util.zip.ZipEntry
@@ -97,6 +82,7 @@ import com.github.zly2006.zhihu.util.buildArticleExportHtml as buildSharedArticl
 import com.github.zly2006.zhihu.util.buildOfflineArticleExportHtml as buildSharedOfflineArticleExportHtml
 import io.ktor.http.ContentType as KtorContentType
 
+private val desktopContentFilterDb = getContentFilterDatabase(desktopContentFilterDatabaseFile())
 internal val desktopArticleAnswerSwitchState = ArticleAnswerSwitchData()
 private var desktopPendingContentOpenIdentity: TrackedContentIdentity? = null
 private var desktopPendingContentOpenFrom: String? = null
@@ -137,21 +123,14 @@ class DesktopPaginationEnvironment(
     NotificationEnvironment {
     private val settingsStore = desktopSettingsStore()
     private val historyStorage = DesktopHistoryStorage()
-    private val contentFilterDatabase = getContentFilterDatabase(desktopContentFilterDatabaseFile())
+    private val contentFilterDb = desktopContentFilterDb
     private val localRecommendationEngine by lazy { createLocalRecommendationEngine() }
-    private var lastAuthRefreshMillis = 0L
 
     override fun httpClient(): HttpClient = store.httpClient()
 
     override fun xsrfToken(): String = store.load().cookies["_xsrf"] ?: ""
 
     override fun authenticatedCookies(): Map<String, String> = store.load().cookies
-
-    override fun lastAuthRefreshMillis(): Long = lastAuthRefreshMillis
-
-    override fun updateLastAuthRefreshMillis(value: Long) {
-        lastAuthRefreshMillis = value
-    }
 
     override suspend fun <T> withAuthenticatedClient(
         block: suspend (client: HttpClient, cookies: Map<String, String>) -> T,
@@ -173,56 +152,7 @@ class DesktopPaginationEnvironment(
     override fun localHistory(): List<NavDestination> =
         historyStorage.history
 
-    override fun accountHttpClient(): HttpClient = httpClient()
-
-    override fun answerNavigatorRepository(): AnswerNavigatorRepository =
-        object : AnswerNavigatorRepository {
-            override suspend fun fetchAnswerContent(article: Article): DataHolder.Answer? =
-                getContentDetail(article) as? DataHolder.Answer
-
-            override suspend fun fetchQuestionFeeds(
-                questionId: Long,
-                pageUrl: String?,
-            ): AnswerNavigatorPage<Feed> {
-                val url = pageUrl ?: zhihuQuestionFeedsUrl(questionId, limit = 6)
-                val jojo = fetchJson(url, "") ?: return AnswerNavigatorPage(emptyList(), "")
-                return answerNavigatorPageFromJson(jojo) { data ->
-                    data.jsonArray.mapNotNull { element ->
-                        runCatching { ZhihuJson.decodeJson<Feed>(element) }.getOrNull()
-                    }
-                }
-            }
-
-            override suspend fun fetchCollectionItems(pageUrl: String): AnswerNavigatorPage<CollectionItem> =
-                fetchJson(pageUrl, "")?.let { jojo ->
-                    answerNavigatorPageFromJson(jojo) { data ->
-                        data.jsonArray.mapNotNull { element ->
-                            runCatching { ZhihuJson.decodeJson<CollectionItem>(element) }.getOrNull()
-                        }
-                    }
-                } ?: AnswerNavigatorPage(emptyList(), "")
-
-            override suspend fun getAlreadyOpenedAnswerIds(answerIds: List<Long>): Set<Long> =
-                ContentOpenEventSupport
-                    .getAlreadyOpenedContentIds(
-                        database = contentFilterDatabase,
-                        content = answerIds.map { ContentType.ANSWER to it.toString() },
-                    ).mapNotNullTo(mutableSetOf()) { key ->
-                        key.substringAfter(':', "").toLongOrNull()
-                    }
-        }
-
     override fun articleAnswerSwitchState(): ArticleAnswerSwitchState? = desktopArticleAnswerSwitchState
-
-    override suspend fun addReadHistory(
-        contentToken: String,
-        contentTypeName: String,
-    ) {
-        store.addReadHistory(
-            contentToken = contentToken,
-            contentTypeName = contentTypeName,
-        )
-    }
 
     override suspend fun postHistoryDestination(destination: NavDestination) {
         historyStorage.add(destination)
@@ -236,13 +166,13 @@ class DesktopPaginationEnvironment(
     }
 
     override suspend fun isUserBlocked(userId: String): Boolean =
-        contentFilterDatabase.createBlocklistManager().isUserBlocked(userId)
+        contentFilterDb.blockedUserDao().isUserBlocked(userId)
 
     override fun blockedUserIds(): Set<String> =
         runBlocking {
-            contentFilterDatabase
-                .createBlocklistManager()
-                .getAllBlockedUsers()
+            contentFilterDb
+                .blockedUserDao()
+                .getAllUsers()
                 .map { it.userId }
                 .toSet()
         }
@@ -253,16 +183,18 @@ class DesktopPaginationEnvironment(
         urlToken: String?,
         avatarUrl: String?,
     ) {
-        contentFilterDatabase.createBlocklistManager().addBlockedUser(
-            userId = userId,
-            userName = userName,
-            urlToken = urlToken,
-            avatarUrl = avatarUrl,
+        contentFilterDb.blockedUserDao().insertUser(
+            BlockedUser(
+                userId = userId,
+                userName = userName,
+                urlToken = urlToken,
+                avatarUrl = avatarUrl,
+            ),
         )
     }
 
     override suspend fun removeBlockedUser(userId: String) {
-        contentFilterDatabase.createBlocklistManager().removeBlockedUser(userId)
+        contentFilterDb.blockedUserDao().deleteUserById(userId)
     }
 
     override suspend fun recordContentOpenEvent(
@@ -274,18 +206,12 @@ class DesktopPaginationEnvironment(
             consumeDesktopPendingContentOpenFrom(destination)
         }
         ContentOpenEventSupport.recordOpenEvent(
-            database = contentFilterDatabase,
+            database = contentFilterDb,
             destination = destination,
             questionId = questionId,
             openFrom = resolvedOpenFrom.ifBlank { "unknown" },
         )
     }
-
-    override suspend fun getContentDetail(article: Article): DataHolder.Content? =
-        fetchContentDetail(article)
-
-    internal suspend fun getContentDetail(destination: NavDestination): DataHolder.Content? =
-        fetchContentDetail(destination)
 
     override suspend fun recordOpenEvent(
         destination: Article,
@@ -294,31 +220,29 @@ class DesktopPaginationEnvironment(
         recordContentOpenEvent(destination, questionId)
     }
 
-    override suspend fun followQuestion(
-        questionId: Long,
-        follow: Boolean,
-    ) {
-        if (store.load().cookies["d_c0"] == null) return
-        val url = "https://www.zhihu.com/api/v4/questions/$questionId/followers"
-        if (follow) {
-            postSigned(url)
-        } else {
-            deleteSigned(url)
-        }
-    }
-
     override suspend fun applyHomeFeedFilters(items: List<FeedDisplayItem>): HomeFeedFilterResult {
         val settings = settingsStore.toFeedFilterSettings()
-        val foregroundItems = contentFilterDatabase.filterForegroundReadItems(
+        val foregroundItems = ForegroundReadFilterPipeline(
             settings = settings,
-            items = items,
-        )
-        val filteredItems = contentFilterDatabase.filterFeedDisplayItems(
+            contentFilterManager = ContentFilterManager(contentFilterDb.contentFilterDao()),
+            blockedFeedRecordDao = contentFilterDb.blockedFeedRecordDao(),
+        ).filter(items)
+        val filteredItems = FeedDisplayFilterPipeline(
             settings = settings,
-            items = foregroundItems,
-            contentDetailProvider = ContentDetailProvider(::fetchContentDetail),
-            semanticMatcher = desktopKeywordSemanticMatcher,
-        )
+            contentDetailProvider = ContentDetailProvider(::getOrFetchContentDetail),
+            contentFilterPipeline = FeedContentFilterPipeline(
+                settings = settings,
+                blockedKeywordDao = contentFilterDb.blockedKeywordDao(),
+                blockedUserDao = contentFilterDb.blockedUserDao(),
+                blockedTopicDao = contentFilterDb.blockedTopicDao(),
+                blockedKeywordService = BlockedKeywordService(
+                    keywordDao = contentFilterDb.blockedKeywordDao(),
+                    recordDao = contentFilterDb.blockedContentRecordDao(),
+                    semanticMatcher = desktopKeywordSemanticMatcher,
+                ),
+            ),
+            blockedFeedRecordDao = contentFilterDb.blockedFeedRecordDao(),
+        ).filter(foregroundItems)
         return HomeFeedFilterResult(
             foregroundItems = foregroundItems,
             filteredItems = filteredItems,
@@ -326,40 +250,31 @@ class DesktopPaginationEnvironment(
         )
     }
 
-    private suspend fun fetchContentDetail(destination: NavDestination): DataHolder.Content? =
-        runCatching {
-            ContentDetailCache.getOrFetchContentDetail(destination) { url ->
-                fetchJson(url, "")
-            }
-        }.getOrNull()
-
-    override suspend fun sendFeedReadStatus(feed: Feed) {
-        val payloadItem = zhihuLastReadTouchItem(feed, "read") ?: return
-        postDesktopLastReadTouch(listOf(payloadItem))
-    }
-
     override suspend fun recordContentInteraction(feed: Feed) {
         val settings = settingsStore.toFeedFilterSettings()
-        recordFeedContentInteraction(settings, contentFilterDatabase, feed)
-    }
-
-    override suspend fun markItemsAsTouched(items: Set<Pair<String, String>>): Set<Pair<String, String>> {
-        if (items.isEmpty()) return emptySet()
-        val payload = zhihuLastReadTouchItems(items, "touch")
-        return if (postDesktopLastReadTouch(payload)) {
-            items
-        } else {
-            emptySet()
+        if (!settings.enableContentFilter) return
+        val target = feed.target ?: return
+        val (targetType, targetId) = when (target) {
+            is Feed.AnswerTarget -> ContentType.ANSWER to target.id.toString()
+            is Feed.ArticleTarget -> ContentType.ARTICLE to target.id.toString()
+            is Feed.QuestionTarget -> ContentType.QUESTION to target.id.toString()
+            is Feed.PinTarget -> ContentType.PIN to target.id.toString()
+            else -> return
         }
+        ContentFilterManager(contentFilterDb.contentFilterDao()).recordContentInteraction(targetType, targetId)
     }
 
     override suspend fun clearAllHistory() {
         historyStorage.clearAndSave()
         if (store.load().cookies["d_c0"] == null) return
-        val bodyText = encodeZhihuClearOnlineHistoryBody()
-        postSigned(ZHIHU_CLEAR_ONLINE_HISTORY_URL) {
+        postSigned("https://api.zhihu.com/read_history/batch_del") {
             contentType(KtorContentType.Application.Json)
-            setBody(bodyText)
+            setBody(
+                buildJsonObject {
+                    put("pairs", JsonArray(emptyList()))
+                    put("clear", true)
+                }.toString(),
+            )
         }
     }
 
@@ -435,7 +350,11 @@ class DesktopPaginationEnvironment(
     ): CollectionHtmlExportResult {
         val timestampMillis = System.currentTimeMillis()
         val stagingDir = File(
-            desktopCollectionExportCacheDir(),
+            desktopZhihuDataFile("collection-html-export-cache").also { directory ->
+                if (!directory.exists()) {
+                    directory.mkdirs()
+                }
+            },
             "collection_html_export_${sanitizeArticleExportFileNamePart(collectionTitle).ifBlank { "collection" }}_$timestampMillis",
         )
         if (stagingDir.exists()) {
@@ -446,7 +365,7 @@ class DesktopPaginationEnvironment(
         }
 
         val outputDir = desktopZhihuDownloadsDir("无法创建导出 ZIP 目录")
-        val exportHttpClient = accountHttpClient()
+        val exportHttpClient = httpClient()
 
         var processedCount = 0
         var successCount = 0
@@ -538,31 +457,6 @@ class DesktopPaginationEnvironment(
             logWarning = { message -> Log.w("LocalRecommendationEngine", message) },
             logError = { message, throwable -> Log.e("LocalRecommendationEngine", message, throwable) },
         )
-    }
-
-    private suspend fun postDesktopLastReadTouch(payload: List<List<String>>): Boolean {
-        if (store.load().cookies["d_c0"] == null) return false
-        return store.signedWithResponse(
-            url = ZHIHU_LAST_READ_TOUCH_URL,
-            block = {
-                method = HttpMethod.Post
-                header("x-requested-with", "fetch")
-                setBody(
-                    MultiPartFormDataContent(
-                        formData {
-                            append("items", encodeZhihuLastReadTouchItems(payload))
-                        },
-                    ),
-                )
-            },
-        ) { response ->
-            if (response.status.isSuccess()) {
-                true
-            } else {
-                Log.e("Browse-Touch", response.bodyAsText())
-                false
-            }
-        }
     }
 }
 
@@ -675,15 +569,8 @@ private suspend fun CollectionItem.resolveDesktopExportContent(
     environment: DesktopPaginationEnvironment,
 ): DataHolder.Content? {
     val destination = content.navDestination as? Article ?: return null
-    return environment.getContentDetail(destination)
+    return environment.fetchContentDetail(destination)
 }
-
-private fun desktopCollectionExportCacheDir(): File =
-    desktopZhihuDataFile("collection-html-export-cache").also { directory ->
-        if (!directory.exists()) {
-            directory.mkdirs()
-        }
-    }
 
 private suspend fun zipDirectoryContents(
     sourceDir: File,

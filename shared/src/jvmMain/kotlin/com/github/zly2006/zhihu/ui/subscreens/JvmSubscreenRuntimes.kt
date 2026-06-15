@@ -205,12 +205,7 @@ actual fun rememberDeveloperSettingsRuntime(): DeveloperSettingsRuntime {
 }
 
 @Composable
-actual fun rememberOpenSourceLicensesLibraries(): Libs = remember { loadDesktopOpenSourceLicenses() }
-
-@Composable
-actual fun rememberShowFullVariantLicenses(): Boolean = false
-
-private fun loadDesktopOpenSourceLicenses(): Libs =
+actual fun rememberOpenSourceLicensesLibraries(): Libs = remember {
     loadDesktopAboutLibrariesJson()
         ?.takeIf { it.isNotBlank() }
         ?.let { json ->
@@ -218,6 +213,10 @@ private fun loadDesktopOpenSourceLicenses(): Libs =
                 Libs.Builder().withJson(json).build()
             }.getOrElse { Libs(emptyList(), emptySet()) }
         } ?: Libs(emptyList(), emptySet())
+}
+
+@Composable
+actual fun rememberShowFullVariantLicenses(): Boolean = false
 
 private fun loadDesktopAboutLibrariesJson(): String? {
     val resourceJson = Thread

@@ -98,7 +98,7 @@ class ArticleExportEnvironmentInstrumentedTest {
         val html = environment.buildOfflineArticleExportHtml(
             content = sampleArticleContent(),
             includeAppAttribution = true,
-            httpClient = environment.accountHttpClient(),
+            httpClient = environment.httpClient(),
         )
 
         assertTrue(html.contains("导出环境回归"))

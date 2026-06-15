@@ -16,6 +16,7 @@
  */
 
 package com.github.zly2006.zhihu.ui
+
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -53,9 +54,9 @@ import com.github.zly2006.zhihu.shared.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KE
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.ui.components.ShareDialogRuntime
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
-import com.github.zly2006.zhihu.viewmodel.HistoryEnvironment
+import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.getOrFetchContentDetail
 import io.ktor.client.HttpClient
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -74,12 +75,12 @@ data class PinScreenRuntime(
 
 internal suspend fun fetchPinLinkCardPreview(
     linkCard: DataHolder.Pin.ContentLinkCard,
-    fetchDetail: suspend (NavDestination) -> DataHolder.Content?,
+    env: ZhihuApiEnvironment,
 ): PinLinkCardPreview? {
     val destination = resolveLinkCardDestination(linkCard) ?: return null
     return when (destination) {
         is Article -> {
-            when (val detail = fetchDetail(destination)) {
+            when (val detail = env.getOrFetchContentDetail(destination)) {
                 is DataHolder.Article -> PinLinkCardPreview(
                     title = compactTitle(detail.title),
                     preview = compactPreview(detail.excerpt.ifBlank { detail.content }),
@@ -92,7 +93,7 @@ internal suspend fun fetchPinLinkCardPreview(
             }
         }
         is Question -> {
-            (fetchDetail(destination) as? DataHolder.Question)?.let { detail ->
+            (env.getOrFetchContentDetail(destination) as? DataHolder.Question)?.let { detail ->
                 PinLinkCardPreview(
                     title = compactTitle(detail.title),
                     preview = compactPreview(detail.detail),
@@ -100,7 +101,7 @@ internal suspend fun fetchPinLinkCardPreview(
             }
         }
         is Pin -> {
-            (fetchDetail(destination) as? DataHolder.Pin)?.let { detail ->
+            (env.getOrFetchContentDetail(destination) as? DataHolder.Pin)?.let { detail ->
                 PinLinkCardPreview(
                     title = "${detail.author.name} 的想法",
                     preview = compactPreview(detail.contentHtml),
@@ -681,23 +682,6 @@ data class HomeScreenRuntime(
 
 @Composable
 expect fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): HomeScreenRuntime
-
-fun interface ArticleReadHistoryRecorder {
-    suspend fun addReadHistory(article: Article)
-}
-
-@Composable
-fun rememberArticleReadHistoryRecorder(): ArticleReadHistoryRecorder {
-    val environment: HistoryEnvironment = rememberPaginationEnvironment(false)
-    return remember(environment) {
-        ArticleReadHistoryRecorder { article ->
-            environment.addReadHistory(
-                contentToken = article.id.toString(),
-                contentTypeName = article.type.name.lowercase(),
-            )
-        }
-    }
-}
 
 interface CommentScreenRuntime {
     fun saveImage(imageUrl: String)

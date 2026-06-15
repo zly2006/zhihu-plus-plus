@@ -42,12 +42,9 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.getContentDetail
+import com.github.zly2006.zhihu.data.asApiEnvironment
 import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.Pin
-import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
-import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.data.ZHIHU_ME_URL
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
@@ -55,7 +52,6 @@ import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
-import com.github.zly2006.zhihu.ui.PinLinkCardPreview
 import com.github.zly2006.zhihu.ui.components.CustomWebView
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
@@ -67,13 +63,12 @@ import com.github.zly2006.zhihu.util.createEmojiInlineContent
 import com.github.zly2006.zhihu.util.fuckHonorService
 import com.github.zly2006.zhihu.util.saveImageToGallery
 import com.github.zly2006.zhihu.util.shareImage
-import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.filter.exportAllBlocklistToJson
-import com.github.zly2006.zhihu.viewmodel.filter.getBlocklistManager
-import com.github.zly2006.zhihu.viewmodel.filter.importAllBlocklistFromJson
+import com.github.zly2006.zhihu.viewmodel.filter.encodeBlocklistBackup
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
+import com.github.zly2006.zhihu.viewmodel.filter.importBlocklistBackupFromJsonText
 import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.notificationEnvironment
 import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
@@ -84,6 +79,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
+import java.io.File
 
 private const val LOGIN_ACTIVITY_CLASS = "com.github.zly2006.zhihu.LoginActivity"
 private const val QR_CODE_SCAN_ACTIVITY_CLASS = "com.github.zly2006.zhihu.QRCodeScanActivity"
@@ -117,7 +113,7 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
         refreshProfile = {
             val data = AccountData.data
             if (data.login) {
-                val response = AccountData.fetchGet(context, ZHIHU_ME_URL) { signFetchRequest() }!!
+                val response = context.asApiEnvironment().fetchJson(ZHIHU_ME_URL, "")!!
                 val self = ZhihuJson.decodeJson<com.github.zly2006.zhihu.shared.data.Person>(response)
                 AccountData.saveData(context, data.copy(self = self))
             }
@@ -352,7 +348,7 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
     userMessages: UserMessageSink,
 ): BlocklistSettingsRuntime {
     val context = LocalContext.current
-    val manager = remember(context) { getBlocklistManager(context) }
+    val database = remember(context) { getContentFilterDatabase(context) }
     val coroutineScope = rememberCoroutineScope()
     var importCallback by remember { mutableStateOf<((String) -> Unit)?>(null) }
     val importLauncher = rememberLauncherForActivityResult(
@@ -361,7 +357,19 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
         if (uri != null) {
             coroutineScope.launch {
                 try {
-                    val summary = manager.importAllBlocklistFromJson(context, uri)
+                    val summary = withContext(Dispatchers.IO) {
+                        val text = context.contentResolver
+                            .openInputStream(uri)
+                            ?.bufferedReader()
+                            ?.readText()
+                            ?: return@withContext "读取文件失败"
+                        importBlocklistBackupFromJsonText(
+                            keywordDao = database.blockedKeywordDao(),
+                            userDao = database.blockedUserDao(),
+                            topicDao = database.blockedTopicDao(),
+                            text = text,
+                        )
+                    }
                     importCallback?.invoke(summary)
                 } catch (e: Exception) {
                     Log.e("BlocklistSettingsRuntime", "Failed to import blocklist", e)
@@ -370,14 +378,25 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
             }
         }
     }
-    return remember(context, manager, userMessages, importLauncher) {
+    return remember(context, database, userMessages, importLauncher) {
         BlocklistSettingsRuntime(
             requestImport = { onImported ->
                 importCallback = onImported
                 importLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
             },
             exportRules = {
-                val file = manager.exportAllBlocklistToJson(context)
+                val file = withContext(Dispatchers.IO) {
+                    val dir = context.getExternalFilesDir(null) ?: context.filesDir
+                    val file = File(dir, "zhihupp_blocklist.json")
+                    file.writeText(
+                        encodeBlocklistBackup(
+                            keywordDao = database.blockedKeywordDao(),
+                            userDao = database.blockedUserDao(),
+                            topicDao = database.blockedTopicDao(),
+                        ),
+                    )
+                    file
+                }
                 val intent = Intent().apply {
                     action = Intent.ACTION_VIEW
                     setDataAndType(
@@ -403,14 +422,7 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
     return remember(context) {
         PinScreenRuntime(
             fetchLinkCardPreview = { linkCard ->
-                fetchPinLinkCardPreview(linkCard) { destination ->
-                    when (destination) {
-                        is Article -> DataHolder.getContentDetail(context, destination)
-                        is Question -> DataHolder.getContentDetail(context, destination)
-                        is Pin -> DataHolder.getContentDetail(context, destination)
-                        else -> null
-                    }
-                }
+                fetchPinLinkCardPreview(linkCard, context.asApiEnvironment())
             },
         )
     }

@@ -80,14 +80,6 @@ expect fun rememberImageGalleryOpener(): (List<String>, Int) -> Unit
 @Composable
 expect fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit
 
-data class ScreenSizeDp(
-    val width: Float,
-    val height: Float,
-)
-
-@Composable
-expect fun rememberScreenSizeDp(): ScreenSizeDp
-
 @Composable
 expect fun PlatformBackHandler(
     enabled: Boolean,

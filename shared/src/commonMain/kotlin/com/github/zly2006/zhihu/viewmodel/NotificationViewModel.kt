@@ -20,19 +20,14 @@ package com.github.zly2006.zhihu.viewmodel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.shared.data.NotificationItem
+import com.github.zly2006.zhihu.shared.data.ZHIHU_ME_URL
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
+import com.github.zly2006.zhihu.shared.data.ZhihuMeNotifications
 import com.github.zly2006.zhihu.shared.data.ZhihuPaging
-import com.github.zly2006.zhihu.shared.data.zhihuNotificationDefaultUrl
-import com.github.zly2006.zhihu.shared.data.zhihuNotificationFollowUrl
-import com.github.zly2006.zhihu.shared.data.zhihuNotificationRecentUrl
-import com.github.zly2006.zhihu.shared.data.zhihuNotificationVoteThankUrl
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.notification.matchNotificationType
 import com.github.zly2006.zhihu.shared.util.Log
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.buildJsonArray
@@ -52,11 +47,11 @@ class NotificationViewModel :
     PaginationViewModel<NotificationItem>(
         dataType = typeOf<NotificationItem>(),
     ) {
-    override val initialUrl = zhihuNotificationRecentUrl()
+    override val initialUrl = "https://www.zhihu.com/api/v4/notifications/v2/recent?limit=20"
     private val notificationSourceUrls = listOf(
-        zhihuNotificationDefaultUrl(),
-        zhihuNotificationFollowUrl(),
-        zhihuNotificationVoteThankUrl(),
+        "https://www.zhihu.com/api/v4/notifications/v2/default?limit=20",
+        "https://www.zhihu.com/api/v4/notifications/v2/follow?limit=20",
+        "https://www.zhihu.com/api/v4/notifications/v2/vote_thank?limit=20",
     )
     private val notificationSourcePaging = mutableMapOf<String, ZhihuPaging?>()
     private val endedNotificationSources = mutableSetOf<String>()
@@ -71,7 +66,8 @@ class NotificationViewModel :
     @Suppress("HttpUrlsUsage")
     override suspend fun fetchFeeds(environment: PaginationEnvironment) {
         try {
-            val notificationSettingsEnvironment = environment.requireNotificationSettingsEnvironment()
+            val notificationSettingsEnvironment = environment as? NotificationSettingsEnvironment
+                ?: error("NotificationSettingsStore is required for notification pagination")
             val rawData = mutableListOf<JsonElement>()
             val decodedData = mutableListOf<NotificationItem>()
             val sourceFailures = mutableListOf<Exception>()
@@ -112,7 +108,7 @@ class NotificationViewModel :
                 }
             }
 
-            if (shouldReportNotificationFetchFailure(successfulSourceCount, sourceFailures.size)) {
+            if (successfulSourceCount == 0 && sourceFailures.isNotEmpty()) {
                 environment.handleFetchFailure(this::class.simpleName, sourceFailures.first())
                 return
             }
@@ -126,7 +122,14 @@ class NotificationViewModel :
             )
 
             // 获取未读消息数量
-            unreadCount = getUnreadCount(environment)
+            unreadCount = try {
+                environment
+                    .fetchJson(ZHIHU_ME_URL, "")
+                    ?.let { ZhihuJson.decodeJson<ZhihuMeNotifications>(it) }
+                    ?.totalCount ?: 0
+            } catch (_: Exception) {
+                0
+            }
             checkAndMarkAllAsRead(environment, notificationSettingsEnvironment)
         } finally {
             isLoading = false
@@ -141,21 +144,11 @@ class NotificationViewModel :
 
     override fun processResponse(environment: PaginationEnvironment, data: List<NotificationItem>, rawData: JsonArray) {
         debugData.addAll(rawData)
-        val merged = mergeNotificationsByCreateTime(allData, data)
+        val existingIds = allData.mapTo(mutableSetOf()) { it.id }
+        val merged = (allData + data.filter { existingIds.add(it.id) })
+            .sortedByDescending { it.createTime }
         allData.clear()
         allData.addAll(merged)
-    }
-
-    /**
-     * 更新未读消息数量
-     */
-    private suspend fun getUnreadCount(environment: ZhihuApiEnvironment): Int {
-        try {
-            return environment.fetchUnreadNotificationCountSigned()
-        } catch (_: Exception) {
-            // 忽略错误
-            return 0
-        }
     }
 
     /**
@@ -193,37 +186,15 @@ class NotificationViewModel :
     }
 
     /**
-     * 标记消息为已读
-     */
-    @OptIn(DelicateCoroutinesApi::class)
-    fun markAsRead(notificationId: String) {
-        viewModelScope.launch {
-        }
-    }
-
-    /**
      * 标记所有消息为已读
      */
-    @OptIn(DelicateCoroutinesApi::class)
     suspend fun markAllAsRead(environment: ZhihuApiEnvironment) {
-        environment.markAllNotificationsAsReadSigned()
+        listOf(
+            "https://www.zhihu.com/api/v4/notifications/v2/default/actions/readall",
+            "https://www.zhihu.com/api/v4/notifications/v2/follow/actions/readall",
+            "https://www.zhihu.com/api/v4/notifications/v2/vote_thank/actions/readall",
+        ).forEach { url ->
+            environment.postSigned(url)
+        }
     }
 }
-
-private fun PaginationEnvironment.requireNotificationSettingsEnvironment(): NotificationSettingsEnvironment =
-    this as? NotificationSettingsEnvironment
-        ?: error("NotificationSettingsStore is required for notification pagination")
-
-internal fun mergeNotificationsByCreateTime(
-    existing: List<NotificationItem>,
-    incoming: List<NotificationItem>,
-): List<NotificationItem> {
-    val existingIds = existing.mapTo(mutableSetOf()) { it.id }
-    return (existing + incoming.filter { existingIds.add(it.id) })
-        .sortedByDescending { it.createTime }
-}
-
-internal fun shouldReportNotificationFetchFailure(
-    successfulSourceCount: Int,
-    failureCount: Int,
-): Boolean = successfulSourceCount == 0 && failureCount > 0

@@ -18,8 +18,6 @@
 package com.github.zly2006.zhihu.shared.platform
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalWindowInfo
 import com.github.zly2006.zhihu.shared.desktop.DesktopPropertiesFile
 import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
 import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
@@ -127,18 +125,6 @@ actual fun rememberUserMessageSink(): UserMessageSink = remember {
             }
         },
     )
-}
-
-@Composable
-actual fun rememberScreenSizeDp(): ScreenSizeDp {
-    val density = LocalDensity.current
-    val containerSize = LocalWindowInfo.current.containerSize
-    return with(density) {
-        ScreenSizeDp(
-            width = containerSize.width.toDp().value,
-            height = containerSize.height.toDp().value,
-        )
-    }
 }
 
 @Composable

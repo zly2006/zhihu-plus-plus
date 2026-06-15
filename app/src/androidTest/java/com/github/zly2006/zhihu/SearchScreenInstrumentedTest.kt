@@ -227,7 +227,7 @@ class SearchScreenInstrumentedTest {
         // layer with a Ktor MockEngine response.
         // Expected behavior:
         // 1. The mocked hot-search list renders after the screen performs its real fetchHotSearch()
-        //    call through AccountData.fetchGet().
+        //    call through the authenticated fetch path.
         // 2. Pressing refresh performs a second mocked HTTP request and keeps the rendered list stable.
         // 3. Opening the overflow menu exposes the settings action and navigates to the expected destination.
         // 4. Vertical and horizontal swipe cycles leave the mocked content intact instead of breaking layout state.

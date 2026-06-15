@@ -224,8 +224,7 @@ private fun CollectionContentScreenContent(
                     .testTag("collection_content_item_${item.stableKey}"),
             ) {
                 val dest = navDestination
-                val repository = collectionEnvironment.answerNavigatorRepository()
-                if (dest is Article && dest.type == ArticleType.Answer && sharedData != null && repository != null) {
+                if (dest is Article && dest.type == ArticleType.Answer && sharedData != null) {
                     val idx = screenViewModel.displayItems.indexOf(item)
                     val nextItems = if (idx >= 0) screenViewModel.allData.drop(idx + 1) else emptyList()
                     val prevItems = if (idx > 0) screenViewModel.allData.take(idx).reversed() else emptyList()
@@ -234,7 +233,7 @@ private fun CollectionContentScreenContent(
                         collectionTitle = screenViewModel.title,
                         initialNextItems = nextItems,
                         initialPreviousItems = prevItems,
-                        repository = repository,
+                        environment = collectionEnvironment,
                     )
                 }
                 dest?.let { navigator.onNavigate(it) }
