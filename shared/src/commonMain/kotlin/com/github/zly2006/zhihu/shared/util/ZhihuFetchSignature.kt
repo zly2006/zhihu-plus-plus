@@ -31,6 +31,10 @@ import kotlin.math.sin
 
 const val ZHIHU_WEB_ZSE93 = "101_3_3.0"
 
+/**
+ * 底层 zse96 签名实现。业务请求优先使用环境层的 `fetchJson`、`postSigned`、`deleteSigned`
+ * 等封装，只有封装本身或没有合适上层入口时才直接调用这里。
+ */
 fun HttpRequestBuilder.signZhihuFetchRequest(
     zse93: String = ZHIHU_WEB_ZSE93,
     dc0: String,
@@ -42,24 +46,25 @@ fun HttpRequestBuilder.signZhihuFetchRequest(
     header("x-requested-with", "fetch")
 }
 
+/**
+ * 底层 zse96 签名实现。业务请求优先使用环境层的 `fetchJson`、`postSigned`、`deleteSigned`
+ * 等封装，避免在功能代码里重复处理 cookies、body 签名和请求头。
+ */
 fun HttpRequestBuilder.signZhihuFetchRequest(
     cookies: Map<String, String>,
     body: String? = null,
 ) {
     val dc0 = cookies["d_c0"]?.takeIf { it.isNotBlank() } ?: return
-    val requestBody = body ?: signedJsonBodyOrNull()
-    signZhihuFetchRequest(dc0 = dc0, body = requestBody)
-}
-
-private fun HttpRequestBuilder.signedJsonBodyOrNull(): String? =
-    if (contentType() == ContentType.Application.Json) {
-        body as? String
+    val requestBody = body ?: if (contentType() == ContentType.Application.Json) {
+        this.body as? String
             ?: bodyType?.kotlinType?.let { type ->
-                ZhihuJson.json.encodeToString(serializer(type), body)
+                ZhihuJson.json.encodeToString(serializer(type), this.body)
             }
     } else {
         null
     }
+    signZhihuFetchRequest(dc0 = dc0, body = requestBody)
+}
 
 object ZhihuFetchSignature {
     fun createZse96Header(

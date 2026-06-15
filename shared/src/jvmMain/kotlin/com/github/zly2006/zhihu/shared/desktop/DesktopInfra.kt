@@ -38,6 +38,8 @@ import com.github.zly2006.zhihu.shared.account.ZhihuAccountClient
 import com.github.zly2006.zhihu.shared.account.ZhihuAccountRepository
 import com.github.zly2006.zhihu.shared.account.ZhihuAccountSession
 import com.github.zly2006.zhihu.shared.account.ZhihuAccountSessionStore
+import com.github.zly2006.zhihu.shared.data.executeZhihuAuthenticatedRequest
+import com.github.zly2006.zhihu.shared.data.fetchZhihuAuthenticatedJson
 import com.github.zly2006.zhihu.shared.data.installZhihuCommonClientConfig
 import com.github.zly2006.zhihu.shared.login.SharedQrLoginPane
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
@@ -115,29 +117,9 @@ class DesktopAccountStore(
     fun createHttpClient(cookies: MutableMap<String, String>): HttpClient =
         accountClient.temporaryHttpClient(cookies)
 
-    suspend fun fetchAuthenticatedJson(
-        url: String,
-        block: suspend HttpRequestBuilder.() -> Unit = {},
-    ): JsonObject? = accountClient.fetchAuthenticatedJson(url, block)
-
-    suspend fun <T> withAuthenticatedResponse(
-        url: String,
-        block: suspend HttpRequestBuilder.() -> Unit = {},
-        transform: suspend (HttpResponse) -> T,
-    ): T = accountClient.withAuthenticatedResponse(url, block, transform)
-
     suspend fun <T> withAuthenticatedClient(
         block: suspend (client: HttpClient, cookies: Map<String, String>) -> T,
     ): T = accountClient.withAuthenticatedClient(block)
-
-    suspend fun addReadHistory(
-        contentToken: String,
-        contentTypeName: String,
-    ) {
-        runCatching {
-            accountClient.addReadHistory(contentToken, contentTypeName)
-        }
-    }
 
     suspend fun verifyAndSave(cookies: MutableMap<String, String>): Boolean =
         accountClient.verifyAndSave(cookies)
@@ -172,10 +154,14 @@ private class PathAccountSessionStore(
 suspend fun DesktopAccountStore.signedFetchJson(
     url: String,
     block: suspend HttpRequestBuilder.() -> Unit = {},
-): JsonObject? = fetchAuthenticatedJson(url) {
-    signZhihuFetchRequest(load().cookies)
-    block()
-}
+): JsonObject? =
+    fetchZhihuAuthenticatedJson(
+        client = httpClient(),
+        url = url,
+    ) {
+        signZhihuFetchRequest(load().cookies)
+        block()
+    }
 
 /**
  * 签名后发起认证请求并返回响应的便捷方法。
@@ -184,10 +170,16 @@ suspend fun <T> DesktopAccountStore.signedWithResponse(
     url: String,
     block: suspend HttpRequestBuilder.() -> Unit = {},
     transform: suspend (HttpResponse) -> T,
-): T = withAuthenticatedResponse(url, {
-    signZhihuFetchRequest(load().cookies)
-    block()
-}, transform)
+): T {
+    val response = executeZhihuAuthenticatedRequest(
+        client = httpClient(),
+        url = url,
+    ) {
+        signZhihuFetchRequest(load().cookies)
+        block()
+    }
+    return transform(response)
+}
 
 suspend fun DesktopAccountStore.saveImageToDownloads(
     url: String,

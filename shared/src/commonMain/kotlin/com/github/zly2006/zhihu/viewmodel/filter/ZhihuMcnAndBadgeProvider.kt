@@ -20,29 +20,15 @@ package com.github.zly2006.zhihu.viewmodel.filter
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.officialBadge
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.request.HttpRequestBuilder
-import io.ktor.client.request.get
-import io.ktor.client.request.url
-import kotlinx.serialization.json.JsonElement
+import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonObject
 
 class ZhihuMcnAndBadgeProvider(
-    private val httpClient: HttpClient,
-    private val configureRequest: (HttpRequestBuilder) -> Unit = {},
+    private val environment: ZhihuApiEnvironment,
 ) : McnAndBadgeProvider {
     override suspend fun getAuthorProfile(urlToken: String): McnAuthorProfile {
-        val user = httpClient
-            .get("https://www.zhihu.com/api/v4/members/$urlToken") {
-                url {
-                    parameters["include"] = "badge,mcn_company"
-                }
-                configureRequest(this)
-            }.body<JsonElement>()
-        val userObject = user.jsonObject
+        val userObject = environment.fetchJson(memberUrl(urlToken), MEMBERS_INCLUDE) ?: return McnAuthorProfile()
         val badge = userObject["badge_v2"]
             ?.let { ZhihuJson.decodeJson<DataHolder.BadgeV2>(it) }
             .officialBadge()
@@ -52,5 +38,11 @@ class ZhihuMcnAndBadgeProvider(
                 .normalizeMcnCompany(),
             officialBadge = badge,
         )
+    }
+
+    companion object {
+        const val MEMBERS_INCLUDE = "badge,mcn_company"
+
+        fun memberUrl(urlToken: String): String = "https://www.zhihu.com/api/v4/members/$urlToken"
     }
 }

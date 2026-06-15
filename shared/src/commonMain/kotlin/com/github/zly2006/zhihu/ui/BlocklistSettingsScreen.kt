@@ -77,7 +77,8 @@ import com.github.zly2006.zhihu.viewmodel.filter.BlockedTopic
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedUser
 import com.github.zly2006.zhihu.viewmodel.filter.BlocklistStats
 import com.github.zly2006.zhihu.viewmodel.filter.KeywordType
-import com.github.zly2006.zhihu.viewmodel.filter.rememberBlocklistManager
+import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistService
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.launch
 
 typealias BlocklistSettingsNlpContent = @Composable (onNavigateBack: () -> Unit) -> Unit
@@ -172,7 +173,8 @@ fun BlocklistSettingsScreen(
     val navigator = LocalNavigator.current
     val userMessages = rememberUserMessageSink()
     val runtime = rememberBlocklistSettingsPlatformRuntime(userMessages)
-    val blocklistManager = rememberBlocklistManager()
+    val database = remember { getContentFilterDatabase() }
+    val blocklistService = remember(database) { database.createBlocklistService() }
     val coroutineScope = rememberCoroutineScope()
 
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -200,13 +202,19 @@ fun BlocklistSettingsScreen(
         coroutineScope.launch {
             try {
                 // 只获取精确匹配的关键词
-                loadedBlockedKeywords = blocklistManager
-                    .getAllBlockedKeywords()
+                loadedBlockedKeywords = database
+                    .blockedKeywordDao()
+                    .getAllKeywords()
                     .filter { it.getKeywordTypeEnum() == KeywordType.EXACT_MATCH }
-                loadedBlockedUsers = blocklistManager.getAllBlockedUsers()
-                loadedBlockedTopics = blocklistManager.getAllBlockedTopics()
-                loadedBlockedMcnOrganizations = blocklistManager.getAllBlockedMcnOrganizations()
-                loadedStats = blocklistManager.getBlocklistStats()
+                loadedBlockedUsers = database.blockedUserDao().getAllUsers()
+                loadedBlockedTopics = database.blockedTopicDao().getAllTopics()
+                loadedBlockedMcnOrganizations = database.blockedMcnOrganizationDao().getAllOrganizations()
+                loadedStats = BlocklistStats(
+                    keywordCount = database.blockedKeywordDao().getKeywordCount(),
+                    userCount = database.blockedUserDao().getUserCount(),
+                    topicCount = database.blockedTopicDao().getTopicCount(),
+                    mcnOrganizationCount = database.blockedMcnOrganizationDao().getOrganizationCount(),
+                )
             } catch (e: Exception) {
                 Log.e("BlocklistSettingsScreen", "Blocklist settings action failed", e)
                 userMessages.showShortMessage("加载数据失败: ${e.message}")
@@ -372,7 +380,7 @@ fun BlocklistSettingsScreen(
             ) {
                 tabs.forEachIndexed { index, title ->
                     Tab(
-                        modifier = Modifier.testTag(BlocklistSettingsTestTags.tab(index)),
+                        modifier = Modifier.testTag("blocklistSettings:tab:$index"),
                         selected = selectedTab == index,
                         onClick = { selectedTab = index },
                         text = { Text(title) },
@@ -391,7 +399,7 @@ fun BlocklistSettingsScreen(
                         } else {
                             coroutineScope.launch {
                                 try {
-                                    blocklistManager.removeBlockedKeyword(keyword.id)
+                                    database.blockedKeywordDao().deleteKeywordById(keyword.id)
                                     userMessages.showShortMessage("已删除关键词")
                                     loadData()
                                 } catch (e: Exception) {
@@ -408,7 +416,7 @@ fun BlocklistSettingsScreen(
                         } else {
                             coroutineScope.launch {
                                 try {
-                                    blocklistManager.clearAllBlockedKeywords()
+                                    database.blockedKeywordDao().clearAllKeywords()
                                     userMessages.showShortMessage("已清空所有关键词")
                                     loadData()
                                 } catch (e: Exception) {
@@ -436,7 +444,7 @@ fun BlocklistSettingsScreen(
                         } else {
                             coroutineScope.launch {
                                 try {
-                                    blocklistManager.removeBlockedUser(user.userId)
+                                    database.blockedUserDao().deleteUserById(user.userId)
                                     userMessages.showShortMessage("已删除用户")
                                     loadData()
                                 } catch (e: Exception) {
@@ -453,7 +461,7 @@ fun BlocklistSettingsScreen(
                         } else {
                             coroutineScope.launch {
                                 try {
-                                    blocklistManager.clearAllBlockedUsers()
+                                    database.blockedUserDao().clearAllUsers()
                                     userMessages.showShortMessage("已清空所有用户")
                                     loadData()
                                 } catch (e: Exception) {
@@ -482,7 +490,7 @@ fun BlocklistSettingsScreen(
                         } else {
                             coroutineScope.launch {
                                 try {
-                                    blocklistManager.removeBlockedTopic(topic.topicId)
+                                    database.blockedTopicDao().deleteTopicById(topic.topicId)
                                     userMessages.showShortMessage("已删除主题")
                                     loadData()
                                 } catch (e: Exception) {
@@ -499,7 +507,7 @@ fun BlocklistSettingsScreen(
                         } else {
                             coroutineScope.launch {
                                 try {
-                                    blocklistManager.clearAllBlockedTopics()
+                                    database.blockedTopicDao().clearAllTopics()
                                     userMessages.showShortMessage("已清空所有主题")
                                     loadData()
                                 } catch (e: Exception) {
@@ -519,7 +527,7 @@ fun BlocklistSettingsScreen(
                         } else {
                             coroutineScope.launch {
                                 try {
-                                    blocklistManager.removeBlockedMcnOrganization(organization.organizationName)
+                                    blocklistService.removeBlockedMcnOrganization(organization.organizationName)
                                     userMessages.showShortMessage("已删除MCN机构")
                                     loadData()
                                 } catch (e: Exception) {
@@ -536,7 +544,7 @@ fun BlocklistSettingsScreen(
                         } else {
                             coroutineScope.launch {
                                 try {
-                                    blocklistManager.clearAllBlockedMcnOrganizations()
+                                    blocklistService.clearAllBlockedMcnOrganizations()
                                     userMessages.showShortMessage("已清空所有MCN机构")
                                     loadData()
                                 } catch (e: Exception) {
@@ -563,7 +571,14 @@ fun BlocklistSettingsScreen(
                 } else {
                     coroutineScope.launch {
                         try {
-                            blocklistManager.addBlockedKeyword(keyword, caseSensitive, isRegex)
+                            database.blockedKeywordDao().insertKeyword(
+                                BlockedKeyword(
+                                    keyword = keyword.trim(),
+                                    keywordType = KeywordType.EXACT_MATCH.name,
+                                    caseSensitive = caseSensitive,
+                                    isRegex = isRegex,
+                                ),
+                            )
                             userMessages.showShortMessage("已添加关键词")
                             loadData()
                             showAddKeywordDialog = false
@@ -589,7 +604,7 @@ fun BlocklistSettingsScreen(
                 } else {
                     coroutineScope.launch {
                         try {
-                            blocklistManager.addBlockedTopic(topicId, topicName)
+                            database.blockedTopicDao().insertTopic(BlockedTopic(topicId = topicId, topicName = topicName))
                             userMessages.showShortMessage("已添加主题")
                             loadData()
                             showAddTopicDialog = false
@@ -615,7 +630,7 @@ fun BlocklistSettingsScreen(
                 } else {
                     coroutineScope.launch {
                         try {
-                            blocklistManager.addBlockedUser(userId, userName)
+                            database.blockedUserDao().insertUser(BlockedUser(userId = userId, userName = userName))
                             userMessages.showShortMessage("已添加用户")
                             loadData()
                             showAddUserDialog = false
@@ -640,7 +655,7 @@ fun BlocklistSettingsScreen(
                 } else {
                     coroutineScope.launch {
                         try {
-                            blocklistManager.addBlockedMcnOrganization(organizationName)
+                            blocklistService.addBlockedMcnOrganization(organizationName)
                             userMessages.showShortMessage("已添加MCN机构")
                             loadData()
                             showAddMcnDialog = false
@@ -708,7 +723,7 @@ fun BlockedKeywordsList(
             ) {
                 items(keywords, key = { it.id }) { keyword ->
                     ListItem(
-                        modifier = Modifier.testTag(BlocklistSettingsTestTags.keywordItem(keyword.id)),
+                        modifier = Modifier.testTag("blocklistSettings:keywords:item:${keyword.id}"),
                         headlineContent = { Text(keyword.keyword) },
                         supportingContent = {
                             val options = mutableListOf<String>()
@@ -722,7 +737,7 @@ fun BlockedKeywordsList(
                         },
                         trailingContent = {
                             IconButton(
-                                modifier = Modifier.testTag(BlocklistSettingsTestTags.keywordDelete(keyword.id)),
+                                modifier = Modifier.testTag("blocklistSettings:keywords:delete:${keyword.id}"),
                                 onClick = { onDeleteKeyword(keyword) },
                             ) {
                                 Icon(
@@ -794,7 +809,7 @@ fun BlockedUsersList(
                 items(users, key = { it.userId }) { user ->
                     ListItem(
                         modifier = Modifier
-                            .testTag(BlocklistSettingsTestTags.userItem(user.userId))
+                            .testTag("blocklistSettings:users:item:${user.userId}")
                             .clickable { onNavigateToUser(user) },
                         headlineContent = { Text(user.userName) },
                         supportingContent = { Text("ID: ${user.userId}") },
@@ -809,7 +824,7 @@ fun BlockedUsersList(
                         },
                         trailingContent = {
                             IconButton(
-                                modifier = Modifier.testTag(BlocklistSettingsTestTags.userDelete(user.userId)),
+                                modifier = Modifier.testTag("blocklistSettings:users:delete:${user.userId}"),
                                 onClick = { onDeleteUser(user) },
                             ) {
                                 Icon(
@@ -1027,12 +1042,12 @@ fun BlockedTopicsList(
             ) {
                 items(topics, key = { it.topicId }) { topic ->
                     ListItem(
-                        modifier = Modifier.testTag(BlocklistSettingsTestTags.topicItem(topic.topicId)),
+                        modifier = Modifier.testTag("blocklistSettings:topics:item:${topic.topicId}"),
                         headlineContent = { Text(topic.topicName) },
                         supportingContent = { Text("ID: ${topic.topicId}") },
                         trailingContent = {
                             IconButton(
-                                modifier = Modifier.testTag(BlocklistSettingsTestTags.topicDelete(topic.topicId)),
+                                modifier = Modifier.testTag("blocklistSettings:topics:delete:${topic.topicId}"),
                                 onClick = { onDeleteTopic(topic) },
                             ) {
                                 Icon(

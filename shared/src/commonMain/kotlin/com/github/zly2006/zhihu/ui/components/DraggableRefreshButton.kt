@@ -37,9 +37,9 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import com.github.zly2006.zhihu.shared.platform.rememberScreenSizeDp
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import kotlin.math.roundToInt
 
@@ -59,7 +59,7 @@ fun DraggableRefreshButton(
     },
 ) {
     val density = LocalDensity.current
-    val screenSize = rememberScreenSizeDp()
+    val screenSize = LocalWindowInfo.current.containerSize
     val settings = rememberSettingsStore()
 
     var offsetX by remember { mutableFloatStateOf(settings.getFloat("$preferenceName-x", Float.MAX_VALUE)) }
@@ -68,8 +68,8 @@ fun DraggableRefreshButton(
 
     fun adjustFabPosition() {
         with(density) {
-            offsetX = offsetX.coerceIn(0f, screenSize.width.dp.toPx() - 56.dp.toPx())
-            offsetY = offsetY.coerceIn(0f, screenSize.height.dp.toPx() - 250.dp.toPx())
+            offsetX = offsetX.coerceIn(0f, screenSize.width - 56.dp.toPx())
+            offsetY = offsetY.coerceIn(0f, screenSize.height - 250.dp.toPx())
         }
     }
 

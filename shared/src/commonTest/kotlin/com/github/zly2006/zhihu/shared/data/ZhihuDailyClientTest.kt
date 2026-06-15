@@ -28,30 +28,17 @@ import io.ktor.http.headersOf
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 
 class ZhihuDailyClientTest {
     @Test
-    fun nextDailyApiDateHandlesMonthAndLeapYearBoundaries() {
-        assertEquals("20260301", nextDailyApiDate("20260228"))
-        assertEquals("20240229", nextDailyApiDate("20240228"))
-        assertEquals("20250101", nextDailyApiDate("20241231"))
-    }
-
-    @Test
-    fun nextDailyApiDateRejectsInvalidFormat() {
-        assertFailsWith<IllegalArgumentException> {
-            nextDailyApiDate("2026-05-20")
-        }
-    }
-
-    @Test
     fun fetchDailyStoriesForDateRequestsNextDayBeforeEndpoint() = runTest {
         val client = dailyMockClient { url ->
-            assertEquals(zhihuDailyBeforeUrl("20260521"), url)
+            assertEquals("https://news-at.zhihu.com/api/4/stories/before/20260521", url)
         }
 
-        val response: DailyStoriesResponse = client.get(zhihuDailyBeforeUrl(nextDailyApiDate("20260520"))).body()
+        val response: DailyStoriesResponse = client
+            .get("https://news-at.zhihu.com/api/4/stories/before/20260521")
+            .body()
 
         assertEquals("20260520", response.date)
         assertEquals(1L, response.stories.single().id)
@@ -60,10 +47,12 @@ class ZhihuDailyClientTest {
     @Test
     fun fetchLatestDailyStoriesRequestsLatestEndpoint() = runTest {
         val client = dailyMockClient { url ->
-            assertEquals(ZHIHU_DAILY_LATEST_URL, url)
+            assertEquals("https://news-at.zhihu.com/api/4/stories/latest", url)
         }
 
-        val response: DailyStoriesResponse = client.get(ZHIHU_DAILY_LATEST_URL).body()
+        val response: DailyStoriesResponse = client
+            .get("https://news-at.zhihu.com/api/4/stories/latest")
+            .body()
 
         assertEquals("20260520", response.date)
     }

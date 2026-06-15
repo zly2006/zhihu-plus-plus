@@ -28,11 +28,17 @@ import io.ktor.http.headersOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class ZhihuAccountTest {
+    @BeforeTest
+    fun resetAuthRefreshThrottle() {
+        resetZhihuAuthenticatedRequestRefreshThrottleForTesting()
+    }
+
     @Test
     fun fetchVerifiedSessionReturnsNullForUnauthorizedResponse() = runTest {
         val client = mockClient(
@@ -108,20 +114,15 @@ class ZhihuAccountTest {
                 userAgent = "test-agent",
             )
         }
-        var refreshedAt = 0L
 
         val response = fetchZhihuAuthenticatedJson(
             client = client,
             url = "https://www.zhihu.com/api/v4/test",
-            lastRefreshMillis = 0L,
-            updateLastRefreshMillis = { refreshedAt = it },
-            nowMillis = { 20_000L },
         ) {
             method = HttpMethod.Get
         }
 
         assertEquals("true", response?.get("ok")?.jsonPrimitive?.content)
-        assertEquals(20_000L, refreshedAt)
         assertEquals(
             listOf(
                 "GET /api/v4/test",
@@ -169,14 +170,10 @@ class ZhihuAccountTest {
                 userAgent = "test-agent",
             )
         }
-        var refreshedAt = 0L
 
         val response = executeZhihuAuthenticatedRequest(
             client = client,
             url = "https://www.zhihu.com/api/v4/members/alice/followers",
-            lastRefreshMillis = 0L,
-            updateLastRefreshMillis = { refreshedAt = it },
-            nowMillis = { 30_000L },
         ) {
             method = HttpMethod.Post
         }
@@ -186,7 +183,6 @@ class ZhihuAccountTest {
             "42",
             response.body<kotlinx.serialization.json.JsonObject>()["follower_count"]?.jsonPrimitive?.content,
         )
-        assertEquals(30_000L, refreshedAt)
         assertEquals(
             listOf(
                 "POST /api/v4/members/alice/followers",

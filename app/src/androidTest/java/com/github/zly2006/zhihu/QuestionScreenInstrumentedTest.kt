@@ -56,9 +56,9 @@ import com.github.zly2006.zhihu.ui.QUESTION_VIEW_LOG_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.QuestionScreen
 import com.github.zly2006.zhihu.ui.QuestionScreenTestOverrides
 import com.github.zly2006.zhihu.ui.QuestionScreenUiState
-import com.github.zly2006.zhihu.ui.questionFeedItemTag
 import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.filter.getBlocklistManager
+import com.github.zly2006.zhihu.viewmodel.filter.BlockedUser
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.paginationEnvironment
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonArray
@@ -79,12 +79,14 @@ class QuestionScreenInstrumentedTest {
     @Before
     fun setUp() = runBlocking {
         composeRule.resetAppPreferences()
-        getBlocklistManager(composeRule.activity).clearAllBlockedUsers()
+        val database = getContentFilterDatabase(composeRule.activity)
+        database.blockedUserDao().clearAllUsers()
     }
 
     @After
     fun tearDown() = runBlocking {
-        getBlocklistManager(composeRule.activity).clearAllBlockedUsers()
+        val database = getContentFilterDatabase(composeRule.activity)
+        database.blockedUserDao().clearAllUsers()
     }
 
     @Test
@@ -170,19 +172,19 @@ class QuestionScreenInstrumentedTest {
         composeRule.onNodeWithTag(QUESTION_SCREEN_LIST_TAG).assertIsDisplayed()
         composeRule
             .onNodeWithTag(QUESTION_SCREEN_LIST_TAG)
-            .performScrollToNode(hasTestTag(questionFeedItemTag("offline-question-item-18")))
-        composeRule.onNodeWithTag(questionFeedItemTag("offline-question-item-18")).assertIsDisplayed()
+            .performScrollToNode(hasTestTag("question_feed_item_offline-question-item-18"))
+        composeRule.onNodeWithTag("question_feed_item_offline-question-item-18").assertIsDisplayed()
         composeRule.onNodeWithTag(QUESTION_SCREEN_LIST_TAG).performVerticalSwipeCycle()
         composeRule.onNodeWithTag(QUESTION_SCREEN_LIST_TAG).performHorizontalSwipeCycle()
         composeRule
             .onNodeWithTag(QUESTION_SCREEN_LIST_TAG)
-            .performScrollToNode(hasTestTag(questionFeedItemTag("offline-question-item-18")))
-        composeRule.onNodeWithTag(questionFeedItemTag("offline-question-item-18")).assertIsDisplayed()
+            .performScrollToNode(hasTestTag("question_feed_item_offline-question-item-18"))
+        composeRule.onNodeWithTag("question_feed_item_offline-question-item-18").assertIsDisplayed()
 
         composeRule
             .onNodeWithTag(QUESTION_SCREEN_LIST_TAG)
-            .performScrollToNode(hasTestTag(questionFeedItemTag("offline-question-item-3")))
-        composeRule.onNodeWithTag(questionFeedItemTag("offline-question-item-3")).performClick()
+            .performScrollToNode(hasTestTag("question_feed_item_offline-question-item-3"))
+        composeRule.onNodeWithTag("question_feed_item_offline-question-item-3").performClick()
 
         assertTrue("Scrolling near the end should trigger the offline load-more seam", loadMoreCount > 0)
         assertEquals(
@@ -207,8 +209,8 @@ class QuestionScreenInstrumentedTest {
          */
         val viewModel = TestableQuestionFeedViewModel(123456789L)
         runBlocking {
-            getBlocklistManager(composeRule.activity)
-                .addBlockedUser("blocked-answer-author", "被屏蔽回答作者")
+            val database = getContentFilterDatabase(composeRule.activity)
+            database.blockedUserDao().insertUser(BlockedUser("blocked-answer-author", "被屏蔽回答作者"))
             viewModel.processForTest(
                 composeRule.activity,
                 listOf(

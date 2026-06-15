@@ -89,6 +89,7 @@ import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.viewmodel.ContentLoadEnvironment
+import com.github.zly2006.zhihu.viewmodel.addReadHistory
 import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
@@ -124,8 +125,6 @@ const val QUESTION_VIEW_LOG_BUTTON_TAG = "question_view_log_button"
 const val QUESTION_SHARE_BUTTON_TAG = "question_share_button"
 const val QUESTION_COMMENTS_BUTTON_TAG = "question_comments_button"
 const val QUESTION_STATS_TAG = "question_stats"
-
-fun questionFeedItemTag(stableKey: String) = "question_feed_item_$stableKey"
 
 private suspend fun loadQuestion(
     environment: ContentLoadEnvironment,
@@ -376,7 +375,6 @@ fun QuestionScreen(
                                         val nextFollowing = !isFollowing
                                         testOverrides?.onFollowQuestion?.invoke(nextFollowing) ?: viewModel.followQuestion(
                                             paginationEnvironment,
-                                            question.questionId,
                                             nextFollowing,
                                         )
                                         isFollowing = nextFollowing
@@ -480,7 +478,7 @@ fun QuestionScreen(
             ) { item ->
                 FeedCard(
                     item = item,
-                    modifier = Modifier.testTag(questionFeedItemTag(item.stableKey)),
+                    modifier = Modifier.testTag("question_feed_item_${item.stableKey}"),
                 )
             }
         }

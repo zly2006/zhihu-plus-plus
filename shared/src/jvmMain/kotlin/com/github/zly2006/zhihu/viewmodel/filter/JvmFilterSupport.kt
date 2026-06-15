@@ -16,8 +16,6 @@
  */
 
 package com.github.zly2006.zhihu.viewmodel.filter
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.room.Room
 import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDataFile
 import java.io.File
@@ -50,17 +48,14 @@ private fun extractDesktopSemanticTokens(text: String): List<String> =
         .filter { it.length >= 2 }
         .toList()
 
-@Composable
-actual fun rememberBlockedFeedRecordDao(): BlockedFeedRecordDao =
-    remember { getContentFilterDatabase(desktopContentFilterDatabaseFile()).blockedFeedRecordDao() }
-
 fun desktopContentFilterDatabaseFile(): File =
     desktopZhihuDataFile("content-filter.db")
 
-@Composable
-actual fun rememberBlocklistManager(): BlocklistManager = remember {
-    getContentFilterDatabase(desktopContentFilterDatabaseFile().also { it.parentFile?.mkdirs() }).createBlocklistManager()
+private val desktopContentFilterDatabase by lazy {
+    getContentFilterDatabase(desktopContentFilterDatabaseFile().also { it.parentFile?.mkdirs() })
 }
+
+actual fun getContentFilterDatabase(): ContentFilterDatabase = desktopContentFilterDatabase
 
 fun getContentFilterDatabase(databaseFile: File): ContentFilterDatabase =
     buildContentFilterDatabase(

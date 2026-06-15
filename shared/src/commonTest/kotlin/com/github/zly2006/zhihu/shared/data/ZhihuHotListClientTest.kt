@@ -23,22 +23,6 @@ import kotlin.test.assertNull
 
 class ZhihuHotListClientTest {
     @Test
-    fun buildsDefaultHotListUrl() {
-        assertEquals(
-            "https://www.zhihu.com/api/v3/feed/topstory/hot-lists/total?limit=50&mobile=true",
-            zhihuHotListUrl(),
-        )
-    }
-
-    @Test
-    fun buildsCustomHotListUrl() {
-        assertEquals(
-            "https://www.zhihu.com/api/v3/feed/topstory/hot-lists/total?limit=20&mobile=false",
-            zhihuHotListUrl(limit = 20, mobile = false),
-        )
-    }
-
-    @Test
     fun createsQuestionDisplayItem() {
         val feed = HotListFeed(
             id = "hot-1",

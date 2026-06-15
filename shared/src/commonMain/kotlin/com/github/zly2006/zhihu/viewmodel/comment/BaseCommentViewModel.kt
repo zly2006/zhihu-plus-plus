@@ -29,7 +29,6 @@ import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.deleteSigned
-import com.github.zly2006.zhihu.viewmodel.filter.fetchBlockedUserIds
 import com.github.zly2006.zhihu.viewmodel.postSigned
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.launch
@@ -68,7 +67,7 @@ abstract class BaseCommentViewModel(
         environment: ContentBlocklistEnvironment,
         comments: List<DataHolder.Comment>,
     ): List<DataHolder.Comment> {
-        val blockedUserIds = environment.fetchBlockedUserIds()
+        val blockedUserIds = environment.blockedUserIds()
         if (blockedUserIds.isEmpty()) return comments
         return comments.mapNotNull { comment ->
             if (comment.author.id in blockedUserIds) {

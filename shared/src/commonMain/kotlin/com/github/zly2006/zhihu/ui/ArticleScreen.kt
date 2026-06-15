@@ -149,9 +149,9 @@ import com.github.zly2006.zhihu.ui.components.rememberPreferCollapsedExitUntilCo
 import com.github.zly2006.zhihu.util.smoothGradient
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
+import com.github.zly2006.zhihu.viewmodel.addReadHistory
 import com.github.zly2006.zhihu.viewmodel.filter.ZhihuMcnAndBadgeProvider
 import com.github.zly2006.zhihu.viewmodel.filter.normalizeMcnCompany
-import com.github.zly2006.zhihu.viewmodel.filter.rememberBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import com.materialkolor.ktx.harmonize
@@ -710,11 +710,8 @@ fun ArticleScreen(
     val navigator = LocalNavigator.current
     val articleScreenRuntime = rememberArticleScreenRuntime()
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
-    val blocklistManager = rememberBlocklistManager()
     val mcnAndBadgeProvider = remember(environment) {
-        ZhihuMcnAndBadgeProvider(environment.httpClient()) { request ->
-            environment.configureSignedRequest(request)
-        }
+        ZhihuMcnAndBadgeProvider(environment)
     }
     val articleHost = articleScreenRuntime.articleHost
     val previewPreloader = articleScreenRuntime.previewPreloader
@@ -732,7 +729,6 @@ fun ArticleScreen(
         mutableStateOf(articleSettings.answerSwitchMode)
     }
     var pinAnswerDate by remember { mutableStateOf(articleSettings.pinAnswerDate) }
-    val readHistoryRecorder = rememberArticleReadHistoryRecorder()
     val userMessages = rememberUserMessageSink()
 
     var previousScrollValue by remember { mutableIntStateOf(0) }
@@ -772,7 +768,10 @@ fun ArticleScreen(
     var isBarSnapping by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        readHistoryRecorder.addReadHistory(article)
+        environment.addReadHistory(
+            contentToken = article.id.toString(),
+            contentTypeName = article.type.name.lowercase(),
+        )
     }
     LaunchedEffect(viewModel.authorUrlToken, viewModel.authorName) {
         val urlToken = viewModel.authorUrlToken
@@ -780,14 +779,14 @@ fun ArticleScreen(
             authorMcnCompany = null
             return@LaunchedEffect
         }
-        blocklistManager.getCachedMcnAuthor(urlToken)?.let { cachedAuthor ->
+        environment.getCachedMcnAuthorProfile(urlToken)?.let { cachedAuthor ->
             authorMcnCompany = cachedAuthor.mcnCompany.normalizeMcnCompany()
             return@LaunchedEffect
         }
         runCatching {
             mcnAndBadgeProvider.getAuthorProfile(urlToken)
         }.onSuccess { profile ->
-            blocklistManager.cacheMcnAuthorProfile(urlToken, viewModel.authorName, profile)
+            environment.cacheMcnAuthorProfile(urlToken, viewModel.authorName, profile)
             authorMcnCompany = profile.mcnCompany.normalizeMcnCompany()
         }
     }

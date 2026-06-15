@@ -16,10 +16,8 @@
  */
 
 package com.github.zly2006.zhihu.viewmodel.filter
-import androidx.compose.runtime.Composable
 import com.github.zly2006.zhihu.shared.filter.ContentFilterStats
 import com.github.zly2006.zhihu.shared.filter.createContentFilterMaintenance
-import com.github.zly2006.zhihu.viewmodel.ContentBlocklistEnvironment
 
 typealias FilterStats = ContentFilterStats
 
@@ -75,8 +73,3 @@ class ContentFilterManager(
         maintenance.clearAllData()
     }
 }
-
-fun ContentBlocklistEnvironment.fetchBlockedUserIds(): Set<String> = blockedUserIds()
-
-@Composable
-expect fun rememberBlockedFeedRecordDao(): BlockedFeedRecordDao

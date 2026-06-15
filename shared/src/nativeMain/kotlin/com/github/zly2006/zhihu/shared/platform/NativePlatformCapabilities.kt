@@ -62,9 +62,6 @@ actual fun PlatformPredictiveBackHandler(
 ) = PlatformBackHandler(enabled = enabled, onBack = onBack)
 
 @Composable
-actual fun rememberScreenSizeDp(): ScreenSizeDp = ScreenSizeDp(width = 0f, height = 0f) // TODO: iOS 屏幕尺寸获取
-
-@Composable
 actual fun rememberSettingsStore(): SettingsStore = noopSettingsStore() // TODO: iOS 设置存储
 
 @Composable

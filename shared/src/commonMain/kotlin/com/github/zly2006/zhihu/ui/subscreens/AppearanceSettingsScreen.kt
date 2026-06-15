@@ -119,18 +119,6 @@ const val APPEARANCE_SETTINGS_WEBVIEW_FONT_TAG = "appearanceSettings.webViewFont
 const val APPEARANCE_SETTINGS_WEBVIEW_OPTIONS_TAG = "appearanceSettings.webViewOptions"
 const val APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY = "appearanceSettings.bottomBarSection"
 
-fun appearanceSettingsStartDestinationOptionTag(key: String): String =
-    "appearanceSettings.startDestinationOption.$key"
-
-fun appearanceSettingsBottomBarItemTag(key: String): String =
-    "appearanceSettings.bottomBarItem.$key"
-
-fun appearanceSettingsBottomBarMoveUpTag(key: String): String =
-    "appearanceSettings.bottomBarItem.$key.moveUp"
-
-fun appearanceSettingsBottomBarMoveDownTag(key: String): String =
-    "appearanceSettings.bottomBarItem.$key.moveDown"
-
 const val START_DESTINATION_PREFERENCE_KEY = "startDestination"
 const val BOTTOM_BAR_ITEMS_PREFERENCE_KEY = "bottom_bar_items"
 const val BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY = "bottom_bar_item_order"
@@ -978,7 +966,7 @@ fun AppearanceSettingsScreen(
                             ) {
                                 startDestinationItems.forEach { (key, label) ->
                                     DropdownMenuItem(
-                                        modifier = Modifier.testTag(appearanceSettingsStartDestinationOptionTag(key)),
+                                        modifier = Modifier.testTag("appearanceSettings:startDestination:option:$key"),
                                         text = { Text(label) },
                                         onClick = {
                                             startDestinationKey = key
@@ -1029,7 +1017,7 @@ fun AppearanceSettingsScreen(
                                             fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
                                             fadeOutSpec = spring(stiffness = Spring.StiffnessMediumLow),
                                             placementSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                                        ).testTag(appearanceSettingsBottomBarItemTag(key))
+                                        ).testTag("appearanceSettings:bottomBar:item:$key")
                                         .fillMaxWidth()
                                         .height(bottomBarSettingItemHeight)
                                         .clickable(enabled = isEnabled) {
@@ -1076,14 +1064,14 @@ fun AppearanceSettingsScreen(
                                             IconButton(
                                                 onClick = { moveBottomBarItem(key, -1) },
                                                 enabled = selectedIndex > 0,
-                                                modifier = Modifier.testTag(appearanceSettingsBottomBarMoveUpTag(key)),
+                                                modifier = Modifier.testTag("appearanceSettings:bottomBar:moveUp:$key"),
                                             ) {
                                                 Icon(Icons.Filled.KeyboardArrowUp, contentDescription = "上移$label")
                                             }
                                             IconButton(
                                                 onClick = { moveBottomBarItem(key, 1) },
                                                 enabled = selectedIndex in 0 until selectedBottomBarItemKeys.value.lastIndex,
-                                                modifier = Modifier.testTag(appearanceSettingsBottomBarMoveDownTag(key)),
+                                                modifier = Modifier.testTag("appearanceSettings:bottomBar:moveDown:$key"),
                                             ) {
                                                 Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "下移$label")
                                             }
