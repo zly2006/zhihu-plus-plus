@@ -450,7 +450,7 @@ private fun MiuixCommentRow(
                             .testTag(commentAuthorTag(commentData.id))
                             .clickable {
                                 navigator.onNavigate(
-                                    Person(commentData.author.id, commentData.author.name, commentData.author.urlToken),
+                                    Person(id = commentData.author.id, urlToken = commentData.author.urlToken, name = commentData.author.name),
                                 )
                             },
                     )
@@ -469,7 +469,7 @@ private fun MiuixCommentRow(
                             modifier = Modifier
                                 .testTag(commentReplyToAuthorTag(commentData.id))
                                 .clickable {
-                                    navigator.onNavigate(Person(replyToAuthor.id, replyToAuthor.name, replyToAuthor.urlToken))
+                                    navigator.onNavigate(Person(id = replyToAuthor.id, urlToken = replyToAuthor.urlToken, name = replyToAuthor.name))
                                 },
                         )
                     }
