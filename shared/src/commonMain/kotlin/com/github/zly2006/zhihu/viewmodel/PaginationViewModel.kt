@@ -30,6 +30,8 @@ import com.github.zly2006.zhihu.data.getOrFetchContentDetail
 import com.github.zly2006.zhihu.navigation.AnswerNavigator
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.shared.aigc.AigcVoteClient
+import com.github.zly2006.zhihu.shared.aigc.AigcVoteVoter
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
@@ -368,6 +370,12 @@ interface ContentOpenEnvironment {
     ) = Unit
 }
 
+interface AigcVoteEnvironment {
+    fun aigcVoteClient(): AigcVoteClient? = null
+
+    fun aigcVoteVoter(): AigcVoteVoter? = null
+}
+
 interface ContentBlocklistEnvironment {
     suspend fun isUserBlocked(userId: String): Boolean = false
 
@@ -450,7 +458,8 @@ interface ArticleNavigationEnvironment {
 interface ContentLoadEnvironment :
     ZhihuApiEnvironment,
     HistoryEnvironment,
-    ContentOpenEnvironment
+    ContentOpenEnvironment,
+    AigcVoteEnvironment
 
 interface ProfileLoadEnvironment :
     ContentLoadEnvironment,

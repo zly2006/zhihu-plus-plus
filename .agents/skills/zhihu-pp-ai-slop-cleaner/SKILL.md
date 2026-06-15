@@ -79,6 +79,12 @@ rg -n "TODO|unused|deprecated wrapper|pure forwarding" app shared desktopApp -g 
 - Cross-platform duplicate helpers that do identical formatting, parsing, URL normalization, or ID construction.
 - Dead debug helpers, stale reset hooks, stale bulk methods, and comment-referenced methods with no production caller.
 
+## Merge Conflict Boundary
+
+During slop cleanup, do not reintroduce platform/environment state just because `master` has a newer conflict-side implementation. If the cleanup intentionally pushed a cache/throttle into a lower-level helper to keep API surface small, preserve that direction when resolving conflicts. Example: when a lower-level authenticated request helper owns a short refresh throttle, do not add per-platform `last...` getters/setters back onto the environment interface merely to satisfy one merge side; keep the throttle at the lower layer and adapt the conflicting code around it.
+
+After a user points out one bad conflict direction, audit the whole merge intersection before continuing. Check every file changed on both sides, search for deleted helper families that may have been reintroduced under the same or similar names, and verify new master-side behavior is still present. Example: if a conflict around an environment interface accidentally brings back one state accessor, also inspect adjacent files for old repositories, URL helpers, wrapper methods, and newly added feature interfaces instead of fixing only the named accessor.
+
 ## What To Keep
 
 - `override`, `expect`, `actual`, `@Serializable` serializer methods, `NavType`, Room DAO, Room converter, migration, lifecycle callback, and JavaScript bridge entry points unless source inspection proves they are unused and removable.

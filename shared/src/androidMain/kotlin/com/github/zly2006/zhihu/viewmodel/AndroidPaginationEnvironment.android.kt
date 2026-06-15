@@ -39,6 +39,9 @@ import androidx.lifecycle.LifecycleOwner
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.HistoryStorage
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.shared.aigc.AIGC_MARKING_ENABLED_PREFERENCE_KEY
+import com.github.zly2006.zhihu.shared.aigc.AigcVoteClient
+import com.github.zly2006.zhihu.shared.aigc.AigcVoteVoter
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
@@ -88,6 +91,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import java.io.File
+import java.util.UUID
 import com.github.zly2006.zhihu.navigation.Article as ArticleDestination
 import com.github.zly2006.zhihu.util.buildArticleExportHtml as buildAndroidArticleExportHtml
 import io.ktor.http.ContentType as KtorContentType
@@ -102,6 +106,10 @@ private val ZHIHU_PP_ANDROID_HEADERS = createClientPlugin("ZhihuPPAndroidHeaders
     }
 }
 
+private const val AIGC_VOTE_CLIENT_ID_KEY = "aigcVoteClientId"
+private const val AIGC_VOTE_SERVER_URL_KEY = "aigcVoteServerUrl"
+private const val DEFAULT_ANDROID_AIGC_VOTE_SERVER_URL = "https://aigc-vote.ai.fintechedu.cn"
+
 open class SharedAndroidPaginationEnvironment(
     override val context: Context,
     private val allowGuestAccess: Boolean,
@@ -110,6 +118,20 @@ open class SharedAndroidPaginationEnvironment(
     private val localRecommendationEngine by lazy { LocalRecommendationEngine(context) }
     private val settingsStore by lazy { androidSettingsStore(context) }
     private val userMessageSink by lazy { androidUserMessageSink(context) }
+    private val aigcVoteHttpClient by lazy {
+        HttpClient {
+            install(ContentNegotiation) {
+                json(json)
+            }
+        }
+    }
+    private val aigcVoteClient by lazy {
+        AigcVoteClient(
+            httpClient = aigcVoteHttpClient,
+            baseUrl = aigcVoteServerUrl(),
+            clientId = aigcVoteClientId(),
+        )
+    }
 
     override fun httpClient(): HttpClient {
         val loginForRecommendation = settingsStore.getBoolean("loginForRecommendation", true)
@@ -148,6 +170,23 @@ open class SharedAndroidPaginationEnvironment(
         }
     }
 
+    override fun aigcVoteClient(): AigcVoteClient? =
+        if (settingsStore.getBoolean(AIGC_MARKING_ENABLED_PREFERENCE_KEY, false)) {
+            aigcVoteClient
+        } else {
+            null
+        }
+
+    override fun aigcVoteVoter(): AigcVoteVoter? =
+        AccountData.data.self?.let { self ->
+            AigcVoteVoter(
+                id = self.id,
+                name = self.name,
+                urlToken = self.urlToken,
+                avatarUrl = self.avatarUrl,
+            )
+        }
+
     override fun authenticatedCookies(): Map<String, String> {
         val loginForRecommendation = settingsStore.getBoolean("loginForRecommendation", true)
         return if (allowGuestAccess && !loginForRecommendation) {
@@ -155,6 +194,20 @@ open class SharedAndroidPaginationEnvironment(
         } else {
             AccountData.data.cookies
         }
+    }
+
+    private fun aigcVoteServerUrl(): String =
+        settingsStore
+            .getString(AIGC_VOTE_SERVER_URL_KEY, DEFAULT_ANDROID_AIGC_VOTE_SERVER_URL)
+            .ifBlank { DEFAULT_ANDROID_AIGC_VOTE_SERVER_URL }
+
+    private fun aigcVoteClientId(): String {
+        settingsStore.getStringOrNull(AIGC_VOTE_CLIENT_ID_KEY)?.takeIf { it.isNotBlank() }?.let {
+            return it
+        }
+        val id = UUID.randomUUID().toString()
+        settingsStore.putString(AIGC_VOTE_CLIENT_ID_KEY, id)
+        return id
     }
 
     override suspend fun handleFetchFailure(
