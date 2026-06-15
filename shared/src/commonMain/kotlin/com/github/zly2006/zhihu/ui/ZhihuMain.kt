@@ -581,9 +581,19 @@ private fun MainTabsPager(
                 innerPadding = innerPadding,
                 isActive = pagerState.currentPage == pageIndex,
             )
-            MainTabPage.HotListPage -> HotListScreen(innerPadding)
-            MainTabPage.DailyPage -> DailyScreen()
-            MainTabPage.OnlineHistoryPage -> OnlineHistoryScreen()
+            MainTabPage.HotListPage -> HotListScreen(
+                innerPadding = innerPadding,
+                scrollToTopTrigger = scrollToTopTrigger,
+                isActive = pagerState.currentPage == pageIndex,
+            )
+            MainTabPage.DailyPage -> DailyScreen(
+                scrollToTopTrigger = scrollToTopTrigger,
+                isActive = pagerState.currentPage == pageIndex,
+            )
+            MainTabPage.OnlineHistoryPage -> OnlineHistoryScreen(
+                scrollToTopTrigger = scrollToTopTrigger,
+                isActive = pagerState.currentPage == pageIndex,
+            )
             MainTabPage.MyCollectionsPage -> MyCollectionsTopLevelPage()
             MainTabPage.AccountPage -> AccountSettingScreen(innerPadding)
         }
