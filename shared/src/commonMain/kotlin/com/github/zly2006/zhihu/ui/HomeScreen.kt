@@ -133,6 +133,7 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
 
     val duo3HomeAccount = settings.getBoolean("duo3_home_account", false)
     val showRefreshFab = settings.getBoolean("showRefreshFab", true)
+    val autoRefreshOnStartup = settings.getBoolean(AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY, true)
     val showUnreadBadge = notificationSettings.getUnreadBadgeEnabled()
     var showAccountBottomSheet by remember { mutableStateOf(false) }
 
@@ -198,15 +199,30 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
         }
     }
 
+    LaunchedEffect(viewModel.displayItems.size) {
+        encodeHomeFeedStartupSnapshot(viewModel.displayItems)?.let { snapshot ->
+            settings.putString(HOME_FEED_STARTUP_SNAPSHOT_PREFERENCE_KEY, snapshot)
+        }
+    }
+
     // 初始加载
-    LaunchedEffect(currentRecommendationMode, runtime.account.isLoggedIn) {
+    LaunchedEffect(currentRecommendationMode, runtime.account.isLoggedIn, autoRefreshOnStartup) {
         if (!runtime.account.isLoggedIn &&
             settings.getBoolean("loginForRecommendation", true)
         ) {
             runtime.requestLogin()
         } else if (viewModel.displayItems.isEmpty()) {
-            // 只在第一次加载时刷新，这样可以避免在返回时刷新
-            viewModel.refresh(paginationEnvironment)
+            val cachedItems = if (autoRefreshOnStartup) {
+                emptyList()
+            } else {
+                decodeHomeFeedStartupSnapshot(settings.getStringOrNull(HOME_FEED_STARTUP_SNAPSHOT_PREFERENCE_KEY))
+            }
+            if (cachedItems.isNotEmpty()) {
+                viewModel.addDisplayItems(cachedItems)
+            } else {
+                // 只在第一次加载时刷新，这样可以避免在返回时刷新
+                viewModel.refresh(paginationEnvironment)
+            }
         }
     }
 
