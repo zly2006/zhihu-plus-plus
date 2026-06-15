@@ -223,8 +223,17 @@ class LocalRecommendationSupportTest {
 
         ensurePendingTasks(dao)
 
-        assertEquals(3, dao.getTaskCountByReasonAndStatus(CrawlingReason.Trending, CrawlingStatus.NotStarted))
-        assertEquals(3, dao.getTaskCountByReasonAndStatus(CrawlingReason.Following, CrawlingStatus.NotStarted))
+        val trendingTasks = dao.getTasksByStatus(CrawlingStatus.NotStarted).filter { it.reason == CrawlingReason.Trending }
+        assertEquals(3, trendingTasks.size)
+        assertEquals(
+            setOf("existing", "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=20"),
+            trendingTasks.map { it.url }.toSet(),
+        )
+        assertEquals(setOf(0, 7), trendingTasks.map { it.priority }.toSet())
+        val followingTasks = dao.getTasksByStatus(CrawlingStatus.NotStarted).filter { it.reason == CrawlingReason.Following }
+        assertEquals(3, followingTasks.size)
+        assertEquals(setOf("https://api.zhihu.com/moments_v3?feed_type=recommend"), followingTasks.map { it.url }.toSet())
+        assertEquals(setOf(8), followingTasks.map { it.priority }.toSet())
         database.close()
     }
 
@@ -313,21 +322,17 @@ class LocalRecommendationSupportTest {
     }
 
     @Test
-    fun getDefaultWeightKeepsReasonWeights() {
-        assertEquals(1.2, getDefaultWeight(CrawlingReason.Following))
-        assertEquals(1.0, getDefaultWeight(CrawlingReason.Trending))
-        assertEquals(0.95, getDefaultWeight(CrawlingReason.UpvotedQuestion))
-        assertEquals(0.88, getDefaultWeight(CrawlingReason.FollowingUpvote))
-        assertEquals(0.8, getDefaultWeight(CrawlingReason.CollaborativeFiltering))
-    }
-
-    @Test
-    fun createTaskForReasonKeepsUrlAndPriority() {
-        val task = createTaskForReason(CrawlingReason.Following)
-
-        assertEquals("https://api.zhihu.com/moments_v3?feed_type=recommend", task.url)
-        assertEquals(CrawlingReason.Following, task.reason)
-        assertEquals(8, task.priority)
+    fun crawlingReasonKeepsWeightsAndLabels() {
+        assertEquals(1.2, CrawlingReason.Following.defaultWeight)
+        assertEquals("关注用户的最新动态", CrawlingReason.Following.displayText)
+        assertEquals(1.0, CrawlingReason.Trending.defaultWeight)
+        assertEquals("热门推荐", CrawlingReason.Trending.displayText)
+        assertEquals(0.95, CrawlingReason.UpvotedQuestion.defaultWeight)
+        assertEquals("相关问题的优质回答", CrawlingReason.UpvotedQuestion.displayText)
+        assertEquals(0.88, CrawlingReason.FollowingUpvote.defaultWeight)
+        assertEquals("关注用户点赞的内容", CrawlingReason.FollowingUpvote.displayText)
+        assertEquals(0.8, CrawlingReason.CollaborativeFiltering.defaultWeight)
+        assertEquals("相似用户喜欢的内容", CrawlingReason.CollaborativeFiltering.displayText)
     }
 
     @Test
