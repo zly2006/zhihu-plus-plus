@@ -29,57 +29,10 @@ import io.ktor.http.Cookie
 import io.ktor.http.CookieEncoding
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Url
-import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.plus
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlin.time.Clock
-
-const val ZHIHU_CLEAR_ONLINE_HISTORY_URL = "https://api.zhihu.com/read_history/batch_del"
-
-fun decodeOnlineHistoryItems(
-    data: JsonArray,
-    ignoreInvalid: Boolean = false,
-): List<OnlineHistoryItem> = data.mapNotNull { item ->
-    runCatching {
-        ZhihuJson.decodeJson<OnlineHistoryItem>(item)
-    }.getOrElse { error ->
-        if (ignoreInvalid) {
-            null
-        } else {
-            throw error
-        }
-    }
-}
-
-const val ZHIHU_LAST_READ_TOUCH_URL = "https://www.zhihu.com/lastread/touch"
-
-const val ZHIHU_NOTIFICATION_DEFAULT_READ_ALL_URL =
-    "https://www.zhihu.com/api/v4/notifications/v2/default/actions/readall"
-const val ZHIHU_NOTIFICATION_FOLLOW_READ_ALL_URL =
-    "https://www.zhihu.com/api/v4/notifications/v2/follow/actions/readall"
-const val ZHIHU_NOTIFICATION_VOTE_THANK_READ_ALL_URL =
-    "https://www.zhihu.com/api/v4/notifications/v2/vote_thank/actions/readall"
-
-val ZHIHU_NOTIFICATION_READ_ALL_URLS = listOf(
-    ZHIHU_NOTIFICATION_DEFAULT_READ_ALL_URL,
-    ZHIHU_NOTIFICATION_FOLLOW_READ_ALL_URL,
-    ZHIHU_NOTIFICATION_VOTE_THANK_READ_ALL_URL,
-)
-
-const val ZHIHU_DAILY_LATEST_URL = "https://news-at.zhihu.com/api/4/stories/latest"
-
-fun nextDailyApiDate(date: String): String {
-    require(date.length == 8 && date.all { it.isDigit() }) {
-        "date must use yyyyMMdd format"
-    }
-    val localDate = LocalDate.parse("${date.substring(0, 4)}-${date.substring(4, 6)}-${date.substring(6, 8)}")
-    val nextDate = localDate.plus(1, DateTimeUnit.DAY)
-    return nextDate.toString().replace("-", "")
-}
 
 private var lastRefreshMillis: Long = 0
 

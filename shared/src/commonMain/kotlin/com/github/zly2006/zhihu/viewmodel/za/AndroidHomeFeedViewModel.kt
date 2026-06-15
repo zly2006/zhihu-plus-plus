@@ -21,7 +21,6 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.ZHIHU_LAST_READ_TOUCH_URL
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
@@ -124,7 +123,7 @@ class AndroidHomeFeedViewModel :
                     else -> null
                 }
                 if (payloadItem != null) {
-                    environment.postSigned(ZHIHU_LAST_READ_TOUCH_URL) {
+                    environment.postSigned("https://www.zhihu.com/lastread/touch") {
                         header("x-requested-with", "fetch")
                         setBody(
                             MultiPartFormDataContent(

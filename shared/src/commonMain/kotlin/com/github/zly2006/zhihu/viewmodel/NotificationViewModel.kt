@@ -22,7 +22,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import com.github.zly2006.zhihu.shared.data.NotificationItem
 import com.github.zly2006.zhihu.shared.data.ZHIHU_ME_URL
-import com.github.zly2006.zhihu.shared.data.ZHIHU_NOTIFICATION_READ_ALL_URLS
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.ZhihuMeNotifications
 import com.github.zly2006.zhihu.shared.data.ZhihuPaging
@@ -190,7 +189,11 @@ class NotificationViewModel :
      * 标记所有消息为已读
      */
     suspend fun markAllAsRead(environment: ZhihuApiEnvironment) {
-        ZHIHU_NOTIFICATION_READ_ALL_URLS.forEach { url ->
+        listOf(
+            "https://www.zhihu.com/api/v4/notifications/v2/default/actions/readall",
+            "https://www.zhihu.com/api/v4/notifications/v2/follow/actions/readall",
+            "https://www.zhihu.com/api/v4/notifications/v2/vote_thank/actions/readall",
+        ).forEach { url ->
             environment.postSigned(url)
         }
     }

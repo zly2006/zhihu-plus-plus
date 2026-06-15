@@ -17,13 +17,8 @@
 
 package com.github.zly2006.zhihu.shared.account
 
-import com.github.zly2006.zhihu.shared.data.executeZhihuAuthenticatedRequest
 import com.github.zly2006.zhihu.shared.data.fetchVerifiedZhihuSession
-import com.github.zly2006.zhihu.shared.data.fetchZhihuAuthenticatedJson
 import io.ktor.client.HttpClient
-import io.ktor.client.request.HttpRequestBuilder
-import io.ktor.client.statement.HttpResponse
-import kotlinx.serialization.json.JsonObject
 
 class ZhihuAccountClient(
     private val repository: ZhihuAccountRepository,
@@ -106,29 +101,6 @@ class ZhihuAccountClient(
             save(refreshed)
         }
         return refreshed
-    }
-
-    suspend fun fetchAuthenticatedJson(
-        url: String,
-        block: suspend HttpRequestBuilder.() -> Unit = {},
-    ): JsonObject? =
-        fetchZhihuAuthenticatedJson(
-            client = httpClient(),
-            url = url,
-            block = block,
-        )
-
-    suspend fun <T> withAuthenticatedResponse(
-        url: String,
-        block: suspend HttpRequestBuilder.() -> Unit = {},
-        transform: suspend (HttpResponse) -> T,
-    ): T {
-        val response = executeZhihuAuthenticatedRequest(
-            client = httpClient(),
-            url = url,
-            block = block,
-        )
-        return transform(response)
     }
 
     suspend fun <T> withAuthenticatedClient(

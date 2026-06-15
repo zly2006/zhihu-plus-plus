@@ -23,12 +23,13 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.github.zly2006.zhihu.shared.data.DailySection
 import com.github.zly2006.zhihu.shared.data.DailyStoriesResponse
-import com.github.zly2006.zhihu.shared.data.ZHIHU_DAILY_LATEST_URL
-import com.github.zly2006.zhihu.shared.data.nextDailyApiDate
 import com.github.zly2006.zhihu.shared.util.Log
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.plus
 
 class DailyViewModel : ViewModel() {
     var sections by mutableStateOf<List<DailySection>>(emptyList())
@@ -44,7 +45,9 @@ class DailyViewModel : ViewModel() {
     suspend fun loadLatest(httpClient: HttpClient) {
         isLoading = true
         try {
-            val data: DailyStoriesResponse = httpClient.get(ZHIHU_DAILY_LATEST_URL).body()
+            val data: DailyStoriesResponse = httpClient
+                .get("https://news-at.zhihu.com/api/4/stories/latest")
+                .body()
             sections = listOf(DailySection(data.date, data.stories))
             nextDate = data.date
             error = null
@@ -59,10 +62,14 @@ class DailyViewModel : ViewModel() {
         isLoading = true
         sections = emptyList()
         try {
+            val nextApiDate = LocalDate
+                .parse("${date.substring(0, 4)}-${date.substring(4, 6)}-${date.substring(6, 8)}")
+                .plus(1, DateTimeUnit.DAY)
+                .toString()
+                .replace("-", "")
             val data: DailyStoriesResponse = httpClient
-                .get(
-                    "https://news-at.zhihu.com/api/4/stories/before/${nextDailyApiDate(date)}",
-                ).body()
+                .get("https://news-at.zhihu.com/api/4/stories/before/$nextApiDate")
+                .body()
             sections = listOf(DailySection(data.date, data.stories))
             nextDate = data.date
             error = null

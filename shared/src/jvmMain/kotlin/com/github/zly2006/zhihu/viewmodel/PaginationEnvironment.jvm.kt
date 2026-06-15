@@ -24,7 +24,6 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.ZHIHU_CLEAR_ONLINE_HISTORY_URL
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
@@ -268,7 +267,7 @@ class DesktopPaginationEnvironment(
     override suspend fun clearAllHistory() {
         historyStorage.clearAndSave()
         if (store.load().cookies["d_c0"] == null) return
-        postSigned(ZHIHU_CLEAR_ONLINE_HISTORY_URL) {
+        postSigned("https://api.zhihu.com/read_history/batch_del") {
             contentType(KtorContentType.Application.Json)
             setBody(
                 buildJsonObject {

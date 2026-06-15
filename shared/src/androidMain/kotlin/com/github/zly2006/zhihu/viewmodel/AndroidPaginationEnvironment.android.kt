@@ -42,7 +42,6 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.ZHIHU_CLEAR_ONLINE_HISTORY_URL
 import com.github.zly2006.zhihu.shared.data.ZhihuCookieStorage
 import com.github.zly2006.zhihu.shared.data.ZhihuJson.json
 import com.github.zly2006.zhihu.shared.data.navDestination
@@ -308,7 +307,7 @@ open class SharedAndroidPaginationEnvironment(
 
     override suspend fun clearAllHistory() {
         HistoryStorage(context).clearAndSave()
-        postSigned(ZHIHU_CLEAR_ONLINE_HISTORY_URL) {
+        postSigned("https://api.zhihu.com/read_history/batch_del") {
             contentType(KtorContentType.Application.Json)
             setBody(
                 buildJsonObject {
