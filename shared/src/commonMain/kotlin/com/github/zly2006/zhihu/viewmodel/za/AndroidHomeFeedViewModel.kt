@@ -150,6 +150,7 @@ fun parseMobileHomeFeedDisplayItem(card: JsonObject): FeedDisplayItem? {
         .jsonObject["url"]!!
         .jsonPrimitive.content
     val authorName = lineAuthor.joStrMatch("type", "Text")["text"]!!.jsonPrimitive.content
+    val authorUrlToken = lineAuthor.firstAuthorUrlToken()
     if (routeDest is Article) {
         routeDest.authorName = authorName
         routeDest.title = title
@@ -163,9 +164,31 @@ fun parseMobileHomeFeedDisplayItem(card: JsonObject): FeedDisplayItem? {
         summary = summary,
         title = title,
         details = "$footerText · 手机版推荐",
+        authorUrlToken = authorUrlToken,
         feed = null,
     )
 }
+
+private fun List<JsonObject>.firstAuthorUrlToken(): String? =
+    firstNotNullOfOrNull { element ->
+        element["action"]
+            ?.jsonObject
+            ?.get("parameter")
+            ?.jsonPrimitive
+            ?.content
+            ?.authorUrlTokenFromRouteParameter()
+    }
+
+private fun String.authorUrlTokenFromRouteParameter(): String? {
+    val route = substringAfter("route_url=", this).decodeURLPart()
+    return route.tokenAfter("/people/") ?: route.tokenAfter("/members/")
+}
+
+private fun String.tokenAfter(path: String): String? =
+    substringAfter(path, "")
+        .substringBefore('?')
+        .substringBefore('/')
+        .takeIf { it.isNotBlank() }
 
 /**
  * Find the first JsonObject in the list where the value associated with [key] matches [value].

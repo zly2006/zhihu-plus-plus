@@ -459,6 +459,7 @@ data class Person(
     @OptIn(ExperimentalSerializationApi::class)
     @JsonNames("followerCount")
     val followersCount: Int = 0,
+    val mcnCompany: String? = null,
     val isFollowing: Boolean = false,
     val isFollowed: Boolean = false,
     val badge: List<Badge>? = null,

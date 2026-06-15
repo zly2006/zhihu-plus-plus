@@ -30,7 +30,6 @@ import com.github.zly2006.zhihu.navigation.zhihuQuestionFeedsUrl
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.OfficialBadge
 import com.github.zly2006.zhihu.shared.data.ZHIHU_CLEAR_ONLINE_HISTORY_URL
 import com.github.zly2006.zhihu.shared.data.ZHIHU_LAST_READ_TOUCH_URL
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
@@ -59,6 +58,7 @@ import com.github.zly2006.zhihu.util.sanitizeArticleExportFileNamePart
 import com.github.zly2006.zhihu.viewmodel.CollectionItem
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
 import com.github.zly2006.zhihu.viewmodel.filter.ContentType
+import com.github.zly2006.zhihu.viewmodel.filter.McnAuthorProfile
 import com.github.zly2006.zhihu.viewmodel.filter.ZhihuMcnAndBadgeProvider
 import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
@@ -66,7 +66,7 @@ import com.github.zly2006.zhihu.viewmodel.filter.desktopKeywordSemanticMatcher
 import com.github.zly2006.zhihu.viewmodel.filter.filterFeedDisplayItems
 import com.github.zly2006.zhihu.viewmodel.filter.filterForegroundReadItems
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
-import com.github.zly2006.zhihu.viewmodel.filter.hydrateCachedAuthorBadges
+import com.github.zly2006.zhihu.viewmodel.filter.hydrateCachedAuthorProfiles
 import com.github.zly2006.zhihu.viewmodel.filter.recordFeedContentInteraction
 import com.github.zly2006.zhihu.viewmodel.filter.toFeedFilterSettings
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
@@ -174,7 +174,7 @@ class DesktopPaginationEnvironment(
     )
 
     override suspend fun hydrateFeedDisplayItems(items: List<FeedDisplayItem>): List<FeedDisplayItem> =
-        contentFilterDatabase.hydrateCachedAuthorBadges(items)
+        contentFilterDatabase.hydrateCachedAuthorProfiles(items)
 
     override fun localHistory(): List<NavDestination> =
         historyStorage.history
@@ -271,12 +271,12 @@ class DesktopPaginationEnvironment(
         contentFilterDatabase.createBlocklistManager().removeBlockedUser(userId)
     }
 
-    override suspend fun cacheAuthorOfficialBadge(
+    override suspend fun cacheMcnAuthorProfile(
         urlToken: String,
         userName: String?,
-        badge: OfficialBadge,
+        profile: McnAuthorProfile,
     ) {
-        contentFilterDatabase.createBlocklistManager().cacheAuthorOfficialBadge(urlToken, userName, badge)
+        contentFilterDatabase.createBlocklistManager().cacheMcnAuthorProfile(urlToken, userName, profile)
     }
 
     override suspend fun recordContentOpenEvent(

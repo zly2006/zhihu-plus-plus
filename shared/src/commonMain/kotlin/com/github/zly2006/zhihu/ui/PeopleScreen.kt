@@ -105,6 +105,7 @@ import com.github.zly2006.zhihu.viewmodel.ProfileLoadEnvironment
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.deleteSigned
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.filter.McnAuthorProfile
 import com.github.zly2006.zhihu.viewmodel.postSigned
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import io.ktor.client.call.body
@@ -439,8 +440,15 @@ class PersonViewModel(
         this.person.id = loadedPerson.id
         if (urlToken != null) {
             this.person.urlToken = urlToken
-            profile.officialBadge?.let { badge ->
-                environment.cacheAuthorOfficialBadge(urlToken, profile.name, badge)
+            if (profile.mcnCompany != null || profile.officialBadge != null) {
+                environment.cacheMcnAuthorProfile(
+                    urlToken = urlToken,
+                    userName = profile.name,
+                    profile = McnAuthorProfile(
+                        mcnCompany = profile.mcnCompany,
+                        officialBadge = profile.officialBadge,
+                    ),
+                )
             }
         }
     }

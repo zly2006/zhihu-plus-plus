@@ -565,6 +565,11 @@ private fun FeedCardContent(
                                 Spacer(Modifier.width(4.dp))
                                 AuthorBadge(authorBadge, compact = true)
                             }
+                            val mcnCompany = item.authorMcnCompany
+                            if (mcnCompany != null) {
+                                Spacer(Modifier.width(4.dp))
+                                McnBadge(mcnCompany = mcnCompany)
+                            }
                         }
                         Spacer(Modifier.width(6.dp))
                     }
@@ -626,6 +631,11 @@ private fun FeedCardContent(
                 if (authorBadge?.isUsefulInList == true) {
                     Spacer(Modifier.width(4.dp))
                     AuthorBadge(authorBadge, compact = true)
+                }
+                val mcnCompany = item.authorMcnCompany
+                if (mcnCompany != null) {
+                    Spacer(Modifier.width(4.dp))
+                    McnBadge(mcnCompany = mcnCompany)
                 }
             }
         }

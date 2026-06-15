@@ -24,6 +24,7 @@ import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.flattenFeeds
+import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.shared.data.toDisplayItem
 import com.github.zly2006.zhihu.viewmodel.FeedDisplayEnvironment
 import com.github.zly2006.zhihu.viewmodel.HomeFeedFilterResult
@@ -41,8 +42,26 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
     override fun processResponse(environment: PaginationEnvironment, data: List<Feed>, rawData: JsonArray) {
         super.processResponse(environment, data, rawData)
         val newItems = data.flattenFeeds().map { createDisplayItem(environment, it) }
+        addDisplayItems(newItems)
         viewModelScope.launch {
-            addDisplayItems(environment.hydrateFeedDisplayItems(newItems))
+            environment.hydrateFeedDisplayItems(newItems).forEach { hydratedItem ->
+                val mcnCompany = hydratedItem.authorMcnCompany
+                val badge = hydratedItem.authorOfficialBadge
+                if (badge == null && mcnCompany == null) return@forEach
+                val index = displayItems.indexOfFirst { it.stableKey == hydratedItem.stableKey }
+                if (index < 0) return@forEach
+
+                val currentItem = displayItems[index]
+                val hasCurrentBadge = currentItem.authorBadgeV2.officialBadge() != null || currentItem.authorOfficialBadge != null
+                val nextBadge = if (hasCurrentBadge) currentItem.authorOfficialBadge else badge
+                val nextMcnCompany = currentItem.authorMcnCompany ?: mcnCompany
+                if (nextBadge != currentItem.authorOfficialBadge || nextMcnCompany != currentItem.authorMcnCompany) {
+                    displayItems[index] = currentItem.copy(
+                        authorOfficialBadge = nextBadge,
+                        authorMcnCompany = nextMcnCompany,
+                    )
+                }
+            }
         }
     }
 

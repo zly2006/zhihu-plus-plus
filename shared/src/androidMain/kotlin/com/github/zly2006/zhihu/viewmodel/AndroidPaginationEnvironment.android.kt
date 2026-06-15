@@ -51,7 +51,6 @@ import com.github.zly2006.zhihu.shared.aigc.AigcVoteVoter
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.OfficialBadge
 import com.github.zly2006.zhihu.shared.data.ZHIHU_CLEAR_ONLINE_HISTORY_URL
 import com.github.zly2006.zhihu.shared.data.ZHIHU_LAST_READ_TOUCH_URL
 import com.github.zly2006.zhihu.shared.data.ZhihuJson.json
@@ -76,13 +75,14 @@ import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.CollectionItem
 import com.github.zly2006.zhihu.viewmodel.filter.AndroidContentFilterRuntime
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
+import com.github.zly2006.zhihu.viewmodel.filter.McnAuthorProfile
 import com.github.zly2006.zhihu.viewmodel.filter.ZhihuMcnAndBadgeProvider
 import com.github.zly2006.zhihu.viewmodel.filter.contentFilterSettings
 import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.filterFeedDisplayItems
 import com.github.zly2006.zhihu.viewmodel.filter.filterForegroundReadItems
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
-import com.github.zly2006.zhihu.viewmodel.filter.hydrateCachedAuthorBadges
+import com.github.zly2006.zhihu.viewmodel.filter.hydrateCachedAuthorProfiles
 import com.github.zly2006.zhihu.viewmodel.filter.recordFeedContentInteraction
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import io.ktor.client.HttpClient
@@ -262,7 +262,7 @@ open class SharedAndroidPaginationEnvironment(
     )
 
     override suspend fun hydrateFeedDisplayItems(items: List<FeedDisplayItem>): List<FeedDisplayItem> =
-        getContentFilterDatabase(context).hydrateCachedAuthorBadges(items)
+        getContentFilterDatabase(context).hydrateCachedAuthorProfiles(items)
 
     override fun localHistory(): List<NavDestination> = HistoryStorage(context).history
 
@@ -307,12 +307,12 @@ open class SharedAndroidPaginationEnvironment(
         getContentFilterDatabase(context).createBlocklistManager().removeBlockedUser(userId)
     }
 
-    override suspend fun cacheAuthorOfficialBadge(
+    override suspend fun cacheMcnAuthorProfile(
         urlToken: String,
         userName: String?,
-        badge: OfficialBadge,
+        profile: McnAuthorProfile,
     ) {
-        getContentFilterDatabase(context).createBlocklistManager().cacheAuthorOfficialBadge(urlToken, userName, badge)
+        getContentFilterDatabase(context).createBlocklistManager().cacheMcnAuthorProfile(urlToken, userName, profile)
     }
 
     override suspend fun recordContentOpenEvent(

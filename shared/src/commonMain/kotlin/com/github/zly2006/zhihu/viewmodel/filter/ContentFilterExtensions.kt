@@ -216,7 +216,12 @@ class FeedContentFilterPipeline(
                 if (shouldBlock) {
                     blocked.add(content to "屏蔽MCN机构：$mcnCompany")
                 } else {
-                    kept.add(content.copy(authorOfficialBadge = content.authorOfficialBadge ?: mcnProfile?.officialBadge))
+                    kept.add(
+                        content.copy(
+                            authorOfficialBadge = content.authorOfficialBadge ?: mcnProfile?.officialBadge,
+                            authorMcnCompany = content.authorMcnCompany ?: mcnCompany,
+                        ),
+                    )
                 }
             }
             filteredContents = kept
@@ -340,8 +345,8 @@ fun ContentFilterDatabase.createFeedDisplayFilterPipeline(
         blockedFeedRecordDao = blockedFeedRecordDao(),
         onDetailFetchFailed = onDetailFetchFailed,
         onDetailsKeywordFiltered = onDetailsKeywordFiltered,
-        cachedAuthorBadgeProvider = { token ->
-            blocklistService.getCachedMcnAuthor(token)?.officialBadge
+        cachedAuthorProfileProvider = { token ->
+            blocklistService.getCachedMcnAuthor(token)?.toProfile()
         },
     )
 }
@@ -372,7 +377,7 @@ class FeedDisplayFilterPipeline(
     private val blockedFeedRecordDao: BlockedFeedRecordDao,
     private val onDetailFetchFailed: (FeedDisplayItem) -> Unit = {},
     private val onDetailsKeywordFiltered: (FeedDisplayItem, String) -> Unit = { _, _ -> },
-    private val cachedAuthorBadgeProvider: suspend (String) -> OfficialBadge? = { null },
+    private val cachedAuthorProfileProvider: suspend (String) -> McnAuthorProfile? = { null },
 ) {
     suspend fun filter(items: List<FeedDisplayItem>): List<FeedDisplayItem> {
         val (followedUserItems, otherItems) = if (!settings.filterFollowedUserContent) {
@@ -428,6 +433,7 @@ class FeedDisplayFilterPipeline(
                 item.copy(
                     raw = filteredContent.raw,
                     authorOfficialBadge = filteredContent.authorOfficialBadge,
+                    authorMcnCompany = filteredContent.authorMcnCompany,
                 )
             } else {
                 null
@@ -439,7 +445,7 @@ class FeedDisplayFilterPipeline(
             saveBlockedFeedRecords(blockedFeedRecordDao, allBlocked)
         }
 
-        return hydrateCachedAuthorBadges(followedUserItems + filteredOtherItems, cachedAuthorBadgeProvider)
+        return hydrateCachedAuthorProfiles(followedUserItems + filteredOtherItems, cachedAuthorProfileProvider)
             .filterDetailsKeywords()
     }
 
@@ -460,7 +466,7 @@ class FeedDisplayFilterPipeline(
     }
 }
 
-suspend fun ContentFilterDatabase.hydrateCachedAuthorBadges(items: List<FeedDisplayItem>): List<FeedDisplayItem> {
+suspend fun ContentFilterDatabase.hydrateCachedAuthorProfiles(items: List<FeedDisplayItem>): List<FeedDisplayItem> {
     val blocklistService = BlocklistService(
         keywordDao = blockedKeywordDao(),
         userDao = blockedUserDao(),
@@ -468,40 +474,51 @@ suspend fun ContentFilterDatabase.hydrateCachedAuthorBadges(items: List<FeedDisp
         mcnOrganizationDao = blockedMcnOrganizationDao(),
         mcnAuthorCacheDao = mcnAuthorCacheDao(),
     )
-    return hydrateCachedAuthorBadges(items) { token ->
-        blocklistService.getCachedMcnAuthor(token)?.officialBadge
+    return hydrateCachedAuthorProfiles(items) { token ->
+        blocklistService.getCachedMcnAuthor(token)?.toProfile()
     }
 }
 
-private suspend fun hydrateCachedAuthorBadges(
+private suspend fun hydrateCachedAuthorProfiles(
     items: List<FeedDisplayItem>,
-    cachedAuthorBadgeProvider: suspend (String) -> OfficialBadge?,
+    cachedAuthorProfileProvider: suspend (String) -> McnAuthorProfile?,
 ): List<FeedDisplayItem> {
     val tokens = items
-        .filterNot(FeedDisplayItem::hasAuthorBadge)
-        .mapNotNull(FeedDisplayItem::authorUrlToken)
+        .filterNot(FeedDisplayItem::hasAuthorProfile)
+        .mapNotNull(FeedDisplayItem::resolveAuthorUrlToken)
         .distinct()
     if (tokens.isEmpty()) return items
 
-    val badgesByToken = tokens
+    val profilesByToken = tokens
         .mapNotNull { token ->
-            val badge = cachedAuthorBadgeProvider(token) ?: return@mapNotNull null
-            token to badge
+            val profile = cachedAuthorProfileProvider(token) ?: return@mapNotNull null
+            token to profile
         }.toMap()
-    if (badgesByToken.isEmpty()) return items
+    if (profilesByToken.isEmpty()) return items
 
     return items.map { item ->
-        if (item.hasAuthorBadge()) return@map item
-        val badge = item.authorUrlToken()?.let(badgesByToken::get) ?: return@map item
-        item.copy(authorOfficialBadge = badge)
+        val profile = item.resolveAuthorUrlToken()?.let(profilesByToken::get) ?: return@map item
+        item.copy(
+            authorOfficialBadge = item.authorOfficialBadge ?: profile.officialBadge.takeIf { !item.hasAuthorBadge() },
+            authorMcnCompany = item.authorMcnCompany.normalizeMcnCompany() ?: profile.mcnCompany,
+        )
     }
 }
+
+private fun McnAuthorCache.toProfile(): McnAuthorProfile = McnAuthorProfile(
+    mcnCompany = mcnCompany.normalizeMcnCompany(),
+    officialBadge = officialBadge,
+)
+
+private fun FeedDisplayItem.hasAuthorProfile(): Boolean =
+    hasAuthorBadge() && authorMcnCompany.normalizeMcnCompany() != null
 
 private fun FeedDisplayItem.hasAuthorBadge(): Boolean =
     authorBadgeV2.officialBadge() != null || authorOfficialBadge != null
 
-private fun FeedDisplayItem.authorUrlToken(): String? =
-    raw.authorUrlToken()
+private fun FeedDisplayItem.resolveAuthorUrlToken(): String? =
+    authorUrlToken?.takeIf { it.isNotBlank() }
+        ?: raw.authorUrlToken()
         ?: feed?.target?.author?.urlToken
 
 private fun DataHolder.Content?.authorUrlToken(): String? = when (this) {
@@ -586,6 +603,7 @@ data class FilterableContent(
     val feedJson: String? = null,
     val navDestinationJson: String? = null,
     val authorOfficialBadge: OfficialBadge? = null,
+    val authorMcnCompany: String? = null,
 )
 
 data class FeedContentIdentity(
@@ -616,7 +634,7 @@ fun FeedDisplayItem.toFilterableContent(
     } ?: content ?: summary,
     authorName = authorName,
     authorId = rawContent.author?.id,
-    authorUrlToken = rawContent.author?.urlToken ?: feed?.target?.author?.urlToken,
+    authorUrlToken = resolveAuthorUrlToken(),
     contentId = identity.id,
     contentType = identity.type,
     raw = rawContent,
@@ -626,6 +644,7 @@ fun FeedDisplayItem.toFilterableContent(
     feedJson = feed?.let { runCatching { feedFilterRecordJson.encodeToString(it) }.getOrNull() },
     navDestinationJson = navDestination?.let { runCatching { feedFilterRecordJson.encodeToString(it) }.getOrNull() },
     authorOfficialBadge = authorOfficialBadge,
+    authorMcnCompany = authorMcnCompany,
 )
 
 /** 从内容实体中提取主题 ID 列表，供 feed 过滤阶段的主题规则使用。 */

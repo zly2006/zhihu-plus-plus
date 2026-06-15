@@ -161,17 +161,20 @@ class FeedDisplayFilterPipelineTest {
     }
 
     @Test
-    fun databaseHydratesCachedAuthorBadgeFromFeedAuthorToken() = runTest {
+    fun databaseHydratesCachedAuthorProfileFromFeedAuthorToken() = runTest {
         val fixture = fixture()
         fixture.database
             .createBlocklistManager()
-            .cacheAuthorOfficialBadge(
+            .cacheMcnAuthorProfile(
                 urlToken = "cached-author",
                 userName = "cached author",
-                badge = OfficialBadge(
-                    title = "优秀答主",
-                    description = "数码话题下的优秀答主",
-                    iconUrl = "https://pic.example/cached-badge.png",
+                profile = McnAuthorProfile(
+                    mcnCompany = "杭州含章文化传播有限公司",
+                    officialBadge = OfficialBadge(
+                        title = "优秀答主",
+                        description = "数码话题下的优秀答主",
+                        iconUrl = "https://pic.example/cached-badge.png",
+                    ),
                 ),
             )
         val feedItem = item(
@@ -180,9 +183,10 @@ class FeedDisplayFilterPipelineTest {
             feed = articleFeed(author = person(isFollowing = false, urlToken = "cached-author")),
         )
 
-        val result = fixture.database.hydrateCachedAuthorBadges(listOf(feedItem))
+        val result = fixture.database.hydrateCachedAuthorProfiles(listOf(feedItem))
 
         assertEquals("https://pic.example/cached-badge.png", result.single().authorOfficialBadge?.iconUrl)
+        assertEquals("杭州含章文化传播有限公司", result.single().authorMcnCompany)
         fixture.database.close()
     }
 
@@ -191,13 +195,16 @@ class FeedDisplayFilterPipelineTest {
         val fixture = fixture()
         fixture.database
             .createBlocklistManager()
-            .cacheAuthorOfficialBadge(
+            .cacheMcnAuthorProfile(
                 urlToken = "cached-author",
                 userName = "cached author",
-                badge = OfficialBadge(
-                    title = "缓存徽章",
-                    description = "缓存徽章",
-                    iconUrl = "https://pic.example/cached-badge.png",
+                profile = McnAuthorProfile(
+                    mcnCompany = "缓存MCN机构",
+                    officialBadge = OfficialBadge(
+                        title = "缓存徽章",
+                        description = "缓存徽章",
+                        iconUrl = "https://pic.example/cached-badge.png",
+                    ),
                 ),
             )
         val existingBadge = OfficialBadge(
@@ -211,9 +218,10 @@ class FeedDisplayFilterPipelineTest {
             feed = articleFeed(author = person(isFollowing = false, urlToken = "cached-author")),
         ).copy(authorOfficialBadge = existingBadge)
 
-        val result = fixture.database.hydrateCachedAuthorBadges(listOf(feedItem))
+        val result = fixture.database.hydrateCachedAuthorProfiles(listOf(feedItem))
 
         assertEquals("https://pic.example/api-badge.png", result.single().authorOfficialBadge?.iconUrl)
+        assertEquals("缓存MCN机构", result.single().authorMcnCompany)
         fixture.database.close()
     }
 
@@ -222,13 +230,16 @@ class FeedDisplayFilterPipelineTest {
         val fixture = fixture()
         fixture.database
             .createBlocklistManager()
-            .cacheAuthorOfficialBadge(
+            .cacheMcnAuthorProfile(
                 urlToken = "followed-author",
                 userName = "followed author",
-                badge = OfficialBadge(
-                    title = "社区成就",
-                    description = "知势榜领域影响力榜答主",
-                    iconUrl = "https://pic.example/followed-badge.png",
+                profile = McnAuthorProfile(
+                    mcnCompany = "关注作者MCN",
+                    officialBadge = OfficialBadge(
+                        title = "社区成就",
+                        description = "知势榜领域影响力榜答主",
+                        iconUrl = "https://pic.example/followed-badge.png",
+                    ),
                 ),
             )
         val followedItem = item(
@@ -250,6 +261,7 @@ class FeedDisplayFilterPipelineTest {
 
         assertEquals(0, fetchCount)
         assertEquals("https://pic.example/followed-badge.png", result.single().authorOfficialBadge?.iconUrl)
+        assertEquals("关注作者MCN", result.single().authorMcnCompany)
         fixture.database.close()
     }
 
