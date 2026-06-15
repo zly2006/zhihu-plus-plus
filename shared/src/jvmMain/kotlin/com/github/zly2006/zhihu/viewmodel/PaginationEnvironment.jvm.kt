@@ -51,7 +51,6 @@ import com.github.zly2006.zhihu.viewmodel.filter.ContentType
 import com.github.zly2006.zhihu.viewmodel.filter.FeedContentFilterPipeline
 import com.github.zly2006.zhihu.viewmodel.filter.FeedDisplayFilterPipeline
 import com.github.zly2006.zhihu.viewmodel.filter.ForegroundReadFilterPipeline
-import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
 import com.github.zly2006.zhihu.viewmodel.filter.desktopKeywordSemanticMatcher
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.filter.toFeedFilterSettings
@@ -82,7 +81,7 @@ import com.github.zly2006.zhihu.util.buildArticleExportHtml as buildSharedArticl
 import com.github.zly2006.zhihu.util.buildOfflineArticleExportHtml as buildSharedOfflineArticleExportHtml
 import io.ktor.http.ContentType as KtorContentType
 
-private val desktopContentFilterDb = getContentFilterDatabase(desktopContentFilterDatabaseFile())
+private val desktopContentFilterDb = getContentFilterDatabase()
 internal val desktopArticleAnswerSwitchState = ArticleAnswerSwitchData()
 private var desktopPendingContentOpenIdentity: TrackedContentIdentity? = null
 private var desktopPendingContentOpenFrom: String? = null
