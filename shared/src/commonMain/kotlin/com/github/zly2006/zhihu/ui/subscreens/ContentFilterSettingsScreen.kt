@@ -69,6 +69,7 @@ import com.github.zly2006.zhihu.shared.filter.rememberContentFilterMaintenance
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
+import com.github.zly2006.zhihu.ui.AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
@@ -207,6 +208,22 @@ fun ContentFilterSettingsScreen(
                         settings.putBoolean("loginForRecommendation", checked)
                     },
                     settingKey = "loginForRecommendation",
+                    highlightedKey = highlightedSetting,
+                )
+
+                val autoRefreshHomeOnStartup = remember {
+                    mutableStateOf(settings.getBoolean(AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY, true))
+                }
+                SettingItemWithSwitch(
+                    modifier = Modifier.testTag("contentFilterSettings:autoRefreshHomeOnStartup"),
+                    title = { Text("启动时自动刷新首页") },
+                    description = { Text("关闭后优先显示上次退出前的首页推荐；没有缓存时仍会加载新推荐") },
+                    checked = autoRefreshHomeOnStartup.value,
+                    onCheckedChange = { checked ->
+                        autoRefreshHomeOnStartup.value = checked
+                        settings.putBoolean(AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY, checked)
+                    },
+                    settingKey = AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY,
                     highlightedKey = highlightedSetting,
                 )
             }
