@@ -23,10 +23,10 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.github.zly2006.zhihu.shared.data.DailySection
 import com.github.zly2006.zhihu.shared.data.DailyStoriesResponse
+import com.github.zly2006.zhihu.shared.data.fetchDailyStoriesBefore
+import com.github.zly2006.zhihu.shared.data.fetchLatestDailyStories
 import com.github.zly2006.zhihu.shared.util.Log
 import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.request.get
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.plus
@@ -45,9 +45,7 @@ class DailyViewModel : ViewModel() {
     suspend fun loadLatest(httpClient: HttpClient) {
         isLoading = true
         try {
-            val data: DailyStoriesResponse = httpClient
-                .get("https://news-at.zhihu.com/api/4/stories/latest")
-                .body()
+            val data: DailyStoriesResponse = httpClient.fetchLatestDailyStories()
             sections = listOf(DailySection(data.date, data.stories))
             nextDate = data.date
             error = null
@@ -67,9 +65,7 @@ class DailyViewModel : ViewModel() {
                 .plus(1, DateTimeUnit.DAY)
                 .toString()
                 .replace("-", "")
-            val data: DailyStoriesResponse = httpClient
-                .get("https://news-at.zhihu.com/api/4/stories/before/$nextApiDate")
-                .body()
+            val data: DailyStoriesResponse = httpClient.fetchDailyStoriesBefore(nextApiDate)
             sections = listOf(DailySection(data.date, data.stories))
             nextDate = data.date
             error = null
@@ -85,7 +81,7 @@ class DailyViewModel : ViewModel() {
         if (isLoadingMore) return
         isLoadingMore = true
         try {
-            val data: DailyStoriesResponse = httpClient.get("https://news-at.zhihu.com/api/4/stories/before/$date").body()
+            val data: DailyStoriesResponse = httpClient.fetchDailyStoriesBefore(date)
             sections = sections + DailySection(data.date, data.stories)
             nextDate = data.date
         } catch (e: Exception) {
