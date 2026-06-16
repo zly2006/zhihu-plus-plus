@@ -41,7 +41,7 @@ import kotlin.math.roundToInt
 @RunWith(AndroidJUnit4::class)
 class ArticleExportEnvironmentInstrumentedTest {
     @Test
-    fun androidEnvironmentProvidesArticleImageExportPlatformCapabilities() {
+    fun androidEnvironmentProvidesArticleImageExportPlatformCapabilities() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val environment = SharedAndroidPaginationEnvironment(context, allowGuestAccess = true)
 
