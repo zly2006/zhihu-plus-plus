@@ -134,6 +134,7 @@ import com.github.zly2006.zhihu.ui.subscreens.DeveloperSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.IdentityManagementScreen
 import com.github.zly2006.zhihu.ui.subscreens.OpenSourceLicensesScreen
 import com.github.zly2006.zhihu.ui.subscreens.ReadingSettingsScreen
+import com.github.zly2006.zhihu.ui.subscreens.SettingsSearchScreen
 import com.github.zly2006.zhihu.ui.subscreens.SystemAndUpdateSettingsScreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -632,8 +633,10 @@ fun ZhihuMain(
                     composable<Notification.Message> { navEntry ->
                         PrivateMessageScreen(navEntry.toRoute())
                     }
-                    composable<Notification.NotificationSettings> {
-                        NotificationSettingsScreen()
+                    composable<Notification.NotificationSettings> { navEntry ->
+                        NotificationSettingsScreen(
+                            setting = navEntry.toRoute<Notification.NotificationSettings>().setting,
+                        )
                     }
                     composable<SentenceSimilarityTest> {
                         sentenceSimilarityContent()
@@ -652,11 +655,16 @@ fun ZhihuMain(
                     composable<Account.IdentityManagement> {
                         IdentityManagementScreen()
                     }
-                    composable<Account.SystemAndUpdateSettings> {
-                        SystemAndUpdateSettingsScreen()
+                    composable<Account.SystemAndUpdateSettings> { navEntry ->
+                        SystemAndUpdateSettingsScreen(
+                            setting = navEntry.toRoute<Account.SystemAndUpdateSettings>().setting,
+                        )
                     }
                     composable<Account.ReadingSettings> {
                         ReadingSettingsScreen()
+                    }
+                    composable<Account.SettingsSearch> {
+                        SettingsSearchScreen()
                     }
                     composable<Account.OpenSourceLicenses> {
                         OpenSourceLicensesScreen()
