@@ -70,7 +70,6 @@ import com.github.zly2006.zhihu.shared.data.fetchHighestQualityZhihuVideoUrl
 import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
 import com.github.zly2006.zhihu.shared.util.extractImageUrl
 import com.github.zly2006.zhihu.theme.ThemeManager
-import com.github.zly2006.zhihu.ui.subscreens.PREF_BLOCK_SPACING
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
 import com.github.zly2006.zhihu.util.blacklist
@@ -90,17 +89,6 @@ import org.jsoup.nodes.Element
 
 private const val MAIN_ACTIVITY_CLASS = "com.github.zly2006.zhihu.MainActivity"
 private const val WEBVIEW_ACTIVITY_CLASS = "com.github.zly2006.zhihu.WebviewActivity"
-
-private data class WebViewRenderSignature(
-    val documentHtml: String,
-    val fontSize: Int,
-    val lineHeight: Int,
-    val blockSpacing: Int,
-    val customFontName: String?,
-    val hasCustomFontFile: Boolean,
-    val darkTheme: Boolean,
-    val additionalStyle: String,
-)
 
 private tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
@@ -213,7 +201,6 @@ class CustomWebView : WebView {
 
     var document: Document? = null
         private set
-    private var renderSignature: WebViewRenderSignature? = null
     var contentId: String? = null
     internal var htmlClickListener: ((Element) -> Unit)? = null
         private set
@@ -330,49 +317,23 @@ class CustomWebView : WebView {
         document: Document,
         additionalStyle: String = "",
     ) {
-        val customFontFile = java.io.File(context.filesDir, "custom_font")
-        val hasCustomFontFile = customFontFile.exists()
+        if (this.document?.html() == document.html()) {
+            // same content
+            return
+        }
         Log.i("CustomWebView", "Loading content for URL: $url with document title: ${document.title()}")
         val settings = androidSettingsStore(context)
         val fontSize = settings.getInt(PREF_FONT_SIZE, 100)
         val lineHeight = settings.getInt(PREF_LINE_HEIGHT, 160)
-        val blockSpacing = settings.getInt(PREF_BLOCK_SPACING, 100)
+        val customFontFile = java.io.File(context.filesDir, "custom_font")
         val customFontName = settings.getStringOrNull("webviewCustomFontName")
-        val requestedSignature = WebViewRenderSignature(
-            documentHtml = document.html(),
-            fontSize = fontSize,
-            lineHeight = lineHeight,
-            blockSpacing = blockSpacing,
-            customFontName = customFontName,
-            hasCustomFontFile = hasCustomFontFile,
-            darkTheme = ThemeManager.isDarkTheme,
-            additionalStyle = additionalStyle,
-        )
-        if (renderSignature == requestedSignature) {
-            return
-        }
-        val customFontCss = if (customFontName != null && hasCustomFontFile) {
+        val customFontCss = if (customFontName != null && customFontFile.exists()) {
             val fontName = customFontName
             val format = if (fontName.endsWith(".otf", ignoreCase = true)) "opentype" else "truetype"
             "@font-face { font-family: 'ZhihuCustomFont'; src: url('https://zhihu-plus.internal/user-files/custom_font') format('$format'); }\n" +
                 "body { font-family: 'ZhihuCustomFont', sans-serif; }"
         } else {
             ""
-        }
-        val blockSpacingCss = if (blockSpacing == 100) {
-            ""
-        } else {
-            val margin = blockSpacing / 100f
-            """
-            p, figure, pre, table, ul, ol {
-                margin-top: 0;
-                margin-bottom: ${margin}rem;
-            }
-            blockquote {
-                margin-top: ${margin}rem;
-                margin-bottom: ${margin}rem;
-            }
-            """.trimIndent()
         }
 
         val bodyClass = if (ThemeManager.isDarkTheme) " class=\"dark-theme\" " else ""
@@ -390,7 +351,6 @@ class CustomWebView : WebView {
                 line-height: ${lineHeight / 100f};
             }
             $customFontCss
-            $blockSpacingCss
             ${additionalStyle.replace("\n", "")}
             </style>
             </head>
@@ -403,7 +363,6 @@ class CustomWebView : WebView {
             null,
         )
         this.document = document
-        renderSignature = requestedSignature
     }
 
     fun loadZhihu(
