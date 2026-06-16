@@ -133,6 +133,10 @@
 - Web API 需要 `signFetchRequest(context)` 用于 zse96 v2 签名
 - Android API 使用 `AccountData.ANDROID_HEADERS` 和 `ANDROID_USER_AGENT`
 
+### 上游错误 workaround 注释
+
+凡是因为上游服务、服务器配置、第三方库或系统行为错误而加入的 workaround，代码注释必须说明为什么存在，不能只描述做了什么。注释应明确外部问题边界和触发条件；如果有明确 issue、PR 或外部链接，必须在注释中写出链接，避免后续维护者把临时兼容逻辑误删或扩展成通用策略。例子：某个官方接口域名在特定网络下解析失败时，可以增加备用域名，但注释必须说明这是服务端 DNS/配置问题的窄 workaround，并链接到对应 issue，而不是普通请求失败重试。
+
 ### Compose
 - Material 3 组件
 - 用 `LaunchedEffect` 处理副作用，设置正确的 key
