@@ -219,8 +219,9 @@ class ZhihuMainNavigationInstrumentedTest {
             composeRule.activity.navigate(MainTabs, popup = true)
         }
 
-        composeRule.waitUntilTabSelected("nav_tab_daily")
-        composeRule.onNodeWithTag("nav_tab_daily").assertIsSelected()
+        composeRule.waitUntilTextSelected("推荐")
+        composeRule.onNodeWithTag("nav_tab_follow").assertIsSelected()
+        composeRule.onNodeWithText("推荐").assertIsSelected()
         composeRule.onNodeWithTag("nav_tab_home").assertDoesNotExist()
 
         composeRule.activity.runOnUiThread {
