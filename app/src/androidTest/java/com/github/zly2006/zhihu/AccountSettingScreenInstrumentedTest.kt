@@ -49,8 +49,8 @@ import com.github.zly2006.zhihu.ui.ACCOUNT_SETTINGS_LICENSES_TAG
 import com.github.zly2006.zhihu.ui.ACCOUNT_SETTINGS_LOGIN_ITEM_TAG
 import com.github.zly2006.zhihu.ui.ACCOUNT_SETTINGS_PROFILE_HEADER_TAG
 import com.github.zly2006.zhihu.ui.ACCOUNT_SETTINGS_RECOMMEND_TAG
-import com.github.zly2006.zhihu.ui.ACCOUNT_SETTINGS_SEARCH_TAG
 import com.github.zly2006.zhihu.ui.ACCOUNT_SETTINGS_SCROLL_TAG
+import com.github.zly2006.zhihu.ui.ACCOUNT_SETTINGS_SEARCH_TAG
 import com.github.zly2006.zhihu.ui.ACCOUNT_SETTINGS_SHORTCUT_COLLECTIONS_TAG
 import com.github.zly2006.zhihu.ui.ACCOUNT_SETTINGS_SHORTCUT_HISTORY_TAG
 import com.github.zly2006.zhihu.ui.ACCOUNT_SETTINGS_SHORTCUT_NOTIFICATION_TAG
