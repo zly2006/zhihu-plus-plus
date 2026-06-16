@@ -28,6 +28,7 @@ private const val DAILY_PRIMARY_API_BASE = "https://news-at.zhihu.com/api/4/stor
 // Zhihu Daily's documented Android API host can fail DNS resolution in some
 // overseas networks because of Zhihu-side DNS/server configuration. Keep this
 // fallback host as a narrow workaround for host-resolution failures only.
+// See https://github.com/zly2006/zhihu-plus-plus/issues/417.
 private const val DAILY_FALLBACK_API_BASE = "https://daily.zhihu.com/api/4/stories"
 
 suspend fun HttpClient.fetchLatestDailyStories(): DailyStoriesResponse =
