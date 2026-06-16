@@ -140,7 +140,8 @@ class NavDestinationTest {
     @Test
     fun ignoresRedirectTargetBeyondDepthGuardFromCommonCode() {
         val articleUrl = "https://www.zhihu.com/p/987654321"
-        val thirdRedirect = "https://link.zhihu.com/?target=${articleUrl.encodeURLParameter()}"
+        val fourthRedirect = "https://link.zhihu.com/?target=${articleUrl.encodeURLParameter()}"
+        val thirdRedirect = "https://link.zhihu.com/?target=${fourthRedirect.encodeURLParameter()}"
         val secondRedirect = "https://link.zhihu.com/?target=${thirdRedirect.encodeURLParameter()}"
         val firstRedirect = "https://link.zhihu.com/?target=${secondRedirect.encodeURLParameter()}"
 
