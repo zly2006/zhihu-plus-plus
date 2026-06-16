@@ -469,7 +469,18 @@ fun ArticleActionsMenu(
     onSetImmersiveDoubleTap: () -> Unit = {},
 ) {
     val articleActionsRuntime = rememberArticleActionsRuntime()
+    val readLaterStore = rememberReadLaterStore()
+    val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
+    val readLaterArticle = readLaterArticleSnapshot(
+        article = article,
+        title = viewModel.title,
+        authorName = viewModel.authorName,
+        authorBio = viewModel.authorBio,
+        avatarSrc = viewModel.authorAvatarSrc.takeIf { it.isNotBlank() },
+        content = viewModel.content,
+    )
+    val isReadLaterSaved = readLaterStore.contains(article)
 
     @Composable
     fun MenuActionButton(
@@ -592,6 +603,23 @@ fun ArticleActionsMenu(
                     article,
                     articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName),
                 )
+            },
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        MenuActionButton(
+            icon = if (isReadLaterSaved) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+            text = if (isReadLaterSaved) "从稍后再看移除" else "加入稍后再看",
+            onClick = {
+                onDismissRequest()
+                if (isReadLaterSaved) {
+                    readLaterStore.remove(article)
+                    userMessages.showShortMessage("已从稍后再看移除")
+                } else {
+                    readLaterStore.add(readLaterArticle)
+                    userMessages.showShortMessage("已加入稍后再看")
+                }
             },
         )
 

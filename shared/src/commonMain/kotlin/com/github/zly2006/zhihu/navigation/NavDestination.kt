@@ -159,6 +159,9 @@ data object Notification : NavDestination {
 }
 
 @Serializable
+data object ReadLater : NavDestination
+
+@Serializable
 data object SentenceSimilarityTest : NavDestination
 
 @Serializable

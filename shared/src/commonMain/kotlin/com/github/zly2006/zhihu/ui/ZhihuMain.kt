@@ -106,6 +106,7 @@ import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.navigation.ReadLater
 import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.navigation.SentenceSimilarityTest
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
@@ -510,6 +511,9 @@ fun ZhihuMain(
                 }
                 composable<Notification.NotificationSettings> {
                     NotificationSettingsScreen()
+                }
+                composable<ReadLater> {
+                    ReadLaterScreen()
                 }
                 composable<SentenceSimilarityTest> {
                     platformAdapter.sentenceSimilarityTest()
