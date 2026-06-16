@@ -396,7 +396,8 @@ private fun resolveContent(url: Url, redirectDepth: Int): NavDestination? {
 
 private fun resolveRedirectTarget(url: Url, redirectDepth: Int, vararg parameterNames: String): NavDestination? {
     if (redirectDepth >= 3) return null
-    return parameterNames.asSequence()
+    return parameterNames
+        .asSequence()
         .mapNotNull(url.parameters::get)
         .firstNotNullOfOrNull { target ->
             val normalizedTarget = if (target.startsWith("//")) "https:$target" else target
