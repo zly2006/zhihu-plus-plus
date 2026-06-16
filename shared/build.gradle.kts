@@ -122,6 +122,7 @@ kotlin {
             implementation("io.ktor:ktor-serialization-kotlinx-json:3.5.0")
             implementation("com.materialkolor:material-kolor:4.1.1")
             implementation("com.fleeksoft.ksoup:ksoup:0.2.6")
+            implementation("org.jetbrains:markdown:0.7.5")
             implementation("io.github.zly2006:latex-renderer:1.4.6-zly")
             implementation("io.github.zly2006:markdown-parser:0.0.1-alpha.11")
             implementation("io.github.zly2006:markdown-renderer:0.0.1-alpha.11")
