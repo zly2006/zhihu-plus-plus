@@ -101,7 +101,7 @@ class NotificationScreenInstrumentedTest {
     fun notificationScreen_settingsButton_navigatesToNotificationSettings() {
         /*
          * Expected behavior:
-         * 1. Pressing the toolbar settings button should navigate to Notification.NotificationSettings.
+         * 1. Pressing the toolbar settings button should navigate to Notification.NotificationSettings().
          * 2. This action should not trigger a back event because it is a forward navigation path.
          * 3. The recorded destination list should contain exactly the settings destination after one click.
          */
@@ -110,7 +110,7 @@ class NotificationScreenInstrumentedTest {
         composeRule.onNodeWithContentDescription("设置").performClick()
 
         assertEquals(0, recordingNavigator.backCount)
-        assertEquals(listOf(Notification.NotificationSettings), recordingNavigator.destinations)
+        assertEquals(listOf(Notification.NotificationSettings()), recordingNavigator.destinations)
     }
 
     @Test

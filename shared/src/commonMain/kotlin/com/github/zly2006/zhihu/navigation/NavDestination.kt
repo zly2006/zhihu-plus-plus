@@ -137,7 +137,12 @@ data object Account : TopLevelDestination {
     data object IdentityManagement : NavDestination
 
     @Serializable
-    data object SystemAndUpdateSettings : NavDestination
+    data class SystemAndUpdateSettings(
+        val setting: String = "",
+    ) : NavDestination
+
+    @Serializable
+    data object SettingsSearch : NavDestination
 
     @Serializable
     data object OpenSourceLicenses : NavDestination
@@ -161,7 +166,9 @@ data object Daily : TopLevelDestination {
 @Serializable
 data object Notification : NavDestination {
     @Serializable
-    data object NotificationSettings : NavDestination
+    data class NotificationSettings(
+        val setting: String = "",
+    ) : NavDestination
 
     @Serializable
     data class Entry(

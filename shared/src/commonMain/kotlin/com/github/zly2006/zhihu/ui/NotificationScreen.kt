@@ -150,7 +150,7 @@ fun NotificationScreen() {
                             Icon(Icons.Default.MarkChatRead, contentDescription = "已读")
                         }
                     }
-                    IconButton(onClick = { navigator.onNavigate(Notification.NotificationSettings) }) {
+                    IconButton(onClick = { navigator.onNavigate(Notification.NotificationSettings()) }) {
                         Icon(Icons.Default.Settings, contentDescription = "设置")
                     }
                 },
