@@ -286,7 +286,9 @@ data class Pin(
 
 fun resolveContent(url: String): NavDestination? = runCatching { resolveContent(Url(url)) }.getOrNull()
 
-fun resolveContent(url: Url): NavDestination? {
+fun resolveContent(url: Url): NavDestination? = resolveContent(url, redirectDepth = 0)
+
+private fun resolveContent(url: Url, redirectDepth: Int): NavDestination? {
     val segments = url.segments
     if (url.protocol.name == "http" || url.protocol.name == "https") {
         if (url.host == "zhihu.com" || url.host == "www.zhihu.com") {
@@ -312,6 +314,25 @@ fun resolveContent(url: Url): NavDestination? {
             ) {
                 val articleId = segments[2].toLong()
                 return Article(type = ArticleType.Article, id = articleId)
+            } else if (segments.size == 2 &&
+                segments[0] == "p"
+            ) {
+                val articleId = segments[1].toLong()
+                return Article(type = ArticleType.Article, id = articleId)
+            } else if (segments.size == 4 &&
+                segments[0] == "appview" &&
+                segments[1] == "v2" &&
+                segments[2] == "answer"
+            ) {
+                val answerId = segments[3].toLong()
+                return Article(type = ArticleType.Answer, id = answerId)
+            } else if (segments.size == 4 &&
+                segments[0] == "appview" &&
+                segments[1] == "v2" &&
+                segments[2] == "article"
+            ) {
+                val articleId = segments[3].toLong()
+                return Article(type = ArticleType.Article, id = articleId)
             } else if (segments.size == 2 && segments[0] == "people") {
                 val urlToken = segments[1]
                 if (urlToken.length == 32 && urlToken.all { it in '0'..'9' || it in 'a'..'f' }) {
@@ -333,6 +354,9 @@ fun resolveContent(url: Url): NavDestination? {
                 val query = url.parameters["q"] ?: ""
                 return Search(query)
             }
+            if (segments.size >= 2 && segments[0] == "market" && segments[1] == "paid_column") {
+                resolveRedirectTarget(url, redirectDepth, "source")?.let { return it }
+            }
             Log.w("NavDestination", "Cannot resolve content from url: $url")
         } else if (url.host == "zhuanlan.zhihu.com") {
             if (segments.size == 2 &&
@@ -343,8 +367,7 @@ fun resolveContent(url: Url): NavDestination? {
             }
             Log.w("NavDestination", "Cannot resolve content from url: $url")
         } else if (url.host == "link.zhihu.com") {
-            val target = url.parameters["target"] ?: return null
-            return runCatching { Url(target) }.getOrNull()?.let(::resolveContent)
+            return resolveRedirectTarget(url, redirectDepth, "target", "target_url")
         }
     }
     if (url.protocol.name == "zhihu") {
@@ -369,4 +392,16 @@ fun resolveContent(url: Url): NavDestination? {
         Log.w("NavDestination", "Cannot resolve content from url: $url")
     }
     return null
+}
+
+private fun resolveRedirectTarget(url: Url, redirectDepth: Int, vararg parameterNames: String): NavDestination? {
+    if (redirectDepth >= 3) return null
+    return parameterNames.asSequence()
+        .mapNotNull(url.parameters::get)
+        .firstNotNullOfOrNull { target ->
+            val normalizedTarget = if (target.startsWith("//")) "https:$target" else target
+            runCatching { Url(normalizedTarget) }
+                .getOrNull()
+                ?.let { resolveContent(it, redirectDepth + 1) }
+        }
 }
