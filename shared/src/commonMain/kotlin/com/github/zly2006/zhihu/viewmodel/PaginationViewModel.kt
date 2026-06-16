@@ -439,7 +439,7 @@ interface ArticleExportEnvironment {
         htmlContent: String,
     ): String = ""
 
-    fun saveImageToMediaStore(
+    suspend fun saveImageToMediaStore(
         displayName: String,
         bitmap: Any,
     ) = Unit

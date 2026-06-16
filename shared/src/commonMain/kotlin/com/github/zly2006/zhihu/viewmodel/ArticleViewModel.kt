@@ -844,12 +844,10 @@ class ArticleViewModel(
             errorPrefix = "图片导出失败",
             requiresImageExportPermission = true,
             writeImage = { displayName, bitmap ->
-                withContext(Dispatchers.IO) {
-                    environment.saveImageToMediaStore(
-                        displayName = displayName,
-                        bitmap = bitmap,
-                    )
-                }
+                environment.saveImageToMediaStore(
+                    displayName = displayName,
+                    bitmap = bitmap,
+                )
             },
             onComplete = onComplete,
         )
@@ -871,12 +869,10 @@ class ArticleViewModel(
             errorPrefix = "带评论图片导出失败",
             requiresImageExportPermission = true,
             writeImage = { displayName, bitmap ->
-                withContext(Dispatchers.IO) {
-                    environment.saveImageToMediaStore(
-                        displayName = displayName,
-                        bitmap = bitmap,
-                    )
-                }
+                environment.saveImageToMediaStore(
+                    displayName = displayName,
+                    bitmap = bitmap,
+                )
             },
             onComplete = onComplete,
         )

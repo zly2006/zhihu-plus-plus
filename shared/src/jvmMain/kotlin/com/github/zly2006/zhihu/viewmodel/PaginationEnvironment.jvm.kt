@@ -329,10 +329,10 @@ class DesktopPaginationEnvironment(
         return file.absolutePath
     }
 
-    override fun saveImageToMediaStore(
+    override suspend fun saveImageToMediaStore(
         displayName: String,
         bitmap: Any,
-    ) {
+    ) = withContext(Dispatchers.IO) {
         val downloadsDir = desktopZhihuDownloadsDir()
         val file = File(downloadsDir, displayName)
         writeJpegImage(file, (bitmap as BufferedImage).toJpegImage())
