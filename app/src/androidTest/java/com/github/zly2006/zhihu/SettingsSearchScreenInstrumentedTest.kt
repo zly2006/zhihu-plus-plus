@@ -52,8 +52,10 @@ class SettingsSearchScreenInstrumentedTest {
     fun searchScreen_filtersAppearanceResultsAndNavigatesToTargetSetting() {
         val navigator = setSearchScreenContent()
 
-        composeRule.onNodeWithTag(SETTINGS_SEARCH_INPUT_TAG).performTextInput("热搜")
-        composeRule.onNodeWithTag("settingsSearch.result.appearance.showSearchHotSearch")
+        composeRule.onNodeWithTag(SETTINGS_SEARCH_INPUT_TAG)
+            .performTextInput("热搜")
+        composeRule
+            .onNodeWithTag("settingsSearch.result.appearance.showSearchHotSearch")
             .assertIsDisplayed()
             .performClick()
 
@@ -67,8 +69,10 @@ class SettingsSearchScreenInstrumentedTest {
     fun searchScreen_canJumpToSystemAndNotificationSettingsEntries() {
         val navigator = setSearchScreenContent()
 
-        composeRule.onNodeWithTag(SETTINGS_SEARCH_INPUT_TAG).performTextInput("GitHub Token")
-        composeRule.onNodeWithTag("settingsSearch.result.system.githubToken")
+        composeRule.onNodeWithTag(SETTINGS_SEARCH_INPUT_TAG)
+            .performTextInput("GitHub Token")
+        composeRule
+            .onNodeWithTag("settingsSearch.result.system.githubToken")
             .assertIsDisplayed()
             .performClick()
         assertEquals(
@@ -76,11 +80,15 @@ class SettingsSearchScreenInstrumentedTest {
             navigator.destinations,
         )
 
-        composeRule.onNodeWithTag(SETTINGS_SEARCH_INPUT_TAG).performTextClearance()
-        composeRule.onNodeWithTag(SETTINGS_SEARCH_INPUT_TAG).performTextInput("系统通知")
-        composeRule.onNodeWithTag("settingsSearch.result.notification.displayInAppNotifications")
+        composeRule.onNodeWithTag(SETTINGS_SEARCH_INPUT_TAG)
+            .performTextClearance()
+        composeRule.onNodeWithTag(SETTINGS_SEARCH_INPUT_TAG)
+            .performTextInput("系统通知")
+        composeRule
+            .onNodeWithTag("settingsSearch.result.notification.displayInAppNotifications")
             .assertDoesNotExist()
-        composeRule.onNodeWithTag("settingsSearch.result.notification.systemNotifications")
+        composeRule
+            .onNodeWithTag("settingsSearch.result.notification.systemNotifications")
             .assertIsDisplayed()
             .performClick()
 
@@ -93,7 +101,8 @@ class SettingsSearchScreenInstrumentedTest {
         )
     }
 
-    private fun setSearchScreenContent(): RecordingNavigator = composeRule.setScreenContent {
-        com.github.zly2006.zhihu.ui.subscreens.SettingsSearchScreen()
-    }
+    private fun setSearchScreenContent(): RecordingNavigator =
+        composeRule.setScreenContent {
+            com.github.zly2006.zhihu.ui.subscreens.SettingsSearchScreen()
+        }
 }
