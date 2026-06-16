@@ -128,7 +128,7 @@ suspend fun shareBitmap(
     displayName: String,
     bitmap: Bitmap,
 ) {
-    val file = withContext(Dispatchers.Default) {
+    val file = withContext(Dispatchers.IO) {
         java.io.File(shareImageCacheDir(context), displayName.replace('/', '_').replace('\\', '_')).also { targetFile ->
             targetFile.outputStream().use { outputStream ->
                 if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)) {
