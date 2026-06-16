@@ -17,9 +17,10 @@
 
 package com.github.zly2006.zhihu
 
-import androidx.compose.ui.test.assertDoesNotExist
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextClearance
@@ -32,6 +33,7 @@ import com.github.zly2006.zhihu.test.RecordingNavigator
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.subscreens.SETTINGS_SEARCH_INPUT_TAG
+import com.github.zly2006.zhihu.ui.subscreens.SettingsSearchScreen
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
@@ -52,7 +54,8 @@ class SettingsSearchScreenInstrumentedTest {
     fun searchScreen_filtersAppearanceResultsAndNavigatesToTargetSetting() {
         val navigator = setSearchScreenContent()
 
-        composeRule.onNodeWithTag(SETTINGS_SEARCH_INPUT_TAG)
+        composeRule
+            .onNodeWithTag(SETTINGS_SEARCH_INPUT_TAG)
             .performTextInput("热搜")
         composeRule
             .onNodeWithTag("settingsSearch.result.appearance.showSearchHotSearch")
@@ -69,7 +72,8 @@ class SettingsSearchScreenInstrumentedTest {
     fun searchScreen_canJumpToSystemAndNotificationSettingsEntries() {
         val navigator = setSearchScreenContent()
 
-        composeRule.onNodeWithTag(SETTINGS_SEARCH_INPUT_TAG)
+        composeRule
+            .onNodeWithTag(SETTINGS_SEARCH_INPUT_TAG)
             .performTextInput("GitHub Token")
         composeRule
             .onNodeWithTag("settingsSearch.result.system.githubToken")
@@ -80,13 +84,15 @@ class SettingsSearchScreenInstrumentedTest {
             navigator.destinations,
         )
 
-        composeRule.onNodeWithTag(SETTINGS_SEARCH_INPUT_TAG)
+        composeRule
+            .onNodeWithTag(SETTINGS_SEARCH_INPUT_TAG)
             .performTextClearance()
-        composeRule.onNodeWithTag(SETTINGS_SEARCH_INPUT_TAG)
+        composeRule
+            .onNodeWithTag(SETTINGS_SEARCH_INPUT_TAG)
             .performTextInput("系统通知")
         composeRule
-            .onNodeWithTag("settingsSearch.result.notification.displayInAppNotifications")
-            .assertDoesNotExist()
+            .onAllNodesWithTag("settingsSearch.result.notification.displayInAppNotifications")
+            .assertCountEquals(0)
         composeRule
             .onNodeWithTag("settingsSearch.result.notification.systemNotifications")
             .assertIsDisplayed()
@@ -103,6 +109,6 @@ class SettingsSearchScreenInstrumentedTest {
 
     private fun setSearchScreenContent(): RecordingNavigator =
         composeRule.setScreenContent {
-            com.github.zly2006.zhihu.ui.subscreens.SettingsSearchScreen()
+            SettingsSearchScreen()
         }
 }
