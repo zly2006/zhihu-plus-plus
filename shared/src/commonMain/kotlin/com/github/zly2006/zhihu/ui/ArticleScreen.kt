@@ -472,14 +472,6 @@ fun ArticleActionsMenu(
     val readLaterStore = rememberReadLaterStore()
     val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
-    val readLaterArticle = readLaterArticleSnapshot(
-        article = article,
-        title = viewModel.title,
-        authorName = viewModel.authorName,
-        authorBio = viewModel.authorBio,
-        avatarSrc = viewModel.authorAvatarSrc.takeIf { it.isNotBlank() },
-        content = viewModel.content,
-    )
     val isReadLaterSaved = readLaterStore.contains(article)
 
     @Composable
@@ -617,7 +609,16 @@ fun ArticleActionsMenu(
                     readLaterStore.remove(article)
                     userMessages.showShortMessage("已从稍后再看移除")
                 } else {
-                    readLaterStore.add(readLaterArticle)
+                    readLaterStore.add(
+                        article.copy(
+                            title = viewModel.title.ifBlank { article.title },
+                            authorName = viewModel.authorName.ifBlank { article.authorName },
+                            authorBio = viewModel.authorBio.ifBlank { article.authorBio },
+                            avatarSrc = viewModel.authorAvatarSrc.takeIf { it.isNotBlank() } ?: article.avatarSrc,
+                            excerpt = article.excerpt?.takeIf { it.isNotBlank() }
+                                ?: Ksoup.parse(viewModel.content).text().take(160),
+                        ),
+                    )
                     userMessages.showShortMessage("已加入稍后再看")
                 }
             },

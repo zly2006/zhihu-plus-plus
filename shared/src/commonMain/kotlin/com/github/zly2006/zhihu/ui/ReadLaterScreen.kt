@@ -49,7 +49,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
@@ -137,7 +136,7 @@ class ReadLaterStore(
 fun rememberReadLaterStore(): ReadLaterStore {
     val settings = rememberSettingsStore()
     val store = remember(settings) { ReadLaterStore(settings) }
-    DisposableEffect(settings, store) {
+    DisposableEffect(settings) {
         val unregister = settings.observeKeyChanges { key ->
             if (key == READ_LATER_ITEMS_KEY) {
                 store.reload()
@@ -147,22 +146,6 @@ fun rememberReadLaterStore(): ReadLaterStore {
     }
     return store
 }
-
-fun readLaterArticleSnapshot(
-    article: Article,
-    title: String,
-    authorName: String,
-    authorBio: String,
-    avatarSrc: String?,
-    content: String,
-): Article =
-    article.copy(
-        title = title.ifBlank { article.title },
-        authorName = authorName.ifBlank { article.authorName },
-        authorBio = authorBio.ifBlank { article.authorBio },
-        avatarSrc = avatarSrc ?: article.avatarSrc,
-        excerpt = article.excerpt?.takeIf { it.isNotBlank() } ?: Ksoup.parse(content).text().take(160),
-    )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
