@@ -24,8 +24,8 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.nullable
 import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.descriptors.nullable
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonArray
@@ -55,18 +55,19 @@ sealed interface Feed {
     }
 
     private object LegacyAuthorSerCompat : KSerializer<Person?> {
-        override val descriptor: SerialDescriptor = Person.serializer().descriptor.nullable
+        private val personSerializer = Person.serializer().nullable
 
-        @OptIn(ExperimentalSerializationApi::class)
+        override val descriptor: SerialDescriptor = personSerializer.descriptor
+
         override fun serialize(
             encoder: Encoder,
             value: Person?,
         ) {
-            encoder.encodeNullableSerializableValue(Person.serializer(), value)
+            personSerializer.serialize(encoder, value)
         }
 
         override fun deserialize(decoder: Decoder) = try {
-            Person.serializer().deserialize(decoder)
+            personSerializer.deserialize(decoder)
         } catch (_: Exception) {
             // consume a string -- legacy api compatibility
             decoder.decodeString()

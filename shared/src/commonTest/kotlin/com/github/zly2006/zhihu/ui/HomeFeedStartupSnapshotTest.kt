@@ -125,6 +125,38 @@ class HomeFeedStartupSnapshotTest {
     }
 
     @Test
+    fun snapshotRoundTripKeepsAnswerFeedWithNullAuthor() {
+        val item = FeedDisplayItem(
+            title = "匿名回答",
+            summary = "没有作者信息的缓存回答",
+            details = "0 赞同",
+            feed = CommonFeed(
+                id = "feed-null-author",
+                target = Feed.AnswerTarget(
+                    id = 4,
+                    url = "https://www.zhihu.com/question/3/answer/4",
+                    author = null,
+                    voteupCount = 0,
+                    commentCount = 0,
+                    question = Feed.QuestionTarget(
+                        id = 3,
+                        _title = "缓存问题",
+                        url = "https://www.zhihu.com/question/3",
+                        type = "question",
+                    ),
+                ),
+            ),
+            localFeedId = "home-cache-null-author",
+        )
+
+        val payload = assertNotNull(encodeHomeFeedStartupSnapshot(listOf(item)))
+        val restored = ZhihuJson.json.decodeFromString<List<FeedDisplayItem>>(payload).single()
+
+        assertEquals(item, restored)
+        assertNull(((restored.feed as CommonFeed).target as Feed.AnswerTarget).author)
+    }
+
+    @Test
     fun snapshotIsBoundedForFileStorage() {
         val items = List(120) { index ->
             FeedDisplayItem(
