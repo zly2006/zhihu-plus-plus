@@ -65,6 +65,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.FilterCenterFocus
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.GetApp
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.SkipNext
@@ -466,10 +467,13 @@ fun ArticleActionsMenu(
     onSummaryRequest: () -> Unit,
     onAigcFlagRequest: () -> Unit,
     onExportRequest: () -> Unit,
+    canShareImage: Boolean,
+    onShareImageRequest: suspend (onComplete: (Boolean) -> Unit) -> Unit,
     onSetImmersiveDoubleTap: () -> Unit = {},
 ) {
     val articleActionsRuntime = rememberArticleActionsRuntime()
     val coroutineScope = rememberCoroutineScope()
+    var isSharingImage by remember { mutableStateOf(false) }
 
     @Composable
     fun MenuActionButton(
@@ -596,6 +600,29 @@ fun ArticleActionsMenu(
         )
 
         Spacer(modifier = Modifier.height(12.dp))
+
+        if (canShareImage) {
+            MenuActionButton(
+                icon = Icons.Filled.Image,
+                text = if (isSharingImage) "正在生成分享图片" else "以图片分享",
+                enabled = !isSharingImage,
+                onClick = {
+                    if (!isSharingImage) {
+                        isSharingImage = true
+                        coroutineScope.launch {
+                            onShareImageRequest { success ->
+                                isSharingImage = false
+                                if (success) {
+                                    onDismissRequest()
+                                }
+                            }
+                        }
+                    }
+                },
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+        }
 
         MenuActionButton(
             icon = Icons.AutoMirrored.Filled.Comment,
@@ -1886,6 +1913,14 @@ fun ArticleScreen(
             viewModel.loadAigcFlagStatus(environment)
         },
         onExportRequest = { showExportDialog = true },
+        canShareImage = environment.canShareImage(),
+        onShareImageRequest = { onComplete ->
+            viewModel.shareAsImage(
+                environment = environment,
+                includeAppAttribution = true,
+                onComplete = onComplete,
+            )
+        },
         onSetImmersiveDoubleTap = {
             showActionsMenu = false
             // 沉浸式模式下，按返回键优先退出沉浸式，不会直接退出回答

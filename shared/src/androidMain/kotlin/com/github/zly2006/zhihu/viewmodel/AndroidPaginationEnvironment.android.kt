@@ -61,6 +61,7 @@ import com.github.zly2006.zhihu.util.buildOfflineArticleExportHtml
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.exportCollectionItemsToZip
 import com.github.zly2006.zhihu.util.saveBitmapToGallery
+import com.github.zly2006.zhihu.util.shareBitmap
 import com.github.zly2006.zhihu.viewmodel.filter.AndroidContentFilterRuntime
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeywordService
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedUser
@@ -559,6 +560,16 @@ open class SharedAndroidPaginationEnvironment(
         displayName: String,
         bitmap: Any,
     ) = saveBitmapToGallery(context, displayName, bitmap as android.graphics.Bitmap)
+
+    override suspend fun shareImage(
+        displayName: String,
+        bitmap: Any,
+    ): Boolean {
+        shareBitmap(context, displayName, bitmap as android.graphics.Bitmap)
+        return true
+    }
+
+    override fun canShareImage(): Boolean = true
 
     override fun saveHtmlToDownloads(
         displayName: String,

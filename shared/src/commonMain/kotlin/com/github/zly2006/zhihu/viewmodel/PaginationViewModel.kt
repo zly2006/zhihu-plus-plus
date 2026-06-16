@@ -444,6 +444,13 @@ interface ArticleExportEnvironment {
         bitmap: Any,
     ) = Unit
 
+    suspend fun shareImage(
+        displayName: String,
+        bitmap: Any,
+    ): Boolean = false
+
+    fun canShareImage(): Boolean = false
+
     fun articleImageExportRenderer(loadAssetText: (String) -> String): ArticleImageExportRenderer? = null
 }
 

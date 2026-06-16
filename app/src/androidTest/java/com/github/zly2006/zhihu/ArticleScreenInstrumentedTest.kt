@@ -18,11 +18,14 @@
 package com.github.zly2006.zhihu
 
 import android.content.Context
+import android.graphics.Bitmap
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.MutableState
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -47,6 +50,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.io.File
 
 @RunWith(AndroidJUnit4::class)
 class ArticleScreenInstrumentedTest {
@@ -93,6 +97,26 @@ class ArticleScreenInstrumentedTest {
         composeRule.onNodeWithText("离线作者").assertIsDisplayed()
         composeRule.onNodeWithText("IP属地：上海").assertExists()
         composeRule.onNodeWithText("第 1 段离线正文", substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun articleActionsMenuShowsShareAsImageOffline() {
+        setArticleScreen()
+
+        composeRule.onNodeWithContentDescription("更多选项").assertIsDisplayed().performClick()
+        composeRule.onNodeWithText("以图片分享").assertIsDisplayed()
+
+        val screenshotFile = File(
+            requireNotNull(composeRule.activity.getExternalFilesDir(null)),
+            ISSUE_446_SCREENSHOT_FILE_NAME,
+        )
+        screenshotFile.outputStream().use { output ->
+            composeRule
+                .onNodeWithText("以图片分享")
+                .captureToImage()
+                .asAndroidBitmap()
+                .compress(Bitmap.CompressFormat.PNG, 100, output)
+        }
     }
 
     @Test
@@ -225,6 +249,8 @@ class ArticleScreenInstrumentedTest {
     }
 
     private companion object {
+        const val ISSUE_446_SCREENSHOT_FILE_NAME = "issue-446-article-share-menu.png"
+
         val ARTICLE = Article(
             type = ArticleType.Article,
             id = 777L,

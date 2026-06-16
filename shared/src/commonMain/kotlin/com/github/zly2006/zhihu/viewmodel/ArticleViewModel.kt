@@ -841,6 +841,16 @@ class ArticleViewModel(
             commentCount = 0,
             includeAppAttribution = includeAppAttribution,
             successMessage = "图片已保存到相册",
+            errorPrefix = "图片导出失败",
+            requiresImageExportPermission = true,
+            writeImage = { displayName, bitmap ->
+                withContext(Dispatchers.Default) {
+                    environment.saveImageToMediaStore(
+                        displayName = displayName,
+                        bitmap = bitmap,
+                    )
+                }
+            },
             onComplete = onComplete,
         )
     }
@@ -858,6 +868,38 @@ class ArticleViewModel(
             commentCount = commentCount,
             includeAppAttribution = includeAppAttribution,
             successMessage = "带评论图片已保存到相册",
+            errorPrefix = "带评论图片导出失败",
+            requiresImageExportPermission = true,
+            writeImage = { displayName, bitmap ->
+                withContext(Dispatchers.Default) {
+                    environment.saveImageToMediaStore(
+                        displayName = displayName,
+                        bitmap = bitmap,
+                    )
+                }
+            },
+            onComplete = onComplete,
+        )
+    }
+
+    suspend fun shareAsImage(
+        environment: ArticleExportContentEnvironment,
+        includeAppAttribution: Boolean,
+        onComplete: (Boolean) -> Unit,
+    ) {
+        exportToImageInternal(
+            environment = environment,
+            includeComments = false,
+            commentCount = 0,
+            includeAppAttribution = includeAppAttribution,
+            successMessage = "正在打开分享面板",
+            errorPrefix = "图片分享失败",
+            requiresImageExportPermission = false,
+            writeImage = { displayName, bitmap ->
+                if (!environment.shareImage(displayName, bitmap)) {
+                    throw IllegalStateException("当前平台不支持分享图片")
+                }
+            },
             onComplete = onComplete,
         )
     }
@@ -921,6 +963,9 @@ class ArticleViewModel(
         commentCount: Int,
         includeAppAttribution: Boolean,
         successMessage: String,
+        errorPrefix: String,
+        requiresImageExportPermission: Boolean,
+        writeImage: suspend (displayName: String, bitmap: Any) -> Unit,
         onComplete: (Boolean) -> Unit,
     ) {
         runCatching { requireExportSourceContent() }.onFailure { error ->
@@ -931,7 +976,7 @@ class ArticleViewModel(
             return
         }
 
-        if (!environment.hasImageExportPermission()) {
+        if (requiresImageExportPermission && !environment.hasImageExportPermission()) {
             withContext(Dispatchers.Main) {
                 environment.requestImageExportPermission()
                 permissionRequestCount++
@@ -963,22 +1008,19 @@ class ArticleViewModel(
             )
             val capturedBitmap = renderer.captureExportBitmap(preparedWebView)
             bitmap = capturedBitmap
-            withContext(Dispatchers.Default) {
-                environment.saveImageToMediaStore(
-                    displayName = buildArticleExportFileName(
-                        content = requireExportSourceContent(),
-                        extension = "jpg",
-                    ),
-                    bitmap = capturedBitmap,
-                )
-            }
+            writeImage(
+                buildArticleExportFileName(
+                    content = requireExportSourceContent(),
+                    extension = "jpg",
+                ),
+                capturedBitmap,
+            )
             withContext(Dispatchers.Main) {
                 userMessages.showLongMessage(successMessage)
                 onComplete(true)
             }
         } catch (e: Exception) {
             Log.e("ArticleViewModel", "Image export failed", e)
-            val errorPrefix = if (includeComments) "带评论图片导出失败" else "图片导出失败"
             withContext(Dispatchers.Main) {
                 userMessages.showShortMessage("$errorPrefix: ${e.message}")
                 onComplete(false)

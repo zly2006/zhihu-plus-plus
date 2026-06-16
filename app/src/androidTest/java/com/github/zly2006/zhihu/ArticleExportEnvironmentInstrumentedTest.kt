@@ -46,6 +46,7 @@ class ArticleExportEnvironmentInstrumentedTest {
         val environment = SharedAndroidPaginationEnvironment(context, allowGuestAccess = true)
 
         assertNotNull(environment.articleImageExportRenderer { "" })
+        assertTrue(environment.canShareImage())
 
         val html = environment.buildArticleExportHtml(
             content = sampleArticleContent(),
