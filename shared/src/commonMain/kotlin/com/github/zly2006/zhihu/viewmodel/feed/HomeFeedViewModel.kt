@@ -39,6 +39,7 @@ import io.ktor.client.request.header
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.isSuccess
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -74,8 +75,13 @@ suspend fun resolveFeedQuestionAuthorInfo(
     when (val raw = feedItem.raw) {
         is DataHolder.Question -> return raw.author.let { Pair(it.id, it.name) }
         is DataHolder.Answer -> {
-            val questionDetail = contentDetailProvider
-                ?.get(Question(questionId = raw.question.id, title = raw.question.title)) as? DataHolder.Question
+            val questionDetail = runCatching {
+                contentDetailProvider?.get(Question(questionId = raw.question.id, title = raw.question.title))
+            }.getOrElse { error ->
+                if (error is CancellationException) throw error
+                Log.e("HomeFeedViewModel", "Failed to resolve feed question author from raw answer detail", error)
+                null
+            } as? DataHolder.Question
             if (questionDetail != null) {
                 return questionDetail.author.let { Pair(it.id, it.name) }
             }
@@ -90,7 +96,15 @@ suspend fun resolveFeedQuestionAuthorInfo(
     }
 
     val questionDetail = questionDestination
-        ?.let { destination -> contentDetailProvider?.get(destination) } as? DataHolder.Question
+        ?.let { destination ->
+            runCatching {
+                contentDetailProvider?.get(destination)
+            }.getOrElse { error ->
+                if (error is CancellationException) throw error
+                Log.e("HomeFeedViewModel", "Failed to resolve feed question author from feed target detail", error)
+                null
+            }
+        } as? DataHolder.Question
         ?: return null
     return questionDetail.author.let { Pair(it.id, it.name) }
 }

@@ -270,6 +270,85 @@ class FeedDisplayFilterPipelineTest {
         fixture.database.close()
     }
 
+    @Test
+    fun keepsAnswerItemsWhenSnapshotQuestionAuthorIsAllowedAndSkipsDetailFallback() = runTest {
+        val fixture = fixture()
+        fixture.database.blockedQuestionAuthorDao().insertUser(
+            BlockedQuestionAuthor(userId = "blocked-asker", userName = "Blocked Asker"),
+        )
+        var fetchCount = 0
+
+        val result = fixture.pipeline(
+            detailProvider = ContentDetailProvider {
+                fetchCount++
+                question(id = 20, title = "loading...", authorId = "blocked-asker", authorName = "Blocked Asker")
+            },
+        ).filter(
+            listOf(
+                answerItem(
+                    questionId = 20,
+                    questionTitle = "loading...",
+                    questionAuthor = person(id = "ok-asker", name = "Allowed Asker"),
+                ),
+            ),
+        )
+
+        assertEquals(listOf("answer item"), result.map { it.title })
+        assertEquals(0, fetchCount)
+        assertEquals(
+            emptyList(),
+            fixture.database
+                .blockedFeedRecordDao()
+                .observeAll()
+                .first(),
+        )
+        fixture.database.close()
+    }
+
+    @Test
+    fun keepsAnswerItemsWhenQuestionAuthorFallbackReturnsNull() = runTest {
+        val fixture = fixture()
+        fixture.database.blockedQuestionAuthorDao().insertUser(
+            BlockedQuestionAuthor(userId = "blocked-asker", userName = "Blocked Asker"),
+        )
+
+        val result = fixture.pipeline(
+            detailProvider = ContentDetailProvider { null },
+        ).filter(listOf(answerItem(questionId = 20, questionTitle = "loading...")))
+
+        assertEquals(listOf("answer item"), result.map { it.title })
+        assertEquals(
+            emptyList(),
+            fixture.database
+                .blockedFeedRecordDao()
+                .observeAll()
+                .first(),
+        )
+        fixture.database.close()
+    }
+
+    @Test
+    fun keepsAnswerItemsWhenQuestionAuthorFallbackThrows() = runTest {
+        val fixture = fixture()
+        fixture.database.blockedQuestionAuthorDao().insertUser(
+            BlockedQuestionAuthor(userId = "blocked-asker", userName = "Blocked Asker"),
+        )
+
+        val result = fixture.pipeline(
+            detailProvider = ContentDetailProvider { error("boom") },
+        ).filter(listOf(answerItem(questionId = 20, questionTitle = "loading...")))
+
+        assertEquals(listOf("answer item"), result.map { it.title })
+        assertEquals(
+            emptyList(),
+            fixture.database
+                .blockedFeedRecordDao()
+                .observeAll()
+                .first(),
+        )
+        fixture.database.close()
+    }
+
     private fun fixture(settings: FeedFilterSettings = FeedFilterSettings()): Fixture {
         val database = getContentFilterDatabase(
             createTempDirectory("feed-display-filter-pipeline").resolve("content-filter.db").toFile(),
@@ -324,6 +403,43 @@ class FeedDisplayFilterPipelineTest {
         navDestinationJson = Article(type = ArticleType.Article, id = id).toFeedDisplayItemNavDestinationJson(),
     )
 
+    private fun answerItem(
+        questionId: Long,
+        questionTitle: String,
+        questionAuthor: Person? = null,
+    ): FeedDisplayItem = FeedDisplayItem(
+        title = "answer item",
+        summary = null,
+        details = "",
+        feed = CommonFeed(
+            target = Feed.AnswerTarget(
+                id = 10,
+                url = "https://api.zhihu.com/answers/10",
+                author = person(),
+                createdTime = 1,
+                updatedTime = 1,
+                voteupCount = 0,
+                thanksCount = 0,
+                commentCount = 0,
+                isCopyable = true,
+                question = Feed.QuestionTarget(
+                    id = questionId,
+                    url = "https://api.zhihu.com/questions/$questionId",
+                    type = "question",
+                    questionType = "normal",
+                    created = 1,
+                    answerCount = 1,
+                    commentCount = 0,
+                    followerCount = 0,
+                    detail = "",
+                    excerpt = "",
+                    author = questionAuthor,
+                ),
+                excerpt = "excerpt",
+            ),
+        ),
+    )
+
     private fun article(
         title: String,
         content: String = title,
@@ -374,6 +490,8 @@ class FeedDisplayFilterPipelineTest {
     private fun question(
         id: Long,
         title: String,
+        authorId: String = "blocked-asker",
+        authorName: String = "Blocked Asker",
     ): DataHolder.Question = DataHolder.Question(
         type = "question",
         id = id,
@@ -389,7 +507,7 @@ class FeedDisplayFilterPipelineTest {
         detail = "",
         relationship = DataHolder.QuestionRelationship(),
         topics = emptyList(),
-        author = author(id = "blocked-asker", name = "Blocked Asker"),
+        author = author(id = authorId, name = authorName),
         voteupCount = 0,
     )
 
@@ -410,11 +528,15 @@ class FeedDisplayFilterPipelineTest {
         userType = "people",
     )
 
-    private fun person(isFollowing: Boolean): Person = Person(
-        id = "author-id",
+    private fun person(
+        id: String = "author-id",
+        name: String = "author",
+        isFollowing: Boolean = false,
+    ): Person = Person(
+        id = id,
         url = "",
         userType = "people",
-        name = "author",
+        name = name,
         headline = "",
         avatarUrl = "",
         isFollowing = isFollowing,
