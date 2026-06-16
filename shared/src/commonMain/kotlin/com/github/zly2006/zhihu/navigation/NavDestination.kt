@@ -92,7 +92,7 @@ data object History : NavDestination, TopLevelDestination {
  * 主 pager 的历史顶层 tab 目标。
  */
 @Serializable
-data object OnlineHistory : TopLevelDestination {
+data object OnlineHistory : NavDestination, TopLevelDestination {
     override val name: String
         get() = "OnlineHistory"
 }

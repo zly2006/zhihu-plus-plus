@@ -151,7 +151,6 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
             requestQrLoginScan = { userMessages.showMessage("iOS 扫码登录暂未实现") }, // TODO: iOS 扫码登录
             logout = { }, // TODO: iOS 登出
             appVersionInfo = { "iOS" },
-            selectMainTab = { }, // TODO: iOS 主 Tab 切换
         )
     }
 }

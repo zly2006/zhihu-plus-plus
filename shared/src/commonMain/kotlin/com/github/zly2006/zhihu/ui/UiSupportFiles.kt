@@ -601,7 +601,6 @@ data class AccountSettingsRuntime(
     val requestQrLoginScan: () -> Unit,
     val logout: () -> Unit,
     val appVersionInfo: () -> String,
-    val selectMainTab: (TopLevelDestination) -> Unit,
 )
 
 @Composable

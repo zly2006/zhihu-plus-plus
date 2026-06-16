@@ -36,7 +36,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopLoginRequests
@@ -381,7 +380,6 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
             accountState.value = AccountSettingsAccountState()
         },
         appVersionInfo = { "desktop" },
-        selectMainTab = { _: TopLevelDestination -> },
     )
 }
 
