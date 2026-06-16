@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.viewmodel.feed
 
 import androidx.lifecycle.viewModelScope
+import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
@@ -70,10 +71,28 @@ suspend fun resolveFeedQuestionAuthorInfo(
         return Pair(author.id, author.name)
     }
 
-    return when (val content = resolveFeedBlockContentDetail(feedItem, contentDetailProvider)) {
-        is DataHolder.Question -> content.author.let { Pair(it.id, it.name) }
+    when (val raw = feedItem.raw) {
+        is DataHolder.Question -> return raw.author.let { Pair(it.id, it.name) }
+        is DataHolder.Answer -> {
+            val questionDetail = contentDetailProvider
+                ?.get(Question(questionId = raw.question.id, title = raw.question.title)) as? DataHolder.Question
+            if (questionDetail != null) {
+                return questionDetail.author.let { Pair(it.id, it.name) }
+            }
+        }
+        else -> Unit
+    }
+
+    val questionDestination = when (val target = feedItem.feed?.target) {
+        is Feed.AnswerTarget -> Question(questionId = target.question.id, title = target.question.title)
+        is Feed.QuestionTarget -> Question(questionId = target.id, title = target.title)
         else -> null
     }
+
+    val questionDetail = questionDestination
+        ?.let { destination -> contentDetailProvider?.get(destination) } as? DataHolder.Question
+        ?: return null
+    return questionDetail.author.let { Pair(it.id, it.name) }
 }
 
 suspend fun resolveFeedKeywordBlockingContent(
