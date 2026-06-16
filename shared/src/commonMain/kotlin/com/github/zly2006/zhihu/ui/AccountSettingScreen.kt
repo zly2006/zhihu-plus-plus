@@ -50,6 +50,7 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
@@ -111,6 +112,7 @@ const val ACCOUNT_SETTINGS_SHORTCUT_NOTIFICATION_TAG = "accountSettings.shortcut
 const val ACCOUNT_SETTINGS_SHORTCUT_HISTORY_TAG = "accountSettings.shortcutHistory"
 const val ACCOUNT_SETTINGS_APPEARANCE_TAG = "accountSettings.appearance"
 const val ACCOUNT_SETTINGS_RECOMMEND_TAG = "accountSettings.recommend"
+const val ACCOUNT_SETTINGS_SEARCH_TAG = "accountSettings.search"
 const val ACCOUNT_SETTINGS_SYSTEM_TAG = "accountSettings.system"
 const val ACCOUNT_SETTINGS_DEVELOPER_TAG = "accountSettings.developer"
 const val ACCOUNT_SETTINGS_LICENSES_TAG = "accountSettings.licenses"
@@ -419,6 +421,14 @@ fun AccountSettingScreen(
 
             SettingItemGroup {
                 SettingItem(
+                    title = { Text("搜索设置项") },
+                    description = { Text("按名称快速跳到对应设置") },
+                    icon = { Icon(Icons.Default.Search, null) },
+                    modifier = Modifier.testTag(ACCOUNT_SETTINGS_SEARCH_TAG),
+                    onClick = { navigator.onNavigate(Account.SettingsSearch) },
+                )
+
+                SettingItem(
                     title = { Text("外观与阅读体验") },
                     description = { Text("主题颜色、字体大小等") },
                     icon = { Icon(Icons.Default.Palette, null) },
@@ -439,7 +449,7 @@ fun AccountSettingScreen(
                     description = { Text("GitHub、更新设置等") },
                     icon = { Icon(Icons.Default.Settings, null) },
                     modifier = Modifier.testTag(ACCOUNT_SETTINGS_SYSTEM_TAG),
-                    onClick = { navigator.onNavigate(Account.SystemAndUpdateSettings) },
+                    onClick = { navigator.onNavigate(Account.SystemAndUpdateSettings()) },
                 )
 
                 AnimatedVisibility(isDeveloper) {

@@ -144,7 +144,7 @@ fun NotificationScreen() {
                         }
                     }
                     IconButton(onClick = {
-                        navigator.onNavigate(Notification.NotificationSettings)
+                        navigator.onNavigate(Notification.NotificationSettings())
                     }) {
                         Icon(Icons.Default.Settings, contentDescription = "设置")
                     }

@@ -306,6 +306,8 @@ fun ContentFilterSettingsScreen(
                                 "当回答的问题包含 >= ${topicThreshold.value} 个被屏蔽主题时，屏蔽该内容",
                             )
                         },
+                        settingKey = "topicBlockingThreshold",
+                        highlightedKey = highlightedSetting,
                         endAction = {
                             Text(
                                 topicThreshold.value.toString(),
