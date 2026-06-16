@@ -62,10 +62,11 @@ import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Navigator
+import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.officialBadge
-import com.github.zly2006.zhihu.shared.data.questionAuthor
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
 import com.github.zly2006.zhihu.shared.platform.rememberIsLiteVariant
@@ -260,7 +261,12 @@ private fun FeedCardMenuBox(
                     onBlockUser?.invoke(item)
                 },
             )
-            if (onBlockQuestionAuthor != null && item.feed?.target?.questionAuthor != null) {
+            val canBlockQuestionAuthor = onBlockQuestionAuthor != null &&
+                when (item.feed?.target) {
+                    is Feed.AnswerTarget, is Feed.QuestionTarget -> true
+                    else -> item.raw is DataHolder.Answer || item.raw is DataHolder.Question
+                }
+            if (canBlockQuestionAuthor) {
                 DropdownMenuItem(
                     text = { Text("屏蔽提问者") },
                     onClick = {
