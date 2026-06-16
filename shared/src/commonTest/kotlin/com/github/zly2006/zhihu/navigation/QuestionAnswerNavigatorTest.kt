@@ -35,6 +35,7 @@ class QuestionAnswerNavigatorTest {
             initialPreviousAnswers = listOf(answer(101L), answer(100L)),
             initialNextUrl = "https://www.zhihu.com/api/v4/questions/1/feeds?limit=20&order=updated&offset=20",
             order = "updated",
+            getAlreadyOpenedAnswerIds = { emptySet() },
             environment = NoopEnvironment,
         )
 
@@ -74,6 +75,7 @@ class QuestionAnswerNavigatorTest {
                 answer(101L),
                 answer(100L),
             ),
+            getAlreadyOpenedAnswerIds = { emptySet() },
             environment = NoopEnvironment,
         )
 
@@ -88,10 +90,51 @@ class QuestionAnswerNavigatorTest {
         val navigator = QuestionAnswerNavigator(
             questionId = 1L,
             initialPreviousAnswers = listOf(article(201L)),
+            getAlreadyOpenedAnswerIds = { emptySet() },
             environment = NoopEnvironment,
         )
 
         assertNull(navigator.previousAnswerPreview)
+    }
+
+    @Test
+    fun seededNextAnswersAreCheckedAgainstOpenedHistoryBeforeDownNavigation() = runTest {
+        val openedAnswerIds = setOf(104L, 106L)
+        val navigator = QuestionAnswerNavigator(
+            questionId = 1L,
+            initialNextAnswers = listOf(103L, 104L, 105L, 106L, 107L).map(::answer),
+            getAlreadyOpenedAnswerIds = { ids -> ids.filter { it in openedAnswerIds }.toSet() },
+            environment = NoopEnvironment,
+        )
+
+        assertEquals(103L, navigator.loadNext()?.id)
+        assertEquals(105L, navigator.loadNext()?.id)
+        assertEquals(107L, navigator.loadNext()?.id)
+        assertNull(navigator.loadNext())
+    }
+
+    @Test
+    fun repeatedFiveAnswerRoundsNeverNavigateDownToOpenedAnswers() = runTest {
+        val rounds = listOf(
+            listOf(101L, 102L, 103L, 104L, 105L) to setOf(102L, 104L),
+            listOf(201L, 202L, 203L, 204L, 205L) to setOf(201L, 205L),
+            listOf(301L, 302L, 303L, 304L, 305L) to setOf(303L),
+        )
+
+        rounds.forEachIndexed { roundIndex, (candidateIds, openedAnswerIds) ->
+            val navigator = QuestionAnswerNavigator(
+                questionId = roundIndex + 1L,
+                initialNextAnswers = candidateIds.map(::answer),
+                getAlreadyOpenedAnswerIds = { ids -> ids.filter { it in openedAnswerIds }.toSet() },
+                environment = NoopEnvironment,
+            )
+
+            val expectedFreshIds = candidateIds.filterNot { it in openedAnswerIds }
+            expectedFreshIds.forEach { expectedId ->
+                assertEquals(expectedId, navigator.loadNext()?.id)
+            }
+            assertNull(navigator.loadNext())
+        }
     }
 
     private fun answer(id: Long) = Article(id = id, type = ArticleType.Answer)
