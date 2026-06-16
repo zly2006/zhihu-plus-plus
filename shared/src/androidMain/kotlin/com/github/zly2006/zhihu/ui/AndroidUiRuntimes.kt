@@ -126,7 +126,7 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
         },
         logout = { AccountData.delete(context) },
         appVersionInfo = { context.zhihuVersionInfo() },
-        selectMainTab = { destination -> requestMainTabSelection?.invoke(destination) },
+        selectMainTab = requestMainTabSelection,
     )
 }
 

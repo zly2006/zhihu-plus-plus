@@ -381,7 +381,7 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
             accountState.value = AccountSettingsAccountState()
         },
         appVersionInfo = { "desktop" },
-        selectMainTab = { destination -> requestMainTabSelection?.invoke(destination) },
+        selectMainTab = requestMainTabSelection,
     )
 }
 

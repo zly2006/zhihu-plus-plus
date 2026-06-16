@@ -572,8 +572,9 @@ fun rememberZhihuMainPreferenceState(
  * 主壳向子页面暴露的顶层 tab 选择入口。
  *
  * 子页面只能请求主壳切换顶层目标，不能把旧顶层 tab 重新包装成独立 route 压入返回栈。
+ * 默认实现是 no-op，这样预览或独立测试即使没有主壳 provider 也不会崩溃。
  */
-val LocalMainTabSelectionRequester = staticCompositionLocalOf<((TopLevelDestination) -> Unit)?> { null }
+val LocalMainTabSelectionRequester = staticCompositionLocalOf<(TopLevelDestination) -> Unit> { {} }
 
 /**
  * 当前平台注入 [ZhihuMain] 的导航回调。
