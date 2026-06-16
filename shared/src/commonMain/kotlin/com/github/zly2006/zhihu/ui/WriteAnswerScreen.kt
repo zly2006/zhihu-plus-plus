@@ -81,15 +81,14 @@ import com.github.zly2006.zhihu.shared.platform.rememberSystemUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.HttpStatusException
 import com.github.zly2006.zhihu.ui.components.MarkdownShortcutToolbar
-import com.github.zly2006.zhihu.ui.components.applyMarkdownShortcut
-import com.github.zly2006.zhihu.ui.components.insertTextAtSelection
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
+import com.github.zly2006.zhihu.ui.components.applyMarkdownShortcut
+import com.github.zly2006.zhihu.ui.components.insertTextAtSelection
 import kotlinx.coroutines.launch
 
 const val WRITE_ANSWER_CONTENT_TAG = "WriteAnswerContent"
 private const val ZHIHU_MARKDOWN_SYNTAX_DOC_URL = "https://zhihu.melonhu.cn/docs/syntax"
-private const val USE_ZHIHU_HEADINGS_KEY = "use_zhihu_headings"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -107,9 +106,6 @@ fun WriteAnswerScreen(
 
     var content by remember { mutableStateOf(TextFieldValue("")) }
     var tocEnabled by remember { mutableStateOf(false) }
-    var useZhihuHeadings by remember {
-        mutableStateOf(settings.getBoolean(USE_ZHIHU_HEADINGS_KEY, true))
-    }
     var isSubmitting by remember { mutableStateOf(false) }
     var existingAnswerId by remember { mutableStateOf<Long?>(null) }
     var isDetecting by remember { mutableStateOf(false) }
@@ -131,7 +127,6 @@ fun WriteAnswerScreen(
         compileMdToZhihuHtml(
             markdown = content.text,
             publisher = publisher,
-            useZhihuHeadings = useZhihuHeadings,
         )
 
     fun submit(publish: Boolean) {
@@ -423,17 +418,6 @@ fun WriteAnswerScreen(
                 modifier = Modifier.padding(horizontal = 20.dp),
             )
             Spacer(Modifier.height(16.dp))
-            SettingItemWithSwitch(
-                title = { Text("使用知乎特色标题") },
-                description = { Text("把 #、## 渲染为知乎对应的标题层级，更高层级会降级为加粗段落。") },
-                checked = useZhihuHeadings,
-                onCheckedChange = {
-                    useZhihuHeadings = it
-                    settings.putBoolean(USE_ZHIHU_HEADINGS_KEY, it)
-                },
-                modifier = Modifier.padding(horizontal = 12.dp),
-            )
-            Spacer(Modifier.height(8.dp))
             SettingItemWithSwitch(
                 title = { Text("生成目录") },
                 description = {

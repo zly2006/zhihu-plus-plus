@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.editor
 
+import io.ktor.http.encodeURLParameter
 import org.intellij.markdown.IElementType
 import org.intellij.markdown.MarkdownElementTypes
 import org.intellij.markdown.MarkdownTokenTypes
@@ -31,10 +32,9 @@ import org.intellij.markdown.flavours.gfm.GFMFlavourDescriptor
 import org.intellij.markdown.flavours.gfm.GFMTokenTypes
 import org.intellij.markdown.html.GeneratingProvider
 import org.intellij.markdown.html.HtmlGenerator
+import org.intellij.markdown.html.SimpleTagProvider
 import org.intellij.markdown.parser.LinkMap
 import org.intellij.markdown.parser.MarkdownParser
-import java.net.URI
-import java.net.URLEncoder
 
 // 透明节点渲染器：不输出任何标签，只递归渲染其子节点。
 private class TransparentNodeProvider : GeneratingProvider {
@@ -76,12 +76,13 @@ private class PreCodeFenceProvider : GeneratingProvider {
 
         for (child in childrenToConsider) {
             if (state == 0 && child.type == MarkdownTokenTypes.FENCE_LANG) {
-                lang = HtmlGenerator
-                    .leafText(text, child)
-                    .toString()
-                    .trim()
-                    .split(' ')[0]
-                    .ifBlank { null }
+                lang =
+                    HtmlGenerator
+                        .leafText(text, child)
+                        .toString()
+                        .trim()
+                        .split(' ')[0]
+                        .ifBlank { null }
             }
             if (state == 0 && child.type == MarkdownTokenTypes.EOL) {
                 visitor.consumeTagOpen(node, "pre", lang?.let { "lang=\"$it\"" })
@@ -109,7 +110,7 @@ private fun extractMathTex(text: String, node: ASTNode, delimiterSize: Int): Str
 
 // 将 TeX 进行 URL 编码，用于拼接知乎公式图片链接的 tex 参数。
 private fun encodeZhihuEquationTex(tex: String): String =
-    URLEncoder.encode(tex, Charsets.UTF_8).replace("+", "%20")
+    tex.encodeURLParameter(spaceToPlus = false)
 
 // HTML attribute 转义
 private fun escapeHtmlAttribute(value: String): String =
@@ -229,7 +230,7 @@ private class ZhihuTableProvider : GeneratingProvider {
     private fun collectNodesOfType(root: ASTNode, type: IElementType): List<ASTNode> {
         if (root.children.isEmpty()) return emptyList()
         val result = ArrayList<ASTNode>()
-        val stack = java.util.ArrayDeque<ASTNode>()
+        val stack = ArrayDeque<ASTNode>()
         stack.add(root)
         while (stack.isNotEmpty()) {
             val n = stack.removeLast()
@@ -285,52 +286,75 @@ private class ZhihuTableRowProvider : GeneratingProvider {
     }
 }
 
-private class CustomHtmlFlavourDescriptor(
-    private val useZhihuHeadings: Boolean = true,
-) : GFMFlavourDescriptor(useSafeLinks = true, absolutizeAnchorLinks = false, makeHttpsAutoLinks = false) {
-    override fun createHtmlGeneratingProviders(
-        linkMap: LinkMap,
-        baseURI: URI?,
-    ): Map<IElementType, GeneratingProvider> {
-        val providers = super.createHtmlGeneratingProviders(linkMap, baseURI).toMutableMap()
+// 将 Markdown AST 节点类型映射到 1~6 层级数字
+// 非标题节点返回 null
+private fun headingLevelOf(type: IElementType): Int? =
+    when (type) {
+        MarkdownElementTypes.ATX_1 -> 1
+        MarkdownElementTypes.ATX_2 -> 2
+        MarkdownElementTypes.ATX_3 -> 3
+        MarkdownElementTypes.ATX_4 -> 4
+        MarkdownElementTypes.ATX_5 -> 5
+        MarkdownElementTypes.ATX_6 -> 6
+        MarkdownElementTypes.SETEXT_1 -> 1
+        MarkdownElementTypes.SETEXT_2 -> 2
+        else -> null
+    }
 
-        // 默认 CommonMark 会输出 <body>...</body>，这里改成只输出子节点 HTML。
-        providers[MarkdownElementTypes.MARKDOWN_FILE] = TransparentNodeProvider()
+// 扫描整棵 AST，收集本文实际出现过的标题层级集合
+private fun collectHeadingLevels(root: ASTNode): Set<Int> {
+    val result = LinkedHashSet<Int>()
+    val stack = ArrayDeque<ASTNode>()
+    stack.add(root)
+    while (stack.isNotEmpty()) {
+        val n = stack.removeLast()
+        val level = headingLevelOf(n.type)
+        if (level != null) result.add(level)
+        for (i in n.children.size - 1 downTo 0) stack.add(n.children[i])
+    }
+    return result
+}
 
-        // 代码块 provider 覆写
-        providers[MarkdownElementTypes.CODE_FENCE] = PreCodeFenceProvider()
+// 按标题层级做归一化：
+// - 最高级统一输出为 <h2>
+// - 次高级统一输出为 <h3>
+// - 更低级标题统一输出为 <p><strong>...</strong></p>
+//
+// 说明：
+// - 之所以放在 parse 之后，是因为需要先拿到整篇文章的 AST 才能知道出现过哪些层级
+// - 这里通过覆写 providers 来改变标题节点的渲染方式，不影响其他节点渲染
+private fun applyHeadingNormalization(
+    providers: MutableMap<IElementType, GeneratingProvider>,
+    root: ASTNode,
+) {
+    val usedLevels = collectHeadingLevels(root).toList().sorted()
+    if (usedLevels.isEmpty()) return
 
-        // 行内数学公式和行间数学公式 provider 覆写
-        providers[GFMElementTypes.INLINE_MATH] = ZhihuInlineMathProvider()
-        providers[GFMElementTypes.BLOCK_MATH] = ZhihuBlockMathProvider()
+    val top = usedLevels.first()
+    val second = usedLevels.drop(1).firstOrNull()
 
-        // 表格 provider 覆写
-        providers[GFMElementTypes.TABLE] = ZhihuTableProvider()
-        providers[GFMElementTypes.HEADER] = ZhihuTableHeaderProvider()
-        providers[GFMElementTypes.ROW] = ZhihuTableRowProvider()
-
-        if (useZhihuHeadings) {
-            // 标题 provider 覆写
-            // - #  -> <h2>
-            // - ## -> <h3>
-            // - ### 及以上 -> <p><strong>...</strong></p>
-            providers[MarkdownElementTypes.ATX_1] = org.intellij.markdown.html
-                .SimpleTagProvider("h2")
-            providers[MarkdownElementTypes.ATX_2] = org.intellij.markdown.html
-                .SimpleTagProvider("h3")
-            providers[MarkdownElementTypes.ATX_3] = StrongParagraphProvider()
-            providers[MarkdownElementTypes.ATX_4] = StrongParagraphProvider()
-            providers[MarkdownElementTypes.ATX_5] = StrongParagraphProvider()
-            providers[MarkdownElementTypes.ATX_6] = StrongParagraphProvider()
-
-            // Setext 标题（=== / ---）对应同样的降级规则
-            providers[MarkdownElementTypes.SETEXT_1] = org.intellij.markdown.html
-                .SimpleTagProvider("h2")
-            providers[MarkdownElementTypes.SETEXT_2] = org.intellij.markdown.html
-                .SimpleTagProvider("h3")
+    fun providerForLevel(level: Int): GeneratingProvider =
+        when {
+            level == top -> SimpleTagProvider("h2")
+            second != null && level == second -> SimpleTagProvider("h3")
+            else -> StrongParagraphProvider()
         }
 
-        return providers
+    // 对所有可能的标题类型统一覆写 provider。没有出现在本文中的层级即使被覆写也不会生效。
+    val headingTypesAndLevels: List<Pair<IElementType, Int>> =
+        listOf(
+            MarkdownElementTypes.ATX_1 to 1,
+            MarkdownElementTypes.ATX_2 to 2,
+            MarkdownElementTypes.ATX_3 to 3,
+            MarkdownElementTypes.ATX_4 to 4,
+            MarkdownElementTypes.ATX_5 to 5,
+            MarkdownElementTypes.ATX_6 to 6,
+            MarkdownElementTypes.SETEXT_1 to 1,
+            MarkdownElementTypes.SETEXT_2 to 2,
+        )
+
+    for ((type, level) in headingTypesAndLevels) {
+        providers[type] = providerForLevel(level)
     }
 }
 
@@ -338,11 +362,35 @@ private class CustomHtmlFlavourDescriptor(
 suspend fun compileMdToZhihuHtml(
     markdown: String,
     publisher: ZhihuAnswerPublisher,
-    useZhihuHeadings: Boolean,
 ): String {
-    val flavour: MarkdownFlavourDescriptor = CustomHtmlFlavourDescriptor(useZhihuHeadings = true)
+    val flavour: MarkdownFlavourDescriptor =
+        GFMFlavourDescriptor(
+            useSafeLinks = true,
+            absolutizeAnchorLinks = false,
+            makeHttpsAutoLinks = false,
+        )
     val root = MarkdownParser(flavour).buildMarkdownTreeFromString(markdown)
-    val providers = flavour.createHtmlGeneratingProviders(LinkMap.buildLinkMap(root, markdown), null)
+    val providers =
+        flavour
+            .createHtmlGeneratingProviders(LinkMap.buildLinkMap(root, markdown), null)
+            .toMutableMap()
+
+    // 默认 CommonMark 会输出 <body>...</body>，这里改成只输出子节点 HTML。
+    providers[MarkdownElementTypes.MARKDOWN_FILE] = TransparentNodeProvider()
+
+    // 代码块 provider 覆写
+    providers[MarkdownElementTypes.CODE_FENCE] = PreCodeFenceProvider()
+
+    // 行内数学公式和行间数学公式 provider 覆写
+    providers[GFMElementTypes.INLINE_MATH] = ZhihuInlineMathProvider()
+    providers[GFMElementTypes.BLOCK_MATH] = ZhihuBlockMathProvider()
+
+    // 表格 provider 覆写
+    providers[GFMElementTypes.TABLE] = ZhihuTableProvider()
+    providers[GFMElementTypes.HEADER] = ZhihuTableHeaderProvider()
+    providers[GFMElementTypes.ROW] = ZhihuTableRowProvider()
+
+    applyHeadingNormalization(providers, root)
     val html = HtmlGenerator(markdown, root, providers).generateHtml()
 
     return html.trimEnd()
