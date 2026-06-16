@@ -285,7 +285,7 @@ class ArticleViewModel(
                             if (sharedData?.navigator !is CollectionAnswerNavigator) {
                                 val existingNav = sharedData?.navigator
                                 val isSameQuestion = when (existingNav) {
-                                    is QuestionAnswerNavigator -> existingNav.questionId == questionId && !existingNav.usesInitialAnswerList
+                                    is QuestionAnswerNavigator -> existingNav.questionId == questionId
                                     is PaginationInfoNavigator -> existingNav.questionId == questionId
                                     else -> false
                                 }

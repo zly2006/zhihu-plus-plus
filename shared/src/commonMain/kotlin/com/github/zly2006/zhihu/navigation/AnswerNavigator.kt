@@ -222,11 +222,6 @@ class QuestionAnswerNavigator(
     },
     environment: ZhihuApiEnvironment,
 ) : AnswerNavigator("此问题", environment) {
-    val usesInitialAnswerList: Boolean = initialNextAnswers.isNotEmpty() ||
-        initialPreviousAnswers.isNotEmpty() ||
-        initialNextUrl.isNotEmpty() ||
-        order != null
-
     private val pendingInitialNextAnswers = ArrayDeque<Article>().also { deque ->
         initialNextAnswers
             .filter { it.type == ArticleType.Answer }
