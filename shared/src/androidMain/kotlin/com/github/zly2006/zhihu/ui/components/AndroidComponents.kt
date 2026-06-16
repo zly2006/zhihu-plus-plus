@@ -48,6 +48,7 @@ import com.github.zly2006.zhihu.util.saveImageToGallery
 import com.github.zly2006.zhihu.util.shareImage
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.feed.handleBlockByKeywords
+import com.github.zly2006.zhihu.viewmodel.feed.handleBlockQuestionAuthor
 import com.github.zly2006.zhihu.viewmodel.feed.handleBlockTopic
 import com.github.zly2006.zhihu.viewmodel.feed.handleBlockUser
 import com.github.zly2006.zhihu.viewmodel.filter.AndroidContentFilterRuntime
@@ -260,6 +261,9 @@ actual fun rememberFeedBlockActions(): FeedBlockActions {
         FeedBlockActions(
             handleBlockUser = { viewModel, feedItem, onShowDialog ->
                 viewModel.handleBlockUser(context, feedItem, onShowDialog)
+            },
+            handleBlockQuestionAuthor = { viewModel, feedItem, onShowDialog ->
+                viewModel.handleBlockQuestionAuthor(context, feedItem, onShowDialog)
             },
             handleBlockTopic = { viewModel, topicId, topicName ->
                 viewModel.handleBlockTopic(context, topicId, topicName)

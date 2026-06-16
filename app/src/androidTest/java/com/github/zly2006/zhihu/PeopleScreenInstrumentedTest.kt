@@ -67,6 +67,7 @@ import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_HEADER_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_OFFICIAL_BADGE_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_PINS_LIST_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_QUESTIONS_LIST_TAG
+import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_QUESTION_AUTHOR_BLOCK_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_ROOT_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_SEARCH_BUTTON_TAG
@@ -109,6 +110,7 @@ class PeopleScreenInstrumentedTest {
         val followStates = mutableListOf<Boolean>()
         val blockStates = mutableListOf<Boolean>()
         val recommendationStates = mutableListOf<Boolean>()
+        val questionAuthorBlockStates = mutableListOf<Boolean>()
         val answerSorts = mutableListOf<String>()
         val articleSorts = mutableListOf<String>()
         val navigator = setPeopleScreen(
@@ -117,6 +119,7 @@ class PeopleScreenInstrumentedTest {
                 onToggleFollow = { followStates += it },
                 onToggleBlock = { blockStates += it },
                 onToggleRecommendationBlock = { recommendationStates += it },
+                onToggleQuestionAuthorBlock = { questionAuthorBlockStates += it },
                 onAnswerSortChange = { answerSorts += it },
                 onArticleSortChange = { articleSorts += it },
             ),
@@ -135,9 +138,11 @@ class PeopleScreenInstrumentedTest {
         composeRule.onNodeWithTag(PEOPLE_SCREEN_FOLLOW_BUTTON_TAG).performClick()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_BLOCK_BUTTON_TAG).performClick()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG).performClick()
+        composeRule.onNodeWithTag(PEOPLE_SCREEN_QUESTION_AUTHOR_BLOCK_BUTTON_TAG).performClick()
         assertEquals(listOf(true), followStates)
         assertEquals(listOf(true), blockStates)
         assertEquals(listOf(true), recommendationStates)
+        assertEquals(listOf(true), questionAuthorBlockStates)
 
         composeRule.onNodeWithTag(PEOPLE_SCREEN_ANSWER_SORT_TIME_TAG).performClick()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_ANSWER_SORT_HOT_TAG).performClick()
@@ -463,6 +468,7 @@ class PeopleScreenInstrumentedTest {
             isFollowing = false,
             isBlocking = false,
             isBlockedInRecommendations = false,
+            isBlockedAsQuestionAuthor = false,
         ),
         answers = PeopleSortedListUiState(
             sortBy = "voteups",

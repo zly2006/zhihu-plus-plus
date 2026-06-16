@@ -42,6 +42,7 @@ import com.github.zly2006.zhihu.ui.BlocklistSettingsScreen
 import com.github.zly2006.zhihu.ui.BlocklistSettingsTestConfig
 import com.github.zly2006.zhihu.ui.BlocklistSettingsTestTags
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeyword
+import com.github.zly2006.zhihu.viewmodel.filter.BlockedQuestionAuthor
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedTopic
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedUser
 import com.github.zly2006.zhihu.viewmodel.filter.BlocklistStats
@@ -80,7 +81,7 @@ class BlocklistSettingsScreenInstrumentedTest {
         val navigator = setScreen(
             testConfig = BlocklistSettingsTestConfig(
                 blockedKeywords = seededKeywords(),
-                stats = BlocklistStats(keywordCount = 2, userCount = 1, topicCount = 1),
+                stats = BlocklistStats(keywordCount = 2, userCount = 1, topicCount = 1, questionAuthorCount = 1),
                 onImportRequested = { importCount++ },
                 onExportRequested = { exportCount++ },
                 nlpContent = { onNavigateBack ->
@@ -229,6 +230,64 @@ class BlocklistSettingsScreenInstrumentedTest {
     }
 
     @Test
+    fun questionAuthorTabSupportsNavigationDeleteClearAndDialogPathsOffline() {
+        /*
+         * Expected behavior:
+         * 1. Switching to the question-author tab should render the seeded list, preserve row
+         *    visibility under swipe cycles, and keep the add FAB visible for this tab.
+         * 2. Clicking a row must navigate to that asker's Person destination with the seeded id,
+         *    urlToken, and display name.
+         * 3. Individual delete and clear-all actions must call their injected callbacks instead of
+         *    mutating the persistent blocklist.
+         * 4. The add dialog should support both cancel and confirm paths deterministically.
+         */
+        val addedUsers = mutableListOf<Pair<String, String>>()
+        val deletedUserIds = mutableListOf<String>()
+        var clearCount = 0
+        val navigator = setScreen(
+            testConfig = BlocklistSettingsTestConfig(
+                blockedQuestionAuthors = seededQuestionAuthors(),
+                onAddQuestionAuthor = { userId, userName -> addedUsers += userId to userName },
+                onDeleteQuestionAuthor = { user -> deletedUserIds += user.userId },
+                onClearQuestionAuthors = { clearCount++ },
+            ),
+        )
+
+        composeRule.onNodeWithTag("blocklistSettings:tab:3").performClick()
+        composeRule.onNodeWithTag(BlocklistSettingsTestTags.FAB).assertIsDisplayed()
+        composeRule.onNodeWithTag(BlocklistSettingsTestTags.QUESTION_AUTHOR_LIST).assertIsDisplayed()
+        composeRule.onNodeWithTag(BlocklistSettingsTestTags.QUESTION_AUTHOR_LIST).performVerticalSwipeCycle()
+        composeRule.onNodeWithTag(BlocklistSettingsTestTags.QUESTION_AUTHOR_LIST).performHorizontalSwipeCycle()
+        navigator.reset()
+        composeRule.onNodeWithTag("blocklistSettings:questionAuthors:item:offline-asker-1").performClick()
+        assertEquals(
+            listOf(
+                Person(
+                    id = "offline-asker-1",
+                    urlToken = "offline-asker-token-1",
+                    name = "离线提问者一",
+                ),
+            ),
+            navigator.destinations,
+        )
+
+        composeRule.onNodeWithTag("blocklistSettings:questionAuthors:delete:offline-asker-1").performClick()
+        composeRule.onNodeWithTag(BlocklistSettingsTestTags.QUESTION_AUTHOR_CLEAR_BUTTON).performClick()
+        assertEquals(listOf("offline-asker-1"), deletedUserIds)
+        assertEquals(1, clearCount)
+
+        composeRule.onNodeWithTag(BlocklistSettingsTestTags.FAB).performClick()
+        composeRule.onNodeWithTag(BlocklistSettingsTestTags.USER_DIALOG_DISMISS).performClick()
+        assertTrue(addedUsers.isEmpty())
+
+        composeRule.onNodeWithTag(BlocklistSettingsTestTags.FAB).performClick()
+        composeRule.onNodeWithTag(BlocklistSettingsTestTags.USER_DIALOG_ID_INPUT).performTextInput("new-asker-id")
+        composeRule.onNodeWithTag(BlocklistSettingsTestTags.USER_DIALOG_NAME_INPUT).performTextInput("新提问者")
+        composeRule.onNodeWithTag(BlocklistSettingsTestTags.USER_DIALOG_CONFIRM).performClick()
+        assertEquals(listOf("new-asker-id" to "新提问者"), addedUsers)
+    }
+
+    @Test
     fun topicTabSupportsDeleteClearDialogStatesAndTopicCreationOffline() {
         /*
          * Expected behavior:
@@ -254,7 +313,7 @@ class BlocklistSettingsScreenInstrumentedTest {
             ),
         )
 
-        composeRule.onNodeWithTag("blocklistSettings:tab:3").performClick()
+        composeRule.onNodeWithTag("blocklistSettings:tab:4").performClick()
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.TOPIC_LIST).assertIsDisplayed()
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.TOPIC_LIST).performVerticalSwipeCycle()
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.TOPIC_LIST).performHorizontalSwipeCycle()
@@ -302,6 +361,19 @@ class BlocklistSettingsScreenInstrumentedTest {
             userId = "offline-user-2",
             userName = "离线用户二",
             urlToken = "offline-user-token-2",
+        ),
+    )
+
+    private fun seededQuestionAuthors(): List<BlockedQuestionAuthor> = listOf(
+        BlockedQuestionAuthor(
+            userId = "offline-asker-1",
+            userName = "离线提问者一",
+            urlToken = "offline-asker-token-1",
+        ),
+        BlockedQuestionAuthor(
+            userId = "offline-asker-2",
+            userName = "离线提问者二",
+            urlToken = "offline-asker-token-2",
         ),
     )
 

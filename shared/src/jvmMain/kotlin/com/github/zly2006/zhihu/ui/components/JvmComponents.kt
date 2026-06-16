@@ -16,6 +16,7 @@
  */
 
 package com.github.zly2006.zhihu.ui.components
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.lifecycle.viewModelScope
@@ -31,6 +32,7 @@ import com.github.zly2006.zhihu.viewmodel.DesktopPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.removeFeedItemsByBlockedTopic
 import com.github.zly2006.zhihu.viewmodel.feed.resolveFeedBlockAuthorInfo
 import com.github.zly2006.zhihu.viewmodel.feed.resolveFeedKeywordBlockingContent
+import com.github.zly2006.zhihu.viewmodel.feed.resolveFeedQuestionAuthorInfo
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeyword
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedTopic
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
@@ -58,6 +60,16 @@ actual fun rememberFeedBlockActions(): FeedBlockActions {
                         onShowDialog(authorInfo)
                     } else {
                         userMessages.showShortMessage("无法获取屏蔽用户所需的数据，请尝试进入内容详情页操作")
+                    }
+                }
+            },
+            handleBlockQuestionAuthor = { viewModel, feedItem, onShowDialog ->
+                viewModel.viewModelScope.launch {
+                    val authorInfo = resolveFeedQuestionAuthorInfo(feedItem, contentDetailProvider)
+                    if (authorInfo != null) {
+                        onShowDialog(authorInfo)
+                    } else {
+                        userMessages.showShortMessage("当前条目没有可用的提问者数据，无法屏蔽提问者")
                     }
                 }
             },

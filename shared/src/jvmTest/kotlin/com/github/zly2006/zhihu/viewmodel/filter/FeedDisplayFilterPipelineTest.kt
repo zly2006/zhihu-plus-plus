@@ -184,6 +184,7 @@ class FeedDisplayFilterPipelineTest {
                 settings = FeedFilterSettings(),
                 blockedKeywordDao = fixture.database.blockedKeywordDao(),
                 blockedUserDao = fixture.database.blockedUserDao(),
+                blockedQuestionAuthorDao = fixture.database.blockedQuestionAuthorDao(),
                 blockedTopicDao = fixture.database.blockedTopicDao(),
                 blockedKeywordService = keywordService,
             ),
@@ -222,6 +223,7 @@ class FeedDisplayFilterPipelineTest {
                 settings = settings,
                 blockedKeywordDao = database.blockedKeywordDao(),
                 blockedUserDao = database.blockedUserDao(),
+                blockedQuestionAuthorDao = database.blockedQuestionAuthorDao(),
                 blockedTopicDao = database.blockedTopicDao(),
                 blockedKeywordService = BlockedKeywordService(
                     keywordDao = database.blockedKeywordDao(),

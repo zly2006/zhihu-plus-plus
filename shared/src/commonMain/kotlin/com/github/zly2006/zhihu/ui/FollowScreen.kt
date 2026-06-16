@@ -73,6 +73,7 @@ import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.ui.TopLevelReselectAction
 import com.github.zly2006.zhihu.shared.ui.topLevelReselectAction
+import com.github.zly2006.zhihu.ui.components.BlockQuestionAuthorConfirmDialog
 import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedCard
@@ -388,6 +389,8 @@ fun FollowRecommendScreen(
     // 屏蔽用户确认对话框
     var showBlockUserDialog by remember { mutableStateOf(false) }
     var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var showBlockQuestionAuthorDialog by remember { mutableStateOf(false) }
+    var questionAuthorToBlock by remember { mutableStateOf<Pair<String, String>?>(null) }
 
     Column {
         FeedPullToRefresh(viewModel, environment) {
@@ -410,6 +413,12 @@ fun FollowRecommendScreen(
                         feedBlockActions.handleBlockUser(viewModel, feedItem) { authorInfo ->
                             userToBlock = authorInfo
                             showBlockUserDialog = true
+                        }
+                    },
+                    onBlockQuestionAuthor = { feedItem ->
+                        feedBlockActions.handleBlockQuestionAuthor(viewModel, feedItem) { authorInfo ->
+                            questionAuthorToBlock = authorInfo
+                            showBlockQuestionAuthorDialog = true
                         }
                     },
                     onBlockTopic = { topicId, topicName ->
@@ -447,6 +456,20 @@ fun FollowRecommendScreen(
                 viewModel.refresh(environment)
                 showBlockUserDialog = false
                 userToBlock = null
+            },
+        )
+        BlockQuestionAuthorConfirmDialog(
+            showDialog = showBlockQuestionAuthorDialog,
+            userToBlock = questionAuthorToBlock,
+            displayItems = viewModel.displayItems,
+            onDismiss = {
+                showBlockQuestionAuthorDialog = false
+                questionAuthorToBlock = null
+            },
+            onConfirm = {
+                viewModel.refresh(environment)
+                showBlockQuestionAuthorDialog = false
+                questionAuthorToBlock = null
             },
         )
     }
@@ -498,6 +521,8 @@ fun FollowDynamicScreen(
     // 屏蔽用户确认对话框
     var showBlockUserDialog by remember { mutableStateOf(false) }
     var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var showBlockQuestionAuthorDialog by remember { mutableStateOf(false) }
+    var questionAuthorToBlock by remember { mutableStateOf<Pair<String, String>?>(null) }
 
     Column {
         FeedPullToRefresh(viewModel, environment) {
@@ -527,6 +552,12 @@ fun FollowDynamicScreen(
                         feedBlockActions.handleBlockUser(viewModel, feedItem) { authorInfo ->
                             userToBlock = authorInfo
                             showBlockUserDialog = true
+                        }
+                    },
+                    onBlockQuestionAuthor = { feedItem ->
+                        feedBlockActions.handleBlockQuestionAuthor(viewModel, feedItem) { authorInfo ->
+                            questionAuthorToBlock = authorInfo
+                            showBlockQuestionAuthorDialog = true
                         }
                     },
                     onBlockTopic = { topicId, topicName ->
@@ -564,6 +595,20 @@ fun FollowDynamicScreen(
                 viewModel.refresh(environment)
                 showBlockUserDialog = false
                 userToBlock = null
+            },
+        )
+        BlockQuestionAuthorConfirmDialog(
+            showDialog = showBlockQuestionAuthorDialog,
+            userToBlock = questionAuthorToBlock,
+            displayItems = viewModel.displayItems,
+            onDismiss = {
+                showBlockQuestionAuthorDialog = false
+                questionAuthorToBlock = null
+            },
+            onConfirm = {
+                viewModel.refresh(environment)
+                showBlockQuestionAuthorDialog = false
+                questionAuthorToBlock = null
             },
         )
     }
