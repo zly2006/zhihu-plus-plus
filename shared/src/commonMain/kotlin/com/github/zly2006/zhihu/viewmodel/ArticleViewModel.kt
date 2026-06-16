@@ -840,15 +840,9 @@ class ArticleViewModel(
             includeComments = false,
             commentCount = 0,
             includeAppAttribution = includeAppAttribution,
+            destination = ImageExportDestination.Gallery,
             successMessage = "图片已保存到相册",
             errorPrefix = "图片导出失败",
-            requiresImageExportPermission = true,
-            writeImage = { displayName, bitmap ->
-                environment.saveImageToMediaStore(
-                    displayName = displayName,
-                    bitmap = bitmap,
-                )
-            },
             onComplete = onComplete,
         )
     }
@@ -865,15 +859,9 @@ class ArticleViewModel(
             includeComments = true,
             commentCount = commentCount,
             includeAppAttribution = includeAppAttribution,
+            destination = ImageExportDestination.Gallery,
             successMessage = "带评论图片已保存到相册",
             errorPrefix = "带评论图片导出失败",
-            requiresImageExportPermission = true,
-            writeImage = { displayName, bitmap ->
-                environment.saveImageToMediaStore(
-                    displayName = displayName,
-                    bitmap = bitmap,
-                )
-            },
             onComplete = onComplete,
         )
     }
@@ -888,14 +876,9 @@ class ArticleViewModel(
             includeComments = false,
             commentCount = 0,
             includeAppAttribution = includeAppAttribution,
+            destination = ImageExportDestination.SystemShare,
             successMessage = "正在打开分享面板",
             errorPrefix = "图片分享失败",
-            requiresImageExportPermission = false,
-            writeImage = { displayName, bitmap ->
-                if (!environment.shareImage(displayName, bitmap)) {
-                    throw IllegalStateException("当前平台不支持分享图片")
-                }
-            },
             onComplete = onComplete,
         )
     }
@@ -958,10 +941,9 @@ class ArticleViewModel(
         includeComments: Boolean,
         commentCount: Int,
         includeAppAttribution: Boolean,
+        destination: ImageExportDestination,
         successMessage: String,
         errorPrefix: String,
-        requiresImageExportPermission: Boolean,
-        writeImage: suspend (displayName: String, bitmap: Any) -> Unit,
         onComplete: (Boolean) -> Unit,
     ) {
         runCatching { requireExportSourceContent() }.onFailure { error ->
@@ -972,7 +954,7 @@ class ArticleViewModel(
             return
         }
 
-        if (requiresImageExportPermission && !environment.hasImageExportPermission()) {
+        if (destination.requiresImageExportPermission && !environment.hasImageExportPermission()) {
             withContext(Dispatchers.Main) {
                 environment.requestImageExportPermission()
                 permissionRequestCount++
@@ -1004,13 +986,22 @@ class ArticleViewModel(
             )
             val capturedBitmap = renderer.captureExportBitmap(preparedWebView)
             bitmap = capturedBitmap
-            writeImage(
-                buildArticleExportFileName(
-                    content = requireExportSourceContent(),
-                    extension = "jpg",
-                ),
-                capturedBitmap,
+            val displayName = buildArticleExportFileName(
+                content = requireExportSourceContent(),
+                extension = "jpg",
             )
+            when (destination) {
+                ImageExportDestination.Gallery -> environment.saveImageToMediaStore(
+                    displayName = displayName,
+                    bitmap = capturedBitmap,
+                )
+
+                ImageExportDestination.SystemShare -> {
+                    if (!environment.shareImage(displayName, capturedBitmap)) {
+                        throw IllegalStateException("当前平台不支持分享图片")
+                    }
+                }
+            }
             withContext(Dispatchers.Main) {
                 userMessages.showLongMessage(successMessage)
                 onComplete(true)
@@ -1025,6 +1016,13 @@ class ArticleViewModel(
             bitmap?.let { renderer.recycleExportBitmap(it) }
             preparedWebView?.let { renderer.destroyExportWebView(it) }
         }
+    }
+
+    private enum class ImageExportDestination(
+        val requiresImageExportPermission: Boolean,
+    ) {
+        Gallery(requiresImageExportPermission = true),
+        SystemShare(requiresImageExportPermission = false),
     }
 
     // 创建HTML内容
