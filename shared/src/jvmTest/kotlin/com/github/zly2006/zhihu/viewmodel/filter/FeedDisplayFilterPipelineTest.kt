@@ -255,7 +255,8 @@ class FeedDisplayFilterPipelineTest {
                     else -> null
                 }
             },
-        ).filter(listOf(item))
+        )
+            .filter(listOf(item))
 
         assertEquals(emptyList(), result)
         assertEquals(
@@ -283,15 +284,16 @@ class FeedDisplayFilterPipelineTest {
                 fetchCount++
                 question(id = 20, title = "loading...", authorId = "blocked-asker", authorName = "Blocked Asker")
             },
-        ).filter(
-            listOf(
-                answerItem(
-                    questionId = 20,
-                    questionTitle = "loading...",
-                    questionAuthor = person(id = "ok-asker", name = "Allowed Asker"),
-                ),
-            ),
         )
+            .filter(
+                listOf(
+                    answerItem(
+                        questionId = 20,
+                        questionTitle = "loading...",
+                        questionAuthor = person(id = "ok-asker", name = "Allowed Asker"),
+                    ),
+                ),
+            )
 
         assertEquals(listOf("answer item"), result.map { it.title })
         assertEquals(0, fetchCount)
@@ -314,7 +316,8 @@ class FeedDisplayFilterPipelineTest {
 
         val result = fixture.pipeline(
             detailProvider = ContentDetailProvider { null },
-        ).filter(listOf(answerItem(questionId = 20, questionTitle = "loading...")))
+        )
+            .filter(listOf(answerItem(questionId = 20, questionTitle = "loading...")))
 
         assertEquals(listOf("answer item"), result.map { it.title })
         assertEquals(
@@ -336,7 +339,8 @@ class FeedDisplayFilterPipelineTest {
 
         val result = fixture.pipeline(
             detailProvider = ContentDetailProvider { error("boom") },
-        ).filter(listOf(answerItem(questionId = 20, questionTitle = "loading...")))
+        )
+            .filter(listOf(answerItem(questionId = 20, questionTitle = "loading...")))
 
         assertEquals(listOf("answer item"), result.map { it.title })
         assertEquals(
