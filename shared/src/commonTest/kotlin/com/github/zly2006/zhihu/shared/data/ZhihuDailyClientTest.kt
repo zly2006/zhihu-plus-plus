@@ -25,6 +25,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.util.network.UnresolvedAddressException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -85,6 +86,36 @@ class ZhihuDailyClientTest {
     }
 
     @Test
+    fun fetchLatestDailyStoriesFallsBackForTopLevelHostResolutionMessage() = runTest {
+        val requestedUrls = mutableListOf<String>()
+        val client = HttpClient(
+            MockEngine { request ->
+                requestedUrls += request.url.toString()
+                if (request.url.host == "news-at.zhihu.com") {
+                    throw Exception("Unable to resolve host news-at.zhihu.com")
+                }
+                respondDailyStories()
+            },
+        ) {
+            installZhihuCommonClientConfig(
+                cookies = mutableMapOf(),
+                userAgent = "test-agent",
+            )
+        }
+
+        val response = client.fetchLatestDailyStories()
+
+        assertEquals("20260520", response.date)
+        assertEquals(
+            listOf(
+                "https://news-at.zhihu.com/api/4/stories/latest",
+                "https://daily.zhihu.com/api/4/stories/latest",
+            ),
+            requestedUrls,
+        )
+    }
+
+    @Test
     fun fetchDailyStoriesBeforeFallsBackToDailyHostWhenPrimaryHostCannotResolve() = runTest {
         val requestedUrls = mutableListOf<String>()
         val client = HttpClient(
@@ -115,6 +146,33 @@ class ZhihuDailyClientTest {
     }
 
     @Test
+    fun fetchDailyStoriesBeforeDoesNotFallbackForNestedHostResolutionMessageOnly() = runTest {
+        val requestedUrls = mutableListOf<String>()
+        val client = HttpClient(
+            MockEngine { request ->
+                requestedUrls += request.url.toString()
+                throw Exception(
+                    "daily api unavailable",
+                    Exception("Unable to resolve host news-at.zhihu.com"),
+                )
+            },
+        ) {
+            installZhihuCommonClientConfig(
+                cookies = mutableMapOf(),
+                userAgent = "test-agent",
+            )
+        }
+
+        assertFailsWith<Exception> {
+            client.fetchDailyStoriesBefore("20260521")
+        }
+        assertEquals(
+            listOf("https://news-at.zhihu.com/api/4/stories/before/20260521"),
+            requestedUrls,
+        )
+    }
+
+    @Test
     fun fetchLatestDailyStoriesDoesNotFallbackForNonHostFailures() = runTest {
         val requestedUrls = mutableListOf<String>()
         val client = HttpClient(
@@ -134,6 +192,57 @@ class ZhihuDailyClientTest {
         }
         assertEquals(
             listOf("https://news-at.zhihu.com/api/4/stories/latest"),
+            requestedUrls,
+        )
+    }
+
+    @Test
+    fun fetchLatestDailyStoriesPropagatesCancellationWithoutFallback() = runTest {
+        val requestedUrls = mutableListOf<String>()
+        val client = HttpClient(
+            MockEngine { request ->
+                requestedUrls += request.url.toString()
+                throw CancellationException("request cancelled")
+            },
+        ) {
+            installZhihuCommonClientConfig(
+                cookies = mutableMapOf(),
+                userAgent = "test-agent",
+            )
+        }
+
+        assertFailsWith<CancellationException> {
+            client.fetchLatestDailyStories()
+        }
+        assertEquals(
+            listOf("https://news-at.zhihu.com/api/4/stories/latest"),
+            requestedUrls,
+        )
+    }
+
+    @Test
+    fun fetchLatestDailyStoriesPropagatesFallbackFailureWhenBothHostsCannotResolve() = runTest {
+        val requestedUrls = mutableListOf<String>()
+        val client = HttpClient(
+            MockEngine { request ->
+                requestedUrls += request.url.toString()
+                throw UnresolvedAddressException()
+            },
+        ) {
+            installZhihuCommonClientConfig(
+                cookies = mutableMapOf(),
+                userAgent = "test-agent",
+            )
+        }
+
+        assertFailsWith<UnresolvedAddressException> {
+            client.fetchLatestDailyStories()
+        }
+        assertEquals(
+            listOf(
+                "https://news-at.zhihu.com/api/4/stories/latest",
+                "https://daily.zhihu.com/api/4/stories/latest",
+            ),
             requestedUrls,
         )
     }

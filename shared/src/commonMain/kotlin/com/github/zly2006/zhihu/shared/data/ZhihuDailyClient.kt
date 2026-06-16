@@ -43,11 +43,13 @@ private suspend fun HttpClient.fetchDailyStories(path: String): DailyStoriesResp
     }
 
 private fun Throwable.isHostResolutionFailure(): Boolean =
-    generateSequence(this) { it.cause }.any {
-        it is UnresolvedAddressException ||
-            it::class.simpleName == "UnknownHostException" ||
-            it.message?.contains("Unable to resolve host", ignoreCase = true) == true ||
-            it.message?.contains("No address associated with hostname", ignoreCase = true) == true ||
-            it.message?.contains("Name or service not known", ignoreCase = true) == true ||
-            it.message?.contains("nodename nor servname provided", ignoreCase = true) == true
-    }
+    this is UnresolvedAddressException ||
+        this::class.simpleName == "UnknownHostException" ||
+        message?.contains("Unable to resolve host", ignoreCase = true) == true ||
+        message?.contains("No address associated with hostname", ignoreCase = true) == true ||
+        message?.contains("Name or service not known", ignoreCase = true) == true ||
+        message?.contains("nodename nor servname provided", ignoreCase = true) == true ||
+        generateSequence(cause) { it.cause }.any {
+            it is UnresolvedAddressException ||
+                it::class.simpleName == "UnknownHostException"
+        }
