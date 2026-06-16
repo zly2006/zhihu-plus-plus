@@ -207,13 +207,27 @@ abstract class AnswerNavigator(
  */
 class QuestionAnswerNavigator(
     val questionId: Long,
+    initialNextAnswers: List<Article> = emptyList(),
+    initialPreviousAnswers: List<Article> = emptyList(),
+    initialNextUrl: String = "",
+    private val order: String? = null,
     environment: ZhihuApiEnvironment,
 ) : AnswerNavigator("此问题", environment) {
-    private val destinations = ArrayDeque<Article>()
-    private val previousQueue = mutableStateListOf<Article>()
-    private var nextUrl: String = ""
-    private val enqueuedNextIds = mutableSetOf<Long>()
-    private val enqueuedPrevIds = mutableSetOf<Long>()
+    private val destinations = ArrayDeque<Article>().also { deque ->
+        initialNextAnswers
+            .filter { it.type == ArticleType.Answer }
+            .forEach { deque.addLast(it) }
+    }
+    private val previousQueue = mutableStateListOf<Article>().also { list ->
+        list.addAll(initialPreviousAnswers.filter { it.type == ArticleType.Answer })
+    }
+    private var nextUrl: String = initialNextUrl
+    private val enqueuedNextIds = mutableSetOf<Long>().also { set ->
+        set.addAll(destinations.map { it.id })
+    }
+    private val enqueuedPrevIds = mutableSetOf<Long>().also { set ->
+        set.addAll(previousQueue.map { it.id })
+    }
     private val knownOpenedIds = mutableSetOf<Long>()
 
     override val previousAnswerPreview: CachedAnswerContent?
@@ -255,7 +269,7 @@ class QuestionAnswerNavigator(
         if (destinations.isNotEmpty()) return
         val historyIds = answerHistory.map { it.article.id }.toSet()
         while (destinations.isEmpty()) {
-            val url = nextUrl.ifEmpty { zhihuQuestionFeedsUrl(questionId, limit = 6) }
+            val url = nextUrl.ifEmpty { zhihuQuestionFeedsUrl(questionId, limit = 6, order = order) }
             val response = environment.fetchJson(url, "")
             val page = response?.let {
                 answerNavigatorPageFromJson(it) { data ->
