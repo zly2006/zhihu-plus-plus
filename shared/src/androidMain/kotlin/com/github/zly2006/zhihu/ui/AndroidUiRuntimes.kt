@@ -124,7 +124,12 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
         requestQrLoginScan = {
             scanActivityLauncher.launch(Intent().setClassName(context.packageName, QR_CODE_SCAN_ACTIVITY_CLASS))
         },
-        logout = { AccountData.delete(context) },
+        logout = {
+            homeFeedStartupCacheFileNames().forEach { fileName ->
+                File(context.filesDir, fileName).delete()
+            }
+            AccountData.delete(context)
+        },
         appVersionInfo = { context.zhihuVersionInfo() },
         selectMainTab = { destination -> context.navigateMainTab(destination) },
     )
@@ -302,8 +307,8 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
         RecommendationMode.MIXED -> viewModel<MixedHomeFeedViewModel>()
     }
     val localHomeViewModel = viewModel as? LocalHomeFeedViewModel
-    val startupCacheFile = remember(context) {
-        File(context.filesDir, HOME_FEED_STARTUP_CACHE_FILE_NAME)
+    val startupCacheFile = remember(context, recommendationMode) {
+        File(context.filesDir, homeFeedStartupCacheFileName(recommendationMode))
     }
     val installTime = remember {
         try {

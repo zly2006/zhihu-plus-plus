@@ -26,9 +26,7 @@ import com.github.zly2006.zhihu.shared.data.Person
 import com.github.zly2006.zhihu.shared.data.SegmentInfoMark
 import com.github.zly2006.zhihu.shared.data.SegmentInfoMeta
 import com.github.zly2006.zhihu.shared.data.SegmentInfoParagraph
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
-import kotlinx.serialization.decodeFromString
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -102,7 +100,7 @@ class HomeFeedStartupSnapshotTest {
         )
 
         val payload = assertNotNull(encodeHomeFeedStartupSnapshot(listOf(item)))
-        val restored = ZhihuJson.json.decodeFromString<List<FeedDisplayItem>>(payload)
+        val restored = decodeHomeFeedStartupSnapshot(payload)
 
         assertEquals(1, restored.size)
         assertEquals(item.title, restored.single().title)
@@ -150,7 +148,7 @@ class HomeFeedStartupSnapshotTest {
         )
 
         val payload = assertNotNull(encodeHomeFeedStartupSnapshot(listOf(item)))
-        val restored = ZhihuJson.json.decodeFromString<List<FeedDisplayItem>>(payload).single()
+        val restored = decodeHomeFeedStartupSnapshot(payload).single()
 
         assertEquals(item, restored)
         assertNull(((restored.feed as CommonFeed).target as Feed.AnswerTarget).author)
@@ -205,6 +203,34 @@ class HomeFeedStartupSnapshotTest {
         }
 
         assertEquals(listOf("cached"), items.map { it.localFeedId })
+    }
+
+    @Test
+    fun cacheFileNameIsScopedByRecommendationMode() {
+        assertEquals(
+            "home_feed_startup_cache_server.json",
+            homeFeedStartupCacheFileName(RecommendationMode.WEB),
+        )
+        assertEquals(
+            "home_feed_startup_cache_android.json",
+            homeFeedStartupCacheFileName(RecommendationMode.ANDROID),
+        )
+        assertEquals(
+            "home_feed_startup_cache_local.json",
+            homeFeedStartupCacheFileName(RecommendationMode.LOCAL),
+        )
+        assertEquals(
+            "home_feed_startup_cache_mixed.json",
+            homeFeedStartupCacheFileName(RecommendationMode.MIXED),
+        )
+        assertEquals(
+            RecommendationMode.entries.size,
+            RecommendationMode.entries.map(::homeFeedStartupCacheFileName).distinct().size,
+        )
+        assertEquals(
+            homeFeedStartupCacheFileNames(),
+            listOf(LEGACY_HOME_FEED_STARTUP_CACHE_FILE_NAME) + RecommendationMode.entries.map(::homeFeedStartupCacheFileName),
+        )
     }
 
     private fun feedItem(id: String): FeedDisplayItem = FeedDisplayItem(

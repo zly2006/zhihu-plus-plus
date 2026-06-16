@@ -262,7 +262,9 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
         RecommendationMode.WEB -> viewModel<HomeFeedViewModel>(factory = JvmViewModelFactory)
     }
     val localHomeViewModel = viewModel as? LocalHomeFeedViewModel
-    val startupCacheFile = remember { desktopZhihuDataFile(HOME_FEED_STARTUP_CACHE_FILE_NAME) }
+    val startupCacheFile = remember(recommendationMode) {
+        desktopZhihuDataFile(homeFeedStartupCacheFileName(recommendationMode))
+    }
     val updateAnnouncement = (updateState as? SystemUpdateState.UpdateAvailable)?.let {
         HomeUpdateAnnouncement(
             version = it.version,
@@ -397,6 +399,9 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
             accountState.value = store.load().toAccountSettingsAccountState()
         },
         logout = {
+            homeFeedStartupCacheFileNames().forEach { fileName ->
+                desktopZhihuDataFile(fileName).delete()
+            }
             store.clear()
             accountState.value = AccountSettingsAccountState()
         },
