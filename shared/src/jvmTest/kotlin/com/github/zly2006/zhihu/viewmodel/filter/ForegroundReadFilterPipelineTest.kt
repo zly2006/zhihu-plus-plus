@@ -57,6 +57,28 @@ class ForegroundReadFilterPipelineTest {
     }
 
     @Test
+    fun disabledRecentlyOpenedContentFilterLetsOpenedContentPass() = runTest {
+        val fixture = fixture(
+            settings = FeedFilterSettings(
+                enableContentFilter = true,
+                enableRecentlyOpenedContentFilter = false,
+            ),
+        )
+        val item = answerItem("opened answer", 1)
+        fixture.database.contentOpenEventDao().insert(opened(ContentType.ANSWER, "1", openedAt = NOW - DAY))
+
+        assertEquals(listOf(item), fixture.pipeline().filter(listOf(item)))
+        assertEquals(
+            emptyList(),
+            fixture.database
+                .blockedFeedRecordDao()
+                .observeAll()
+                .first(),
+        )
+        fixture.database.close()
+    }
+
+    @Test
     fun keepsUnviewedNormalItemAndRecordsView() = runTest {
         val fixture = fixture()
         val item = item("item", 1, details = "文章 · 100 赞")
@@ -172,6 +194,30 @@ class ForegroundReadFilterPipelineTest {
     }
 
     @Test
+    fun blocksAnswerWhenItsQuestionWasOpenedDirectly() = runTest {
+        val fixture = fixture(
+            settings = FeedFilterSettings(enableRecentlyOpenedContentFilter = true),
+            nowMillis = NOW,
+        )
+        fixture.database.contentOpenEventDao().insert(
+            opened(ContentType.QUESTION, "99", openedAt = NOW - DAY),
+        )
+
+        val result = fixture.pipeline().filter(listOf(answerFeedItem("same opened question", answerId = 11, questionId = 99)))
+
+        assertEquals(emptyList(), result)
+        assertEquals(
+            listOf("已打开过的内容（7天内）"),
+            fixture.database
+                .blockedFeedRecordDao()
+                .observeAll()
+                .first()
+                .map { it.blockedReason },
+        )
+        fixture.database.close()
+    }
+
+    @Test
     fun permanentOpenedContentFilterIgnoresOpenedAt() = runTest {
         val fixture = fixture(
             settings = FeedFilterSettings(
@@ -216,6 +262,23 @@ class ForegroundReadFilterPipelineTest {
         )
         fixture.manager.cleanupOldData()
         assertEquals(null, fixture.database.contentFilterDao().getViewRecord("article:old"))
+        fixture.database.close()
+    }
+
+    @Test
+    fun contentOpenEventMaintainLimitKeepsNewestRows() = runTest {
+        val fixture = fixture()
+        fixture.database.contentOpenEventDao().insert(opened(ContentType.ANSWER, "older", openedAt = 1L))
+        fixture.database.contentOpenEventDao().insert(opened(ContentType.ANSWER, "newer", openedAt = 2L))
+
+        fixture.database.contentOpenEventDao().maintainLimit(maxRecords = 1)
+
+        assertEquals(
+            listOf("answer:newer"),
+            fixture.database
+                .contentOpenEventDao()
+                .getOpenedContentKeysByKeys(listOf("answer:older", "answer:newer")),
+        )
         fixture.database.close()
     }
 

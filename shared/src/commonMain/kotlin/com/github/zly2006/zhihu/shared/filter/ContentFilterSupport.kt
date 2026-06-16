@@ -16,8 +16,10 @@
  */
 
 package com.github.zly2006.zhihu.shared.filter
+
 import androidx.compose.runtime.Composable
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterDao
+import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenEventDao
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 
@@ -41,6 +43,8 @@ private const val MAX_CONTENT_FILTER_RECORDS = 10000
 
 fun createContentFilterMaintenance(
     dao: ContentFilterDao,
+    extraCleanup: suspend () -> Unit = {},
+    extraClear: suspend () -> Unit = {},
 ): ContentFilterMaintenance {
     suspend fun loadStats(): ContentFilterStats {
         val totalRecords = dao.getRecordCount()
@@ -63,11 +67,17 @@ fun createContentFilterMaintenance(
             if (dao.getRecordCount() > MAX_CONTENT_FILTER_RECORDS) {
                 dao.clearAllRecords()
             }
+            extraCleanup()
             loadStats()
         },
         clearAllData = {
             dao.clearAllRecords()
+            extraClear()
             loadStats()
         },
     )
+}
+
+suspend fun cleanupContentOpenEvents(dao: ContentOpenEventDao) {
+    dao.maintainLimit()
 }

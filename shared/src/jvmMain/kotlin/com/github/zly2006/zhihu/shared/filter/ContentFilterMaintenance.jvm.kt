@@ -24,4 +24,11 @@ import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 
 @Composable
 actual fun rememberContentFilterMaintenance(): ContentFilterMaintenance =
-    remember { createContentFilterMaintenance(getContentFilterDatabase(desktopContentFilterDatabaseFile()).contentFilterDao()) }
+    remember {
+        val database = getContentFilterDatabase(desktopContentFilterDatabaseFile())
+        createContentFilterMaintenance(
+            dao = database.contentFilterDao(),
+            extraCleanup = { cleanupContentOpenEvents(database.contentOpenEventDao()) },
+            extraClear = { database.contentOpenEventDao().clearAllRecords() },
+        )
+    }

@@ -31,6 +31,7 @@ import kotlin.time.Clock
     indices = [
         Index(value = ["contentType", "contentId"]),
         Index(value = ["openedAt"]),
+        Index(value = ["questionId", "openedAt"]),
     ],
 )
 data class ContentOpenEvent(
@@ -44,6 +45,7 @@ data class ContentOpenEvent(
 ) {
     companion object {
         const val TABLE_NAME = "content_open_events"
+        const val MAX_RECORDS = 10_000
     }
 }
 

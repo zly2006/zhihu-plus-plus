@@ -48,11 +48,14 @@ class ForegroundReadFilterPipeline(
             return items
         }
 
-        val itemIdentityPairs = items.map { item -> item to item.resolveContentIdentity() }
+        val itemIdentityPairs = items.map { item ->
+            val identity = item.resolveContentIdentity()
+            item to identity
+        }
         val viewedContentIds = contentFilterManager.getAlreadyViewedContentIds(
             itemIdentityPairs.map { (_, identity) -> identity.type to identity.id },
         )
-        val openedContentFilter = resolveOpenedContentFilter(items)
+        val openedContentFilter = resolveOpenedContentFilter(itemIdentityPairs)
 
         val keptItems = mutableListOf<FeedDisplayItem>()
         val blockedItems = mutableListOf<Pair<FilterableContent, String>>()
@@ -84,11 +87,15 @@ class ForegroundReadFilterPipeline(
         return keptItems
     }
 
-    private suspend fun resolveOpenedContentFilter(items: List<FeedDisplayItem>): OpenedContentFilter? {
+    private suspend fun resolveOpenedContentFilter(
+        itemIdentityPairs: List<Pair<FeedDisplayItem, FeedContentIdentity>>,
+    ): OpenedContentFilter? {
         val dao = contentOpenEventDao ?: return null
         if (!settings.enableRecentlyOpenedContentFilter) return null
 
-        val itemCandidates = items.associateWith { it.resolveOpenedContentFilterCandidates() }
+        val itemCandidates = itemIdentityPairs.associate { (item, identity) ->
+            item to item.resolveOpenedContentFilterCandidates(identity)
+        }
         val contentKeys = itemCandidates
             .values
             .flatMap { candidates -> candidates.identities.map { "${it.type}:${it.id}" } }
@@ -144,10 +151,11 @@ private data class OpenedContentFilter(
     }
 }
 
-private fun FeedDisplayItem.resolveOpenedContentFilterCandidates(): OpenedContentFilterCandidates {
+private fun FeedDisplayItem.resolveOpenedContentFilterCandidates(
+    primaryIdentity: FeedContentIdentity,
+): OpenedContentFilterCandidates {
     val identities = linkedSetOf<FeedContentIdentity>()
     val questionIds = linkedSetOf<Long>()
-    val primaryIdentity = resolveContentIdentity()
     if (primaryIdentity.type == ContentType.ANSWER || primaryIdentity.type == ContentType.QUESTION) {
         identities.add(primaryIdentity)
     }

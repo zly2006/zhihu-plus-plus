@@ -81,6 +81,10 @@ private val emptyContentOpenEventDao = object : ContentOpenEventDao {
         questionIds: List<Long>,
         openedAfter: Long,
     ): List<Long> = emptyList()
+
+    override suspend fun clearAllRecords() = Unit
+
+    override suspend fun maintainLimit(maxRecords: Int) = Unit
 }
 
 private val emptyBlockedKeywordDao = object : BlockedKeywordDao {

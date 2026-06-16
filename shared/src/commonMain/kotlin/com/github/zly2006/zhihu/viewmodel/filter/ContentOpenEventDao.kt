@@ -61,4 +61,19 @@ interface ContentOpenEventDao {
         questionIds: List<Long>,
         openedAfter: Long,
     ): List<Long>
+
+    @Query("DELETE FROM ${ContentOpenEvent.TABLE_NAME}")
+    suspend fun clearAllRecords()
+
+    @Query(
+        """
+        DELETE FROM ${ContentOpenEvent.TABLE_NAME}
+        WHERE id NOT IN (
+            SELECT id FROM ${ContentOpenEvent.TABLE_NAME}
+            ORDER BY openedAt DESC
+            LIMIT :maxRecords
+        )
+    """,
+    )
+    suspend fun maintainLimit(maxRecords: Int = ContentOpenEvent.MAX_RECORDS)
 }

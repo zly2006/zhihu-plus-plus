@@ -69,6 +69,7 @@ import com.github.zly2006.zhihu.nlp.SentenceEmbeddingManager
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.shared.filter.TrackedContentIdentity
+import com.github.zly2006.zhihu.shared.filter.cleanupContentOpenEvents
 import com.github.zly2006.zhihu.shared.nlp.KeywordWeightExtractor
 import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
 import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
@@ -233,9 +234,11 @@ class MainActivity :
         // 应用启动时执行内容过滤数据库清理
         lifecycleScope.launch {
             try {
+                val database = getContentFilterDatabase(this@MainActivity)
                 if (contentFilterSettings().enableContentFilter) {
-                    ContentFilterManager(getContentFilterDatabase(this@MainActivity).contentFilterDao()).cleanupOldData()
+                    ContentFilterManager(database.contentFilterDao()).cleanupOldData()
                 }
+                cleanupContentOpenEvents(database.contentOpenEventDao())
                 Log.i(TAG, "Content filter maintenance cleanup completed")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to perform content filter cleanup", e)

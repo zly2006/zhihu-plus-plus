@@ -30,7 +30,7 @@ import kotlinx.coroutines.Dispatchers
 
 @Database(
     entities = [ContentViewRecord::class, BlockedKeyword::class, BlockedUser::class, BlockedContentRecord::class, BlockedTopic::class, BlockedFeedRecord::class, ContentOpenEvent::class],
-    version = 6,
+    version = 7,
     exportSchema = false,
 )
 @ConstructedBy(ContentFilterDatabaseConstructor::class)
@@ -54,6 +54,17 @@ abstract class ContentFilterDatabase : RoomDatabase() {
 expect object ContentFilterDatabaseConstructor : RoomDatabaseConstructor<ContentFilterDatabase>
 
 expect fun getContentFilterDatabase(): ContentFilterDatabase
+
+private val migration6To7 = object : Migration(6, 7) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            """
+            CREATE INDEX IF NOT EXISTS `index_${ContentOpenEvent.TABLE_NAME}_questionId_openedAt`
+            ON `${ContentOpenEvent.TABLE_NAME}` (`questionId`, `openedAt`)
+            """.trimIndent(),
+        )
+    }
+}
 
 private val migration2To3 = object : Migration(2, 3) {
     override fun migrate(connection: SQLiteConnection) {
@@ -152,7 +163,7 @@ private val migration5To6 = object : Migration(5, 6) {
 fun buildContentFilterDatabase(
     builder: Builder<ContentFilterDatabase>,
 ): ContentFilterDatabase = builder
-    .addMigrations(migration2To3, migration3To4, migration4To5, migration5To6)
+    .addMigrations(migration2To3, migration3To4, migration4To5, migration5To6, migration6To7)
     .fallbackToDestructiveMigration(true)
     .applyPlatformDriver()
     .setQueryCoroutineContext(Dispatchers.Default)
