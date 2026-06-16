@@ -35,4 +35,30 @@ interface ContentOpenEventDao {
         """,
     )
     suspend fun getOpenedContentKeysByKeys(keys: List<String>): List<String>
+
+    @Query(
+        """
+        SELECT contentType || ':' || contentId
+        FROM ${ContentOpenEvent.TABLE_NAME}
+        WHERE (contentType || ':' || contentId) IN (:keys)
+        AND openedAt >= :openedAfter
+        """,
+    )
+    suspend fun getOpenedContentKeysByKeysSince(
+        keys: List<String>,
+        openedAfter: Long,
+    ): List<String>
+
+    @Query(
+        """
+        SELECT DISTINCT questionId
+        FROM ${ContentOpenEvent.TABLE_NAME}
+        WHERE questionId IN (:questionIds)
+        AND openedAt >= :openedAfter
+        """,
+    )
+    suspend fun getOpenedQuestionIdsSince(
+        questionIds: List<Long>,
+        openedAfter: Long,
+    ): List<Long>
 }

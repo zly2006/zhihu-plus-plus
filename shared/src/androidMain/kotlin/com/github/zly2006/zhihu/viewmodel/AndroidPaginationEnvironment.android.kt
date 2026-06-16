@@ -306,6 +306,7 @@ open class SharedAndroidPaginationEnvironment(
             settings = filterSettings,
             contentFilterManager = ContentFilterManager(filterDatabase.contentFilterDao()),
             blockedFeedRecordDao = filterDatabase.blockedFeedRecordDao(),
+            contentOpenEventDao = filterDatabase.contentOpenEventDao(),
         ).filter(items)
         val filteredItems = FeedDisplayFilterPipeline(
             settings = filterSettings,

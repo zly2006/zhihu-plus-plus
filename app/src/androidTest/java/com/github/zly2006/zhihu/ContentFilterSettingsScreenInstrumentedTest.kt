@@ -36,6 +36,9 @@ import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.subscreens.ContentFilterSettingsScreen
+import com.github.zly2006.zhihu.viewmodel.filter.DEFAULT_RECENTLY_OPENED_CONTENT_FILTER_PERIOD_DAYS
+import com.github.zly2006.zhihu.viewmodel.filter.ENABLE_RECENTLY_OPENED_CONTENT_FILTER_KEY
+import com.github.zly2006.zhihu.viewmodel.filter.RECENTLY_OPENED_CONTENT_FILTER_PERIOD_DAYS_KEY
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -81,6 +84,13 @@ class ContentFilterSettingsScreenInstrumentedTest {
 
         composeRule.onNodeWithTag(FILTER_FOLLOWED_USER_CONTENT_TAG).performClick()
         assertEquals(true, preferences().getBoolean("filterFollowedUserContent", false))
+        composeRule.onNodeWithTag(ENABLE_RECENTLY_OPENED_CONTENT_FILTER_TAG).performClick()
+        assertEquals(true, preferences().getBoolean(ENABLE_RECENTLY_OPENED_CONTENT_FILTER_KEY, false))
+        composeRule.onNodeWithTag(RECENTLY_OPENED_CONTENT_FILTER_PERIOD_FIELD_TAG, useUnmergedTree = true)
+            .assertTextContains("7 天")
+            .performClick()
+        composeRule.onNodeWithText("30 天").performClick()
+        assertEquals(30, preferences().getInt(RECENTLY_OPENED_CONTENT_FILTER_PERIOD_DAYS_KEY, 0))
 
         composeRule.setScreenContent {
             ContentFilterSettingsScreen()
@@ -92,6 +102,14 @@ class ContentFilterSettingsScreenInstrumentedTest {
         assertEquals(false, preferences().getBoolean("loginForRecommendation", true))
         assertEquals(true, preferences().getBoolean("enableContentFilter", false))
         assertEquals(true, preferences().getBoolean("filterFollowedUserContent", false))
+        assertEquals(true, preferences().getBoolean(ENABLE_RECENTLY_OPENED_CONTENT_FILTER_KEY, false))
+        assertEquals(
+            30,
+            preferences().getInt(
+                RECENTLY_OPENED_CONTENT_FILTER_PERIOD_DAYS_KEY,
+                DEFAULT_RECENTLY_OPENED_CONTENT_FILTER_PERIOD_DAYS,
+            ),
+        )
     }
 
     @Test
@@ -141,6 +159,9 @@ class ContentFilterSettingsScreenInstrumentedTest {
         const val LOGIN_FOR_RECOMMENDATION_TAG = "contentFilterSettings:loginForRecommendation"
         const val ENABLE_CONTENT_FILTER_TAG = "contentFilterSettings:enableContentFilter"
         const val FILTER_FOLLOWED_USER_CONTENT_TAG = "contentFilterSettings:filterFollowedUserContent"
+        const val ENABLE_RECENTLY_OPENED_CONTENT_FILTER_TAG = "contentFilterSettings:enableRecentlyOpenedContentFilter"
+        const val RECENTLY_OPENED_CONTENT_FILTER_PERIOD_FIELD_TAG =
+            "contentFilterSettings:recentlyOpenedContentFilterPeriodField"
         const val BLOCKLIST_TAG = "contentFilterSettings:blocklist"
         const val BLOCKED_FEED_HISTORY_TAG = "contentFilterSettings:blockedFeedHistory"
     }

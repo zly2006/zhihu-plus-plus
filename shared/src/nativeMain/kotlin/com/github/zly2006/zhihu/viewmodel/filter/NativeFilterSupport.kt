@@ -71,6 +71,16 @@ private val emptyContentOpenEventDao = object : ContentOpenEventDao {
     override suspend fun insert(event: ContentOpenEvent): Long = 0L
 
     override suspend fun getOpenedContentKeysByKeys(keys: List<String>): List<String> = emptyList()
+
+    override suspend fun getOpenedContentKeysByKeysSince(
+        keys: List<String>,
+        openedAfter: Long,
+    ): List<String> = emptyList()
+
+    override suspend fun getOpenedQuestionIdsSince(
+        questionIds: List<Long>,
+        openedAfter: Long,
+    ): List<Long> = emptyList()
 }
 
 private val emptyBlockedKeywordDao = object : BlockedKeywordDao {

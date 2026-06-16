@@ -99,6 +99,8 @@ URL 解析集中在 `resolveContent()`。支持知乎问题、回答、文章、
 | `enableQualityFilter` | 质量过滤规则 | 按赞同数、关注数等指标过滤 | 查 content filter settings/runtime |
 | `enableContentFilter` | 智能内容过滤 | 过滤重复出现但未点击内容 | 关闭时相关子统计/开关应弱化 |
 | `filterFollowedUserContent` | 过滤已关注用户内容 | 是否过滤关注用户内容 | 仅智能过滤开启时可操作 |
+| `enableRecentlyOpenedContentFilter` | 过滤已打开内容 | 按打开记录隐藏已看过的问题和回答 | 默认关闭；只影响首页推荐前台过滤 |
+| `recentlyOpenedContentFilterPeriodDays` | 已打开内容过滤周期 | 近期天数，`0` 表示永久 | 仅在已打开内容过滤开启时可操作 |
 | `enableKeywordBlocking` | 关键词屏蔽 | 命中关键词时过滤 | 管理入口在 Blocklist |
 | `enableUserBlocking` | 用户屏蔽 | 命中用户时过滤 | Feed 卡片更多菜单可新增屏蔽 |
 | `enableTopicBlocking` | 主题屏蔽 | 命中主题时过滤 | 阈值项只在开启时显示 |

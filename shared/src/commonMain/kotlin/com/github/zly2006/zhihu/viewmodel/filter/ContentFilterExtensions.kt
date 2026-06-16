@@ -29,11 +29,19 @@ import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.platform.SettingsStore
 import kotlinx.serialization.json.Json
+import kotlin.time.Clock
+
+const val ENABLE_RECENTLY_OPENED_CONTENT_FILTER_KEY = "enableRecentlyOpenedContentFilter"
+const val RECENTLY_OPENED_CONTENT_FILTER_PERIOD_DAYS_KEY = "recentlyOpenedContentFilterPeriodDays"
+const val RECENTLY_OPENED_CONTENT_FILTER_PERMANENT_DAYS = 0
+const val DEFAULT_RECENTLY_OPENED_CONTENT_FILTER_PERIOD_DAYS = 7
 
 class ForegroundReadFilterPipeline(
     private val settings: FeedFilterSettings,
     private val contentFilterManager: ContentFilterManager,
     private val blockedFeedRecordDao: BlockedFeedRecordDao,
+    private val contentOpenEventDao: ContentOpenEventDao? = null,
+    private val nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) {
     suspend fun filter(items: List<FeedDisplayItem>): List<FeedDisplayItem> {
         if (settings.reverseBlock || !settings.enableContentFilter) {
@@ -44,6 +52,7 @@ class ForegroundReadFilterPipeline(
         val viewedContentIds = contentFilterManager.getAlreadyViewedContentIds(
             itemIdentityPairs.map { (_, identity) -> identity.type to identity.id },
         )
+        val openedContentFilter = resolveOpenedContentFilter(items)
 
         val keptItems = mutableListOf<FeedDisplayItem>()
         val blockedItems = mutableListOf<Pair<FilterableContent, String>>()
@@ -55,13 +64,15 @@ class ForegroundReadFilterPipeline(
                 ?.author
                 ?.isFollowing ?: false
             val isLowQualityAndroidFeed = isLowQualityForegroundFeed(item)
+            val openedReason = openedContentFilter?.blockedReason(item)
 
-            if (isFollowing || (!isViewed && !isLowQualityAndroidFeed)) {
+            if (isFollowing || (!isViewed && !isLowQualityAndroidFeed && openedReason == null)) {
                 keptItems.add(item)
                 contentFilterManager.recordContentView(identity.type, identity.id)
             } else {
+                val reason = openedReason ?: "已读过且未关注作者"
                 blockedItems.add(
-                    item.toFilterableContent(identity, DataHolder.DummyContent) to "已读过且未关注作者",
+                    item.toFilterableContent(identity, DataHolder.DummyContent) to reason,
                 )
             }
         }
@@ -72,12 +83,101 @@ class ForegroundReadFilterPipeline(
 
         return keptItems
     }
+
+    private suspend fun resolveOpenedContentFilter(items: List<FeedDisplayItem>): OpenedContentFilter? {
+        val dao = contentOpenEventDao ?: return null
+        if (!settings.enableRecentlyOpenedContentFilter) return null
+
+        val itemCandidates = items.associateWith { it.resolveOpenedContentFilterCandidates() }
+        val contentKeys = itemCandidates
+            .values
+            .flatMap { candidates -> candidates.identities.map { "${it.type}:${it.id}" } }
+            .distinct()
+        val questionIds = itemCandidates
+            .values
+            .flatMap { it.questionIds }
+            .distinct()
+        if (contentKeys.isEmpty() && questionIds.isEmpty()) return null
+
+        val openedAfter = settings.openedAfterMillis(nowMillis())
+        val openedContentKeys = if (contentKeys.isEmpty()) {
+            emptySet()
+        } else {
+            dao.getOpenedContentKeysByKeysSince(contentKeys, openedAfter).toSet()
+        }
+        val openedQuestionIds = if (questionIds.isEmpty()) {
+            emptySet()
+        } else {
+            dao.getOpenedQuestionIdsSince(questionIds, openedAfter).toSet()
+        }
+
+        return OpenedContentFilter(
+            candidatesByItem = itemCandidates,
+            openedContentKeys = openedContentKeys,
+            openedQuestionIds = openedQuestionIds,
+            reason = settings.openedContentBlockReason(),
+        )
+    }
 }
 
 private fun isLowQualityForegroundFeed(item: FeedDisplayItem): Boolean =
     item.details.contains("小时前") ||
         item.details.contains("分钟前") ||
         item.details.contains("浏览")
+
+private data class OpenedContentFilterCandidates(
+    val identities: List<FeedContentIdentity>,
+    val questionIds: List<Long>,
+)
+
+private data class OpenedContentFilter(
+    val candidatesByItem: Map<FeedDisplayItem, OpenedContentFilterCandidates>,
+    val openedContentKeys: Set<String>,
+    val openedQuestionIds: Set<Long>,
+    val reason: String,
+) {
+    fun blockedReason(item: FeedDisplayItem): String? {
+        val candidates = candidatesByItem[item] ?: return null
+        val hasOpenedContent = candidates.identities.any { "${it.type}:${it.id}" in openedContentKeys }
+        val hasOpenedQuestion = candidates.questionIds.any { it in openedQuestionIds }
+        return if (hasOpenedContent || hasOpenedQuestion) reason else null
+    }
+}
+
+private fun FeedDisplayItem.resolveOpenedContentFilterCandidates(): OpenedContentFilterCandidates {
+    val identities = linkedSetOf<FeedContentIdentity>()
+    val questionIds = linkedSetOf<Long>()
+    val primaryIdentity = resolveContentIdentity()
+    if (primaryIdentity.type == ContentType.ANSWER || primaryIdentity.type == ContentType.QUESTION) {
+        identities.add(primaryIdentity)
+    }
+    val target = feed?.target
+    if (target is com.github.zly2006.zhihu.shared.data.Feed.AnswerTarget) {
+        identities.add(FeedContentIdentity(ContentType.ANSWER, target.id.toString()))
+        questionIds.add(target.question.id)
+    }
+    if (target is com.github.zly2006.zhihu.shared.data.Feed.QuestionTarget) {
+        identities.add(FeedContentIdentity(ContentType.QUESTION, target.id.toString()))
+        questionIds.add(target.id)
+    }
+    return OpenedContentFilterCandidates(
+        identities = identities.toList(),
+        questionIds = questionIds.toList(),
+    )
+}
+
+private fun FeedFilterSettings.openedAfterMillis(nowMillis: Long): Long {
+    val periodDays = recentlyOpenedContentFilterPeriodDays
+    if (periodDays <= RECENTLY_OPENED_CONTENT_FILTER_PERMANENT_DAYS) return 0L
+    return nowMillis - periodDays.toLong() * 24L * 60L * 60L * 1000L
+}
+
+private fun FeedFilterSettings.openedContentBlockReason(): String =
+    if (recentlyOpenedContentFilterPeriodDays <= RECENTLY_OPENED_CONTENT_FILTER_PERMANENT_DAYS) {
+        "已打开过的内容（永久）"
+    } else {
+        "已打开过的内容（${recentlyOpenedContentFilterPeriodDays}天内）"
+    }
 
 data class FeedContentFilterResult(
     val kept: List<FilterableContent>,
@@ -461,6 +561,8 @@ data class FeedFilterSettings(
     val enableContentFilter: Boolean = true,
     val reverseBlock: Boolean = false,
     val filterFollowedUserContent: Boolean = false,
+    val enableRecentlyOpenedContentFilter: Boolean = false,
+    val recentlyOpenedContentFilterPeriodDays: Int = DEFAULT_RECENTLY_OPENED_CONTENT_FILTER_PERIOD_DAYS,
     val enableKeywordBlocking: Boolean = true,
     val enableNlpBlocking: Boolean = true,
     val nlpSimilarityThreshold: Double = 0.8,
@@ -474,6 +576,11 @@ fun SettingsStore.toFeedFilterSettings(): FeedFilterSettings = FeedFilterSetting
     enableContentFilter = getBoolean("enableContentFilter", true),
     reverseBlock = getBoolean("reverseBlock", false),
     filterFollowedUserContent = getBoolean("filterFollowedUserContent", false),
+    enableRecentlyOpenedContentFilter = getBoolean(ENABLE_RECENTLY_OPENED_CONTENT_FILTER_KEY, false),
+    recentlyOpenedContentFilterPeriodDays = getInt(
+        RECENTLY_OPENED_CONTENT_FILTER_PERIOD_DAYS_KEY,
+        DEFAULT_RECENTLY_OPENED_CONTENT_FILTER_PERIOD_DAYS,
+    ),
     enableKeywordBlocking = getBoolean("enableKeywordBlocking", true),
     enableNlpBlocking = getBoolean("enableNLPBlocking", true),
     nlpSimilarityThreshold = getFloat("nlpSimilarityThreshold", 0.8f).toDouble(),

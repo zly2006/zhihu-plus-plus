@@ -72,6 +72,10 @@ import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
+import com.github.zly2006.zhihu.viewmodel.filter.DEFAULT_RECENTLY_OPENED_CONTENT_FILTER_PERIOD_DAYS
+import com.github.zly2006.zhihu.viewmodel.filter.ENABLE_RECENTLY_OPENED_CONTENT_FILTER_KEY
+import com.github.zly2006.zhihu.viewmodel.filter.RECENTLY_OPENED_CONTENT_FILTER_PERIOD_DAYS_KEY
+import com.github.zly2006.zhihu.viewmodel.filter.RECENTLY_OPENED_CONTENT_FILTER_PERMANENT_DAYS
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
@@ -253,6 +257,86 @@ fun ContentFilterSettingsScreen(
                     settingKey = "filterFollowedUserContent",
                     highlightedKey = highlightedSetting,
                 )
+
+                val enableRecentlyOpenedContentFilter = remember {
+                    mutableStateOf(settings.getBoolean(ENABLE_RECENTLY_OPENED_CONTENT_FILTER_KEY, false))
+                }
+                SettingItemWithSwitch(
+                    modifier = Modifier.testTag("contentFilterSettings:enableRecentlyOpenedContentFilter"),
+                    title = { Text("过滤已打开内容") },
+                    description = { Text("隐藏指定时间内已打开过的问题和回答，减少首页重复推荐") },
+                    checked = enableRecentlyOpenedContentFilter.value,
+                    onCheckedChange = {
+                        enableRecentlyOpenedContentFilter.value = it
+                        settings.putBoolean(ENABLE_RECENTLY_OPENED_CONTENT_FILTER_KEY, it)
+                    },
+                    enabled = enableContentFilter.value,
+                    settingKey = ENABLE_RECENTLY_OPENED_CONTENT_FILTER_KEY,
+                    highlightedKey = highlightedSetting,
+                )
+
+                AnimatedVisibility(visible = enableContentFilter.value && enableRecentlyOpenedContentFilter.value) {
+                    val periodDays = remember {
+                        mutableStateOf(
+                            settings.getInt(
+                                RECENTLY_OPENED_CONTENT_FILTER_PERIOD_DAYS_KEY,
+                                DEFAULT_RECENTLY_OPENED_CONTENT_FILTER_PERIOD_DAYS,
+                            ),
+                        )
+                    }
+                    val periodEnabled = enableContentFilter.value && enableRecentlyOpenedContentFilter.value
+                    var expanded by remember { mutableStateOf(false) }
+                    val currentPeriod = recentlyOpenedContentFilterPeriodOptions
+                        .firstOrNull { it.days == periodDays.value }
+                        ?: recentlyOpenedContentFilterPeriodOptions.first { it.days == DEFAULT_RECENTLY_OPENED_CONTENT_FILTER_PERIOD_DAYS }
+
+                    SettingItem(
+                        modifier = Modifier.testTag("contentFilterSettings:recentlyOpenedContentFilterPeriod"),
+                        title = { Text("已打开内容过滤周期") },
+                        description = { Text("超过周期后允许再次出现在首页推荐") },
+                        enabled = periodEnabled,
+                        settingKey = RECENTLY_OPENED_CONTENT_FILTER_PERIOD_DAYS_KEY,
+                        highlightedKey = highlightedSetting,
+                        endAction = {
+                            ExposedDropdownMenuBox(
+                                expanded = expanded,
+                                onExpandedChange = {
+                                    if (periodEnabled) expanded = !expanded
+                                },
+                                modifier = Modifier.width(160.dp),
+                            ) {
+                                OutlinedTextField(
+                                    value = currentPeriod.label,
+                                    onValueChange = { },
+                                    readOnly = true,
+                                    enabled = periodEnabled,
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                                    modifier = Modifier
+                                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
+                                        .testTag("contentFilterSettings:recentlyOpenedContentFilterPeriodField"),
+                                )
+                                ExposedDropdownMenu(
+                                    expanded = expanded,
+                                    onDismissRequest = { expanded = false },
+                                ) {
+                                    recentlyOpenedContentFilterPeriodOptions.forEach { option ->
+                                        DropdownMenuItem(
+                                            text = { Text(option.label) },
+                                            onClick = {
+                                                periodDays.value = option.days
+                                                settings.putInt(
+                                                    RECENTLY_OPENED_CONTENT_FILTER_PERIOD_DAYS_KEY,
+                                                    option.days,
+                                                )
+                                                expanded = false
+                                            },
+                                        )
+                                    }
+                                }
+                            }
+                        },
+                    )
+                }
             }
 
             SettingItemGroup {
@@ -541,3 +625,16 @@ fun ContentFilterSettingsScreen(
         }
     }
 }
+
+private data class RecentlyOpenedContentFilterPeriodOption(
+    val days: Int,
+    val label: String,
+)
+
+private val recentlyOpenedContentFilterPeriodOptions = listOf(
+    RecentlyOpenedContentFilterPeriodOption(1, "1 天"),
+    RecentlyOpenedContentFilterPeriodOption(DEFAULT_RECENTLY_OPENED_CONTENT_FILTER_PERIOD_DAYS, "7 天"),
+    RecentlyOpenedContentFilterPeriodOption(30, "30 天"),
+    RecentlyOpenedContentFilterPeriodOption(90, "90 天"),
+    RecentlyOpenedContentFilterPeriodOption(RECENTLY_OPENED_CONTENT_FILTER_PERMANENT_DAYS, "永久"),
+)

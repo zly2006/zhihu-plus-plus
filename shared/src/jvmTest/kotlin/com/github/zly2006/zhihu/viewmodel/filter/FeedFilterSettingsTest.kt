@@ -28,6 +28,8 @@ class FeedFilterSettingsTest {
             "enableContentFilter" to false,
             "reverseBlock" to true,
             "filterFollowedUserContent" to true,
+            ENABLE_RECENTLY_OPENED_CONTENT_FILTER_KEY to true,
+            RECENTLY_OPENED_CONTENT_FILTER_PERIOD_DAYS_KEY to 30,
             "enableKeywordBlocking" to false,
             "enableNLPBlocking" to false,
             "nlpSimilarityThreshold" to 0.65f,
@@ -43,6 +45,8 @@ class FeedFilterSettingsTest {
         assertEquals(false, settings.enableContentFilter)
         assertEquals(true, settings.reverseBlock)
         assertEquals(true, settings.filterFollowedUserContent)
+        assertEquals(true, settings.enableRecentlyOpenedContentFilter)
+        assertEquals(30, settings.recentlyOpenedContentFilterPeriodDays)
         assertEquals(false, settings.enableKeywordBlocking)
         assertEquals(false, settings.enableNlpBlocking)
         assertEquals(0.65, settings.nlpSimilarityThreshold, 0.0001)

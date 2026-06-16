@@ -225,6 +225,7 @@ class DesktopPaginationEnvironment(
             settings = settings,
             contentFilterManager = ContentFilterManager(contentFilterDb.contentFilterDao()),
             blockedFeedRecordDao = contentFilterDb.blockedFeedRecordDao(),
+            contentOpenEventDao = contentFilterDb.contentOpenEventDao(),
         ).filter(items)
         val filteredItems = FeedDisplayFilterPipeline(
             settings = settings,
