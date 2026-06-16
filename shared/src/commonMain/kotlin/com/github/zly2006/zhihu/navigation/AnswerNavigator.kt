@@ -201,20 +201,44 @@ abstract class AnswerNavigator(
 }
 
 /**
- * 从知乎问题的回答列表中导航。
+ * 从问题详情页当前回答序列中导航。
  *
- * 由于默认从最高赞开始，而非上次阅读开始，不建议使用，做fallback。
+ * 优先使用进入详情时已加载的前后回答队列；本地队列耗尽后，再按当前排序继续请求问题 feeds。
  */
 class QuestionAnswerNavigator(
     val questionId: Long,
+    initialNextAnswers: List<Article> = emptyList(),
+    initialPreviousAnswers: List<Article> = emptyList(),
+    initialNextUrl: String = "",
+    private val order: String? = null,
+    private val getAlreadyOpenedAnswerIds: suspend (List<Long>) -> Set<Long> = { answerIds ->
+        ContentOpenEventSupport
+            .getAlreadyOpenedContentIds(
+                database = getContentFilterDatabase(),
+                content = answerIds.map { ContentType.ANSWER to it.toString() },
+            ).mapNotNull { key ->
+                key.substringAfter(':', "").toLongOrNull()
+            }.toSet()
+    },
     environment: ZhihuApiEnvironment,
 ) : AnswerNavigator("此问题", environment) {
+    private val pendingInitialNextAnswers = ArrayDeque<Article>().also { deque ->
+        initialNextAnswers
+            .filter { it.type == ArticleType.Answer }
+            .forEach { deque.addLast(it) }
+    }
+    private val hasInitialNextAnswers = pendingInitialNextAnswers.isNotEmpty()
     private val destinations = ArrayDeque<Article>()
-    private val previousQueue = mutableStateListOf<Article>()
-    private var nextUrl: String = ""
+    private val previousQueue = mutableStateListOf<Article>().also { list ->
+        list.addAll(initialPreviousAnswers.filter { it.type == ArticleType.Answer })
+    }
+    private var nextUrl: String = initialNextUrl
     private val enqueuedNextIds = mutableSetOf<Long>()
-    private val enqueuedPrevIds = mutableSetOf<Long>()
+    private val enqueuedPrevIds = mutableSetOf<Long>().also { set ->
+        set.addAll(previousQueue.map { it.id })
+    }
     private val knownOpenedIds = mutableSetOf<Long>()
+    private var initialNextAnswersProcessed = false
 
     override val previousAnswerPreview: CachedAnswerContent?
         get() {
@@ -253,20 +277,26 @@ class QuestionAnswerNavigator(
 
     private suspend fun ensureDestinations(currentArticleId: Long) {
         if (destinations.isNotEmpty()) return
+        if (hasInitialNextAnswers && initialNextAnswersProcessed && nextUrl.isEmpty()) return
         val historyIds = answerHistory.map { it.article.id }.toSet()
         while (destinations.isEmpty()) {
-            val url = nextUrl.ifEmpty { zhihuQuestionFeedsUrl(questionId, limit = 6) }
-            val response = environment.fetchJson(url, "")
-            val page = response?.let {
-                answerNavigatorPageFromJson(it) { data ->
-                    data.jsonArray.mapNotNull { item ->
-                        runCatching { ZhihuJson.decodeJson<Feed>(item) }.getOrNull()
+            val processingInitialNextAnswers = hasInitialNextAnswers && !initialNextAnswersProcessed
+            val candidates = if (processingInitialNextAnswers) {
+                initialNextAnswersProcessed = true
+                pendingInitialNextAnswers.toList()
+            } else {
+                val url = nextUrl.ifEmpty { zhihuQuestionFeedsUrl(questionId, limit = 6, order = order) }
+                val response = environment.fetchJson(url, "")
+                val page = response?.let {
+                    answerNavigatorPageFromJson(it) { data ->
+                        data.jsonArray.mapNotNull { item ->
+                            runCatching { ZhihuJson.decodeJson<Feed>(item) }.getOrNull()
+                        }
                     }
-                }
-            } ?: AnswerNavigatorPage(emptyList(), "")
-            nextUrl = page.nextUrl
-            val data = page.items
-            val candidates = data.mapNotNull { feed -> feed.target?.navDestination as? Article }
+                } ?: AnswerNavigatorPage(emptyList(), "")
+                nextUrl = page.nextUrl
+                page.items.mapNotNull { feed -> feed.target?.navDestination as? Article }
+            }
             val idsToLookup = candidates
                 .asSequence()
                 .filter { it.type == ArticleType.Answer }
@@ -279,13 +309,7 @@ class QuestionAnswerNavigator(
                         id !in knownOpenedIds
                 }.toList()
             if (idsToLookup.isNotEmpty()) {
-                knownOpenedIds += ContentOpenEventSupport
-                    .getAlreadyOpenedContentIds(
-                        database = getContentFilterDatabase(),
-                        content = idsToLookup.map { ContentType.ANSWER to it.toString() },
-                    ).mapNotNull { key ->
-                        key.substringAfter(':', "").toLongOrNull()
-                    }
+                knownOpenedIds += getAlreadyOpenedAnswerIds(idsToLookup)
             }
             val partition = ContentOpenEventSupport.partitionQuestionAnswerCandidates(
                 candidates = candidates,
@@ -305,7 +329,7 @@ class QuestionAnswerNavigator(
                     destinations.addLast(article)
                 }
             }
-            if (nextUrl.isEmpty()) return
+            if (nextUrl.isEmpty() && (!processingInitialNextAnswers || hasInitialNextAnswers)) return
         }
     }
 
