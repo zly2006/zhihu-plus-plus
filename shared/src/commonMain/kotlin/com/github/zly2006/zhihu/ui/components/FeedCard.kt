@@ -65,6 +65,8 @@ import com.github.zly2006.zhihu.navigation.Navigator
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.officialBadge
+import com.github.zly2006.zhihu.shared.data.questionAuthor
+import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
 import com.github.zly2006.zhihu.shared.platform.rememberIsLiteVariant
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
@@ -91,6 +93,7 @@ fun FeedCard(
     thumbnailUrl: String? = null,
     horizontalPadding: Dp = 16.dp,
     onBlockUser: ((FeedDisplayItem) -> Unit)? = null,
+    onBlockQuestionAuthor: ((FeedDisplayItem) -> Unit)? = null,
     onBlockByKeywords: ((FeedDisplayItem) -> Unit)? = null,
     onBlockTopic: ((topicId: String, topicName: String) -> Unit)? = null,
     showSourceLabel: Boolean = false,
@@ -145,6 +148,7 @@ fun FeedCard(
                     showMenu = showMenu,
                     onShowMenuChange = { showMenu = it },
                     onBlockUser = onBlockUser,
+                    onBlockQuestionAuthor = onBlockQuestionAuthor,
                     onBlockByKeywords = if (isLiteVariant) null else onBlockByKeywords,
                     onBlockTopic = onBlockTopic,
                     duo3CardLayout = duo3CardLayout,
@@ -194,6 +198,7 @@ fun FeedCard(
                         showMenu = showMenu,
                         onShowMenuChange = { showMenu = it },
                         onBlockUser = onBlockUser,
+                        onBlockQuestionAuthor = onBlockQuestionAuthor,
                         onBlockByKeywords = if (isLiteVariant) null else onBlockByKeywords,
                         onBlockTopic = onBlockTopic,
                         duo3CardLayout = duo3CardLayout,
@@ -218,6 +223,7 @@ private fun FeedCardMenuBox(
     showMenu: Boolean,
     onShowMenuChange: (Boolean) -> Unit,
     onBlockUser: ((FeedDisplayItem) -> Unit)?,
+    onBlockQuestionAuthor: ((FeedDisplayItem) -> Unit)?,
     onBlockByKeywords: ((FeedDisplayItem) -> Unit)?,
     onBlockTopic: ((topicId: String, topicName: String) -> Unit)?,
     navigator: Navigator,
@@ -254,6 +260,15 @@ private fun FeedCardMenuBox(
                     onBlockUser?.invoke(item)
                 },
             )
+            if (onBlockQuestionAuthor != null && item.feed?.target?.questionAuthor != null) {
+                DropdownMenuItem(
+                    text = { Text("屏蔽提问者") },
+                    onClick = {
+                        onShowMenuChange(false)
+                        onBlockQuestionAuthor(item)
+                    },
+                )
+            }
             if (onBlockTopic != null && item.raw != null) {
                 val topics = when (val raw = item.raw) {
                     is com.github.zly2006.zhihu.shared.data.DataHolder.Answer -> raw.question.topics
@@ -306,6 +321,7 @@ private fun FeedCardContent(
     showMenu: Boolean,
     onShowMenuChange: (Boolean) -> Unit,
     onBlockUser: ((FeedDisplayItem) -> Unit)?,
+    onBlockQuestionAuthor: ((FeedDisplayItem) -> Unit)?,
     onBlockByKeywords: ((FeedDisplayItem) -> Unit)?,
     onBlockTopic: ((topicId: String, topicName: String) -> Unit)?,
     duo3CardLayout: Boolean,
@@ -413,7 +429,7 @@ private fun FeedCardContent(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
                         )
-                        FeedCardMenuBox(item, showMenu, onShowMenuChange, onBlockUser, onBlockByKeywords, onBlockTopic, navigator)
+                        FeedCardMenuBox(item, showMenu, onShowMenuChange, onBlockUser, onBlockQuestionAuthor, onBlockByKeywords, onBlockTopic, navigator)
                     }
                 }
             }
@@ -487,7 +503,7 @@ private fun FeedCardContent(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.weight(1f),
                         )
-                        FeedCardMenuBox(item, showMenu, onShowMenuChange, onBlockUser, onBlockByKeywords, onBlockTopic, navigator)
+                        FeedCardMenuBox(item, showMenu, onShowMenuChange, onBlockUser, onBlockQuestionAuthor, onBlockByKeywords, onBlockTopic, navigator)
                     }
                 }
             }

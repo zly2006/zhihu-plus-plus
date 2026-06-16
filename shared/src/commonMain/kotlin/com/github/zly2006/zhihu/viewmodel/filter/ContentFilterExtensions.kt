@@ -25,6 +25,7 @@ import com.github.zly2006.zhihu.shared.data.AdvertisementFeed
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.navDestination
+import com.github.zly2006.zhihu.shared.data.questionAuthor
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.platform.SettingsStore
@@ -88,6 +89,7 @@ class FeedContentFilterPipeline(
     private val settings: FeedFilterSettings,
     private val blockedKeywordDao: BlockedKeywordDao,
     private val blockedUserDao: BlockedUserDao,
+    private val blockedQuestionAuthorDao: BlockedQuestionAuthorDao,
     private val blockedTopicDao: BlockedTopicDao,
     private val blockedKeywordService: BlockedKeywordService,
     private val htmlToText: (String) -> String = { html -> Ksoup.parse(html).text() },
@@ -102,6 +104,14 @@ class FeedContentFilterPipeline(
                 content.authorId.isNullOrBlank() || !blockedUserDao.isUserBlocked(content.authorId)
             }
             removed.forEach { blocked.add(it to "屏蔽作者：${it.authorName ?: it.authorId}") }
+            filteredContents = kept
+        }
+
+        if (settings.enableUserBlocking) {
+            val (kept, removed) = filteredContents.partition { content ->
+                content.questionAuthorId.isNullOrBlank() || !blockedQuestionAuthorDao.isUserBlocked(content.questionAuthorId)
+            }
+            removed.forEach { blocked.add(it to "屏蔽提问者：${it.questionAuthorName ?: it.questionAuthorId}") }
             filteredContents = kept
         }
 
@@ -355,6 +365,8 @@ data class FilterableContent(
     val url: String? = null,
     val feedJson: String? = null,
     val navDestinationJson: String? = null,
+    val questionAuthorName: String? = null,
+    val questionAuthorId: String? = null,
 )
 
 data class FeedContentIdentity(
@@ -390,6 +402,8 @@ fun FeedDisplayItem.toFilterableContent(
     raw = rawContent,
     isFollowing = rawContent.author?.isFollowing ?: false,
     questionId = (rawContent as? DataHolder.Answer)?.question?.id,
+    questionAuthorName = feed?.target?.questionAuthor?.name ?: (rawContent as? DataHolder.Question)?.author?.name,
+    questionAuthorId = feed?.target?.questionAuthor?.id ?: (rawContent as? DataHolder.Question)?.author?.id,
     url = feed?.target?.url,
     feedJson = feed?.let { runCatching { feedFilterRecordJson.encodeToString(it) }.getOrNull() },
     navDestinationJson = navDestination?.let { runCatching { feedFilterRecordJson.encodeToString(it) }.getOrNull() },

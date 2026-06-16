@@ -24,6 +24,7 @@ import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.flattenFeeds
 import com.github.zly2006.zhihu.shared.data.navDestination
+import com.github.zly2006.zhihu.shared.data.questionAuthor
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.viewmodel.ContentInteractionEnvironment
@@ -57,6 +58,20 @@ suspend fun resolveFeedBlockAuthorInfo(
         is DataHolder.Article -> content.author.let { Pair(it.id, it.name) }
         is DataHolder.Question -> content.author.let { Pair(it.id, it.name) }
         is DataHolder.Pin -> content.author.let { Pair(it.id, it.name) }
+        else -> null
+    }
+}
+
+suspend fun resolveFeedQuestionAuthorInfo(
+    feedItem: FeedDisplayItem,
+    contentDetailProvider: ContentDetailProvider?,
+): Pair<String, String>? {
+    feedItem.feed?.target?.questionAuthor?.let { author ->
+        return Pair(author.id, author.name)
+    }
+
+    return when (val content = resolveFeedBlockContentDetail(feedItem, contentDetailProvider)) {
+        is DataHolder.Question -> content.author.let { Pair(it.id, it.name) }
         else -> null
     }
 }

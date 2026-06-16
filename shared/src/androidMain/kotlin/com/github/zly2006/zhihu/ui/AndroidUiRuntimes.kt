@@ -387,6 +387,7 @@ actual fun rememberBlocklistRuleImporter(
                         importBlocklistBackupFromJsonText(
                             keywordDao = database.blockedKeywordDao(),
                             userDao = database.blockedUserDao(),
+                            questionAuthorDao = database.blockedQuestionAuthorDao(),
                             topicDao = database.blockedTopicDao(),
                             text = text,
                         )
@@ -420,6 +421,7 @@ actual fun rememberBlocklistRuleExporter(): suspend () -> String {
                     encodeBlocklistBackup(
                         keywordDao = database.blockedKeywordDao(),
                         userDao = database.blockedUserDao(),
+                        questionAuthorDao = database.blockedQuestionAuthorDao(),
                         topicDao = database.blockedTopicDao(),
                     ),
                 )

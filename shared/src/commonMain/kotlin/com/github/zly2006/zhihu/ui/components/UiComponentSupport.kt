@@ -52,12 +52,18 @@ import com.github.zly2006.zhihu.shared.platform.rememberImageSharer
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.filter.BlockedQuestionAuthor
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedUser
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.launch
 
 data class FeedBlockActions(
     val handleBlockUser: (
+        viewModel: BaseFeedViewModel,
+        feedItem: FeedDisplayItem,
+        onShowDialog: (Pair<String, String>) -> Unit,
+    ) -> Unit,
+    val handleBlockQuestionAuthor: (
         viewModel: BaseFeedViewModel,
         feedItem: FeedDisplayItem,
         onShowDialog: (Pair<String, String>) -> Unit,
@@ -87,6 +93,44 @@ data class BlockByKeywordsRuntime(
 
 @Composable
 expect fun rememberBlockByKeywordsRuntime(): BlockByKeywordsRuntime
+
+@Composable
+fun BlockQuestionAuthorConfirmDialog(
+    showDialog: Boolean,
+    userToBlock: Pair<String, String>?,
+    displayItems: List<FeedDisplayItem>,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    val coroutineScope = rememberCoroutineScope()
+    val userMessages = rememberUserMessageSink()
+    val database = remember { getContentFilterDatabase() }
+    BlockQuestionAuthorConfirmDialogContent(
+        showDialog = showDialog,
+        userToBlock = userToBlock,
+        displayItems = displayItems,
+        onDismiss = onDismiss,
+        onConfirmBlock = { author ->
+            coroutineScope.launch {
+                try {
+                    database.blockedQuestionAuthorDao().insertUser(
+                        BlockedQuestionAuthor(
+                            userId = author.id,
+                            userName = author.name,
+                            urlToken = author.urlToken,
+                            avatarUrl = author.avatarUrl,
+                        ),
+                    )
+                    onConfirm()
+                    userMessages.showShortMessage("已屏蔽提问者：${author.name}")
+                } catch (e: Exception) {
+                    Log.e("FeedBlockActions", "Failed to block question author", e)
+                    userMessages.showShortMessage("屏蔽提问者失败: ${e.message}")
+                }
+            }
+        },
+    )
+}
 
 @Composable
 fun BlockUserConfirmDialog(

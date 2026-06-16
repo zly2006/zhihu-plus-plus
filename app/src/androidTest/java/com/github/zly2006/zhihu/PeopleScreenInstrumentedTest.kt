@@ -72,6 +72,7 @@ import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_OFFICIAL_BADGE_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_PINS_LIST_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_QUESTIONS_LIST_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG
+import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_QUESTION_AUTHOR_BLOCK_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_ROOT_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_SEARCH_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_SUBSCRIPTIONS_LIST_TAG
@@ -110,8 +111,8 @@ class PeopleScreenInstrumentedTest {
          * Expected behavior:
          * 1. The profile header must render the seeded avatar area plus all four statistics from a
          *    precreated production ViewModel and a mocked profile fetch.
-         * 2. Follow, block, and recommendation-block buttons must each use the real production
-         *    mutation path while staying offline through mocked HTTP/local database state.
+         * 2. Follow, block, recommendation-block, and question-author-block buttons must each use
+         *    the real production mutation path while staying offline through mocked HTTP/local database state.
          * 3. On the answer tab, both sort buttons should issue deterministic production refreshes
          *    and a deep scroll should keep the seeded answer row interactive for navigation.
          * 4. On the article tab, the same sort and deep-row navigation behavior must remain stable.
@@ -132,8 +133,12 @@ class PeopleScreenInstrumentedTest {
         composeRule.onNodeWithTag(PEOPLE_SCREEN_FOLLOW_BUTTON_TAG).performClick()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_BLOCK_BUTTON_TAG).performClick()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG).performClick()
+        composeRule.onNodeWithTag(PEOPLE_SCREEN_QUESTION_AUTHOR_BLOCK_BUTTON_TAG).performClick()
         composeRule.waitUntil("Expected profile actions to update state", timeoutMillis = 5_000) {
-            viewModel.isFollowing && viewModel.isBlocking && viewModel.isBlockedInRecommendations
+            viewModel.isFollowing &&
+                viewModel.isBlocking &&
+                viewModel.isBlockedInRecommendations &&
+                viewModel.isBlockedAsQuestionAuthor
         }
         composeRule.waitUntilRequestCount(HttpMethod.Post, "members/${ROOT_PERSON.urlToken}/followers", 1)
         composeRule.waitUntilRequestCount(HttpMethod.Post, "members/${ROOT_PERSON.urlToken}/actions/block", 1)
@@ -459,6 +464,7 @@ class PeopleScreenInstrumentedTest {
             seededViewModel.isFollowing = false
             seededViewModel.isBlocking = false
             seededViewModel.isBlockedInRecommendations = false
+            seededViewModel.isBlockedAsQuestionAuthor = false
             seededViewModel.memberHashId = ROOT_PERSON.id
 
             seededViewModel.answersFeedModel.allData.clear()
