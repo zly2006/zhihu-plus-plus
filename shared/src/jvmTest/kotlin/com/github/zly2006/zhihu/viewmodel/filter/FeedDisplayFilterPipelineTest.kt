@@ -19,6 +19,7 @@ package com.github.zly2006.zhihu.viewmodel.filter
 
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.AdvertisementFeed
 import com.github.zly2006.zhihu.shared.data.CommonFeed
 import com.github.zly2006.zhihu.shared.data.DataHolder
@@ -203,6 +204,72 @@ class FeedDisplayFilterPipelineTest {
         fixture.database.close()
     }
 
+    @Test
+    fun filtersAnswerItemsByBlockedQuestionAuthorViaQuestionDetailFallback() = runTest {
+        val fixture = fixture()
+        fixture.database.blockedQuestionAuthorDao().insertUser(
+            BlockedQuestionAuthor(userId = "blocked-asker", userName = "Blocked Asker"),
+        )
+        val requestedQuestionIds = mutableListOf<Long>()
+        val item = FeedDisplayItem(
+            title = "answer item",
+            summary = null,
+            details = "",
+            feed = CommonFeed(
+                target = Feed.AnswerTarget(
+                    id = 10,
+                    url = "https://api.zhihu.com/answers/10",
+                    author = person(isFollowing = false),
+                    createdTime = 1,
+                    updatedTime = 1,
+                    voteupCount = 0,
+                    thanksCount = 0,
+                    commentCount = 0,
+                    isCopyable = true,
+                    question = Feed.QuestionTarget(
+                        id = 20,
+                        url = "https://api.zhihu.com/questions/20",
+                        type = "question",
+                        questionType = "normal",
+                        created = 1,
+                        answerCount = 1,
+                        commentCount = 0,
+                        followerCount = 0,
+                        detail = "",
+                        excerpt = "",
+                        author = null,
+                    ),
+                    excerpt = "excerpt",
+                ),
+            ),
+        )
+
+        val result = fixture.pipeline(
+            detailProvider = ContentDetailProvider { destination ->
+                when (destination) {
+                    is Article -> answer(id = destination.id, questionId = 20, questionTitle = "loading...")
+                    is Question -> {
+                        requestedQuestionIds += destination.questionId
+                        question(id = destination.questionId, title = destination.title)
+                    }
+                    else -> null
+                }
+            },
+        ).filter(listOf(item))
+
+        assertEquals(emptyList(), result)
+        assertEquals(
+            listOf("屏蔽提问者：Blocked Asker"),
+            fixture.database
+                .blockedFeedRecordDao()
+                .observeAll()
+                .first()
+                .map { it.blockedReason },
+        )
+        assertEquals(listOf(20L), requestedQuestionIds)
+        fixture.database.close()
+    }
+
     private fun fixture(settings: FeedFilterSettings = FeedFilterSettings()): Fixture {
         val database = getContentFilterDatabase(
             createTempDirectory("feed-display-filter-pipeline").resolve("content-filter.db").toFile(),
@@ -276,17 +343,70 @@ class FeedDisplayFilterPipelineTest {
         paidInfo = if (paid) buildJsonObject { } else null,
     )
 
-    private fun author(): DataHolder.Author = DataHolder.Author(
+    private fun answer(
+        id: Long,
+        questionId: Long,
+        questionTitle: String,
+    ): DataHolder.Answer = DataHolder.Answer(
+        answerType = "answer",
+        author = author(),
+        canComment = DataHolder.CanComment(status = true, reason = ""),
+        content = "answer",
+        createdTime = 1L,
+        excerpt = "answer",
+        id = id,
+        question = DataHolder.AnswerModelQuestion(
+            created = 1L,
+            id = questionId,
+            questionType = "normal",
+            title = questionTitle,
+            type = "question",
+            updatedTime = 1L,
+            url = "https://www.zhihu.com/question/$questionId",
+        ),
+        thanksCount = 0,
+        type = "answer",
+        updatedTime = 1L,
+        url = "https://www.zhihu.com/question/$questionId/answer/$id",
+        voteupCount = 0,
+    )
+
+    private fun question(
+        id: Long,
+        title: String,
+    ): DataHolder.Question = DataHolder.Question(
+        type = "question",
+        id = id,
+        title = title,
+        questionType = "normal",
+        created = 1L,
+        updatedTime = 1L,
+        url = "https://www.zhihu.com/question/$id",
+        answerCount = 1,
+        visitCount = 0,
+        commentCount = 0,
+        followerCount = 0,
+        detail = "",
+        relationship = DataHolder.QuestionRelationship(),
+        topics = emptyList(),
+        author = author(id = "blocked-asker", name = "Blocked Asker"),
+        voteupCount = 0,
+    )
+
+    private fun author(
+        id: String = "author-id",
+        name: String = "author",
+    ): DataHolder.Author = DataHolder.Author(
         avatarUrl = "",
         gender = 0,
         headline = "",
-        id = "author-id",
+        id = id,
         isAdvertiser = false,
         isOrg = false,
-        name = "author",
+        name = name,
         type = "people",
         url = "",
-        urlToken = "author",
+        urlToken = name,
         userType = "people",
     )
 
