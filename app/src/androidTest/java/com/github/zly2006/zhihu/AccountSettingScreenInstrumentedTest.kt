@@ -60,7 +60,6 @@ import com.github.zly2006.zhihu.ui.AccountSettingsAccountState
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import io.ktor.http.HttpMethod
-import java.util.concurrent.atomic.AtomicInteger
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -68,6 +67,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.util.concurrent.atomic.AtomicInteger
 import com.github.zly2006.zhihu.shared.data.Person as AccountPerson
 
 @RunWith(AndroidJUnit4::class)
