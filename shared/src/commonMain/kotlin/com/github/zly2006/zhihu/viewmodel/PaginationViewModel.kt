@@ -241,10 +241,10 @@ interface ZhihuApiEnvironment {
             url = url.replace("http://", "https://"),
         ) {
             method = HttpMethod.Get
-            signZhihuFetchRequest(cookies)
-            if (include.isNotEmpty()) {
+            if (include.isNotEmpty() && !url.contains("include=")) {
                 parameter("include", include)
             }
+            signZhihuFetchRequest(cookies)
         }
     }
 

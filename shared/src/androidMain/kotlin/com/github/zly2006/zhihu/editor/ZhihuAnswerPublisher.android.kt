@@ -73,7 +73,14 @@ private class AndroidZhihuAnswerPublisher(
         repeat(5) {
             if (url.isNullOrBlank()) return null
             val currentUrl = url
-            val response = AccountData.fetchGet(context, currentUrl) { signFetchRequest() } ?: return null
+            val response = runCatching {
+                AccountData
+                    .httpClient(context)
+                    .get(currentUrl) {
+                        signFetchRequest()
+                    }.raiseForStatus(dumpRequest = true)
+                    .body<JsonObject>()
+            }.getOrNull() ?: return null
             val page = answerNavigatorPageFromJson(response) { data ->
                 ZhihuJson.decodeJson<List<Feed>>(data)
             }
@@ -102,7 +109,12 @@ private class AndroidZhihuAnswerPublisher(
                 "question.topics,reaction.relation.voting,author.badge_v2," +
                 "settings.table_of_contents.enabled"
         return runCatching {
-            val json = AccountData.fetchGet(context, url) { signFetchRequest() } ?: return null
+            val json = AccountData
+                .httpClient(context)
+                .get(url) {
+                    signFetchRequest()
+                }.raiseForStatus(dumpRequest = true)
+                .body<JsonObject>()
             val answer = decodeArticleContentDetail(
                 article = Article(type = ArticleType.Answer, id = answerId),
                 json = json,
