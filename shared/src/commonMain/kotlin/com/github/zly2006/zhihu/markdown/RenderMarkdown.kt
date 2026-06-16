@@ -72,6 +72,7 @@ import com.github.zly2006.zhihu.ui.components.LocalSegmentActionSheetHost
 import com.github.zly2006.zhihu.ui.components.LocalSegmentCommentHost
 import com.github.zly2006.zhihu.ui.components.SegmentActionSheet
 import com.github.zly2006.zhihu.ui.components.SegmentActionSheetState
+import com.github.zly2006.zhihu.ui.subscreens.PREF_BLOCK_SPACING
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
 import com.hrm.markdown.renderer.Markdown
@@ -257,6 +258,7 @@ fun RenderMarkdown(
     val settings = rememberSettingsStore()
     val fontSize = settings.getInt(PREF_FONT_SIZE, 100)
     val lineHeight = settings.getInt(PREF_LINE_HEIGHT, 160)
+    val blockSpacing = settings.getInt(PREF_BLOCK_SPACING, 100)
     val defaultTheme = MarkdownTheme.material3()
 
     val theme = defaultTheme.copy(
@@ -264,6 +266,7 @@ fun RenderMarkdown(
             fontSize = 16.sp * fontSize / 100,
             lineHeight = 16.sp * fontSize / 100 * lineHeight / 100,
         ),
+        blockSpacing = defaultTheme.blockSpacing * (blockSpacing / 100f),
         mathFontSize = 18f * fontSize / 100,
         mathFont = runtime.mathFont ?: defaultTheme.mathFont,
     )

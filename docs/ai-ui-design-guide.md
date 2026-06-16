@@ -65,7 +65,7 @@ URL 解析集中在 `resolveContent()`。支持知乎问题、回答、文章、
 | `useDynamicColor` | Material You 动态取色 | Android 12+ 取系统壁纸色 | 关闭后自定义主题色才明显生效 |
 | `customThemeColor` | 自定义主题色 | Material 3 主色 | 不要和动态取色同时假设生效 |
 | `backgroundColorLight`, `backgroundColorDark` | 自定义背景颜色 | 明暗模式背景 | 按当前明暗模式写入不同 key |
-| `contentFontSize`, `contentLineHeight` | 字号、行高 | 正文渲染和分段文本 | 查 `SegmentedText`、Markdown 渲染路径 |
+| `contentFontSize`, `contentLineHeight`, `contentBlockSpacing` | 字号、行高、段间距 | 正文字号/行高、分段文本样式和正文块间距 | 查 `SegmentedText`、Markdown 渲染路径和 Android WebView CSS 注入 |
 | `showFeedThumbnail` | Feed 卡片缩略图 | 信息流卡片是否显示图 | 由复用 `FeedCard` 的页面读取 |
 | `showRefreshFab` | 刷新 FAB | 首页/列表可拖动刷新按钮显示 | 123Duo3 总开关会关闭它 |
 | `feedCardStyle` | 信息流样式 | `card` 或 `divider` | 影响 FeedCard 外层布局 |
