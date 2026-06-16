@@ -308,8 +308,10 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
             withContext(Dispatchers.IO) {
                 val serialized = encodeHomeFeedStartupSnapshot(items)
                 if (serialized != null) {
-                    startupCacheFile.parentFile?.mkdirs()
-                    startupCacheFile.writeText(serialized)
+                    runCatching {
+                        startupCacheFile.parentFile?.mkdirs()
+                        startupCacheFile.writeText(serialized)
+                    }
                 }
             }
         },
