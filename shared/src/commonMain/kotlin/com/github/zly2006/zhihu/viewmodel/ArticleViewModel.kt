@@ -844,7 +844,7 @@ class ArticleViewModel(
             errorPrefix = "图片导出失败",
             requiresImageExportPermission = true,
             writeImage = { displayName, bitmap ->
-                withContext(Dispatchers.Default) {
+                withContext(Dispatchers.IO) {
                     environment.saveImageToMediaStore(
                         displayName = displayName,
                         bitmap = bitmap,
@@ -871,7 +871,7 @@ class ArticleViewModel(
             errorPrefix = "带评论图片导出失败",
             requiresImageExportPermission = true,
             writeImage = { displayName, bitmap ->
-                withContext(Dispatchers.Default) {
+                withContext(Dispatchers.IO) {
                     environment.saveImageToMediaStore(
                         displayName = displayName,
                         bitmap = bitmap,
