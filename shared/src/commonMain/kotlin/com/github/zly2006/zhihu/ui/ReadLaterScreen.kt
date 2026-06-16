@@ -106,7 +106,10 @@ class ReadLaterStore(
     }
 
     fun reload() {
-        items = loadItems()
+        val loadedItems = loadItems()
+        if (loadedItems != items) {
+            items = loadedItems
+        }
     }
 
     private fun save(nextItems: List<ReadLaterItem>) {
