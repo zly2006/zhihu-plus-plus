@@ -201,9 +201,9 @@ abstract class AnswerNavigator(
 }
 
 /**
- * 从知乎问题的回答列表中导航。
+ * 从问题详情页当前回答序列中导航。
  *
- * 由于默认从最高赞开始，而非上次阅读开始，不建议使用，做fallback。
+ * 优先使用进入详情时已加载的前后回答队列；本地队列耗尽后，再按当前排序继续请求问题 feeds。
  */
 class QuestionAnswerNavigator(
     val questionId: Long,

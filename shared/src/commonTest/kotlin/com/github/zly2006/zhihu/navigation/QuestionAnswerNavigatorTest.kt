@@ -59,7 +59,44 @@ class QuestionAnswerNavigatorTest {
         )
     }
 
+    @Test
+    fun seededQueuesIgnoreNonAnswerEntriesForPreviewAndNextNavigation() = runTest {
+        val navigator = QuestionAnswerNavigator(
+            questionId = 1L,
+            initialNextAnswers = listOf(
+                article(201L),
+                answer(103L),
+                article(202L),
+                answer(104L),
+            ),
+            initialPreviousAnswers = listOf(
+                article(102L),
+                answer(101L),
+                answer(100L),
+            ),
+            environment = NoopEnvironment,
+        )
+
+        assertEquals(101L, navigator.previousAnswerPreview?.article?.id)
+        assertEquals(103L, navigator.loadNext()?.id)
+        assertEquals(104L, navigator.loadNext()?.id)
+        assertNull(navigator.loadNext())
+    }
+
+    @Test
+    fun emptyPreviousSeedDoesNotExposePreview() = runTest {
+        val navigator = QuestionAnswerNavigator(
+            questionId = 1L,
+            initialPreviousAnswers = listOf(article(201L)),
+            environment = NoopEnvironment,
+        )
+
+        assertNull(navigator.previousAnswerPreview)
+    }
+
     private fun answer(id: Long) = Article(id = id, type = ArticleType.Answer)
+
+    private fun article(id: Long) = Article(id = id, type = ArticleType.Article)
 
     private object NoopEnvironment : ZhihuApiEnvironment {
         override fun httpClient(): HttpClient = error("not used")

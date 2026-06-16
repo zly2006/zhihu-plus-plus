@@ -20,13 +20,9 @@ package com.github.zly2006.zhihu.viewmodel.feed
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.ArticleType
-import com.github.zly2006.zhihu.navigation.QuestionAnswerNavigator
 import com.github.zly2006.zhihu.navigation.zhihuQuestionFeedsUrl
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.viewmodel.FeedDisplayEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
@@ -40,6 +36,9 @@ open class QuestionFeedViewModel(
     var sortOrder by mutableStateOf("default")
         private set
 
+    val nextAnswerNavigationUrl: String
+        get() = lastPaging?.next.orEmpty()
+
     override val initialUrl: String
         get() = zhihuQuestionFeedsUrl(questionId, limit = 20, order = sortOrder)
 
@@ -47,31 +46,6 @@ open class QuestionFeedViewModel(
         if (sortOrder != order) {
             sortOrder = order
         }
-    }
-
-    fun createAnswerNavigatorFor(
-        item: FeedDisplayItem,
-        environment: ZhihuApiEnvironment,
-    ): QuestionAnswerNavigator? {
-        val destination = item.navDestination as? Article ?: return null
-        if (destination.type != ArticleType.Answer) return null
-
-        val index = displayItems.indexOfFirst { it.stableKey == item.stableKey }
-        if (index < 0) return null
-
-        return QuestionAnswerNavigator(
-            questionId = questionId,
-            initialNextAnswers = displayItems
-                .drop(index + 1)
-                .mapNotNull { it.navDestination as? Article },
-            initialPreviousAnswers = displayItems
-                .take(index)
-                .asReversed()
-                .mapNotNull { it.navDestination as? Article },
-            initialNextUrl = lastPaging?.next.orEmpty(),
-            order = sortOrder,
-            environment = environment,
-        )
     }
 
     override fun createDisplayItem(environment: FeedDisplayEnvironment, feed: Feed): FeedDisplayItem {

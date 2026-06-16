@@ -75,8 +75,11 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.data.decodeQuestionContentDetail
+import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.navigation.QuestionAnswerNavigator
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
@@ -485,10 +488,24 @@ fun QuestionScreen(
                     modifier = Modifier.testTag("question_feed_item_${item.stableKey}"),
                 ) {
                     val dest = navDestination
-                    answerSwitchState?.pendingNavigator = viewModel.createAnswerNavigatorFor(
-                        item = item,
-                        environment = paginationEnvironment,
-                    )
+                    if (dest is Article && dest.type == ArticleType.Answer) {
+                        val index = viewModel.displayItems.indexOfFirst { it.stableKey == item.stableKey }
+                        if (index >= 0) {
+                            answerSwitchState?.pendingNavigator = QuestionAnswerNavigator(
+                                questionId = question.questionId,
+                                initialNextAnswers = viewModel.displayItems
+                                    .drop(index + 1)
+                                    .mapNotNull { it.navDestination as? Article },
+                                initialPreviousAnswers = viewModel.displayItems
+                                    .take(index)
+                                    .asReversed()
+                                    .mapNotNull { it.navDestination as? Article },
+                                initialNextUrl = viewModel.nextAnswerNavigationUrl,
+                                order = viewModel.sortOrder,
+                                environment = paginationEnvironment,
+                            )
+                        }
+                    }
                     dest?.let { navigator.onNavigate(it) }
                 }
             }
