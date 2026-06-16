@@ -57,10 +57,13 @@ sealed interface Feed {
     private object LegacyAuthorSerCompat : KSerializer<Person?> {
         override val descriptor: SerialDescriptor = Person.serializer().descriptor.nullable
 
+        @OptIn(ExperimentalSerializationApi::class)
         override fun serialize(
             encoder: Encoder,
             value: Person?,
-        ) = Unit
+        ) {
+            encoder.encodeNullableSerializableValue(Person.serializer(), value)
+        }
 
         override fun deserialize(decoder: Decoder) = try {
             Person.serializer().deserialize(decoder)

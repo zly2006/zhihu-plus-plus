@@ -199,9 +199,10 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
         }
     }
 
-    LaunchedEffect(viewModel.displayItems.size) {
-        encodeHomeFeedStartupSnapshot(viewModel.displayItems)?.let { snapshot ->
-            settings.putString(HOME_FEED_STARTUP_SNAPSHOT_PREFERENCE_KEY, snapshot)
+    val cacheableDisplayItems = viewModel.displayItems.toList()
+    LaunchedEffect(cacheableDisplayItems) {
+        if (cacheableDisplayItems.isNotEmpty()) {
+            runtime.writeHomeFeedStartupCache(cacheableDisplayItems)
         }
     }
 
@@ -215,11 +216,11 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
             val cachedItems = if (autoRefreshOnStartup) {
                 emptyList()
             } else {
-                decodeHomeFeedStartupSnapshot(settings.getStringOrNull(HOME_FEED_STARTUP_SNAPSHOT_PREFERENCE_KEY))
+                runtime.readHomeFeedStartupCache()
             }
-            if (cachedItems.isNotEmpty()) {
+            if (viewModel.displayItems.isEmpty() && cachedItems.isNotEmpty()) {
                 viewModel.addDisplayItems(cachedItems)
-            } else {
+            } else if (viewModel.displayItems.isEmpty()) {
                 // 只在第一次加载时刷新，这样可以避免在返回时刷新
                 viewModel.refresh(paginationEnvironment)
             }

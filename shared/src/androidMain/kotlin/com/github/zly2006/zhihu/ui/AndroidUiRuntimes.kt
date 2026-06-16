@@ -302,6 +302,9 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
         RecommendationMode.MIXED -> viewModel<MixedHomeFeedViewModel>()
     }
     val localHomeViewModel = viewModel as? LocalHomeFeedViewModel
+    val startupCacheFile = remember(context) {
+        File(context.filesDir, HOME_FEED_STARTUP_CACHE_FILE_NAME)
+    }
     val installTime = remember {
         try {
             context.packageManager.getPackageInfo(context.packageName, 0).firstInstallTime
@@ -338,6 +341,23 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
                 true
             } else {
                 false
+            }
+        },
+        readHomeFeedStartupCache = {
+            withContext(Dispatchers.IO) {
+                if (startupCacheFile.exists()) {
+                    decodeHomeFeedStartupSnapshot(startupCacheFile.readText())
+                } else {
+                    emptyList()
+                }
+            }
+        },
+        writeHomeFeedStartupCache = { items ->
+            withContext(Dispatchers.IO) {
+                val serialized = encodeHomeFeedStartupSnapshot(items)
+                if (serialized != null) {
+                    startupCacheFile.writeText(serialized)
+                }
             }
         },
     )

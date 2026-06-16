@@ -41,6 +41,7 @@ import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopLoginRequests
 import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
+import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDataFile
 import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
 import com.github.zly2006.zhihu.shared.desktop.saveImageToDownloads
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
@@ -261,6 +262,7 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
         RecommendationMode.WEB -> viewModel<HomeFeedViewModel>(factory = JvmViewModelFactory)
     }
     val localHomeViewModel = viewModel as? LocalHomeFeedViewModel
+    val startupCacheFile = remember { desktopZhihuDataFile(HOME_FEED_STARTUP_CACHE_FILE_NAME) }
     val updateAnnouncement = (updateState as? SystemUpdateState.UpdateAvailable)?.let {
         HomeUpdateAnnouncement(
             version = it.version,
@@ -289,6 +291,24 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
                 true
             } else {
                 false
+            }
+        },
+        readHomeFeedStartupCache = {
+            withContext(Dispatchers.IO) {
+                if (startupCacheFile.exists()) {
+                    decodeHomeFeedStartupSnapshot(startupCacheFile.readText())
+                } else {
+                    emptyList()
+                }
+            }
+        },
+        writeHomeFeedStartupCache = { items ->
+            withContext(Dispatchers.IO) {
+                val serialized = encodeHomeFeedStartupSnapshot(items)
+                if (serialized != null) {
+                    startupCacheFile.parentFile?.mkdirs()
+                    startupCacheFile.writeText(serialized)
+                }
             }
         },
     )
