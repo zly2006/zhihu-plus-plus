@@ -88,6 +88,7 @@ private const val QR_SCAN_RESULT_EXTRA = "scan_result"
 @Composable
 actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
     val context = LocalContext.current
+    val requestMainTabSelection = LocalMainTabSelectionRequester.current
     val accountDataState = AccountData.asState()
     val scanActivityLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult(),
@@ -125,6 +126,7 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
         },
         logout = { AccountData.delete(context) },
         appVersionInfo = { context.zhihuVersionInfo() },
+        selectMainTab = { destination -> requestMainTabSelection?.invoke(destination) },
     )
 }
 

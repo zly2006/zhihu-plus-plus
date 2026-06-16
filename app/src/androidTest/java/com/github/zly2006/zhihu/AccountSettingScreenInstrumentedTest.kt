@@ -20,6 +20,7 @@ package com.github.zly2006.zhihu
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -36,6 +37,7 @@ import com.github.zly2006.zhihu.navigation.Follow
 import com.github.zly2006.zhihu.navigation.Home
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.OnlineHistory
+import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.test.InstrumentedTestEnvironment
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
@@ -56,6 +58,7 @@ import com.github.zly2006.zhihu.ui.ACCOUNT_SETTINGS_SHORTCUT_NOTIFICATION_TAG
 import com.github.zly2006.zhihu.ui.ACCOUNT_SETTINGS_SYSTEM_TAG
 import com.github.zly2006.zhihu.ui.AccountSettingScreen
 import com.github.zly2006.zhihu.ui.AccountSettingsAccountState
+import com.github.zly2006.zhihu.ui.LocalMainTabSelectionRequester
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import io.ktor.http.HttpMethod
@@ -67,6 +70,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 import com.github.zly2006.zhihu.shared.data.Person as AccountPerson
 
 @RunWith(AndroidJUnit4::class)
@@ -160,8 +164,10 @@ class AccountSettingScreenInstrumentedTest {
         // 2. The favorites shortcut should navigate to the seeded Collections destination and must
         //    not close the surrounding account surface.
         // 3. The notification and history shortcuts represent overlay-style exits from the account
-        //    surface, so each one must call onDismissRequest exactly once. History opens the
-        //    OnlineHistory route directly because the bottom-bar history tab can be hidden.
+        //    surface, so each one must call onDismissRequest exactly once.
+        // 4. The history shortcut must request MainTabs to select the hidden top-level history
+        //    page instead of pushing an isolated route. The shell behavior itself is covered by
+        //    ZhihuMainNavigationInstrumentedTest.
         preferences
             .edit()
             .putBoolean("duo3_home_account", true)
@@ -188,11 +194,13 @@ class AccountSettingScreenInstrumentedTest {
                 }
                 """.trimIndent(),
         )
+        val requestedMainTab = AtomicReference<TopLevelDestination?>(null)
         val dismissCount = AtomicInteger(0)
         val navigator = showScreen(
             unreadCount = 7,
             onDismissRequest = { dismissCount.incrementAndGet() },
             refreshAccountProfileOnEnter = true,
+            onSelectMainTab = { destination -> requestedMainTab.set(destination) },
         )
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
@@ -220,18 +228,20 @@ class AccountSettingScreenInstrumentedTest {
 
         composeRule.onNodeWithTag(ACCOUNT_SETTINGS_SHORTCUT_HISTORY_TAG).performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) {
-            navigator.destinations.size == 3 && dismissCount.get() == 2
+            navigator.destinations.size == 2 &&
+                dismissCount.get() == 2 &&
+                requestedMainTab.get() == OnlineHistory
         }
 
         assertEquals(
             listOf(
                 Collections(SEEDED_ACCOUNT_URL_TOKEN),
                 Notification,
-                OnlineHistory,
             ),
             navigator.destinations,
         )
         assertEquals(2, dismissCount.get())
+        assertEquals(OnlineHistory, requestedMainTab.get())
     }
 
     @Test
@@ -261,14 +271,17 @@ class AccountSettingScreenInstrumentedTest {
         onDismissRequest: () -> Unit = {},
         refreshAccountProfileOnEnter: Boolean = false,
         testAccountData: AccountSettingsAccountState? = null,
+        onSelectMainTab: (TopLevelDestination) -> Unit = {},
     ): RecordingNavigator = composeRule.setScreenContent {
-        AccountSettingScreen(
-            innerPadding = PaddingValues(),
-            unreadCount = unreadCount,
-            onDismissRequest = onDismissRequest,
-            refreshAccountProfileOnEnter = refreshAccountProfileOnEnter,
-            testAccountData = testAccountData,
-        )
+        CompositionLocalProvider(LocalMainTabSelectionRequester provides onSelectMainTab) {
+            AccountSettingScreen(
+                innerPadding = PaddingValues(),
+                unreadCount = unreadCount,
+                onDismissRequest = onDismissRequest,
+                refreshAccountProfileOnEnter = refreshAccountProfileOnEnter,
+                testAccountData = testAccountData,
+            )
+        }
     }
 
     private fun seededLoggedInAccountData(): AccountData.Data = AccountData.Data(

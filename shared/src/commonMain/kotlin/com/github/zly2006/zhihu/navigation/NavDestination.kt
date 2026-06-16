@@ -28,8 +28,8 @@ sealed interface NavDestination
 /**
  * 底部栏和主 pager 使用的 tab 目标。
  *
- * 为了兼容旧调用，tab 目标仍可能同时是历史遗留的 [NavDestination] 值。需要进入主壳时应使用 [MainTabs]，
- * 再由主壳选择对应 tab。
+ * 顶层目标只表达“主壳应该切到哪个 tab”，不表达“主 NavHost 里要 push 哪个独立页面”。
+ * 即使某个 tab 当前被底部栏隐藏，也应由 [MainTabs] 决定是否临时纳入主 pager，而不是单独注册一个同名 route。
  */
 interface TopLevelDestination {
     val name: String
@@ -90,9 +90,12 @@ data object History : NavDestination, TopLevelDestination {
 
 /**
  * 主 pager 的历史顶层 tab 目标。
+ *
+ * 账号页等入口需要跳到浏览历史时，应让 [MainTabs] 选中这个顶层目标。即使底部栏暂时隐藏“历史”，
+ * 也不能把它补成主 NavHost 的独立页面 route。
  */
 @Serializable
-data object OnlineHistory : NavDestination, TopLevelDestination {
+data object OnlineHistory : TopLevelDestination {
     override val name: String
         get() = "OnlineHistory"
 }

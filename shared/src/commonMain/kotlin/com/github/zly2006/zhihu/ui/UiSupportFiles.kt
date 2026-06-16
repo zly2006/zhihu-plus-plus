@@ -28,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
@@ -568,10 +569,18 @@ fun rememberZhihuMainPreferenceState(
 ): ZhihuMainPreferenceState = remember { ZhihuMainPreferenceState(readSnapshot) }
 
 /**
+ * 主壳向子页面暴露的顶层 tab 选择入口。
+ *
+ * 子页面只能请求主壳切换顶层目标，不能把旧顶层 tab 重新包装成独立 route 压入返回栈。
+ */
+val LocalMainTabSelectionRequester = staticCompositionLocalOf<((TopLevelDestination) -> Unit)?> { null }
+
+/**
  * 当前平台注入 [ZhihuMain] 的导航回调。
  *
  * common UI 的所有点击都通过这个对象发起导航。平台代码负责把旧的顶层目的地映射到
  * [com.github.zly2006.zhihu.navigation.MainTabs]、记录内容打开来源，并处理视频这类平台专用目标。
+ * 顶层目标即使当前被底部栏隐藏，也只能在主壳里消费，不能额外注册成同名独立页面。
  */
 data class ZhihuMainNavigationState(
     val mainTabNavigationTarget: TopLevelDestination?,
@@ -592,7 +601,8 @@ data class AccountSettingsAccountState(
  * 账号设置页消费的平台与账号服务。
  *
  * composable 自己负责视觉层级：资料头部、快捷入口、设置入口和关于/许可证区域。登录、扫码、退出、版本信息和主 tab 选择仍由平台注入，
- * 这样同一套账号 UI 可以运行在 Android、Desktop、预览和测试中。
+ * 这样同一套账号 UI 可以运行在 Android、Desktop、预览和测试中。这里的 [selectMainTab] 只请求 [MainTabs]
+ * 在主壳里切换顶层目标，不意味着去 push 一个独立 route。
  */
 data class AccountSettingsRuntime(
     val accountState: State<AccountSettingsAccountState>,
@@ -601,6 +611,7 @@ data class AccountSettingsRuntime(
     val requestQrLoginScan: () -> Unit,
     val logout: () -> Unit,
     val appVersionInfo: () -> String,
+    val selectMainTab: (TopLevelDestination) -> Unit,
 )
 
 @Composable

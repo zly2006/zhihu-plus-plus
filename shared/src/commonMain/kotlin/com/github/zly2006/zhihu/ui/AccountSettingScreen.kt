@@ -366,7 +366,7 @@ fun AccountSettingScreen(
                                     .background(MaterialTheme.colorScheme.primaryContainer)
                                     .clickable {
                                         onDismissRequest()
-                                        navigator.onNavigate(OnlineHistory)
+                                        runtime.selectMainTab(OnlineHistory)
                                     }.padding(8.dp, 16.dp),
                                 verticalArrangement = Arrangement.Center,
                                 horizontalAlignment = Alignment.CenterHorizontally,

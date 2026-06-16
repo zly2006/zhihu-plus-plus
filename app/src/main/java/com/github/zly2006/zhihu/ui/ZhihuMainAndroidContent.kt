@@ -28,6 +28,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModelProvider
@@ -48,13 +49,15 @@ import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 @Composable
 fun AndroidZhihuMain(navController: NavHostController) {
     val activity = LocalActivity.current as MainActivity
-    ZhihuMain(
-        navController = navController,
-        navigationState = rememberAndroidZhihuMainNavigationState(),
-        preferenceState = rememberAndroidZhihuMainPreferenceState(),
-        isDarkTheme = com.github.zly2006.zhihu.theme.ThemeManager.isDarkTheme,
-        platformAdapter = androidZhihuMainPlatformAdapter(activity),
-    )
+    CompositionLocalProvider(LocalMainTabSelectionRequester provides activity::navigateMainTab) {
+        ZhihuMain(
+            navController = navController,
+            navigationState = rememberAndroidZhihuMainNavigationState(),
+            preferenceState = rememberAndroidZhihuMainPreferenceState(),
+            isDarkTheme = com.github.zly2006.zhihu.theme.ThemeManager.isDarkTheme,
+            platformAdapter = androidZhihuMainPlatformAdapter(activity),
+        )
+    }
 }
 
 private fun androidZhihuMainPlatformAdapter(activity: MainActivity) = ZhihuMainPlatformAdapter(

@@ -570,6 +570,12 @@ class MainActivity :
         }
     }
 
+    /**
+     * 请求主壳在 [MainTabs] 内切换顶层目标。
+     *
+     * 这里更新的是壳层 tab 选择状态，不是把目标补成新的独立 route；目标若当前被底部栏隐藏，
+     * 也应继续由 [com.github.zly2006.zhihu.ui.ZhihuMain] 决定如何在主 pager 中承载。
+     */
     fun navigateMainTab(destination: TopLevelDestination) {
         mainTabNavigationTarget = destination
         navigateToMainTabs()

@@ -356,6 +356,7 @@ private fun chooseBlocklistImportFile(): File? {
 actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
     val store = remember { DesktopAccountStore() }
     val accountState = remember { mutableStateOf(store.load().toAccountSettingsAccountState()) }
+    val requestMainTabSelection = LocalMainTabSelectionRequester.current
     return AccountSettingsRuntime(
         accountState = accountState,
         refreshProfile = {
@@ -380,6 +381,7 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
             accountState.value = AccountSettingsAccountState()
         },
         appVersionInfo = { "desktop" },
+        selectMainTab = { destination -> requestMainTabSelection?.invoke(destination) },
     )
 }
 
