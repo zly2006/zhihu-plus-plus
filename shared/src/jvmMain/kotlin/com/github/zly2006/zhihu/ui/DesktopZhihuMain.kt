@@ -165,7 +165,6 @@ fun DesktopZhihuMain() {
                 }
             }
             MainTabs -> {
-                mainTabNavigationTarget = Home
                 navigateToMainTabs()
             }
             else -> {

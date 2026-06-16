@@ -65,6 +65,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -117,6 +118,7 @@ import com.github.zly2006.zhihu.ui.subscreens.ContentFilterSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.DeveloperSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.OpenSourceLicensesScreen
 import com.github.zly2006.zhihu.ui.subscreens.SystemAndUpdateSettingsScreen
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.reflect.KClass
 import kotlin.reflect.typeOf
@@ -334,9 +336,21 @@ fun ZhihuMain(
         mainTabNavigationTarget?.let { destination ->
             // 平台适配层会把旧的顶层 route 请求映射到 MainTabs。这里消费该请求，
             // 让 deeplink 等调用方仍能选中 Home/Follow 等 tab，而不是把旧 route 压入返回栈。
-            pageIndexForBottomDestination(destination)?.let { targetPage ->
-                mainPagerState.scrollToPage(targetPage)
+            val targetPage = pageIndexForBottomDestination(destination) ?: return@let
+            mainPagerState.scrollToPage(targetPage)
+            snapshotFlow {
+                Triple(
+                    mainPagerState.currentPage,
+                    currentMainTabPage()?.bottomDestination?.let { it::class },
+                    mainPagerState.isScrollInProgress,
+                )
+            }.first { (currentPage, settledDestinationClass, isScrollInProgress) ->
+                currentPage == targetPage &&
+                    settledDestinationClass == destination::class &&
+                    !isScrollInProgress
             }
+            currentMainTabDestination = destination
+            navigationState.setCurrentMainTabOpenFrom(destination.openFrom)
             navigationState.consumeMainTabNavigationTarget(destination)
         }
     }

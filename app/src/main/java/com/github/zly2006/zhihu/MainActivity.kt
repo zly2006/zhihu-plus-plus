@@ -54,7 +54,6 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionContent
 import com.github.zly2006.zhihu.navigation.History
-import com.github.zly2006.zhihu.navigation.Home
 import com.github.zly2006.zhihu.navigation.MainTabs
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Notification
@@ -516,7 +515,6 @@ class MainActivity :
             return
         }
         if (route == MainTabs) {
-            mainTabNavigationTarget = Home
             navigateToMainTabs()
             return
         }
