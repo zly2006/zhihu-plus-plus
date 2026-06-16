@@ -256,8 +256,10 @@ actual fun rememberHomeFeedStartupCache(recommendationMode: RecommendationMode):
                 withContext(Dispatchers.IO) {
                     val serialized = encodeHomeFeedStartupSnapshot(items)
                     if (serialized != null) {
-                        startupCacheFile.parentFile?.mkdirs()
-                        startupCacheFile.writeText(serialized)
+                        runCatching {
+                            startupCacheFile.parentFile?.mkdirs()
+                            startupCacheFile.writeText(serialized)
+                        }
                     }
                 }
             },

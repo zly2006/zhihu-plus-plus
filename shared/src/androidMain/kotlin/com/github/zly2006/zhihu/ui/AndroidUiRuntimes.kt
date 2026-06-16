@@ -392,7 +392,9 @@ actual fun rememberHomeFeedStartupCache(recommendationMode: RecommendationMode):
                 withContext(Dispatchers.IO) {
                     val serialized = encodeHomeFeedStartupSnapshot(items)
                     if (serialized != null) {
-                        startupCacheFile.writeText(serialized)
+                        runCatching {
+                            startupCacheFile.writeText(serialized)
+                        }
                     }
                 }
             },
