@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
+import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.account.IosAccountStore
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
@@ -132,6 +133,15 @@ actual fun rememberHomeLoginRequester(): () -> Unit {
         { userMessages.showMessage("iOS 登录暂未实现") } // TODO: iOS 登录
     }
 }
+
+@Composable
+actual fun rememberHomeFeedStartupCache(recommendationMode: RecommendationMode): HomeFeedStartupCache =
+    remember(recommendationMode) {
+        HomeFeedStartupCache(
+            readHomeFeedStartupCache = { emptyList() }, // TODO: iOS 首页缓存
+            writeHomeFeedStartupCache = { }, // TODO: iOS 首页缓存
+        )
+    }
 
 @Composable
 actual fun rememberAccountSettingsAccountState(): androidx.compose.runtime.State<AccountSettingsAccountState> =

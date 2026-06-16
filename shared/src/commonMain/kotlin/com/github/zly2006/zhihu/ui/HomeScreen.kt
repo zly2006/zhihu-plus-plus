@@ -199,6 +199,7 @@ fun HomeScreen(
         RecommendationMode.entries.find {
             it.key == settings.getString("recommendationMode", RecommendationMode.MIXED.key)
         } ?: RecommendationMode.MIXED
+    val startupCache = rememberHomeFeedStartupCache(currentRecommendationMode)
 
     val account = rememberHomeAccountState()
     val updateAnnouncement = rememberHomeUpdateAnnouncement()
@@ -267,9 +268,10 @@ fun HomeScreen(
         }
     }
 
-    LaunchedEffect(viewModel.displayItems.size) {
-        encodeHomeFeedStartupSnapshot(viewModel.displayItems)?.let { snapshot ->
-            settings.putString(HOME_FEED_STARTUP_SNAPSHOT_PREFERENCE_KEY, snapshot)
+    val cacheableDisplayItems = viewModel.displayItems.toList()
+    LaunchedEffect(cacheableDisplayItems) {
+        if (cacheableDisplayItems.isNotEmpty()) {
+            startupCache.writeHomeFeedStartupCache(cacheableDisplayItems)
         }
     }
 
@@ -283,11 +285,11 @@ fun HomeScreen(
             val cachedItems = if (autoRefreshOnStartup) {
                 emptyList()
             } else {
-                decodeHomeFeedStartupSnapshot(settings.getStringOrNull(HOME_FEED_STARTUP_SNAPSHOT_PREFERENCE_KEY))
+                startupCache.readHomeFeedStartupCache()
             }
-            if (cachedItems.isNotEmpty()) {
+            if (viewModel.displayItems.isEmpty() && cachedItems.isNotEmpty()) {
                 viewModel.addDisplayItems(cachedItems)
-            } else {
+            } else if (viewModel.displayItems.isEmpty()) {
                 // 只在第一次加载时刷新，这样可以避免在返回时刷新
                 viewModel.refresh(paginationEnvironment)
             }

@@ -44,6 +44,8 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.asApiEnvironment
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
+import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.data.ZHIHU_ME_URL
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
@@ -361,6 +363,35 @@ actual fun rememberHomeLoginRequester(): () -> Unit {
             val intent = Intent().setClassName(context.packageName, "com.github.zly2006.zhihu.LoginActivity")
             context.startActivity(intent)
         }
+    }
+}
+
+@Composable
+actual fun rememberHomeFeedStartupCache(recommendationMode: RecommendationMode): HomeFeedStartupCache {
+    val context = LocalContext.current
+    val startupCacheFile = remember(context) {
+        File(context.filesDir, HOME_FEED_STARTUP_CACHE_FILE_NAME)
+    }
+    return remember(startupCacheFile) {
+        HomeFeedStartupCache(
+            readHomeFeedStartupCache = {
+                withContext(Dispatchers.IO) {
+                    if (startupCacheFile.exists()) {
+                        decodeHomeFeedStartupSnapshot(startupCacheFile.readText())
+                    } else {
+                        emptyList()
+                    }
+                }
+            },
+            writeHomeFeedStartupCache = { items: List<FeedDisplayItem> ->
+                withContext(Dispatchers.IO) {
+                    val serialized = encodeHomeFeedStartupSnapshot(items)
+                    if (serialized != null) {
+                        startupCacheFile.writeText(serialized)
+                    }
+                }
+            },
+        )
     }
 }
 

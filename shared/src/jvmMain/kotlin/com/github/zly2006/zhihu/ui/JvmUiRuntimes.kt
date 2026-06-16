@@ -36,7 +36,10 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopLoginRequests
+import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDataFile
 import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
+import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
@@ -229,6 +232,35 @@ actual fun rememberHomeUpdateAnnouncement(): HomeUpdateAnnouncement? {
         HomeUpdateAnnouncement(
             version = it.version,
             isNightly = it.isNightly,
+        )
+    }
+}
+
+@Composable
+actual fun rememberHomeFeedStartupCache(recommendationMode: RecommendationMode): HomeFeedStartupCache {
+    val startupCacheFile = remember {
+        desktopZhihuDataFile(HOME_FEED_STARTUP_CACHE_FILE_NAME)
+    }
+    return remember(startupCacheFile) {
+        HomeFeedStartupCache(
+            readHomeFeedStartupCache = {
+                withContext(Dispatchers.IO) {
+                    if (startupCacheFile.exists()) {
+                        decodeHomeFeedStartupSnapshot(startupCacheFile.readText())
+                    } else {
+                        emptyList()
+                    }
+                }
+            },
+            writeHomeFeedStartupCache = { items: List<FeedDisplayItem> ->
+                withContext(Dispatchers.IO) {
+                    val serialized = encodeHomeFeedStartupSnapshot(items)
+                    if (serialized != null) {
+                        startupCacheFile.parentFile?.mkdirs()
+                        startupCacheFile.writeText(serialized)
+                    }
+                }
+            },
         )
     }
 }

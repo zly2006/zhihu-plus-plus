@@ -17,51 +17,22 @@
 
 package com.github.zly2006.zhihu.ui
 
-import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.SegmentInfoParagraph
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 
 const val AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY = "autoRefreshHomeOnStartup"
-const val HOME_FEED_STARTUP_SNAPSHOT_PREFERENCE_KEY = "homeFeedStartupSnapshot"
+const val HOME_FEED_STARTUP_CACHE_FILE_NAME = "home_feed_startup_cache.json"
 
-private const val HOME_FEED_STARTUP_SNAPSHOT_MAX_ITEMS = 80
-
-@Serializable
-private data class HomeFeedStartupSnapshot(
-    val items: List<HomeFeedStartupSnapshotItem>,
-)
-
-@Serializable
-private data class HomeFeedStartupSnapshotItem(
-    val title: String,
-    val summary: String?,
-    val details: String,
-    val navDestinationJson: String?,
-    val avatarSrc: String?,
-    val authorName: String?,
-    val authorBadgeV2: DataHolder.BadgeV2?,
-    val isFiltered: Boolean,
-    val content: String?,
-    val localContentId: String?,
-    val localFeedId: String?,
-    val localReason: String?,
-    val sourceLabel: String?,
-    val segmentInfos: List<SegmentInfoParagraph>,
-    val segmentSourceUrl: String?,
-)
+private const val HOME_FEED_STARTUP_SNAPSHOT_MAX_ITEMS = 10
 
 fun encodeHomeFeedStartupSnapshot(items: List<FeedDisplayItem>): String? {
-    val snapshotItems = items
-        .take(HOME_FEED_STARTUP_SNAPSHOT_MAX_ITEMS)
-        .map { it.toStartupSnapshotItem() }
+    val snapshotItems = items.take(HOME_FEED_STARTUP_SNAPSHOT_MAX_ITEMS)
     if (snapshotItems.isEmpty()) return null
 
     return runCatching {
-        ZhihuJson.json.encodeToString(HomeFeedStartupSnapshot(snapshotItems))
+        ZhihuJson.json.encodeToString(snapshotItems)
     }.getOrNull()
 }
 
@@ -71,46 +42,6 @@ fun decodeHomeFeedStartupSnapshot(serialized: String?): List<FeedDisplayItem> {
     return runCatching {
         ZhihuJson
             .json
-            .decodeFromString<HomeFeedStartupSnapshot>(serialized)
-            .items
-            .map { it.toDisplayItem() }
+            .decodeFromString<List<FeedDisplayItem>>(serialized)
     }.getOrDefault(emptyList())
 }
-
-private fun FeedDisplayItem.toStartupSnapshotItem(): HomeFeedStartupSnapshotItem = HomeFeedStartupSnapshotItem(
-    title = title,
-    summary = summary,
-    details = details,
-    navDestinationJson = navDestinationJson,
-    avatarSrc = avatarSrc,
-    authorName = authorName,
-    authorBadgeV2 = authorBadgeV2,
-    isFiltered = isFiltered,
-    content = content,
-    localContentId = localContentId,
-    localFeedId = localFeedId,
-    localReason = localReason,
-    sourceLabel = sourceLabel,
-    segmentInfos = segmentInfos,
-    segmentSourceUrl = segmentSourceUrl,
-)
-
-private fun HomeFeedStartupSnapshotItem.toDisplayItem(): FeedDisplayItem = FeedDisplayItem(
-    title = title,
-    summary = summary,
-    details = details,
-    feed = null,
-    navDestinationJson = navDestinationJson,
-    avatarSrc = avatarSrc,
-    authorName = authorName,
-    authorBadgeV2 = authorBadgeV2,
-    isFiltered = isFiltered,
-    content = content,
-    raw = null,
-    localContentId = localContentId,
-    localFeedId = localFeedId,
-    localReason = localReason,
-    sourceLabel = sourceLabel,
-    segmentInfos = segmentInfos,
-    segmentSourceUrl = segmentSourceUrl,
-)

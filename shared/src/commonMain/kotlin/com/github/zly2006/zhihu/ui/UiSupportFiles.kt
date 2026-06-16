@@ -42,6 +42,8 @@ import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.shared.platform.SettingsStore
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
@@ -546,6 +548,14 @@ data class HomeUpdateAnnouncement(
 
 @Composable
 expect fun rememberHomeAccountState(): HomeAccountState
+
+data class HomeFeedStartupCache(
+    val readHomeFeedStartupCache: suspend () -> List<FeedDisplayItem>,
+    val writeHomeFeedStartupCache: suspend (List<FeedDisplayItem>) -> Unit,
+)
+
+@Composable
+expect fun rememberHomeFeedStartupCache(recommendationMode: RecommendationMode): HomeFeedStartupCache
 
 @Composable
 expect fun rememberHomeUpdateAnnouncement(): HomeUpdateAnnouncement?
