@@ -89,6 +89,18 @@ class NavDestinationTest {
     }
 
     @Test
+    fun resolvesProtocolRelativeZhihuAdSourceFromCommonCode() {
+        val destination = resolveContent(
+            "https://www.zhihu.com/market/paid_column/example.html" +
+                "?source=//www.zhihu.com/appview/v2/answer/3309625617",
+        )
+
+        val article = assertIs<Article>(destination)
+        assertEquals(ArticleType.Answer, article.type)
+        assertEquals(3309625617L, article.id)
+    }
+
+    @Test
     fun resolvesZhihuRedirectTargetToAdSourceFromCommonCode() {
         val destination = resolveContent(
             "https://link.zhihu.com/?target=" +
