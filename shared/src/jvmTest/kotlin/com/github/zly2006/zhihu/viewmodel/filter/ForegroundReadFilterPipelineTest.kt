@@ -200,7 +200,7 @@ class ForegroundReadFilterPipelineTest {
             nowMillis = NOW,
         )
         fixture.database.contentOpenEventDao().insert(
-            opened(ContentType.QUESTION, "99", openedAt = NOW - DAY),
+            opened(ContentType.QUESTION, "99", questionId = 99, openedAt = NOW - DAY),
         )
 
         val result = fixture.pipeline().filter(listOf(answerFeedItem("same opened question", answerId = 11, questionId = 99)))
