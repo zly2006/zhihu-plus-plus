@@ -36,7 +36,6 @@ import com.github.zly2006.zhihu.navigation.Follow
 import com.github.zly2006.zhihu.navigation.Home
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.OnlineHistory
-import com.github.zly2006.zhihu.shared.data.Person as AccountPerson
 import com.github.zly2006.zhihu.test.InstrumentedTestEnvironment
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
@@ -69,6 +68,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import com.github.zly2006.zhihu.shared.data.Person as AccountPerson
 
 @RunWith(AndroidJUnit4::class)
 class AccountSettingScreenInstrumentedTest {
