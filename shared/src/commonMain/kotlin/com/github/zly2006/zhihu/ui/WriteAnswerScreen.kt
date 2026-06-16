@@ -21,18 +21,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -46,11 +44,11 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -60,17 +58,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.editor.compileMdToZhihuHtml
 import com.github.zly2006.zhihu.editor.rememberImagePickerLauncher
 import com.github.zly2006.zhihu.editor.rememberZhihuAnswerPublisher
@@ -84,6 +80,9 @@ import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberSystemUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.HttpStatusException
+import com.github.zly2006.zhihu.ui.components.MarkdownShortcutToolbar
+import com.github.zly2006.zhihu.ui.components.applyMarkdownShortcut
+import com.github.zly2006.zhihu.ui.components.insertTextAtSelection
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
 import kotlinx.coroutines.launch
@@ -101,7 +100,7 @@ fun WriteAnswerScreen(
     val userMessages = rememberUserMessageSink()
     val publisher = rememberZhihuAnswerPublisher()
     val coroutineScope = rememberCoroutineScope()
-    val scrollState = rememberScrollState()
+    val editorScrollState = androidx.compose.foundation.rememberScrollState()
     val openUrl = rememberSystemUrlOpener()
     val copyToClipboard = rememberPlainTextClipboard()
     val settings = rememberSettingsStore()
@@ -118,11 +117,72 @@ fun WriteAnswerScreen(
     var isUploadingImage by remember { mutableStateOf(false) }
     var errorDialogMessage by remember { mutableStateOf<String?>(null) }
     var showSettingsSheet by remember { mutableStateOf(false) }
-    var isQuestionDetailExpanded by rememberSaveable(destination.questionId) { mutableStateOf(false) }
     val settingsSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val questionTitle = destination.questionTitle.ifBlank { "写回答" }
-    val questionDetail = remember(destination.questionDetail) {
-        destination.questionDetail.toQuestionDetailPlainText()
+
+    suspend fun ensureAnswerId(): Long? {
+        val cached = existingAnswerId
+        if (cached != null) return cached
+        val answerId = publisher.findMyAnswerId(destination.questionId)
+        existingAnswerId = answerId
+        return answerId
+    }
+
+    suspend fun compileHtml(): String =
+        compileMdToZhihuHtml(
+            markdown = content.text,
+            publisher = publisher,
+            useZhihuHeadings = useZhihuHeadings,
+        )
+
+    fun submit(publish: Boolean) {
+        if (!publisher.isSupported) return
+        if (content.text.isBlank()) {
+            userMessages.showShortMessage("内容为空")
+            return
+        }
+        if (isSubmitting) return
+        isSubmitting = true
+        coroutineScope.launch {
+            if (publish) {
+                runCatching {
+                    val html = compileHtml()
+                    val answerId = ensureAnswerId()
+                    publisher.patchDraft(
+                        questionId = destination.questionId,
+                        answerId = answerId,
+                        html = html,
+                        tocEnabled = tocEnabled,
+                    )
+                    publisher.publishAnswer(
+                        questionId = destination.questionId,
+                        answerId = answerId,
+                        html = html,
+                        tocEnabled = tocEnabled,
+                    )
+                }.onSuccess { resultAnswerId ->
+                    userMessages.showShortMessage("发布成功")
+                    navigator.onNavigate(Article(type = ArticleType.Answer, id = resultAnswerId))
+                }.onFailure { e ->
+                    errorDialogMessage = buildErrorDialogMessage("发布失败", e)
+                }
+            } else {
+                runCatching {
+                    val html = compileHtml()
+                    val answerId = ensureAnswerId()
+                    publisher.patchDraft(
+                        questionId = destination.questionId,
+                        answerId = answerId,
+                        html = html,
+                        tocEnabled = tocEnabled,
+                    )
+                }.onSuccess {
+                    userMessages.showShortMessage("已保存草稿")
+                }.onFailure { e ->
+                    errorDialogMessage = buildErrorDialogMessage("保存草稿失败", e)
+                }
+            }
+            isSubmitting = false
+        }
     }
 
     val launchImagePicker = rememberImagePickerLauncher { picked ->
@@ -150,7 +210,7 @@ fun WriteAnswerScreen(
                 }
                 val alt = picked.fileName?.substringBeforeLast('.')?.takeIf { it.isNotBlank() } ?: "image"
                 val snippet = "![$alt](${uploaded.url} \"$title\")"
-                content = insertTextAtSelection(content, snippet)
+                content = content.insertTextAtSelection(snippet)
                 userMessages.showShortMessage("图片已插入")
             }.onFailure { e ->
                 errorDialogMessage = buildErrorDialogMessage("插入图片失败", e)
@@ -189,7 +249,13 @@ fun WriteAnswerScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text("写回答")
+                    Text(
+                        text =
+                            when {
+                                isDetecting || isLoadingExistingAnswer -> "正在检测已有回答"
+                                else -> "编辑已有回答"
+                            },
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = navigator.onNavigateBack) {
@@ -205,43 +271,7 @@ fun WriteAnswerScreen(
                     }
                     Button(
                         onClick = {
-                            if (!publisher.isSupported) return@Button
-                            if (content.text.isBlank()) {
-                                userMessages.showShortMessage("内容为空")
-                                return@Button
-                            }
-                            if (isSubmitting) return@Button
-                            isSubmitting = true
-                            coroutineScope.launch {
-                                runCatching {
-                                    val html = compileMdToZhihuHtml(
-                                        markdown = content.text,
-                                        publisher = publisher,
-                                        useZhihuHeadings = useZhihuHeadings,
-                                    )
-                                    val answerId = existingAnswerId
-                                        ?: publisher.findMyAnswerId(destination.questionId)
-
-                                    publisher.patchDraft(
-                                        questionId = destination.questionId,
-                                        answerId = answerId,
-                                        html = html,
-                                        tocEnabled = tocEnabled,
-                                    )
-                                    publisher.publishAnswer(
-                                        questionId = destination.questionId,
-                                        answerId = answerId,
-                                        html = html,
-                                        tocEnabled = tocEnabled,
-                                    )
-                                }.onSuccess { publishedAnswerId ->
-                                    userMessages.showShortMessage("发布成功")
-                                    navigator.onNavigate(Article(type = ArticleType.Answer, id = publishedAnswerId))
-                                }.onFailure { e ->
-                                    errorDialogMessage = buildErrorDialogMessage("发布失败", e)
-                                }
-                                isSubmitting = false
-                            }
+                            submit(publish = true)
                         },
                         enabled = publisher.isSupported && !isSubmitting,
                     ) {
@@ -257,184 +287,121 @@ fun WriteAnswerScreen(
                 },
             )
         },
+        floatingActionButton = {
+            if (publisher.isSupported) {
+                val imageEnabled = launchImagePicker != null && !isSubmitting && !isUploadingImage
+                val saveEnabled = !isSubmitting
+                Column(
+                    modifier =
+                        Modifier
+                            .imePadding()
+                            .padding(bottom = 72.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalAlignment = Alignment.End,
+                ) {
+                    if (launchImagePicker != null) {
+                        FloatingActionButton(
+                            onClick = { if (imageEnabled) launchImagePicker() },
+                            containerColor =
+                                if (imageEnabled) {
+                                    MaterialTheme.colorScheme.primaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceVariant
+                                },
+                            contentColor =
+                                if (imageEnabled) {
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                            modifier = Modifier.testTag("WriteAnswerFabImage"),
+                        ) {
+                            Icon(Icons.Filled.Image, contentDescription = "插入图片")
+                        }
+                    }
+                    FloatingActionButton(
+                        onClick = { if (saveEnabled) submit(publish = false) },
+                        containerColor =
+                            if (saveEnabled) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant
+                            },
+                        contentColor =
+                            if (saveEnabled) {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        modifier = Modifier.testTag("WriteAnswerFabSave"),
+                    ) {
+                        Icon(Icons.Filled.Save, contentDescription = "保存草稿")
+                    }
+                }
+            }
+        },
     ) { innerPadding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
                 .background(MaterialTheme.colorScheme.background)
-                .padding(horizontal = 16.dp)
                 .imePadding()
-                .verticalScroll(scrollState),
+                .padding(horizontal = 16.dp),
         ) {
-            Spacer(Modifier.height(12.dp))
-
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.surfaceContainerLow,
-                shape = MaterialTheme.shapes.large,
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    Text(
-                        text = questionTitle,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    if (questionDetail.isNotBlank()) {
-                        FilledTonalButton(
-                            onClick = { isQuestionDetailExpanded = !isQuestionDetailExpanded },
-                            enabled = !isSubmitting,
-                        ) {
-                            Text(if (isQuestionDetailExpanded) "收起详情" else "展开详情")
-                        }
-                        if (isQuestionDetailExpanded) {
-                            Text(
-                                text = questionDetail,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(12.dp))
-
             if (!publisher.isSupported) {
                 Text(
                     text = "当前平台暂不支持发布/编辑回答",
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 16.dp),
                 )
             } else {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.surfaceContainerLow,
-                    shape = MaterialTheme.shapes.large,
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (isDetecting || isLoadingExistingAnswer) {
-                                CircularProgressIndicator(
-                                    strokeWidth = 2.dp,
-                                    modifier = Modifier.size(16.dp),
+                BasicTextField(
+                    value = content,
+                    onValueChange = { newValue -> content = newValue },
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .testTag(WRITE_ANSWER_CONTENT_TAG),
+                    enabled = !isSubmitting,
+                    textStyle =
+                        TextStyle(
+                            color = MaterialTheme.colorScheme.onBackground,
+                            fontSize = 17.sp,
+                            lineHeight = 26.sp,
+                        ),
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                    decorationBox = { innerTextField ->
+                        Box(
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+                                    .verticalScroll(editorScrollState)
+                                    .padding(top = 16.dp, bottom = 160.dp),
+                        ) {
+                            if (content.text.isEmpty()) {
+                                Text(
+                                    text = "请输入图文回答内容……",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
-                                Spacer(Modifier.width(8.dp))
                             }
-                            Text(
-                                text = when {
-                                    isDetecting -> "正在检测已发布回答…"
-                                    isLoadingExistingAnswer -> "正在加载内容…"
-                                    existingAnswerId != null -> "编辑已有回答"
-                                    else -> "发布新回答"
-                                },
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                            innerTextField()
                         }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            if (launchImagePicker != null) {
-                                FilledTonalButton(
-                                    onClick = launchImagePicker,
-                                    enabled = publisher.isSupported && !isSubmitting && !isUploadingImage,
-                                ) {
-                                    Icon(Icons.Filled.Image, contentDescription = "插入图片")
-                                    Spacer(Modifier.width(6.dp))
-                                    Text(if (isUploadingImage) "上传中…" else "图片")
-                                }
-                            }
-                            FilledTonalButton(
-                                onClick = {
-                                    if (!publisher.isSupported) return@FilledTonalButton
-                                    if (content.text.isBlank()) {
-                                        userMessages.showShortMessage("内容为空")
-                                        return@FilledTonalButton
-                                    }
-                                    if (isSubmitting) return@FilledTonalButton
-                                    isSubmitting = true
-                                    coroutineScope.launch {
-                                        runCatching {
-                                            val html = compileMdToZhihuHtml(
-                                                markdown = content.text,
-                                                publisher = publisher,
-                                                useZhihuHeadings = useZhihuHeadings,
-                                            )
-                                            val answerId = existingAnswerId
-                                                ?: publisher.findMyAnswerId(destination.questionId)
-                                            publisher.patchDraft(
-                                                questionId = destination.questionId,
-                                                answerId = answerId,
-                                                html = html,
-                                                tocEnabled = tocEnabled,
-                                            )
-                                        }.onSuccess {
-                                            userMessages.showShortMessage("已保存草稿")
-                                        }.onFailure { e ->
-                                            errorDialogMessage = buildErrorDialogMessage("保存草稿失败", e)
-                                        }
-                                        isSubmitting = false
-                                    }
-                                },
-                                enabled = publisher.isSupported && !isSubmitting,
-                            ) {
-                                Icon(Icons.Default.Save, contentDescription = "保存草稿")
-                                Spacer(Modifier.width(6.dp))
-                                Text("保存")
-                            }
-                        }
-                    }
-                }
+                    },
+                )
+                MarkdownShortcutToolbar(
+                    onApplyShortcut = { shortcut ->
+                        content = content.applyMarkdownShortcut(shortcut)
+                    },
+                    modifier =
+                        Modifier
+                            .align(Alignment.BottomCenter)
+                            .offset(y = 10.dp),
+                    enabled = !isSubmitting,
+                )
             }
-
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = "支持 Markdown，发布前会自动转换为知乎编辑器 HTML。",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(12.dp))
-            BasicTextField(
-                value = content,
-                onValueChange = { newValue -> content = newValue },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 420.dp)
-                    .testTag(WRITE_ANSWER_CONTENT_TAG),
-                enabled = !isSubmitting,
-                textStyle = TextStyle(
-                    color = MaterialTheme.colorScheme.onBackground,
-                    fontSize = 17.sp,
-                    lineHeight = 26.sp,
-                ),
-                decorationBox = { innerTextField ->
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp, bottom = 32.dp),
-                    ) {
-                        if (content.text.isEmpty()) {
-                            Text(
-                                text = "请输入图文回答内容……",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        innerTextField()
-                    }
-                },
-            )
-            Spacer(Modifier.height(24.dp))
         }
     }
 
@@ -521,24 +488,6 @@ fun WriteAnswerScreen(
     }
 }
 
-private fun insertTextAtSelection(
-    current: TextFieldValue,
-    insert: String,
-): TextFieldValue {
-    val start = current.selection.min
-    val end = current.selection.max
-    val newText = buildString {
-        append(current.text.substring(0, start))
-        append(insert)
-        append(current.text.substring(end))
-    }
-    val newCursor = start + insert.length
-    return TextFieldValue(
-        text = newText,
-        selection = TextRange(newCursor, newCursor),
-    )
-}
-
 private fun buildErrorDialogMessage(
     title: String,
     throwable: Throwable,
@@ -597,11 +546,3 @@ private inline fun <reified T : Throwable> Throwable.findCause(): T? {
     }
     return null
 }
-
-private fun String.toQuestionDetailPlainText(): String =
-    Ksoup
-        .parse(this)
-        .text()
-        .replace('\u00A0', ' ')
-        .replace(Regex("\\n{3,}"), "\n\n")
-        .trim()
