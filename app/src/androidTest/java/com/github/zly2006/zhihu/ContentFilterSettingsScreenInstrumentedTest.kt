@@ -86,7 +86,8 @@ class ContentFilterSettingsScreenInstrumentedTest {
         assertEquals(true, preferences().getBoolean("filterFollowedUserContent", false))
         composeRule.onNodeWithTag(ENABLE_RECENTLY_OPENED_CONTENT_FILTER_TAG).performClick()
         assertEquals(true, preferences().getBoolean(ENABLE_RECENTLY_OPENED_CONTENT_FILTER_KEY, false))
-        composeRule.onNodeWithTag(RECENTLY_OPENED_CONTENT_FILTER_PERIOD_FIELD_TAG, useUnmergedTree = true)
+        composeRule
+            .onNodeWithTag(RECENTLY_OPENED_CONTENT_FILTER_PERIOD_FIELD_TAG, useUnmergedTree = true)
             .assertTextContains("7 天")
             .performClick()
         composeRule.onNodeWithText("30 天").performClick()
