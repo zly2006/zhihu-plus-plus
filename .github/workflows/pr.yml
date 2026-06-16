@@ -54,13 +54,13 @@ jobs:
         uses: android-actions/setup-android@v3
       # Run Tests Build
       - name: Run KtLint
-        run: ./gradlew --no-daemon --no-configuration-cache -Dkotlin.compiler.execution.strategy=in-process ktlintCheck
+        run: ./gradlew ktlintCheck
       - name: Run gradle tests
-        run: ./gradlew --no-daemon --no-configuration-cache -Dkotlin.compiler.execution.strategy=in-process test
+        run: ./gradlew test
       - name: Build App
         # Build .apk
         run: |
-          bash ./gradlew --no-daemon --no-configuration-cache -Dkotlin.compiler.execution.strategy=in-process assembleFullDebug assembleLiteDebug
+          bash ./gradlew assembleFullDebug assembleLiteDebug
         env:
           CI_BUILD_MINIFY: false
       - name: Move files
