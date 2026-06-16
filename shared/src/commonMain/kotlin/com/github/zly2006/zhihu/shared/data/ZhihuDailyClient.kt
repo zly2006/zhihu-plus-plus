@@ -24,6 +24,10 @@ import io.ktor.util.network.UnresolvedAddressException
 import kotlinx.coroutines.CancellationException
 
 private const val DAILY_PRIMARY_API_BASE = "https://news-at.zhihu.com/api/4/stories"
+
+// Zhihu Daily's documented Android API host can fail DNS resolution in some
+// overseas networks because of Zhihu-side DNS/server configuration. Keep this
+// fallback host as a narrow workaround for host-resolution failures only.
 private const val DAILY_FALLBACK_API_BASE = "https://daily.zhihu.com/api/4/stories"
 
 suspend fun HttpClient.fetchLatestDailyStories(): DailyStoriesResponse =
@@ -39,6 +43,8 @@ private suspend fun HttpClient.fetchDailyStories(path: String): DailyStoriesResp
         if (e is CancellationException || !e.isHostResolutionFailure()) {
             throw e
         }
+        // Do not broaden this to arbitrary network failures: the fallback is
+        // only for Zhihu's broken primary-host resolution, not a retry policy.
         get("$DAILY_FALLBACK_API_BASE$path").body()
     }
 
