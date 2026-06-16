@@ -58,6 +58,24 @@ class NavDestinationTest {
     }
 
     @Test
+    fun resolvesAppViewAnswerUrlFromCommonCode() {
+        val destination = resolveContent("https://www.zhihu.com/appview/v2/answer/3309625617")
+
+        val article = assertIs<Article>(destination)
+        assertEquals(ArticleType.Answer, article.type)
+        assertEquals(3309625617L, article.id)
+    }
+
+    @Test
+    fun resolvesAppViewArticleUrlFromCommonCode() {
+        val destination = resolveContent("https://www.zhihu.com/appview/v2/article/123456")
+
+        val article = assertIs<Article>(destination)
+        assertEquals(ArticleType.Article, article.type)
+        assertEquals(123456L, article.id)
+    }
+
+    @Test
     fun resolvesZhihuAdSourceToAnswerFromCommonCode() {
         val destination = resolveContent(
             "https://www.zhihu.com/market/paid_column/example.html" +
