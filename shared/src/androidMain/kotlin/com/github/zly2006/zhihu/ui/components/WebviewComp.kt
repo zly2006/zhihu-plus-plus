@@ -366,11 +366,11 @@ class CustomWebView : WebView {
             """
             p, figure, pre, table, ul, ol {
                 margin-top: 0;
-                margin-bottom: ${margin}em;
+                margin-bottom: ${margin}rem;
             }
             blockquote {
-                margin-top: ${margin}em;
-                margin-bottom: ${margin}em;
+                margin-top: ${margin}rem;
+                margin-bottom: ${margin}rem;
             }
             """.trimIndent()
         }
