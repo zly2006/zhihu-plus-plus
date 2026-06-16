@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.ui
 
+import android.graphics.Bitmap
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
@@ -36,8 +37,13 @@ import androidx.navigation.NavHostController
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
+import com.github.zly2006.zhihu.util.shareImageCacheDir
+import com.github.zly2006.zhihu.util.shareImageFile
 import com.github.zly2006.zhihu.viewmodel.AndroidArticlesSharedData
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
 
 /**
  * Android 平台的 Zhihu++ 主界面入口。
@@ -104,7 +110,27 @@ private fun androidZhihuMainPlatformAdapter(activity: MainActivity) = ZhihuMainP
                 })
             }
         }
-        ArticleScreen(article, viewModel)
+        ArticleScreen(
+            article = article,
+            viewModel = viewModel,
+            shareArticleImage = { displayName, bitmap ->
+                val file = withContext(Dispatchers.IO) {
+                    File(
+                        shareImageCacheDir(activity),
+                        displayName.replace('/', '_').replace('\\', '_'),
+                    ).also { targetFile ->
+                        targetFile.outputStream().use { outputStream ->
+                            if (!(bitmap as Bitmap).compress(Bitmap.CompressFormat.JPEG, 80, outputStream)) {
+                                throw IllegalStateException("Failed to encode image")
+                            }
+                        }
+                    }
+                }
+                withContext(Dispatchers.Main) {
+                    shareImageFile(activity, file, displayName)
+                }
+            },
+        )
     },
     sentenceSimilarityTest = {
         SentenceSimilarityTestScreen()

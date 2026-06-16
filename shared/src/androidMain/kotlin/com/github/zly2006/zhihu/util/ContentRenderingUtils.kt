@@ -123,25 +123,6 @@ fun saveBitmapToGallery(
     }
 }
 
-suspend fun shareBitmap(
-    context: Context,
-    displayName: String,
-    bitmap: Bitmap,
-) {
-    val file = withContext(Dispatchers.IO) {
-        java.io.File(shareImageCacheDir(context), displayName.replace('/', '_').replace('\\', '_')).also { targetFile ->
-            targetFile.outputStream().use { outputStream ->
-                if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)) {
-                    throw IllegalStateException("Failed to encode image")
-                }
-            }
-        }
-    }
-    withContext(Dispatchers.Main) {
-        shareImageFile(context, file, displayName)
-    }
-}
-
 private fun saveDownloadedImageToGallery(
     context: Context,
     imageUrl: String,
@@ -279,14 +260,14 @@ suspend fun shareImage(
     }
 }
 
-private fun shareImageCacheDir(context: Context): java.io.File =
+fun shareImageCacheDir(context: Context): java.io.File =
     java.io.File(context.externalCacheDir ?: context.cacheDir, "share_images").apply {
         if (!exists() && !mkdirs()) {
             throw IllegalStateException("无法创建分享缓存目录")
         }
     }
 
-private fun shareImageFile(
+fun shareImageFile(
     context: Context,
     file: java.io.File,
     title: String,

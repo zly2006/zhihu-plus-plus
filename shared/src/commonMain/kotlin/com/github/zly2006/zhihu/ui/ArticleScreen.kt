@@ -730,6 +730,7 @@ fun ArticleActionsMenu(
 fun ArticleScreen(
     article: Article,
     viewModel: ArticleViewModel,
+    shareArticleImage: (suspend (displayName: String, bitmap: Any) -> Unit)? = null,
 ) {
     val navigator = LocalNavigator.current
     val articleScreenRuntime = rememberArticleScreenRuntime()
@@ -1913,12 +1914,13 @@ fun ArticleScreen(
             viewModel.loadAigcFlagStatus(environment)
         },
         onExportRequest = { showExportDialog = true },
-        canShareImage = environment.canShareImage(),
+        canShareImage = shareArticleImage != null,
         onShareImageRequest = { onComplete ->
-            viewModel.shareAsImage(
+            viewModel.exportToImage(
                 environment = environment,
                 includeAppAttribution = true,
                 onComplete = onComplete,
+                shareImage = checkNotNull(shareArticleImage),
             )
         },
         onSetImmersiveDoubleTap = {
