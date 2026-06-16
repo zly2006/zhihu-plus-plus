@@ -268,8 +268,11 @@ suspend fun shareImage(
     try {
         val response = httpClient.get(imageUrl)
         val bytes = response.readRawBytes()
-        val file = java.io.File(shareImageCacheDir(context), "share_${System.currentTimeMillis()}.jpg")
-        file.writeBytes(bytes)
+        val file = withContext(Dispatchers.IO) {
+            java.io.File(shareImageCacheDir(context), "share_${System.currentTimeMillis()}.jpg").also { targetFile ->
+                targetFile.writeBytes(bytes)
+            }
+        }
         shareImageFile(context, file, file.name)
     } catch (e: Exception) {
         userMessages.showShortMessage("分享失败: ${e.message}")
