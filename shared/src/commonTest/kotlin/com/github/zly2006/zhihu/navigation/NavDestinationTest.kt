@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.navigation
 
+import io.ktor.http.encodeURLParameter
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -101,7 +102,7 @@ class NavDestinationTest {
     }
 
     @Test
-    fun resolvesLaterZhihuAdSourceWhenEarlierTargetIsExternalFromCommonCode() {
+    fun resolvesZhihuAdSourceWhenUrlParameterIsExternalFromCommonCode() {
         val destination = resolveContent(
             "https://www.zhihu.com/market/paid_column/example.html" +
                 "?url=https%3A%2F%2Fexample.com%2Flanding" +
@@ -122,6 +123,28 @@ class NavDestinationTest {
         val article = assertIs<Article>(destination)
         assertEquals(ArticleType.Article, article.type)
         assertEquals(987654321L, article.id)
+    }
+
+    @Test
+    fun resolvesProtocolRelativeRedirectTargetFromCommonCode() {
+        val destination = resolveContent(
+            "https://link.zhihu.com/?target=" +
+                "//www.zhihu.com/appview/v2/article/123456".encodeURLParameter(),
+        )
+
+        val article = assertIs<Article>(destination)
+        assertEquals(ArticleType.Article, article.type)
+        assertEquals(123456L, article.id)
+    }
+
+    @Test
+    fun ignoresRedirectTargetBeyondDepthGuardFromCommonCode() {
+        val articleUrl = "https://www.zhihu.com/p/987654321"
+        val thirdRedirect = "https://link.zhihu.com/?target=${articleUrl.encodeURLParameter()}"
+        val secondRedirect = "https://link.zhihu.com/?target=${thirdRedirect.encodeURLParameter()}"
+        val firstRedirect = "https://link.zhihu.com/?target=${secondRedirect.encodeURLParameter()}"
+
+        assertNull(resolveContent(firstRedirect))
     }
 
     @Test
