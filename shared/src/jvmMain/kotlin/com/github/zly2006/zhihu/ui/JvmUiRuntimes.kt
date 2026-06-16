@@ -238,8 +238,8 @@ actual fun rememberHomeUpdateAnnouncement(): HomeUpdateAnnouncement? {
 
 @Composable
 actual fun rememberHomeFeedStartupCache(recommendationMode: RecommendationMode): HomeFeedStartupCache {
-    val startupCacheFile = remember {
-        desktopZhihuDataFile(HOME_FEED_STARTUP_CACHE_FILE_NAME)
+    val startupCacheFile = remember(recommendationMode) {
+        desktopZhihuDataFile(homeFeedStartupCacheFileName(recommendationMode))
     }
     return remember(startupCacheFile) {
         HomeFeedStartupCache(
@@ -402,6 +402,9 @@ private object DesktopAccountSettingsState {
     }
 
     fun clear() {
+        homeFeedStartupCacheFileNames().forEach { fileName ->
+            desktopZhihuDataFile(fileName).delete()
+        }
         store.clear()
         accountState.value = AccountSettingsAccountState()
     }

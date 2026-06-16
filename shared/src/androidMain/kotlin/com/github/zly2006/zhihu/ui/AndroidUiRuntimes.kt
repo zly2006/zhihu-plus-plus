@@ -136,7 +136,12 @@ actual fun rememberAccountQrLoginRequester(): () -> Unit {
 actual fun rememberAccountLogoutAction(): () -> Unit {
     val context = LocalContext.current
     return remember(context) {
-        { AccountData.delete(context) }
+        {
+            homeFeedStartupCacheFileNames().forEach { fileName ->
+                File(context.filesDir, fileName).delete()
+            }
+            AccountData.delete(context)
+        }
     }
 }
 
@@ -369,8 +374,8 @@ actual fun rememberHomeLoginRequester(): () -> Unit {
 @Composable
 actual fun rememberHomeFeedStartupCache(recommendationMode: RecommendationMode): HomeFeedStartupCache {
     val context = LocalContext.current
-    val startupCacheFile = remember(context) {
-        File(context.filesDir, HOME_FEED_STARTUP_CACHE_FILE_NAME)
+    val startupCacheFile = remember(context, recommendationMode) {
+        File(context.filesDir, homeFeedStartupCacheFileName(recommendationMode))
     }
     return remember(startupCacheFile) {
         HomeFeedStartupCache(

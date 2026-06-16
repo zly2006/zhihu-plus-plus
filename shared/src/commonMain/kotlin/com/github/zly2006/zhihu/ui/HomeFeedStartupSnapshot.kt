@@ -23,9 +23,17 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 
 const val AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY = "autoRefreshHomeOnStartup"
-const val HOME_FEED_STARTUP_CACHE_FILE_NAME = "home_feed_startup_cache.json"
+const val LEGACY_HOME_FEED_STARTUP_CACHE_FILE_NAME = "home_feed_startup_cache.json"
+private const val HOME_FEED_STARTUP_CACHE_FILE_PREFIX = "home_feed_startup_cache_"
+private const val HOME_FEED_STARTUP_CACHE_FILE_SUFFIX = ".json"
 
 private const val HOME_FEED_STARTUP_SNAPSHOT_MAX_ITEMS = 10
+
+fun homeFeedStartupCacheFileName(recommendationMode: RecommendationMode): String =
+    HOME_FEED_STARTUP_CACHE_FILE_PREFIX + recommendationMode.key + HOME_FEED_STARTUP_CACHE_FILE_SUFFIX
+
+fun homeFeedStartupCacheFileNames(): List<String> =
+    listOf(LEGACY_HOME_FEED_STARTUP_CACHE_FILE_NAME) + RecommendationMode.entries.map(::homeFeedStartupCacheFileName)
 
 fun encodeHomeFeedStartupSnapshot(items: List<FeedDisplayItem>): String? {
     val snapshotItems = items.take(HOME_FEED_STARTUP_SNAPSHOT_MAX_ITEMS)
