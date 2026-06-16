@@ -156,7 +156,7 @@ class AccountSettingScreenInstrumentedTest {
         // Expected behavior:
         // 1. A fully local seeded account plus SharedPreferences should be enough to render the
         //    logged-in shortcut cluster, and entering the screen should refresh `/me` through the
-        //    real AccountData.fetchGet() path against the mocked HTTP layer.
+        //    real authenticated fetch path against the mocked HTTP layer.
         // 2. The favorites shortcut should navigate to the seeded Collections destination and must
         //    not close the surrounding account surface.
         // 3. The notification and history shortcuts represent overlay-style exits from the account

@@ -25,34 +25,23 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.github.zly2006.zhihu.shared.account.DEFAULT_ZHIHU_USER_AGENT
+import com.github.zly2006.zhihu.shared.account.ZhihuAccountClient
 import com.github.zly2006.zhihu.shared.account.ZhihuAccountProfileSnapshot
 import com.github.zly2006.zhihu.shared.account.ZhihuAccountRepository
 import com.github.zly2006.zhihu.shared.account.ZhihuAccountSession
 import com.github.zly2006.zhihu.shared.account.ZhihuAccountSessionStore
 import com.github.zly2006.zhihu.shared.data.Person
-import com.github.zly2006.zhihu.shared.data.ZHIHU_READ_HISTORY_ADD_URL
-import com.github.zly2006.zhihu.shared.data.ZhihuCookieStorage
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.shared.data.buildZhihuReadHistoryBody
-import com.github.zly2006.zhihu.shared.data.fetchVerifiedZhihuSession
-import com.github.zly2006.zhihu.shared.data.fetchZhihuAuthenticatedJson
 import com.github.zly2006.zhihu.shared.data.installZhihuCommonClientConfig
-import com.github.zly2006.zhihu.util.signFetchRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.HttpClientEngineConfig
-import io.ktor.client.request.HttpRequestBuilder
-import io.ktor.client.request.setBody
-import io.ktor.http.ContentType
-import io.ktor.http.HttpMethod
-import io.ktor.http.contentType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 import java.io.File
@@ -80,7 +69,7 @@ object AccountData {
     )
 
     fun loadData(context: Context): Data {
-        dataState.value = accountRepository(context).load().toAndroidData()
+        dataState.value = accountClient(context).load().toAndroidData()
         return data
     }
 
@@ -93,29 +82,25 @@ object AccountData {
 
     fun saveData(context: Context, data: Data) {
         dataState.value = data
-        // https://static.zhihu.com/zse-ck/v4/24df2abbfcb1b98cd5ce1b519f02eeabea28c83ac9d9ec2778dc5b03a3b8b710.js
-        accountRepository(context).save(data.toSession())
+        accountClient(context).save(data.toSession())
     }
 
-    fun cookieStorage(context: Context, cookies: MutableMap<String, String>? = null) =
-        ZhihuCookieStorage(cookies ?: data.cookies) {
-            if (cookies == null) {
-                saveData(context, data)
-            }
-        }
-
-    private var httpClient: HttpClient? = null
+    private var accountClient: ZhihuAccountClient? = null
+    private var observedLifecycleClient: HttpClient? = null
     private var httpClientFactoryOverride: ((Context, MutableMap<String, String>?) -> HttpClient)? = null
 
     private fun <T : HttpClientEngineConfig> HttpClientConfig<T>.applyCommonConfiguration(
         context: Context,
         cookies: MutableMap<String, String>?,
+        onCookieChanged: (() -> Unit)? = null,
     ) {
         installZhihuCommonClientConfig(
             cookies = cookies ?: data.cookies,
             userAgent = data.userAgent,
             onCookieChanged = {
-                if (cookies == null) {
+                if (onCookieChanged != null) {
+                    onCookieChanged()
+                } else if (cookies == null) {
                     saveData(context, data)
                 }
             },
@@ -127,62 +112,74 @@ object AccountData {
         context: Context,
         cookies: MutableMap<String, String>? = null,
         engine: HttpClientEngine? = null,
+        onCookieChanged: (() -> Unit)? = null,
     ): HttpClient = if (engine == null) {
         HttpClient {
-            applyCommonConfiguration(context, cookies)
+            applyCommonConfiguration(context, cookies, onCookieChanged)
         }
     } else {
         HttpClient(engine) {
-            applyCommonConfiguration(context, cookies)
+            applyCommonConfiguration(context, cookies, onCookieChanged)
         }
     }
 
     @Synchronized
     fun overrideHttpClientFactoryForTesting(factory: ((Context, MutableMap<String, String>?) -> HttpClient)?) {
-        httpClient?.close()
-        httpClient = null
+        accountClient?.invalidateHttpClient()
+        accountClient = null
+        observedLifecycleClient = null
         httpClientFactoryOverride = factory
     }
 
     fun httpClient(context: Context, cookies: MutableMap<String, String>? = null): HttpClient {
-        if (httpClient != null && cookies == null) {
-            return httpClient!!
+        if (cookies != null) {
+            return httpClientFactoryOverride?.invoke(context, cookies)
+                ?: accountClient(context).temporaryHttpClient(cookies)
         }
-        val httpClient = httpClientFactoryOverride?.invoke(context, cookies) ?: createConfiguredHttpClient(context, cookies)
-        if (context is LifecycleOwner && cookies == null) { // 没有指定cookie
-            // 大概率是，包括 MainActivity 等。
+        val client = accountClient(context).httpClient()
+        if (context is LifecycleOwner && observedLifecycleClient !== client) {
             ContextCompat.getMainExecutor(context).execute {
                 context.lifecycle.addObserver(object : DefaultLifecycleObserver {
                     override fun onDestroy(owner: LifecycleOwner) {
-                        httpClient.close()
-                        AccountData.httpClient = null
+                        accountClient(context).invalidateHttpClient()
+                        observedLifecycleClient = null
                     }
                 })
-                this.httpClient = httpClient
+                observedLifecycleClient = client
             }
         }
-        return httpClient
+        return client
     }
 
-    suspend fun verifyLogin(context: Context, cookies: Map<String, String>): Boolean {
-        val map = cookies.toMutableMap()
-        val httpClient = httpClient(context, map)
-        val session = fetchVerifiedZhihuSession(httpClient, map, data.userAgent) ?: return false
-        saveData(
-            context,
-            session.toAndroidData(),
-        )
-        return true
-    }
+    suspend fun verifyLogin(context: Context, cookies: Map<String, String>): Boolean =
+        accountClient(context).verifyAndSave(cookies.toMutableMap())
 
     fun delete(context: Context) {
-        dataState.value = Data()
-        accountRepository(context).clear()
+        accountClient(context).clear()
     }
 
-    private fun accountRepository(context: Context) = ZhihuAccountRepository(
-        AndroidAccountSessionStore(File(context.filesDir, "account.json")),
-    )
+    private fun accountClient(context: Context): ZhihuAccountClient {
+        accountClient?.let { return it }
+        val appContext = context.applicationContext
+        return ZhihuAccountClient(
+            repository = ZhihuAccountRepository(
+                AndroidAccountSessionStore(File(appContext.filesDir, "account.json")),
+            ),
+            createClient = { cookies, _, onCookieChanged, isTemporary ->
+                httpClientFactoryOverride?.invoke(appContext, if (isTemporary) cookies else null)
+                    ?: createConfiguredHttpClient(
+                        context = appContext,
+                        cookies = cookies,
+                        onCookieChanged = onCookieChanged,
+                    )
+            },
+            onSessionChanged = { session ->
+                dataState.value = session.toAndroidData()
+            },
+        ).also {
+            accountClient = it
+        }
+    }
 
     private fun Data.toSession(): ZhihuAccountSession = ZhihuAccountSession(
         login = login,
@@ -257,53 +254,6 @@ object AccountData {
             return this.json.decodeFromJsonElement(serializer, convertedJson)
         } catch (e: SerializationException) {
             throw ZhPlusJsonSerializationException(convertedJson, "Failed to parse JSON: ${e.message}", e)
-        }
-    }
-
-    @Suppress("FunctionName")
-    fun snake_case2camelCase(snakeCase: String): String = ZhihuJson.snakeCaseToCamelCase(snakeCase)
-
-    @Suppress("FunctionName")
-    fun snake_case2camelCase(json: JsonElement): JsonElement = ZhihuJson.snakeCaseToCamelCase(json)
-
-    private var lastRefreshCookie = 0L
-
-    suspend fun fetch(context: Context, url: String, block: suspend HttpRequestBuilder.() -> Unit = {}): JsonObject? {
-        val client = httpClient(context)
-        return fetchZhihuAuthenticatedJson(
-            client = client,
-            url = url,
-            lastRefreshMillis = lastRefreshCookie,
-            updateLastRefreshMillis = { lastRefreshCookie = it },
-            block = block,
-        )
-    }
-
-    suspend fun fetchGet(context: Context, url: String, block: suspend HttpRequestBuilder.() -> Unit = {}) = fetch(context, url) {
-        block()
-        method = HttpMethod.Get
-    }
-
-    suspend fun fetchPost(context: Context, url: String, block: suspend HttpRequestBuilder.() -> Unit = {}) = fetch(context, url) {
-        block()
-        method = HttpMethod.Post
-    }
-
-    /**
-     * 添加在线阅读历史记录
-     * @param contentType 内容类型 (如 "article", "answer", "profile" 等)
-     */
-    suspend fun addReadHistory(
-        context: Context,
-        contentToken: String,
-        contentType: String,
-    ) {
-        runCatching {
-            fetchPost(context, ZHIHU_READ_HISTORY_ADD_URL) {
-                signFetchRequest()
-                contentType(ContentType.Application.Json)
-                setBody(buildZhihuReadHistoryBody(contentToken, contentType))
-            }
         }
     }
 }

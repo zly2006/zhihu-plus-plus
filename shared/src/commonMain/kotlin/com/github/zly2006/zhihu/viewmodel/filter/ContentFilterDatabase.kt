@@ -55,6 +55,8 @@ expect object ContentFilterDatabaseConstructor : RoomDatabaseConstructor<Content
     override fun initialize(): ContentFilterDatabase
 }
 
+expect fun getContentFilterDatabase(): ContentFilterDatabase
+
 private val migration2To3 = object : Migration(2, 3) {
     override fun migrate(connection: SQLiteConnection) {
         connection.execSQL(

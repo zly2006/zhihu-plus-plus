@@ -25,6 +25,9 @@ Version rule:
 - In `gradle.properties`, keep a comment immediately above `VERSION` recording
   the upstream source version, for example:
   `# Upstream huarangmeng/Markdown version: 1.2.9`.
+- In commit messages, release notes, and final reports, `Original version` means
+  this upstream `huarangmeng/Markdown` source version. It does NOT mean the
+  previous `zly2006` fork version. Use `Fork version` for `0.0.1-alpha.N`.
 
 Optional:
 
@@ -167,7 +170,7 @@ Collect:
 
 Then you need to commit the new version. message: `build: bump markdown`. message body:
 ```text
-Original version: (insert original version e.g. 1.x.x)
+Original version: (insert upstream huarangmeng/Markdown version e.g. 1.x.x, NOT the previous fork version)
 Fork version: (insert fork version e.g. 0.0.1-alpha.N)
 ```
 
@@ -191,6 +194,24 @@ DO NOT PUSH!
 - Keep coordinates unchanged.
 - Poll deployment status until `PUBLISHED`.
 - Only update Zhihu after the renderer root artifact or Android artifact is publicly reachable.
+
+### Fresh LaTeX version is public but Gradle still cannot resolve it
+
+- Symptom: repo1/repo.maven artifact URLs for `io.github.zly2006:latex-*:<version>`
+  return `200`, but Markdown Gradle tasks still fail with `Could not find
+  io.github.zly2006:latex-renderer:<version>`.
+- Cause: Gradle may retain a negative resolution/configuration-cache result from
+  the window before Maven Central fully propagated the new LaTeX release.
+- Fix: rerun the Markdown verification or publish command with both dependency
+  refresh and configuration cache disabled:
+
+```bash
+./gradlew --no-daemon --no-configuration-cache --refresh-dependencies <task>
+```
+
+- Do not re-version or republish LaTeX when direct Maven artifact checks are
+  already `200`; treat this as local Gradle cache state unless the fresh command
+  still fails with a non-cache error.
 
 ### Version line accidentally follows upstream
 

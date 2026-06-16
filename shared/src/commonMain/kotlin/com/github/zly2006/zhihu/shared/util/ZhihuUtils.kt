@@ -77,7 +77,7 @@ fun formatCompactCount(count: Int): String = when {
             "${count / 10_000} 万"
         } else {
             val roundedTenths = ((count / 10_000.0) * 10).roundToInt() / 10.0
-            "${roundedTenths.formatOneDecimal()} 万"
+            "$roundedTenths 万"
         }
     }
 
@@ -108,19 +108,12 @@ fun formatRelativeTime(
             val dateTime = Instant
                 .fromEpochSeconds(epochSeconds)
                 .toLocalDateTime(timeZone)
-            "${(dateTime.month.ordinal + 1).pad2()}-${dateTime.day.pad2()} ${dateTime.hour.pad2()}:${dateTime.minute.pad2()}"
+            "${(dateTime.month.ordinal + 1).twoDigitString()}-${dateTime.day.twoDigitString()} ${dateTime.hour.twoDigitString()}:${dateTime.minute.twoDigitString()}"
         }
     }
 }
 
-private fun Int.pad2(): String = toString().padStart(2, '0')
-
-private fun Double.formatOneDecimal(): String {
-    val text = toString()
-    val dotIndex = text.indexOf('.')
-    if (dotIndex < 0) return "$text.0"
-    return text.substring(0, minOf(text.length, dotIndex + 2))
-}
+internal fun Int.twoDigitString(): String = toString().padStart(2, '0')
 
 fun extractImageUrl(attribute: (String) -> String): String? =
     attribute("data-original-token")

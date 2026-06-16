@@ -66,29 +66,8 @@ import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.viewmodel.CollectionContentEnvironment
 import com.github.zly2006.zhihu.viewmodel.CollectionContentViewModel
 import com.github.zly2006.zhihu.viewmodel.CollectionHtmlExportDialogState
+import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
-import kotlinx.datetime.Instant
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
-
-fun formatCollectionUpdatedTime(seconds: Long): String {
-    val dateTime = Instant
-        .fromEpochSeconds(seconds)
-        .toLocalDateTime(TimeZone.currentSystemDefault())
-    return buildString {
-        append(dateTime.year.toString().padStart(4, '0'))
-        append('-')
-        append(dateTime.monthNumber.toString().padStart(2, '0'))
-        append('-')
-        append(dateTime.dayOfMonth.toString().padStart(2, '0'))
-        append(' ')
-        append(dateTime.hour.toString().padStart(2, '0'))
-        append(':')
-        append(dateTime.minute.toString().padStart(2, '0'))
-        append(':')
-        append(dateTime.second.toString().padStart(2, '0'))
-    }
-}
 
 /**
  * 收藏内容页的测试替身配置。
@@ -134,8 +113,7 @@ private fun CollectionContentScreenContent(
             includeImages = includeImages,
         )
     }
-    val environment = rememberPaginationEnvironment(allowGuestAccess = false)
-    val sharedData = environment.articleAnswerSwitchState()
+    val sharedData = collectionEnvironment.articleAnswerSwitchState()
 
     LaunchedEffect(testOverrides) {
         if (testOverrides == null && screenViewModel.allData.isEmpty()) {
@@ -231,7 +209,7 @@ private fun CollectionContentScreenContent(
                             "${screenViewModel.collection?.itemCount} 条收藏",
                             "${screenViewModel.collection?.likeCount} 个赞同",
                             "${screenViewModel.collection?.commentCount} 条评论",
-                            screenViewModel.collection?.updatedTime?.let { "${formatCollectionUpdatedTime(it)} 更新" },
+                            screenViewModel.collection?.updatedTime?.let { "${formatArticleDateTime(it)} 更新" },
                         ).fastJoinToString(" · "),
                         modifier = Modifier.testTag("collection_content_stats"),
                     )
@@ -246,8 +224,7 @@ private fun CollectionContentScreenContent(
                     .testTag("collection_content_item_${item.stableKey}"),
             ) {
                 val dest = navDestination
-                val repository = collectionEnvironment.answerNavigatorRepository()
-                if (dest is Article && dest.type == ArticleType.Answer && sharedData != null && repository != null) {
+                if (dest is Article && dest.type == ArticleType.Answer && sharedData != null) {
                     val idx = screenViewModel.displayItems.indexOf(item)
                     val nextItems = if (idx >= 0) screenViewModel.allData.drop(idx + 1) else emptyList()
                     val prevItems = if (idx > 0) screenViewModel.allData.take(idx).reversed() else emptyList()
@@ -256,7 +233,7 @@ private fun CollectionContentScreenContent(
                         collectionTitle = screenViewModel.title,
                         initialNextItems = nextItems,
                         initialPreviousItems = prevItems,
-                        repository = repository,
+                        environment = collectionEnvironment,
                     )
                 }
                 dest?.let { navigator.onNavigate(it) }

@@ -93,7 +93,7 @@ import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import com.github.zly2006.zhihu.util.telemetry
 import com.github.zly2006.zhihu.viewmodel.AndroidArticlesSharedData
 import com.github.zly2006.zhihu.viewmodel.filter.AndroidContentFilterRuntime
-import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
+import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterManager
 import com.github.zly2006.zhihu.viewmodel.filter.contentFilterSettings
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.CoroutineScope
@@ -200,6 +200,7 @@ class MainActivity :
         AndroidContentFilterRuntime.keywordWeightExtractor = KeywordWeightExtractor { text, topN ->
             NLPService.extractKeywordsWithWeight(text, topN)
         }
+        getContentFilterDatabase(this)
 
         val settings = androidSettingsStore(this)
         val lastLaunchTimestamp = settings.getLong(KEY_LAST_LAUNCH_TIMESTAMP, 0L)
@@ -232,10 +233,9 @@ class MainActivity :
         // 应用启动时执行内容过滤数据库清理
         lifecycleScope.launch {
             try {
-                ContentFilterExtensions.performMaintenanceCleanup(
-                    settings = contentFilterSettings(),
-                    database = getContentFilterDatabase(this@MainActivity),
-                )
+                if (contentFilterSettings().enableContentFilter) {
+                    ContentFilterManager(getContentFilterDatabase(this@MainActivity).contentFilterDao()).cleanupOldData()
+                }
                 Log.i(TAG, "Content filter maintenance cleanup completed")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to perform content filter cleanup", e)
@@ -386,11 +386,9 @@ class MainActivity :
         super.onStop()
     }
 
-    fun currentContinuousUsageDurationMs(): Long = continuousUsageReminderManager.currentElapsedForegroundMs()
-
     override val developerRuntimeInfo: DeveloperRuntimeInfo
         get() = DeveloperRuntimeInfo(
-            continuousUsageDurationMs = currentContinuousUsageDurationMs(),
+            continuousUsageDurationMs = continuousUsageReminderManager.currentElapsedForegroundMs(),
             ttsState = ttsState,
             currentTtsEngineLabel = when (ttsEngine) {
                 TtsEngine.Pico -> "Pico TTS"
@@ -552,7 +550,13 @@ class MainActivity :
             return
         }
         pendingContentOpenIdentity = identity
-        pendingContentOpenFrom = currentMainTabOpenFrom()
+        pendingContentOpenFrom = if (
+            runCatching { navController.currentBackStackEntry?.toRoute<MainTabs>() }.getOrNull() != null
+        ) {
+            currentMainTabOpenFrom
+        } else {
+            null
+        }
             ?: ContentOpenEventSupport.inferOpenFrom(currentContentOpenSource(), target)
     }
 
@@ -581,14 +585,6 @@ class MainActivity :
         }
     }
 
-    private fun currentMainTabOpenFrom(): String? = if (
-        runCatching { navController.currentBackStackEntry?.toRoute<MainTabs>() }.getOrNull() != null
-    ) {
-        currentMainTabOpenFrom
-    } else {
-        null
-    }
-
     private fun currentContentOpenSource(): NavDestination? {
         val currentEntry = navController.currentBackStackEntry
         return runCatching {
@@ -606,12 +602,8 @@ class MainActivity :
         }.getOrNull()
     }
 
-    fun postHistory(dest: NavDestination) {
-        history.add(dest)
-    }
-
     override fun postHistoryDestination(destination: NavDestination) {
-        postHistory(destination)
+        history.add(destination)
     }
 
     override fun speakArticleText(
@@ -748,8 +740,6 @@ class MainActivity :
         textToSpeech?.stop()
         ttsState = TtsState.Ready
     }
-
-    fun isSpeaking(): Boolean = textToSpeech?.isSpeaking ?: false
 
     @Suppress("unused")
     companion object {

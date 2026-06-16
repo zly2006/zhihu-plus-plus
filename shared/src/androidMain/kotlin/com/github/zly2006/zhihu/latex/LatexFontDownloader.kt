@@ -75,9 +75,6 @@ class DownloadedFonts(
 private fun fontDir(context: Context): File =
     File(context.cacheDir, "latex-fonts/v$FONT_VERSION")
 
-private fun isDownloaded(context: Context): Boolean =
-    fontDir(context).resolve(".done").exists()
-
 suspend fun downloadLatexFonts(context: Context, client: HttpClient): DownloadedFonts = withContext(Dispatchers.IO) {
     val dir = fontDir(context)
     dir.mkdirs()
@@ -184,7 +181,7 @@ fun rememberLatexFonts(context: Context, client: HttpClient): FontLoadResult {
     var result by remember { mutableStateOf(FontLoadResult(FontLoadState.IDLE)) }
 
     LaunchedEffect(Unit) {
-        if (!isDownloaded(context)) {
+        if (!fontDir(context).resolve(".done").exists()) {
             result = FontLoadResult(FontLoadState.DOWNLOADING)
         }
         try {

@@ -112,7 +112,7 @@ fun CollectionScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp)
-                    .testTag(collectionScreenItemTag(collection.id)),
+                    .testTag("collection_screen_item_${collection.id}"),
                 elevation = CardDefaults.cardElevation(4.dp),
                 onClick = {
                     navigator.onNavigate(CollectionContent(collection.id))
@@ -129,5 +129,3 @@ fun CollectionScreen(
 private const val COLLECTION_SCREEN_TITLE_TAG = "collection_screen_title"
 private const val COLLECTION_SCREEN_BACK_BUTTON_TAG = "collection_screen_back_button"
 private const val COLLECTION_SCREEN_LIST_TAG = "collection_screen_list"
-
-private fun collectionScreenItemTag(collectionId: String) = "collection_screen_item_$collectionId"

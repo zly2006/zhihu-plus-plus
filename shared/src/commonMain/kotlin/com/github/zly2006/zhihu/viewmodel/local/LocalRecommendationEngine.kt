@@ -18,19 +18,21 @@
 package com.github.zly2006.zhihu.viewmodel.local
 
 import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.navigation.zhihuQuestionFeedsUrl
 import com.github.zly2006.zhihu.shared.data.CommonFeed
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
+import com.github.zly2006.zhihu.shared.recommendation.LocalReasonPreference
+import com.github.zly2006.zhihu.shared.recommendation.applyReasonDiversity
+import com.github.zly2006.zhihu.shared.recommendation.buildLocalRecommendationReason
+import com.github.zly2006.zhihu.shared.recommendation.parseLocalContentIdentity
+import com.github.zly2006.zhihu.shared.recommendation.scoreFeedTarget
+import com.github.zly2006.zhihu.shared.recommendation.toLocalContentIdentity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
-import kotlin.math.ceil
 import kotlin.time.Clock
 
 class LocalRecommendationEngine(
@@ -88,7 +90,11 @@ class LocalRecommendationEngine(
             return@withContext buildFallbackRecommendations(dao, userBehaviorAnalyzer, feedGenerator, limit)
         }
 
-        applyReasonDiversity(ranked, limit).mapNotNull { rankedResult ->
+        applyReasonDiversity(
+            rankedResults = ranked,
+            limit = limit,
+            reasonOf = { it.result.reason },
+        ).mapNotNull { rankedResult ->
             toRecommendationEntry(
                 rankedResult = rankedResult,
                 feedGenerator = feedGenerator,
@@ -111,38 +117,6 @@ class LocalRecommendationEngine(
         withContext(Dispatchers.Default) {
             feedId?.let { dao.updateFeedFeedback(it, feedback) }
             userBehaviorAnalyzer.recordRecommendationFeedback(contentId, reason, feedback)
-        }
-    }
-
-    suspend fun refreshContent() {
-        withContext(Dispatchers.Default) {
-            insertRefreshTasks(dao)
-
-            dao
-                .getTasksByStatus(CrawlingStatus.NotStarted)
-                .sortedByDescending { it.priority }
-                .take(3)
-                .forEach { task ->
-                    runCatching { executeTask(task) }
-                }
-        }
-    }
-
-    fun getRecommendationStream(): Flow<List<LocalRecommendationEntry>> = flow {
-        while (true) {
-            try {
-                emit(generateRecommendations())
-                delay(30_000L)
-            } catch (_: Exception) {
-                delay(60_000L)
-            }
-        }
-    }
-
-    suspend fun cleanup() {
-        withContext(Dispatchers.Default) {
-            stopScheduling()
-            cleanupLocalRecommendationData(dao)
         }
     }
 
@@ -323,24 +297,22 @@ internal suspend fun ensurePendingTasks(dao: LocalContentDao) {
         val inProgressCount = dao.getTaskCountByReasonAndStatus(reason, CrawlingStatus.InProgress)
 
         if (pendingCount + inProgressCount < 2) {
-            repeat(3 - pendingCount - inProgressCount) {
-                tasks.add(createTaskForReason(reason))
+            val (url, priority) = when (reason) {
+                CrawlingReason.Following -> zhihuFollowingRecommendUrl() to 8
+                CrawlingReason.Trending -> zhihuTopstoryRecommendUrl(limit = 20) to 7
+                CrawlingReason.UpvotedQuestion -> zhihuTopstoryRecommendUrl(limit = 15) to 6
+                CrawlingReason.FollowingUpvote -> zhihuFollowingUpvoteRecommendUrl(limit = 15) to 5
+                CrawlingReason.CollaborativeFiltering -> zhihuTopstoryRecommendUrl(limit = 10) to 4
             }
-        }
-    }
-
-    if (tasks.isNotEmpty()) {
-        dao.insertTasks(tasks)
-    }
-}
-
-internal suspend fun insertRefreshTasks(dao: LocalContentDao) {
-    val tasks = mutableListOf<CrawlingTask>()
-
-    CrawlingReason.entries.forEach { reason ->
-        val pendingCount = dao.getTaskCountByReasonAndStatus(reason, CrawlingStatus.NotStarted)
-        if (pendingCount < 2) {
-            tasks.add(createTaskForReason(reason))
+            repeat(3 - pendingCount - inProgressCount) {
+                tasks.add(
+                    CrawlingTask(
+                        url = url,
+                        reason = reason,
+                        priority = priority,
+                    ),
+                )
+            }
         }
     }
 
@@ -405,52 +377,6 @@ internal fun extractQuestionIdFromUrl(url: String): String? {
     return regex.find(url)?.groupValues?.get(1)
 }
 
-internal fun createFollowingTasks(count: Int): List<CrawlingTask> = (0 until count).map { index ->
-    CrawlingTask(
-        url = zhihuFollowingRecommendUrl(offset = index * 10),
-        reason = CrawlingReason.Following,
-        priority = 8,
-    )
-}
-
-internal fun createTrendingTasks(count: Int): List<CrawlingTask> = (0 until count).map { index ->
-    CrawlingTask(
-        url = zhihuTopstoryRecommendUrl(limit = 20, offset = index * 20),
-        reason = CrawlingReason.Trending,
-        priority = 7,
-    )
-}
-
-internal fun createDefaultUpvotedQuestionTasks(count: Int): List<CrawlingTask> = (0 until count).map { index ->
-    CrawlingTask(
-        url = zhihuTopstoryRecommendUrl(limit = 10, offset = index * 10),
-        reason = CrawlingReason.UpvotedQuestion,
-        priority = 6,
-    )
-}
-
-internal fun createQuestionFeedTask(questionId: String): CrawlingTask = CrawlingTask(
-    url = zhihuQuestionFeedsUrl(questionId, limit = 20),
-    reason = CrawlingReason.UpvotedQuestion,
-    priority = 6,
-)
-
-internal fun createFollowingUpvoteTasks(count: Int): List<CrawlingTask> = (0 until count).map { index ->
-    CrawlingTask(
-        url = zhihuFollowingUpvoteRecommendUrl(limit = 20, offset = index * 20),
-        reason = CrawlingReason.FollowingUpvote,
-        priority = 5,
-    )
-}
-
-internal fun createCollaborativeFilteringTasks(count: Int): List<CrawlingTask> = (0 until count).map { index ->
-    CrawlingTask(
-        url = zhihuTopstoryRecommendUrl(limit = 15, offset = index * 15),
-        reason = CrawlingReason.CollaborativeFiltering,
-        priority = 4,
-    )
-}
-
 internal fun extractQuestionIdFromContentId(contentId: String): String? {
     val identity = parseLocalContentIdentity(contentId, "")
     return when {
@@ -473,7 +399,7 @@ internal fun rankCandidate(
 
     val reasonPreference = behaviorProfile.reasonPreferences[normalizedResult.reason] ?: LocalReasonPreference(1.0)
     val contentAffinity = behaviorProfile.contentAffinities[normalizedResult.contentId]
-    val reasonWeight = getDefaultWeight(normalizedResult.reason) * reasonPreference.multiplier
+    val reasonWeight = normalizedResult.reason.defaultWeight * reasonPreference.multiplier
     val contentWeight = contentAffinity?.multiplier ?: 1.0
     val freshnessWeight = getFreshnessWeight(normalizedResult.createdAt)
     val finalScore = normalizedResult.score * reasonWeight * contentWeight * freshnessWeight
@@ -482,7 +408,7 @@ internal fun rankCandidate(
         result = normalizedResult,
         finalScore = finalScore,
         reasonDisplay = buildLocalRecommendationReason(
-            baseReason = getReasonDisplayText(normalizedResult.reason),
+            baseReason = normalizedResult.reason.displayText,
             reasonPreference = reasonPreference,
             contentAffinity = contentAffinity,
         ),
@@ -503,54 +429,6 @@ internal suspend fun toRecommendationEntry(
     )
 }
 
-fun applyReasonDiversity(
-    rankedResults: List<RankedLocalResult>,
-    limit: Int,
-): List<RankedLocalResult> {
-    if (limit <= 0 || rankedResults.isEmpty()) {
-        return emptyList()
-    }
-    if (rankedResults.size <= limit) {
-        return rankedResults
-    }
-
-    val selected = mutableListOf<RankedLocalResult>()
-    val reasonCounts = mutableMapOf<CrawlingReason, Int>()
-    val maxPerReason = ceil(limit * 0.5).toInt().coerceAtLeast(1)
-    val diversityTarget = rankedResults
-        .map { it.result.reason }
-        .distinct()
-        .size
-        .coerceAtMost(limit)
-        .coerceAtMost(3)
-
-    rankedResults.forEach { ranked ->
-        if (selected.size >= diversityTarget) return@forEach
-        if (selected.none { it.result.reason == ranked.result.reason }) {
-            selected.add(ranked)
-            reasonCounts[ranked.result.reason] = 1
-        }
-    }
-
-    rankedResults.forEach { ranked ->
-        if (selected.size >= limit || ranked in selected) return@forEach
-        val currentCount = reasonCounts[ranked.result.reason] ?: 0
-        if (currentCount < maxPerReason) {
-            selected.add(ranked)
-            reasonCounts[ranked.result.reason] = currentCount + 1
-        }
-    }
-
-    if (selected.size < limit) {
-        rankedResults.forEach { ranked ->
-            if (selected.size >= limit || ranked in selected) return@forEach
-            selected.add(ranked)
-        }
-    }
-
-    return selected.take(limit)
-}
-
 internal fun getFreshnessWeight(
     createdAt: Long,
     nowMillis: Long = Clock.System.now().toEpochMilliseconds(),
@@ -563,36 +441,4 @@ internal fun getFreshnessWeight(
         ageHours < 168 -> 0.92
         else -> 0.82
     }
-}
-
-internal fun getDefaultWeight(reason: CrawlingReason): Double = when (reason) {
-    CrawlingReason.Following -> 1.2
-    CrawlingReason.Trending -> 1.0
-    CrawlingReason.UpvotedQuestion -> 0.95
-    CrawlingReason.FollowingUpvote -> 0.88
-    CrawlingReason.CollaborativeFiltering -> 0.8
-}
-
-internal fun getReasonDisplayText(reason: CrawlingReason): String = when (reason) {
-    CrawlingReason.Following -> "关注用户的最新动态"
-    CrawlingReason.Trending -> "热门推荐"
-    CrawlingReason.FollowingUpvote -> "关注用户点赞的内容"
-    CrawlingReason.UpvotedQuestion -> "相关问题的优质回答"
-    CrawlingReason.CollaborativeFiltering -> "相似用户喜欢的内容"
-}
-
-internal fun createTaskForReason(reason: CrawlingReason): CrawlingTask {
-    val (url, priority) = when (reason) {
-        CrawlingReason.Following -> zhihuFollowingRecommendUrl() to 8
-        CrawlingReason.Trending -> zhihuTopstoryRecommendUrl(limit = 20) to 7
-        CrawlingReason.UpvotedQuestion -> zhihuTopstoryRecommendUrl(limit = 15) to 6
-        CrawlingReason.FollowingUpvote -> zhihuFollowingUpvoteRecommendUrl(limit = 15) to 5
-        CrawlingReason.CollaborativeFiltering -> zhihuTopstoryRecommendUrl(limit = 10) to 4
-    }
-
-    return CrawlingTask(
-        url = url,
-        reason = reason,
-        priority = priority,
-    )
 }

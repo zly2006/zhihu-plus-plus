@@ -29,15 +29,16 @@ class LocalContentDatabaseTest {
             createTempDirectory("local-content-room").resolve("local-content.db").toFile(),
         )
 
-        val taskId = database.contentDao().insertTask(
-            CrawlingTask(
-                url = "https://www.zhihu.com/question/1",
-                reason = CrawlingReason.Trending,
+        database.contentDao().insertTasks(
+            listOf(
+                CrawlingTask(
+                    url = "https://www.zhihu.com/question/1",
+                    reason = CrawlingReason.Trending,
+                ),
             ),
         )
 
         val tasks = database.contentDao().getTasksByStatus(CrawlingStatus.NotStarted)
-        assertEquals(1L, taskId)
         assertEquals(listOf("https://www.zhihu.com/question/1"), tasks.map { it.url })
         database.close()
     }

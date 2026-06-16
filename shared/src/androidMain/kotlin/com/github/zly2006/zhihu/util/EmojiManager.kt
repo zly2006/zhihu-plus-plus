@@ -18,16 +18,8 @@
 package com.github.zly2006.zhihu.util
 
 import android.content.Context
-import android.graphics.BitmapFactory
 import android.util.Base64
 import android.util.Log
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.text.InlineTextContent
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.text.Placeholder
-import androidx.compose.ui.text.PlaceholderVerticalAlign
-import androidx.compose.ui.unit.em
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
@@ -216,31 +208,4 @@ object EmojiManager {
      * @return 本地文件路径，如果emoji不存在返回null
      */
     fun getEmojiPathByFileName(fileName: String): String? = emojiCache[fileName]
-
-    /**
-     * 创建InlineTextContent映射，用于Text组件显示emoji
-     */
-    fun createInlineContentMap(emojis: Set<String>): Map<String, InlineTextContent> {
-        return emojis
-            .mapNotNull { emojiKey ->
-                val path = getEmojiPathByFileName(emojiKey.removePrefix("emoji_")) ?: return@mapNotNull null
-
-                emojiKey to InlineTextContent(
-                    placeholder = Placeholder(
-                        width = 1.3.em,
-                        height = 1.3.em,
-                        placeholderVerticalAlign = PlaceholderVerticalAlign.TextCenter,
-                    ),
-                ) {
-                    val bitmap = BitmapFactory.decodeFile(path)
-                    if (bitmap != null) {
-                        Image(
-                            bitmap = bitmap.asImageBitmap(),
-                            contentDescription = emojiKey,
-                            modifier = Modifier,
-                        )
-                    }
-                }
-            }.toMap()
-    }
 }

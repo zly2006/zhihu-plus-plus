@@ -31,11 +31,10 @@ import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
-import com.github.zly2006.zhihu.viewmodel.NotificationPaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.NotificationEnvironment
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
 import io.ktor.client.HttpClient
-import io.ktor.client.request.HttpRequestBuilder
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import platform.Foundation.NSURL
@@ -65,33 +64,27 @@ actual fun rememberNotificationScreenRuntime(
     settingsStore: NotificationSettingsStore,
 ): NotificationScreenRuntime = remember(settingsStore) {
     NotificationScreenRuntime(
-        environment = IosNotificationPaginationEnvironment(settingsStore),
+        environment = IosNotificationEnvironment(settingsStore),
         showDebugCopy = false,
     )
 }
 
-private class IosNotificationPaginationEnvironment(
+private class IosNotificationEnvironment(
     override val notificationSettingsStore: NotificationSettingsStore,
-) : NotificationPaginationEnvironment {
+) : NotificationEnvironment {
     override fun httpClient() = error("HTTP client not available on iOS yet") // TODO: iOS HTTP 客户端
+
+    override fun authenticatedCookies(): Map<String, String> = emptyMap()
 
     override suspend fun fetchJson(url: String, include: String): JsonObject = error("fetchJson not available on iOS yet") // TODO: iOS 通知数据获取
 
     override fun logDecodeFailure(tag: String?, item: JsonElement, error: Exception) = Unit // TODO: iOS 解码失败日志
 
     override suspend fun handleFetchFailure(tag: String?, error: Exception) = Unit // TODO: iOS 获取失败处理
-
-    override fun configureSignedRequest(builder: HttpRequestBuilder) = Unit // TODO: iOS 签名请求配置
 }
 
 @Composable
-actual fun rememberArticleScreenRuntime(): ArticleScreenRuntime = remember {
-    object : ArticleScreenRuntime {
-        override val articleHost: ArticleHost? = null
-
-        override val previewPreloader = ArticlePreviewPreloader { _, _, _, _ -> } // TODO: iOS 预加载实现
-    }
-}
+actual fun rememberArticleScreenRuntime(): ArticleScreenRuntime = remember { defaultArticleScreenRuntime() }
 
 @Composable
 actual fun ArticleWebViewContent(
@@ -189,8 +182,7 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
 @Composable
 actual fun rememberZhihuHttpClient(): HttpClient {
     val store = remember { IosAccountStore() }
-    val session = remember { store.load() }
-    return remember(store, session) { store.createHttpClient(session.cookies.toMutableMap()) }
+    return store.httpClient()
 }
 
 internal fun openIosUrl(url: String) {
@@ -204,3 +196,9 @@ actual fun QuestionDetailWebViewContent(questionId: Long, html: String) = Unit /
 actual fun supportsQuestionDetailWebView(): Boolean = false
 
 actual fun Modifier.questionSelectionWorkaround(): Modifier = this
+
+@Composable
+actual fun ArticleImmersiveModeEffect(immersive: Boolean) = Unit
+
+@Composable
+actual fun LeaveImmersiveModeCleanup() = Unit

@@ -16,6 +16,7 @@
  */
 
 package com.github.zly2006.zhihu.ui
+
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -51,14 +52,11 @@ import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
-import com.github.zly2006.zhihu.ui.PeopleProfileUiState
-import com.github.zly2006.zhihu.ui.PinLinkCardPreview
-import com.github.zly2006.zhihu.ui.QuestionScreenUiState
-import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.ShareDialogRuntime
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
+import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.getOrFetchContentDetail
 import io.ktor.client.HttpClient
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -77,12 +75,12 @@ data class PinScreenRuntime(
 
 internal suspend fun fetchPinLinkCardPreview(
     linkCard: DataHolder.Pin.ContentLinkCard,
-    fetchDetail: suspend (NavDestination) -> DataHolder.Content?,
+    env: ZhihuApiEnvironment,
 ): PinLinkCardPreview? {
     val destination = resolveLinkCardDestination(linkCard) ?: return null
     return when (destination) {
         is Article -> {
-            when (val detail = fetchDetail(destination)) {
+            when (val detail = env.getOrFetchContentDetail(destination)) {
                 is DataHolder.Article -> PinLinkCardPreview(
                     title = compactTitle(detail.title),
                     preview = compactPreview(detail.excerpt.ifBlank { detail.content }),
@@ -95,7 +93,7 @@ internal suspend fun fetchPinLinkCardPreview(
             }
         }
         is Question -> {
-            (fetchDetail(destination) as? DataHolder.Question)?.let { detail ->
+            (env.getOrFetchContentDetail(destination) as? DataHolder.Question)?.let { detail ->
                 PinLinkCardPreview(
                     title = compactTitle(detail.title),
                     preview = compactPreview(detail.detail),
@@ -103,7 +101,7 @@ internal suspend fun fetchPinLinkCardPreview(
             }
         }
         is Pin -> {
-            (fetchDetail(destination) as? DataHolder.Pin)?.let { detail ->
+            (env.getOrFetchContentDetail(destination) as? DataHolder.Pin)?.let { detail ->
                 PinLinkCardPreview(
                     title = "${detail.author.name} 的想法",
                     preview = compactPreview(detail.contentHtml),
@@ -151,24 +149,6 @@ expect fun supportsPinHtmlWebView(): Boolean
 
 @Composable
 expect fun PinHtmlWebViewContent(html: String)
-
-/**
- * 想法评论底部表单。
- *
- * 这是 [PinScreen] 的评论入口封装，保持想法页和其他内容页使用同一个 [CommentScreenComponent]，只把内容类型绑定为 [Pin]。
- */
-@Composable
-fun PinCommentsSheet(
-    showComments: Boolean,
-    onDismiss: () -> Unit,
-    content: Pin,
-) {
-    CommentScreenComponent(
-        showComments = showComments,
-        onDismiss = onDismiss,
-        content = content,
-    )
-}
 
 /**
  * 文章页 Compose UI 使用的运行时设置视图。
@@ -290,6 +270,12 @@ fun interface ArticlePreviewPreloader {
     )
 }
 
+internal fun defaultArticleScreenRuntime(): ArticleScreenRuntime =
+    object : ArticleScreenRuntime {
+        override val articleHost: ArticleHost? = null
+        override val previewPreloader = ArticlePreviewPreloader { _, _, _, _ -> }
+    }
+
 @Composable
 expect fun rememberArticleScreenRuntime(): ArticleScreenRuntime
 
@@ -305,28 +291,6 @@ expect fun ArticleWebViewContent(
     onImageLoadFailed: () -> Unit,
     onDoubleTap: () -> Unit,
 )
-
-/**
- * 文章正文的 Compose Markdown 渲染入口。
- *
- * 调用方提供头部和尾部内容，这里只负责把知乎 HTML 交给 Markdown runtime，并打开选择能力。它是 WebView 关闭时文章页的主渲染路径。
- */
-@Composable
-fun ArticleMarkdownContent(
-    html: String,
-    modifier: Modifier,
-    header: @Composable () -> Unit,
-    footer: @Composable () -> Unit,
-) {
-    RenderMarkdown(
-        html = html,
-        modifier = modifier,
-        selectable = true,
-        enableScroll = false,
-        header = header,
-        footer = footer,
-    )
-}
 
 /**
  * 文章附件中的视频入口渲染。
@@ -360,14 +324,13 @@ fun ArticleVideoAttachmentContent(attachment: JsonElement?) {
     }
 }
 
+/** 过滤部分设备文本选择菜单中的非预期系统项。 */
 expect fun Modifier.articleMarkdownSelectionWorkaround(): Modifier
 
 data class LoadedQuestionScreenData(
     val uiState: QuestionScreenUiState,
     val historyDestination: Question,
 )
-
-fun questionDetailPreview(html: String): String = Ksoup.parse(html).text().trim()
 
 internal fun loadedQuestionScreenData(
     question: Question,
@@ -424,24 +387,6 @@ expect fun QuestionDetailWebViewContent(
 )
 
 /**
- * 问题评论底部表单。
- *
- * 封装问题页的评论入口，让问题页使用和文章、想法一致的 [CommentScreenComponent] 展示方式。
- */
-@Composable
-fun QuestionCommentsSheet(
-    showComments: Boolean,
-    onDismiss: () -> Unit,
-    content: Question,
-) {
-    CommentScreenComponent(
-        showComments = showComments,
-        onDismiss = onDismiss,
-        content = content,
-    )
-}
-
-/**
  * 文章页底部操作区使用的平台桥接。
  *
  * 可见按钮由 common UI 统一绘制，但语音朗读、系统分享、剪贴板和在浏览器打开知乎原文都需要平台实现。
@@ -455,24 +400,6 @@ interface ArticleActionsRuntime {
         title: String,
         content: String,
     )
-
-    fun shareArticle(
-        article: Article,
-        questionId: Long,
-        title: String,
-        authorName: String,
-    ) {
-        shareRuntime.share(article, articleActionText(article, questionId, title, authorName))
-    }
-
-    fun copyArticleLink(
-        article: Article,
-        questionId: Long,
-        title: String,
-        authorName: String,
-    ) {
-        shareRuntime.copyLink(article, articleActionText(article, questionId, title, authorName))
-    }
 
     fun openArticleInBrowser(article: Article)
 }
@@ -555,7 +482,9 @@ interface ArticleAnswerSwitchState {
     var pendingNavigator: AnswerNavigator?
     var pendingInitialContent: CachedAnswerContent?
     var navigatingFromAnswerSwitch: Boolean
+    var answerSwitchDisposeInProgress: Boolean
     var answerTransitionDirection: ArticleAnswerTransitionDirection
+    var isImmersiveMode: Boolean
 
     fun reset()
 
@@ -754,23 +683,6 @@ data class HomeScreenRuntime(
 @Composable
 expect fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): HomeScreenRuntime
 
-fun interface ArticleReadHistoryRecorder {
-    suspend fun addReadHistory(article: Article)
-}
-
-@Composable
-fun rememberArticleReadHistoryRecorder(): ArticleReadHistoryRecorder {
-    val environment = rememberPaginationEnvironment(false)
-    return remember(environment) {
-        ArticleReadHistoryRecorder { article ->
-            environment.addReadHistory(
-                contentToken = article.id.toString(),
-                contentTypeName = article.type.name.lowercase(),
-            )
-        }
-    }
-}
-
 interface CommentScreenRuntime {
     fun saveImage(imageUrl: String)
 
@@ -799,5 +711,20 @@ expect fun rememberBlocklistSettingsPlatformRuntime(
 
 @Composable
 expect fun rememberZhihuHttpClient(): HttpClient
+
+/**
+ * 沉浸式阅读时控制系统栏（状态栏/导航栏）的显隐。
+ * Android 会隐藏状态栏并允许滑动唤出；Desktop/iOS 为空操作。
+ */
+@Composable
+expect fun ArticleImmersiveModeEffect(immersive: Boolean)
+
+/**
+ * 离开沉浸式阅读时恢复系统状态栏。
+ * 调用时机：导航目的地从 Article 切换到非 Article 时。
+ * Android 会显示状态栏；Desktop/iOS 为空操作。
+ */
+@Composable
+expect fun LeaveImmersiveModeCleanup()
 
 expect fun Modifier.questionSelectionWorkaround(): Modifier

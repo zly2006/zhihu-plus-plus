@@ -16,45 +16,11 @@
  */
 
 package com.github.zly2006.zhihu.viewmodel.filter
+
 import android.content.Context
-import android.net.Uri
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
 import androidx.room.Room
 import com.github.zly2006.zhihu.shared.nlp.KeywordWeightExtractor
 import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import java.io.File
-
-@Volatile
-private var blocklistManager: BlocklistManager? = null
-
-fun getBlocklistManager(context: Context): BlocklistManager =
-    blocklistManager ?: synchronized(BlocklistManager::class) {
-        blocklistManager ?: getContentFilterDatabase(context.applicationContext)
-            .createBlocklistManager()
-            .also {
-                blocklistManager = it
-            }
-    }
-
-suspend fun BlocklistManager.exportAllBlocklistToJson(context: Context): File = withContext(Dispatchers.IO) {
-    val dir = context.getExternalFilesDir(null) ?: context.filesDir
-    val file = File(dir, "zhihupp_blocklist.json")
-    file.writeText(exportAllBlocklistToJsonText())
-    file
-}
-
-suspend fun BlocklistManager.importAllBlocklistFromJson(context: Context, uri: Uri): String = withContext(Dispatchers.IO) {
-    val text = context.contentResolver
-        .openInputStream(uri)
-        ?.bufferedReader()
-        ?.readText()
-        ?: return@withContext "读取文件失败"
-    importAllBlocklistFromJsonText(text)
-}
 
 private const val CONTENT_FILTER_DATABASE_NAME = "content_filter_database"
 
@@ -73,26 +39,14 @@ fun getContentFilterDatabase(context: Context): ContentFilterDatabase =
         }
     }
 
-fun clearContentFilterDatabaseInstance() {
-    contentFilterDatabase = null
-}
-
 object AndroidContentFilterRuntime {
     var semanticMatcher: KeywordSemanticMatcher = KeywordSemanticMatcher { _, _, _ -> emptyList() }
     var keywordWeightExtractor: KeywordWeightExtractor = KeywordWeightExtractor { _, _ -> emptyList() }
 }
 
-@Composable
-actual fun rememberBlockedFeedRecordDao(): BlockedFeedRecordDao {
-    val context = LocalContext.current
-    return remember(context) { getContentFilterDatabase(context).blockedFeedRecordDao() }
-}
-
-@Composable
-actual fun rememberBlocklistManager(): BlocklistManager {
-    val context = LocalContext.current
-    return remember(context) { getBlocklistManager(context) }
-}
+actual fun getContentFilterDatabase(): ContentFilterDatabase =
+    contentFilterDatabase
+        ?: error("Content filter database is not initialized")
 
 fun Context.contentFilterSettings(): FeedFilterSettings =
     androidSettingsStore(this).toFeedFilterSettings()

@@ -36,15 +36,17 @@ class LocalRecommendationSupportTest {
     fun buildFallbackRecommendationsRanksRecentResultsAndCreatesEntries() = runTest {
         val database = testLocalContentDatabase()
         val dao = database.contentDao()
-        dao.insertResult(
-            CrawlingResult(
-                taskId = 1L,
-                contentId = "42",
-                title = "回答标题",
-                summary = "摘要",
-                url = "https://www.zhihu.com/answer/42",
-                reason = CrawlingReason.Trending,
-                score = 10.0,
+        dao.insertResults(
+            listOf(
+                CrawlingResult(
+                    taskId = 1L,
+                    contentId = "42",
+                    title = "回答标题",
+                    summary = "摘要",
+                    url = "https://www.zhihu.com/answer/42",
+                    reason = CrawlingReason.Trending,
+                    score = 10.0,
+                ),
             ),
         )
 
@@ -122,15 +124,17 @@ class LocalRecommendationSupportTest {
                 ),
             ),
         )
-        dao.insertResult(
-            CrawlingResult(
-                taskId = 1L,
-                contentId = "answer:1",
-                title = "标题",
-                summary = "摘要",
-                url = "https://www.zhihu.com/answer/1",
-                reason = CrawlingReason.Trending,
-                createdAt = olderThanMonth,
+        dao.insertResults(
+            listOf(
+                CrawlingResult(
+                    taskId = 1L,
+                    contentId = "answer:1",
+                    title = "标题",
+                    summary = "摘要",
+                    url = "https://www.zhihu.com/answer/1",
+                    reason = CrawlingReason.Trending,
+                    createdAt = olderThanMonth,
+                ),
             ),
         )
         dao.insertFeed(
@@ -157,7 +161,7 @@ class LocalRecommendationSupportTest {
         assertEquals(emptyList(), dao.getTasksByStatus(CrawlingStatus.Completed))
         assertEquals(1, dao.getTasksByStatus(CrawlingStatus.NotStarted).size)
         assertEquals(emptyList(), dao.getRecentResults(10))
-        assertEquals(emptyList(), dao.getRecentFeeds(10))
+        assertEquals(null, dao.getFeedById("local_feed_answer_1"))
         assertEquals(emptyList(), dao.getBehaviorsSince(0L))
         database.close()
     }
@@ -208,41 +212,28 @@ class LocalRecommendationSupportTest {
     fun ensurePendingTasksAddsTasksForReasonsBelowThreshold() = runTest {
         val database = testLocalContentDatabase()
         val dao = database.contentDao()
-        dao.insertTask(
-            CrawlingTask(
-                url = "existing",
-                reason = CrawlingReason.Trending,
+        dao.insertTasks(
+            listOf(
+                CrawlingTask(
+                    url = "existing",
+                    reason = CrawlingReason.Trending,
+                ),
             ),
         )
 
         ensurePendingTasks(dao)
 
-        assertEquals(3, dao.getTaskCountByReasonAndStatus(CrawlingReason.Trending, CrawlingStatus.NotStarted))
-        assertEquals(3, dao.getTaskCountByReasonAndStatus(CrawlingReason.Following, CrawlingStatus.NotStarted))
-        database.close()
-    }
-
-    @Test
-    fun insertRefreshTasksAddsOneTaskForReasonsBelowPendingThreshold() = runTest {
-        val database = testLocalContentDatabase()
-        val dao = database.contentDao()
-        dao.insertTasks(
-            listOf(
-                CrawlingTask(
-                    url = "existing-1",
-                    reason = CrawlingReason.Trending,
-                ),
-                CrawlingTask(
-                    url = "existing-2",
-                    reason = CrawlingReason.Trending,
-                ),
-            ),
+        val trendingTasks = dao.getTasksByStatus(CrawlingStatus.NotStarted).filter { it.reason == CrawlingReason.Trending }
+        assertEquals(3, trendingTasks.size)
+        assertEquals(
+            setOf("existing", "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=20"),
+            trendingTasks.map { it.url }.toSet(),
         )
-
-        insertRefreshTasks(dao)
-
-        assertEquals(2, dao.getTaskCountByReasonAndStatus(CrawlingReason.Trending, CrawlingStatus.NotStarted))
-        assertEquals(1, dao.getTaskCountByReasonAndStatus(CrawlingReason.Following, CrawlingStatus.NotStarted))
+        assertEquals(setOf(0, 7), trendingTasks.map { it.priority }.toSet())
+        val followingTasks = dao.getTasksByStatus(CrawlingStatus.NotStarted).filter { it.reason == CrawlingReason.Following }
+        assertEquals(3, followingTasks.size)
+        assertEquals(setOf("https://api.zhihu.com/moments_v3?feed_type=recommend"), followingTasks.map { it.url }.toSet())
+        assertEquals(setOf(8), followingTasks.map { it.priority }.toSet())
         database.close()
     }
 
@@ -299,35 +290,6 @@ class LocalRecommendationSupportTest {
     }
 
     @Test
-    fun createInitializerTasksKeepsUrlsAndPriorities() {
-        assertEquals(
-            "https://api.zhihu.com/moments_v3?feed_type=recommend&offset=20",
-            createFollowingTasks(3).last().url,
-        )
-        assertEquals(8, createFollowingTasks(1).single().priority)
-        assertEquals(
-            "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=20&offset=40",
-            createTrendingTasks(3).last().url,
-        )
-        assertEquals(
-            "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=10&offset=10",
-            createDefaultUpvotedQuestionTasks(2).last().url,
-        )
-        assertEquals(
-            "https://www.zhihu.com/api/v4/questions/123/feeds?limit=20",
-            createQuestionFeedTask("123").url,
-        )
-        assertEquals(
-            "https://www.zhihu.com/api/v3/feed/topstory/recommend?action_feed=True&limit=20&offset=20",
-            createFollowingUpvoteTasks(2).last().url,
-        )
-        assertEquals(
-            "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=15&offset=15",
-            createCollaborativeFilteringTasks(2).last().url,
-        )
-    }
-
-    @Test
     fun extractQuestionIdFromContentIdKeepsLegacyFallback() {
         assertEquals("123", extractQuestionIdFromContentId("question:123"))
         assertEquals("123", extractQuestionIdFromContentId("q123"))
@@ -360,21 +322,17 @@ class LocalRecommendationSupportTest {
     }
 
     @Test
-    fun getDefaultWeightKeepsReasonWeights() {
-        assertEquals(1.2, getDefaultWeight(CrawlingReason.Following))
-        assertEquals(1.0, getDefaultWeight(CrawlingReason.Trending))
-        assertEquals(0.95, getDefaultWeight(CrawlingReason.UpvotedQuestion))
-        assertEquals(0.88, getDefaultWeight(CrawlingReason.FollowingUpvote))
-        assertEquals(0.8, getDefaultWeight(CrawlingReason.CollaborativeFiltering))
-    }
-
-    @Test
-    fun createTaskForReasonKeepsUrlAndPriority() {
-        val task = createTaskForReason(CrawlingReason.Following)
-
-        assertEquals("https://api.zhihu.com/moments_v3?feed_type=recommend", task.url)
-        assertEquals(CrawlingReason.Following, task.reason)
-        assertEquals(8, task.priority)
+    fun crawlingReasonKeepsWeightsAndLabels() {
+        assertEquals(1.2, CrawlingReason.Following.defaultWeight)
+        assertEquals("关注用户的最新动态", CrawlingReason.Following.displayText)
+        assertEquals(1.0, CrawlingReason.Trending.defaultWeight)
+        assertEquals("热门推荐", CrawlingReason.Trending.displayText)
+        assertEquals(0.95, CrawlingReason.UpvotedQuestion.defaultWeight)
+        assertEquals("相关问题的优质回答", CrawlingReason.UpvotedQuestion.displayText)
+        assertEquals(0.88, CrawlingReason.FollowingUpvote.defaultWeight)
+        assertEquals("关注用户点赞的内容", CrawlingReason.FollowingUpvote.displayText)
+        assertEquals(0.8, CrawlingReason.CollaborativeFiltering.defaultWeight)
+        assertEquals("相似用户喜欢的内容", CrawlingReason.CollaborativeFiltering.displayText)
     }
 
     @Test
@@ -433,38 +391,18 @@ class LocalRecommendationSupportTest {
     }
 
     @Test
-    fun localRecommendationEngineRefreshContentInsertsAndExecutesTopPriorityTasks() = runTest {
-        val database = testLocalContentDatabase()
-        val executedReasons = mutableListOf<CrawlingReason>()
-        val engine = localRecommendationEngineForTest(
-            dao = database.contentDao(),
-            executeTask = { task -> executedReasons.add(task.reason) },
-        )
-
-        engine.refreshContent()
-
-        assertEquals(
-            listOf(
-                CrawlingReason.Following,
-                CrawlingReason.Trending,
-                CrawlingReason.UpvotedQuestion,
-            ),
-            executedReasons,
-        )
-        assertEquals(1, database.contentDao().getTaskCountByReasonAndStatus(CrawlingReason.Following, CrawlingStatus.NotStarted))
-        database.close()
-    }
-
-    @Test
     fun crawlingExecutorMarksTaskCompletedAfterEmptyFetch() = runTest {
         val database = testLocalContentDatabase()
         val dao = database.contentDao()
-        val taskId = dao.insertTask(
-            CrawlingTask(
-                url = "https://api.zhihu.com/moments_v3?feed_type=recommend",
-                reason = CrawlingReason.Following,
+        dao.insertTasks(
+            listOf(
+                CrawlingTask(
+                    url = "https://api.zhihu.com/moments_v3?feed_type=recommend",
+                    reason = CrawlingReason.Following,
+                ),
             ),
         )
+        val taskId = dao.getTasksByStatus(CrawlingStatus.NotStarted).single().id
         val requestedUrls = mutableListOf<String>()
         val executor = CrawlingExecutor(
             dao = dao,

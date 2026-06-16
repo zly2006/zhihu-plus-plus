@@ -18,32 +18,16 @@
 package com.github.zly2006.zhihu.shared.platform
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalWindowInfo
+import com.github.zly2006.zhihu.shared.desktop.DesktopPropertiesFile
 import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
-import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDataFile
 import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
-import java.util.Properties
 
 @Composable
 actual fun rememberSettingsStore(): SettingsStore = remember { desktopSettingsStore() }
 
 fun desktopSettingsStore(): SettingsStore {
-    val settingsFile = desktopZhihuDataFile("settings.properties")
-    val properties = Properties()
-
-    fun load() {
-        if (settingsFile.isFile) settingsFile.inputStream().use(properties::load)
-    }
-
-    fun save() {
-        settingsFile.parentFile?.mkdirs()
-        settingsFile.outputStream().use { output ->
-            properties.store(output, "Zhihu++ desktop settings")
-        }
-    }
-
-    load()
+    val propertiesFile = DesktopPropertiesFile("settings.properties", "Zhihu++ desktop settings")
+    val properties = propertiesFile.properties
 
     return SettingsStore(
         getBoolean = { key, defaultValue ->
@@ -51,21 +35,21 @@ fun desktopSettingsStore(): SettingsStore {
         },
         putBoolean = { key, value ->
             properties.setProperty(key, value.toString())
-            save()
+            propertiesFile.save()
         },
         getString = { key, defaultValue ->
             properties.getProperty(key) ?: defaultValue
         },
         putString = { key, value ->
             properties.setProperty(key, value)
-            save()
+            propertiesFile.save()
         },
         getStringOrNull = { key ->
             properties.getProperty(key)
         },
         putStringSet = { key, value ->
             properties.setProperty(key, value.joinToString("\u001F"))
-            save()
+            propertiesFile.save()
         },
         getStringSet = { key, defaultValue ->
             properties
@@ -79,25 +63,25 @@ fun desktopSettingsStore(): SettingsStore {
         },
         putInt = { key, value ->
             properties.setProperty(key, value.toString())
-            save()
+            propertiesFile.save()
         },
         getLong = { key, defaultValue ->
             properties.getProperty(key)?.toLongOrNull() ?: defaultValue
         },
         putLong = { key, value ->
             properties.setProperty(key, value.toString())
-            save()
+            propertiesFile.save()
         },
         getFloat = { key, defaultValue ->
             properties.getProperty(key)?.toFloatOrNull() ?: defaultValue
         },
         putFloat = { key, value ->
             properties.setProperty(key, value.toString())
-            save()
+            propertiesFile.save()
         },
         remove = { key ->
             properties.remove(key)
-            save()
+            propertiesFile.save()
         },
     )
 }
@@ -115,30 +99,32 @@ actual fun rememberZhihuWebUrlOpener(): (String) -> Unit = rememberExternalUrlOp
 actual fun rememberImagePreviewOpener(): (String) -> Unit = rememberExternalUrlOpener()
 
 @Composable
-actual fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit =
-    remember { { _, text -> runCatching { copyDesktopPlainText(text) } } }
-
-@Composable
-actual fun rememberUserMessageSink(): UserMessageSink = remember { UserMessageSink(::showDesktopMessage) }
-
-private fun showDesktopMessage(message: String) {
-    println(message)
-    runCatching {
-        ProcessBuilder("terminal-notifier", "-message", message, "-sound", "default")
-            .start()
+actual fun rememberImageGalleryOpener(): (List<String>, Int) -> Unit {
+    val openExternalUrl = rememberExternalUrlOpener()
+    return remember(openExternalUrl) {
+        { urls, initialIndex ->
+            if (urls.isNotEmpty()) {
+                urls[initialIndex.coerceIn(0, urls.lastIndex)].let(openExternalUrl)
+            }
+        }
     }
 }
 
 @Composable
-actual fun rememberScreenSizeDp(): ScreenSizeDp {
-    val density = LocalDensity.current
-    val containerSize = LocalWindowInfo.current.containerSize
-    return with(density) {
-        ScreenSizeDp(
-            width = containerSize.width.toDp().value,
-            height = containerSize.height.toDp().value,
-        )
-    }
+actual fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit =
+    remember { { _, text -> runCatching { copyDesktopPlainText(text) } } }
+
+@Composable
+actual fun rememberUserMessageSink(): UserMessageSink = remember {
+    UserMessageSink(
+        showShortMessage = { message ->
+            println(message)
+            runCatching {
+                ProcessBuilder("terminal-notifier", "-message", message, "-sound", "default")
+                    .start()
+            }
+        },
+    )
 }
 
 @Composable
@@ -146,6 +132,14 @@ actual fun PlatformBackHandler(
     enabled: Boolean,
     onBack: () -> Unit,
 ) = Unit // TODO: desktop back handler
+
+@Composable
+actual fun PlatformPredictiveBackHandler(
+    enabled: Boolean,
+    onProgress: (Float) -> Unit,
+    onCancel: () -> Unit,
+    onBack: () -> Unit,
+) = PlatformBackHandler(enabled = enabled, onBack = onBack)
 
 @Composable
 actual fun rememberIsLiteVariant(): Boolean = false

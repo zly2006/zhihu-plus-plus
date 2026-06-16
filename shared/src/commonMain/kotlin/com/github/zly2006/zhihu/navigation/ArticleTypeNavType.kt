@@ -38,7 +38,7 @@ object ArticleTypeNavType : NavType<ArticleType>(false) {
         if (!contains(key) || isNull(key)) {
             null
         } else {
-            getString(key)?.let { name -> ArticleType.entries.find { it.name == name } }
+            getString(key).let { name -> ArticleType.entries.find { it.name == name } }
         }
     }
 

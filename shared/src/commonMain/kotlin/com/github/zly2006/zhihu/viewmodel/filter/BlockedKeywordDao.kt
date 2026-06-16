@@ -28,9 +28,6 @@ interface BlockedKeywordDao {
     @Query("SELECT * FROM ${BlockedKeyword.TABLE_NAME} ORDER BY createdTime DESC")
     suspend fun getAllKeywords(): List<BlockedKeyword>
 
-    @Query("SELECT * FROM ${BlockedKeyword.TABLE_NAME} WHERE id = :id")
-    suspend fun getKeywordById(id: Long): BlockedKeyword?
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertKeyword(keyword: BlockedKeyword): Long
 

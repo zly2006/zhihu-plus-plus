@@ -147,7 +147,7 @@ suspend fun requestQrCode(
         setBody("{}")
     }
     val body = response.bodyAsText()
-    val result = decodeZhihuLoginJson(
+    val result = decodeZhihuLoginJsonTyped(
         ZhihuQrCodeResponse.serializer(),
         ZhihuJson.json.parseToJsonElement(body),
     )
@@ -187,7 +187,7 @@ suspend fun pollQrCodeLogin(
             }
             val body = response.bodyAsText()
             val scanInfo = runCatching {
-                decodeZhihuLoginJson(
+                decodeZhihuLoginJsonTyped(
                     ZhihuQrScanInfo.serializer(),
                     ZhihuJson.json.parseToJsonElement(body),
                 )
@@ -335,16 +335,6 @@ fun normalizeDeadline(expiresAt: Long?): Long {
 }
 
 private fun currentEpochMillis(): Long = Clock.System.now().toEpochMilliseconds()
-
-internal fun decodeZhihuLoginJson(
-    serializer: KSerializer<ZhihuQrCodeResponse>,
-    json: JsonElement,
-): ZhihuQrCodeResponse = decodeZhihuLoginJsonTyped(serializer, json)
-
-internal fun decodeZhihuLoginJson(
-    serializer: KSerializer<ZhihuQrScanInfo>,
-    json: JsonElement,
-): ZhihuQrScanInfo = decodeZhihuLoginJsonTyped(serializer, json)
 
 private fun <T> decodeZhihuLoginJsonTyped(serializer: KSerializer<T>, json: JsonElement): T {
     val normalized = ZhihuJson.snakeCaseToCamelCase(json)

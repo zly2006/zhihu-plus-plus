@@ -27,6 +27,7 @@ import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
@@ -52,10 +53,6 @@ import com.github.zly2006.zhihu.ui.FOLLOW_SCREEN_PAGER_TAG
 import com.github.zly2006.zhihu.ui.FollowScreen
 import com.github.zly2006.zhihu.ui.FollowScreenData
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
-import com.github.zly2006.zhihu.ui.followDynamicItemTag
-import com.github.zly2006.zhihu.ui.followRecommendItemTag
-import com.github.zly2006.zhihu.ui.followScreenTabTag
-import com.github.zly2006.zhihu.ui.followingUserItemTag
 import com.github.zly2006.zhihu.viewmodel.feed.FollowRecommendViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.FollowViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.RecentMomentsViewModel
@@ -114,27 +111,28 @@ class FollowScreenInstrumentedTest {
             recentUsers = emptyList(),
         )
 
-        composeRule.waitUntilTagSelected(followScreenTabTag(0))
-        composeRule.onNodeWithTag(followScreenTabTag(0)).assertIsSelected()
-        composeRule.onNodeWithTag(followScreenTabTag(1)).assertIsNotSelected()
-        composeRule.onNodeWithTag(followRecommendItemTag("recommend-item-1")).assertIsDisplayed()
+        composeRule.waitUntilTagSelected("follow_screen_tab_0")
+        composeRule.onNodeWithTag("follow_screen_tab_0").assertIsSelected()
+        composeRule.onNodeWithTag("follow_screen_tab_1").assertIsNotSelected()
+        composeRule.onNodeWithTag("follow_recommend_item_recommend-item-1").assertIsDisplayed()
 
-        composeRule.onNodeWithTag(followScreenTabTag(1)).performClick()
+        composeRule.onNodeWithTag("follow_screen_tab_1").performClick()
 
-        composeRule.waitUntilTagSelected(followScreenTabTag(1))
-        composeRule.onNodeWithTag(followScreenTabTag(1)).assertIsSelected()
-        composeRule.onNodeWithTag(followScreenTabTag(0)).assertIsNotSelected()
-        composeRule.onNodeWithTag(followDynamicItemTag("dynamic-item-1")).assertIsDisplayed()
+        composeRule.waitUntilTagSelected("follow_screen_tab_1")
+        composeRule.onNodeWithTag("follow_screen_tab_1").assertIsSelected()
+        composeRule.onNodeWithTag("follow_screen_tab_0").assertIsNotSelected()
+        composeRule.onNodeWithTag("follow_dynamic_item_dynamic-item-1").assertIsDisplayed()
+        composeRule.onNodeWithText("关注用户 1 赞同了回答").assertIsDisplayed()
 
         composeRule.onNodeWithTag(FOLLOW_SCREEN_PAGER_TAG).performTouchInput { swipeRight() }
 
-        composeRule.waitUntilTagSelected(followScreenTabTag(0))
-        composeRule.onNodeWithTag(followRecommendItemTag("recommend-item-1")).assertIsDisplayed()
+        composeRule.waitUntilTagSelected("follow_screen_tab_0")
+        composeRule.onNodeWithTag("follow_recommend_item_recommend-item-1").assertIsDisplayed()
 
         composeRule.onNodeWithTag(FOLLOW_SCREEN_PAGER_TAG).performTouchInput { swipeLeft() }
 
-        composeRule.waitUntilTagSelected(followScreenTabTag(1))
-        composeRule.onNodeWithTag(followDynamicItemTag("dynamic-item-1")).assertIsDisplayed()
+        composeRule.waitUntilTagSelected("follow_screen_tab_1")
+        composeRule.onNodeWithTag("follow_dynamic_item_dynamic-item-1").assertIsDisplayed()
         assertTrue(navigator.destinations.isEmpty())
         assertEquals(0, navigator.backCount)
     }
@@ -161,13 +159,13 @@ class FollowScreenInstrumentedTest {
         )
 
         composeRule.onNodeWithTag(FOLLOW_RECOMMEND_REFRESH_BUTTON_TAG).assertIsDisplayed()
-        composeRule.onNodeWithTag(followingUserItemTag("follow-user-1")).assertIsDisplayed()
-        composeRule.onNodeWithTag(followRecommendItemTag("recommend-item-1")).assertIsDisplayed()
+        composeRule.onNodeWithTag("following_users_item_follow-user-1").assertIsDisplayed()
+        composeRule.onNodeWithTag("follow_recommend_item_recommend-item-1").assertIsDisplayed()
 
         composeRule.onNodeWithTag(FOLLOW_RECOMMEND_REFRESH_BUTTON_TAG).performClick()
         composeRule.onNodeWithTag(FOLLOW_RECOMMEND_REFRESH_BUTTON_TAG).performClick()
-        composeRule.onNodeWithTag(followingUserItemTag("follow-user-1")).performClick()
-        composeRule.onNodeWithTag(followRecommendItemTag("recommend-item-1")).performClick()
+        composeRule.onNodeWithTag("following_users_item_follow-user-1").performClick()
+        composeRule.onNodeWithTag("follow_recommend_item_recommend-item-1").performClick()
 
         assertEquals(2, recommendRefreshClicks)
         assertEquals(
@@ -210,31 +208,31 @@ class FollowScreenInstrumentedTest {
         composeRule.onNodeWithTag(FOLLOW_RECOMMEND_LIST_TAG).assertIsDisplayed()
         composeRule
             .onNodeWithTag(FOLLOW_RECOMMEND_LIST_TAG)
-            .performScrollToNode(hasTestTag(followRecommendItemTag("recommend-item-24")))
-        composeRule.onNodeWithTag(followRecommendItemTag("recommend-item-24")).assertIsDisplayed()
+            .performScrollToNode(hasTestTag("follow_recommend_item_recommend-item-24"))
+        composeRule.onNodeWithTag("follow_recommend_item_recommend-item-24").assertIsDisplayed()
         composeRule.onNodeWithTag(FOLLOW_RECOMMEND_LIST_TAG).performVerticalSwipeCycle()
         composeRule
             .onNodeWithTag(FOLLOW_RECOMMEND_LIST_TAG)
-            .performScrollToNode(hasTestTag(followRecommendItemTag("recommend-item-24")))
-        composeRule.onNodeWithTag(followRecommendItemTag("recommend-item-24")).assertIsDisplayed()
+            .performScrollToNode(hasTestTag("follow_recommend_item_recommend-item-24"))
+        composeRule.onNodeWithTag("follow_recommend_item_recommend-item-24").assertIsDisplayed()
 
-        composeRule.onNodeWithTag(followScreenTabTag(1)).performClick()
-        composeRule.waitUntilTagSelected(followScreenTabTag(1))
+        composeRule.onNodeWithTag("follow_screen_tab_1").performClick()
+        composeRule.waitUntilTagSelected("follow_screen_tab_1")
         composeRule.onNodeWithTag(FOLLOW_DYNAMIC_REFRESH_BUTTON_TAG).assertIsDisplayed()
         composeRule
             .onNodeWithTag(FOLLOW_DYNAMIC_LIST_TAG)
-            .performScrollToNode(hasTestTag(followDynamicItemTag("dynamic-item-24")))
-        composeRule.onNodeWithTag(followDynamicItemTag("dynamic-item-24")).assertIsDisplayed()
+            .performScrollToNode(hasTestTag("follow_dynamic_item_dynamic-item-24"))
+        composeRule.onNodeWithTag("follow_dynamic_item_dynamic-item-24").assertIsDisplayed()
         composeRule.onNodeWithTag(FOLLOW_DYNAMIC_LIST_TAG).performVerticalSwipeCycle()
         composeRule
             .onNodeWithTag(FOLLOW_DYNAMIC_LIST_TAG)
-            .performScrollToNode(hasTestTag(followDynamicItemTag("dynamic-item-24")))
-        composeRule.onNodeWithTag(followDynamicItemTag("dynamic-item-24")).assertIsDisplayed()
+            .performScrollToNode(hasTestTag("follow_dynamic_item_dynamic-item-24"))
+        composeRule.onNodeWithTag("follow_dynamic_item_dynamic-item-24").assertIsDisplayed()
 
         composeRule
             .onNodeWithTag(FOLLOW_DYNAMIC_LIST_TAG)
-            .performScrollToNode(hasTestTag(followDynamicItemTag("dynamic-item-3")))
-        composeRule.onNodeWithTag(followDynamicItemTag("dynamic-item-3")).performClick()
+            .performScrollToNode(hasTestTag("follow_dynamic_item_dynamic-item-3"))
+        composeRule.onNodeWithTag("follow_dynamic_item_dynamic-item-3").performClick()
 
         composeRule.runOnIdle {
             assertTrue(recommendLoadMoreCount > 0)
@@ -351,6 +349,7 @@ class FollowScreenInstrumentedTest {
             feed = null,
             navDestinationJson = Search(query = "follow-dynamic-$itemId").toFeedDisplayItemNavDestinationJson(),
             localFeedId = "dynamic-item-$itemId",
+            sourceLabel = "关注用户 $itemId 赞同了回答",
         )
     }
 

@@ -113,6 +113,7 @@ fun FeedCard(
     onBlockUser: ((FeedDisplayItem) -> Unit)? = null,
     onBlockByKeywords: ((FeedDisplayItem) -> Unit)? = null,
     onBlockTopic: ((topicId: String, topicName: String) -> Unit)? = null,
+    showSourceLabel: Boolean = false,
     /**
      * 默认点击行为：优先跳转到信息流条目的详情页；如果只能识别为外链则打开外链，否则提示暂不支持。
      */
@@ -204,6 +205,7 @@ fun FeedCard(
                     onBlockTopic = onBlockTopic,
                     duo3CardLayout = duo3CardLayout,
                     duo3CardLargeTitle = duo3CardLargeTitle,
+                    showSourceLabel = showSourceLabel,
                 )
             }
             HorizontalDivider(thickness = 0.3.dp)
@@ -292,6 +294,7 @@ fun FeedCard(
                         onBlockTopic = onBlockTopic,
                         duo3CardLayout = duo3CardLayout,
                         duo3CardLargeTitle = duo3CardLargeTitle,
+                        showSourceLabel = showSourceLabel,
                     )
                 }
             }
@@ -426,6 +429,7 @@ private fun FeedCardMenuBox(
                     is com.github.zly2006.zhihu.shared.data.DataHolder.Answer -> raw.question.topics
                     is com.github.zly2006.zhihu.shared.data.DataHolder.Question -> raw.topics
                     is com.github.zly2006.zhihu.shared.data.DataHolder.Article -> raw.topics ?: emptyList()
+                    is com.github.zly2006.zhihu.shared.data.DataHolder.Pin -> raw.topics ?: emptyList()
                     else -> emptyList()
                 }
                 topics.forEach { topic ->
@@ -476,10 +480,14 @@ private fun FeedCardContent(
     onBlockTopic: ((topicId: String, topicName: String) -> Unit)?,
     duo3CardLayout: Boolean,
     duo3CardLargeTitle: Boolean,
+    showSourceLabel: Boolean,
 ) {
     val navigator = LocalNavigator.current
     if (duo3CardLayout) {
         // ── 新排版（duo3）────────────────────────────────────────────────────
+        if (showSourceLabel) {
+            FeedCardSourceLabel(item.sourceLabel)
+        }
         if (!item.title.isEmpty()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -576,6 +584,9 @@ private fun FeedCardContent(
         }
     } else {
         // ── 原始排版（master）────────────────────────────────────────────────
+        if (showSourceLabel) {
+            FeedCardSourceLabel(item.sourceLabel)
+        }
         if (!item.title.isEmpty() && !item.isFiltered) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -656,4 +667,17 @@ private fun FeedCardContent(
             }
         }
     }
+}
+
+@Composable
+private fun FeedCardSourceLabel(sourceLabel: String?) {
+    val label = sourceLabel?.takeIf { it.isNotBlank() } ?: return
+    Text(
+        text = parseHtmlTextWithTheme(label),
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.primary,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.padding(bottom = 6.dp),
+    )
 }

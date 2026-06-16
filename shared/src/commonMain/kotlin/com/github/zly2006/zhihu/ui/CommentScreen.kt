@@ -119,7 +119,6 @@ import com.fleeksoft.ksoup.nodes.Node
 import com.fleeksoft.ksoup.nodes.TextNode
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.CommentHolder
-import com.github.zly2006.zhihu.navigation.DummyLocalNavigator
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Person
@@ -127,9 +126,10 @@ import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
 import com.github.zly2006.zhihu.navigation.resolveContent
-import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
 import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberImagePreviewOpener
+import com.github.zly2006.zhihu.shared.util.twoDigitString
 import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.ChildCommentViewModel
@@ -137,15 +137,16 @@ import com.github.zly2006.zhihu.viewmodel.comment.CommentSortOrder
 import com.github.zly2006.zhihu.viewmodel.comment.RootCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.time.Clock
+import kotlin.time.Instant
 
 typealias CommentModel = CommentItem
 
@@ -160,24 +161,6 @@ const val COMMENT_IMAGE_MENU_OPEN_TAG = "comment_image_menu_open"
 const val COMMENT_IMAGE_MENU_BROWSER_TAG = "comment_image_menu_browser"
 const val COMMENT_IMAGE_MENU_SAVE_TAG = "comment_image_menu_save"
 const val COMMENT_IMAGE_MENU_SHARE_TAG = "comment_image_menu_share"
-
-fun commentRowTag(commentId: String) = "comment_row_$commentId"
-
-fun commentAuthorTag(commentId: String) = "comment_author_$commentId"
-
-fun commentReplyToAuthorTag(commentId: String) = "comment_reply_to_author_$commentId"
-
-fun commentReplyButtonTag(commentId: String) = "comment_reply_button_$commentId"
-
-fun commentReplyCountTag(commentId: String) = "comment_reply_count_$commentId"
-
-fun commentLikeButtonTag(commentId: String) = "comment_like_button_$commentId"
-
-fun commentLikeCountTag(commentId: String) = "comment_like_count_$commentId"
-
-fun commentChildButtonTag(commentId: String) = "comment_child_button_$commentId"
-
-fun commentImageTag(commentId: String) = "comment_image_$commentId"
 
 enum class CommentImageMenuAction {
     Open,
@@ -345,6 +328,10 @@ private fun ClickableImageWithMenu(
     var showContextMenu by remember { mutableStateOf(false) }
     val openImagePreview = rememberImagePreviewOpener()
     val openExternalUrl = rememberExternalUrlOpener()
+
+    PlatformBackHandler(enabled = showContextMenu) {
+        showContextMenu = false
+    }
 
     fun handleAction(action: CommentImageMenuAction) {
         if (onAction != null) {
@@ -595,7 +582,7 @@ fun CommentScreen(
                                                     CommentItem(
                                                         comment = childCommentItem,
                                                         runtime = runtime,
-                                                        modifier = Modifier.testTag(commentRowTag(childComment.id)),
+                                                        modifier = Modifier.testTag("comment_row_${childComment.id}"),
                                                         isLiked = liked,
                                                         likeCount = likeCount,
                                                         toggleLike = {
@@ -619,7 +606,7 @@ fun CommentScreen(
                                                 onClick = { onChildCommentClick(commentItem) },
                                                 modifier = Modifier
                                                     .height(28.dp)
-                                                    .testTag(commentChildButtonTag(commentItem.item.id)),
+                                                    .testTag("comment_child_button_${commentItem.item.id}"),
                                                 shape = RoundedCornerShape(50),
                                                 colors = ButtonDefaults.buttonColors(
                                                     containerColor = actionChipColor,
@@ -750,7 +737,7 @@ fun CommentScreen(
                                 ) { dto ->
                                     val commentItem = viewModel.createCommentItem(dto, article = rootContent)
                                     SwipeToReplyContainer(
-                                        modifier = Modifier.testTag(commentRowTag(dto.id)),
+                                        modifier = Modifier.testTag("comment_row_${dto.id}"),
                                         onArchive = testOverrides?.onArchiveComment?.let { onArchive ->
                                             {
                                                 onArchive(commentItem)
@@ -983,7 +970,7 @@ private fun CommentItem(
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
                         modifier = Modifier
-                            .testTag(commentAuthorTag(commentData.id))
+                            .testTag("comment_author_${commentData.id}")
                             .clickable {
                                 navigator.onNavigate(
                                     Person(
@@ -1020,7 +1007,7 @@ private fun CommentItem(
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
                             modifier = Modifier
-                                .testTag(commentReplyToAuthorTag(commentData.id))
+                                .testTag("comment_reply_to_author_${commentData.id}")
                                 .clickable {
                                     navigator.onNavigate(
                                         Person(
@@ -1075,7 +1062,7 @@ private fun CommentItem(
                             imageUrl = commentImg,
                             runtime = runtime,
                             modifier = Modifier
-                                .testTag(commentImageTag(commentData.id))
+                                .testTag("comment_image_${commentData.id}")
                                 .padding(top = 8.dp)
                                 .sizeIn(maxHeight = 100.dp, maxWidth = 240.dp)
                                 .clip(RoundedCornerShape(12.dp)),
@@ -1125,7 +1112,7 @@ private fun CommentItem(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .testTag(commentReplyButtonTag(commentData.id))
+                    .testTag("comment_reply_button_${commentData.id}")
                     .clickable { onChildCommentClick(comment) },
             ) {
                 Spacer(modifier = Modifier.width(4.dp))
@@ -1144,7 +1131,7 @@ private fun CommentItem(
                 if (comment.item.childCommentCount > 0) {
                     Text(
                         text = comment.item.childCommentCount.toString(),
-                        modifier = Modifier.testTag(commentReplyCountTag(commentData.id)),
+                        modifier = Modifier.testTag("comment_reply_count_${commentData.id}"),
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -1158,7 +1145,7 @@ private fun CommentItem(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .testTag(commentLikeButtonTag(commentData.id))
+                    .testTag("comment_like_button_${commentData.id}")
                     .clickable(enabled = !isLikeLoading) { toggleLike() },
             ) {
                 Spacer(modifier = Modifier.width(4.dp))
@@ -1179,7 +1166,7 @@ private fun CommentItem(
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = likeCount.toString(),
-                    modifier = Modifier.testTag(commentLikeCountTag(commentData.id)),
+                    modifier = Modifier.testTag("comment_like_count_${commentData.id}"),
                     fontSize = 12.sp,
                     color = if (isLiked) {
                         MaterialTheme.colorScheme.primary
@@ -1199,15 +1186,13 @@ private fun formatCommentTime(createdTimeSeconds: Long): String {
     val now = Clock.System.now().toLocalDateTime(zone)
     return when {
         dateTime.date == now.date -> dateTime.formatHms()
-        dateTime.year == now.year -> "${dateTime.monthNumber.twoDigits()}-${dateTime.day.twoDigits()} ${dateTime.formatHms()}"
-        else -> "${dateTime.year}-${dateTime.monthNumber.twoDigits()}-${dateTime.day.twoDigits()} ${dateTime.formatHms()}"
+        dateTime.year == now.year -> "${dateTime.month.number.twoDigitString()}-${dateTime.day.twoDigitString()} ${dateTime.formatHms()}"
+        else -> "${dateTime.year}-${dateTime.month.number.twoDigitString()}-${dateTime.day.twoDigitString()} ${dateTime.formatHms()}"
     }
 }
 
 private fun LocalDateTime.formatHms(): String =
-    "${hour.twoDigits()}:${minute.twoDigits()}:${second.twoDigits()}"
-
-private fun Int.twoDigits(): String = if (this < 10) "0$this" else toString()
+    "${hour.twoDigitString()}:${minute.twoDigitString()}:${second.twoDigitString()}"
 
 private fun AnnotatedString.Builder.processTextWithEmoji(
     text: String,
@@ -1297,53 +1282,6 @@ private fun AnnotatedString.Builder.dfsSimple(
 }
 
 @Composable
-@Suppress("SpellCheckingInspection")
-private fun CommentItemPreview() {
-    val comment = CommentModel(
-        item = DataHolder.Comment(
-            id = "123",
-            content = "<p>这是一条评论<br/>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum eleifend nisl vitae est tincidunt, non rhoncus magna cursus.</p>",
-            createdTime = Clock.System.now().toEpochMilliseconds() / 1000,
-            author = DataHolder.Comment.Author(
-                name = "作者",
-                avatarUrl = "https://i1.hdslb.com/bfs/face/b93b6ff0c1d434ae8026a4bedc82d0d883b5da95.jpg",
-                isOrg = false,
-                type = "people",
-                url = "",
-                urlToken = "",
-                id = "",
-                headline = "个人介绍",
-                avatarUrlTemplate = "",
-                isAdvertiser = false,
-                gender = 0,
-                userType = "",
-            ),
-            likeCount = 10,
-            childCommentCount = 5,
-            type = "",
-            url = "",
-            resourceType = "",
-            collapsed = false,
-            top = false,
-            isDelete = false,
-            reviewing = false,
-            isAuthor = false,
-            canCollapse = false,
-            childComments = emptyList(),
-        ),
-        clickTarget = null,
-    )
-    DummyLocalNavigator {
-        val runtime = rememberCommentScreenRuntime()
-        CommentItem(
-            comment,
-            runtime = runtime,
-            onChildCommentClick = { },
-        )
-    }
-}
-
-@Composable
 fun AuthorTag(authorTag: String) {
     Box(
         modifier = Modifier
@@ -1358,37 +1296,6 @@ fun AuthorTag(authorTag: String) {
             fontSize = 12.sp,
             lineHeight = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-@Composable
-fun CommentAuthorTagPreview() {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = "作者名",
-            fontWeight = FontWeight.Bold,
-            fontSize = 16.sp,
-            modifier = Modifier.clickable { },
-        )
-
-        Spacer(modifier = Modifier.width(4.dp))
-        AuthorTag("作者")
-
-        Spacer(modifier = Modifier.width(4.dp))
-        Text(
-            "回复",
-            fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(modifier = Modifier.width(4.dp))
-        Text(
-            text = "zly2006",
-            fontWeight = FontWeight.Bold,
-            fontSize = 16.sp,
-            modifier = Modifier.clickable { },
         )
     }
 }

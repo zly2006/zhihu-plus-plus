@@ -22,19 +22,27 @@ import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.shared.data.navDestination
+import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
+import com.github.zly2006.zhihu.viewmodel.ContentInteractionEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
+import com.github.zly2006.zhihu.viewmodel.feed.replaceHomeFeedItemsWithFilteredResult
+import com.github.zly2006.zhihu.viewmodel.postSigned
 import io.ktor.client.call.body
+import io.ktor.client.request.forms.MultiPartFormDataContent
+import io.ktor.client.request.forms.formData
 import io.ktor.client.request.get
+import io.ktor.client.request.header
+import io.ktor.client.request.setBody
 import io.ktor.http.decodeURLPart
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
@@ -47,11 +55,9 @@ class AndroidHomeFeedViewModel :
     override val initialUrl: String
         get() = "https://api.zhihu.com/topstory/recommend"
 
-    override fun httpClient(environment: PaginationEnvironment) = environment.mobileHomeFeedHttpClient()
-
     public override suspend fun fetchFeeds(environment: PaginationEnvironment) {
         try {
-            val response = httpClient(environment).get(lastPaging?.next ?: initialUrl)
+            val response = environment.mobileHomeFeedHttpClient().get(lastPaging?.next ?: initialUrl)
             if (response.status.isSuccess()) {
                 val jojo = response.body<JsonObject>()
                 val data = jojo["data"]?.jsonArray ?: throw IllegalStateException("No data found in response")
@@ -78,22 +84,13 @@ class AndroidHomeFeedViewModel :
                     }
                 }
 
-                // 后台继续运行其余内容过滤
-                val newDestinations = filterResult.foregroundItems.map { it.navDestination }.toSet()
-
                 if (filterResult.reverseBlock) {
                     addDisplayItems(filterResult.filteredItems)
                 }
 
                 // 移除被过滤的条目，并更新已保留条目的 raw 内容
                 withContext(Dispatchers.Main) {
-                    displayItems.removeAll { item ->
-                        if (item.navDestination !in newDestinations) return@removeAll false
-                        val filteredVersion = filterResult.filteredItems.find { it.navDestination == item.navDestination }
-                        item.raw = filteredVersion?.raw ?: item.raw
-                        // remove if no filtered version exists, which means it was filtered out
-                        filteredVersion == null
-                    }
+                    displayItems.replaceHomeFeedItemsWithFilteredResult(filterResult)
                 }
 
                 lastPaging = if ("paging" in jojo) {
@@ -112,13 +109,32 @@ class AndroidHomeFeedViewModel :
         }
     }
 
-    override suspend fun recordContentInteraction(environment: PaginationEnvironment, feed: Feed) {
+    override suspend fun recordContentInteraction(environment: ContentInteractionEnvironment, feed: Feed) {
         // Android 版本暂不记录交互
     }
 
-    override fun onUiContentClick(environment: PaginationEnvironment, feed: Feed, item: FeedDisplayItem) {
+    override fun onUiContentClick(environment: ContentInteractionEnvironment, feed: Feed, item: FeedDisplayItem) {
         viewModelScope.launch(Dispatchers.Default) {
-            environment.sendFeedReadStatus(feed)
+            if (environment.authenticatedCookies()["d_c0"] != null) {
+                val payloadItem = when (val target = feed.target) {
+                    is Feed.AnswerTarget -> listOf("answer", target.id.toString(), "read")
+                    is Feed.ArticleTarget -> listOf("article", target.id.toString(), "read")
+                    is Feed.PinTarget -> listOf("pin", target.id.toString(), "read")
+                    else -> null
+                }
+                if (payloadItem != null) {
+                    environment.postSigned("https://www.zhihu.com/lastread/touch") {
+                        header("x-requested-with", "fetch")
+                        setBody(
+                            MultiPartFormDataContent(
+                                formData {
+                                    append("items", ZhihuJson.json.encodeToString(listOf(payloadItem)))
+                                },
+                            ),
+                        )
+                    }
+                }
+            }
         }
     }
 }

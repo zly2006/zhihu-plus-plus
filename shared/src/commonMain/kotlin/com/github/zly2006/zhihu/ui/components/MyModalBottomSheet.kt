@@ -85,6 +85,7 @@ import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
+import com.github.zly2006.zhihu.shared.platform.PlatformPredictiveBackHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.max
@@ -106,6 +107,7 @@ fun MyModalBottomSheet(
     dragHandle: @Composable (() -> Unit)? = { BottomSheetDefaults.DragHandle() },
     contentWindowInsets: @Composable () -> WindowInsets = { BottomSheetDefaults.windowInsets },
     properties: ModalBottomSheetProperties = ModalBottomSheetProperties(),
+    usePlatformWindow: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -128,15 +130,8 @@ fun MyModalBottomSheet(
     }
     val predictiveBackProgress = remember { Animatable(initialValue = 0f) }
 
-    ModalBottomSheetDialog(
-        properties = properties,
-        contentColor = contentColor,
-        onDismissRequest = {
-            // 修复返回键需要按两次才关闭的问题。
-            scope.launch { sheetState.hide() }.invokeOnCompletion { onDismissRequest() }
-        },
-        predictiveBackProgress = predictiveBackProgress,
-    ) {
+    @Composable
+    fun SheetContent() {
         Box(modifier = Modifier.fillMaxSize().imePadding().semantics { isTraversalGroup = true }) {
             MyBottomSheetScrim(
                 color = scrimColor,
@@ -162,6 +157,32 @@ fun MyModalBottomSheet(
                 content = content,
             )
         }
+    }
+
+    if (usePlatformWindow) {
+        ModalBottomSheetDialog(
+            properties = properties,
+            contentColor = contentColor,
+            onDismissRequest = {
+                // 修复返回键需要按两次才关闭的问题。
+                scope.launch { sheetState.hide() }.invokeOnCompletion { onDismissRequest() }
+            },
+            predictiveBackProgress = predictiveBackProgress,
+        ) {
+            SheetContent()
+        }
+    } else {
+        PlatformPredictiveBackHandler(
+            enabled = properties.shouldDismissOnBackPress && sheetState.targetValue != Hidden,
+            onProgress = { progress ->
+                scope.launch { predictiveBackProgress.snapTo(progress) }
+            },
+            onCancel = {
+                scope.launch { predictiveBackProgress.animateTo(0f) }
+            },
+            onBack = animateToDismiss,
+        )
+        SheetContent()
     }
     if (sheetState.hasExpandedState) {
         LaunchedEffect(sheetState) { sheetState.show() }

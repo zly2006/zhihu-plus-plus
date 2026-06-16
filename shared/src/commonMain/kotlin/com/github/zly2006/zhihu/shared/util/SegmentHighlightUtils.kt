@@ -55,6 +55,15 @@ private data class NormalizedSegmentMark(
     val isMaster: Boolean,
 )
 
+private val segmentInfoInlineFormatTags = setOf("b", "strong", "i", "em")
+
+private fun Node.hasUnsupportedSegmentInfoFormat(): Boolean =
+    this is Element &&
+        (
+            tagName().lowercase() !in segmentInfoInlineFormatTags ||
+                childNodes().any(Node::hasUnsupportedSegmentInfoFormat)
+        )
+
 fun buildSegmentTextParts(
     text: String,
     marks: List<SegmentInfoMark>,
@@ -148,6 +157,9 @@ fun applySegmentInfosToHtml(
     segmentInfos.forEach { paragraph ->
         val target = document.selectFirst("""p[data-pid="${paragraph.pid}"]""") ?: return@forEach
         if (target.text() != paragraph.text) return@forEach
+        // TODO(#418): 支持在保留内联格式的同时注入 segment_infos。
+        // https://github.com/zly2006/zhihu-plus-plus/issues/418
+        if (target.childNodes().any(Node::hasUnsupportedSegmentInfoFormat)) return@forEach
 
         target.empty()
         buildSegmentTextParts(
@@ -198,11 +210,6 @@ fun applySegmentInfosToHtml(
         }
     }
     return document.body().html()
-}
-
-fun parseSegmentTextParagraphHtml(html: String): SegmentTextParagraph? {
-    val element = Ksoup.parseBodyFragment(html).body().firstElementChild() ?: return null
-    return parseSegmentTextParagraph(element)
 }
 
 fun parseSegmentTextParagraph(element: Element): SegmentTextParagraph? {

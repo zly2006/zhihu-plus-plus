@@ -75,19 +75,22 @@ expect fun rememberZhihuWebUrlOpener(): (String) -> Unit
 expect fun rememberImagePreviewOpener(): (String) -> Unit
 
 @Composable
-expect fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit
-
-data class ScreenSizeDp(
-    val width: Float,
-    val height: Float,
-)
+expect fun rememberImageGalleryOpener(): (List<String>, Int) -> Unit
 
 @Composable
-expect fun rememberScreenSizeDp(): ScreenSizeDp
+expect fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit
 
 @Composable
 expect fun PlatformBackHandler(
     enabled: Boolean,
+    onBack: () -> Unit,
+)
+
+@Composable
+expect fun PlatformPredictiveBackHandler(
+    enabled: Boolean,
+    onProgress: (Float) -> Unit,
+    onCancel: () -> Unit,
     onBack: () -> Unit,
 )
 

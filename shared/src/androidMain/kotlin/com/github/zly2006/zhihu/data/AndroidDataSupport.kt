@@ -16,83 +16,30 @@
  */
 
 package com.github.zly2006.zhihu.data
+
 import android.content.Context
 import android.util.Log
 import androidx.room.RoomDatabase
-import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.ArticleType
-import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.navigation.Pin
-import com.github.zly2006.zhihu.navigation.Question
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.util.signFetchRequest
-import kotlinx.coroutines.CancellationException
+import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
+import io.ktor.client.HttpClient
 
-suspend fun DataHolder.getContentDetail(
-    context: Context,
-    dest: Article,
-): DataHolder.Content? {
-    val apiUrl = when (dest.type) {
-        ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${dest.id}?include=content,topics,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,relationship,ip_info,relationship.vote,author.badge_v2"
-        ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${dest.id}?include=content,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,attachment,reaction,ip_info,pagination_info,question.topics,reaction.relation.voting,author.badge_v2"
-    }
+fun Context.asApiEnvironment(): ZhihuApiEnvironment {
+    val appContext = applicationContext
+    AccountData.loadData(appContext)
 
-    return runCatching {
-        val jo = AccountData.fetchGet(context, apiUrl) { signFetchRequest() }!!
-        // 解析为对应的Content类型
-        decodeArticleContentDetail(dest, jo)
-    }.getOrElse { e ->
-        if (e !is CancellationException) {
-            Log.e("getContentDetail", "Failed to fetch content detail for ${dest.type} id=${dest.id}", e)
+    return object : ZhihuApiEnvironment {
+        override fun httpClient(): HttpClient = AccountData.httpClient(appContext)
+
+        override fun authenticatedCookies(): Map<String, String> = AccountData.data.cookies
+
+        override fun xsrfToken(): String = AccountData.data.cookies["_xsrf"] ?: ""
+
+        override suspend fun handleFetchFailure(
+            tag: String?,
+            error: Exception,
+        ) {
+            Log.e(tag ?: "ZhihuApiEnvironment", "Failed to fetch Zhihu API", error)
         }
-        null
-    }
-}
-
-suspend fun DataHolder.getContentDetail(
-    context: Context,
-    question: Question,
-): DataHolder.Question? {
-    val apiUrl = "https://www.zhihu.com/api/v4/questions/${question.questionId}?include=read_count,visit_count,answer_count,voteup_count,comment_count,follower_count,detail,excerpt,author,relationship.is_following,topics"
-
-    return runCatching {
-        val jo = AccountData.fetchGet(context, apiUrl) { signFetchRequest() }!!
-        // 解析为对应的Content类型
-        decodeQuestionContentDetail(jo)
-    }.getOrElse { e ->
-        if (e !is CancellationException) {
-            Log.e("getContentDetail", "Failed to fetch content detail for question id=${question.questionId}", e)
-        }
-        null
-    }
-}
-
-suspend fun DataHolder.getContentDetail(
-    context: Context,
-    pin: Pin,
-): DataHolder.Pin? {
-    val apiUrl = "https://www.zhihu.com/api/v4/pins/${pin.id}"
-
-    return runCatching {
-        val jo = AccountData.fetchGet(context, apiUrl) { signFetchRequest() }!!
-        decodePinContentDetail(jo)
-    }.getOrElse { e ->
-        if (e !is CancellationException) {
-            Log.e("getContentDetail", "Failed to fetch content detail for pin id=${pin.id}", e)
-        }
-        null
-    }
-}
-
-suspend fun ContentDetailCache.getOrFetch(
-    context: Context,
-    navDestination: NavDestination,
-): DataHolder.Content? = getOrFetch(navDestination) { destination ->
-    when (destination) {
-        is Article -> DataHolder.getContentDetail(context, destination)
-        is Question -> DataHolder.getContentDetail(context, destination)
-        is Pin -> DataHolder.getContentDetail(context, destination)
-        else -> null
     }
 }
 

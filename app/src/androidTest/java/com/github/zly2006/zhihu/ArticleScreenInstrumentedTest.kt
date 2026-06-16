@@ -29,12 +29,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.navigation.AnswerNavigator
-import com.github.zly2006.zhihu.navigation.AnswerNavigatorPage
-import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.resetAppPreferences
@@ -43,10 +39,10 @@ import com.github.zly2006.zhihu.ui.ArticleScreen
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.ui.rememberArticleActionsRuntime
-import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
-import com.github.zly2006.zhihu.viewmodel.CollectionItem
-import org.junit.Assert.assertTrue
+import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
+import io.ktor.client.HttpClient
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -84,11 +80,10 @@ class ArticleScreenInstrumentedTest {
         composeRule.onNodeWithText("IP属地：上海").assertExists()
         composeRule.onNodeWithContentDescription("更多选项").assertIsDisplayed().performClick()
         composeRule.onNodeWithText("复制链接").assertIsDisplayed().performClick()
-        val clipboardText = composeRule.activity.clipboardManager.primaryClip
-            ?.getItemAt(0)
-            ?.coerceToText(composeRule.activity)
-            ?.toString()
-        assertTrue(clipboardText?.contains("https://zhuanlan.zhihu.com/p/777") == true)
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.activity.clipboardDestination == ARTICLE
+        }
+        assertEquals(ARTICLE, composeRule.activity.clipboardDestination)
     }
 
     @Test
@@ -130,7 +125,7 @@ class ArticleScreenInstrumentedTest {
         composeRule.activity.runOnUiThread {
             composeRule.activity.articleAnswerSwitchState.pendingNavigator = object : AnswerNavigator(
                 sourceName = "此问题",
-                repository = NO_OP_ANSWER_REPOSITORY,
+                environment = NO_OP_API_ENVIRONMENT,
             ) {
                 init {
                     nextAnswerContent = nextAnswer
@@ -246,18 +241,15 @@ class ArticleScreenInstrumentedTest {
             title = "下一个离线回答",
         )
 
-        val NO_OP_ANSWER_REPOSITORY = object : AnswerNavigatorRepository {
-            override suspend fun fetchAnswerContent(article: Article): DataHolder.Answer? = null
+        val NO_OP_API_ENVIRONMENT = object : ZhihuApiEnvironment {
+            override fun httpClient(): HttpClient = error("No HTTP client in offline navigator test")
 
-            override suspend fun fetchQuestionFeeds(
-                questionId: Long,
-                pageUrl: String?,
-            ): AnswerNavigatorPage<Feed> = AnswerNavigatorPage(emptyList(), "")
+            override fun authenticatedCookies(): Map<String, String> = emptyMap()
 
-            override suspend fun fetchCollectionItems(pageUrl: String): AnswerNavigatorPage<CollectionItem> =
-                AnswerNavigatorPage(emptyList(), "")
-
-            override suspend fun getAlreadyOpenedAnswerIds(answerIds: List<Long>): Set<Long> = emptySet()
+            override suspend fun handleFetchFailure(
+                tag: String?,
+                error: Exception,
+            ) = Unit
         }
     }
 }

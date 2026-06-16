@@ -21,7 +21,7 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.util.Log
 import androidx.room.Room
-import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.data.asApiEnvironment
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.jsonArray
 import kotlin.jvm.java
@@ -31,7 +31,11 @@ fun LocalRecommendationEngine(context: Context): LocalRecommendationEngine {
     return buildLocalRecommendationEngine(
         dao = dao,
         fetchFeedArray = { url ->
-            AccountData.fetchGet(context, url)?.get("data")?.jsonArray ?: JsonArray(emptyList())
+            context
+                .asApiEnvironment()
+                .fetchJson(url, "")
+                ?.get("data")
+                ?.jsonArray ?: JsonArray(emptyList())
         },
         isNetworkAvailable = { isLocalRecommendationNetworkAvailable(context) },
         logWarning = { message -> Log.w("LocalRecommendationEngine", message) },

@@ -57,6 +57,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -193,6 +194,16 @@ fun ZhihuMain(
 
     val navEntry by navController.currentBackStackEntryAsState()
 
+    // 离开文章页时恢复系统状态栏（只在实际切换时触发）
+    val isOnArticle = navEntry?.destination?.hasRoute<Article>() == true
+    var wasOnArticle by remember { mutableStateOf(false) }
+    if (!isOnArticle && wasOnArticle) {
+        LeaveImmersiveModeCleanup()
+    }
+    SideEffect {
+        wasOnArticle = isOnArticle
+    }
+
     var scrollToTopTrigger by remember { mutableIntStateOf(0) }
     // 滚动时自动隐藏底部导航栏
     var isBottomBarVisible by remember { mutableStateOf(true) }
@@ -318,7 +329,7 @@ fun ZhihuMain(
                     .getOrNull(mainPagerState.targetPage)
                     ?.bottomDestination
                 AnimatedVisibility(
-                    visible = (!autoHideBottomBar || isBottomBarVisible) && isTopLevelDest(navEntry),
+                    visible = (!autoHideBottomBar || isBottomBarVisible) && navEntry.hasRoute(MainTabs::class),
                     enter = slideInVertically(tween(200)) { it },
                     exit = slideOutVertically(tween(200)) { it },
                 ) {
@@ -575,9 +586,19 @@ private fun MainTabsPager(
                 innerPadding = innerPadding,
                 isActive = pagerState.currentPage == pageIndex,
             )
-            MainTabPage.HotListPage -> HotListScreen(innerPadding)
-            MainTabPage.DailyPage -> DailyScreen()
-            MainTabPage.OnlineHistoryPage -> OnlineHistoryScreen()
+            MainTabPage.HotListPage -> HotListScreen(
+                innerPadding = innerPadding,
+                scrollToTopTrigger = scrollToTopTrigger,
+                isActive = pagerState.currentPage == pageIndex,
+            )
+            MainTabPage.DailyPage -> DailyScreen(
+                scrollToTopTrigger = scrollToTopTrigger,
+                isActive = pagerState.currentPage == pageIndex,
+            )
+            MainTabPage.OnlineHistoryPage -> OnlineHistoryScreen(
+                scrollToTopTrigger = scrollToTopTrigger,
+                isActive = pagerState.currentPage == pageIndex,
+            )
             MainTabPage.MyCollectionsPage -> MyCollectionsTopLevelPage()
             MainTabPage.AccountPage -> AccountSettingScreen(innerPadding)
         }
@@ -593,8 +614,6 @@ private fun MyCollectionsTopLevelPage() {
         showBackButton = false,
     )
 }
-
-private fun isTopLevelDest(navEntry: NavBackStackEntry?): Boolean = navEntry.hasRoute(MainTabs::class)
 
 private val TopLevelDestination.openFrom: String?
     get() = when (this) {

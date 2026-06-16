@@ -16,6 +16,7 @@
  */
 
 package com.github.zly2006.zhihu.ui.components
+
 import android.content.ClipData
 import android.content.Context
 import android.content.Intent
@@ -26,15 +27,16 @@ import android.view.Window
 import androidx.activity.ComponentDialog
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.graphics.drawable.toDrawable
 import androidx.core.net.toUri
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.nlp.BlockedKeywordRepository
 import com.github.zly2006.zhihu.shared.data.SegmentInfoMeta
 import com.github.zly2006.zhihu.shared.nlp.KeywordAnalyzerCore
 import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
@@ -49,6 +51,9 @@ import com.github.zly2006.zhihu.viewmodel.feed.handleBlockByKeywords
 import com.github.zly2006.zhihu.viewmodel.feed.handleBlockTopic
 import com.github.zly2006.zhihu.viewmodel.feed.handleBlockUser
 import com.github.zly2006.zhihu.viewmodel.filter.AndroidContentFilterRuntime
+import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeyword
+import com.github.zly2006.zhihu.viewmodel.filter.KeywordType
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.delete
@@ -61,12 +66,27 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import me.saket.telephoto.zoomable.coil3.ZoomableAsyncImage
+import me.saket.telephoto.zoomable.rememberZoomableImageState
+import me.saket.telephoto.zoomable.rememberZoomableState
 
 class OpenImageDialog(
     context: Context,
     private val httpClient: HttpClient,
-    private val url: String,
+    urls: List<String>,
+    initialIndex: Int = 0,
 ) : ComponentDialog(context) {
+    constructor(
+        context: Context,
+        httpClient: HttpClient,
+        url: String,
+    ) : this(context, httpClient, listOf(url), 0)
+
+    private val imageUrls = urls
+        .filter { it.isNotBlank() && !it.startsWith("data") }
+        .distinct()
+        .ifEmpty { listOf("") }
+    private val initialPage = initialIndex.coerceIn(0, imageUrls.lastIndex)
+
     init {
         requestWindowFeature(Window.FEATURE_NO_TITLE)
         setCanceledOnTouchOutside(true)
@@ -76,26 +96,35 @@ class OpenImageDialog(
                     val scope = rememberCoroutineScope()
 
                     OpenImagePreviewContent(
-                        url = url,
+                        urls = imageUrls,
+                        initialIndex = initialPage,
                         onDismiss = { dismiss() },
-                        onSaveImage = {
+                        onSaveImage = { imageUrl ->
                             scope.launch {
-                                saveImageToGallery(context, httpClient, url)
+                                saveImageToGallery(context, httpClient, imageUrl)
                             }
                         },
-                        onShareImage = {
+                        onShareImage = { imageUrl ->
                             scope.launch {
-                                shareImage(context, httpClient, url)
+                                shareImage(context, httpClient, imageUrl)
                             }
                         },
-                        onOpenInBrowser = {
-                            luoTianYiUrlLauncher(context, url.toUri())
+                        onOpenInBrowser = { imageUrl ->
+                            luoTianYiUrlLauncher(context, imageUrl.toUri())
                         },
-                    ) { imageUrl, onClick, onLongClick ->
+                    ) { imageUrl, onClick, onLongClick, onPageSwipeEnabledChange ->
+                        val imageState = rememberZoomableImageState(rememberZoomableState())
+                        LaunchedEffect(imageState) {
+                            snapshotFlow { imageState.zoomableState.zoomFraction }
+                                .collect { zoomFraction ->
+                                    onPageSwipeEnabledChange((zoomFraction ?: 0f) <= 0.01f)
+                                }
+                        }
                         ZoomableAsyncImage(
                             model = imageUrl,
                             contentDescription = null,
                             modifier = Modifier.fillMaxSize(),
+                            state = imageState,
                             onClick = { onClick() },
                             onLongClick = onLongClick,
                         )
@@ -200,8 +229,8 @@ actual fun rememberShareDialogRuntime(): ShareDialogRuntime {
 @Composable
 actual fun rememberBlockByKeywordsRuntime(): BlockByKeywordsRuntime {
     val context = LocalContext.current
-    val repository = remember { BlockedKeywordRepository(context) }
-    return remember(repository) {
+    val database = remember(context) { getContentFilterDatabase(context) }
+    return remember(database) {
         BlockByKeywordsRuntime(
             extractKeywords = { title, excerpt ->
                 KeywordAnalyzerCore.extractFromFeedWithWeight(
@@ -213,7 +242,12 @@ actual fun rememberBlockByKeywordsRuntime(): BlockByKeywordsRuntime {
                 )
             },
             addNlpPhrase = { phrase ->
-                repository.addNLPPhrase(phrase)
+                database.blockedKeywordDao().insertKeyword(
+                    BlockedKeyword(
+                        keyword = phrase.trim(),
+                        keywordType = KeywordType.NLP_SEMANTIC.name,
+                    ),
+                )
             },
         )
     }

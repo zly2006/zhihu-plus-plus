@@ -57,6 +57,7 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -80,7 +81,10 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.data.DailySection
 import com.github.zly2006.zhihu.shared.data.DailyStory
+import com.github.zly2006.zhihu.shared.ui.TopLevelReselectAction
+import com.github.zly2006.zhihu.shared.ui.topLevelReselectAction
 import com.github.zly2006.zhihu.shared.util.formatDailyDate
+import com.github.zly2006.zhihu.shared.util.twoDigitString
 import com.github.zly2006.zhihu.shared.viewmodel.DailyViewModel
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -104,6 +108,8 @@ import kotlin.time.ExperimentalTime
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalTime::class)
 @Composable
 fun DailyScreen(
+    scrollToTopTrigger: Int = 0,
+    isActive: Boolean = true,
     testState: DailyScreenUiState? = null,
     onTestDateSelected: ((String) -> Unit)? = null,
     onTestLoadMore: (() -> Unit)? = null,
@@ -118,6 +124,7 @@ fun DailyScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
+    var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
     val uiState = testState ?: DailyScreenUiState(
         sections = viewModel.sections,
         isLoading = viewModel.isLoading,
@@ -170,6 +177,21 @@ fun DailyScreen(
             }
             isRefreshing = false
         }
+    }
+
+    LaunchedEffect(scrollToTopTrigger, isActive) {
+        val action = topLevelReselectAction(
+            triggerDelta = scrollToTopTrigger - cachedScrollToTopTrigger,
+            isAtTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0,
+        )
+        if (isActive) {
+            when (action) {
+                TopLevelReselectAction.Refresh -> doRefresh()
+                TopLevelReselectAction.ScrollToTop -> listState.animateScrollToItem(0)
+                null -> {}
+            }
+        }
+        cachedScrollToTopTrigger = scrollToTopTrigger
     }
 
     if (showDatePicker) {
@@ -312,14 +334,14 @@ fun DailyScreen(
                             item(key = "header_${section.date}") {
                                 DateHeader(
                                     date = formatDailyDate(section.date),
-                                    modifier = Modifier.testTag(dailySectionHeaderTag(section.date)),
+                                    modifier = Modifier.testTag("daily_screen_section_${section.date}"),
                                 )
                             }
                             // 当前日期的日报条目。
                             items(section.stories, key = { "story_${it.id}" }) { story ->
                                 DailyStoryCard(
                                     story = story,
-                                    modifier = Modifier.testTag(dailyStoryCardTag(story.id)),
+                                    modifier = Modifier.testTag("daily_screen_story_${story.id}"),
                                     onClick = {
                                         if (!isTestMode) {
                                             scope.launch {
@@ -492,8 +514,8 @@ private fun formatDailyDatePickerSelection(millis: Long): String {
         .toLocalDateTime(TimeZone.currentSystemDefault())
         .date
     return date.year.toString().padStart(4, '0') +
-        (date.month.ordinal + 1).toString().padStart(2, '0') +
-        date.day.toString().padStart(2, '0')
+        (date.month.ordinal + 1).twoDigitString() +
+        date.day.twoDigitString()
 }
 
 private suspend fun fetchDailyStoryDestination(
@@ -507,10 +529,6 @@ private suspend fun fetchDailyStoryDestination(
     val url = Ksoup.parse(body).selectFirst("a")?.attr("href")
     url?.let(::resolveContent)
 }
-
-private fun dailySectionHeaderTag(date: String) = "daily_screen_section_$date"
-
-private fun dailyStoryCardTag(storyId: Long) = "daily_screen_story_$storyId"
 
 private const val DAILY_SCREEN_TITLE_TAG = "daily_screen_title"
 private const val DAILY_SCREEN_CURRENT_DATE_TAG = "daily_screen_current_date"

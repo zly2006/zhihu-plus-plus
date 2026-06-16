@@ -28,7 +28,6 @@ import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.test.swipeUp
 import androidx.navigation.compose.rememberNavController
-import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.rules.ActivityScenarioRule
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.navigation.LocalNavigator
@@ -102,7 +101,9 @@ fun SemanticsNodeInteraction.performVerticalSwipeCycle() {
 }
 
 fun MainActivityComposeRule.pressSystemBack() {
-    Espresso.pressBack()
+    activityRule.scenario.onActivity {
+        it.onBackPressedDispatcher.onBackPressed()
+    }
     waitForIdle()
 }
 

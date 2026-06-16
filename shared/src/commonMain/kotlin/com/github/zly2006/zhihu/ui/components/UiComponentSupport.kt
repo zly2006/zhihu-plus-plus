@@ -17,9 +17,13 @@
 
 package com.github.zly2006.zhihu.ui.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
@@ -27,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -36,6 +41,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.DpOffset
@@ -44,7 +50,8 @@ import com.github.zly2006.zhihu.shared.nlp.KeywordWithWeight
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.filter.rememberBlocklistManager
+import com.github.zly2006.zhihu.viewmodel.filter.BlockedUser
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.launch
 
 data class FeedBlockActions(
@@ -89,7 +96,7 @@ fun BlockUserConfirmDialog(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val userMessages = rememberUserMessageSink()
-    val blocklistManager = rememberBlocklistManager()
+    val database = remember { getContentFilterDatabase() }
     BlockUserConfirmDialogContent(
         showDialog = showDialog,
         userToBlock = userToBlock,
@@ -98,11 +105,13 @@ fun BlockUserConfirmDialog(
         onConfirmBlock = { author ->
             coroutineScope.launch {
                 try {
-                    blocklistManager.addBlockedUser(
-                        userId = author.id,
-                        userName = author.name,
-                        urlToken = author.urlToken,
-                        avatarUrl = author.avatarUrl,
+                    database.blockedUserDao().insertUser(
+                        BlockedUser(
+                            userId = author.id,
+                            userName = author.name,
+                            urlToken = author.urlToken,
+                            avatarUrl = author.avatarUrl,
+                        ),
                     )
                     onConfirm()
                     userMessages.showShortMessage("已屏蔽用户：${author.name}")
@@ -185,18 +194,91 @@ fun BlockByKeywordsDialog(
 fun OpenImagePreviewContent(
     url: String,
     onDismiss: () -> Unit,
-    onSaveImage: () -> Unit,
-    onShareImage: () -> Unit,
-    onOpenInBrowser: () -> Unit,
+    onSaveImage: (String) -> Unit,
+    onShareImage: (String) -> Unit,
+    onOpenInBrowser: (String) -> Unit,
     imageContent: @Composable (
         url: String,
         onClick: () -> Unit,
         onLongClick: (Offset) -> Unit,
+        onPageSwipeEnabledChange: (Boolean) -> Unit,
+    ) -> Unit,
+) {
+    OpenImagePreviewContent(
+        urls = listOf(url),
+        initialIndex = 0,
+        onDismiss = onDismiss,
+        onSaveImage = onSaveImage,
+        onShareImage = onShareImage,
+        onOpenInBrowser = onOpenInBrowser,
+        imageContent = imageContent,
+    )
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun OpenImagePreviewContent(
+    urls: List<String>,
+    initialIndex: Int,
+    onDismiss: () -> Unit,
+    onSaveImage: (String) -> Unit,
+    onShareImage: (String) -> Unit,
+    onOpenInBrowser: (String) -> Unit,
+    imageContent: @Composable (
+        url: String,
+        onClick: () -> Unit,
+        onLongClick: (Offset) -> Unit,
+        onPageSwipeEnabledChange: (Boolean) -> Unit,
     ) -> Unit,
 ) {
     var showMenu by remember { mutableStateOf(false) }
     var menuOffset by remember { mutableStateOf(Offset.Zero) }
     val density = LocalDensity.current
+    val coroutineScope = rememberCoroutineScope()
+    val imageUrls = remember(urls) {
+        urls
+            .filter { it.isNotBlank() && !it.startsWith("data") }
+            .distinct()
+            .ifEmpty { listOf("") }
+    }
+    val initialPage = initialIndex.coerceIn(0, imageUrls.lastIndex)
+    val pagerState = rememberPagerState(initialPage = initialPage) { imageUrls.size }
+    val pageSwipeEnabled = remember(imageUrls) {
+        mutableStateMapOf<String, Boolean>().apply {
+            imageUrls.forEach { put(it, true) }
+        }
+    }
+    val currentPageSwipeEnabled = pageSwipeEnabled[imageUrls[pagerState.currentPage]] ?: true
+    val verticalSwipeModifier = if (imageUrls.size > 1 && currentPageSwipeEnabled) {
+        Modifier.pointerInput(imageUrls.size) {
+            val threshold = 96f
+            var totalDrag = 0f
+            detectVerticalDragGestures(
+                onVerticalDrag = { _, dragAmount ->
+                    totalDrag += dragAmount
+                },
+                onDragEnd = {
+                    val targetPage = when {
+                        totalDrag < -threshold -> pagerState.currentPage + 1
+                        totalDrag > threshold -> pagerState.currentPage - 1
+                        else -> null
+                    }?.coerceIn(0, imageUrls.lastIndex)
+
+                    if (targetPage != null && targetPage != pagerState.currentPage) {
+                        coroutineScope.launch {
+                            pagerState.animateScrollToPage(targetPage)
+                        }
+                    }
+                    totalDrag = 0f
+                },
+                onDragCancel = {
+                    totalDrag = 0f
+                },
+            )
+        }
+    } else {
+        Modifier
+    }
 
     Box(
         modifier = Modifier
@@ -205,12 +287,25 @@ fun OpenImagePreviewContent(
     ) {
         // 禁用图片查看器自带的震动反馈，保持长按菜单手感稳定。
         CompositionLocalProvider(LocalHapticFeedback provides NoopHapticFeedback) {
-            imageContent(
-                url,
-                onDismiss,
-            ) { offset ->
-                menuOffset = offset
-                showMenu = true
+            HorizontalPager(
+                state = pagerState,
+                key = { page -> "$page:${imageUrls[page]}" },
+                userScrollEnabled = imageUrls.size > 1 && currentPageSwipeEnabled,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(verticalSwipeModifier),
+            ) { page ->
+                imageContent(
+                    imageUrls[page],
+                    onDismiss,
+                    { offset ->
+                        menuOffset = offset
+                        showMenu = true
+                    },
+                    { enabled ->
+                        pageSwipeEnabled[imageUrls[page]] = enabled
+                    },
+                )
             }
         }
 
@@ -228,21 +323,21 @@ fun OpenImagePreviewContent(
                 text = { Text("保存图片") },
                 onClick = {
                     showMenu = false
-                    onSaveImage()
+                    onSaveImage(imageUrls[pagerState.currentPage])
                 },
             )
             DropdownMenuItem(
                 text = { Text("分享图片") },
                 onClick = {
                     showMenu = false
-                    onShareImage()
+                    onShareImage(imageUrls[pagerState.currentPage])
                 },
             )
             DropdownMenuItem(
                 text = { Text("在浏览器中打开") },
                 onClick = {
                     showMenu = false
-                    onOpenInBrowser()
+                    onOpenInBrowser(imageUrls[pagerState.currentPage])
                 },
             )
         }

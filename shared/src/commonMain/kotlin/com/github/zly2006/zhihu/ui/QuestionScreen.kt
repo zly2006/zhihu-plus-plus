@@ -74,6 +74,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.data.decodeQuestionContentDetail
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Question
@@ -81,6 +82,7 @@ import com.github.zly2006.zhihu.navigation.WriteAnswer
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberZhihuWebUrlOpener
+import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
@@ -89,13 +91,11 @@ import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
-import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.ContentLoadEnvironment
+import com.github.zly2006.zhihu.viewmodel.addReadHistory
 import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
-import io.ktor.client.call.body
-import io.ktor.client.request.get
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.JsonObject
 
 /**
  * 问题页的测试替身配置。
@@ -130,20 +130,14 @@ const val QUESTION_WRITE_ANSWER_BUTTON_TAG = "question_write_answer_button"
 const val QUESTION_COMMENTS_BUTTON_TAG = "question_comments_button"
 const val QUESTION_STATS_TAG = "question_stats"
 
-fun questionFeedItemTag(stableKey: String) = "question_feed_item_$stableKey"
-
 private suspend fun loadQuestion(
-    environment: PaginationEnvironment,
+    environment: ContentLoadEnvironment,
     question: Question,
 ): LoadedQuestionScreenData? {
     environment.addReadHistory(question.questionId.toString(), "question")
     val include = "read_count,visit_count,answer_count,voteup_count,comment_count,follower_count,detail,excerpt,author,relationship.is_following,topics"
-    val url = "https://www.zhihu.com/api/v4/questions/${question.questionId}?include=$include"
-    val jsonObject = environment
-        .httpClient()
-        .get(url) {
-            environment.configureSignedRequest(this)
-        }.body<JsonObject>()
+    val jsonObject = environment.fetchJson("https://www.zhihu.com/api/v4/questions/${question.questionId}", include)
+        ?: return null
     val questionData = decodeQuestionContentDetail(jsonObject)
     val loadedData = loadedQuestionScreenData(question, questionData)
     environment.postHistoryDestination(loadedData.historyDestination)
@@ -201,7 +195,7 @@ fun QuestionScreen(
     var isQuestionDetailExpanded by rememberSaveable(question.questionId, initialUiState.isQuestionDetailExpanded) {
         mutableStateOf(initialUiState.isQuestionDetailExpanded)
     }
-    val questionContentPreview = remember(questionContent) { questionDetailPreview(questionContent) }
+    val questionContentPreview = remember(questionContent) { Ksoup.parse(questionContent).text().trim() }
     val shareText = getShareText(question, title)
 
     // 加载问题详情和答案
@@ -386,7 +380,6 @@ fun QuestionScreen(
                                         val nextFollowing = !isFollowing
                                         testOverrides?.onFollowQuestion?.invoke(nextFollowing) ?: viewModel.followQuestion(
                                             paginationEnvironment,
-                                            question.questionId,
                                             nextFollowing,
                                         )
                                         isFollowing = nextFollowing
@@ -511,7 +504,7 @@ fun QuestionScreen(
             ) { item ->
                 FeedCard(
                     item = item,
-                    modifier = Modifier.testTag(questionFeedItemTag(item.stableKey)),
+                    modifier = Modifier.testTag("question_feed_item_${item.stableKey}"),
                 )
             }
         }
@@ -520,7 +513,7 @@ fun QuestionScreen(
         if (showComments) {
             content { showComments = false }
         }
-    } ?: QuestionCommentsSheet(
+    } ?: CommentScreenComponent(
         showComments = showComments,
         onDismiss = { showComments = false },
         content = question,

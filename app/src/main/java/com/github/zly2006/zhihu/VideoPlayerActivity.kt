@@ -90,6 +90,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.changedToUp
@@ -239,8 +240,6 @@ private fun formatTime(ms: Long): String {
     return "%d:%02d".format(total / 60, total % 60)
 }
 
-private fun Color.luminance(): Float = 0.299f * red + 0.587f * green + 0.114f * blue
-
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 private fun VideoPlayerView(
@@ -290,22 +289,16 @@ private fun VideoPlayerView(
         }
     }
 
-    fun safeGetPosition(): Long = try {
-        mediaPlayer?.currentPosition?.toLong()?.coerceAtLeast(0) ?: 0
+    fun safeGetMediaTime(fallback: Long, value: MediaPlayer.() -> Int): Long = try {
+        mediaPlayer?.value()?.toLong()?.coerceAtLeast(0) ?: 0
     } catch (_: Exception) {
-        currentPosition
-    }
-
-    fun safeGetDuration(): Long = try {
-        mediaPlayer?.duration?.toLong()?.coerceAtLeast(0) ?: 0
-    } catch (_: Exception) {
-        duration
+        fallback
     }
 
     LaunchedEffect(controlsVisible, isPlayingState.value) {
         while (controlsVisible || isPlayingState.value) {
-            currentPosition = safeGetPosition()
-            duration = safeGetDuration()
+            currentPosition = safeGetMediaTime(currentPosition) { this.currentPosition }
+            duration = safeGetMediaTime(duration) { this.duration }
             delay(200)
         }
     }
@@ -478,7 +471,7 @@ private fun VideoPlayerView(
                         onValueChange = {
                             val pos = (it * duration).toLong()
                             safeSeekTo(pos)
-                            currentPosition = safeGetPosition()
+                            currentPosition = safeGetMediaTime(currentPosition) { this.currentPosition }
                         },
                         modifier = Modifier.fillMaxWidth().height(20.dp),
                         track = {

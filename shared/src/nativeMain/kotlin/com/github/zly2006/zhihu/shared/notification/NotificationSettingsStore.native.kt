@@ -34,5 +34,9 @@ actual fun rememberNotificationSettingsStore(): NotificationSettingsStore = reme
         override fun getAutoMarkAsReadEnabled(): Boolean = false // TODO: iOS 获取自动已读开关
 
         override fun setAutoMarkAsReadEnabled(enabled: Boolean) = Unit // TODO: iOS 设置自动已读开关
+
+        override fun getUnreadBadgeEnabled(): Boolean = true // TODO: iOS 获取未读红点开关
+
+        override fun setUnreadBadgeEnabled(enabled: Boolean) = Unit // TODO: iOS 设置未读红点开关
     }
 } // TODO: iOS 通知设置存储完整实现

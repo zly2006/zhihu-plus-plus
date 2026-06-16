@@ -54,8 +54,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.shared.util.twoDigitString
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedFeedRecord
-import com.github.zly2006.zhihu.viewmodel.filter.rememberBlockedFeedRecordDao
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -73,7 +74,7 @@ import kotlin.time.Instant
 fun BlockedFeedHistoryScreen() {
     val navigator = LocalNavigator.current
     val coroutineScope = rememberCoroutineScope()
-    val dao = rememberBlockedFeedRecordDao()
+    val dao = getContentFilterDatabase().blockedFeedRecordDao()
 
     val records by dao.observeAll().collectAsState(initial = emptyList())
     var showClearDialog by remember { mutableStateOf(false) }
@@ -207,8 +208,8 @@ private fun formatBlockedTime(timestampMillis: Long): String {
     val dateTime = Instant
         .fromEpochMilliseconds(timestampMillis)
         .toLocalDateTime(TimeZone.currentSystemDefault())
-    return "${(dateTime.month.ordinal + 1).toString().padStart(2, '0')}-" +
-        "${dateTime.day.toString().padStart(2, '0')} " +
-        "${dateTime.hour.toString().padStart(2, '0')}:" +
-        dateTime.minute.toString().padStart(2, '0')
+    return "${(dateTime.month.ordinal + 1).twoDigitString()}-" +
+        "${dateTime.day.twoDigitString()} " +
+        "${dateTime.hour.twoDigitString()}:" +
+        dateTime.minute.twoDigitString()
 }

@@ -20,6 +20,7 @@
 package com.github.zly2006.zhihu.shared.data
 
 import com.github.zly2006.zhihu.shared.data.Feed.Badge
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -28,6 +29,7 @@ import kotlinx.serialization.descriptors.nullable
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNames
 
 @Serializable
 sealed interface Feed {
@@ -331,6 +333,14 @@ val Feed.actionText: String?
         is HotListFeed -> detailText
     }
 
+val Feed.sourceLabel: String?
+    get() = when (this) {
+        is CommonFeed -> actionText
+        is FeedItemIndexGroup -> actionText
+        is MomentsFeed -> momentDesc
+        else -> null
+    }?.trim()?.takeIf { it.isNotEmpty() }
+
 @Serializable
 @SerialName("feed_advert")
 class AdvertisementFeed(
@@ -446,6 +456,8 @@ data class Person(
     val avatarUrl: String,
     val isOrg: Boolean = false,
     val gender: Int = 0, // todo: 0做默认合适吗？
+    @OptIn(ExperimentalSerializationApi::class)
+    @JsonNames("followerCount")
     val followersCount: Int = 0,
     val isFollowing: Boolean = false,
     val isFollowed: Boolean = false,

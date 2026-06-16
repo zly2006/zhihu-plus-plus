@@ -21,10 +21,13 @@ import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.ClipData
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -34,24 +37,18 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.data.HistoryStorage
-import com.github.zly2006.zhihu.data.getContentDetail
-import com.github.zly2006.zhihu.data.getOrFetch
-import com.github.zly2006.zhihu.navigation.AndroidAnswerNavigatorRepository
-import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.shared.aigc.AIGC_MARKING_ENABLED_PREFERENCE_KEY
+import com.github.zly2006.zhihu.shared.aigc.AigcVoteClient
+import com.github.zly2006.zhihu.shared.aigc.AigcVoteVoter
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.ZHIHU_CLEAR_ONLINE_HISTORY_URL
-import com.github.zly2006.zhihu.shared.data.ZHIHU_LAST_READ_TOUCH_URL
+import com.github.zly2006.zhihu.shared.data.ZhihuCookieStorage
 import com.github.zly2006.zhihu.shared.data.ZhihuJson.json
-import com.github.zly2006.zhihu.shared.data.buildZhihuClearOnlineHistoryBody
-import com.github.zly2006.zhihu.shared.data.encodeZhihuLastReadTouchItems
 import com.github.zly2006.zhihu.shared.data.navDestination
-import com.github.zly2006.zhihu.shared.data.zhihuLastReadTouchItem
-import com.github.zly2006.zhihu.shared.data.zhihuLastReadTouchItems
+import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
@@ -64,15 +61,16 @@ import com.github.zly2006.zhihu.util.buildOfflineArticleExportHtml
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.exportCollectionItemsToZip
 import com.github.zly2006.zhihu.util.saveBitmapToGallery
-import com.github.zly2006.zhihu.util.signFetchRequest
-import com.github.zly2006.zhihu.viewmodel.CollectionItem
 import com.github.zly2006.zhihu.viewmodel.filter.AndroidContentFilterRuntime
-import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
-import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
+import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeywordService
+import com.github.zly2006.zhihu.viewmodel.filter.BlockedUser
+import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterManager
+import com.github.zly2006.zhihu.viewmodel.filter.ContentType
+import com.github.zly2006.zhihu.viewmodel.filter.FeedContentFilterPipeline
+import com.github.zly2006.zhihu.viewmodel.filter.FeedDisplayFilterPipeline
+import com.github.zly2006.zhihu.viewmodel.filter.ForegroundReadFilterPipeline
 import com.github.zly2006.zhihu.viewmodel.filter.contentFilterSettings
-import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
-import com.github.zly2006.zhihu.viewmodel.filter.recordFeedContentInteraction
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.UserAgent
@@ -80,24 +78,20 @@ import io.ktor.client.plugins.api.createClientPlugin
 import io.ktor.client.plugins.cache.HttpCache
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.cookies.HttpCookies
-import io.ktor.client.request.HttpRequestBuilder
-import io.ktor.client.request.forms.MultiPartFormDataContent
-import io.ktor.client.request.forms.formData
-import io.ktor.client.request.header
-import io.ktor.client.request.post
 import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.HttpMethod
 import io.ktor.http.contentType
-import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.util.appendAll
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
+import java.io.File
+import java.util.UUID
 import com.github.zly2006.zhihu.navigation.Article as ArticleDestination
 import com.github.zly2006.zhihu.util.buildArticleExportHtml as buildAndroidArticleExportHtml
 import io.ktor.http.ContentType as KtorContentType
@@ -112,6 +106,10 @@ private val ZHIHU_PP_ANDROID_HEADERS = createClientPlugin("ZhihuPPAndroidHeaders
     }
 }
 
+private const val AIGC_VOTE_CLIENT_ID_KEY = "aigcVoteClientId"
+private const val AIGC_VOTE_SERVER_URL_KEY = "aigcVoteServerUrl"
+private const val DEFAULT_ANDROID_AIGC_VOTE_SERVER_URL = "https://aigc-vote.ai.fintechedu.cn"
+
 open class SharedAndroidPaginationEnvironment(
     override val context: Context,
     private val allowGuestAccess: Boolean,
@@ -120,6 +118,20 @@ open class SharedAndroidPaginationEnvironment(
     private val localRecommendationEngine by lazy { LocalRecommendationEngine(context) }
     private val settingsStore by lazy { androidSettingsStore(context) }
     private val userMessageSink by lazy { androidUserMessageSink(context) }
+    private val aigcVoteHttpClient by lazy {
+        HttpClient {
+            install(ContentNegotiation) {
+                json(json)
+            }
+        }
+    }
+    private val aigcVoteClient by lazy {
+        AigcVoteClient(
+            httpClient = aigcVoteHttpClient,
+            baseUrl = aigcVoteServerUrl(),
+            clientId = aigcVoteClientId(),
+        )
+    }
 
     override fun httpClient(): HttpClient {
         val loginForRecommendation = settingsStore.getBoolean("loginForRecommendation", true)
@@ -150,19 +162,53 @@ open class SharedAndroidPaginationEnvironment(
             install(ZHIHU_PP_ANDROID_HEADERS)
             if (loginForRecommendation) {
                 install(HttpCookies) {
-                    storage = AccountData.cookieStorage(context, null)
+                    storage = ZhihuCookieStorage(AccountData.data.cookies) {
+                        AccountData.saveData(context, AccountData.data)
+                    }
                 }
             }
         }
     }
 
-    override suspend fun fetchJson(
-        url: String,
-        include: String,
-    ): JsonObject? =
-        AccountData.fetchGet(context, url) {
-            addIncludeAndSign(include)
+    override fun aigcVoteClient(): AigcVoteClient? =
+        if (settingsStore.getBoolean(AIGC_MARKING_ENABLED_PREFERENCE_KEY, false)) {
+            aigcVoteClient
+        } else {
+            null
         }
+
+    override fun aigcVoteVoter(): AigcVoteVoter? =
+        AccountData.data.self?.let { self ->
+            AigcVoteVoter(
+                id = self.id,
+                name = self.name,
+                urlToken = self.urlToken,
+                avatarUrl = self.avatarUrl,
+            )
+        }
+
+    override fun authenticatedCookies(): Map<String, String> {
+        val loginForRecommendation = settingsStore.getBoolean("loginForRecommendation", true)
+        return if (allowGuestAccess && !loginForRecommendation) {
+            emptyMap()
+        } else {
+            AccountData.data.cookies
+        }
+    }
+
+    private fun aigcVoteServerUrl(): String =
+        settingsStore
+            .getString(AIGC_VOTE_SERVER_URL_KEY, DEFAULT_ANDROID_AIGC_VOTE_SERVER_URL)
+            .ifBlank { DEFAULT_ANDROID_AIGC_VOTE_SERVER_URL }
+
+    private fun aigcVoteClientId(): String {
+        settingsStore.getStringOrNull(AIGC_VOTE_CLIENT_ID_KEY)?.takeIf { it.isNotBlank() }?.let {
+            return it
+        }
+        val id = UUID.randomUUID().toString()
+        settingsStore.putString(AIGC_VOTE_CLIENT_ID_KEY, id)
+        return id
+    }
 
     override suspend fun handleFetchFailure(
         tag: String?,
@@ -188,10 +234,6 @@ open class SharedAndroidPaginationEnvironment(
         }
     }
 
-    override fun configureSignedRequest(builder: HttpRequestBuilder) {
-        builder.signFetchRequest()
-    }
-
     override fun feedDisplaySettings(): FeedDisplaySettings = FeedDisplaySettings(
         enableQualityFilter = settingsStore.getBoolean("enableQualityFilter", true),
         reverseBlock = settingsStore.getBoolean("reverseBlock", false),
@@ -199,25 +241,21 @@ open class SharedAndroidPaginationEnvironment(
 
     override fun localHistory(): List<NavDestination> = HistoryStorage(context).history
 
-    override suspend fun addReadHistory(
-        contentToken: String,
-        contentTypeName: String,
-    ) {
-        AccountData.addReadHistory(context, contentToken, contentTypeName)
-    }
-
     override suspend fun postHistoryDestination(destination: NavDestination) {
         HistoryStorage(context).add(destination)
     }
 
     override suspend fun isUserBlocked(userId: String): Boolean =
-        getContentFilterDatabase(context).createBlocklistManager().isUserBlocked(userId)
+        getContentFilterDatabase(context).let { database ->
+            database.blockedUserDao().isUserBlocked(userId)
+        }
 
     override fun blockedUserIds(): Set<String> =
         kotlinx.coroutines.runBlocking {
-            getContentFilterDatabase(context)
-                .createBlocklistManager()
-                .getAllBlockedUsers()
+            val database = getContentFilterDatabase(context)
+            database
+                .blockedUserDao()
+                .getAllUsers()
                 .map { it.userId }
                 .toSet()
         }
@@ -228,16 +266,20 @@ open class SharedAndroidPaginationEnvironment(
         urlToken: String?,
         avatarUrl: String?,
     ) {
-        getContentFilterDatabase(context).createBlocklistManager().addBlockedUser(
-            userId = userId,
-            userName = userName,
-            urlToken = urlToken,
-            avatarUrl = avatarUrl,
+        val database = getContentFilterDatabase(context)
+        database.blockedUserDao().insertUser(
+            BlockedUser(
+                userId = userId,
+                userName = userName,
+                urlToken = urlToken,
+                avatarUrl = avatarUrl,
+            ),
         )
     }
 
     override suspend fun removeBlockedUser(userId: String) {
-        getContentFilterDatabase(context).createBlocklistManager().removeBlockedUser(userId)
+        val database = getContentFilterDatabase(context)
+        database.blockedUserDao().deleteUserById(userId)
     }
 
     override suspend fun recordContentOpenEvent(
@@ -256,49 +298,44 @@ open class SharedAndroidPaginationEnvironment(
         )
     }
 
-    override suspend fun getContentDetail(article: ArticleDestination): DataHolder.Content? =
-        DataHolder.getContentDetail(context, article)
-
-    override suspend fun followQuestion(
-        questionId: Long,
-        follow: Boolean,
-    ) {
-        val url = "https://www.zhihu.com/api/v4/questions/$questionId/followers"
-        AccountData.fetch(context, url) {
-            signFetchRequest()
-            method = if (follow) HttpMethod.Post else HttpMethod.Delete
-        }
-    }
-
     override suspend fun applyHomeFeedFilters(items: List<FeedDisplayItem>): HomeFeedFilterResult {
         val settings = feedDisplaySettings()
         val filterSettings = context.contentFilterSettings()
         val filterDatabase = getContentFilterDatabase(context)
-        val foregroundItems = ContentFilterExtensions.applyForegroundReadFilterToDisplayItems(
+        val foregroundItems = ForegroundReadFilterPipeline(
             settings = filterSettings,
-            database = filterDatabase,
-            items = items,
-        )
-        val filteredItems = ContentFilterExtensions.applyContentFilterToDisplayItems(
+            contentFilterManager = ContentFilterManager(filterDatabase.contentFilterDao()),
+            blockedFeedRecordDao = filterDatabase.blockedFeedRecordDao(),
+        ).filter(items)
+        val filteredItems = FeedDisplayFilterPipeline(
             settings = filterSettings,
-            database = filterDatabase,
-            items = foregroundItems,
-            contentDetailProvider = ContentDetailProvider { ContentDetailCache.getOrFetch(context, it) },
-            semanticMatcher = AndroidContentFilterRuntime.semanticMatcher,
-            onNlpBlocked = { blockedThisRound ->
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                    context.mainExecutor.execute {
-                        userMessageSink.showShortMessage("NLP 已屏蔽 ${blockedThisRound.first().title.take(10)}... 等 ${blockedThisRound.size} 条内容")
+            contentDetailProvider = this::getOrFetchContentDetail,
+            contentFilterPipeline = FeedContentFilterPipeline(
+                settings = filterSettings,
+                blockedKeywordDao = filterDatabase.blockedKeywordDao(),
+                blockedUserDao = filterDatabase.blockedUserDao(),
+                blockedTopicDao = filterDatabase.blockedTopicDao(),
+                blockedKeywordService = BlockedKeywordService(
+                    keywordDao = filterDatabase.blockedKeywordDao(),
+                    recordDao = filterDatabase.blockedContentRecordDao(),
+                    semanticMatcher = AndroidContentFilterRuntime.semanticMatcher,
+                ),
+                onNlpBlocked = { blockedThisRound ->
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        context.mainExecutor.execute {
+                            userMessageSink.showShortMessage("NLP 已屏蔽 ${blockedThisRound.first().title.take(10)}... 等 ${blockedThisRound.size} 条内容")
+                        }
                     }
-                }
-            },
+                },
+            ),
+            blockedFeedRecordDao = filterDatabase.blockedFeedRecordDao(),
             onDetailFetchFailed = { item ->
                 Log.w("ContentFilterExtensions", "Failed to fetch content details for item '${item.title}'. Using dummy content for filtering.")
             },
             onDetailsKeywordFiltered = { item, keyword ->
                 Log.e("ContentFilterExtensions", "Filtered item '${item.title}' due to keyword '$keyword' in details: ${item.content}")
             },
-        )
+        ).filter(foregroundItems)
         return HomeFeedFilterResult(
             foregroundItems = foregroundItems,
             filteredItems = filteredItems,
@@ -306,55 +343,31 @@ open class SharedAndroidPaginationEnvironment(
         )
     }
 
-    override suspend fun sendFeedReadStatus(feed: Feed) {
-        val payloadItem = zhihuLastReadTouchItem(feed, "read") ?: return
-        AccountData.fetchPost(context, ZHIHU_LAST_READ_TOUCH_URL) {
-            signFetchRequest()
-            header("x-requested-with", "fetch")
-            setBody(
-                MultiPartFormDataContent(
-                    formData {
-                        append("items", encodeZhihuLastReadTouchItems(listOf(payloadItem)))
-                    },
-                ),
-            )
-        }
-    }
-
     override suspend fun recordContentInteraction(feed: Feed) {
         val settings = context.contentFilterSettings()
+        if (!settings.enableContentFilter) return
         val database = getContentFilterDatabase(context)
-        recordFeedContentInteraction(settings, database, feed)
-    }
-
-    override suspend fun markItemsAsTouched(items: Set<Pair<String, String>>): Set<Pair<String, String>> {
-        if (items.isEmpty()) return emptySet()
-        val response = AccountData.httpClient(context).post(ZHIHU_LAST_READ_TOUCH_URL) {
-            header("x-requested-with", "fetch")
-            signFetchRequest()
-            setBody(
-                MultiPartFormDataContent(
-                    formData {
-                        val payload = zhihuLastReadTouchItems(items, "touch")
-                        append("items", encodeZhihuLastReadTouchItems(payload))
-                    },
-                ),
-            )
+        val target = feed.target ?: return
+        val (targetType, targetId) = when (target) {
+            is Feed.AnswerTarget -> ContentType.ANSWER to target.id.toString()
+            is Feed.ArticleTarget -> ContentType.ARTICLE to target.id.toString()
+            is Feed.QuestionTarget -> ContentType.QUESTION to target.id.toString()
+            is Feed.PinTarget -> ContentType.PIN to target.id.toString()
+            else -> return
         }
-        return if (response.status.isSuccess()) {
-            items
-        } else {
-            Log.e("Browse-Touch", response.bodyAsText())
-            emptySet()
-        }
+        ContentFilterManager(database.contentFilterDao()).recordContentInteraction(targetType, targetId)
     }
 
     override suspend fun clearAllHistory() {
         HistoryStorage(context).clearAndSave()
-        AccountData.fetchPost(context, ZHIHU_CLEAR_ONLINE_HISTORY_URL) {
-            signFetchRequest()
+        postSigned("https://api.zhihu.com/read_history/batch_del") {
             contentType(KtorContentType.Application.Json)
-            setBody(buildZhihuClearOnlineHistoryBody())
+            setBody(
+                buildJsonObject {
+                    put("pairs", JsonArray(emptyList()))
+                    put("clear", true)
+                }.toString(),
+            )
         }
     }
 
@@ -374,8 +387,6 @@ open class SharedAndroidPaginationEnvironment(
                 .show()
         }
     }
-
-    override fun answerNavigatorRepository(): AnswerNavigatorRepository = AndroidAnswerNavigatorRepository(context)
 
     override fun articleAnswerSwitchState() = context.articleHost()?.articleAnswerSwitchState
 
@@ -442,7 +453,7 @@ open class SharedAndroidPaginationEnvironment(
         includeImages: Boolean,
     ): ResolvedCollectionHtmlExportItem? {
         val navDestination = item.content.navDestination as? ArticleDestination ?: return null
-        val content = ContentDetailCache.getOrFetch(context, navDestination)
+        val content = getOrFetchContentDetail(navDestination)
             ?: throw IllegalStateException("无法加载「${item.content.title}」详情")
         if (content !is DataHolder.Answer && content !is DataHolder.Article) {
             return null
@@ -533,10 +544,64 @@ open class SharedAndroidPaginationEnvironment(
         extraSectionsHtml = extraSectionsHtml,
     )
 
+    override suspend fun buildOfflineArticleExportHtml(
+        content: DataHolder.Content,
+        includeAppAttribution: Boolean,
+        httpClient: HttpClient,
+    ): String = buildOfflineArticleExportHtml(
+        context = context,
+        content = content,
+        includeAppAttribution = includeAppAttribution,
+        httpClient = httpClient,
+    )
+
     override fun saveImageToMediaStore(
         displayName: String,
         bitmap: Any,
     ) = saveBitmapToGallery(context, displayName, bitmap as android.graphics.Bitmap)
+
+    override fun saveHtmlToDownloads(
+        displayName: String,
+        htmlContent: String,
+    ): String {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val resolver = context.contentResolver
+            val contentValues = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
+                put(MediaStore.MediaColumns.MIME_TYPE, "text/html")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Zhihu++")
+                put(MediaStore.MediaColumns.IS_PENDING, 1)
+            }
+            val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+                ?: throw IllegalStateException("无法创建下载文件")
+
+            return try {
+                resolver.openOutputStream(uri)?.bufferedWriter(Charsets.UTF_8)?.use { writer ->
+                    writer.write(htmlContent)
+                } ?: throw IllegalStateException("无法打开下载文件")
+
+                contentValues.clear()
+                contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
+                resolver.update(uri, contentValues, null, null)
+                "Zhihu++/$displayName"
+            } catch (e: Exception) {
+                resolver.delete(uri, null, null)
+                throw e
+            }
+        }
+
+        @Suppress("DEPRECATION")
+        val downloadsDir = File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+            "Zhihu++",
+        )
+        if (!downloadsDir.exists() && !downloadsDir.mkdirs()) {
+            throw IllegalStateException("无法创建下载目录")
+        }
+        val file = File(downloadsDir, displayName)
+        file.writeText(htmlContent)
+        return file.absolutePath
+    }
 
     override fun articleImageExportRenderer(loadAssetText: (String) -> String): ArticleImageExportRenderer =
         AndroidArticleExportRenderer(context, loadAssetText)
@@ -567,12 +632,12 @@ open class SharedAndroidPaginationEnvironment(
         }
 }
 
-class SharedAndroidNotificationPaginationEnvironment(
+class SharedAndroidNotificationEnvironment(
     context: Context,
     allowGuestAccess: Boolean,
     override val notificationSettingsStore: NotificationSettingsStore,
 ) : SharedAndroidPaginationEnvironment(context, allowGuestAccess),
-    NotificationPaginationEnvironment
+    NotificationEnvironment
 
 fun PaginationViewModel<*>.paginationEnvironment(context: Context): AndroidContextPaginationEnvironment =
     SharedAndroidPaginationEnvironment(context, allowGuestAccess)
@@ -583,15 +648,11 @@ actual fun rememberPaginationEnvironment(allowGuestAccess: Boolean): PaginationE
     return remember(context, allowGuestAccess) { SharedAndroidPaginationEnvironment(context, allowGuestAccess) }
 }
 
-fun PaginationViewModel<*>.notificationPaginationEnvironment(
+fun PaginationViewModel<*>.notificationEnvironment(
     context: Context,
     notificationSettingsStore: NotificationSettingsStore,
-): NotificationPaginationEnvironment =
-    SharedAndroidNotificationPaginationEnvironment(context, allowGuestAccess, notificationSettingsStore)
-
-fun PaginationEnvironment.androidContext(): Context =
-    (this as? AndroidContextPaginationEnvironment)?.context
-        ?: error("Android Context is required for this pagination path")
+): NotificationEnvironment =
+    SharedAndroidNotificationEnvironment(context, allowGuestAccess, notificationSettingsStore)
 
 fun PaginationViewModel<*>.refresh(context: Context) {
     refresh(paginationEnvironment(context))
@@ -602,16 +663,7 @@ fun PaginationViewModel<*>.loadMore(context: Context) {
 }
 
 fun PaginationViewModel<*>.httpClient(context: Context): HttpClient =
-    httpClient(paginationEnvironment(context))
-
-private fun HttpRequestBuilder.addIncludeAndSign(include: String) {
-    url {
-        if (include.isNotEmpty()) {
-            parameters["include"] = include
-        }
-    }
-    signFetchRequest()
-}
+    paginationEnvironment(context).httpClient()
 
 private fun Context.canSafelyShowDialog(): Boolean {
     val activity = this as? Activity ?: return false

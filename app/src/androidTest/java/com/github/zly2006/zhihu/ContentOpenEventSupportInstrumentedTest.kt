@@ -52,7 +52,7 @@ class ContentOpenEventSupportInstrumentedTest {
         )
 
         assertTrue(
-            viewedIds.contains(ContentOpenEventSupport.buildContentKey(ContentType.ANSWER, contentId)),
+            viewedIds.contains("${ContentType.ANSWER}:$contentId"),
         )
     }
 }

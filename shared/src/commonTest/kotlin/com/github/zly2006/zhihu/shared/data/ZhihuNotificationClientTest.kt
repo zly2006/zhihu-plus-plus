@@ -17,35 +17,116 @@
 
 package com.github.zly2006.zhihu.shared.data
 
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
-import io.ktor.client.engine.mock.respond
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpMethod
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.headersOf
-import kotlinx.coroutines.test.runTest
+import com.github.zly2006.zhihu.shared.notification.NotificationType
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 
 class ZhihuNotificationClientTest {
     @Test
-    fun buildsRecentNotificationUrl() {
-        assertEquals(
-            "https://www.zhihu.com/api/v4/notifications/v2/recent?limit=20",
-            zhihuNotificationRecentUrl(),
+    fun inviteAnswerNotificationsKeepOptInDisplayDefault() {
+        assertEquals(false, NotificationType.INVITE_ANSWER.defaultValue)
+    }
+
+    @Test
+    fun decodesInviteAnswerNotificationWithQuestionTarget() {
+        val notification = ZhihuJson.decodeJson<NotificationItem>(
+            ZhihuJson.json.parseToJsonElement(
+                """
+                {
+                  "id": "invite-answer-notification",
+                  "type": "notification",
+                  "is_read": false,
+                  "create_time": 1760000000,
+                  "content": {
+                    "verb": " 邀请你回答问题",
+                    "actors": [
+                      {
+                        "name": "邀请者",
+                        "type": "member",
+                        "link": "https://www.zhihu.com/people/inviter",
+                        "url_token": "inviter"
+                      }
+                    ],
+                    "target": {
+                      "text": "如何选择开发工具？",
+                      "link": "https://www.zhihu.com/question/123"
+                    },
+                    "extend": {
+                      "text": "",
+                      "icon": "https://pic.example/icon.png"
+                    }
+                  },
+                  "target": {
+                    "type": "question",
+                    "url": "https://www.zhihu.com/question/123",
+                    "title": "如何选择开发工具？",
+                    "id": "123",
+                    "created": 1760000000,
+                    "updated_time": 1760000001,
+                    "question_type": "normal"
+                  }
+                }
+                """.trimIndent(),
+            ),
         )
-        assertEquals(
-            "https://www.zhihu.com/api/v4/notifications/v2/recent?limit=50",
-            zhihuNotificationRecentUrl(limit = 50),
+
+        assertEquals(" 邀请你回答问题", notification.content.verb)
+        val target = assertIs<NotificationTarget.Question>(notification.target)
+        assertEquals("123", target.id)
+        assertEquals("如何选择开发工具？", target.title)
+    }
+
+    @Test
+    fun decodesArticleNotificationWithoutQuestionField() {
+        val notification = ZhihuJson.decodeJson<NotificationItem>(
+            ZhihuJson.json.parseToJsonElement(
+                """
+                {
+                  "id": "article-notification",
+                  "type": "notification",
+                  "is_read": true,
+                  "create_time": 1760000000,
+                  "content": {
+                    "verb": "赞同了你的文章",
+                    "actors": {
+                      "name": "读者",
+                      "type": "member",
+                      "link": "https://www.zhihu.com/people/reader",
+                      "url_token": "reader"
+                    },
+                    "target": {
+                      "text": "文章标题",
+                      "link": "https://zhuanlan.zhihu.com/p/456"
+                    },
+                    "extend": {
+                      "text": "",
+                      "icon": "https://pic.example/icon.png"
+                    }
+                  },
+                  "target": {
+                    "type": "article",
+                    "url": "https://zhuanlan.zhihu.com/p/456",
+                    "title": "文章标题",
+                    "id": "456",
+                    "excerpt": "文章摘要"
+                  }
+                }
+                """.trimIndent(),
+            ),
         )
+
+        val target = assertIs<NotificationTarget.Article>(notification.target)
+        assertEquals("456", target.id)
+        assertEquals("文章标题", target.title)
+        assertEquals("文章摘要", target.excerpt)
     }
 
     @Test
     fun decodesUnreadNotificationCountsFromSnakeCasePayload() {
-        val notifications = decodeZhihuMeNotifications(
+        val notifications: ZhihuMeNotifications = ZhihuJson.decodeJson(
             buildJsonObject {
                 put("default_notifications_count", 1)
                 put("follow_notifications_count", 2)
@@ -57,58 +138,5 @@ class ZhihuNotificationClientTest {
         assertEquals(2, notifications.followNotificationsCount)
         assertEquals(3, notifications.voteThankNotificationsCount)
         assertEquals(6, notifications.totalCount)
-    }
-
-    @Test
-    fun fetchUnreadNotificationCountUsesMeEndpoint() = runTest {
-        val client = HttpClient(
-            MockEngine { request ->
-                assertEquals(ZHIHU_ME_URL, request.url.toString())
-                respond(
-                    content =
-                        """
-                        {
-                          "default_notifications_count": 4,
-                          "follow_notifications_count": 5,
-                          "vote_thank_notifications_count": 6
-                        }
-                        """.trimIndent(),
-                    status = HttpStatusCode.OK,
-                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
-                )
-            },
-        ) {
-            installZhihuCommonClientConfig(
-                cookies = mutableMapOf(),
-                userAgent = "test-agent",
-            )
-        }
-
-        assertEquals(15, fetchZhihuUnreadNotificationCount(client))
-    }
-
-    @Test
-    fun markAllNotificationsAsReadPostsEveryCategoryInOrder() = runTest {
-        val requestedUrls = mutableListOf<String>()
-        val client = HttpClient(
-            MockEngine { request ->
-                assertEquals(HttpMethod.Post, request.method)
-                requestedUrls += request.url.toString()
-                respond(
-                    content = "{}",
-                    status = HttpStatusCode.OK,
-                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
-                )
-            },
-        ) {
-            installZhihuCommonClientConfig(
-                cookies = mutableMapOf(),
-                userAgent = "test-agent",
-            )
-        }
-
-        markAllZhihuNotificationsAsRead(client)
-
-        assertEquals(ZHIHU_NOTIFICATION_READ_ALL_URLS, requestedUrls)
     }
 }

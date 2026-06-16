@@ -78,13 +78,13 @@ import com.github.zly2006.zhihu.shared.util.formatRelativeTime
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
-import com.github.zly2006.zhihu.viewmodel.NotificationPaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.NotificationEnvironment
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 
 data class NotificationScreenRuntime(
-    val environment: NotificationPaginationEnvironment,
+    val environment: NotificationEnvironment,
     val showDebugCopy: Boolean,
 )
 
@@ -171,7 +171,6 @@ fun NotificationScreen() {
                     NotificationItemView(
                         notification = notification,
                         onClick = {
-                            viewModel.markAsRead(notification.id)
                             // 处理点击事件 - 跳转到对应内容
                             when (notification.target) {
                                 is NotificationTarget
