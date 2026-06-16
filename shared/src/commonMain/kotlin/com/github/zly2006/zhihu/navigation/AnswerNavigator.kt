@@ -222,6 +222,11 @@ class QuestionAnswerNavigator(
     },
     environment: ZhihuApiEnvironment,
 ) : AnswerNavigator("此问题", environment) {
+    val usesInitialAnswerList: Boolean = initialNextAnswers.isNotEmpty() ||
+        initialPreviousAnswers.isNotEmpty() ||
+        initialNextUrl.isNotEmpty() ||
+        order != null
+
     private val pendingInitialNextAnswers = ArrayDeque<Article>().also { deque ->
         initialNextAnswers
             .filter { it.type == ArticleType.Answer }
@@ -277,10 +282,10 @@ class QuestionAnswerNavigator(
 
     private suspend fun ensureDestinations(currentArticleId: Long) {
         if (destinations.isNotEmpty()) return
-        if (initialNextAnswersProcessed && hasInitialNextAnswers && nextUrl.isEmpty()) return
+        if (hasInitialNextAnswers && initialNextAnswersProcessed && nextUrl.isEmpty()) return
         val historyIds = answerHistory.map { it.article.id }.toSet()
         while (destinations.isEmpty()) {
-            val processingInitialNextAnswers = !initialNextAnswersProcessed
+            val processingInitialNextAnswers = hasInitialNextAnswers && !initialNextAnswersProcessed
             val candidates = if (processingInitialNextAnswers) {
                 initialNextAnswersProcessed = true
                 pendingInitialNextAnswers.toList()
