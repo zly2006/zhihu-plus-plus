@@ -112,15 +112,15 @@ private fun ShortcutButton(
 
 fun TextFieldValue.applyMarkdownShortcut(shortcut: MarkdownShortcut): TextFieldValue =
     when (shortcut) {
-        MarkdownShortcut.H1 -> insertPrefixAtLineStart("# ")
-        MarkdownShortcut.H2 -> insertPrefixAtLineStart("## ")
-        MarkdownShortcut.Bold -> wrapSelection(prefix = "**", suffix = "**", placeholder = "加粗")
-        MarkdownShortcut.Italic -> wrapSelection(prefix = "*", suffix = "*", placeholder = "斜体")
-        MarkdownShortcut.Quote -> insertPrefixAtLineStart("> ")
+        MarkdownShortcut.H1 -> toggleHeading(targetPrefix = "# ", otherPrefix = "## ")
+        MarkdownShortcut.H2 -> toggleHeading(targetPrefix = "## ", otherPrefix = "# ")
+        MarkdownShortcut.Bold -> toggleWrapSelection(prefix = "**", suffix = "**", placeholder = "加粗")
+        MarkdownShortcut.Italic -> toggleWrapSelection(prefix = "*", suffix = "*", placeholder = "斜体")
+        MarkdownShortcut.Quote -> toggleQuoteAtLineStart()
         MarkdownShortcut.Divider -> insertBlock("---")
-        MarkdownShortcut.CodeBlock -> insertCodeBlock()
-        MarkdownShortcut.InlineCode -> wrapSelection(prefix = "`", suffix = "`", placeholder = "code")
-        MarkdownShortcut.Math -> wrapSelection(prefix = "$", suffix = "$", placeholder = "x")
+        MarkdownShortcut.CodeBlock -> toggleCodeBlock()
+        MarkdownShortcut.InlineCode -> toggleWrapSelection(prefix = "`", suffix = "`", placeholder = "code")
+        MarkdownShortcut.Math -> toggleWrapSelection(prefix = "$", suffix = "$", placeholder = "x")
         MarkdownShortcut.Link -> insertLink()
     }
 
@@ -164,28 +164,177 @@ private fun TextFieldValue.wrapSelection(
     return replaceSelection(insert = insert, cursorOffsetInInsert = cursorOffset)
 }
 
-private fun TextFieldValue.insertPrefixAtLineStart(prefix: String): TextFieldValue {
+private fun TextFieldValue.toggleHeading(
+    targetPrefix: String,
+    otherPrefix: String,
+): TextFieldValue {
     val cursor = selection.min
-    val lineStart = text.lastIndexOf('\n', startIndex = (cursor - 1).coerceAtLeast(0)).let { idx ->
-        if (idx < 0) 0 else idx + 1
-    }
-    val newText = buildString {
-        append(text.substring(0, lineStart))
-        append(prefix)
-        append(text.substring(lineStart))
-    }
-    val delta = prefix.length
-    val newSelection =
-        if (selection.min == selection.max) {
-            val newCursor = (cursor + delta).coerceIn(0, newText.length)
-            TextRange(newCursor, newCursor)
-        } else {
-            TextRange(selection.min + delta, selection.max + delta)
+    val lineStart = text.lineStartOf(cursor)
+    return when {
+        text.startsWith(targetPrefix, startIndex = lineStart) -> {
+            replaceAt(
+                replaceStart = lineStart,
+                replaceEndExclusive = lineStart + targetPrefix.length,
+                replaceWith = "",
+            )
         }
-    return TextFieldValue(
-        text = newText,
-        selection = newSelection,
-    )
+        text.startsWith(otherPrefix, startIndex = lineStart) -> {
+            replaceAt(
+                replaceStart = lineStart,
+                replaceEndExclusive = lineStart + otherPrefix.length,
+                replaceWith = targetPrefix,
+            )
+        }
+        else -> {
+            replaceAt(
+                replaceStart = lineStart,
+                replaceEndExclusive = lineStart,
+                replaceWith = targetPrefix,
+            )
+        }
+    }
+}
+
+private fun TextFieldValue.toggleQuoteAtLineStart(): TextFieldValue {
+    val cursor = selection.min
+    val lineStart = text.lineStartOf(cursor)
+    val lineEnd = text.lineEndOf(cursor)
+    var idx = lineStart
+    while (idx + 2 <= lineEnd && text.startsWith("> ", startIndex = idx)) {
+        idx += 2
+    }
+    return if (idx > lineStart) {
+        replaceAt(
+            replaceStart = lineStart,
+            replaceEndExclusive = idx,
+            replaceWith = "",
+        )
+    } else {
+        replaceAt(
+            replaceStart = lineStart,
+            replaceEndExclusive = lineStart,
+            replaceWith = "> ",
+        )
+    }
+}
+
+private fun TextFieldValue.toggleWrapSelection(
+    prefix: String,
+    suffix: String,
+    placeholder: String,
+): TextFieldValue {
+    fun isSingleMarker(marker: Char): Boolean =
+        prefix.length == 1 && suffix.length == 1 && prefix[0] == marker && suffix[0] == marker
+
+    fun isSingleMarkerBoundary(index: Int, marker: Char): Boolean {
+        val prev = text.getOrNull(index - 1)
+        val next = text.getOrNull(index + 1)
+        if (prev == marker || next == marker) return false
+        return true
+    }
+
+    val start = selection.min
+    val end = selection.max
+    if (start != end) {
+        val canUnwrapAroundSelection =
+            start >= prefix.length &&
+                end + suffix.length <= text.length &&
+                text.regionMatches(start - prefix.length, prefix, 0, prefix.length) &&
+                text.regionMatches(end, suffix, 0, suffix.length) &&
+                when {
+                    isSingleMarker('*') && prefix == "*" -> isSingleMarkerBoundary(start - 1, '*') && isSingleMarkerBoundary(end, '*')
+                    isSingleMarker('$') && prefix == "$" -> isSingleMarkerBoundary(start - 1, '$') && isSingleMarkerBoundary(end, '$')
+                    else -> true
+                }
+
+        if (canUnwrapAroundSelection) {
+            val removePrefixStart = start - prefix.length
+            val removePrefixEndExclusive = start
+            val removeSuffixStart = end
+            val removeSuffixEndExclusive = end + suffix.length
+            return removeRanges(
+                ranges =
+                    listOf(
+                        removeSuffixStart to removeSuffixEndExclusive,
+                        removePrefixStart to removePrefixEndExclusive,
+                    ),
+                newSelection = TextRange(removePrefixStart, removeSuffixStart - prefix.length),
+            )
+        }
+
+        val selected = text.substring(start, end)
+        val canUnwrapInsideSelection =
+            selected.startsWith(prefix) &&
+                selected.endsWith(suffix) &&
+                selected.length >= prefix.length + suffix.length &&
+                when {
+                    isSingleMarker('*') && prefix == "*" -> isSingleMarkerBoundary(start, '*') && isSingleMarkerBoundary(end - 1, '*')
+                    isSingleMarker('$') && prefix == "$" -> isSingleMarkerBoundary(start, '$') && isSingleMarkerBoundary(end - 1, '$')
+                    else -> true
+                }
+
+        if (canUnwrapInsideSelection) {
+            val core = selected.substring(prefix.length, selected.length - suffix.length)
+            val newText = text.replaceRange(start, end, core)
+            return TextFieldValue(
+                text = newText,
+                selection = TextRange(start, start + core.length),
+            )
+        }
+
+        val insert = prefix + selected + suffix
+        return replaceSelection(insert = insert, cursorOffsetInInsert = insert.length)
+    }
+
+    val cursor = selection.min
+    val lineStart = text.lineStartOf(cursor)
+    val lineEnd = text.lineEndOf(cursor)
+    val prefixStart = text.lastIndexOf(prefix, startIndex = (cursor - 1).coerceAtLeast(lineStart))
+    if (prefixStart >= lineStart && prefixStart + prefix.length <= cursor) {
+        val suffixStart = text.indexOf(suffix, startIndex = cursor)
+        if (suffixStart >= 0 && suffixStart + suffix.length <= lineEnd) {
+            val canUnwrapAtCursor =
+                when {
+                    isSingleMarker('*') && prefix == "*" -> isSingleMarkerBoundary(prefixStart, '*') && isSingleMarkerBoundary(suffixStart, '*')
+                    isSingleMarker('$') && prefix == "$" -> isSingleMarkerBoundary(prefixStart, '$') && isSingleMarkerBoundary(suffixStart, '$')
+                    else -> true
+                }
+            if (canUnwrapAtCursor) {
+                val removePrefixStart = prefixStart
+                val removePrefixEndExclusive = prefixStart + prefix.length
+                val removeSuffixStart = suffixStart
+                val removeSuffixEndExclusive = suffixStart + suffix.length
+                val newCursor = (cursor - prefix.length).coerceAtLeast(0)
+                return removeRanges(
+                    ranges =
+                        listOf(
+                            removeSuffixStart to removeSuffixEndExclusive,
+                            removePrefixStart to removePrefixEndExclusive,
+                        ),
+                    newSelection = TextRange(newCursor, newCursor),
+                )
+            }
+        }
+    }
+
+    text
+        .findWordRangeAtCursor(cursor)
+        ?.takeIf { it.min != it.max }
+        ?.let { wordRange ->
+            val wordStart = wordRange.min
+            val wordEnd = wordRange.max
+            val cursorOffsetInWord = (cursor - wordStart).coerceIn(0, wordEnd - wordStart)
+            val word = text.substring(wordStart, wordEnd)
+            val insert = prefix + word + suffix
+            val newText = text.replaceRange(wordStart, wordEnd, insert)
+            val newCursor = (wordStart + prefix.length + cursorOffsetInWord).coerceIn(0, newText.length)
+            return TextFieldValue(
+                text = newText,
+                selection = TextRange(newCursor, newCursor),
+            )
+        }
+
+    return wrapSelection(prefix = prefix, suffix = suffix, placeholder = placeholder)
 }
 
 private fun TextFieldValue.insertBlock(block: String): TextFieldValue {
@@ -200,14 +349,65 @@ private fun TextFieldValue.insertBlock(block: String): TextFieldValue {
 }
 
 private fun TextFieldValue.insertCodeBlock(): TextFieldValue {
+    val start = selection.min
+    val end = selection.max
+    val hasSelection = start != end
+    val endForLine =
+        if (hasSelection && end > 0 && text.getOrNull(end - 1) == '\n') {
+            end - 1
+        } else {
+            end
+        }
+    val startLineStart = text.lineStartOf(start)
+    val endLineStart = text.lineStartOf(endForLine)
+    val wrapEndExclusive = text.lineEndExclusiveOf(endLineStart)
+    val content = text.substring(startLineStart, wrapEndExclusive)
+    val open = "```\n"
+    val close = "```\n"
+    val insert = open + (if (content.endsWith('\n')) content else "$content\n") + close
+    val newText = text.replaceRange(startLineStart, wrapEndExclusive, insert)
+
+    val shift = open.length
+    val newSelection =
+        TextRange(
+            (startLineStart + shift + (selection.start - startLineStart)).coerceIn(0, newText.length),
+            (startLineStart + shift + (selection.end - startLineStart)).coerceIn(0, newText.length),
+        )
+    return TextFieldValue(
+        text = newText,
+        selection = newSelection,
+    )
+}
+
+private fun TextFieldValue.toggleCodeBlock(): TextFieldValue {
     val cursor = selection.min
-    val before = text.getOrNull(cursor - 1)
-    val after = text.getOrNull(cursor)
-    val prefix = if (cursor == 0 || before == '\n') "" else "\n"
-    val suffix = if (after == null || after == '\n') "" else "\n"
-    val insert = prefix + "```\n\n```\n" + suffix
-    val cursorOffset = prefix.length + "```\n".length
-    return replaceSelection(insert = insert, cursorOffsetInInsert = cursorOffset)
+    val startFenceLineStart = text.findPreviousFenceLineStart(cursor) ?: return insertCodeBlock()
+    val startFenceLineEndExclusive = text.lineEndExclusiveOf(startFenceLineStart)
+    val endFenceLineStart = text.findNextFenceLineStart(startFenceLineEndExclusive) ?: return insertCodeBlock()
+    val endFenceLineEndExclusive = text.lineEndExclusiveOf(endFenceLineStart)
+
+    val isCursorInside =
+        cursor >= startFenceLineEndExclusive &&
+            cursor <= endFenceLineStart
+
+    if (!isCursorInside) return insertCodeBlock()
+
+    val startFenceLen = startFenceLineEndExclusive - startFenceLineStart
+    val desiredSelection =
+        if (selection.min == selection.max) {
+            val newCursor = (cursor - startFenceLen).coerceAtLeast(0)
+            TextRange(newCursor, newCursor)
+        } else {
+            null
+        }
+    return removeRanges(
+        ranges =
+            listOf(
+                endFenceLineStart to endFenceLineEndExclusive,
+                startFenceLineStart to startFenceLineEndExclusive,
+            ),
+        newSelection = desiredSelection,
+    )
 }
 
 private fun TextFieldValue.insertLink(): TextFieldValue {
@@ -223,4 +423,175 @@ private fun TextFieldValue.insertLink(): TextFieldValue {
             insert.indexOf("https://")
         }
     return replaceSelection(insert = insert, cursorOffsetInInsert = cursorOffset)
+}
+
+private fun TextFieldValue.replaceAt(
+    replaceStart: Int,
+    replaceEndExclusive: Int,
+    replaceWith: String,
+): TextFieldValue {
+    val start = replaceStart.coerceIn(0, text.length)
+    val endExclusive = replaceEndExclusive.coerceIn(start, text.length)
+    val newText = text.replaceRange(start, endExclusive, replaceWith)
+    val delta = replaceWith.length - (endExclusive - start)
+
+    fun map(pos: Int): Int {
+        val p = pos.coerceIn(0, text.length)
+        if (start == endExclusive) {
+            return if (p < start) {
+                p
+            } else {
+                (p + replaceWith.length).coerceIn(0, newText.length)
+            }
+        }
+        return when {
+            p < start -> p
+            p < endExclusive -> start + replaceWith.length
+            else -> (p + delta).coerceIn(0, newText.length)
+        }
+    }
+
+    val newSelection =
+        TextRange(
+            map(selection.start),
+            map(selection.end),
+        )
+    return TextFieldValue(
+        text = newText,
+        selection = newSelection,
+    )
+}
+
+private fun TextFieldValue.removeRanges(
+    ranges: List<Pair<Int, Int>>,
+    newSelection: TextRange? = null,
+): TextFieldValue {
+    var newText = text
+    var newStart = selection.start
+    var newEnd = selection.end
+
+    fun map(pos: Int, start: Int, endExclusive: Int): Int =
+        when {
+            pos <= start -> pos
+            pos < endExclusive -> start
+            else -> pos - (endExclusive - start)
+        }
+
+    ranges
+        .sortedByDescending { it.first }
+        .forEach { (rawStart, rawEndExclusive) ->
+            val start = rawStart.coerceIn(0, newText.length)
+            val endExclusive = rawEndExclusive.coerceIn(start, newText.length)
+            if (endExclusive == start) return@forEach
+            newText = newText.removeRange(start, endExclusive)
+            newStart = map(newStart, start, endExclusive).coerceIn(0, newText.length)
+            newEnd = map(newEnd, start, endExclusive).coerceIn(0, newText.length)
+        }
+
+    val finalSelection = newSelection ?: TextRange(newStart, newEnd)
+    return TextFieldValue(
+        text = newText,
+        selection =
+            TextRange(
+                finalSelection.start.coerceIn(0, newText.length),
+                finalSelection.end.coerceIn(0, newText.length),
+            ),
+    )
+}
+
+private fun String.lineStartOf(index: Int): Int {
+    val cursor = index.coerceIn(0, length)
+    val idx = lastIndexOf('\n', startIndex = (cursor - 1).coerceAtLeast(0))
+    return if (idx < 0) 0 else idx + 1
+}
+
+private fun String.lineEndOf(index: Int): Int {
+    val cursor = index.coerceIn(0, length)
+    val idx = indexOf('\n', startIndex = cursor)
+    return if (idx < 0) length else idx
+}
+
+private fun String.lineEndExclusiveOf(lineStart: Int): Int {
+    val start = lineStart.coerceIn(0, length)
+    val idx = indexOf('\n', startIndex = start)
+    return if (idx < 0) length else idx + 1
+}
+
+private fun String.isFenceLineStart(lineStart: Int): Boolean {
+    if (lineStart < 0 || lineStart > length) return false
+    if (!startsWith("```", startIndex = lineStart)) return false
+    val after = getOrNull(lineStart + 3) ?: return true
+    return after == '\n'
+}
+
+private fun String.findPreviousFenceLineStart(fromIndex: Int): Int? {
+    var lineStart = lineStartOf(fromIndex)
+    while (true) {
+        if (isFenceLineStart(lineStart)) return lineStart
+        if (lineStart == 0) return null
+        lineStart = lineStartOf(lineStart - 1)
+    }
+}
+
+private fun String.findNextFenceLineStart(fromIndex: Int): Int? {
+    var index = fromIndex.coerceIn(0, length)
+    while (index < length) {
+        val lineStart = lineStartOf(index)
+        if (lineStart >= index && isFenceLineStart(lineStart)) return lineStart
+        val next = lineEndExclusiveOf(lineStart)
+        if (next <= index) return null
+        index = next
+    }
+    return null
+}
+
+private fun String.findWordRangeAtCursor(cursor: Int): TextRange? {
+    fun isCjkLike(codePoint: Int): Boolean =
+        codePoint in 0x3400..0x4DBF ||
+            codePoint in 0x4E00..0x9FFF ||
+            codePoint in 0xF900..0xFAFF ||
+            codePoint in 0x2F800..0x2FA1F ||
+            codePoint in 0x3040..0x309F ||
+            codePoint in 0x30A0..0x30FF ||
+            codePoint in 0xAC00..0xD7AF ||
+            codePoint in 0x20000..0x2A6DF ||
+            codePoint in 0x2A700..0x2B73F ||
+            codePoint in 0x2B740..0x2B81F ||
+            codePoint in 0x2B820..0x2CEAF ||
+            codePoint in 0x2CEB0..0x2EBEF
+
+    fun classify(c: Char): WordCharClass =
+        when {
+            c == '_' -> WordCharClass.Latin
+            c.isLetterOrDigit() -> if (isCjkLike(c.code)) WordCharClass.Cjk else WordCharClass.Latin
+            else -> WordCharClass.Other
+        }
+
+    val index = cursor.coerceIn(0, length)
+    val beforeClass = getOrNull(index - 1)?.let(::classify) ?: WordCharClass.Other
+    val afterClass = getOrNull(index)?.let(::classify) ?: WordCharClass.Other
+    val baseClass =
+        when {
+            afterClass != WordCharClass.Other -> afterClass
+            beforeClass != WordCharClass.Other -> beforeClass
+            else -> WordCharClass.Other
+        }
+    if (baseClass == WordCharClass.Other) return null
+    val baseIndex = if (afterClass != WordCharClass.Other) index else (index - 1).coerceAtLeast(0)
+
+    var start = baseIndex
+    while (start > 0 && classify(this[start - 1]) == baseClass) {
+        start--
+    }
+    var endExclusive = baseIndex + 1
+    while (endExclusive < length && classify(this[endExclusive]) == baseClass) {
+        endExclusive++
+    }
+    return TextRange(start, endExclusive)
+}
+
+private enum class WordCharClass {
+    Latin,
+    Cjk,
+    Other,
 }

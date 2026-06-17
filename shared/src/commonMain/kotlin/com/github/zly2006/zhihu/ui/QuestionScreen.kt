@@ -78,8 +78,8 @@ import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.data.decodeQuestionContentDetail
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Question
-import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.navigation.WriteAnswer
+import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberZhihuWebUrlOpener
@@ -166,7 +166,6 @@ fun QuestionScreen(
         QuestionFeedViewModel(question.questionId)
     }
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
-    val navigator = LocalNavigator.current
     val answerSwitchState = paginationEnvironment.articleAnswerSwitchState()
     val initialUiState = testOverrides?.initialUiState ?: QuestionScreenUiState(title = question.title)
     val initialTitle = initialUiState.title.ifEmpty { question.title }
