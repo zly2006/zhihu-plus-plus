@@ -39,6 +39,7 @@ import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -62,6 +63,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.TextFieldValue
@@ -83,9 +86,11 @@ import com.github.zly2006.zhihu.shared.util.HttpStatusException
 import com.github.zly2006.zhihu.ui.components.MarkdownShortcutToolbar
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
+import com.github.zly2006.zhihu.ui.components.WriteAnswerPreviewSheet
 import com.github.zly2006.zhihu.ui.components.applyMarkdownShortcut
 import com.github.zly2006.zhihu.ui.components.insertTextAtSelection
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.yield
 
 const val WRITE_ANSWER_CONTENT_TAG = "WriteAnswerContent"
 private const val ZHIHU_MARKDOWN_SYNTAX_DOC_URL = "https://zhihu.melonhu.cn/docs/syntax"
@@ -103,6 +108,8 @@ fun WriteAnswerScreen(
     val openUrl = rememberSystemUrlOpener()
     val copyToClipboard = rememberPlainTextClipboard()
     val settings = rememberSettingsStore()
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     var content by remember { mutableStateOf(TextFieldValue("")) }
     var tocEnabled by remember { mutableStateOf(false) }
@@ -113,7 +120,13 @@ fun WriteAnswerScreen(
     var isUploadingImage by remember { mutableStateOf(false) }
     var errorDialogMessage by remember { mutableStateOf<String?>(null) }
     var showSettingsSheet by remember { mutableStateOf(false) }
+    var showPreviewSheet by remember { mutableStateOf(false) }
     val settingsSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val previewSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var isPreviewLoading by remember { mutableStateOf(false) }
+    var previewHtml by remember { mutableStateOf<String?>(null) }
+    var previewMarkdown by remember { mutableStateOf<String?>(null) }
+    var previewUseWebView by remember { mutableStateOf(false) }
 
     suspend fun ensureAnswerId(): Long? {
         val cached = existingAnswerId
@@ -287,6 +300,7 @@ fun WriteAnswerScreen(
             if (publisher.isSupported) {
                 val imageEnabled = launchImagePicker != null && !isSubmitting && !isUploadingImage
                 val saveEnabled = !isSubmitting
+                val previewEnabled = !isSubmitting && content.text.isNotBlank()
                 Column(
                     modifier =
                         Modifier
@@ -295,6 +309,54 @@ fun WriteAnswerScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     horizontalAlignment = Alignment.End,
                 ) {
+                    FloatingActionButton(
+                        onClick = {
+                            if (!previewEnabled) return@FloatingActionButton
+                            val useWebView = settings.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)
+                            val markdownSnapshot = content.text
+                            coroutineScope.launch {
+                                focusManager.clearFocus(force = true)
+                                keyboardController?.hide()
+                                yield()
+                                previewUseWebView = useWebView
+                                previewMarkdown = markdownSnapshot
+                                previewHtml = null
+                                showPreviewSheet = true
+                                if (!useWebView) {
+                                    isPreviewLoading = false
+                                    return@launch
+                                }
+                                isPreviewLoading = true
+                                runCatching {
+                                    compileMdToZhihuHtml(
+                                        markdown = markdownSnapshot,
+                                        publisher = publisher,
+                                    )
+                                }.onSuccess { html ->
+                                    previewHtml = html
+                                }.onFailure { e ->
+                                    errorDialogMessage = buildErrorDialogMessage("生成预览失败", e)
+                                    showPreviewSheet = false
+                                }
+                                isPreviewLoading = false
+                            }
+                        },
+                        containerColor =
+                            if (previewEnabled) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant
+                            },
+                        contentColor =
+                            if (previewEnabled) {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        modifier = Modifier.testTag("WriteAnswerFabPreview"),
+                    ) {
+                        Icon(Icons.Filled.Visibility, contentDescription = "预览")
+                    }
                     if (launchImagePicker != null) {
                         FloatingActionButton(
                             onClick = { if (imageEnabled) launchImagePicker() },
@@ -441,6 +503,21 @@ fun WriteAnswerScreen(
             }
             Spacer(Modifier.height(20.dp))
         }
+    }
+
+    if (showPreviewSheet) {
+        WriteAnswerPreviewSheet(
+            visible = showPreviewSheet,
+            sheetState = previewSheetState,
+            useWebView = previewUseWebView,
+            isLoading = isPreviewLoading,
+            html = previewHtml,
+            markdown = previewMarkdown,
+            onDismissRequest = {
+                showPreviewSheet = false
+                isPreviewLoading = false
+            },
+        )
     }
 
     val dialogMessage = errorDialogMessage
