@@ -247,8 +247,9 @@ fun WriteAnswerScreen(
                     Text(
                         text =
                             when {
-                                isDetecting || isLoadingExistingAnswer -> "正在检测已有回答"
-                                else -> "编辑已有回答"
+                                isDetecting || isLoadingExistingAnswer -> "正在检测已有回答..."
+                                existingAnswerId != null -> "编辑已有回答"
+                                else -> "写回答"
                             },
                     )
                 },
