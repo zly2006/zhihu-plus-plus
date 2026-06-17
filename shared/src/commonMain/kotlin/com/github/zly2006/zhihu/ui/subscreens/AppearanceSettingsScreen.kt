@@ -106,11 +106,13 @@ import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemOverall
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
 import kotlinx.coroutines.delay
+import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 
 const val DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY = "duo3_card_large_title"
 const val PREF_FONT_SIZE = "contentFontSize"
 const val PREF_LINE_HEIGHT = "contentLineHeight"
+const val PREF_BLOCK_SPACING = "contentBlockSpacing"
 const val APPEARANCE_SETTINGS_SCROLL_TAG = "appearanceSettings.scroll"
 const val APPEARANCE_SETTINGS_START_DESTINATION_TAG = "appearanceSettings.startDestination"
 const val APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG = "appearanceSettings.answerDoubleTap"
@@ -558,6 +560,28 @@ fun AppearanceSettingsScreen(
                             },
                             valueRange = 100f..300f,
                             steps = 19,
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        )
+                    },
+                )
+
+                var blockSpacing by remember { mutableIntStateOf(settings.getInt(PREF_BLOCK_SPACING, 100)) }
+                SettingItem(
+                    title = { Text("段间距") },
+                    description = { Text("调整正文段落和块级内容间距 ($blockSpacing%)") },
+                    settingKey = PREF_BLOCK_SPACING,
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor(PREF_BLOCK_SPACING),
+                    bottomAction = {
+                        Slider(
+                            value = blockSpacing.toFloat(),
+                            onValueChange = {
+                                val spacing = (it / 10).roundToInt() * 10
+                                blockSpacing = spacing
+                                settings.putInt(PREF_BLOCK_SPACING, spacing)
+                            },
+                            valueRange = 0f..300f,
+                            steps = 29,
                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                         )
                     },

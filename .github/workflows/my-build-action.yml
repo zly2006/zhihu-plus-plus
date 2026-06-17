@@ -146,7 +146,7 @@ jobs:
           key: gradle-cache-${{ hashFiles('**/*.gradle.kts', '**/gradle-wrapper.properties') }}
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
-      
+
       - name: Install Android NDK
         run: |
           echo "y" | sdkmanager --install "ndk;29.0.14206865"

@@ -196,6 +196,9 @@ class QuestionScreenInstrumentedTest {
             ),
             navigator.destinations,
         )
+        val pendingNavigator = composeRule.activity.articleAnswerSwitchState.pendingNavigator
+        assertEquals(7002L, pendingNavigator?.previousAnswerPreview?.article?.id)
+        assertEquals(7004L, runBlocking { pendingNavigator?.loadNext()?.id })
     }
 
     @Test

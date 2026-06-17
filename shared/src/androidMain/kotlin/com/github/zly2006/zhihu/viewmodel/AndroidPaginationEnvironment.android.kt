@@ -298,6 +298,13 @@ open class SharedAndroidPaginationEnvironment(
         )
     }
 
+    override suspend fun recordOpenEvent(
+        destination: ArticleDestination,
+        questionId: Long?,
+    ) {
+        recordContentOpenEvent(destination, questionId)
+    }
+
     override suspend fun applyHomeFeedFilters(items: List<FeedDisplayItem>): HomeFeedFilterResult {
         val settings = feedDisplaySettings()
         val filterSettings = context.contentFilterSettings()
