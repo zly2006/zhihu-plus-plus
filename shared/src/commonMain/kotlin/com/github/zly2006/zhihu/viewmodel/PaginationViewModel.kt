@@ -53,6 +53,7 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
 import io.ktor.http.HttpMethod
+import io.ktor.http.Url
 import io.ktor.http.contentType
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -63,7 +64,6 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
@@ -111,11 +111,14 @@ abstract class PaginationViewModel<T : Any>(
     protected open suspend fun fetchFeeds(environment: PaginationEnvironment) {
         try {
             val url = lastPaging?.next ?: initialUrl
+            val requestUrl = url.replace("http://", "https://")
 
             @Suppress("HttpUrlsUsage")
-            val json = environment.fetchJson(url.replace("http://", "https://"), include)!!
+            val json = environment.fetchJson(requestUrl, include)
+                ?: throw MissingFeedDataException(requestUrl, emptySet(), "<empty response>")
 
-            val jsonArray = json["data"]!!.jsonArray
+            val jsonArray = json["data"] as? JsonArray
+                ?: throw MissingFeedDataException(requestUrl, json.keys, json.toString().take(MISSING_FEED_DATA_BODY_PREFIX_LENGTH))
             processResponse(
                 environment,
                 jsonArray.mapNotNull {
@@ -171,6 +174,16 @@ abstract class PaginationViewModel<T : Any>(
         }
     }
 }
+
+private const val MISSING_FEED_DATA_BODY_PREFIX_LENGTH = 500
+
+internal class MissingFeedDataException(
+    url: String,
+    topLevelKeys: Set<String>,
+    bodyPrefix: String,
+) : IllegalStateException(
+        "Feed response is missing a top-level data array. url=$url, topLevelKeys=${topLevelKeys.sorted()}, bodyPrefix=$bodyPrefix",
+    )
 
 open class ArticleAnswerSwitchData :
     ViewModel(),
@@ -242,7 +255,7 @@ interface ZhihuApiEnvironment {
         ) {
             method = HttpMethod.Get
             signZhihuFetchRequest(cookies)
-            if (include.isNotEmpty()) {
+            if (shouldAppendIncludeParameter(url, include)) {
                 parameter("include", include)
             }
         }
@@ -263,6 +276,11 @@ interface ZhihuApiEnvironment {
         Log.e(tag ?: "PaginationViewModel", "Failed to decode item: $item", error)
     }
 }
+
+internal fun shouldAppendIncludeParameter(
+    url: String,
+    include: String,
+): Boolean = include.isNotEmpty() && !Url(url).parameters.contains("include")
 
 suspend fun ZhihuApiEnvironment.fetchContentDetail(destination: NavDestination): DataHolder.Content? =
     runCatching {
