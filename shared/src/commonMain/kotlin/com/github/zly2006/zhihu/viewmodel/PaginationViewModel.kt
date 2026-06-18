@@ -47,12 +47,12 @@ import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.delete
-import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
 import io.ktor.http.HttpMethod
+import io.ktor.http.URLProtocol
 import io.ktor.http.contentType
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -236,15 +236,15 @@ interface ZhihuApiEnvironment {
         url: String,
         include: String,
     ): JsonObject? = withAuthenticatedClient { client, cookies ->
-        fetchZhihuAuthenticatedJson(
-            client = client,
-            url = url.replace("http://", "https://"),
-        ) {
+        fetchZhihuAuthenticatedJson(client, url) {
             method = HttpMethod.Get
-            signZhihuFetchRequest(cookies)
-            if (include.isNotEmpty()) {
-                parameter("include", include)
+            url {
+                protocol = URLProtocol.HTTPS
+                if (include.isNotEmpty()) {
+                    parameters["include"] = include
+                }
             }
+            signZhihuFetchRequest(cookies)
         }
     }
 
