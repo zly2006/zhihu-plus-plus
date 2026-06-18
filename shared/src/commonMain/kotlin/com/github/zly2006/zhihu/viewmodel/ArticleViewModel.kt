@@ -834,13 +834,18 @@ class ArticleViewModel(
         environment: ArticleExportContentEnvironment,
         includeAppAttribution: Boolean,
         onComplete: (Boolean) -> Unit,
+        shareImage: (suspend (displayName: String, bitmap: Any) -> Unit)? = null,
     ) {
+        val destination = if (shareImage == null) ImageExportDestination.Gallery else ImageExportDestination.SystemShare
         exportToImageInternal(
             environment = environment,
             includeComments = false,
             commentCount = 0,
             includeAppAttribution = includeAppAttribution,
-            successMessage = "图片已保存到相册",
+            destination = destination,
+            successMessage = if (destination == ImageExportDestination.SystemShare) "正在打开分享面板" else "图片已保存到相册",
+            errorPrefix = if (destination == ImageExportDestination.SystemShare) "图片分享失败" else "图片导出失败",
+            shareImage = shareImage,
             onComplete = onComplete,
         )
     }
@@ -857,7 +862,9 @@ class ArticleViewModel(
             includeComments = true,
             commentCount = commentCount,
             includeAppAttribution = includeAppAttribution,
+            destination = ImageExportDestination.Gallery,
             successMessage = "带评论图片已保存到相册",
+            errorPrefix = "带评论图片导出失败",
             onComplete = onComplete,
         )
     }
@@ -920,7 +927,10 @@ class ArticleViewModel(
         includeComments: Boolean,
         commentCount: Int,
         includeAppAttribution: Boolean,
+        destination: ImageExportDestination,
         successMessage: String,
+        errorPrefix: String,
+        shareImage: (suspend (displayName: String, bitmap: Any) -> Unit)? = null,
         onComplete: (Boolean) -> Unit,
     ) {
         runCatching { requireExportSourceContent() }.onFailure { error ->
@@ -931,7 +941,7 @@ class ArticleViewModel(
             return
         }
 
-        if (!environment.hasImageExportPermission()) {
+        if (destination.requiresImageExportPermission && !environment.hasImageExportPermission()) {
             withContext(Dispatchers.Main) {
                 environment.requestImageExportPermission()
                 permissionRequestCount++
@@ -963,14 +973,17 @@ class ArticleViewModel(
             )
             val capturedBitmap = renderer.captureExportBitmap(preparedWebView)
             bitmap = capturedBitmap
-            withContext(Dispatchers.Default) {
-                environment.saveImageToMediaStore(
-                    displayName = buildArticleExportFileName(
-                        content = requireExportSourceContent(),
-                        extension = "jpg",
-                    ),
+            val displayName = buildArticleExportFileName(
+                content = requireExportSourceContent(),
+                extension = "jpg",
+            )
+            when (destination) {
+                ImageExportDestination.Gallery -> environment.saveImageToMediaStore(
+                    displayName = displayName,
                     bitmap = capturedBitmap,
                 )
+
+                ImageExportDestination.SystemShare -> checkNotNull(shareImage)(displayName, capturedBitmap)
             }
             withContext(Dispatchers.Main) {
                 userMessages.showLongMessage(successMessage)
@@ -978,7 +991,6 @@ class ArticleViewModel(
             }
         } catch (e: Exception) {
             Log.e("ArticleViewModel", "Image export failed", e)
-            val errorPrefix = if (includeComments) "带评论图片导出失败" else "图片导出失败"
             withContext(Dispatchers.Main) {
                 userMessages.showShortMessage("$errorPrefix: ${e.message}")
                 onComplete(false)
@@ -987,6 +999,13 @@ class ArticleViewModel(
             bitmap?.let { renderer.recycleExportBitmap(it) }
             preparedWebView?.let { renderer.destroyExportWebView(it) }
         }
+    }
+
+    private enum class ImageExportDestination(
+        val requiresImageExportPermission: Boolean,
+    ) {
+        Gallery(requiresImageExportPermission = true),
+        SystemShare(requiresImageExportPermission = false),
     }
 
     // 创建HTML内容

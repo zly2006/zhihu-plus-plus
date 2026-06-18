@@ -96,6 +96,14 @@ class ArticleScreenInstrumentedTest {
     }
 
     @Test
+    fun articleActionsMenuShowsShareAsImageOffline() {
+        setArticleScreen(shareArticleImage = { _, _ -> })
+
+        composeRule.onNodeWithContentDescription("更多选项").assertIsDisplayed().performClick()
+        composeRule.onNodeWithText("以图片分享").assertIsDisplayed()
+    }
+
+    @Test
     fun articleActionsRuntime_readsTtsStateFromMainActivityHost() {
         composeRule.activity.runOnUiThread {
             composeRule.activity.forceTtsStateForTest(TtsState.Ready)
@@ -161,7 +169,9 @@ class ArticleScreenInstrumentedTest {
         }
     }
 
-    private fun setArticleScreen() {
+    private fun setArticleScreen(
+        shareArticleImage: (suspend (displayName: String, bitmap: Any) -> Unit)? = null,
+    ) {
         val viewModel = ArticleViewModel(
             article = ARTICLE,
             httpClient = null,
@@ -189,6 +199,7 @@ class ArticleScreenInstrumentedTest {
                 ArticleScreen(
                     article = ARTICLE,
                     viewModel = viewModel,
+                    shareArticleImage = shareArticleImage,
                 )
             }
         }

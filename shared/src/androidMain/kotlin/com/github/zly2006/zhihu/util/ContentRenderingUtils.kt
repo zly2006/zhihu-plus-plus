@@ -41,6 +41,8 @@ import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.readRawBytes
 import io.ktor.http.HttpHeaders
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.OutputStream
 
 fun buildArticleExportHtml(
@@ -247,25 +249,48 @@ suspend fun shareImage(
     try {
         val response = httpClient.get(imageUrl)
         val bytes = response.readRawBytes()
-        val shareDir = java.io.File(context.externalCacheDir, "share_images").apply { mkdirs() }
-        val file = java.io.File(shareDir, "share_${System.currentTimeMillis()}.jpg")
-        file.writeBytes(bytes)
-        val imageUri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
-        val shareIntent = Intent().apply {
-            action = Intent.ACTION_SEND
-            putExtra(Intent.EXTRA_STREAM, imageUri)
-            type = "image/jpeg"
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        val file = withContext(Dispatchers.IO) {
+            java.io.File(shareImageCacheDir(context), "share_${System.currentTimeMillis()}.jpg").also { targetFile ->
+                targetFile.writeBytes(bytes)
+            }
         }
-        context.startActivity(Intent.createChooser(shareIntent, "分享图片"))
+        shareImageFile(context, file, file.name)
     } catch (e: Exception) {
         userMessages.showShortMessage("分享失败: ${e.message}")
     }
+}
+
+fun shareImageCacheDir(context: Context): java.io.File =
+    java.io.File(context.externalCacheDir ?: context.cacheDir, "share_images").apply {
+        if (!exists() && !mkdirs()) {
+            throw IllegalStateException("无法创建分享缓存目录")
+        }
+    }
+
+fun shareImageFile(
+    context: Context,
+    file: java.io.File,
+    title: String,
+) {
+    val imageUri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+    val shareIntent = Intent().apply {
+        action = Intent.ACTION_SEND
+        putExtra(Intent.EXTRA_STREAM, imageUri)
+        putExtra(Intent.EXTRA_TITLE, title)
+        clipData = android.content.ClipData.newUri(context.contentResolver, title, imageUri)
+        type = "image/jpeg"
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    val chooserIntent = Intent.createChooser(shareIntent, "分享图片")
+    if (context !is android.app.Activity) {
+        chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    context.startActivity(chooserIntent)
 }
 
 /**
  * 清空分享图片缓存目录
  */
 fun clearShareImageCache(context: Context) {
-    java.io.File(context.externalCacheDir, "share_images").deleteRecursively()
+    java.io.File(context.externalCacheDir ?: context.cacheDir, "share_images").deleteRecursively()
 }

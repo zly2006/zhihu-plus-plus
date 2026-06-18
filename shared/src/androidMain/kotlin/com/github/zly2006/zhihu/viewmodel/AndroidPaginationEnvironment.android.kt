@@ -562,10 +562,14 @@ open class SharedAndroidPaginationEnvironment(
         httpClient = httpClient,
     )
 
-    override fun saveImageToMediaStore(
+    override suspend fun saveImageToMediaStore(
         displayName: String,
         bitmap: Any,
-    ) = saveBitmapToGallery(context, displayName, bitmap as android.graphics.Bitmap)
+    ) {
+        withContext(Dispatchers.IO) {
+            saveBitmapToGallery(context, displayName, bitmap as android.graphics.Bitmap)
+        }
+    }
 
     override fun saveHtmlToDownloads(
         displayName: String,
