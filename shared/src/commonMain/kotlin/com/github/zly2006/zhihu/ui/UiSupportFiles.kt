@@ -678,6 +678,8 @@ data class HomeScreenRuntime(
     val requestLogin: () -> Unit,
     val recordLocalItemOpened: (FeedDisplayItem) -> Unit,
     val recordLocalItemFeedback: (FeedDisplayItem, Double) -> Boolean,
+    val readHomeFeedStartupCache: suspend () -> List<FeedDisplayItem>,
+    val writeHomeFeedStartupCache: suspend (List<FeedDisplayItem>) -> Unit,
 )
 
 @Composable

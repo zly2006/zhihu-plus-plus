@@ -17,6 +17,9 @@
 
 package com.github.zly2006.zhihu.shared.data
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class FeedDisplayItem(
     val title: String,
     val summary: String?,

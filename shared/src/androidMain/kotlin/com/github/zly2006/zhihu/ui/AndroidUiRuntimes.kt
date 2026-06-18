@@ -124,7 +124,12 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
         requestQrLoginScan = {
             scanActivityLauncher.launch(Intent().setClassName(context.packageName, QR_CODE_SCAN_ACTIVITY_CLASS))
         },
-        logout = { AccountData.delete(context) },
+        logout = {
+            homeFeedStartupCacheFileNames().forEach { fileName ->
+                File(context.filesDir, fileName).delete()
+            }
+            AccountData.delete(context)
+        },
         appVersionInfo = { context.zhihuVersionInfo() },
         selectMainTab = { destination -> context.navigateMainTab(destination) },
     )
@@ -302,6 +307,9 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
         RecommendationMode.MIXED -> viewModel<MixedHomeFeedViewModel>()
     }
     val localHomeViewModel = viewModel as? LocalHomeFeedViewModel
+    val startupCacheFile = remember(context, recommendationMode) {
+        File(context.filesDir, homeFeedStartupCacheFileName(recommendationMode))
+    }
     val installTime = remember {
         try {
             context.packageManager.getPackageInfo(context.packageName, 0).firstInstallTime
@@ -338,6 +346,25 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
                 true
             } else {
                 false
+            }
+        },
+        readHomeFeedStartupCache = {
+            withContext(Dispatchers.IO) {
+                if (startupCacheFile.exists()) {
+                    decodeHomeFeedStartupSnapshot(startupCacheFile.readText())
+                } else {
+                    emptyList()
+                }
+            }
+        },
+        writeHomeFeedStartupCache = { items ->
+            withContext(Dispatchers.IO) {
+                val serialized = encodeHomeFeedStartupSnapshot(items)
+                if (serialized != null) {
+                    runCatching {
+                        startupCacheFile.writeText(serialized)
+                    }
+                }
             }
         },
     )
