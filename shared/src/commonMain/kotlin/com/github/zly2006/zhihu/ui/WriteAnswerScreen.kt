@@ -73,7 +73,7 @@ import androidx.compose.ui.unit.sp
 import com.github.zly2006.zhihu.editor.compileMdToZhihuHtml
 import com.github.zly2006.zhihu.editor.rememberImagePickerLauncher
 import com.github.zly2006.zhihu.editor.rememberZhihuAnswerPublisher
-import com.github.zly2006.zhihu.editor.zhihuHtmlToMarkdown
+import com.github.zly2006.zhihu.markdown.zhihuHtmlToMarkdown
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator

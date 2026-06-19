@@ -68,6 +68,10 @@ private fun escapeHtmlText(value: String): String =
         .replace("<", "&lt;")
         .replace(">", "&gt;")
 
+/**
+ * Markdown -> 知乎 HTML 的自定义渲染器。
+ *
+ */
 private class ZhihuHtmlWriter(
     private val headingTopLevel: Int?,
     private val headingSecondLevel: Int?,
@@ -102,13 +106,21 @@ private class ZhihuHtmlWriter(
             }
 
             is FencedCodeBlock -> {
+                // 把代码块输出成知乎偏好的 <pre lang="lang">...</pre>
+                // EXAMPLE:
+                // ```python
+                // print("hello")
+                // ```
+                // <pre lang="python">
+                // print("hello")
+                // </pre>
                 val lang = node.language.takeIf { it.isNotBlank() } ?: node.info.takeIf { it.isNotBlank() }
                 if (lang != null) {
                     out.append("<pre lang=\"").append(escapeHtmlAttribute(lang)).append("\">")
                 } else {
                     out.append("<pre>")
                 }
-                out.append(node.literal.orEmpty())
+                out.append(escapeHtmlText(node.literal.orEmpty()))
                 out.append("</pre>")
             }
 
@@ -131,6 +143,12 @@ private class ZhihuHtmlWriter(
             is ThematicBreak -> out.append("<hr>")
 
             is MathBlock -> {
+                // 行间数学公式渲染器
+                // EXAMPLE:
+                // $$
+                // a^2+b^2=c^2
+                // $$
+                // <img eeimg="2" src="//www.zhihu.com/equation?tex=a%5E2%2Bb%5E2%3Dc%5E2" alt="a^2+b^2=c^2" />
                 val tex = node.literal.orEmpty().trim()
                 val alt = escapeHtmlAttribute(tex.replace(Regex("[\n\r]+"), " "))
                 val encoded = encodeZhihuEquationTex(tex)
@@ -145,6 +163,7 @@ private class ZhihuHtmlWriter(
             }
 
             is Figure -> {
+                // Figure 以知乎文章常见的图片结构输出：img + data-caption（用于知乎前端展示图注）
                 out.append("<img src=\"").append(escapeHtmlAttribute(node.imageUrl)).append("\"")
                 node.imageWidth?.let { out.append(" width=\"").append(it).append("\"") }
                 node.imageHeight?.let { out.append(" height=\"").append(it).append("\"") }
@@ -165,6 +184,10 @@ private class ZhihuHtmlWriter(
     }
 
     private fun renderHeading(heading: Heading) {
+        // 按标题层级做归一化：
+        // - 最高级统一输出为 <h2>
+        // - 次高级统一输出为 <h3>
+        // - 更低级标题统一输出为 <p><strong>...</strong></p>
         val level = heading.level
         when {
             headingTopLevel != null && level == headingTopLevel -> {
@@ -199,6 +222,12 @@ private class ZhihuHtmlWriter(
     }
 
     private fun renderTable(table: Table) {
+        // 表格渲染器：输出知乎需要的 table 属性，并且把 HEADER/ROW 都放在同一个 <tbody> 下。
+        // EXAMPLE:
+        // <table data-draft-node="block" data-draft-type="table" data-size="normal"><tbody>
+        // <tr><th>水果</th><th>英文</th></tr>
+        // <tr><td>苹果</td><td>apple</td></tr>
+        // </tbody></table>
         out.append("<table data-draft-node=\"block\" data-draft-type=\"table\" data-size=\"normal\">")
         out.append("<tbody>")
         val head = table.children.filterIsInstance<TableHead>().singleOrNull()
@@ -273,6 +302,10 @@ private class ZhihuHtmlWriter(
             }
 
             is InlineMath -> {
+                // 行内数学公式渲染器
+                // EXAMPLE:
+                // $1/2$
+                // <img eeimg="1" src="//www.zhihu.com/equation?tex=1%2F2" alt="1/2" />
                 val tex = node.literal.orEmpty().trim()
                 val alt = escapeHtmlAttribute(tex.replace(Regex("[\n\r]+"), " "))
                 val encoded = encodeZhihuEquationTex(tex)
@@ -297,6 +330,7 @@ private class ZhihuHtmlWriter(
 }
 
 private fun collectHeadingLevels(document: Document): List<Int> {
+    // 扫描整棵 AST，收集本文实际出现过的标题层级集合
     val set = LinkedHashSet<Int>()
     val stack = ArrayDeque<MarkdownNode>()
     stack.add(document)
@@ -310,6 +344,11 @@ private fun collectHeadingLevels(document: Document): List<Int> {
     return set.toList().sorted()
 }
 
+/**
+ * 将 Markdown 源文本转换为知乎草稿/发布接口可接受的 HTML（fragment）。
+ * - 不输出 `<html>/<body>` 包裹，只输出内容片段
+ * - 标题会按最高级 -> h2，次高级 -> h3，更低 -> 加粗段落归一化
+ */
 @Suppress("UNUSED_PARAMETER")
 suspend fun compileMdToZhihuHtml(
     markdown: String,
