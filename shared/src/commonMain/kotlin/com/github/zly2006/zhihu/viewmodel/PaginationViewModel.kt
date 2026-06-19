@@ -115,7 +115,10 @@ abstract class PaginationViewModel<T : Any>(
             @Suppress("HttpUrlsUsage")
             val json = environment.fetchJson(url.replace("http://", "https://"), include)!!
 
-            val jsonArray = json["data"]!!.jsonArray
+            val jsonArray = (json["data"]
+                ?: throw IllegalStateException(
+                    "PaginationViewModel: response from $url missing 'data'; got keys: ${json.keys}",
+                )).jsonArray
             processResponse(
                 environment,
                 jsonArray.mapNotNull {
@@ -240,7 +243,9 @@ interface ZhihuApiEnvironment {
             method = HttpMethod.Get
             url {
                 protocol = URLProtocol.HTTPS
-                if (include.isNotEmpty()) {
+                // Skip appending 'include' when paging.next already carries it to
+                // avoid growing the URL unboundedly across pages (400 Request Line too large).
+                if (include.isNotEmpty() && !url.contains("include=")) {
                     parameters["include"] = include
                 }
             }
