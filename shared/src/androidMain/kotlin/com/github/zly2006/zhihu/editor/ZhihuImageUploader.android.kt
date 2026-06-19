@@ -102,15 +102,6 @@ class ZhihuImageUploader(
         }.getOrThrow()
     }
 
-    suspend fun uploadFromUrl(url: String): UploadedZhihuImage {
-        val response = client.get(url).raiseForStatus(dumpRequest = true)
-        val bytes = response.body<ByteArray>()
-        val contentType = response.headers[HttpHeaders.ContentType]
-            ?.substringBefore(';')
-            ?.trim()
-        return upload(bytes, contentType, fileName = null)
-    }
-
     private suspend fun requestImageUpload(imageHash: String): ApplyImageUploadResponse {
         val body = ApplyImageUploadRequest(
             imageHash = imageHash,

@@ -18,33 +18,6 @@
 package com.github.zly2006.zhihu.editor
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 
 @Composable
-actual fun rememberZhihuAnswerPublisher(): ZhihuAnswerPublisher = remember {
-    object : ZhihuAnswerPublisher {
-        override val isSupported: Boolean = false
-
-        override suspend fun findMyAnswerId(questionId: Long): Long? = null
-
-        override suspend fun fetchAnswerForEditing(answerId: Long): ExistingAnswerForEditing? = null
-
-        override suspend fun uploadImage(bytes: ByteArray, mimeType: String?, fileName: String?): UploadedZhihuImage = throw UnsupportedOperationException("当前平台暂不支持上传图片")
-
-        override suspend fun uploadImageFromUrl(url: String): UploadedZhihuImage = throw UnsupportedOperationException("当前平台暂不支持上传图片")
-
-        override suspend fun patchDraft(
-            questionId: Long,
-            answerId: Long?,
-            html: String,
-            tocEnabled: Boolean,
-        ): Unit = throw UnsupportedOperationException("当前平台暂不支持发布/编辑知乎回答")
-
-        override suspend fun publishAnswer(
-            questionId: Long,
-            answerId: Long?,
-            html: String,
-            tocEnabled: Boolean,
-        ): Long = throw UnsupportedOperationException("当前平台暂不支持发布/编辑知乎回答")
-    }
-}
+actual fun rememberZhihuAnswerPublisher(): ZhihuAnswerPublisher = UnsupportedZhihuAnswerPublisher

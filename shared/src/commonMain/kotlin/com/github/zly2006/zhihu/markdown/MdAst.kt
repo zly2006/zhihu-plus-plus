@@ -677,7 +677,7 @@ private fun MarkdownNode.appendMarkdownBlock(
             out.append("```")
             if (lang != null) out.append(lang)
             out.append("\n")
-            out.append(literal.orEmpty().trimEnd())
+            out.append(literal.trimEnd())
             out.append("\n```\n\n")
         }
 
@@ -712,7 +712,7 @@ private fun MarkdownNode.appendMarkdownBlock(
         is ThematicBreak -> out.append("---\n\n")
 
         is MathBlock -> {
-            val tex = literal.orEmpty().trim()
+            val tex = literal.trim()
             out.append("$$").append(tex).append("$$\n\n")
         }
 
@@ -773,7 +773,7 @@ private fun MarkdownNode.appendMarkdownInline(out: StringBuilder) {
         is InlineCode -> out.append("`").append(literal).append("`")
         is KeyboardInput -> out.append("<kbd>").append(literal).append("</kbd>")
         is HardLineBreak -> out.append("\n")
-        is InlineMath -> out.append("$").append(literal.orEmpty().trim()).append("$")
+        is InlineMath -> out.append("$").append(literal.trim()).append("$")
         is FootnoteReference -> out.append("[^").append(index).append("]")
         is Link -> {
             val text = buildString { children.forEach { it.appendMarkdownInline(this) } }.ifBlank { destination }

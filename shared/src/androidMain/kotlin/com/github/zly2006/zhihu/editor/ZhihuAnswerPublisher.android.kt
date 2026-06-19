@@ -49,9 +49,6 @@ actual fun rememberZhihuAnswerPublisher(): ZhihuAnswerPublisher {
 
 private const val QUESTION_RELATIONSHIP_INCLUDE = "relationship,relationship.my_answer"
 
-private fun zhihuQuestionRelationshipUrl(questionId: Long): String =
-    "https://api.zhihu.com/questions/$questionId"
-
 private class AndroidZhihuAnswerPublisher(
     private val context: Context,
 ) : ZhihuAnswerPublisher {
@@ -97,9 +94,6 @@ private class AndroidZhihuAnswerPublisher(
 
     override suspend fun uploadImage(bytes: ByteArray, mimeType: String?, fileName: String?): UploadedZhihuImage =
         imageUploader.upload(bytes, mimeType, fileName)
-
-    override suspend fun uploadImageFromUrl(url: String): UploadedZhihuImage =
-        imageUploader.uploadFromUrl(url)
 
     override suspend fun patchDraft(
         questionId: Long,
@@ -169,8 +163,7 @@ private class AndroidZhihuAnswerPublisher(
             .body<JsonElement>()
 
         val response = ZhihuJson.decodeJson(DataHolder.ContentPublishResponse.serializer(), responseElement)
-        val message = response.message
-        if (message == "success") {
+        if (response.message == "success") {
             val resultText = response.data?.result
                 ?: throw IllegalStateException("发布成功但返回缺少 data.result: $responseElement")
 

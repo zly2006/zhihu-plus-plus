@@ -48,7 +48,6 @@ import com.github.zly2006.zhihu.ui.supportsPinHtmlWebView
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WriteAnswerPreviewSheet(
-    visible: Boolean,
     sheetState: SheetState,
     useWebView: Boolean,
     isLoading: Boolean,
@@ -56,8 +55,6 @@ fun WriteAnswerPreviewSheet(
     markdown: String?,
     onDismissRequest: () -> Unit,
 ) {
-    if (!visible) return
-
     MyModalBottomSheet(
         onDismissRequest = onDismissRequest,
         sheetState = sheetState,

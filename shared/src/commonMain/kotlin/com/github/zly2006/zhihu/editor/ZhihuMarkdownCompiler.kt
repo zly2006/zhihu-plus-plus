@@ -50,10 +50,6 @@ import com.hrm.markdown.parser.ast.ThematicBreak
 import io.ktor.http.encodeURLParameter
 import com.hrm.markdown.parser.ast.Node as MarkdownNode
 
-// 将 TeX 进行 URL 编码，用于拼接知乎公式图片链接的 tex 参数。
-private fun encodeZhihuEquationTex(tex: String): String =
-    tex.encodeURLParameter(spaceToPlus = false)
-
 // HTML attribute 转义
 private fun escapeHtmlAttribute(value: String): String =
     value
@@ -167,7 +163,7 @@ private class ZhihuHtmlWriter(
                 } else {
                     out.append("<pre>")
                 }
-                out.append(escapeHtmlText(node.literal.orEmpty()))
+                out.append(escapeHtmlText(node.literal))
                 out.append("</pre>")
             }
 
@@ -196,9 +192,9 @@ private class ZhihuHtmlWriter(
                 // a^2+b^2=c^2
                 // $$
                 // <img eeimg="2" src="//www.zhihu.com/equation?tex=a%5E2%2Bb%5E2%3Dc%5E2" alt="a^2+b^2=c^2" />
-                val tex = node.literal.orEmpty().trim()
+                val tex = node.literal.trim()
                 val alt = escapeHtmlAttribute(tex.replace(Regex("[\n\r]+"), " "))
-                val encoded = encodeZhihuEquationTex(tex)
+                val encoded = tex.encodeURLParameter(spaceToPlus = false)
                 out.append("<p>")
                 out
                     .append("<img eeimg=\"2\" src=\"//www.zhihu.com/equation?tex=")
@@ -369,9 +365,9 @@ private class ZhihuHtmlWriter(
                 // EXAMPLE:
                 // $1/2$
                 // <img eeimg="1" src="//www.zhihu.com/equation?tex=1%2F2" alt="1/2" />
-                val tex = node.literal.orEmpty().trim()
+                val tex = node.literal.trim()
                 val alt = escapeHtmlAttribute(tex.replace(Regex("[\n\r]+"), " "))
-                val encoded = encodeZhihuEquationTex(tex)
+                val encoded = tex.encodeURLParameter(spaceToPlus = false)
                 out
                     .append("<img eeimg=\"1\" src=\"//www.zhihu.com/equation?tex=")
                     .append(encoded)

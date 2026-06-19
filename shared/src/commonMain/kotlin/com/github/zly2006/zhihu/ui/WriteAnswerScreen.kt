@@ -63,6 +63,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
@@ -86,7 +87,6 @@ import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
 import com.github.zly2006.zhihu.ui.components.WriteAnswerPreviewSheet
 import com.github.zly2006.zhihu.ui.components.applyMarkdownShortcut
-import com.github.zly2006.zhihu.ui.components.insertTextAtSelection
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.yield
 
@@ -133,11 +133,6 @@ fun WriteAnswerScreen(
         return answerId
     }
 
-    suspend fun compileHtml(): String =
-        compileMdToZhihuHtml(
-            markdown = content.text,
-        )
-
     fun submit(publish: Boolean) {
         if (!publisher.isSupported) return
         if (content.text.isBlank()) {
@@ -149,7 +144,7 @@ fun WriteAnswerScreen(
         coroutineScope.launch {
             if (publish) {
                 runCatching {
-                    val html = compileHtml()
+                    val html = compileMdToZhihuHtml(markdown = content.text)
                     val answerId = ensureAnswerId()
                     publisher.patchDraft(
                         questionId = destination.questionId,
@@ -171,7 +166,7 @@ fun WriteAnswerScreen(
                 }
             } else {
                 runCatching {
-                    val html = compileHtml()
+                    val html = compileMdToZhihuHtml(markdown = content.text)
                     val answerId = ensureAnswerId()
                     publisher.patchDraft(
                         questionId = destination.questionId,
@@ -217,7 +212,11 @@ fun WriteAnswerScreen(
                     ?.takeIf { it.isNotBlank() }
                     .orEmpty()
                 val snippet = "![$alt](${uploaded.url} \"$title\")"
-                content = content.insertTextAtSelection(snippet)
+                val start = content.selection.min
+                val end = content.selection.max
+                val newText = content.text.replaceRange(start, end, snippet)
+                val cursor = (start + snippet.length).coerceIn(0, newText.length)
+                content = TextFieldValue(newText, selection = TextRange(cursor, cursor))
                 userMessages.showShortMessage("图片已插入")
             }.onFailure { e ->
                 if (e is UnknownImageFormatException) {
@@ -517,7 +516,6 @@ fun WriteAnswerScreen(
 
     if (showPreviewSheet) {
         WriteAnswerPreviewSheet(
-            visible = showPreviewSheet,
             sheetState = previewSheetState,
             useWebView = previewUseWebView,
             isLoading = isPreviewLoading,
@@ -564,14 +562,17 @@ private fun buildErrorDialogMessage(
     title: String,
     throwable: Throwable,
 ): String {
+    var httpStatusException: HttpStatusException? = null
     val chain = buildList {
         var current: Throwable? = throwable
         while (current != null) {
+            if (httpStatusException == null && current is HttpStatusException) {
+                httpStatusException = current
+            }
             add("${current::class.qualifiedName}: ${current.message.orEmpty()}")
             current = current.cause
         }
     }
-    val httpStatusException = throwable.findCause<HttpStatusException>()
     return buildString {
         append(title).append('\n')
         append('\n')
@@ -608,13 +609,4 @@ private fun buildErrorDialogMessage(
                 }
         }
     }.trim()
-}
-
-private inline fun <reified T : Throwable> Throwable.findCause(): T? {
-    var current: Throwable? = this
-    while (current != null) {
-        if (current is T) return current
-        current = current.cause
-    }
-    return null
 }

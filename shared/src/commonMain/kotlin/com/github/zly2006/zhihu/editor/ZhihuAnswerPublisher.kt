@@ -65,11 +65,6 @@ interface ZhihuAnswerPublisher {
     ): UploadedZhihuImage
 
     /**
-     * 上传网络图片（Markdown 内引用 http(s)）的便捷方法。
-     */
-    suspend fun uploadImageFromUrl(url: String): UploadedZhihuImage
-
-    /**
      * 写入“问题草稿”（对应 zhihu_obsidian 的 patchDraft）。
      *
      * 说明：
@@ -119,6 +114,34 @@ class UnknownImageFormatException(
 
 @Composable
 expect fun rememberZhihuAnswerPublisher(): ZhihuAnswerPublisher
+
+internal object UnsupportedZhihuAnswerPublisher : ZhihuAnswerPublisher {
+    override val isSupported: Boolean = false
+
+    override suspend fun findMyAnswerId(questionId: Long): Long? = null
+
+    override suspend fun fetchAnswerForEditing(answerId: Long): ExistingAnswerForEditing? = null
+
+    override suspend fun uploadImage(
+        bytes: ByteArray,
+        mimeType: String?,
+        fileName: String?,
+    ): UploadedZhihuImage = throw UnsupportedOperationException("当前平台暂不支持上传图片")
+
+    override suspend fun patchDraft(
+        questionId: Long,
+        answerId: Long?,
+        html: String,
+        tocEnabled: Boolean,
+    ): Unit = throw UnsupportedOperationException("当前平台暂不支持发布/编辑知乎回答")
+
+    override suspend fun publishAnswer(
+        questionId: Long,
+        answerId: Long?,
+        html: String,
+        tocEnabled: Boolean,
+    ): Long = throw UnsupportedOperationException("当前平台暂不支持发布/编辑知乎回答")
+}
 
 /**
  * publish 接口的响应是“双层 JSON”：
