@@ -139,7 +139,6 @@ fun WriteAnswerScreen(
     suspend fun compileHtml(): String =
         compileMdToZhihuHtml(
             markdown = content.text,
-            publisher = publisher,
         )
 
     fun submit(publish: Boolean) {
@@ -330,7 +329,6 @@ fun WriteAnswerScreen(
                                 runCatching {
                                     compileMdToZhihuHtml(
                                         markdown = markdownSnapshot,
-                                        publisher = publisher,
                                     )
                                 }.onSuccess { html ->
                                     previewHtml = html

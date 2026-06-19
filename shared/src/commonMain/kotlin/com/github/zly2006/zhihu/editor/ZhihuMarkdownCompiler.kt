@@ -349,10 +349,8 @@ private fun collectHeadingLevels(document: Document): List<Int> {
  * - 不输出 `<html>/<body>` 包裹，只输出内容片段
  * - 标题会按最高级 -> h2，次高级 -> h3，更低 -> 加粗段落归一化
  */
-@Suppress("UNUSED_PARAMETER")
-suspend fun compileMdToZhihuHtml(
+fun compileMdToZhihuHtml(
     markdown: String,
-    publisher: ZhihuAnswerPublisher,
 ): String {
     val document = MarkdownParser().parse(markdown)
     val usedHeadingLevels = collectHeadingLevels(document)
