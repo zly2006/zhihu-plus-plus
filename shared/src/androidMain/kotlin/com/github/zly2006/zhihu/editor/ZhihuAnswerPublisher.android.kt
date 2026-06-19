@@ -91,10 +91,12 @@ private class AndroidZhihuAnswerPublisher(
         val destination = Article(type = ArticleType.Answer, id = answerId)
         val answer = environment.fetchContentDetail(destination) as? DataHolder.Answer ?: return null
         val html = answer.editableContent ?: answer.content
+        val tocEnabled = answer.settings?.tableOfContents?.enabled ?: false
+
         return ExistingAnswerForEditing(
             answerId = answerId,
             html = html,
-            tocEnabled = answer.settings?.tableOfContents?.enabled ?: false,
+            tocEnabled = tocEnabled,
         )
     }
 

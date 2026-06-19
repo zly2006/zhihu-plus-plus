@@ -24,18 +24,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Settings
@@ -94,7 +91,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.yield
 
 const val WRITE_ANSWER_CONTENT_TAG = "WriteAnswerContent"
-private const val ZHIHU_MARKDOWN_SYNTAX_DOC_URL = "https://zhihu.melonhu.cn/docs/syntax"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -515,17 +511,6 @@ fun WriteAnswerScreen(
                 onCheckedChange = { tocEnabled = it },
                 modifier = Modifier.padding(horizontal = 12.dp),
             )
-            Spacer(Modifier.height(8.dp))
-            FilledTonalButton(
-                onClick = { openUrl(ZHIHU_MARKDOWN_SYNTAX_DOC_URL) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
-            ) {
-                Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = "打开语法文档")
-                Spacer(Modifier.width(8.dp))
-                Text("查看语法文档")
-            }
             Spacer(Modifier.height(20.dp))
         }
     }
