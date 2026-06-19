@@ -87,6 +87,7 @@ import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
 import com.github.zly2006.zhihu.ui.components.WriteAnswerPreviewSheet
 import com.github.zly2006.zhihu.ui.components.applyMarkdownShortcut
+import com.github.zly2006.zhihu.ui.components.replaceSelection
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.yield
 
@@ -212,11 +213,7 @@ fun WriteAnswerScreen(
                     ?.takeIf { it.isNotBlank() }
                     .orEmpty()
                 val snippet = "![$alt](${uploaded.url} \"$title\")"
-                val start = content.selection.min
-                val end = content.selection.max
-                val newText = content.text.replaceRange(start, end, snippet)
-                val cursor = (start + snippet.length).coerceIn(0, newText.length)
-                content = TextFieldValue(newText, selection = TextRange(cursor, cursor))
+                content = content.replaceSelection(snippet, cursorOffsetInInsert = snippet.length)
                 userMessages.showShortMessage("图片已插入")
             }.onFailure { e ->
                 if (e is UnknownImageFormatException) {

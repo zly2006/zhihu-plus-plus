@@ -124,7 +124,7 @@ fun TextFieldValue.applyMarkdownShortcut(shortcut: MarkdownShortcut): TextFieldV
         MarkdownShortcut.Link -> insertLink()
     }
 
-private fun TextFieldValue.replaceSelection(
+internal fun TextFieldValue.replaceSelection(
     insert: String,
     cursorOffsetInInsert: Int,
 ): TextFieldValue {
