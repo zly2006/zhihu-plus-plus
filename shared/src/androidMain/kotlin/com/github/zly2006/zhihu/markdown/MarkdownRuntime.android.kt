@@ -17,15 +17,11 @@
 
 package com.github.zly2006.zhihu.markdown
 
-import android.net.Uri
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
-import coil3.network.NetworkHeaders
-import coil3.network.httpHeaders
-import coil3.request.ImageRequest
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.latex.rememberLatexFonts
+import com.github.zly2006.zhihu.shared.data.toCookieHeaderString
 import com.github.zly2006.zhihu.util.saveImageToGallery
 import com.github.zly2006.zhihu.util.shareImage
 import com.hrm.latex.renderer.font.MathFont
@@ -45,29 +41,11 @@ actual fun rememberMarkdownRuntime(): MarkdownRuntime {
     }
 }
 
-// 在请求类似 https://pic-private.zhihu.com/的路径的时候，需要带上cookie
 @Composable
-actual fun rememberMarkdownImageModel(url: String): Any {
-    val context = LocalContext.current
-    val host = remember(url) { Uri.parse(url).host.orEmpty() }
-
-    val cookies = AccountData.data.cookies
-        .mapNotNull { (name, value) ->
-            value.takeIf { it.isNotBlank() }?.let { "$name=$it" }
-        }.joinToString("; ")
+actual fun rememberMarkdownImageRequestHeaders(): MarkdownImageRequestHeaders {
     val userAgent = AccountData.data.userAgent
-    val headers = remember(cookies, userAgent) {
-        NetworkHeaders
-            .Builder()
-            .set("Cookie", cookies)
-            .set("User-Agent", userAgent)
-            .build()
-    }
-    return remember(context, url, headers) {
-        ImageRequest
-            .Builder(context)
-            .data(url)
-            .httpHeaders(headers)
-            .build()
-    }
+    return MarkdownImageRequestHeaders(
+        cookieHeader = AccountData.data.cookies.toCookieHeaderString(),
+        userAgent = userAgent,
+    )
 }

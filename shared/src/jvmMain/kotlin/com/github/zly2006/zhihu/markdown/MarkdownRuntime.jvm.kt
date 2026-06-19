@@ -25,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.platform.asComposeFontFamily
+import com.github.zly2006.zhihu.shared.data.toCookieHeaderString
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
 import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDataFile
@@ -82,7 +83,14 @@ actual fun rememberMarkdownRuntime(): MarkdownRuntime {
 }
 
 @Composable
-actual fun rememberMarkdownImageModel(url: String): Any = url
+actual fun rememberMarkdownImageRequestHeaders(): MarkdownImageRequestHeaders {
+    val store = remember { DesktopAccountStore() }
+    val session = remember(store) { store.load() }
+    return MarkdownImageRequestHeaders(
+        cookieHeader = session.cookies.toCookieHeaderString(),
+        userAgent = session.userAgent,
+    )
+}
 
 @OptIn(ExperimentalTextApi::class)
 private suspend fun loadDesktopMathFont(store: DesktopAccountStore): MathFont = withContext(Dispatchers.IO) {
