@@ -45,6 +45,10 @@ private val emptyContentFilterDatabase = object : ContentFilterDatabase() {
     override fun blockedTopicDao(): BlockedTopicDao = emptyBlockedTopicDao
 
     override fun blockedFeedRecordDao(): BlockedFeedRecordDao = emptyBlockedFeedRecordDao
+
+    override fun blockedMcnOrganizationDao(): BlockedMcnOrganizationDao = emptyBlockedMcnOrganizationDao
+
+    override fun mcnAuthorCacheDao(): McnAuthorCacheDao = emptyMcnAuthorCacheDao
 }
 
 private val emptyContentFilterDao = object : ContentFilterDao {
@@ -143,4 +147,26 @@ private val emptyBlockedFeedRecordDao = object : BlockedFeedRecordDao {
     override suspend fun clearAll() = Unit
 
     override suspend fun maintainLimit() = Unit
+}
+
+private val emptyBlockedMcnOrganizationDao = object : BlockedMcnOrganizationDao {
+    override suspend fun insertOrganization(organization: BlockedMcnOrganization) = Unit
+
+    override suspend fun deleteOrganizationByName(organizationName: String) = Unit
+
+    override suspend fun getAllOrganizations(): List<BlockedMcnOrganization> = emptyList()
+
+    override suspend fun getOrganizationCount(): Int = 0
+
+    override suspend fun hasOrganizations(): Boolean = false
+
+    override suspend fun clearAllOrganizations() = Unit
+}
+
+private val emptyMcnAuthorCacheDao = object : McnAuthorCacheDao {
+    override suspend fun insert(cache: McnAuthorCache) = Unit
+
+    override suspend fun getByUrlToken(urlToken: String): McnAuthorCache? = null
+
+    override suspend fun clearAll() = Unit
 }

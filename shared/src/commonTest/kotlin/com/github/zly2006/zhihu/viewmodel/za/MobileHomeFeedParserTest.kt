@@ -39,6 +39,7 @@ class MobileHomeFeedParserTest {
         assertEquals("回答摘要", item.summary)
         assertEquals("10 赞同 · 2 评论 · 3 收藏 · 手机版推荐", item.details)
         assertEquals("作者名", item.authorName)
+        assertEquals("cached-author", item.authorUrlToken)
         assertEquals("https://example.com/avatar.jpg", item.avatarSrc)
 
         val destination = item.navDestination as Article
@@ -152,6 +153,12 @@ class MobileHomeFeedParserTest {
                     buildJsonObject {
                         put("type", "Text")
                         put("text", "作者名")
+                        put(
+                            "action",
+                            buildJsonObject {
+                                put("parameter", "route_url=https%3A%2F%2Fwww.zhihu.com%2Fpeople%2Fcached-author")
+                            },
+                        )
                     },
                 )
             },

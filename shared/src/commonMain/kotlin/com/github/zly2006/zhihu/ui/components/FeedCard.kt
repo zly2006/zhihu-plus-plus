@@ -560,10 +560,15 @@ private fun FeedCardContent(
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.weight(1f, fill = false),
                             )
-                            val authorBadge = item.authorBadgeV2.officialBadge()
+                            val authorBadge = item.authorBadgeV2.officialBadge() ?: item.authorOfficialBadge
                             if (authorBadge?.isUsefulInList == true) {
                                 Spacer(Modifier.width(4.dp))
                                 AuthorBadge(authorBadge, compact = true)
+                            }
+                            val mcnCompany = item.authorMcnCompany
+                            if (mcnCompany != null) {
+                                Spacer(Modifier.width(4.dp))
+                                McnBadge(mcnCompany = mcnCompany)
                             }
                         }
                         Spacer(Modifier.width(6.dp))
@@ -622,10 +627,15 @@ private fun FeedCardContent(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false),
                 )
-                val authorBadge = item.authorBadgeV2.officialBadge()
+                val authorBadge = item.authorBadgeV2.officialBadge() ?: item.authorOfficialBadge
                 if (authorBadge?.isUsefulInList == true) {
                     Spacer(Modifier.width(4.dp))
                     AuthorBadge(authorBadge, compact = true)
+                }
+                val mcnCompany = item.authorMcnCompany
+                if (mcnCompany != null) {
+                    Spacer(Modifier.width(4.dp))
+                    McnBadge(mcnCompany = mcnCompany)
                 }
             }
         }

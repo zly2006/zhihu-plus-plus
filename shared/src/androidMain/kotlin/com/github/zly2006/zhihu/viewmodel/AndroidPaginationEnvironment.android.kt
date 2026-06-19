@@ -69,8 +69,12 @@ import com.github.zly2006.zhihu.viewmodel.filter.ContentType
 import com.github.zly2006.zhihu.viewmodel.filter.FeedContentFilterPipeline
 import com.github.zly2006.zhihu.viewmodel.filter.FeedDisplayFilterPipeline
 import com.github.zly2006.zhihu.viewmodel.filter.ForegroundReadFilterPipeline
+import com.github.zly2006.zhihu.viewmodel.filter.McnAuthorProfile
+import com.github.zly2006.zhihu.viewmodel.filter.ZhihuMcnAndBadgeProvider
 import com.github.zly2006.zhihu.viewmodel.filter.contentFilterSettings
+import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistService
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
+import com.github.zly2006.zhihu.viewmodel.filter.hydrateCachedAuthorProfiles
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.UserAgent
@@ -239,6 +243,9 @@ open class SharedAndroidPaginationEnvironment(
         reverseBlock = settingsStore.getBoolean("reverseBlock", false),
     )
 
+    override suspend fun hydrateFeedDisplayItems(items: List<FeedDisplayItem>): List<FeedDisplayItem> =
+        getContentFilterDatabase(context).hydrateCachedAuthorProfiles(items)
+
     override fun localHistory(): List<NavDestination> = HistoryStorage(context).history
 
     override suspend fun postHistoryDestination(destination: NavDestination) {
@@ -282,6 +289,25 @@ open class SharedAndroidPaginationEnvironment(
         database.blockedUserDao().deleteUserById(userId)
     }
 
+    override suspend fun getCachedMcnAuthorProfile(urlToken: String): McnAuthorProfile? =
+        getContentFilterDatabase(context)
+            .createBlocklistService()
+            .getCachedMcnAuthor(urlToken)
+            ?.let { cachedAuthor ->
+                McnAuthorProfile(
+                    mcnCompany = cachedAuthor.mcnCompany,
+                    officialBadge = cachedAuthor.officialBadge,
+                )
+            }
+
+    override suspend fun cacheMcnAuthorProfile(
+        urlToken: String,
+        userName: String?,
+        profile: McnAuthorProfile,
+    ) {
+        getContentFilterDatabase(context).createBlocklistService().cacheMcnAuthorProfile(urlToken, userName, profile)
+    }
+
     override suspend fun recordContentOpenEvent(
         destination: NavDestination,
         questionId: Long?,
@@ -309,6 +335,7 @@ open class SharedAndroidPaginationEnvironment(
         val settings = feedDisplaySettings()
         val filterSettings = context.contentFilterSettings()
         val filterDatabase = getContentFilterDatabase(context)
+        val blocklistService = filterDatabase.createBlocklistService()
         val foregroundItems = ForegroundReadFilterPipeline(
             settings = filterSettings,
             contentFilterManager = ContentFilterManager(filterDatabase.contentFilterDao()),
@@ -322,11 +349,13 @@ open class SharedAndroidPaginationEnvironment(
                 blockedKeywordDao = filterDatabase.blockedKeywordDao(),
                 blockedUserDao = filterDatabase.blockedUserDao(),
                 blockedTopicDao = filterDatabase.blockedTopicDao(),
+                blocklistService = blocklistService,
                 blockedKeywordService = BlockedKeywordService(
                     keywordDao = filterDatabase.blockedKeywordDao(),
                     recordDao = filterDatabase.blockedContentRecordDao(),
                     semanticMatcher = AndroidContentFilterRuntime.semanticMatcher,
                 ),
+                mcnAndBadgeProvider = ZhihuMcnAndBadgeProvider(this),
                 onNlpBlocked = { blockedThisRound ->
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                         context.mainExecutor.execute {
@@ -336,6 +365,14 @@ open class SharedAndroidPaginationEnvironment(
                 },
             ),
             blockedFeedRecordDao = filterDatabase.blockedFeedRecordDao(),
+            cachedAuthorProfileProvider = { token ->
+                blocklistService.getCachedMcnAuthor(token)?.let { cachedAuthor ->
+                    McnAuthorProfile(
+                        mcnCompany = cachedAuthor.mcnCompany,
+                        officialBadge = cachedAuthor.officialBadge,
+                    )
+                }
+            },
             onDetailFetchFailed = { item ->
                 Log.w("ContentFilterExtensions", "Failed to fetch content details for item '${item.title}'. Using dummy content for filtering.")
             },

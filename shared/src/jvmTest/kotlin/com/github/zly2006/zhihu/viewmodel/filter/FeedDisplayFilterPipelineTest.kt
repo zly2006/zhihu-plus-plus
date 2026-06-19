@@ -24,6 +24,7 @@ import com.github.zly2006.zhihu.shared.data.CommonFeed
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.OfficialBadge
 import com.github.zly2006.zhihu.shared.data.Person
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import kotlinx.coroutines.flow.first
@@ -160,7 +161,123 @@ class FeedDisplayFilterPipelineTest {
     }
 
     @Test
-    fun feedDisplayPipelineWiresFilteringServices() = runTest {
+    fun databaseHydratesCachedAuthorProfileFromFeedAuthorToken() = runTest {
+        val fixture = fixture()
+        fixture.database
+            .createBlocklistService()
+            .cacheMcnAuthorProfile(
+                urlToken = "cached-author",
+                userName = "cached author",
+                profile = McnAuthorProfile(
+                    mcnCompany = "杭州含章文化传播有限公司",
+                    officialBadge = OfficialBadge(
+                        title = "优秀答主",
+                        description = "数码话题下的优秀答主",
+                        iconUrl = "https://pic.example/cached-badge.png",
+                    ),
+                ),
+            )
+        val feedItem = item(
+            title = "cached badge",
+            id = 1,
+            feed = articleFeed(author = person(isFollowing = false, urlToken = "cached-author")),
+        )
+
+        val result = fixture.database.hydrateCachedAuthorProfiles(listOf(feedItem))
+
+        assertEquals("https://pic.example/cached-badge.png", result.single().authorOfficialBadge?.iconUrl)
+        assertEquals("杭州含章文化传播有限公司", result.single().authorMcnCompany)
+        fixture.database.close()
+    }
+
+    @Test
+    fun cachedBadgeDoesNotReplaceExistingAuthorBadge() = runTest {
+        val fixture = fixture()
+        fixture.database
+            .createBlocklistService()
+            .cacheMcnAuthorProfile(
+                urlToken = "cached-author",
+                userName = "cached author",
+                profile = McnAuthorProfile(
+                    mcnCompany = "缓存MCN机构",
+                    officialBadge = OfficialBadge(
+                        title = "缓存徽章",
+                        description = "缓存徽章",
+                        iconUrl = "https://pic.example/cached-badge.png",
+                    ),
+                ),
+            )
+        val existingBadge = OfficialBadge(
+            title = "接口徽章",
+            description = "接口徽章",
+            iconUrl = "https://pic.example/api-badge.png",
+        )
+        val feedItem = item(
+            title = "existing badge",
+            id = 1,
+            feed = articleFeed(author = person(isFollowing = false, urlToken = "cached-author")),
+        ).copy(authorOfficialBadge = existingBadge)
+
+        val result = fixture.database.hydrateCachedAuthorProfiles(listOf(feedItem))
+
+        assertEquals("https://pic.example/api-badge.png", result.single().authorOfficialBadge?.iconUrl)
+        assertEquals("缓存MCN机构", result.single().authorMcnCompany)
+        fixture.database.close()
+    }
+
+    @Test
+    fun feedDisplayPipelineHydratesCachedBadgeForFollowedItemsSkippedByFilters() = runTest {
+        val fixture = fixture()
+        fixture.database
+            .createBlocklistService()
+            .cacheMcnAuthorProfile(
+                urlToken = "followed-author",
+                userName = "followed author",
+                profile = McnAuthorProfile(
+                    mcnCompany = "关注作者MCN",
+                    officialBadge = OfficialBadge(
+                        title = "社区成就",
+                        description = "知势榜领域影响力榜答主",
+                        iconUrl = "https://pic.example/followed-badge.png",
+                    ),
+                ),
+            )
+        val followedItem = item(
+            title = "followed",
+            id = 1,
+            feed = articleFeed(author = person(isFollowing = true, urlToken = "followed-author")),
+        )
+        var fetchCount = 0
+
+        val result = fixture.database.filterFeedDisplayItems(
+            settings = FeedFilterSettings(),
+            items = listOf(followedItem),
+            contentDetailProvider = ContentDetailProvider {
+                fetchCount++
+                article("unexpected")
+            },
+            semanticMatcher = KeywordSemanticMatcher { _, _, _ -> emptyList() },
+        )
+
+        assertEquals(0, fetchCount)
+        assertEquals("https://pic.example/followed-badge.png", result.single().authorOfficialBadge?.iconUrl)
+        assertEquals("关注作者MCN", result.single().authorMcnCompany)
+        fixture.database.close()
+    }
+
+    @Test
+    fun authorCacheWithOnlyBadgeUsesPositiveTtl() {
+        val cache = McnAuthorCache(
+            urlToken = "cached-author",
+            badgeIconUrl = "https://pic.example/cached-badge.png",
+            checkedTime = 1_000L,
+        )
+
+        assertEquals(false, cache.isExpired(nowMillis = 2L * 24 * 60 * 60 * 1000 + 1_000L))
+    }
+
+    @Test
+    fun databaseFactoryWiresFeedDisplayPipelineServices() = runTest {
         val fixture = fixture()
         val semanticMatcher = KeywordSemanticMatcher { text, phrases, _ ->
             phrases.filter { text.contains("semantic body") }.map { it to 0.95 }
@@ -185,6 +302,7 @@ class FeedDisplayFilterPipelineTest {
                 blockedKeywordDao = fixture.database.blockedKeywordDao(),
                 blockedUserDao = fixture.database.blockedUserDao(),
                 blockedTopicDao = fixture.database.blockedTopicDao(),
+                blocklistService = fixture.database.createBlocklistService(),
                 blockedKeywordService = keywordService,
             ),
             blockedFeedRecordDao = fixture.database.blockedFeedRecordDao(),
@@ -255,6 +373,20 @@ class FeedDisplayFilterPipelineTest {
         navDestinationJson = Article(type = ArticleType.Article, id = id).toFeedDisplayItemNavDestinationJson(),
     )
 
+    private fun articleFeed(author: Person): Feed = CommonFeed(
+        target = Feed.ArticleTarget(
+            id = 1,
+            author = author,
+            title = "title",
+            content = "",
+            excerpt = "",
+            url = "",
+            created = 1,
+            updated = 1,
+            voteupCount = 10,
+        ),
+    )
+
     private fun article(
         title: String,
         content: String = title,
@@ -288,10 +420,14 @@ class FeedDisplayFilterPipelineTest {
         userType = "people",
     )
 
-    private fun person(isFollowing: Boolean): Person = Person(
+    private fun person(
+        isFollowing: Boolean,
+        urlToken: String = "author",
+    ): Person = Person(
         id = "author-id",
         url = "",
         userType = "people",
+        urlToken = urlToken,
         name = "author",
         headline = "",
         avatarUrl = "",

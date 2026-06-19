@@ -384,6 +384,7 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
                             keywordDao = database.blockedKeywordDao(),
                             userDao = database.blockedUserDao(),
                             topicDao = database.blockedTopicDao(),
+                            mcnOrganizationDao = database.blockedMcnOrganizationDao(),
                             text = text,
                         )
                     }
@@ -410,6 +411,7 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
                             keywordDao = database.blockedKeywordDao(),
                             userDao = database.blockedUserDao(),
                             topicDao = database.blockedTopicDao(),
+                            mcnOrganizationDao = database.blockedMcnOrganizationDao(),
                         ),
                     )
                     file

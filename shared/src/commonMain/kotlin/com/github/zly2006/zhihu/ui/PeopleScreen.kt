@@ -62,6 +62,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
@@ -94,6 +95,7 @@ import com.github.zly2006.zhihu.ui.PeopleProfileUiState
 import com.github.zly2006.zhihu.ui.PeopleSortedListUiState
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.FeedCard
+import com.github.zly2006.zhihu.ui.components.McnBadge
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.viewmodel.ContentBlocklistEnvironment
@@ -104,6 +106,7 @@ import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.addReadHistory
 import com.github.zly2006.zhihu.viewmodel.deleteSigned
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.filter.McnAuthorProfile
 import com.github.zly2006.zhihu.viewmodel.postSigned
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import io.ktor.client.call.body
@@ -326,6 +329,7 @@ class PersonViewModel(
     var headline by mutableStateOf("")
     var officialBadge by mutableStateOf<OfficialBadge?>(null)
     var officialBadgeDetails by mutableStateOf<List<OfficialBadge>>(emptyList())
+    var mcnCompany by mutableStateOf<String?>(null)
     var followerCount by mutableIntStateOf(0)
     var followingCount by mutableIntStateOf(0)
     var answerCount by mutableIntStateOf(0)
@@ -425,6 +429,7 @@ class PersonViewModel(
         this.headline = profile.headline
         this.officialBadge = profile.officialBadge
         this.officialBadgeDetails = profile.officialBadgeDetails
+        this.mcnCompany = profile.mcnCompany
         this.followerCount = profile.followerCount
         this.followingCount = profile.followingCount
         this.answerCount = profile.answerCount
@@ -436,6 +441,16 @@ class PersonViewModel(
         this.person.id = loadedPerson.id
         if (urlToken != null) {
             this.person.urlToken = urlToken
+            if (profile.mcnCompany != null || profile.officialBadge != null) {
+                environment.cacheMcnAuthorProfile(
+                    urlToken = urlToken,
+                    userName = profile.name,
+                    profile = McnAuthorProfile(
+                        mcnCompany = profile.mcnCompany,
+                        officialBadge = profile.officialBadge,
+                    ),
+                )
+            }
         }
     }
 }
@@ -489,6 +504,7 @@ const val PEOPLE_SCREEN_ANSWER_SORT_TIME_TAG = "people_screen_answer_sort_create
 const val PEOPLE_SCREEN_ARTICLE_SORT_HOT_TAG = "people_screen_article_sort_voteups"
 const val PEOPLE_SCREEN_ARTICLE_SORT_TIME_TAG = "people_screen_article_sort_created"
 const val PEOPLE_SCREEN_OFFICIAL_BADGE_TAG = "people_screen_official_badge"
+const val PEOPLE_SCREEN_MCN_BADGE_TAG = "people_screen_mcn_badge"
 
 private fun peopleScreenInitialPage(person: Person): Int {
     val jumpToIndex = PEOPLE_SCREEN_TITLES.indexOf(person.jumpTo)
@@ -497,7 +513,7 @@ private fun peopleScreenInitialPage(person: Person): Int {
 
 internal fun peopleProfileUrl(person: Person): String {
     val identifier = person.urlToken.takeIf { it.isNotBlank() } ?: person.id
-    return "https://api.zhihu.com/people/$identifier"
+    return "https://www.zhihu.com/api/v4/members/$identifier"
 }
 
 /**
@@ -535,6 +551,7 @@ private fun PersonViewModel.toUiState(): PeopleScreenUiState = PeopleScreenUiSta
         headline = headline,
         officialBadge = officialBadge,
         officialBadgeDetails = officialBadgeDetails,
+        mcnCompany = mcnCompany,
         followerCount = followerCount,
         followingCount = followingCount,
         answerCount = answerCount,
@@ -1648,6 +1665,14 @@ private fun UserInfoHeader(
                                 .testTag(PEOPLE_SCREEN_OFFICIAL_BADGE_TAG),
                         )
                     }
+                    if (profile.mcnCompany != null) {
+                        McnBadge(
+                            mcnCompany = profile.mcnCompany,
+                            modifier = Modifier
+                                .padding(start = 6.dp)
+                                .testTag(PEOPLE_SCREEN_MCN_BADGE_TAG),
+                        )
+                    }
                 }
                 Text(
                     profile.headline,
@@ -1655,6 +1680,16 @@ private fun UserInfoHeader(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
+                if (profile.mcnCompany != null) {
+                    Text(
+                        text = "MCN机构：${profile.mcnCompany}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color(0xFF7A5200),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
                 OfficialBadgeDetails(
                     badges = profile.officialBadgeDetails,
                     modifier = Modifier.padding(top = 6.dp),
@@ -1722,6 +1757,7 @@ data class PeopleProfileUiState(
     val headline: String = "",
     val officialBadge: OfficialBadge? = null,
     val officialBadgeDetails: List<OfficialBadge> = emptyList(),
+    val mcnCompany: String? = null,
     val followerCount: Int = 0,
     val followingCount: Int = 0,
     val answerCount: Int = 0,

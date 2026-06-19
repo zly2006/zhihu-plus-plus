@@ -316,6 +316,7 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
                                 keywordDao = database.blockedKeywordDao(),
                                 userDao = database.blockedUserDao(),
                                 topicDao = database.blockedTopicDao(),
+                                mcnOrganizationDao = database.blockedMcnOrganizationDao(),
                                 text = selectedFile.readText(),
                             )
                             onImported(summary)
@@ -333,6 +334,7 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
                         keywordDao = database.blockedKeywordDao(),
                         userDao = database.blockedUserDao(),
                         topicDao = database.blockedTopicDao(),
+                        mcnOrganizationDao = database.blockedMcnOrganizationDao(),
                     ),
                 )
                 "已导出到 ${file.absolutePath}"

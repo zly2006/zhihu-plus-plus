@@ -43,6 +43,7 @@ import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
 import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
+import com.github.zly2006.zhihu.viewmodel.filter.McnAuthorProfile
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
@@ -337,6 +338,8 @@ interface MobileHomeFeedEnvironment : ZhihuApiEnvironment {
 interface FeedDisplayEnvironment {
     fun feedDisplaySettings(): FeedDisplaySettings = FeedDisplaySettings()
 
+    suspend fun hydrateFeedDisplayItems(items: List<FeedDisplayItem>): List<FeedDisplayItem> = items
+
     suspend fun applyHomeFeedFilters(items: List<FeedDisplayItem>): HomeFeedFilterResult =
         HomeFeedFilterResult(
             foregroundItems = items,
@@ -394,6 +397,14 @@ interface ContentBlocklistEnvironment {
     ) = Unit
 
     suspend fun removeBlockedUser(userId: String) = Unit
+
+    suspend fun getCachedMcnAuthorProfile(urlToken: String): McnAuthorProfile? = null
+
+    suspend fun cacheMcnAuthorProfile(
+        urlToken: String,
+        userName: String?,
+        profile: McnAuthorProfile,
+    ) = Unit
 }
 
 interface LocalRecommendationEnvironment : ZhihuApiEnvironment {

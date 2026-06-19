@@ -51,8 +51,12 @@ import com.github.zly2006.zhihu.viewmodel.filter.ContentType
 import com.github.zly2006.zhihu.viewmodel.filter.FeedContentFilterPipeline
 import com.github.zly2006.zhihu.viewmodel.filter.FeedDisplayFilterPipeline
 import com.github.zly2006.zhihu.viewmodel.filter.ForegroundReadFilterPipeline
+import com.github.zly2006.zhihu.viewmodel.filter.McnAuthorProfile
+import com.github.zly2006.zhihu.viewmodel.filter.ZhihuMcnAndBadgeProvider
+import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistService
 import com.github.zly2006.zhihu.viewmodel.filter.desktopKeywordSemanticMatcher
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
+import com.github.zly2006.zhihu.viewmodel.filter.hydrateCachedAuthorProfiles
 import com.github.zly2006.zhihu.viewmodel.filter.toFeedFilterSettings
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import com.github.zly2006.zhihu.viewmodel.local.buildLocalRecommendationEngine
@@ -148,6 +152,9 @@ class DesktopPaginationEnvironment(
         reverseBlock = settingsStore.toFeedFilterSettings().reverseBlock,
     )
 
+    override suspend fun hydrateFeedDisplayItems(items: List<FeedDisplayItem>): List<FeedDisplayItem> =
+        contentFilterDb.hydrateCachedAuthorProfiles(items)
+
     override fun localHistory(): List<NavDestination> =
         historyStorage.history
 
@@ -196,6 +203,25 @@ class DesktopPaginationEnvironment(
         contentFilterDb.blockedUserDao().deleteUserById(userId)
     }
 
+    override suspend fun getCachedMcnAuthorProfile(urlToken: String): McnAuthorProfile? =
+        contentFilterDb
+            .createBlocklistService()
+            .getCachedMcnAuthor(urlToken)
+            ?.let { cachedAuthor ->
+                McnAuthorProfile(
+                    mcnCompany = cachedAuthor.mcnCompany,
+                    officialBadge = cachedAuthor.officialBadge,
+                )
+            }
+
+    override suspend fun cacheMcnAuthorProfile(
+        urlToken: String,
+        userName: String?,
+        profile: McnAuthorProfile,
+    ) {
+        contentFilterDb.createBlocklistService().cacheMcnAuthorProfile(urlToken, userName, profile)
+    }
+
     override suspend fun recordContentOpenEvent(
         destination: NavDestination,
         questionId: Long?,
@@ -221,6 +247,7 @@ class DesktopPaginationEnvironment(
 
     override suspend fun applyHomeFeedFilters(items: List<FeedDisplayItem>): HomeFeedFilterResult {
         val settings = settingsStore.toFeedFilterSettings()
+        val blocklistService = contentFilterDb.createBlocklistService()
         val foregroundItems = ForegroundReadFilterPipeline(
             settings = settings,
             contentFilterManager = ContentFilterManager(contentFilterDb.contentFilterDao()),
@@ -234,13 +261,23 @@ class DesktopPaginationEnvironment(
                 blockedKeywordDao = contentFilterDb.blockedKeywordDao(),
                 blockedUserDao = contentFilterDb.blockedUserDao(),
                 blockedTopicDao = contentFilterDb.blockedTopicDao(),
+                blocklistService = blocklistService,
                 blockedKeywordService = BlockedKeywordService(
                     keywordDao = contentFilterDb.blockedKeywordDao(),
                     recordDao = contentFilterDb.blockedContentRecordDao(),
                     semanticMatcher = desktopKeywordSemanticMatcher,
                 ),
+                mcnAndBadgeProvider = ZhihuMcnAndBadgeProvider(this),
             ),
             blockedFeedRecordDao = contentFilterDb.blockedFeedRecordDao(),
+            cachedAuthorProfileProvider = { token ->
+                blocklistService.getCachedMcnAuthor(token)?.let { cachedAuthor ->
+                    McnAuthorProfile(
+                        mcnCompany = cachedAuthor.mcnCompany,
+                        officialBadge = cachedAuthor.officialBadge,
+                    )
+                }
+            },
         ).filter(foregroundItems)
         return HomeFeedFilterResult(
             foregroundItems = foregroundItems,

@@ -56,6 +56,7 @@ import com.github.zly2006.zhihu.ui.components.ShareDialogRuntime
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.filter.normalizeMcnCompany
 import com.github.zly2006.zhihu.viewmodel.getOrFetchContentDetail
 import io.ktor.client.HttpClient
 import kotlinx.serialization.json.JsonElement
@@ -630,7 +631,7 @@ data class PeopleProfileLoadResult(
 )
 
 internal const val PEOPLE_PROFILE_INCLUDE_PATH =
-    "allow_message,is_followed,is_following,is_org,is_blocking,badge_v2,answer_count,follower_count,following_count,articles_count,question_count,pins_count"
+    "allow_message,is_followed,is_following,is_org,is_blocking,badge,mcn_company,answer_count,follower_count,following_count,articles_count,question_count,pins_count"
 
 internal fun toPeopleProfileLoadResult(
     loadedPerson: DataHolder.People,
@@ -642,6 +643,7 @@ internal fun toPeopleProfileLoadResult(
         headline = loadedPerson.headline,
         officialBadge = loadedPerson.badgeV2.officialBadge(),
         officialBadgeDetails = loadedPerson.badgeV2.officialBadgeDetails(),
+        mcnCompany = loadedPerson.mcnCompany.normalizeMcnCompany(),
         followerCount = loadedPerson.followerCount,
         followingCount = loadedPerson.followingCount,
         answerCount = loadedPerson.answerCount,

@@ -23,9 +23,9 @@ import kotlin.test.assertEquals
 
 class PeopleScreenProfileUrlTest {
     @Test
-    fun usesApiPeopleEndpointWithUrlToken() {
+    fun usesMemberEndpointWithUrlToken() {
         assertEquals(
-            "https://api.zhihu.com/people/dong-xiao-fang-33",
+            "https://www.zhihu.com/api/v4/members/dong-xiao-fang-33",
             peopleProfileUrl(
                 Person(
                     id = "c7d6ee7380aba6cc6c131d02b26b84b9",
@@ -39,7 +39,7 @@ class PeopleScreenProfileUrlTest {
     @Test
     fun fallsBackToIdWhenUrlTokenIsMissing() {
         assertEquals(
-            "https://api.zhihu.com/people/c7d6ee7380aba6cc6c131d02b26b84b9",
+            "https://www.zhihu.com/api/v4/members/c7d6ee7380aba6cc6c131d02b26b84b9",
             peopleProfileUrl(
                 Person(
                     id = "c7d6ee7380aba6cc6c131d02b26b84b9",
@@ -47,6 +47,14 @@ class PeopleScreenProfileUrlTest {
                     urlToken = "",
                 ),
             ),
+        )
+    }
+
+    @Test
+    fun requestsMemberBadgeIncludeForBadgeV2() {
+        assertEquals(
+            "allow_message,is_followed,is_following,is_org,is_blocking,badge,mcn_company,answer_count,follower_count,following_count,articles_count,question_count,pins_count",
+            PEOPLE_PROFILE_INCLUDE_PATH,
         )
     }
 }

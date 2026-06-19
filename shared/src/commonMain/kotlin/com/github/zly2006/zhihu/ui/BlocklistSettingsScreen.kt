@@ -72,10 +72,12 @@ import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeyword
+import com.github.zly2006.zhihu.viewmodel.filter.BlockedMcnOrganization
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedTopic
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedUser
 import com.github.zly2006.zhihu.viewmodel.filter.BlocklistStats
 import com.github.zly2006.zhihu.viewmodel.filter.KeywordType
+import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistService
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.launch
 
@@ -94,6 +96,8 @@ object BlocklistSettingsTestTags {
     const val USER_CLEAR_BUTTON = "blocklistSettings:users:clear"
     const val TOPIC_LIST = "blocklistSettings:topics:list"
     const val TOPIC_CLEAR_BUTTON = "blocklistSettings:topics:clear"
+    const val MCN_LIST = "blocklistSettings:mcn:list"
+    const val MCN_CLEAR_BUTTON = "blocklistSettings:mcn:clear"
     const val TOPIC_CLEAR_CONFIRM = "blocklistSettings:topics:clearConfirm"
     const val TOPIC_CLEAR_DISMISS = "blocklistSettings:topics:clearDismiss"
     const val KEYWORD_DIALOG_INPUT = "blocklistSettings:keywordDialog:input"
@@ -109,12 +113,34 @@ object BlocklistSettingsTestTags {
     const val TOPIC_DIALOG_NAME_INPUT = "blocklistSettings:topicDialog:topicName"
     const val TOPIC_DIALOG_CONFIRM = "blocklistSettings:topicDialog:confirm"
     const val TOPIC_DIALOG_DISMISS = "blocklistSettings:topicDialog:dismiss"
+    const val MCN_DIALOG_INPUT = "blocklistSettings:mcnDialog:organizationName"
+    const val MCN_DIALOG_CONFIRM = "blocklistSettings:mcnDialog:confirm"
+    const val MCN_DIALOG_DISMISS = "blocklistSettings:mcnDialog:dismiss"
+
+    fun tab(index: Int) = "blocklistSettings:tab:$index"
+
+    fun keywordItem(keywordId: Long) = "blocklistSettings:keywords:item:$keywordId"
+
+    fun keywordDelete(keywordId: Long) = "blocklistSettings:keywords:delete:$keywordId"
+
+    fun userItem(userId: String) = "blocklistSettings:users:item:$userId"
+
+    fun userDelete(userId: String) = "blocklistSettings:users:delete:$userId"
+
+    fun topicItem(topicId: String) = "blocklistSettings:topics:item:$topicId"
+
+    fun topicDelete(topicId: String) = "blocklistSettings:topics:delete:$topicId"
+
+    fun mcnItem(organizationName: String) = "blocklistSettings:mcn:item:$organizationName"
+
+    fun mcnDelete(organizationName: String) = "blocklistSettings:mcn:delete:$organizationName"
 }
 
 data class BlocklistSettingsTestConfig(
     val blockedKeywords: List<BlockedKeyword> = emptyList(),
     val blockedUsers: List<BlockedUser> = emptyList(),
     val blockedTopics: List<BlockedTopic> = emptyList(),
+    val blockedMcnOrganizations: List<BlockedMcnOrganization> = emptyList(),
     val stats: BlocklistStats? = null,
     val onImportRequested: (() -> Unit)? = null,
     val onExportRequested: (() -> Unit)? = null,
@@ -127,6 +153,9 @@ data class BlocklistSettingsTestConfig(
     val onAddTopic: ((String, String) -> Unit)? = null,
     val onDeleteTopic: ((BlockedTopic) -> Unit)? = null,
     val onClearTopics: (() -> Unit)? = null,
+    val onAddMcnOrganization: ((String) -> Unit)? = null,
+    val onDeleteMcnOrganization: ((BlockedMcnOrganization) -> Unit)? = null,
+    val onClearMcnOrganizations: (() -> Unit)? = null,
     val nlpContent: BlocklistSettingsNlpContent? = null,
 )
 
@@ -145,24 +174,28 @@ fun BlocklistSettingsScreen(
     val userMessages = rememberUserMessageSink()
     val runtime = rememberBlocklistSettingsPlatformRuntime(userMessages)
     val database = remember { getContentFilterDatabase() }
+    val blocklistService = remember(database) { database.createBlocklistService() }
     val coroutineScope = rememberCoroutineScope()
 
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("屏蔽关键词", "NLP智能屏蔽", "屏蔽用户", "屏蔽主题")
+    val tabs = listOf("屏蔽关键词", "NLP智能屏蔽", "屏蔽用户", "屏蔽主题", "屏蔽MCN")
 
     var loadedBlockedKeywords by remember { mutableStateOf<List<BlockedKeyword>>(emptyList()) }
     var loadedBlockedUsers by remember { mutableStateOf<List<BlockedUser>>(emptyList()) }
     var loadedBlockedTopics by remember { mutableStateOf<List<BlockedTopic>>(emptyList()) }
+    var loadedBlockedMcnOrganizations by remember { mutableStateOf<List<BlockedMcnOrganization>>(emptyList()) }
     var loadedStats by remember { mutableStateOf<BlocklistStats?>(null) }
 
     val blockedKeywords = testConfig?.blockedKeywords ?: loadedBlockedKeywords
     val blockedUsers = testConfig?.blockedUsers ?: loadedBlockedUsers
     val blockedTopics = testConfig?.blockedTopics ?: loadedBlockedTopics
+    val blockedMcnOrganizations = testConfig?.blockedMcnOrganizations ?: loadedBlockedMcnOrganizations
     val stats = testConfig?.stats ?: loadedStats
 
     var showAddKeywordDialog by remember { mutableStateOf(false) }
     var showAddUserDialog by remember { mutableStateOf(false) }
     var showAddTopicDialog by remember { mutableStateOf(false) }
+    var showAddMcnDialog by remember { mutableStateOf(false) }
 
     // 加载数据
     fun loadData() {
@@ -175,10 +208,12 @@ fun BlocklistSettingsScreen(
                     .filter { it.getKeywordTypeEnum() == KeywordType.EXACT_MATCH }
                 loadedBlockedUsers = database.blockedUserDao().getAllUsers()
                 loadedBlockedTopics = database.blockedTopicDao().getAllTopics()
+                loadedBlockedMcnOrganizations = database.blockedMcnOrganizationDao().getAllOrganizations()
                 loadedStats = BlocklistStats(
                     keywordCount = database.blockedKeywordDao().getKeywordCount(),
                     userCount = database.blockedUserDao().getUserCount(),
                     topicCount = database.blockedTopicDao().getTopicCount(),
+                    mcnOrganizationCount = database.blockedMcnOrganizationDao().getOrganizationCount(),
                 )
             } catch (e: Exception) {
                 Log.e("BlocklistSettingsScreen", "Blocklist settings action failed", e)
@@ -196,8 +231,8 @@ fun BlocklistSettingsScreen(
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         floatingActionButton = {
-            // 只在传统关键词、用户屏蔽和主题屏蔽标签页显示添加按钮
-            if (selectedTab == 0 || selectedTab == 2 || selectedTab == 3) {
+            // 只在可手动添加规则的标签页显示添加按钮
+            if (selectedTab == 0 || selectedTab == 2 || selectedTab == 3 || selectedTab == 4) {
                 FloatingActionButton(
                     modifier = Modifier.testTag(BlocklistSettingsTestTags.FAB),
                     onClick = {
@@ -205,6 +240,7 @@ fun BlocklistSettingsScreen(
                             0 -> showAddKeywordDialog = true
                             2 -> showAddUserDialog = true
                             3 -> showAddTopicDialog = true
+                            4 -> showAddMcnDialog = true
                         }
                     },
                 ) {
@@ -272,6 +308,17 @@ fun BlocklistSettingsScreen(
                                 )
                                 Text(
                                     "${statsData.topicCount}",
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    "屏蔽MCN",
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                                Text(
+                                    "${statsData.mcnOrganizationCount}",
                                     style = MaterialTheme.typography.headlineMedium,
                                     color = MaterialTheme.colorScheme.primary,
                                 )
@@ -471,6 +518,43 @@ fun BlocklistSettingsScreen(
                         }
                     },
                 )
+                4 -> BlockedMcnOrganizationsList(
+                    organizations = blockedMcnOrganizations,
+                    onDeleteOrganization = { organization ->
+                        val onDeleteMcnOrganization = testConfig?.onDeleteMcnOrganization
+                        if (onDeleteMcnOrganization != null) {
+                            onDeleteMcnOrganization(organization)
+                        } else {
+                            coroutineScope.launch {
+                                try {
+                                    blocklistService.removeBlockedMcnOrganization(organization.organizationName)
+                                    userMessages.showShortMessage("已删除MCN机构")
+                                    loadData()
+                                } catch (e: Exception) {
+                                    Log.e("BlocklistSettingsScreen", "Blocklist settings action failed", e)
+                                    userMessages.showShortMessage("删除失败: ${e.message}")
+                                }
+                            }
+                        }
+                    },
+                    onClearAll = {
+                        val onClearMcnOrganizations = testConfig?.onClearMcnOrganizations
+                        if (onClearMcnOrganizations != null) {
+                            onClearMcnOrganizations()
+                        } else {
+                            coroutineScope.launch {
+                                try {
+                                    blocklistService.clearAllBlockedMcnOrganizations()
+                                    userMessages.showShortMessage("已清空所有MCN机构")
+                                    loadData()
+                                } catch (e: Exception) {
+                                    Log.e("BlocklistSettingsScreen", "Blocklist settings action failed", e)
+                                    userMessages.showShortMessage("清空失败: ${e.message}")
+                                }
+                            }
+                        }
+                    },
+                )
             }
         }
     }
@@ -550,6 +634,31 @@ fun BlocklistSettingsScreen(
                             userMessages.showShortMessage("已添加用户")
                             loadData()
                             showAddUserDialog = false
+                        } catch (e: Exception) {
+                            Log.e("BlocklistSettingsScreen", "Blocklist settings action failed", e)
+                            userMessages.showShortMessage("添加失败: ${e.message}")
+                        }
+                    }
+                }
+            },
+        )
+    }
+
+    if (showAddMcnDialog) {
+        AddMcnOrganizationDialog(
+            onDismiss = { showAddMcnDialog = false },
+            onConfirm = { organizationName ->
+                val onAddMcnOrganization = testConfig?.onAddMcnOrganization
+                if (onAddMcnOrganization != null) {
+                    onAddMcnOrganization(organizationName)
+                    showAddMcnDialog = false
+                } else {
+                    coroutineScope.launch {
+                        try {
+                            blocklistService.addBlockedMcnOrganization(organizationName)
+                            userMessages.showShortMessage("已添加MCN机构")
+                            loadData()
+                            showAddMcnDialog = false
                         } catch (e: Exception) {
                             Log.e("BlocklistSettingsScreen", "Blocklist settings action failed", e)
                             userMessages.showShortMessage("添加失败: ${e.message}")
@@ -983,6 +1092,131 @@ fun BlockedTopicsList(
             },
         )
     }
+}
+
+@Composable
+fun BlockedMcnOrganizationsList(
+    organizations: List<BlockedMcnOrganization>,
+    onDeleteOrganization: (BlockedMcnOrganization) -> Unit,
+    onClearAll: () -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        if (organizations.isEmpty()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    "暂无屏蔽MCN机构",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "点击右下角的 + 按钮添加机构名称",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                Button(
+                    modifier = Modifier.testTag(BlocklistSettingsTestTags.MCN_CLEAR_BUTTON),
+                    onClick = onClearAll,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    ),
+                ) {
+                    Text("清空全部")
+                }
+            }
+
+            LazyColumn(
+                modifier = Modifier.testTag(BlocklistSettingsTestTags.MCN_LIST),
+            ) {
+                items(organizations, key = { it.organizationName }) { organization ->
+                    ListItem(
+                        modifier = Modifier.testTag(BlocklistSettingsTestTags.mcnItem(organization.organizationName)),
+                        headlineContent = { Text(organization.organizationName) },
+                        supportingContent = { Text("按作者主页 mcn_company 字段匹配") },
+                        trailingContent = {
+                            IconButton(
+                                modifier = Modifier.testTag(BlocklistSettingsTestTags.mcnDelete(organization.organizationName)),
+                                onClick = { onDeleteOrganization(organization) },
+                            ) {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = "删除",
+                                    tint = MaterialTheme.colorScheme.error,
+                                )
+                            }
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AddMcnOrganizationDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+) {
+    var organizationName by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("添加屏蔽MCN机构") },
+        text = {
+            Column {
+                Text(
+                    "输入要屏蔽的 MCN 机构名称。机构名会按知乎用户资料返回的 mcn_company 字段匹配。",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = organizationName,
+                    onValueChange = { organizationName = it },
+                    label = { Text("机构名称") },
+                    placeholder = { Text("例如：杭州含章文化传播有限公司") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag(BlocklistSettingsTestTags.MCN_DIALOG_INPUT),
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                modifier = Modifier.testTag(BlocklistSettingsTestTags.MCN_DIALOG_CONFIRM),
+                onClick = {
+                    if (organizationName.isNotBlank()) {
+                        onConfirm(organizationName)
+                    }
+                },
+                enabled = organizationName.isNotBlank(),
+            ) {
+                Text("添加")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                modifier = Modifier.testTag(BlocklistSettingsTestTags.MCN_DIALOG_DISMISS),
+                onClick = onDismiss,
+            ) {
+                Text("取消")
+            }
+        },
+    )
 }
 
 @Composable

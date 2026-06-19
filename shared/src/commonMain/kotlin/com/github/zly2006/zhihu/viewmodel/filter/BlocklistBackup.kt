@@ -29,6 +29,7 @@ data class BlocklistBackup(
     val nlpKeywords: List<NlpKeywordBackup> = emptyList(),
     val users: List<UserBackup> = emptyList(),
     val topics: List<TopicBackup> = emptyList(),
+    val mcnOrganizations: List<McnOrganizationBackup> = emptyList(),
 )
 
 @Serializable
@@ -57,10 +58,16 @@ data class TopicBackup(
     val topicName: String,
 )
 
+@Serializable
+data class McnOrganizationBackup(
+    val organizationName: String,
+)
+
 data class BlocklistStats(
     val keywordCount: Int,
     val userCount: Int,
     val topicCount: Int,
+    val mcnOrganizationCount: Int = 0,
 )
 
 private val blocklistBackupJson = Json {
@@ -72,10 +79,12 @@ suspend fun encodeBlocklistBackup(
     keywordDao: BlockedKeywordDao,
     userDao: BlockedUserDao,
     topicDao: BlockedTopicDao,
+    mcnOrganizationDao: BlockedMcnOrganizationDao? = null,
 ): String {
     val allKeywords = keywordDao.getAllKeywords()
     val users = userDao.getAllUsers()
     val topics = topicDao.getAllTopics()
+    val mcnOrganizations = mcnOrganizationDao?.getAllOrganizations().orEmpty()
 
     val backup = BlocklistBackup(
         keywords = allKeywords
@@ -86,6 +95,7 @@ suspend fun encodeBlocklistBackup(
             .map { NlpKeywordBackup(it.keyword) },
         users = users.map { UserBackup(it.userId, it.userName, it.urlToken ?: "", it.avatarUrl ?: "") },
         topics = topics.map { TopicBackup(it.topicId, it.topicName) },
+        mcnOrganizations = mcnOrganizations.map { McnOrganizationBackup(it.organizationName) },
     )
 
     return blocklistBackupJson.encodeToString(BlocklistBackup.serializer(), backup)
@@ -95,6 +105,7 @@ suspend fun importBlocklistBackupFromJsonText(
     keywordDao: BlockedKeywordDao,
     userDao: BlockedUserDao,
     topicDao: BlockedTopicDao,
+    mcnOrganizationDao: BlockedMcnOrganizationDao? = null,
     text: String,
 ): String {
     val backup = blocklistBackupJson.decodeFromString(BlocklistBackup.serializer(), text)
@@ -127,6 +138,11 @@ suspend fun importBlocklistBackupFromJsonText(
     backup.topics.filter { it.topicId.isNotBlank() }.forEach { topic ->
         topicDao.insertTopic(BlockedTopic(topicId = topic.topicId, topicName = topic.topicName))
     }
+    backup.mcnOrganizations
+        .mapNotNull { it.organizationName.normalizeMcnCompany() }
+        .forEach { organizationName ->
+            mcnOrganizationDao?.insertOrganization(BlockedMcnOrganization(organizationName))
+        }
 
-    return "关键词 ${backup.keywords.size} · NLP ${backup.nlpKeywords.size} · 用户 ${backup.users.size} · 主题 ${backup.topics.size}"
+    return "关键词 ${backup.keywords.size} · NLP ${backup.nlpKeywords.size} · 用户 ${backup.users.size} · 主题 ${backup.topics.size} · MCN ${backup.mcnOrganizations.size}"
 }
