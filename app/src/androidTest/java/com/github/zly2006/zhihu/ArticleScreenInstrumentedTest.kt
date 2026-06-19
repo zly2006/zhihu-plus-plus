@@ -22,11 +22,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.MutableState
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.navigation.AnswerNavigator
 import com.github.zly2006.zhihu.navigation.Article
@@ -43,6 +46,7 @@ import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import io.ktor.client.HttpClient
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -161,6 +165,38 @@ class ArticleScreenInstrumentedTest {
         }
     }
 
+    @Test
+    fun skipAnswerButtonCanBeDraggedBackToRightEdge() {
+        val viewModel = seededAnswerViewModel(ANSWER)
+        composeRule.setScreenContent {
+            Scaffold(
+                modifier = androidx.compose.ui.Modifier
+                    .fillMaxSize(),
+            ) { _ ->
+                ArticleScreen(
+                    article = ANSWER,
+                    viewModel = viewModel,
+                )
+            }
+        }
+
+        val rootWidth = composeRule
+            .onRoot()
+            .fetchSemanticsNode()
+            .boundsInRoot.width
+        val preferences = composeRule.activity.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        dragSkipAnswerButtonBy(-rootWidth)
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            preferences.getFloat("buttonSkipAnswer-x", Float.NaN) < rootWidth / 3
+        }
+
+        dragSkipAnswerButtonBy(rootWidth)
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            preferences.getFloat("buttonSkipAnswer-x", Float.NaN) > rootWidth / 2
+        }
+        assertTrue(preferences.getFloat("buttonSkipAnswer-x", Float.NaN) > rootWidth / 2)
+    }
+
     private fun setArticleScreen() {
         val viewModel = ArticleViewModel(
             article = ARTICLE,
@@ -192,6 +228,18 @@ class ArticleScreenInstrumentedTest {
                 )
             }
         }
+    }
+
+    private fun dragSkipAnswerButtonBy(deltaX: Float) {
+        composeRule
+            .onNodeWithContentDescription("下一个回答")
+            .assertIsDisplayed()
+            .performTouchInput {
+                down(center)
+                moveBy(Offset(deltaX, 0f))
+                up()
+            }
+        composeRule.waitForIdle()
     }
 
     private fun seededAnswerViewModel(article: Article): ArticleViewModel {
