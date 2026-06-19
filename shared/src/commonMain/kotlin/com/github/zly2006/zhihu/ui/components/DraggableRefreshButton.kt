@@ -101,8 +101,8 @@ fun DraggableRefreshButton(
                     onDragEnd = {
                         pressing = false
                         adjustFabPosition()
+                        val screenWidth = screenSize.width.toFloat()
                         with(density) {
-                            val screenWidth = screenSize.width.dp.toPx()
                             offsetX =
                                 if (offsetX < screenWidth / 2) {
                                     0f
