@@ -101,12 +101,18 @@ import com.github.zly2006.zhihu.viewmodel.postSigned
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.replaceOrAppendUniqueVoters
 import io.ktor.client.call.body
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.putJsonArray
 import kotlin.time.Instant
 import androidx.compose.material.icons.outlined.ThumbUp as OutlinedThumbUp
 
@@ -115,6 +121,9 @@ const val PIN_SCREEN_SHARE_BUTTON_TAG = "pin_screen_share_button"
 const val PIN_SCREEN_LOADING_TAG = "pin_screen_loading"
 const val PIN_SCREEN_ERROR_TAG = "pin_screen_error"
 const val PIN_SCREEN_SCROLL_TAG = "pin_screen_scroll"
+const val PIN_SCREEN_POLL_CARD_TAG = "pin_screen_poll_card"
+
+fun pinScreenPollOptionTag(optionId: String): String = "pin_screen_poll_option_$optionId"
 
 private suspend fun togglePinLike(
     environment: ZhihuApiEnvironment,
@@ -131,6 +140,22 @@ private suspend fun togglePinLike(
         isLiked = !isLiked,
         likeCount = jojo["liked_count"]?.jsonPrimitive?.intOrNull ?: -1,
     )
+}
+
+private suspend fun submitPinPollVote(
+    environment: ZhihuApiEnvironment,
+    pollId: String,
+    optionId: String,
+) {
+    val requestBody = buildJsonObject {
+        putJsonArray("options") {
+            add(optionId)
+        }
+    }.toString()
+    environment.postSigned("https://www.zhihu.com/api/v4/polls/$pollId") {
+        contentType(ContentType.Application.Json)
+        setBody(requestBody)
+    }
 }
 
 private suspend fun loadPinDetail(
@@ -159,6 +184,7 @@ const val PIN_SCREEN_COMMENT_BUTTON_TAG = "pin_screen_comment_button"
 data class PinScreenTestOverrides(
     val state: PinScreenUiState,
     val onLikeClick: (() -> Unit)? = null,
+    val onPollVote: ((pollId: String, optionId: String) -> Unit)? = null,
     val onShareAction: ((showShareDialog: () -> Unit) -> Unit)? = null,
     val linkCardPreview: PinLinkCardPreview? = null,
     val commentScreenContent: (@Composable (showComments: Boolean, onDismiss: () -> Unit, content: Pin) -> Unit)? = null,
@@ -324,6 +350,8 @@ fun PinScreen(
                         pin = pinContent,
                         isLiked = screenState.isLiked,
                         likeCount = screenState.likeCount,
+                        pollVotingOptionId = screenState.pollVotingOptionId,
+                        pollErrorMessage = screenState.pollErrorMessage,
                         onLikeClick = {
                             testOverrides?.onLikeClick?.invoke() ?: coroutineScope.launch {
                                 val result = togglePinLike(paginationEnvironment, pin, screenState.isLiked)
@@ -340,6 +368,26 @@ fun PinScreen(
                             showVoters = true
                             if (voters.isEmpty()) {
                                 loadMoreVoters(reset = true)
+                            }
+                        },
+                        onPollVote = { pollId, optionId ->
+                            testOverrides?.onPollVote?.invoke(pollId, optionId) ?: coroutineScope.launch {
+                                screenState = screenState.copy(
+                                    pollVotingOptionId = optionId,
+                                    pollErrorMessage = null,
+                                )
+                                try {
+                                    submitPinPollVote(paginationEnvironment, pollId, optionId)
+                                    screenState = screenState.copy(
+                                        pinContent = screenState.pinContent?.withSelectedPinPollOption(pollId, optionId),
+                                        pollVotingOptionId = null,
+                                    )
+                                } catch (e: Exception) {
+                                    screenState = screenState.copy(
+                                        pollVotingOptionId = null,
+                                        pollErrorMessage = e.message ?: "投票失败",
+                                    )
+                                }
                             }
                         },
                         linkCardPreviewOverride = testOverrides?.linkCardPreview,
@@ -404,9 +452,12 @@ private fun PinContent(
     pin: DataHolder.Pin,
     isLiked: Boolean,
     likeCount: Int,
+    pollVotingOptionId: String?,
+    pollErrorMessage: String?,
     onLikeClick: () -> Unit,
     onCommentClick: () -> Unit,
     onSocialCreditClick: () -> Unit,
+    onPollVote: (pollId: String, optionId: String) -> Unit,
     linkCardPreviewOverride: PinLinkCardPreview? = null,
 ) {
     val navigator = LocalNavigator.current
@@ -533,6 +584,17 @@ private fun PinContent(
 
         // 想法正文。
         PinHtmlContent(pin.contentHtml)
+
+        val votingPoll = pin.bottomPoll?.voting
+        if (votingPoll != null) {
+            Spacer(modifier = Modifier.height(16.dp))
+            PinPollCard(
+                poll = votingPoll,
+                votingOptionId = pollVotingOptionId,
+                errorMessage = pollErrorMessage,
+                onPollVote = onPollVote,
+            )
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -694,6 +756,111 @@ private fun PinContent(
     }
 }
 
+@Composable
+private fun PinPollCard(
+    poll: DataHolder.Pin.Poll,
+    votingOptionId: String?,
+    errorMessage: String?,
+    onPollVote: (pollId: String, optionId: String) -> Unit,
+) {
+    val acceptsVote = poll.acceptsVote()
+    val showsResult = poll.isVoted || !acceptsVote
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(PIN_SCREEN_POLL_CARD_TAG),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+        ) {
+            Text(
+                text = poll.title.ifBlank { "想法投票" },
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = poll.statusText(),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            poll.options.forEach { option ->
+                if (showsResult) {
+                    PinPollResultRow(option)
+                } else {
+                    FilledTonalButton(
+                        onClick = { onPollVote(poll.id, option.id) },
+                        enabled = votingOptionId == null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag(pinScreenPollOptionTag(option.id)),
+                    ) {
+                        Text(
+                            text = option.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (votingOptionId == option.id) {
+                            Text("提交中...")
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+            if (errorMessage != null) {
+                Text(
+                    text = "投票失败: $errorMessage",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PinPollResultRow(option: DataHolder.Pin.PollOption) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(pinScreenPollOptionTag(option.id)),
+        shape = RoundedCornerShape(12.dp),
+        color = if (option.isSelected) {
+            MaterialTheme.colorScheme.primaryContainer
+        } else {
+            MaterialTheme.colorScheme.surface
+        },
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = option.title,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f),
+            )
+            if (option.isSelected) {
+                Text(
+                    text = "已选",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+            Text(
+                text = "${option.votingCount} 票",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
 private fun linkCardTypeLabel(dataContentType: String): String = when (dataContentType.lowercase()) {
     "answer" -> "回答"
     "article" -> "文章"
@@ -738,6 +905,8 @@ data class PinScreenUiState(
     val pinContent: DataHolder.Pin? = null,
     val isLiked: Boolean = false,
     val likeCount: Int = 0,
+    val pollVotingOptionId: String? = null,
+    val pollErrorMessage: String? = null,
 )
 
 data class PinLinkCardPreview(

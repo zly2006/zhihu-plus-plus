@@ -64,6 +64,7 @@ import com.github.zly2006.zhihu.util.fuckHonorService
 import com.github.zly2006.zhihu.util.saveImageToGallery
 import com.github.zly2006.zhihu.util.shareImage
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
+import com.github.zly2006.zhihu.viewmodel.SharedAndroidPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.filter.encodeBlocklistBackup
@@ -302,6 +303,9 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
         RecommendationMode.MIXED -> viewModel<MixedHomeFeedViewModel>()
     }
     val localHomeViewModel = viewModel as? LocalHomeFeedViewModel
+    val authorPollEnvironment = remember(context) {
+        SharedAndroidPaginationEnvironment(context, allowGuestAccess = false)
+    }
     val installTime = remember {
         try {
             context.packageManager.getPackageInfo(context.packageName, 0).firstInstallTime
@@ -328,6 +332,19 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
         requestLogin = {
             val intent = Intent().setClassName(context.packageName, "com.github.zly2006.zhihu.LoginActivity")
             context.startActivity(intent)
+        },
+        loadAuthorPollAnnouncements = {
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    authorPollEnvironment
+                        .fetchJson(ZHIHU_PLUS_AUTHOR_PINS_URL, "")
+                        ?.let(::decodeHomePollAnnouncements)
+                        ?: emptyList()
+                }.getOrElse { error ->
+                    Log.e("HomeScreenRuntime", "Failed to load author poll announcements", error)
+                    emptyList()
+                }
+            }
         },
         recordLocalItemOpened = { item ->
             localHomeViewModel?.onLocalItemOpened(item)

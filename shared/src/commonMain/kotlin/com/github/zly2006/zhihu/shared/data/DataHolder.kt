@@ -697,6 +697,7 @@ object DataHolder {
         val virtuals: JsonObject? = null,
         val reactionRelation: JsonObject? = null,
         val topReactions: JsonObject? = null,
+        val bottomPoll: BottomPoll? = null,
     ) : Content {
         @Serializable
         sealed interface ContentItem
@@ -725,6 +726,42 @@ object DataHolder {
             val isGif: Boolean = false,
             val originalUrl: String? = null,
         ) : ContentItem
+
+        @Serializable
+        @SerialName("poll")
+        data class ContentPoll(
+            val duration: Int = 0,
+            val pollId: Long,
+        ) : ContentItem
+
+        @Serializable
+        data class BottomPoll(
+            val voting: Poll? = null,
+            val pk: Poll? = null,
+        )
+
+        @Serializable
+        data class Poll(
+            val id: String,
+            val title: String = "",
+            val maxSelections: Int = 1,
+            val type: String = "",
+            val beginAt: Long = 0L,
+            val endAt: Long = -1L,
+            val votingCount: Int = 0,
+            val memberCount: Int = 0,
+            val isVoted: Boolean = false,
+            val isReviewing: Boolean = false,
+            val options: List<PollOption> = emptyList(),
+        )
+
+        @Serializable
+        data class PollOption(
+            val id: String,
+            val title: String = "",
+            val votingCount: Int = 0,
+            val isSelected: Boolean = false,
+        )
     }
 
     @Serializable

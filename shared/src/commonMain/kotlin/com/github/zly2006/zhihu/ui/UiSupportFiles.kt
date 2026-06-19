@@ -676,6 +676,7 @@ data class HomeScreenRuntime(
     val isDebuggable: Boolean,
     val viewModel: BaseFeedViewModel,
     val requestLogin: () -> Unit,
+    val loadAuthorPollAnnouncements: suspend () -> List<HomePollAnnouncement>,
     val recordLocalItemOpened: (FeedDisplayItem) -> Unit,
     val recordLocalItemFeedback: (FeedDisplayItem, Double) -> Boolean,
 )

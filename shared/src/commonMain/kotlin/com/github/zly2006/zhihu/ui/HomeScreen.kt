@@ -71,6 +71,7 @@ import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
+import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.shared.aigc.AIGC_MARKING_ENABLED_PREFERENCE_KEY
 import com.github.zly2006.zhihu.shared.data.Feed
@@ -113,6 +114,16 @@ const val HOME_NOTIFICATION_BUTTON_TAG = "home_notification_button"
 const val HOME_ACCOUNT_BUTTON_TAG = "home_account_button"
 const val HOME_FEED_LIST_TAG = "home_feed_list"
 const val HOME_REFRESH_BUTTON_TAG = "home_refresh_button"
+const val HOME_AUTHOR_POLL_ANNOUNCEMENT_TAG = "home_author_poll_announcement"
+
+fun homeAuthorPollAnnouncementTag(pinId: Long): String = "$HOME_AUTHOR_POLL_ANNOUNCEMENT_TAG:$pinId"
+
+private fun authorPollAnnouncementDismissedKey(announcement: HomePollAnnouncement): String =
+    "dismissAuthorPollAnnouncement_${announcement.pinId}_${announcement.pollId}"
+
+data class HomeScreenTestOverrides(
+    val pollAnnouncements: List<HomePollAnnouncement>? = null,
+)
 
 /**
  * 首页信息流页面。
@@ -123,7 +134,11 @@ const val HOME_REFRESH_BUTTON_TAG = "home_refresh_button"
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
+fun HomeScreen(
+    scrollToTopTrigger: Int,
+    innerPadding: PaddingValues,
+    testOverrides: HomeScreenTestOverrides? = null,
+) {
     val navigator = LocalNavigator.current
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = true)
     val settings = rememberSettingsStore()
@@ -154,6 +169,9 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
     }
     var showAigcMarkingAnnouncement by remember {
         mutableStateOf(!settings.getBoolean(AIGC_MARKING_ANNOUNCEMENT_DISMISSED_PREFERENCE_KEY, false))
+    }
+    var authorPollAnnouncements by remember(testOverrides?.pollAnnouncements) {
+        mutableStateOf(testOverrides?.pollAnnouncements ?: emptyList())
     }
 
     // 首次启动提示
@@ -207,6 +225,12 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
         } else if (viewModel.displayItems.isEmpty()) {
             // 只在第一次加载时刷新，这样可以避免在返回时刷新
             viewModel.refresh(paginationEnvironment)
+        }
+    }
+
+    LaunchedEffect(testOverrides) {
+        if (testOverrides?.pollAnnouncements == null) {
+            authorPollAnnouncements = runtime.loadAuthorPollAnnouncements()
         }
     }
 
@@ -468,6 +492,45 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
                                 showAigcMarkingAnnouncement = false
                             },
                         )
+                        authorPollAnnouncements.forEach { announcement ->
+                            val dismissedKey = authorPollAnnouncementDismissedKey(announcement)
+                            val visible = !settings.getBoolean(dismissedKey, false)
+                            AnnouncementCard(
+                                modifier = Modifier.testTag(homeAuthorPollAnnouncementTag(announcement.pinId)),
+                                visible = visible,
+                                title = "请给未来的知乎++提出建议",
+                                leadingIcon = { Icon(Icons.Default.Flag, contentDescription = null) },
+                                content = buildString {
+                                    append(announcement.title)
+                                    val details = buildList {
+                                        if (announcement.optionCount > 0) {
+                                            add("${announcement.optionCount} 个选项")
+                                        }
+                                        if (announcement.memberCount > 0) {
+                                            add("${announcement.memberCount} 人已参与")
+                                        }
+                                        if (announcement.isVoted) {
+                                            add("已投票")
+                                        }
+                                    }
+                                    if (details.isNotEmpty()) {
+                                        append("\n")
+                                        append(details.joinToString(" · "))
+                                    }
+                                },
+                                accept = { Text("去投票") },
+                                onAccept = {
+                                    navigator.onNavigate(Pin(announcement.pinId))
+                                },
+                                dismiss = { Text("关闭") },
+                                onDismiss = {
+                                    settings.putBoolean(dismissedKey, true)
+                                    authorPollAnnouncements = authorPollAnnouncements.filterNot {
+                                        it.pinId == announcement.pinId
+                                    }
+                                },
+                            )
+                        }
                         AnnouncementCard(
                             visible = showFilterExplainDialog,
                             title = "为什么有的内容突然消失了？",
