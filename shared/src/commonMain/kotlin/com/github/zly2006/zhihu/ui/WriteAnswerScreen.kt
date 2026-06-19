@@ -80,6 +80,7 @@ import com.github.zly2006.zhihu.editor.ZhihuImageUploadSource
 import com.github.zly2006.zhihu.editor.compileMdToZhihuHtml
 import com.github.zly2006.zhihu.editor.rememberImagePickerLauncher
 import com.github.zly2006.zhihu.editor.rememberZhihuAnswerPublisher
+import com.github.zly2006.zhihu.markdown.rememberMarkdownImageModel
 import com.github.zly2006.zhihu.markdown.zhihuHtmlToMarkdown
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
@@ -598,7 +599,7 @@ private fun WriteZhihuContentScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     AsyncImage(
-                                        model = image.url,
+                                        model = rememberMarkdownImageModel(image.url),
                                         contentDescription = "想法图片 ${index + 1}",
                                         contentScale = ContentScale.Crop,
                                         modifier =
