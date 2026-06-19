@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.latex.rememberLatexFonts
+import com.github.zly2006.zhihu.shared.data.toCookieHeaderString
 import com.github.zly2006.zhihu.util.saveImageToGallery
 import com.github.zly2006.zhihu.util.shareImage
 import com.hrm.latex.renderer.font.MathFont
@@ -38,4 +39,13 @@ actual fun rememberMarkdownRuntime(): MarkdownRuntime {
 
         override suspend fun shareMarkdownImage(url: String) = shareImage(context, httpClient, url)
     }
+}
+
+@Composable
+actual fun rememberMarkdownImageRequestHeaders(): MarkdownImageRequestHeaders {
+    val userAgent = AccountData.data.userAgent
+    return MarkdownImageRequestHeaders(
+        cookieHeader = AccountData.data.cookies.toCookieHeaderString(),
+        userAgent = userAgent,
+    )
 }

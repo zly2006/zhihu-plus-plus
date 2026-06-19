@@ -75,6 +75,7 @@ import com.github.zly2006.zhihu.ui.components.SegmentActionSheetState
 import com.github.zly2006.zhihu.ui.subscreens.PREF_BLOCK_SPACING
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
+import com.hrm.markdown.parser.ast.Document
 import com.hrm.markdown.renderer.Markdown
 import com.hrm.markdown.renderer.MarkdownImageData
 import com.hrm.markdown.renderer.MarkdownTheme
@@ -108,7 +109,7 @@ fun RenderImage(
         contentAlignment = Alignment.Center,
     ) {
         AsyncImage(
-            model = data.url,
+            model = rememberMarkdownImageModel(data.url),
             contentDescription = data.altText,
             modifier = modifier
                 .fillMaxWidth(0.8f)
@@ -195,7 +196,7 @@ fun RenderVideoBox(
     ) {
         if (thumbnailUrl != null) {
             AsyncImage(
-                model = thumbnailUrl,
+                model = rememberMarkdownImageModel(thumbnailUrl),
                 contentDescription = "视频封面",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
@@ -251,6 +252,49 @@ fun RenderMarkdown(
     footer: (@Composable () -> Unit)? = null,
 ) {
     val document = remember(html) { htmlToMdAst(html) }
+    RenderMarkdownDocument(
+        document = document,
+        modifier = modifier,
+        scrollState = scrollState,
+        selectable = selectable,
+        enableScroll = enableScroll,
+        header = header,
+        footer = footer,
+    )
+}
+
+@Composable
+fun RenderMarkdownText(
+    markdown: String,
+    modifier: Modifier = Modifier,
+    scrollState: ScrollState = rememberScrollState(),
+    selectable: Boolean = true,
+    enableScroll: Boolean = true,
+    header: (@Composable () -> Unit)? = null,
+    footer: (@Composable () -> Unit)? = null,
+) {
+    val document = remember(markdown) { markdownToMdAst(markdown) }
+    RenderMarkdownDocument(
+        document = document,
+        modifier = modifier,
+        scrollState = scrollState,
+        selectable = selectable,
+        enableScroll = enableScroll,
+        header = header,
+        footer = footer,
+    )
+}
+
+@Composable
+private fun RenderMarkdownDocument(
+    document: Document,
+    modifier: Modifier,
+    scrollState: ScrollState,
+    selectable: Boolean,
+    enableScroll: Boolean,
+    header: (@Composable () -> Unit)?,
+    footer: (@Composable () -> Unit)?,
+) {
     val imageUrls = remember(document) { document.previewImageUrls() }
     val navigator = LocalNavigator.current
     val runtime = rememberMarkdownRuntime()

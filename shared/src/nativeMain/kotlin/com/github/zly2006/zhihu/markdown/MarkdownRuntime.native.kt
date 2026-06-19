@@ -19,6 +19,8 @@ package com.github.zly2006.zhihu.markdown
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import com.github.zly2006.zhihu.shared.account.IosAccountStore
+import com.github.zly2006.zhihu.shared.data.toCookieHeaderString
 import com.hrm.latex.renderer.font.MathFont
 
 @Composable
@@ -31,3 +33,13 @@ actual fun rememberMarkdownRuntime(): MarkdownRuntime = remember {
         override suspend fun shareMarkdownImage(url: String) = Unit // TODO: iOS 分享Markdown图片
     }
 } // TODO: iOS Markdown 运行时完整实现
+
+@Composable
+actual fun rememberMarkdownImageRequestHeaders(): MarkdownImageRequestHeaders {
+    val store = remember { IosAccountStore() }
+    val session = remember(store) { store.load() }
+    return MarkdownImageRequestHeaders(
+        cookieHeader = session.cookies.toCookieHeaderString(),
+        userAgent = session.userAgent,
+    )
+}
