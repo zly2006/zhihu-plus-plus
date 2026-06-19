@@ -98,6 +98,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 /**
  * 知乎日报页面。
@@ -509,7 +510,7 @@ private fun resolveViewingDate(
 }
 
 private fun formatDailyDatePickerSelection(millis: Long): String {
-    val date = kotlin.time.Instant
+    val date = Instant
         .fromEpochMilliseconds(millis)
         .toLocalDateTime(TimeZone.currentSystemDefault())
         .date
@@ -526,12 +527,12 @@ private suspend fun fetchDailyStoryDestination(
         .get("https://daily.zhihu.com/api/7/story/$storyId")
         .body()
     val body = response["body"]?.jsonPrimitive?.content ?: return@withContext null
-    val url = Ksoup
+    return@withContext Ksoup
         .parse(body)
         .selectFirst("div.view-more")
         ?.selectFirst("a")
         ?.attr("href")
-    url?.let(::resolveContent)
+        ?.let(::resolveContent)
 }
 
 private const val DAILY_SCREEN_TITLE_TAG = "daily_screen_title"
