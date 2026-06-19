@@ -44,7 +44,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.asApiEnvironment
 import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.data.ZHIHU_ME_URL
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
@@ -90,6 +89,7 @@ private const val QR_SCAN_RESULT_EXTRA = "scan_result"
 @Composable
 actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
     val context = LocalContext.current
+    val requestMainTabSelection = LocalMainTabSelectionRequester.current
     val accountDataState = AccountData.asState()
     val scanActivityLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult(),
@@ -127,7 +127,7 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
         },
         logout = { AccountData.delete(context) },
         appVersionInfo = { context.zhihuVersionInfo() },
-        selectMainTab = { destination -> context.navigateMainTab(destination) },
+        selectMainTab = requestMainTabSelection,
     )
 }
 
@@ -151,24 +151,6 @@ private fun Context.zhihuVersionInfo(): String {
         ?: if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) "debug" else "release"
     val gitHash = metaData?.getString("com.github.zly2006.zhihu.GIT_HASH") ?: "unknown"
     return "$versionName $buildType, $gitHash"
-}
-
-private fun Context.navigateMainTab(destination: TopLevelDestination) {
-    val activity = findActivity() ?: return
-    activity
-        .javaClass
-        .methods
-        .firstOrNull { method ->
-            method.name == "navigateMainTab" &&
-                method.parameterTypes.size == 1 &&
-                method.parameterTypes.first().isAssignableFrom(destination::class.java)
-        }?.invoke(activity, destination)
-}
-
-private fun Context.findActivity(): android.app.Activity? = when (this) {
-    is android.app.Activity -> this
-    is ContextWrapper -> baseContext.findActivity()
-    else -> null
 }
 
 @Composable

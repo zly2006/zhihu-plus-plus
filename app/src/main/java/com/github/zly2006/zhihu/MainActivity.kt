@@ -54,7 +54,6 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionContent
 import com.github.zly2006.zhihu.navigation.History
-import com.github.zly2006.zhihu.navigation.Home
 import com.github.zly2006.zhihu.navigation.MainTabs
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Notification
@@ -516,7 +515,6 @@ class MainActivity :
             return
         }
         if (route == MainTabs) {
-            mainTabNavigationTarget = Home
             navigateToMainTabs()
             return
         }
@@ -570,6 +568,12 @@ class MainActivity :
         }
     }
 
+    /**
+     * 请求主壳在 [MainTabs] 内切换顶层目标。
+     *
+     * 这里更新的是壳层 tab 选择状态，不是把目标补成新的独立 route；目标若当前被底部栏隐藏，
+     * 也应继续由 [com.github.zly2006.zhihu.ui.ZhihuMain] 决定如何在主 pager 中承载。
+     */
     fun navigateMainTab(destination: TopLevelDestination) {
         mainTabNavigationTarget = destination
         navigateToMainTabs()

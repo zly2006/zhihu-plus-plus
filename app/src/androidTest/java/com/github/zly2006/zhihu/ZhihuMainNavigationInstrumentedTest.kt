@@ -46,6 +46,7 @@ import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setZhihuMainContent
+import com.github.zly2006.zhihu.ui.ONLINE_HISTORY_OVERFLOW_TAG
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.START_DESTINATION_PREFERENCE_KEY
@@ -218,8 +219,9 @@ class ZhihuMainNavigationInstrumentedTest {
             composeRule.activity.navigate(MainTabs, popup = true)
         }
 
-        composeRule.waitUntilTabSelected("nav_tab_daily")
-        composeRule.onNodeWithTag("nav_tab_daily").assertIsSelected()
+        composeRule.waitUntilTextSelected("推荐")
+        composeRule.onNodeWithTag("nav_tab_follow").assertIsSelected()
+        composeRule.onNodeWithText("推荐").assertIsSelected()
         composeRule.onNodeWithTag("nav_tab_home").assertDoesNotExist()
 
         composeRule.activity.runOnUiThread {
@@ -228,6 +230,38 @@ class ZhihuMainNavigationInstrumentedTest {
 
         composeRule.waitUntilTabSelected("nav_tab_follow")
         composeRule.onNodeWithTag("nav_tab_follow").assertIsSelected()
+    }
+
+    @Test
+    fun hiddenHistorySelection_staysInsideMainTabsWithoutRevivingHiddenBottomTab() {
+        // Hidden history still belongs to the main shell. Selecting it should surface the history
+        // page inside MainTabs while keeping the hidden bottom-bar item hidden.
+        composeRule.launchZhihuMain(
+            startDestination = Home.name,
+            bottomBarItems = linkedSetOf(Home.name, Follow.name, Daily.name, Account.name),
+        )
+
+        composeRule.waitUntilTabSelected("nav_tab_home")
+        composeRule.onNodeWithTag("nav_tab_onlinehistory").assertDoesNotExist()
+
+        composeRule.activity.runOnUiThread {
+            composeRule.activity.navigateMainTab(OnlineHistory)
+        }
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.activity.mainTabNavigationTarget == null &&
+                composeRule
+                    .onAllNodes(hasTestTag(ONLINE_HISTORY_OVERFLOW_TAG))
+                    .fetchSemanticsNodes()
+                    .isNotEmpty()
+        }
+
+        composeRule.onNodeWithTag(ONLINE_HISTORY_OVERFLOW_TAG).assertIsDisplayed()
+        composeRule.onNodeWithTag("nav_tab_onlinehistory").assertDoesNotExist()
+        composeRule.onNodeWithTag("nav_tab_home").assertIsNotSelected()
+        composeRule.onNodeWithTag("nav_tab_follow").assertIsNotSelected()
+        composeRule.onNodeWithTag("nav_tab_daily").assertIsNotSelected()
+        composeRule.onNodeWithTag("nav_tab_account").assertIsNotSelected()
     }
 
     @Test

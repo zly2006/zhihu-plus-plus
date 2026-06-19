@@ -26,6 +26,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -164,7 +165,6 @@ fun DesktopZhihuMain() {
                 }
             }
             MainTabs -> {
-                mainTabNavigationTarget = Home
                 navigateToMainTabs()
             }
             else -> {
@@ -184,55 +184,62 @@ fun DesktopZhihuMain() {
         }
     }
 
-    ZhihuMain(
-        navController = navController,
-        navigationState = ZhihuMainNavigationState(
-            mainTabNavigationTarget = mainTabNavigationTarget,
-            navigate = ::navigate,
-            setCurrentMainTabOpenFrom = { currentMainTabOpenFrom = it },
-            consumeMainTabNavigationTarget = { destination ->
-                if (mainTabNavigationTarget == destination) {
-                    mainTabNavigationTarget = null
-                }
-            },
-        ),
-        preferenceState = rememberDesktopZhihuMainPreferenceState(),
-        isDarkTheme = ThemeManager.isDarkTheme(),
-        platformAdapter = ZhihuMainPlatformAdapter(
-            articleEnterTransition = {
-                when (desktopArticleAnswerSwitchState.answerTransitionDirection) {
-                    ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
-                        slideInVertically(tween(300)) { it } + fadeIn(tween(300))
-                    ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
-                        slideInVertically(tween(300)) { -it } + fadeIn(tween(300))
-                    ArticleAnswerTransitionDirection.HORIZONTAL_NEXT ->
-                        slideInHorizontally(tween(300)) { it } + fadeIn(tween(300))
-                    ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
-                        slideInHorizontally(tween(300)) { -it } + fadeIn(tween(300))
-                    else -> slideInHorizontally(tween(300)) { it }
-                }
-            },
-            articleExitTransition = {
-                when (desktopArticleAnswerSwitchState.answerTransitionDirection) {
-                    ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
-                        slideOutVertically(tween(300)) { -it } + fadeOut(tween(300))
-                    ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
-                        slideOutVertically(tween(300)) { it } + fadeOut(tween(300))
-                    ArticleAnswerTransitionDirection.HORIZONTAL_NEXT ->
-                        slideOutHorizontally(tween(300)) { -it } + fadeOut(tween(300))
-                    ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
-                        slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
-                    else -> ExitTransition.None
-                }
-            },
-            article = { article: Article, navEntry ->
-                val articleViewModel: ArticleViewModel = viewModel(navEntry) {
-                    ArticleViewModel(article, httpClient, userMessages)
-                }
-                ArticleScreen(article, articleViewModel)
-            },
-        ),
-    )
+    CompositionLocalProvider(
+        LocalMainTabSelectionRequester provides { destination ->
+            mainTabNavigationTarget = destination
+            navigateToMainTabs()
+        },
+    ) {
+        ZhihuMain(
+            navController = navController,
+            navigationState = ZhihuMainNavigationState(
+                mainTabNavigationTarget = mainTabNavigationTarget,
+                navigate = ::navigate,
+                setCurrentMainTabOpenFrom = { currentMainTabOpenFrom = it },
+                consumeMainTabNavigationTarget = { destination ->
+                    if (mainTabNavigationTarget == destination) {
+                        mainTabNavigationTarget = null
+                    }
+                },
+            ),
+            preferenceState = rememberDesktopZhihuMainPreferenceState(),
+            isDarkTheme = ThemeManager.isDarkTheme(),
+            platformAdapter = ZhihuMainPlatformAdapter(
+                articleEnterTransition = {
+                    when (desktopArticleAnswerSwitchState.answerTransitionDirection) {
+                        ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
+                            slideInVertically(tween(300)) { it } + fadeIn(tween(300))
+                        ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
+                            slideInVertically(tween(300)) { -it } + fadeIn(tween(300))
+                        ArticleAnswerTransitionDirection.HORIZONTAL_NEXT ->
+                            slideInHorizontally(tween(300)) { it } + fadeIn(tween(300))
+                        ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
+                            slideInHorizontally(tween(300)) { -it } + fadeIn(tween(300))
+                        else -> slideInHorizontally(tween(300)) { it }
+                    }
+                },
+                articleExitTransition = {
+                    when (desktopArticleAnswerSwitchState.answerTransitionDirection) {
+                        ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
+                            slideOutVertically(tween(300)) { -it } + fadeOut(tween(300))
+                        ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
+                            slideOutVertically(tween(300)) { it } + fadeOut(tween(300))
+                        ArticleAnswerTransitionDirection.HORIZONTAL_NEXT ->
+                            slideOutHorizontally(tween(300)) { -it } + fadeOut(tween(300))
+                        ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
+                            slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
+                        else -> ExitTransition.None
+                    }
+                },
+                article = { article: Article, navEntry ->
+                    val articleViewModel: ArticleViewModel = viewModel(navEntry) {
+                        ArticleViewModel(article, httpClient, userMessages)
+                    }
+                    ArticleScreen(article, articleViewModel)
+                },
+            ),
+        )
+    }
 }
 
 /**

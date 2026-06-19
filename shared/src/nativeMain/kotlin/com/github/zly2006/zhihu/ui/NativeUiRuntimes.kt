@@ -144,7 +144,8 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
 @Composable
 actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
     val userMessages = rememberUserMessageSink()
-    return remember(userMessages) {
+    val requestMainTabSelection = LocalMainTabSelectionRequester.current
+    return remember(userMessages, requestMainTabSelection) {
         AccountSettingsRuntime(
             accountState = mutableStateOf(AccountSettingsAccountState()),
             refreshProfile = { }, // TODO: iOS 刷新用户信息
@@ -152,7 +153,7 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
             requestQrLoginScan = { userMessages.showMessage("iOS 扫码登录暂未实现") }, // TODO: iOS 扫码登录
             logout = { }, // TODO: iOS 登出
             appVersionInfo = { "iOS" },
-            selectMainTab = { }, // TODO: iOS 主 Tab 切换
+            selectMainTab = requestMainTabSelection,
         )
     }
 }

@@ -65,6 +65,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -117,6 +118,7 @@ import com.github.zly2006.zhihu.ui.subscreens.ContentFilterSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.DeveloperSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.OpenSourceLicensesScreen
 import com.github.zly2006.zhihu.ui.subscreens.SystemAndUpdateSettingsScreen
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.reflect.KClass
 import kotlin.reflect.typeOf
@@ -144,6 +146,27 @@ private sealed class MainTabPage(
     data object AccountPage : MainTabPage(Account, "account")
 }
 
+private val topLevelDestinationsInOrder: List<TopLevelDestination> = listOf(
+    Home,
+    Follow,
+    HotList,
+    Daily,
+    OnlineHistory,
+    MyCollections,
+    Account,
+)
+
+private fun mainTabPagesForDestination(destination: TopLevelDestination): List<MainTabPage> = when (destination) {
+    Home -> listOf(MainTabPage.HomePage)
+    Follow -> listOf(MainTabPage.FollowRecommendPage, MainTabPage.FollowDynamicPage)
+    HotList -> listOf(MainTabPage.HotListPage)
+    Daily -> listOf(MainTabPage.DailyPage)
+    OnlineHistory -> listOf(MainTabPage.OnlineHistoryPage)
+    MyCollections -> listOf(MainTabPage.MyCollectionsPage)
+    Account -> listOf(MainTabPage.AccountPage)
+    else -> emptyList()
+}
+
 /**
  * 共享主壳使用的平台适配层。
  *
@@ -167,6 +190,8 @@ data class ZhihuMainPlatformAdapter(
  * 这个 composable 是顶层体验的唯一所有者：渲染可配置底部导航栏，承载横向主 tab pager，向子页面提供 [LocalNavigator]，
  * 并注册跨平台共享的 typed [NavDestination] route。设计上把顶层 tab 收在 [MainTabs] 内部，而不是把每个 tab
  * 都作为独立 NavHost 页面 push，这样 tab 重选、回到顶部、顶/底栏自动隐藏和持久化 tab 选择都能使用同一套状态模型。
+ * 当某个顶层目标当前被底部栏隐藏时，主壳也应该自己决定是否临时把对应页放回 pager，而不是退化成跳去别的 tab
+ * 或额外补一个同名 route。
  *
  * 用户可见的主壳设置通过 [preferenceState] 流入。设置页退出时只 reload 这份状态，不重建 NavHost，从而在应用底栏和主题相关变更时
  * 保留已加载页面、返回栈和滚动位置。
@@ -231,40 +256,57 @@ fun ZhihuMain(
         allBottomBarItems.firstOrNull { it.first.name == key }
     }
 
-    val mainTabPages = remember(bottomBarItems) {
-        bottomBarItems.flatMap { item ->
-            when (item.first) {
-                Home -> listOf(MainTabPage.HomePage)
-                Follow -> listOf(MainTabPage.FollowRecommendPage, MainTabPage.FollowDynamicPage)
-                HotList -> listOf(MainTabPage.HotListPage)
-                Daily -> listOf(MainTabPage.DailyPage)
-                OnlineHistory -> listOf(MainTabPage.OnlineHistoryPage)
-                MyCollections -> listOf(MainTabPage.MyCollectionsPage)
-                Account -> listOf(MainTabPage.AccountPage)
-                else -> emptyList()
+    val mainTabNavigationTarget = navigationState.mainTabNavigationTarget
+    var currentMainTabDestination by remember { mutableStateOf(startDestination) }
+    val supplementalMainTabDestinations: List<TopLevelDestination> = remember(
+        bottomBarItems,
+        currentMainTabDestination,
+        mainTabNavigationTarget,
+    ) {
+        buildList<TopLevelDestination> {
+            if (bottomBarItems.none { it.first::class == currentMainTabDestination::class }) {
+                add(currentMainTabDestination)
             }
+            mainTabNavigationTarget
+                ?.takeIf { destination ->
+                    bottomBarItems.none { it.first::class == destination::class } &&
+                        none { supplementalDestination -> supplementalDestination::class == destination::class }
+                }?.let { destination ->
+                    add(destination)
+                }
         }
     }
+    val mainTabPages: List<MainTabPage> = remember(bottomBarItems, supplementalMainTabDestinations) {
+        topLevelDestinationsInOrder
+            .filter { destination ->
+                bottomBarItems.any { it.first::class == destination::class } ||
+                    supplementalMainTabDestinations.any { supplementalDestination ->
+                        supplementalDestination::class == destination::class
+                    }
+            }.flatMap { destination ->
+                mainTabPagesForDestination(destination)
+            }
+    }
 
-    fun pageIndexForDestination(destination: TopLevelDestination): Int = mainTabPages
+    fun pageIndexForDestination(destination: TopLevelDestination): Int? = mainTabPages
         .indexOfFirst {
             it.bottomDestination::class == destination::class
-        }.takeIf { it >= 0 } ?: mainTabPages
-        .indexOfFirst {
-            it.bottomDestination::class == startDestination::class
-        }.takeIf { it >= 0 } ?: 0
+        }.takeIf { it >= 0 }
+
+    fun fallbackPageIndex(destination: TopLevelDestination): Int = pageIndexForDestination(destination)
+        ?: pageIndexForDestination(startDestination)
+        ?: 0
 
     var lastFollowPageKey by rememberSaveable { mutableStateOf(MainTabPage.FollowRecommendPage.key) }
     val mainPagerState = rememberPagerState(
-        initialPage = pageIndexForDestination(startDestination),
+        initialPage = fallbackPageIndex(startDestination),
         pageCount = { mainTabPages.size },
     )
     val coroutineScope = rememberCoroutineScope()
 
     fun currentMainTabPage(): MainTabPage? = mainTabPages.getOrNull(mainPagerState.currentPage)
-    var currentMainTabDestination by remember { mutableStateOf(startDestination) }
 
-    fun pageIndexForBottomDestination(destination: TopLevelDestination): Int {
+    fun pageIndexForBottomDestination(destination: TopLevelDestination): Int? {
         if (destination == Follow) {
             val rememberedFollowPage = mainTabPages.indexOfFirst { it.key == lastFollowPageKey }
             if (rememberedFollowPage >= 0) return rememberedFollowPage
@@ -273,7 +315,7 @@ fun ZhihuMain(
     }
 
     fun navigateTopLevel(destination: TopLevelDestination) {
-        val targetPage = pageIndexForBottomDestination(destination)
+        val targetPage = pageIndexForBottomDestination(destination) ?: return
         coroutineScope.launch {
             mainPagerState.animateScrollToPage(targetPage)
         }
@@ -290,12 +332,25 @@ fun ZhihuMain(
         }
     }
 
-    val mainTabNavigationTarget = navigationState.mainTabNavigationTarget
     LaunchedEffect(mainTabNavigationTarget, mainTabPages) {
         mainTabNavigationTarget?.let { destination ->
             // 平台适配层会把旧的顶层 route 请求映射到 MainTabs。这里消费该请求，
             // 让 deeplink 等调用方仍能选中 Home/Follow 等 tab，而不是把旧 route 压入返回栈。
-            mainPagerState.scrollToPage(pageIndexForBottomDestination(destination))
+            val targetPage = pageIndexForBottomDestination(destination) ?: return@let
+            mainPagerState.scrollToPage(targetPage)
+            snapshotFlow {
+                Triple(
+                    mainPagerState.currentPage,
+                    currentMainTabPage()?.bottomDestination?.let { it::class },
+                    mainPagerState.isScrollInProgress,
+                )
+            }.first { (currentPage, settledDestinationClass, isScrollInProgress) ->
+                currentPage == targetPage &&
+                    settledDestinationClass == destination::class &&
+                    !isScrollInProgress
+            }
+            currentMainTabDestination = destination
+            navigationState.setCurrentMainTabOpenFrom(destination.openFrom)
             navigationState.consumeMainTabNavigationTarget(destination)
         }
     }
@@ -310,7 +365,7 @@ fun ZhihuMain(
             } else {
                 startDestination
             }
-            val targetPage = pageIndexForDestination(targetDestination)
+            val targetPage = fallbackPageIndex(targetDestination)
             if (mainPagerState.currentPage != targetPage || mainPagerState.currentPage !in mainTabPages.indices) {
                 mainPagerState.scrollToPage(targetPage)
             }
@@ -472,9 +527,6 @@ fun ZhihuMain(
                 }
                 composable<History> {
                     LegacyLocalHistoryScreen(innerPadding)
-                }
-                composable<OnlineHistory> {
-                    OnlineHistoryScreen()
                 }
                 composable<Account> {
                     AccountSettingScreen(innerPadding)

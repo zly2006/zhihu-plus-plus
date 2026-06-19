@@ -20,6 +20,7 @@ package com.github.zly2006.zhihu.test
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.junit4.AndroidComposeTestRule
 import androidx.compose.ui.test.performTouchInput
@@ -88,8 +89,12 @@ fun MainActivityComposeRule.setZhihuMainContent() {
     activity.setContent { }
     waitForIdle()
     activity.setContent {
+        val navController = rememberNavController()
         ZhihuTheme {
-            AndroidZhihuMain(navController = rememberNavController())
+            SideEffect {
+                activity.navController = navController
+            }
+            AndroidZhihuMain(navController = navController)
         }
     }
     waitForIdle()
