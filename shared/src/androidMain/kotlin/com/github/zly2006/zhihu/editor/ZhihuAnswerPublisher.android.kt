@@ -22,13 +22,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.decodeArticleContentDetail
+import com.github.zly2006.zhihu.data.asApiEnvironment
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.zhihuQuestionRelationshipUrl
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.util.raiseForStatus
 import com.github.zly2006.zhihu.util.signFetchRequest
+import com.github.zly2006.zhihu.viewmodel.fetchContentDetail
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.header
@@ -38,7 +39,6 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
 import java.util.UUID
 
 @Composable
@@ -85,36 +85,15 @@ private class AndroidZhihuAnswerPublisher(
     }
 
     override suspend fun fetchAnswerForEditing(answerId: Long): ExistingAnswerForEditing? {
-        val url =
-            "https://www.zhihu.com/api/v4/answers/$answerId?include=" +
-                "is_visible,paid_info,paid_info_content,has_column,admin_closed_comment," +
-                "reward_info,annotation_action,annotation_detail,collapse_reason,is_normal," +
-                "is_sticky,collapsed_by,suggest_edit,comment_count,thanks_count," +
-                "favlists_count,can_comment,content,editable_content,voteup_count," +
-                "reshipment_settings,comment_permission,created_time,updated_time," +
-                "review_info,relevant_info,question,excerpt,attachment,content_source," +
-                "is_labeled,endorsements,reaction_instruction,ip_info,relationship.is_authorized," +
-                "voting,is_thanked,is_author,is_nothelp,is_favorited,pagination_info," +
-                "question.topics,reaction.relation.voting,author.badge_v2," +
-                "settings.table_of_contents.enabled"
-        return runCatching {
-            val json = AccountData
-                .httpClient(context)
-                .get(url) {
-                    signFetchRequest()
-                }.raiseForStatus(dumpRequest = true)
-                .body<JsonObject>()
-            val answer = decodeArticleContentDetail(
-                article = Article(type = ArticleType.Answer, id = answerId),
-                json = json,
-            ) as? DataHolder.Answer ?: return null
-            val html = answer.editableContent ?: answer.content
-            ExistingAnswerForEditing(
-                answerId = answerId,
-                html = html,
-                tocEnabled = answer.settings?.tableOfContents?.enabled ?: false,
-            )
-        }.getOrThrow()
+        val environment = context.asApiEnvironment()
+        val destination = Article(type = ArticleType.Answer, id = answerId)
+        val answer = environment.fetchContentDetail(destination) as? DataHolder.Answer ?: return null
+        val html = answer.editableContent ?: answer.content
+        return ExistingAnswerForEditing(
+            answerId = answerId,
+            html = html,
+            tocEnabled = answer.settings?.tableOfContents?.enabled ?: false,
+        )
     }
 
     override suspend fun uploadImage(bytes: ByteArray, mimeType: String?, fileName: String?): UploadedZhihuImage =

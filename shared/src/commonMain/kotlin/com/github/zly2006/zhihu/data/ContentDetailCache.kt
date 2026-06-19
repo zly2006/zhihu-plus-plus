@@ -118,7 +118,7 @@ object ContentDetailCache {
 fun zhihuContentDetailUrl(destination: NavDestination): String? = when (destination) {
     is Article -> when (destination.type) {
         ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${destination.id}?include=content,topics,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,relationship,ip_info,relationship.vote,author.badge_v2"
-        ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${destination.id}?include=content,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,attachment,reaction,ip_info,pagination_info,question.topics,reaction.relation.voting,author.badge_v2"
+        ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${destination.id}?include=content,editable_content,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,attachment,reaction,ip_info,pagination_info,question.topics,reaction.relation.voting,author.badge_v2"
     }
     is Question -> "https://www.zhihu.com/api/v4/questions/${destination.questionId}?include=read_count,visit_count,answer_count,voteup_count,comment_count,follower_count,detail,excerpt,author,relationship.is_following,topics"
     is Pin -> "https://www.zhihu.com/api/v4/pins/${destination.id}?include=topics"
