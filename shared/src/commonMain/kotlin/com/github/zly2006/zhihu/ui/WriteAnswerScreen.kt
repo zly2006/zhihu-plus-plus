@@ -70,6 +70,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.github.zly2006.zhihu.editor.UnknownImageFormatException
 import com.github.zly2006.zhihu.editor.compileMdToZhihuHtml
 import com.github.zly2006.zhihu.editor.rememberImagePickerLauncher
 import com.github.zly2006.zhihu.editor.rememberZhihuAnswerPublisher
@@ -223,7 +224,11 @@ fun WriteAnswerScreen(
                 content = content.insertTextAtSelection(snippet)
                 userMessages.showShortMessage("图片已插入")
             }.onFailure { e ->
-                errorDialogMessage = buildErrorDialogMessage("插入图片失败", e)
+                if (e is UnknownImageFormatException) {
+                    userMessages.showShortMessage(e.message ?: "无法识别图片格式，已取消上传")
+                } else {
+                    errorDialogMessage = buildErrorDialogMessage("插入图片失败", e)
+                }
             }
             isUploadingImage = false
         }

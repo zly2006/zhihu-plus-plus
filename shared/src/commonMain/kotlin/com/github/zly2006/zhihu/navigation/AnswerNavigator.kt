@@ -84,9 +84,6 @@ fun zhihuQuestionFeedsUrl(
         }
     }
 
-fun zhihuQuestionRelationshipUrl(questionId: Long): String =
-    "https://api.zhihu.com/questions/$questionId?include=relationship,relationship.my_answer"
-
 /**
  * 回答导航器：封装回答切换的来源、历史记录和预取逻辑。
  *

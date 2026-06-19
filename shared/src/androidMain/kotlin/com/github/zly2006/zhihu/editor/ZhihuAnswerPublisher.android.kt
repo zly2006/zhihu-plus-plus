@@ -25,7 +25,6 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.asApiEnvironment
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
-import com.github.zly2006.zhihu.navigation.zhihuQuestionRelationshipUrl
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.util.raiseForStatus
 import com.github.zly2006.zhihu.util.signFetchRequest
@@ -48,6 +47,9 @@ actual fun rememberZhihuAnswerPublisher(): ZhihuAnswerPublisher {
         AndroidZhihuAnswerPublisher(context)
     }
 }
+
+private fun zhihuQuestionRelationshipUrl(questionId: Long): String =
+    "https://api.zhihu.com/questions/$questionId?include=relationship,relationship.my_answer"
 
 private class AndroidZhihuAnswerPublisher(
     private val context: Context,

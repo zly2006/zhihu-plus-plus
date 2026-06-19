@@ -56,8 +56,11 @@ class ZhihuImageUploader(
     private val userAgent: String,
 ) {
     suspend fun upload(bytes: ByteArray, mimeType: String?, fileName: String?): UploadedZhihuImage {
-        val contentType = mimeType?.takeIf { it.startsWith("image/") } ?: guessMimeTypeFromFileName(fileName) ?: "image/png"
+        val contentType = mimeType?.takeIf { it.startsWith("image/") }
+            ?: guessMimeTypeFromFileName(fileName)
+            ?: throw UnknownImageFormatException()
         val ext = guessExtension(contentType, fileName)
+            ?: throw UnknownImageFormatException()
         val (rawWidth, rawHeight) = decodeImageSize(bytes)
         val md5Hex = md5Hex(bytes)
         return runCatching {
@@ -467,14 +470,26 @@ private fun guessMimeTypeFromFileName(fileName: String?): String? = when {
     else -> null
 }
 
-private fun guessExtension(mimeType: String, fileName: String?): String = when {
-    fileName?.substringAfterLast('.', "")?.isNotBlank() == true ->
-        fileName.substringAfterLast('.').lowercase()
-    mimeType.equals("image/png", ignoreCase = true) -> "png"
-    mimeType.equals("image/jpeg", ignoreCase = true) -> "jpg"
-    mimeType.equals("image/gif", ignoreCase = true) -> "gif"
-    mimeType.equals("image/webp", ignoreCase = true) -> "webp"
-    else -> "png"
+private fun guessExtension(mimeType: String, fileName: String?): String? {
+    val extFromName = fileName
+        ?.substringAfterLast('.', "")
+        ?.takeIf { it.isNotBlank() }
+        ?.lowercase()
+    return when (extFromName) {
+        "png" -> "png"
+        "jpg", "jpeg" -> "jpg"
+        "gif" -> "gif"
+        "webp" -> "webp"
+        null -> when {
+            mimeType.equals("image/png", ignoreCase = true) -> "png"
+            mimeType.equals("image/jpeg", ignoreCase = true) -> "jpg"
+            mimeType.equals("image/gif", ignoreCase = true) -> "gif"
+            mimeType.equals("image/webp", ignoreCase = true) -> "webp"
+            else -> null
+        }
+
+        else -> null
+    }
 }
 
 private fun normalizeZhihuImageUrl(rawUrl: String, ext: String): String {
