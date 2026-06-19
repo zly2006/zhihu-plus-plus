@@ -21,26 +21,27 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.github.zly2006.zhihu.shared.data.DailySection
-import com.github.zly2006.zhihu.shared.data.DailyStory
+import com.github.zly2006.zhihu.test.InstrumentedTestEnvironment
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
+import com.github.zly2006.zhihu.test.ZhihuMockApi
 import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.DailyScreen
-import com.github.zly2006.zhihu.ui.DailyScreenUiState
-import org.junit.Assert.assertTrue
+import io.ktor.http.HttpMethod
+import kotlinx.coroutines.CompletableDeferred
+import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.util.concurrent.atomic.AtomicReference
 
 @RunWith(AndroidJUnit4::class)
 class DailyScreenInstrumentedTest {
@@ -50,131 +51,196 @@ class DailyScreenInstrumentedTest {
     @Before
     fun setUp() {
         composeRule.resetAppPreferences()
+        ZhihuMockApi.install(enabled = true)
+        ZhihuMockApi.reset()
+    }
+
+    @After
+    fun tearDown() {
+        ZhihuMockApi.install(enabled = InstrumentedTestEnvironment.isMockMode())
     }
 
     @Test
-    fun loadingStateStillShowsTitleAndDatePickerEntryOffline() {
-        // This screen test must stay completely offline, so it injects a loading-only UI snapshot
-        // instead of allowing DailyViewModel to fetch Zhihu Daily content.
+    fun latestAndLoadMoreRenderThroughMockHttp() {
+        // This test keeps DailyScreen offline by mocking the HTTP layer while still exercising
+        // DailyViewModel.loadLatest() and loadMore().
         // Expected behavior:
-        // 1. The toolbar title remains visible even while the body is still loading.
-        // 2. The date picker entry point is present and clickable in loading state.
-        // 3. Confirming the dialog routes through the test seam and returns a yyyyMMdd string
-        //    rather than touching the real daily API.
-        // 4. The loading copy remains visible after the dialog is dismissed.
-        val selectedDate = AtomicReference<String?>(null)
+        // 1. The latest-story endpoint populates the first daily section through the production
+        //    ViewModel fetch path.
+        // 2. Scrolling near the tail requests the previous section through the real load-more path.
+        // 3. Swipe cycles keep the loaded list, toolbar, and stable row tags intact.
+        mockLatest(date = "20260418", storyIds = 1..12)
+        mockBefore(apiDate = "20260418", responseDate = "20260417", storyIds = 13..24)
+
         composeRule.setScreenContent {
-            DailyScreen(
-                testState = DailyScreenUiState(isLoading = true),
-                onTestDateSelected = selectedDate::set,
-            )
+            DailyScreen()
         }
 
+        composeRule.waitUntilTagExists(LIST_TAG)
         composeRule.onNodeWithTag(TITLE_TAG).assertIsDisplayed()
         composeRule.onNodeWithText("知乎日报").assertIsDisplayed()
-        composeRule.onNodeWithTag(DATE_PICKER_BUTTON_TAG).assertIsDisplayed().performClick()
-        composeRule.onNodeWithText("确认").assertIsDisplayed().performClick()
-
-        composeRule.waitForIdle()
-        assertTrue(selectedDate.get()?.matches(Regex("\\d{8}")) == true)
-        composeRule.onNodeWithTag(LOADING_TAG).assertIsDisplayed()
-        composeRule.onNodeWithText("正在加载...").assertIsDisplayed()
-    }
-
-    @Test
-    fun errorAndEmptyStatesRenderDeterministicallyOffline() {
-        // Error and empty rendering are the two most important non-happy-path fallbacks here.
-        // Both are injected directly so the assertions stay deterministic and never depend on
-        // flaky networking, account state, or the current day on Zhihu servers.
-        composeRule.setScreenContent {
-            DailyScreen(
-                testState = DailyScreenUiState(
-                    isLoading = false,
-                    error = "离线错误：日报接口不可用",
-                ),
-            )
-        }
-
-        composeRule.onNodeWithTag(ERROR_TAG).assertIsDisplayed()
-        composeRule.onNodeWithText("离线错误：日报接口不可用").assertIsDisplayed()
-
-        composeRule.setScreenContent {
-            DailyScreen(
-                testState = DailyScreenUiState(isLoading = false),
-            )
-        }
-
-        composeRule.onNodeWithTag(EMPTY_TAG).assertIsDisplayed()
-        composeRule.onNodeWithText("暂无内容").assertIsDisplayed()
-    }
-
-    @Test
-    fun fixedSectionsRenderAndSwipeCyclesStayStableOffline() {
-        // This injects two deterministic sections with enough rows to make the LazyColumn scroll.
-        // Expected behavior:
-        // 1. The first visible section date is reflected in the toolbar subtitle.
-        // 2. Fixed rows render from injected data instead of the network.
-        // 3. Scrolling to the second section works deterministically.
-        // 4. Vertical and horizontal swipe cycles do not break the list, toolbar, or row semantics.
-        val uiState = DailyScreenUiState(
-            sections = listOf(
-                seededSection(date = "20260418", range = 1..10),
-                seededSection(date = "20260417", range = 11..20),
-            ),
-            isLoading = false,
-        )
-        composeRule.setScreenContent {
-            DailyScreen(
-                testState = uiState,
-            )
-        }
-
-        composeRule.onNodeWithTag(LIST_TAG).assertIsDisplayed()
         composeRule.onNodeWithTag(CURRENT_DATE_TAG).assertTextEquals("2026年04月18日")
         composeRule.onNodeWithText("固定日报问题 1").assertIsDisplayed()
         composeRule.onNodeWithTag(SECTION_TAG_PREFIX + "20260418").assertIsDisplayed()
 
         val dailyList = composeRule.onNodeWithTag(LIST_TAG)
         dailyList.performScrollToNode(hasTestTag(storyTag(12)))
-        composeRule.waitForIdle()
-        composeRule.onNodeWithText("固定日报问题 12").assertIsDisplayed()
+        composeRule.waitUntilTagExists(storyTag(13))
+        composeRule.onNodeWithText("固定日报问题 13").assertIsDisplayed()
 
         dailyList.performVerticalSwipeCycle()
         dailyList.performHorizontalSwipeCycle()
         composeRule.waitForIdle()
 
-        dailyList.performScrollToNode(hasTestTag(storyTag(12)))
-        composeRule.onNodeWithText("固定日报问题 12").assertIsDisplayed()
+        dailyList.performScrollToNode(hasTestTag(storyTag(13)))
+        composeRule.onNodeWithText("固定日报问题 13").assertIsDisplayed()
         dailyList.performScrollToNode(hasTestTag(SECTION_TAG_PREFIX + "20260417"))
         composeRule.onNodeWithTag(SECTION_TAG_PREFIX + "20260417").assertIsDisplayed()
         composeRule.onNodeWithTag(DATE_PICKER_BUTTON_TAG).assertIsDisplayed()
         composeRule.onNodeWithTag(CURRENT_DATE_TAG).assertIsDisplayed()
     }
 
-    private fun seededSection(
-        date: String,
-        range: IntRange,
-    ): DailySection = DailySection(
-        date = date,
-        stories = range.map { index -> seededStory(index) },
-    )
+    @Test
+    fun pendingLatestRenderLoadingToolbarAndDatePickerThroughMockHttp() {
+        val releaseLatest = CompletableDeferred<Unit>()
+        ZhihuMockApi.mockJson(
+            method = HttpMethod.Get,
+            url = DAILY_LATEST_URL,
+            body = dailyStoriesResponse(date = "20260418", storyIds = 1..12),
+            beforeRespond = { releaseLatest.await() },
+        )
+        ZhihuMockApi.mockJsonPrefix(
+            method = HttpMethod.Get,
+            urlPrefix = DAILY_BEFORE_PREFIX,
+            body = dailyStoriesResponse(date = "20260416", storyIds = 31..54),
+        )
 
-    private fun seededStory(index: Int): DailyStory = DailyStory(
-        id = index.toLong(),
-        title = "固定日报问题 $index",
-        url = "https://example.com/daily/$index",
-        hint = "固定日报摘要 $index",
-        images = emptyList(),
-        type = 0,
-    )
+        try {
+            composeRule.setScreenContent {
+                DailyScreen()
+            }
+
+            composeRule.waitUntilTagExists(LOADING_TAG)
+            composeRule.onNodeWithTag(TITLE_TAG).assertIsDisplayed()
+            composeRule.onNodeWithText("知乎日报").assertIsDisplayed()
+            composeRule.onNodeWithText("正在加载...").assertIsDisplayed()
+            composeRule.onNodeWithTag(DATE_PICKER_BUTTON_TAG).assertIsDisplayed().performClick()
+            composeRule.onNodeWithText("确认").assertIsDisplayed().performClick()
+            composeRule.waitUntil(timeoutMillis = 5_000) {
+                ZhihuMockApi.requestCount(method = HttpMethod.Get, urlSubstring = "/api/4/stories/before/") >= 1
+            }
+            composeRule.waitUntilTagExists(storyTag(31))
+
+            composeRule.onNodeWithText("固定日报问题 31").assertIsDisplayed()
+            composeRule.onNodeWithTag(CURRENT_DATE_TAG).assertTextEquals("2026年04月16日")
+        } finally {
+            releaseLatest.complete(Unit)
+        }
+    }
+
+    @Test
+    fun datePickerReloadsThroughMockHttp() {
+        // The date picker should call DailyViewModel.loadDate() instead of using a UI-only test
+        // callback, so this route accepts any computed before/{date} request.
+        mockLatest(date = "20260418", storyIds = 1..12)
+        ZhihuMockApi.mockJsonPrefix(
+            method = HttpMethod.Get,
+            urlPrefix = DAILY_BEFORE_PREFIX,
+            body = dailyStoriesResponse(date = "20260416", storyIds = 31..54),
+        )
+
+        composeRule.setScreenContent {
+            DailyScreen()
+        }
+
+        composeRule.waitUntilTagExists(storyTag(1))
+        composeRule.onNodeWithTag(DATE_PICKER_BUTTON_TAG).assertIsDisplayed().performClick()
+        composeRule.onNodeWithText("确认").assertIsDisplayed().performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            ZhihuMockApi.requestCount(method = HttpMethod.Get, urlSubstring = "/api/4/stories/before/") >= 1
+        }
+        composeRule.waitUntilTagExists(storyTag(31))
+
+        composeRule.onNodeWithText("固定日报问题 31").assertIsDisplayed()
+        composeRule.onNodeWithTag(CURRENT_DATE_TAG).assertTextEquals("2026年04月16日")
+    }
+
+    @Test
+    fun errorAndEmptyStatesRenderFromViewModelResults() {
+        // Error and empty rendering are still deterministic, but the states now come from the
+        // production ViewModel's HTTP result handling instead of direct UI snapshot injection.
+        mockLatestBody("""{"date":"20260418"}""")
+        composeRule.setScreenContent {
+            DailyScreen()
+        }
+        composeRule.waitUntilTagExists(ERROR_TAG)
+        composeRule.onNodeWithText("加载失败:", substring = true).assertIsDisplayed()
+
+        mockLatest(date = "20260418", storyIds = emptyList())
+        composeRule.setScreenContent {
+            DailyScreen()
+        }
+        composeRule.waitUntilTagExists(EMPTY_TAG)
+        composeRule.onNodeWithTag(EMPTY_TAG).assertIsDisplayed()
+        composeRule.onNodeWithText("暂无内容").assertIsDisplayed()
+    }
+
+    private fun mockLatest(date: String, storyIds: Iterable<Int>) {
+        mockLatestBody(dailyStoriesResponse(date, storyIds))
+    }
+
+    private fun mockLatestBody(body: String) {
+        ZhihuMockApi.mockJson(
+            method = HttpMethod.Get,
+            url = DAILY_LATEST_URL,
+            body = body,
+        )
+    }
+
+    private fun mockBefore(apiDate: String, responseDate: String, storyIds: Iterable<Int>) {
+        ZhihuMockApi.mockJson(
+            method = HttpMethod.Get,
+            url = "$DAILY_BEFORE_PREFIX$apiDate",
+            body = dailyStoriesResponse(responseDate, storyIds),
+        )
+    }
+
+    private fun dailyStoriesResponse(date: String, storyIds: Iterable<Int>): String {
+        val stories = storyIds.joinToString(",") { index ->
+            """
+            {
+              "id": $index,
+              "title": "固定日报问题 $index",
+              "url": "https://example.com/daily/$index",
+              "hint": "固定日报摘要 $index",
+              "images": [],
+              "type": 0
+            }
+            """.trimIndent()
+        }
+        return """
+            {
+              "date": "$date",
+              "stories": [$stories]
+            }
+            """.trimIndent()
+    }
+
+    private fun MainActivityComposeRule.waitUntilTagExists(tag: String) {
+        waitUntil("Expected node with tag $tag", timeoutMillis = 5_000) {
+            onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
 
     private companion object {
+        const val DAILY_LATEST_URL = "https://news-at.zhihu.com/api/4/stories/latest"
+        const val DAILY_BEFORE_PREFIX = "https://news-at.zhihu.com/api/4/stories/before/"
         const val TITLE_TAG = "daily_screen_title"
         const val CURRENT_DATE_TAG = "daily_screen_current_date"
         const val DATE_PICKER_BUTTON_TAG = "daily_screen_date_picker_button"
-        const val LOADING_TAG = "daily_screen_loading"
         const val ERROR_TAG = "daily_screen_error"
         const val EMPTY_TAG = "daily_screen_empty"
+        const val LOADING_TAG = "daily_screen_loading"
         const val LIST_TAG = "daily_screen_list"
         const val SECTION_TAG_PREFIX = "daily_screen_section_"
 

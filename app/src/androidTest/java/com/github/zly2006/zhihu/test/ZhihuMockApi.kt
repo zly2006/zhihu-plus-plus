@@ -96,12 +96,16 @@ object ZhihuMockApi {
         url: String,
         body: String,
         status: HttpStatusCode = HttpStatusCode.OK,
+        beforeRespond: suspend () -> Unit = {},
     ) {
         routes.add(
             0,
             Route(
                 predicate = { request -> request.method == method && request.url.toString() == url },
-                responder = { jsonResponse(status, body) },
+                responder = {
+                    beforeRespond()
+                    jsonResponse(status, body)
+                },
             ),
         )
     }

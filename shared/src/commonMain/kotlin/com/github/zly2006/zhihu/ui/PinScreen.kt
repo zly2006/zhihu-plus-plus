@@ -54,6 +54,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -161,19 +162,14 @@ private suspend fun submitPinPollVote(
 private suspend fun loadPinDetail(
     environment: ContentLoadEnvironment,
     pin: Pin,
-): PinScreenUiState {
+): DataHolder.Pin {
     environment.addReadHistory(pin.id.toString(), "pin")
     val jsonObject = environment.fetchJson("https://www.zhihu.com/api/v4/pins/${pin.id}?include=topics", "")
         ?: error("想法详情为空")
     val content = decodePinContentDetail(jsonObject)
     environment.postHistoryDestination(pin)
     environment.recordContentOpenEvent(destination = pin)
-    return PinScreenUiState(
-        isLoading = false,
-        pinContent = content,
-        isLiked = content.virtuals.booleanCompat("isLiked", "is_liked"),
-        likeCount = content.likeCount,
-    )
+    return content
 }
 
 const val PIN_SCREEN_AUTHOR_TAG = "pin_screen_author"
@@ -182,7 +178,6 @@ const val PIN_SCREEN_LIKE_BUTTON_TAG = "pin_screen_like_button"
 const val PIN_SCREEN_COMMENT_BUTTON_TAG = "pin_screen_comment_button"
 
 data class PinScreenTestOverrides(
-    val state: PinScreenUiState,
     val onLikeClick: (() -> Unit)? = null,
     val onPollVote: ((pollId: String, optionId: String) -> Unit)? = null,
     val onShareAction: ((showShareDialog: () -> Unit) -> Unit)? = null,
@@ -216,20 +211,27 @@ fun PinScreen(
 
     val settings = rememberSettingsStore()
     val shareRuntime = rememberShareDialogRuntime()
-    var screenState by remember(pin.id, testOverrides) {
-        mutableStateOf(
-            testOverrides?.state ?: PinScreenUiState(isLoading = true),
-        )
-    }
+    var isLoading by remember(pin.id) { mutableStateOf(true) }
+    var errorMessage by remember(pin.id) { mutableStateOf<String?>(null) }
+    var pinContent by remember(pin.id) { mutableStateOf<DataHolder.Pin?>(null) }
+    var isLiked by remember(pin.id) { mutableStateOf(false) }
+    var likeCount by remember(pin.id) { mutableIntStateOf(0) }
+    var pollVotingOptionId by remember(pin.id) { mutableStateOf<String?>(null) }
+    var pollErrorMessage by remember(pin.id) { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(pin.id, testOverrides) {
-        if (testOverrides == null) {
-            screenState = PinScreenUiState(isLoading = true)
-            screenState = try {
-                loadPinDetail(paginationEnvironment, pin)
-            } catch (e: Exception) {
-                PinScreenUiState(isLoading = false, errorMessage = e.message ?: "未知错误")
-            }
+    LaunchedEffect(pin.id) {
+        isLoading = true
+        errorMessage = null
+        pinContent = null
+        try {
+            val loadedPin = loadPinDetail(paginationEnvironment, pin)
+            pinContent = loadedPin
+            isLiked = loadedPin.virtuals.booleanCompat("isLiked", "is_liked")
+            likeCount = loadedPin.likeCount
+        } catch (e: Exception) {
+            errorMessage = e.message ?: "未知错误"
+        } finally {
+            isLoading = false
         }
     }
 
@@ -254,8 +256,8 @@ fun PinScreen(
                     reset = reset,
                 )
                 voters.replaceOrAppendUniqueVoters(page.data, reset)
-                val total = page.paging.totals.takeIf { it > 0 } ?: screenState.likeCount
-                screenState = screenState.copy(likeCount = total)
+                val total = page.paging.totals.takeIf { it > 0 } ?: likeCount
+                likeCount = total
                 votersNextUrl = page.nextUrlOrNull()
             } catch (e: Exception) {
                 votersError = e.message ?: "加载赞同者失败"
@@ -270,7 +272,7 @@ fun PinScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    val titleAuthor = screenState.pinContent?.author?.name
+                    val titleAuthor = pinContent?.author?.name
                     Text(
                         buildString {
                             if (titleAuthor != null) {
@@ -320,7 +322,7 @@ fun PinScreen(
                 .padding(innerPadding),
         ) {
             when {
-                screenState.isLoading -> {
+                isLoading -> {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -331,34 +333,32 @@ fun PinScreen(
                     }
                 }
 
-                screenState.errorMessage != null -> {
+                errorMessage != null -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            "加载失败: ${screenState.errorMessage}",
+                            "加载失败: ${errorMessage.orEmpty()}",
                             color = MaterialTheme.colorScheme.error,
                             modifier = Modifier.testTag(PIN_SCREEN_ERROR_TAG),
                         )
                     }
                 }
 
-                screenState.pinContent != null -> {
-                    val pinContent = screenState.pinContent ?: return@Box
+                pinContent != null -> {
+                    val loadedPin = pinContent ?: return@Box
                     PinContent(
-                        pin = pinContent,
-                        isLiked = screenState.isLiked,
-                        likeCount = screenState.likeCount,
-                        pollVotingOptionId = screenState.pollVotingOptionId,
-                        pollErrorMessage = screenState.pollErrorMessage,
+                        pin = loadedPin,
+                        isLiked = isLiked,
+                        likeCount = likeCount,
+                        pollVotingOptionId = pollVotingOptionId,
+                        pollErrorMessage = pollErrorMessage,
                         onLikeClick = {
                             testOverrides?.onLikeClick?.invoke() ?: coroutineScope.launch {
-                                val result = togglePinLike(paginationEnvironment, pin, screenState.isLiked)
-                                screenState = screenState.copy(
-                                    isLiked = result.isLiked,
-                                    likeCount = result.likeCount,
-                                )
+                                val result = togglePinLike(paginationEnvironment, pin, isLiked)
+                                isLiked = result.isLiked
+                                likeCount = result.likeCount
                             }
                         },
                         onCommentClick = {
@@ -372,21 +372,15 @@ fun PinScreen(
                         },
                         onPollVote = { pollId, optionId ->
                             testOverrides?.onPollVote?.invoke(pollId, optionId) ?: coroutineScope.launch {
-                                screenState = screenState.copy(
-                                    pollVotingOptionId = optionId,
-                                    pollErrorMessage = null,
-                                )
+                                pollVotingOptionId = optionId
+                                pollErrorMessage = null
                                 try {
                                     submitPinPollVote(paginationEnvironment, pollId, optionId)
-                                    screenState = screenState.copy(
-                                        pinContent = screenState.pinContent?.withSelectedPinPollOption(pollId, optionId),
-                                        pollVotingOptionId = null,
-                                    )
+                                    pinContent = pinContent?.withSelectedPinPollOption(pollId, optionId)
+                                    pollVotingOptionId = null
                                 } catch (e: Exception) {
-                                    screenState = screenState.copy(
-                                        pollVotingOptionId = null,
-                                        pollErrorMessage = e.message ?: "投票失败",
-                                    )
+                                    pollVotingOptionId = null
+                                    pollErrorMessage = e.message ?: "投票失败"
                                 }
                             }
                         },
@@ -428,7 +422,7 @@ fun PinScreen(
 
                     VotersSheet(
                         show = showVoters,
-                        title = "${formatCompactCount(screenState.likeCount)} 人赞同了该想法",
+                        title = "${formatCompactCount(likeCount)} 人赞同了该想法",
                         voters = voters,
                         isLoading = votersLoading,
                         errorMessage = votersError,
@@ -898,16 +892,6 @@ internal fun compactPreview(raw: String, maxLength: Int = 120): String {
 }
 
 internal fun compactTitle(raw: String, maxLength: Int = 56): String = compactPreview(raw, maxLength)
-
-data class PinScreenUiState(
-    val isLoading: Boolean = false,
-    val errorMessage: String? = null,
-    val pinContent: DataHolder.Pin? = null,
-    val isLiked: Boolean = false,
-    val likeCount: Int = 0,
-    val pollVotingOptionId: String? = null,
-    val pollErrorMessage: String? = null,
-)
 
 data class PinLinkCardPreview(
     val title: String,
