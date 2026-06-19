@@ -25,12 +25,9 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.decodeArticleContentDetail
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
-import com.github.zly2006.zhihu.navigation.answerNavigatorPageFromJson
-import com.github.zly2006.zhihu.navigation.zhihuQuestionFeedsUrl
+import com.github.zly2006.zhihu.navigation.zhihuQuestionRelationshipUrl
 import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.util.raiseForStatus
 import com.github.zly2006.zhihu.util.signFetchRequest
 import io.ktor.client.call.body
@@ -42,6 +39,8 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.util.UUID
@@ -67,32 +66,32 @@ private class AndroidZhihuAnswerPublisher(
     }
 
     override suspend fun findMyAnswerId(questionId: Long): Long? {
-        val selfId = AccountData.data.self?.id ?: return null
+        AccountData.data.self?.id ?: return null
 
-        var url: String? = zhihuQuestionFeedsUrl(questionId, limit = 20, order = "default")
-        repeat(5) {
-            if (url.isNullOrBlank()) return null
-            val currentUrl = url
-            val response = runCatching {
-                AccountData
-                    .httpClient(context)
-                    .get(currentUrl) {
-                        signFetchRequest()
-                    }.raiseForStatus(dumpRequest = true)
-                    .body<JsonObject>()
-            }.getOrNull() ?: return null
-            val page = answerNavigatorPageFromJson(response) { data ->
-                ZhihuJson.decodeJson<List<Feed>>(data)
-            }
-            page.items.forEach { feed ->
-                val target = feed.target
-                if (target is Feed.AnswerTarget && target.author?.id == selfId) {
-                    return target.id
-                }
-            }
-            url = page.nextUrl
+        val url = zhihuQuestionRelationshipUrl(questionId)
+        val json = runCatching {
+            AccountData
+                .httpClient(context)
+                .get(url) {
+                    signFetchRequest()
+                }.raiseForStatus(dumpRequest = true)
+                .body<JsonObject>()
+        }.getOrNull() ?: return null
+
+        val myAnswer = json["relationship"]
+            ?.jsonObject
+            ?.get("my_answer")
+            ?.jsonObject
+            ?: return null
+
+        if (myAnswer["is_deleted"]?.jsonPrimitive?.booleanOrNull == true) {
+            return null
         }
-        return null
+
+        return myAnswer["answer_id"]
+            ?.jsonPrimitive
+            ?.contentOrNull
+            ?.toLongOrNull()
     }
 
     override suspend fun fetchAnswerForEditing(answerId: Long): ExistingAnswerForEditing? {

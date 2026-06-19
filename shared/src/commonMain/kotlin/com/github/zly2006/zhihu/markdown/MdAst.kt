@@ -717,7 +717,7 @@ private fun MarkdownNode.appendMarkdownBlock(
         }
 
         is Figure -> {
-            val alt = caption.takeIf { it.isNotBlank() } ?: "image"
+            val alt = caption.takeIf { it.isNotBlank() }.orEmpty()
             out
                 .append("![")
                 .append(alt)
@@ -786,7 +786,7 @@ private fun MarkdownNode.appendMarkdownInline(out: StringBuilder) {
         }
 
         is Image -> {
-            val alt = children.filterIsInstance<Text>().joinToString(separator = "") { it.literal }.ifBlank { "image" }
+            val alt = children.filterIsInstance<Text>().joinToString(separator = "") { it.literal }.ifBlank { "" }
             out
                 .append("![")
                 .append(alt)

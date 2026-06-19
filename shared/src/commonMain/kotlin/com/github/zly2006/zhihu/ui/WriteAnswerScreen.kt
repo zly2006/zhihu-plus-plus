@@ -215,7 +215,10 @@ fun WriteAnswerScreen(
                         uploaded.watermarkUrl?.let { append(";wmsrc=").append(it) }
                     }
                 }
-                val alt = picked.fileName?.substringBeforeLast('.')?.takeIf { it.isNotBlank() } ?: "image"
+                val alt = picked.fileName
+                    ?.substringBeforeLast('.')
+                    ?.takeIf { it.isNotBlank() }
+                    .orEmpty()
                 val snippet = "![$alt](${uploaded.url} \"$title\")"
                 content = content.insertTextAtSelection(snippet)
                 userMessages.showShortMessage("图片已插入")
