@@ -91,6 +91,7 @@ import com.github.zly2006.zhihu.shared.ui.topLevelReselectAction
 import com.github.zly2006.zhihu.ui.components.AnnouncementCard
 import com.github.zly2006.zhihu.ui.components.AnnouncementCardDefaults
 import com.github.zly2006.zhihu.ui.components.BlockByKeywordsDialog
+import com.github.zly2006.zhihu.ui.components.BlockQuestionAuthorConfirmDialog
 import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedCard
@@ -244,6 +245,8 @@ fun HomeScreen(
     // 屏蔽用户确认对话框
     var showBlockUserDialog by remember { mutableStateOf(false) }
     var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) } // 二元组内容为 userId 和 userName。
+    var showBlockQuestionAuthorDialog by remember { mutableStateOf(false) }
+    var questionAuthorToBlock by remember { mutableStateOf<Pair<String, String>?>(null) }
 
     // 按关键词屏蔽对话框
     var showBlockByKeywordsDialog by remember { mutableStateOf(false) }
@@ -573,6 +576,12 @@ fun HomeScreen(
                             showBlockUserDialog = true
                         }
                     },
+                    onBlockQuestionAuthor = { feedItem ->
+                        feedBlockActions.handleBlockQuestionAuthor(viewModel, feedItem) { authorInfo ->
+                            questionAuthorToBlock = authorInfo
+                            showBlockQuestionAuthorDialog = true
+                        }
+                    },
                     onBlockByKeywords = { feedItem ->
                         feedBlockActions.handleBlockByKeywords(viewModel, feedItem) { (_, contentInfo) ->
                             feedToBlockByKeywords = contentInfo.first to contentInfo.second
@@ -637,6 +646,21 @@ fun HomeScreen(
             viewModel.refresh(paginationEnvironment)
             showBlockUserDialog = false
             userToBlock = null
+        },
+    )
+
+    BlockQuestionAuthorConfirmDialog(
+        showDialog = showBlockQuestionAuthorDialog,
+        userToBlock = questionAuthorToBlock,
+        displayItems = viewModel.displayItems,
+        onDismiss = {
+            showBlockQuestionAuthorDialog = false
+            questionAuthorToBlock = null
+        },
+        onConfirm = {
+            viewModel.refresh(paginationEnvironment)
+            showBlockQuestionAuthorDialog = false
+            questionAuthorToBlock = null
         },
     )
 

@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.questionAuthor
 import com.github.zly2006.zhihu.shared.data.target
 
 /**
@@ -73,6 +74,60 @@ fun BlockUserConfirmDialogContent(
                                 }?.feed
                                 ?.target
                                 ?.author
+                            onConfirmBlock(
+                                BlockedFeedAuthor(
+                                    id = author?.id ?: userId,
+                                    name = author?.name ?: userName,
+                                    urlToken = author?.urlToken,
+                                    avatarUrl = author?.avatarUrl,
+                                ),
+                            )
+                        }
+                    },
+                ) {
+                    Text("确定屏蔽")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) {
+                    Text("取消")
+                }
+            },
+        )
+    }
+}
+
+@Composable
+fun BlockQuestionAuthorConfirmDialogContent(
+    showDialog: Boolean,
+    userToBlock: Pair<String, String>?,
+    displayItems: List<FeedDisplayItem>,
+    onDismiss: () -> Unit,
+    onConfirmBlock: (BlockedFeedAuthor) -> Unit,
+) {
+    if (showDialog && userToBlock != null) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text("屏蔽提问者") },
+            text = {
+                Column {
+                    Text("确定要屏蔽提问者 \"${userToBlock.second}\" 吗？")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "屏蔽后，该用户提出的问题将不会在推荐流中显示；该用户回答别人问题的内容不受影响。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        userToBlock.let { (userId, userName) ->
+                            val author = displayItems
+                                .asSequence()
+                                .mapNotNull { it.feed?.target?.questionAuthor }
+                                .firstOrNull { it.id == userId }
                             onConfirmBlock(
                                 BlockedFeedAuthor(
                                     id = author?.id ?: userId,

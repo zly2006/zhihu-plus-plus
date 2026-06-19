@@ -315,6 +315,7 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
                             val summary = importBlocklistBackupFromJsonText(
                                 keywordDao = database.blockedKeywordDao(),
                                 userDao = database.blockedUserDao(),
+                                questionAuthorDao = database.blockedQuestionAuthorDao(),
                                 topicDao = database.blockedTopicDao(),
                                 text = selectedFile.readText(),
                             )
@@ -332,6 +333,7 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
                     encodeBlocklistBackup(
                         keywordDao = database.blockedKeywordDao(),
                         userDao = database.blockedUserDao(),
+                        questionAuthorDao = database.blockedQuestionAuthorDao(),
                         topicDao = database.blockedTopicDao(),
                     ),
                 )

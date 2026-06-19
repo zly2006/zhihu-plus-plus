@@ -30,6 +30,9 @@ class FeedContentFilterPipelineTest {
             createTempDirectory("feed-content-filter-pipeline").resolve("content-filter.db").toFile(),
         )
         database.blockedUserDao().insertUser(BlockedUser(userId = "blocked-user", userName = "Blocked"))
+        database.blockedQuestionAuthorDao().insertUser(
+            BlockedQuestionAuthor(userId = "blocked-asker", userName = "Blocked Asker"),
+        )
         database.blockedKeywordDao().insertKeyword(BlockedKeyword(keyword = "blocked keyword"))
         database.blockedTopicDao().insertTopic(BlockedTopic(topicId = "blocked-topic", topicName = "Blocked Topic"))
 
@@ -52,6 +55,7 @@ class FeedContentFilterPipelineTest {
             settings = FeedFilterSettings(),
             blockedKeywordDao = database.blockedKeywordDao(),
             blockedUserDao = database.blockedUserDao(),
+            blockedQuestionAuthorDao = database.blockedQuestionAuthorDao(),
             blockedTopicDao = database.blockedTopicDao(),
             blockedKeywordService = keywordService,
             htmlToText = { it },
@@ -60,6 +64,7 @@ class FeedContentFilterPipelineTest {
             listOf(
                 filterable("keep", authorId = "ok-user"),
                 filterable("by user", authorId = "blocked-user"),
+                filterable("by question author", authorId = "ok-user", questionAuthorId = "blocked-asker"),
                 filterable("blocked keyword title", authorId = "ok-user"),
                 filterable("nlp hit", authorId = "ok-user"),
                 filterable("topic", authorId = "ok-user", topicId = "blocked-topic"),
@@ -70,6 +75,7 @@ class FeedContentFilterPipelineTest {
         assertEquals(
             listOf(
                 "屏蔽作者：author",
+                "屏蔽提问者：asker",
                 "关键词屏蔽",
                 "NLP语义屏蔽：nlp phrase",
                 "屏蔽主题：Blocked Topic",
@@ -105,6 +111,7 @@ class FeedContentFilterPipelineTest {
             settings = FeedFilterSettings(),
             blockedKeywordDao = database.blockedKeywordDao(),
             blockedUserDao = database.blockedUserDao(),
+            blockedQuestionAuthorDao = database.blockedQuestionAuthorDao(),
             blockedTopicDao = database.blockedTopicDao(),
             blockedKeywordService = keywordService,
         ).filter(
@@ -126,6 +133,7 @@ class FeedContentFilterPipelineTest {
         title: String,
         content: String = title,
         authorId: String,
+        questionAuthorId: String? = null,
         topicId: String? = null,
     ): FilterableContent = FilterableContent(
         title = title,
@@ -136,6 +144,8 @@ class FeedContentFilterPipelineTest {
         contentId = title,
         contentType = "article",
         raw = article(title, content, topicId),
+        questionAuthorName = questionAuthorId?.let { "asker" },
+        questionAuthorId = questionAuthorId,
     )
 
     private fun article(

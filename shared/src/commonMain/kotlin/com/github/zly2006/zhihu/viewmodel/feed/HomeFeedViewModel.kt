@@ -18,12 +18,14 @@
 package com.github.zly2006.zhihu.viewmodel.feed
 
 import androidx.lifecycle.viewModelScope
+import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.flattenFeeds
 import com.github.zly2006.zhihu.shared.data.navDestination
+import com.github.zly2006.zhihu.shared.data.questionAuthor
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.viewmodel.ContentInteractionEnvironment
@@ -37,6 +39,7 @@ import io.ktor.client.request.header
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.isSuccess
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -59,6 +62,51 @@ suspend fun resolveFeedBlockAuthorInfo(
         is DataHolder.Pin -> content.author.let { Pair(it.id, it.name) }
         else -> null
     }
+}
+
+suspend fun resolveFeedQuestionAuthorInfo(
+    feedItem: FeedDisplayItem,
+    contentDetailProvider: ContentDetailProvider?,
+): Pair<String, String>? {
+    feedItem.feed?.target?.questionAuthor?.let { author ->
+        return Pair(author.id, author.name)
+    }
+
+    when (val raw = feedItem.raw) {
+        is DataHolder.Question -> return raw.author.let { Pair(it.id, it.name) }
+        is DataHolder.Answer -> {
+            val questionDetail = runCatching {
+                contentDetailProvider?.get(Question(questionId = raw.question.id, title = raw.question.title))
+            }.getOrElse { error ->
+                if (error is CancellationException) throw error
+                Log.e("HomeFeedViewModel", "Failed to resolve feed question author from raw answer detail", error)
+                null
+            } as? DataHolder.Question
+            if (questionDetail != null) {
+                return questionDetail.author.let { Pair(it.id, it.name) }
+            }
+        }
+        else -> Unit
+    }
+
+    val questionDestination = when (val target = feedItem.feed?.target) {
+        is Feed.AnswerTarget -> Question(questionId = target.question.id, title = target.question.title)
+        is Feed.QuestionTarget -> Question(questionId = target.id, title = target.title)
+        else -> null
+    }
+
+    val questionDetail = questionDestination
+        ?.let { destination ->
+            runCatching {
+                contentDetailProvider?.get(destination)
+            }.getOrElse { error ->
+                if (error is CancellationException) throw error
+                Log.e("HomeFeedViewModel", "Failed to resolve feed question author from feed target detail", error)
+                null
+            }
+        } as? DataHolder.Question
+        ?: return null
+    return questionDetail.author.let { Pair(it.id, it.name) }
 }
 
 suspend fun resolveFeedKeywordBlockingContent(
