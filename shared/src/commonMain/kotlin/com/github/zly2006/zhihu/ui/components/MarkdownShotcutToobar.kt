@@ -46,12 +46,12 @@ enum class MarkdownShortcut(
     H2("H2"),
     Bold("B"),
     Italic("I"),
-    Quote(">"),
-    Divider("HR"),
-    CodeBlock("```"),
-    InlineCode("</>"),
-    Math("∑"),
     Link("Link"),
+    Quote(">"),
+    InlineCode("</>"),
+    CodeBlock("```"),
+    Divider("HR"),
+    Math("∑"),
 }
 
 @Composable

@@ -44,8 +44,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -309,9 +309,9 @@ fun WriteAnswerScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     horizontalAlignment = Alignment.End,
                 ) {
-                    FloatingActionButton(
+                    ExtendedFloatingActionButton(
                         onClick = {
-                            if (!previewEnabled) return@FloatingActionButton
+                            if (!previewEnabled) return@ExtendedFloatingActionButton
                             val useWebView = settings.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)
                             val markdownSnapshot = content.text
                             coroutineScope.launch {
@@ -354,11 +354,15 @@ fun WriteAnswerScreen(
                                 MaterialTheme.colorScheme.onSurfaceVariant
                             },
                         modifier = Modifier.testTag("WriteAnswerFabPreview"),
-                    ) {
-                        Icon(Icons.Filled.Visibility, contentDescription = "预览")
-                    }
+                        icon = {
+                            Icon(Icons.Filled.Visibility, contentDescription = "预览")
+                        },
+                        text = {
+                            Text("预览")
+                        },
+                    )
                     if (launchImagePicker != null) {
-                        FloatingActionButton(
+                        ExtendedFloatingActionButton(
                             onClick = { if (imageEnabled) launchImagePicker() },
                             containerColor =
                                 if (imageEnabled) {
@@ -373,11 +377,22 @@ fun WriteAnswerScreen(
                                     MaterialTheme.colorScheme.onSurfaceVariant
                                 },
                             modifier = Modifier.testTag("WriteAnswerFabImage"),
-                        ) {
-                            Icon(Icons.Filled.Image, contentDescription = "插入图片")
-                        }
+                            icon = {
+                                if (isUploadingImage) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(18.dp),
+                                        strokeWidth = 2.dp,
+                                    )
+                                } else {
+                                    Icon(Icons.Filled.Image, contentDescription = "插入图片")
+                                }
+                            },
+                            text = {
+                                Text("图片")
+                            },
+                        )
                     }
-                    FloatingActionButton(
+                    ExtendedFloatingActionButton(
                         onClick = { if (saveEnabled) submit(publish = false) },
                         containerColor =
                             if (saveEnabled) {
@@ -392,9 +407,13 @@ fun WriteAnswerScreen(
                                 MaterialTheme.colorScheme.onSurfaceVariant
                             },
                         modifier = Modifier.testTag("WriteAnswerFabSave"),
-                    ) {
-                        Icon(Icons.Filled.Save, contentDescription = "保存草稿")
-                    }
+                        icon = {
+                            Icon(Icons.Filled.Save, contentDescription = "保存草稿")
+                        },
+                        text = {
+                            Text("草稿")
+                        },
+                    )
                 }
             }
         },
