@@ -526,7 +526,11 @@ private suspend fun fetchDailyStoryDestination(
         .get("https://daily.zhihu.com/api/7/story/$storyId")
         .body()
     val body = response["body"]?.jsonPrimitive?.content ?: return@withContext null
-    val url = Ksoup.parse(body).selectFirst("a")?.attr("href")
+    val url = Ksoup
+        .parse(body)
+        .selectFirst("div.view-more")
+        ?.selectFirst("a")
+        ?.attr("href")
     url?.let(::resolveContent)
 }
 
