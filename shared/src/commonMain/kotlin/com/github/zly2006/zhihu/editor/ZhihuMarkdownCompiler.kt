@@ -68,6 +68,53 @@ private fun escapeHtmlText(value: String): String =
         .replace("<", "&lt;")
         .replace(">", "&gt;")
 
+private data class ZhimgImageMeta(
+    val rawWidth: Int?,
+    val rawHeight: Int?,
+    val watermark: String?,
+    val watermarkSrc: String?,
+)
+
+private fun parseZhimgImageMeta(title: String): ZhimgImageMeta? {
+    val trimmed = title.trim()
+    if (!trimmed.startsWith("zhimg:")) return null
+    val payload = trimmed.removePrefix("zhimg:").trim()
+    if (payload.isBlank()) return null
+
+    var rawWidth: Int? = null
+    var rawHeight: Int? = null
+    var watermark: String? = null
+    var watermarkSrc: String? = null
+
+    for (segment in payload.split(';')) {
+        val part = segment.trim()
+        if (part.isEmpty()) continue
+        val key = part.substringBefore('=').trim()
+        val value = part.substringAfter('=', "").trim()
+        if (value.isEmpty()) continue
+        when (key) {
+            "w" -> rawWidth = value.toIntOrNull()
+            "h" -> rawHeight = value.toIntOrNull()
+            "wm" -> {
+                watermark =
+                    when (value) {
+                        "1" -> "original"
+                        "0" -> "none"
+                        else -> value
+                    }
+            }
+            "wmsrc" -> watermarkSrc = value
+        }
+    }
+
+    return ZhimgImageMeta(
+        rawWidth = rawWidth,
+        rawHeight = rawHeight,
+        watermark = watermark,
+        watermarkSrc = watermarkSrc,
+    )
+}
+
 /**
  * Markdown -> 知乎 HTML 的自定义渲染器。
  *
@@ -167,10 +214,18 @@ private class ZhihuHtmlWriter(
                 out.append("<img src=\"").append(escapeHtmlAttribute(node.imageUrl)).append("\"")
                 node.imageWidth?.let { out.append(" width=\"").append(it).append("\"") }
                 node.imageHeight?.let { out.append(" height=\"").append(it).append("\"") }
-                val caption = node.caption.takeIf { it.isNotBlank() }
-                if (caption != null) {
-                    val escapedCaption = escapeHtmlAttribute(caption)
-                    out.append(" data-caption=\"").append(escapedCaption).append("\"")
+                val meta = node.caption.takeIf { it.isNotBlank() }?.let(::parseZhimgImageMeta)
+                if (meta != null) {
+                    meta.rawWidth?.let { out.append(" data-rawwidth=\"").append(it).append("\"") }
+                    meta.rawHeight?.let { out.append(" data-rawheight=\"").append(it).append("\"") }
+                    meta.watermark?.let { out.append(" data-watermark=\"").append(escapeHtmlAttribute(it)).append("\"") }
+                    meta.watermarkSrc?.let { out.append(" data-watermark-src=\"").append(escapeHtmlAttribute(it)).append("\"") }
+                } else {
+                    val caption = node.caption.takeIf { it.isNotBlank() }
+                    if (caption != null) {
+                        val escapedCaption = escapeHtmlAttribute(caption)
+                        out.append(" data-caption=\"").append(escapedCaption).append("\"")
+                    }
                 }
                 out.append(">")
             }
@@ -295,7 +350,15 @@ private class ZhihuHtmlWriter(
                     .joinToString(separator = "") { it.literal }
                     .ifBlank { null }
                 if (alt != null) out.append(" alt=\"").append(escapeHtmlAttribute(alt)).append("\"")
-                node.title?.takeIf { it.isNotBlank() }?.let { out.append(" title=\"").append(escapeHtmlAttribute(it)).append("\"") }
+                node.title
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let(::parseZhimgImageMeta)
+                    ?.let { meta ->
+                        meta.rawWidth?.let { out.append(" data-rawwidth=\"").append(it).append("\"") }
+                        meta.rawHeight?.let { out.append(" data-rawheight=\"").append(it).append("\"") }
+                        meta.watermark?.let { out.append(" data-watermark=\"").append(escapeHtmlAttribute(it)).append("\"") }
+                        meta.watermarkSrc?.let { out.append(" data-watermark-src=\"").append(escapeHtmlAttribute(it)).append("\"") }
+                    }
                 node.imageWidth?.let { out.append(" width=\"").append(it).append("\"") }
                 node.imageHeight?.let { out.append(" height=\"").append(it).append("\"") }
                 out.append(" />")

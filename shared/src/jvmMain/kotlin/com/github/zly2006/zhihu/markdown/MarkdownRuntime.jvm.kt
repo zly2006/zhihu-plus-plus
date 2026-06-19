@@ -81,6 +81,9 @@ actual fun rememberMarkdownRuntime(): MarkdownRuntime {
     }
 }
 
+@Composable
+actual fun rememberMarkdownImageModel(url: String): Any = url
+
 @OptIn(ExperimentalTextApi::class)
 private suspend fun loadDesktopMathFont(store: DesktopAccountStore): MathFont = withContext(Dispatchers.IO) {
     val fontFile = desktopZhihuDataFile("latex-fonts/v$FONT_VERSION").resolve("latinmodern-math.otf")

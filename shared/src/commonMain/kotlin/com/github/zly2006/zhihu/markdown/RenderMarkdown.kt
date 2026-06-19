@@ -109,7 +109,7 @@ fun RenderImage(
         contentAlignment = Alignment.Center,
     ) {
         AsyncImage(
-            model = data.url,
+            model = rememberMarkdownImageModel(data.url),
             contentDescription = data.altText,
             modifier = modifier
                 .fillMaxWidth(0.8f)
@@ -196,7 +196,7 @@ fun RenderVideoBox(
     ) {
         if (thumbnailUrl != null) {
             AsyncImage(
-                model = thumbnailUrl,
+                model = rememberMarkdownImageModel(thumbnailUrl),
                 contentDescription = "视频封面",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),

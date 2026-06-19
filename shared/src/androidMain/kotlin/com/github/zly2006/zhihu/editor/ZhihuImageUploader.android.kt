@@ -75,6 +75,7 @@ class ZhihuImageUploader(
                     notifyUploadingStatus(imageId)
                 } else {
                     uploadSinglePut(md5Hex, bytes, contentType, uploadToken)
+                    notifyUploadingStatus(imageId)
                 }
             }
 
@@ -477,11 +478,18 @@ private fun guessExtension(mimeType: String, fileName: String?): String = when {
 }
 
 private fun normalizeZhihuImageUrl(rawUrl: String, ext: String): String {
-    val normalized = rawUrl.substringBefore('?').trimEnd('.')
-    val lastSegment = normalized.substringAfterLast('/')
-    return if ('.' in lastSegment) {
-        normalized
+    val trimmed = rawUrl.trimEnd('.')
+    val base = trimmed.substringBefore('?')
+    val query = trimmed.substringAfter('?', missingDelimiterValue = "")
+
+    val baseWithExt = run {
+        val lastSegment = base.substringAfterLast('/')
+        if ('.' in lastSegment) base else "$base.$ext"
+    }
+
+    return if (query.isBlank()) {
+        baseWithExt
     } else {
-        "$normalized.$ext"
+        "$baseWithExt?$query"
     }
 }

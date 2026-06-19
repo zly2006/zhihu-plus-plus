@@ -30,3 +30,6 @@ interface MarkdownRuntime {
 
 @Composable
 expect fun rememberMarkdownRuntime(): MarkdownRuntime
+
+@Composable
+expect fun rememberMarkdownImageModel(url: String): Any
