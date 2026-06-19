@@ -55,7 +55,12 @@ class ZhihuImageUploader(
     private val cookies: Map<String, String>,
     private val userAgent: String,
 ) {
-    suspend fun upload(bytes: ByteArray, mimeType: String?, fileName: String?): UploadedZhihuImage {
+    suspend fun upload(
+        bytes: ByteArray,
+        mimeType: String?,
+        fileName: String?,
+        source: ZhihuImageUploadSource,
+    ): UploadedZhihuImage {
         val contentType = mimeType?.takeIf { it.startsWith("image/") }
             ?: guessMimeTypeFromFileName(fileName)
             ?: throw UnknownImageFormatException()
@@ -64,7 +69,7 @@ class ZhihuImageUploader(
         val (rawWidth, rawHeight) = decodeImageSize(bytes)
         val md5Hex = md5Hex(bytes)
         return runCatching {
-            val applyResponse = requestImageUpload(md5Hex)
+            val applyResponse = requestImageUpload(md5Hex, source)
             val imageId = applyResponse.uploadFile.imageId
             val uploadFileState = applyResponse.uploadFile.state
 
@@ -83,29 +88,38 @@ class ZhihuImageUploader(
             }
 
             val status = pollImageStatus(imageId)
-            val original = status.originalSrc
+            val src = status.src
+                ?: status.watermarkSrc
+                ?: status.originalSrc
                 ?: "https://picx.zhimg.com/v2-$md5Hex"
+            val original = status.originalSrc ?: src
             val watermarkSrc = status.watermarkSrc
             val watermark = status.watermarkFlag
 
+            val url = normalizeZhihuImageUrl(src, ext)
             val originalUrl = normalizeZhihuImageUrl(original, ext)
             val watermarkUrl = watermarkSrc?.let { normalizeZhihuImageUrl(it, ext) }
 
             UploadedZhihuImage(
-                url = originalUrl,
+                url = url,
                 originalUrl = originalUrl,
                 watermark = watermark,
+                watermarkValue = status.watermark,
                 watermarkUrl = watermarkUrl,
                 rawWidth = rawWidth,
                 rawHeight = rawHeight,
+                imageId = imageId,
             )
         }.getOrThrow()
     }
 
-    private suspend fun requestImageUpload(imageHash: String): ApplyImageUploadResponse {
+    private suspend fun requestImageUpload(
+        imageHash: String,
+        source: ZhihuImageUploadSource,
+    ): ApplyImageUploadResponse {
         val body = ApplyImageUploadRequest(
             imageHash = imageHash,
-            source = "article",
+            source = source.apiValue,
         )
         val response = client
             .post("https://api.zhihu.com/images") {
@@ -353,6 +367,7 @@ private data class UploadToken(
 @Serializable
 private data class ImageStatus(
     val status: String? = null,
+    val src: String? = null,
     val originalSrc: String? = null,
     val watermark: String? = null,
     val watermarkSrc: String? = null,

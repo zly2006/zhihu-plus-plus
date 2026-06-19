@@ -92,8 +92,13 @@ private class AndroidZhihuAnswerPublisher(
         )
     }
 
-    override suspend fun uploadImage(bytes: ByteArray, mimeType: String?, fileName: String?): UploadedZhihuImage =
-        imageUploader.upload(bytes, mimeType, fileName)
+    override suspend fun uploadImage(
+        bytes: ByteArray,
+        mimeType: String?,
+        fileName: String?,
+        source: ZhihuImageUploadSource,
+    ): UploadedZhihuImage =
+        imageUploader.upload(bytes, mimeType, fileName, source)
 
     override suspend fun patchDraft(
         questionId: Long,
@@ -180,4 +185,114 @@ private class AndroidZhihuAnswerPublisher(
             "发布失败: ${response.message ?: "unknown"}\n$responseElement",
         )
     }
+
+    override suspend fun savePinDraft(
+        title: String,
+        html: String,
+        textLength: Int,
+        images: List<UploadedZhihuImage>,
+    ) {
+        val xsrf = AccountData.data.cookies["_xsrf"]
+            ?: throw IllegalStateException("缺少 _xsrf Cookie，无法保存想法草稿；请先确保已登录。")
+
+        context
+            .asApiEnvironment()
+            .postSigned("https://api.zhihu.com/content/drafts") {
+                contentType(ContentType.Application.Json)
+                header(HttpHeaders.Referrer, "https://www.zhihu.com/")
+                header("x-xsrftoken", xsrf)
+                setBody(
+                    SavePinDraftRequest(
+                        data = buildPinPublishData(
+                            title = title,
+                            html = html,
+                            textLength = textLength,
+                            images = images,
+                        ),
+                    ),
+                )
+            }.raiseForStatus(dumpRequest = true)
+    }
+
+    override suspend fun publishPin(
+        title: String,
+        html: String,
+        textLength: Int,
+        images: List<UploadedZhihuImage>,
+    ): Long {
+        val xsrf = AccountData.data.cookies["_xsrf"]
+            ?: throw IllegalStateException("缺少 _xsrf Cookie，无法发布想法；请先确保已登录。")
+
+        val responseElement = context
+            .asApiEnvironment()
+            .postSigned("https://www.zhihu.com/api/v4/content/publish") {
+                contentType(ContentType.Application.Json)
+                header(HttpHeaders.Referrer, "https://www.zhihu.com/")
+                header("x-xsrftoken", xsrf)
+                setBody(
+                    PublishPinRequest(
+                        data = buildPinPublishData(
+                            title = title,
+                            html = html,
+                            textLength = textLength,
+                            images = images,
+                        ),
+                    ),
+                )
+            }.raiseForStatus(dumpRequest = true)
+            .body<JsonElement>()
+
+        val response = ZhihuJson.decodeJson(DataHolder.ContentPublishResponse.serializer(), responseElement)
+        if (response.message == "success") {
+            val resultText = response.data?.result
+                ?: throw IllegalStateException("发布成功但返回缺少 data.result: $responseElement")
+
+            return parsePublishContentId(resultText)
+                ?: throw IllegalStateException("发布成功但无法解析 publish.id")
+        }
+
+        throw IllegalStateException(
+            "发布失败: ${response.message ?: "unknown"}\n$responseElement",
+        )
+    }
+
+    private fun buildPinPublishData(
+        title: String,
+        html: String,
+        textLength: Int,
+        images: List<UploadedZhihuImage>,
+    ): PublishPinData =
+        PublishPinData(
+            publish = PublishTrace(traceId = "${System.currentTimeMillis()},${UUID.randomUUID()}"),
+            title = title
+                .takeIf { it.isNotBlank() }
+                ?.let { PublishPinTitle(title = it) },
+            hybrid = html
+                .takeIf { it.isNotBlank() }
+                ?.let {
+                    PublishPinHybrid(
+                        html = it,
+                        textLength = textLength,
+                    )
+                },
+            media = images
+                .takeIf { it.isNotEmpty() }
+                ?.let { uploadedImages ->
+                    PublishPinMedia(
+                        medias = uploadedImages.map { image ->
+                            PublishPinMediaItem(
+                                image = PublishPinImage(
+                                    height = image.rawHeight,
+                                    width = image.rawWidth,
+                                    url = image.url,
+                                    originalUrl = image.originalUrl,
+                                    watermark = image.watermarkValue
+                                        ?: image.watermark?.let { if (it) "watermark" else "original" },
+                                    watermarkUrl = image.watermarkUrl,
+                                ),
+                            )
+                        },
+                    )
+                },
+        )
 }

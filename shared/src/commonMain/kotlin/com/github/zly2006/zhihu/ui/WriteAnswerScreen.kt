@@ -21,14 +21,17 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -48,6 +51,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -59,7 +63,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
@@ -67,7 +73,10 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.editor.UnknownImageFormatException
+import com.github.zly2006.zhihu.editor.UploadedZhihuImage
+import com.github.zly2006.zhihu.editor.ZhihuImageUploadSource
 import com.github.zly2006.zhihu.editor.compileMdToZhihuHtml
 import com.github.zly2006.zhihu.editor.rememberImagePickerLauncher
 import com.github.zly2006.zhihu.editor.rememberZhihuAnswerPublisher
@@ -75,10 +84,10 @@ import com.github.zly2006.zhihu.markdown.zhihuHtmlToMarkdown
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.WriteAnswer
 import com.github.zly2006.zhihu.shared.platform.rememberPlainTextClipboard
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberSystemUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.HttpStatusException
 import com.github.zly2006.zhihu.ui.components.MarkdownShortcutToolbar
@@ -91,24 +100,54 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.yield
 
 const val WRITE_ANSWER_CONTENT_TAG = "WriteAnswerContent"
+const val WRITE_PIN_TITLE_TAG = "WritePinTitle"
+const val WRITE_PIN_CONTENT_TAG = "WritePinContent"
+private const val PIN_IMAGE_LIMIT = 9
 
-@OptIn(ExperimentalMaterial3Api::class)
+private sealed interface WriteEditorTarget {
+    val contentTag: String
+
+    data class Answer(
+        val destination: WriteAnswer,
+    ) : WriteEditorTarget {
+        override val contentTag: String = WRITE_ANSWER_CONTENT_TAG
+    }
+
+    data object Pin : WriteEditorTarget {
+        override val contentTag: String = WRITE_PIN_CONTENT_TAG
+    }
+}
+
 @Composable
 fun WriteAnswerScreen(
     destination: WriteAnswer,
+) {
+    WriteZhihuContentScreen(WriteEditorTarget.Answer(destination))
+}
+
+@Composable
+fun WritePinScreen() {
+    WriteZhihuContentScreen(WriteEditorTarget.Pin)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun WriteZhihuContentScreen(
+    target: WriteEditorTarget,
 ) {
     val navigator = LocalNavigator.current
     val userMessages = rememberUserMessageSink()
     val publisher = rememberZhihuAnswerPublisher()
     val coroutineScope = rememberCoroutineScope()
     val editorScrollState = androidx.compose.foundation.rememberScrollState()
-    val openUrl = rememberSystemUrlOpener()
     val copyToClipboard = rememberPlainTextClipboard()
     val settings = rememberSettingsStore()
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
     var content by remember { mutableStateOf(TextFieldValue("")) }
+    var pinTitle by remember { mutableStateOf(TextFieldValue("")) }
+    var pinImages by remember { mutableStateOf<List<UploadedZhihuImage>>(emptyList()) }
     var tocEnabled by remember { mutableStateOf(false) }
     var isSubmitting by remember { mutableStateOf(false) }
     var existingAnswerId by remember { mutableStateOf<Long?>(null) }
@@ -125,7 +164,7 @@ fun WriteAnswerScreen(
     var previewMarkdown by remember { mutableStateOf<String?>(null) }
     var previewUseWebView by remember { mutableStateOf(false) }
 
-    suspend fun ensureAnswerId(): Long? {
+    suspend fun ensureAnswerId(destination: WriteAnswer): Long? {
         val cached = existingAnswerId
         if (cached != null) return cached
         val answerId = publisher.findMyAnswerId(destination.questionId)
@@ -135,50 +174,92 @@ fun WriteAnswerScreen(
 
     fun submit(publish: Boolean) {
         if (!publisher.isSupported) return
-        if (content.text.isBlank()) {
-            userMessages.showShortMessage("内容为空")
+        val markdownSnapshot = content.text
+        val pinImagesSnapshot = pinImages
+        val isContentEmpty = when (target) {
+            is WriteEditorTarget.Answer -> markdownSnapshot.isBlank()
+            WriteEditorTarget.Pin -> markdownSnapshot.isBlank() && pinImagesSnapshot.isEmpty()
+        }
+        if (isContentEmpty) {
+            userMessages.showShortMessage(
+                when (target) {
+                    is WriteEditorTarget.Answer -> "内容为空"
+                    WriteEditorTarget.Pin -> "想法内容为空"
+                },
+            )
             return
         }
         if (isSubmitting) return
         isSubmitting = true
         coroutineScope.launch {
-            if (publish) {
-                runCatching {
-                    val html = compileMdToZhihuHtml(markdown = content.text)
-                    val answerId = ensureAnswerId()
-                    publisher.patchDraft(
-                        questionId = destination.questionId,
-                        answerId = answerId,
-                        html = html,
-                        tocEnabled = tocEnabled,
-                    )
-                    publisher.publishAnswer(
-                        questionId = destination.questionId,
-                        answerId = answerId,
-                        html = html,
-                        tocEnabled = tocEnabled,
-                    )
-                }.onSuccess { resultAnswerId ->
+            runCatching {
+                val html = compileMdToZhihuHtml(markdown = markdownSnapshot)
+                when (val currentTarget = target) {
+                    is WriteEditorTarget.Answer -> {
+                        val answerId = ensureAnswerId(currentTarget.destination)
+                        if (publish) {
+                            publisher.patchDraft(
+                                questionId = currentTarget.destination.questionId,
+                                answerId = answerId,
+                                html = html,
+                                tocEnabled = tocEnabled,
+                            )
+                            publisher.publishAnswer(
+                                questionId = currentTarget.destination.questionId,
+                                answerId = answerId,
+                                html = html,
+                                tocEnabled = tocEnabled,
+                            )
+                        } else {
+                            publisher.patchDraft(
+                                questionId = currentTarget.destination.questionId,
+                                answerId = answerId,
+                                html = html,
+                                tocEnabled = tocEnabled,
+                            )
+                            null
+                        }
+                    }
+                    WriteEditorTarget.Pin -> {
+                        val title = pinTitle.text.trim()
+                        val textLength = html.replace(Regex("<.+?>"), "").length
+                        if (publish) {
+                            publisher.publishPin(
+                                title = title,
+                                html = html,
+                                textLength = textLength,
+                                images = pinImagesSnapshot,
+                            )
+                        } else {
+                            publisher.savePinDraft(
+                                title = title,
+                                html = html,
+                                textLength = textLength,
+                                images = pinImagesSnapshot,
+                            )
+                            null
+                        }
+                    }
+                }
+            }.onSuccess { resultContentId ->
+                if (publish) {
                     userMessages.showShortMessage("发布成功")
-                    navigator.onNavigate(Article(type = ArticleType.Answer, id = resultAnswerId))
-                }.onFailure { e ->
-                    errorDialogMessage = buildErrorDialogMessage("发布失败", e)
-                }
-            } else {
-                runCatching {
-                    val html = compileMdToZhihuHtml(markdown = content.text)
-                    val answerId = ensureAnswerId()
-                    publisher.patchDraft(
-                        questionId = destination.questionId,
-                        answerId = answerId,
-                        html = html,
-                        tocEnabled = tocEnabled,
-                    )
-                }.onSuccess {
+                    when (target) {
+                        is WriteEditorTarget.Answer -> {
+                            navigator.onNavigate(Article(type = ArticleType.Answer, id = resultContentId ?: return@onSuccess))
+                        }
+                        WriteEditorTarget.Pin -> {
+                            navigator.onNavigate(Pin(resultContentId ?: return@onSuccess))
+                        }
+                    }
+                } else {
                     userMessages.showShortMessage("已保存草稿")
-                }.onFailure { e ->
-                    errorDialogMessage = buildErrorDialogMessage("保存草稿失败", e)
                 }
+            }.onFailure { e ->
+                errorDialogMessage = buildErrorDialogMessage(
+                    title = if (publish) "发布失败" else "保存草稿失败",
+                    throwable = e,
+                )
             }
             isSubmitting = false
         }
@@ -190,6 +271,10 @@ fun WriteAnswerScreen(
             return@rememberImagePickerLauncher
         }
         if (isSubmitting || isUploadingImage) return@rememberImagePickerLauncher
+        if (target is WriteEditorTarget.Pin && pinImages.size >= PIN_IMAGE_LIMIT) {
+            userMessages.showShortMessage("图片最多添加 $PIN_IMAGE_LIMIT 张")
+            return@rememberImagePickerLauncher
+        }
         isUploadingImage = true
         coroutineScope.launch {
             runCatching {
@@ -197,23 +282,35 @@ fun WriteAnswerScreen(
                     bytes = picked.bytes,
                     mimeType = picked.mimeType,
                     fileName = picked.fileName,
+                    source = when (target) {
+                        is WriteEditorTarget.Answer -> ZhihuImageUploadSource.Article
+                        WriteEditorTarget.Pin -> ZhihuImageUploadSource.Pin
+                    },
                 )
             }.onSuccess { uploaded ->
-                val title = buildString {
-                    append("zhimg:w=").append(uploaded.rawWidth)
-                    append(";h=").append(uploaded.rawHeight)
-                    uploaded.watermark?.let { append(";wm=").append(if (it) 1 else 0) }
-                    if (uploaded.watermark == true) {
-                        uploaded.watermarkUrl?.let { append(";wmsrc=").append(it) }
+                when (target) {
+                    is WriteEditorTarget.Answer -> {
+                        val title = buildString {
+                            append("zhimg:w=").append(uploaded.rawWidth)
+                            append(";h=").append(uploaded.rawHeight)
+                            uploaded.watermark?.let { append(";wm=").append(if (it) 1 else 0) }
+                            if (uploaded.watermark == true) {
+                                uploaded.watermarkUrl?.let { append(";wmsrc=").append(it) }
+                            }
+                        }
+                        val alt = picked.fileName
+                            ?.substringBeforeLast('.')
+                            ?.takeIf { it.isNotBlank() }
+                            .orEmpty()
+                        val snippet = "![$alt](${uploaded.url} \"$title\")"
+                        content = content.replaceSelection(snippet, cursorOffsetInInsert = snippet.length)
+                        userMessages.showShortMessage("图片已插入")
+                    }
+                    WriteEditorTarget.Pin -> {
+                        pinImages = pinImages + uploaded
+                        userMessages.showShortMessage("图片已添加")
                     }
                 }
-                val alt = picked.fileName
-                    ?.substringBeforeLast('.')
-                    ?.takeIf { it.isNotBlank() }
-                    .orEmpty()
-                val snippet = "![$alt](${uploaded.url} \"$title\")"
-                content = content.replaceSelection(snippet, cursorOffsetInInsert = snippet.length)
-                userMessages.showShortMessage("图片已插入")
             }.onFailure { e ->
                 if (e is UnknownImageFormatException) {
                     userMessages.showShortMessage(e.message ?: "无法识别图片格式，已取消上传")
@@ -225,11 +322,13 @@ fun WriteAnswerScreen(
         }
     }
 
-    LaunchedEffect(destination.questionId, publisher.isSupported) {
+    val answerTarget = target as? WriteEditorTarget.Answer
+    LaunchedEffect(answerTarget?.destination?.questionId, publisher.isSupported) {
+        val answerDestination = answerTarget?.destination ?: return@LaunchedEffect
         if (!publisher.isSupported) return@LaunchedEffect
         isDetecting = true
         existingAnswerId = runCatching {
-            publisher.findMyAnswerId(destination.questionId)
+            publisher.findMyAnswerId(answerDestination.questionId)
         }.onFailure { e ->
             errorDialogMessage = buildErrorDialogMessage("检测已有回答失败", e)
         }.getOrNull()
@@ -257,10 +356,15 @@ fun WriteAnswerScreen(
                 title = {
                     Text(
                         text =
-                            when {
-                                isDetecting || isLoadingExistingAnswer -> "正在检测已有回答..."
-                                existingAnswerId != null -> "编辑已有回答"
-                                else -> "写回答"
+                            when (target) {
+                                is WriteEditorTarget.Answer -> {
+                                    when {
+                                        isDetecting || isLoadingExistingAnswer -> "正在检测已有回答..."
+                                        existingAnswerId != null -> "编辑已有回答"
+                                        else -> "写回答"
+                                    }
+                                }
+                                WriteEditorTarget.Pin -> "发想法"
                             },
                     )
                 },
@@ -270,11 +374,13 @@ fun WriteAnswerScreen(
                     }
                 },
                 actions = {
-                    IconButton(
-                        onClick = { showSettingsSheet = true },
-                        enabled = publisher.isSupported && !isSubmitting,
-                    ) {
-                        Icon(Icons.Default.Settings, contentDescription = "回答设置")
+                    if (target is WriteEditorTarget.Answer) {
+                        IconButton(
+                            onClick = { showSettingsSheet = true },
+                            enabled = publisher.isSupported && !isSubmitting,
+                        ) {
+                            Icon(Icons.Default.Settings, contentDescription = "回答设置")
+                        }
                     }
                     Button(
                         onClick = {
@@ -425,46 +531,149 @@ fun WriteAnswerScreen(
         ) {
             if (!publisher.isSupported) {
                 Text(
-                    text = "当前平台暂不支持发布/编辑回答",
+                    text =
+                        when (target) {
+                            is WriteEditorTarget.Answer -> "当前平台暂不支持发布/编辑回答"
+                            WriteEditorTarget.Pin -> "当前平台暂不支持发布想法"
+                        },
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.align(Alignment.TopCenter).padding(top = 16.dp),
                 )
             } else {
-                BasicTextField(
-                    value = content,
-                    onValueChange = { newValue -> content = newValue },
+                Column(
                     modifier =
                         Modifier
-                            .fillMaxSize()
-                            .testTag(WRITE_ANSWER_CONTENT_TAG),
-                    enabled = !isSubmitting,
-                    textStyle =
-                        TextStyle(
-                            color = MaterialTheme.colorScheme.onBackground,
-                            fontSize = 17.sp,
-                            lineHeight = 26.sp,
-                        ),
-                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                    decorationBox = { innerTextField ->
-                        Box(
+                            .fillMaxSize(),
+                ) {
+                    if (target is WriteEditorTarget.Pin) {
+                        BasicTextField(
+                            value = pinTitle,
+                            onValueChange = { newValue -> pinTitle = newValue },
                             modifier =
                                 Modifier
-                                    .fillMaxSize()
-                                    .verticalScroll(editorScrollState)
-                                    .padding(top = 16.dp, bottom = 160.dp),
+                                    .fillMaxWidth()
+                                    .testTag(WRITE_PIN_TITLE_TAG),
+                            enabled = !isSubmitting,
+                            textStyle =
+                                MaterialTheme.typography.titleLarge.copy(
+                                    color = MaterialTheme.colorScheme.onBackground,
+                                ),
+                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                            decorationBox = { innerTextField ->
+                                Box(
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .padding(top = 16.dp, bottom = 12.dp),
+                                ) {
+                                    if (pinTitle.text.isEmpty()) {
+                                        Text(
+                                            text = "标题",
+                                            style = MaterialTheme.typography.titleLarge,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                    innerTextField()
+                                }
+                            },
+                        )
+                    }
+                    if (target is WriteEditorTarget.Pin && pinImages.isNotEmpty()) {
+                        Column(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            if (content.text.isEmpty()) {
-                                Text(
-                                    text = "请输入图文回答内容……",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
+                            Text(
+                                text = "图片 ${pinImages.size}/$PIN_IMAGE_LIMIT",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            pinImages.forEachIndexed { index, image ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    AsyncImage(
+                                        model = image.url,
+                                        contentDescription = "想法图片 ${index + 1}",
+                                        contentScale = ContentScale.Crop,
+                                        modifier =
+                                            Modifier
+                                                .size(56.dp)
+                                                .clip(MaterialTheme.shapes.small),
+                                    )
+                                    Spacer(Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "图片 ${index + 1}",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onBackground,
+                                        )
+                                        Text(
+                                            text = "${image.rawWidth} x ${image.rawHeight}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                    TextButton(
+                                        onClick = {
+                                            pinImages = pinImages.filterIndexed { itemIndex, _ -> itemIndex != index }
+                                        },
+                                        enabled = !isSubmitting,
+                                    ) {
+                                        Text("删除")
+                                    }
+                                }
                             }
-                            innerTextField()
                         }
-                    },
-                )
+                    }
+                    BasicTextField(
+                        value = content,
+                        onValueChange = { newValue -> content = newValue },
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                                .testTag(target.contentTag),
+                        enabled = !isSubmitting,
+                        textStyle =
+                            TextStyle(
+                                color = MaterialTheme.colorScheme.onBackground,
+                                fontSize = 17.sp,
+                                lineHeight = 26.sp,
+                            ),
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                        decorationBox = { innerTextField ->
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .fillMaxSize()
+                                        .verticalScroll(editorScrollState)
+                                        .padding(
+                                            top = if (target is WriteEditorTarget.Pin) 4.dp else 16.dp,
+                                            bottom = 160.dp,
+                                        ),
+                            ) {
+                                if (content.text.isEmpty()) {
+                                    Text(
+                                        text =
+                                            when (target) {
+                                                is WriteEditorTarget.Answer -> "请输入图文回答内容……"
+                                                WriteEditorTarget.Pin -> "分享你此刻的想法..."
+                                            },
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                                innerTextField()
+                            }
+                        },
+                    )
+                }
                 MarkdownShortcutToolbar(
                     onApplyShortcut = { shortcut ->
                         content = content.applyMarkdownShortcut(shortcut)
@@ -479,7 +688,7 @@ fun WriteAnswerScreen(
         }
     }
 
-    if (showSettingsSheet) {
+    if (showSettingsSheet && target is WriteEditorTarget.Answer) {
         MyModalBottomSheet(
             onDismissRequest = { showSettingsSheet = false },
             sheetState = settingsSheetState,

@@ -39,6 +39,7 @@ import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.ArrowCircleUp
 import androidx.compose.material.icons.filled.CopyAll
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.MarkUnreadChatAlt
 import androidx.compose.material.icons.filled.Notifications
@@ -73,6 +74,7 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Search
+import com.github.zly2006.zhihu.navigation.WritePin
 import com.github.zly2006.zhihu.shared.aigc.AIGC_MARKING_ENABLED_PREFERENCE_KEY
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
@@ -110,6 +112,7 @@ const val QQ_GROUP_DISMISSED_PREFERENCE_KEY = "dismissQQGroup3"
 const val AIGC_MARKING_ANNOUNCEMENT_DISMISSED_PREFERENCE_KEY = "dismissAigcMarkingAnnouncement"
 const val HOME_TOP_ACTIONS_TAG = "home_top_actions"
 const val HOME_SEARCH_BUTTON_TAG = "home_search_button"
+const val HOME_WRITE_PIN_BUTTON_TAG = "home_write_pin_button"
 const val HOME_NOTIFICATION_BUTTON_TAG = "home_notification_button"
 const val HOME_ACCOUNT_BUTTON_TAG = "home_account_button"
 const val HOME_FEED_LIST_TAG = "home_feed_list"
@@ -345,6 +348,17 @@ fun HomeScreen(
                                 }
                             }
                         }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        IconButton(
+                            onClick = { navigator.onNavigate(WritePin) },
+                            modifier = Modifier.testTag(HOME_WRITE_PIN_BUTTON_TAG),
+                        ) {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = "发想法",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
                     }
                 }
             } else {
@@ -389,6 +403,17 @@ fun HomeScreen(
                             }
                         }
                         Spacer(modifier = Modifier.width(8.dp))
+                        IconButton(
+                            onClick = { navigator.onNavigate(WritePin) },
+                            modifier = Modifier.testTag(HOME_WRITE_PIN_BUTTON_TAG),
+                        ) {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = "发想法",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(4.dp))
                         IconButton(
                             onClick = { navigator.onNavigate(Notification) },
                             modifier = Modifier.testTag(HOME_NOTIFICATION_BUTTON_TAG),
