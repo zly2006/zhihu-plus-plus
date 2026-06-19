@@ -67,9 +67,8 @@ private class AndroidZhihuAnswerPublisher(
     override suspend fun findMyAnswerId(questionId: Long): Long? {
         AccountData.data.self?.id ?: return null
 
-        val url = zhihuQuestionRelationshipUrl(questionId)
         val element = runCatching {
-            context.asApiEnvironment().fetchJson(url, QUESTION_RELATIONSHIP_INCLUDE)
+            context.asApiEnvironment().fetchJson("https://api.zhihu.com/questions/$questionId", QUESTION_RELATIONSHIP_INCLUDE)
         }.getOrNull() ?: return null
 
         val response = ZhihuJson.decodeJson(DataHolder.QuestionRelationshipApiResponse.serializer(), element)
@@ -123,7 +122,6 @@ private class AndroidZhihuAnswerPublisher(
             .postSigned("https://www.zhihu.com/api/v4/questions/$questionId/draft") {
                 contentType(ContentType.Application.Json)
                 header(HttpHeaders.Referrer, "https://www.zhihu.com/question/$questionId/answer/${answerId ?: ""}")
-                header("x-requested-with", "fetch")
                 header("x-xsrftoken", xsrf)
                 setBody(body)
             }.raiseForStatus(dumpRequest = true)
@@ -165,7 +163,6 @@ private class AndroidZhihuAnswerPublisher(
             .asApiEnvironment()
             .postSigned("https://www.zhihu.com/api/v4/content/publish") {
                 contentType(ContentType.Application.Json)
-                header("x-requested-with", "fetch")
                 header("x-xsrftoken", xsrf)
                 setBody(requestBody)
             }.raiseForStatus(dumpRequest = true)
