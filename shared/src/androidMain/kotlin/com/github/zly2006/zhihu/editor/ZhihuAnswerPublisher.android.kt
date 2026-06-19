@@ -26,13 +26,12 @@ import com.github.zly2006.zhihu.data.asApiEnvironment
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.util.raiseForStatus
-import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.fetchContentDetail
+import com.github.zly2006.zhihu.viewmodel.postSigned
 import io.ktor.client.call.body
-import io.ktor.client.request.get
 import io.ktor.client.request.header
-import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
@@ -48,8 +47,10 @@ actual fun rememberZhihuAnswerPublisher(): ZhihuAnswerPublisher {
     }
 }
 
+private const val QUESTION_RELATIONSHIP_INCLUDE = "relationship,relationship.my_answer"
+
 private fun zhihuQuestionRelationshipUrl(questionId: Long): String =
-    "https://api.zhihu.com/questions/$questionId?include=relationship,relationship.my_answer"
+    "https://api.zhihu.com/questions/$questionId"
 
 private class AndroidZhihuAnswerPublisher(
     private val context: Context,
@@ -68,15 +69,10 @@ private class AndroidZhihuAnswerPublisher(
 
         val url = zhihuQuestionRelationshipUrl(questionId)
         val element = runCatching {
-            AccountData
-                .httpClient(context)
-                .get(url) {
-                    signFetchRequest()
-                }.raiseForStatus(dumpRequest = true)
-                .body<JsonElement>()
+            context.asApiEnvironment().fetchJson(url, QUESTION_RELATIONSHIP_INCLUDE)
         }.getOrNull() ?: return null
 
-        val response = AccountData.decodeJson(DataHolder.QuestionRelationshipApiResponse.serializer(), element)
+        val response = ZhihuJson.decodeJson(DataHolder.QuestionRelationshipApiResponse.serializer(), element)
         val myAnswer = response.relationship?.myAnswer ?: return null
 
         if (myAnswer.isDeleted == true) {
@@ -122,14 +118,13 @@ private class AndroidZhihuAnswerPublisher(
             ),
         )
 
-        AccountData
-            .httpClient(context)
-            .post("https://www.zhihu.com/api/v4/questions/$questionId/draft") {
+        context
+            .asApiEnvironment()
+            .postSigned("https://www.zhihu.com/api/v4/questions/$questionId/draft") {
                 contentType(ContentType.Application.Json)
                 header(HttpHeaders.Referrer, "https://www.zhihu.com/question/$questionId/answer/${answerId ?: ""}")
                 header("x-requested-with", "fetch")
                 header("x-xsrftoken", xsrf)
-                signFetchRequest()
                 setBody(body)
             }.raiseForStatus(dumpRequest = true)
     }
@@ -166,18 +161,17 @@ private class AndroidZhihuAnswerPublisher(
             ),
         )
 
-        val responseElement = AccountData
-            .httpClient(context)
-            .post("https://www.zhihu.com/api/v4/content/publish") {
+        val responseElement = context
+            .asApiEnvironment()
+            .postSigned("https://www.zhihu.com/api/v4/content/publish") {
                 contentType(ContentType.Application.Json)
                 header("x-requested-with", "fetch")
                 header("x-xsrftoken", xsrf)
-                signFetchRequest()
                 setBody(requestBody)
             }.raiseForStatus(dumpRequest = true)
             .body<JsonElement>()
 
-        val response = AccountData.decodeJson(DataHolder.ContentPublishResponse.serializer(), responseElement)
+        val response = ZhihuJson.decodeJson(DataHolder.ContentPublishResponse.serializer(), responseElement)
         val message = response.message
         if (message == "success") {
             val resultText = response.data?.result
