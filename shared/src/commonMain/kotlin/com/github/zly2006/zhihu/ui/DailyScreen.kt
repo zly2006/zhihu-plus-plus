@@ -515,12 +515,16 @@ private suspend fun fetchDailyStoryDestination(
         .get("https://daily.zhihu.com/api/7/story/$storyId")
         .body()
     val body = response["body"]?.jsonPrimitive?.content ?: return@withContext null
-    return@withContext Ksoup
-        .parse(body)
-        .selectFirst("div.view-more")
-        ?.selectFirst("a")
+    val doc = Ksoup.parse(body)
+    return@withContext doc
+        .selectFirst("a.originUrl")
         ?.attr("href")
         ?.let(::resolveContent)
+        ?: doc
+            .selectFirst("div.view-more")
+            ?.selectFirst("a")
+            ?.attr("href")
+            ?.let(::resolveContent)
 }
 
 private const val DAILY_SCREEN_TITLE_TAG = "daily_screen_title"
