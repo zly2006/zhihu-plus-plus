@@ -82,6 +82,7 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.navigation.ReadLater
 import com.github.zly2006.zhihu.shared.platform.rememberPlainTextClipboard
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberSystemUrlOpener
@@ -109,6 +110,7 @@ const val ACCOUNT_SETTINGS_SHORTCUT_COLLECTIONS_TAG = "accountSettings.shortcutC
 const val ACCOUNT_SETTINGS_SHORTCUT_SUBSCRIPTIONS_TAG = "accountSettings.shortcutSubscriptions"
 const val ACCOUNT_SETTINGS_SHORTCUT_NOTIFICATION_TAG = "accountSettings.shortcutNotification"
 const val ACCOUNT_SETTINGS_SHORTCUT_HISTORY_TAG = "accountSettings.shortcutHistory"
+const val ACCOUNT_SETTINGS_READ_LATER_TAG = "accountSettings.readLater"
 const val ACCOUNT_SETTINGS_APPEARANCE_TAG = "accountSettings.appearance"
 const val ACCOUNT_SETTINGS_RECOMMEND_TAG = "accountSettings.recommend"
 const val ACCOUNT_SETTINGS_SYSTEM_TAG = "accountSettings.system"
@@ -418,6 +420,14 @@ fun AccountSettingScreen(
             }
 
             SettingItemGroup {
+                SettingItem(
+                    title = { Text("稍后再看") },
+                    description = { Text("本地保存的回答和文章") },
+                    icon = { Icon(Icons.Default.BookmarkBorder, null) },
+                    modifier = Modifier.testTag(ACCOUNT_SETTINGS_READ_LATER_TAG),
+                    onClick = { navigator.onNavigate(ReadLater) },
+                )
+
                 SettingItem(
                     title = { Text("外观与阅读体验") },
                     description = { Text("主题颜色、字体大小等") },
