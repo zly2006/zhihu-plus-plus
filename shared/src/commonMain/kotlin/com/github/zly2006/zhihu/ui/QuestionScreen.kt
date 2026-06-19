@@ -430,9 +430,8 @@ fun QuestionScreen(
                                 modifier = Modifier.testTag(QUESTION_VIEW_LOG_BUTTON_TAG),
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                             ) {
-                                Text("查看日志")
+                                Text("日志")
                             }
-                            Spacer(Modifier.width(8.dp))
 
                             Button(
                                 onClick = {
@@ -455,11 +454,8 @@ fun QuestionScreen(
                                 ),
                             ) {
                                 Icon(Icons.Filled.Share, contentDescription = "分享")
-                                Spacer(Modifier.width(8.dp))
-                                Text("分享")
                             }
 
-                            Spacer(Modifier.width(8.dp))
                             Button(
                                 onClick = {
                                     navigator.onNavigate(
