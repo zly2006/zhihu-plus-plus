@@ -18,11 +18,13 @@
 package com.github.zly2006.zhihu.editor
 
 import androidx.compose.runtime.Composable
+import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 
 /**
@@ -120,12 +122,13 @@ expect fun rememberZhihuAnswerPublisher(): ZhihuAnswerPublisher
  *
  * 这里不强依赖完整数据模型，只提取我们需要的字段。
  */
-fun parsePublishAnswerId(resultJson: JsonObject): Long? {
-    // zhihu_obsidian：JSON.parse(response.json.data.result).publish.id
-    val publish = resultJson["publish"] as? JsonObject ?: return null
-    val idText = publish["id"]?.jsonPrimitive?.content ?: return null
-    return idText.toLongOrNull()
-}
+fun parsePublishAnswerId(resultText: String): Long? =
+    runCatching {
+        ZhihuJson.json.decodeFromString(DataHolder.PublishResult.serializer(), resultText)
+    }.getOrNull()
+        ?.publish
+        ?.id
+        ?.toLongOrNull()
 
 @Serializable
 data class PatchDraftRequest(

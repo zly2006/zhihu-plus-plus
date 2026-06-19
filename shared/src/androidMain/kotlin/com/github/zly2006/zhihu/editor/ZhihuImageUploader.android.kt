@@ -33,7 +33,7 @@ import io.ktor.http.contentType
 import kotlinx.coroutines.delay
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonElement
 import java.security.MessageDigest
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
@@ -120,7 +120,7 @@ class ZhihuImageUploader(
                 header(HttpHeaders.Cookie, buildCookieHeader(cookies))
                 setBody(body)
             }.raiseForStatus(dumpRequest = true)
-            .body<JsonObject>()
+            .body<JsonElement>()
         return AccountData.decodeJson(ApplyImageUploadResponse.serializer(), response)
     }
 
@@ -325,7 +325,7 @@ class ZhihuImageUploader(
                 header(HttpHeaders.UserAgent, userAgent)
                 header(HttpHeaders.Cookie, buildCookieHeader(cookies))
             }.raiseForStatus(dumpRequest = true)
-            .body<JsonObject>()
+            .body<JsonElement>()
         return AccountData.decodeJson(ImageStatus.serializer(), response)
     }
 }

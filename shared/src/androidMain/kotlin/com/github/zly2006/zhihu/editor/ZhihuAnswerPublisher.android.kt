@@ -27,7 +27,6 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.zhihuQuestionRelationshipUrl
 import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.util.raiseForStatus
 import com.github.zly2006.zhihu.util.signFetchRequest
 import io.ktor.client.call.body
@@ -38,11 +37,8 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import java.util.UUID
 
 @Composable
@@ -69,29 +65,23 @@ private class AndroidZhihuAnswerPublisher(
         AccountData.data.self?.id ?: return null
 
         val url = zhihuQuestionRelationshipUrl(questionId)
-        val json = runCatching {
+        val element = runCatching {
             AccountData
                 .httpClient(context)
                 .get(url) {
                     signFetchRequest()
                 }.raiseForStatus(dumpRequest = true)
-                .body<JsonObject>()
+                .body<JsonElement>()
         }.getOrNull() ?: return null
 
-        val myAnswer = json["relationship"]
-            ?.jsonObject
-            ?.get("my_answer")
-            ?.jsonObject
-            ?: return null
+        val response = AccountData.decodeJson(DataHolder.QuestionRelationshipApiResponse.serializer(), element)
+        val myAnswer = response.relationship?.myAnswer ?: return null
 
-        if (myAnswer["is_deleted"]?.jsonPrimitive?.booleanOrNull == true) {
+        if (myAnswer.isDeleted == true) {
             return null
         }
 
-        return myAnswer["answer_id"]
-            ?.jsonPrimitive
-            ?.contentOrNull
-            ?.toLongOrNull()
+        return myAnswer.answerId?.toLongOrNull()
     }
 
     override suspend fun fetchAnswerForEditing(answerId: Long): ExistingAnswerForEditing? {
@@ -193,7 +183,7 @@ private class AndroidZhihuAnswerPublisher(
             ),
         )
 
-        val responseJson = AccountData
+        val responseElement = AccountData
             .httpClient(context)
             .post("https://www.zhihu.com/api/v4/content/publish") {
                 contentType(ContentType.Application.Json)
@@ -202,29 +192,25 @@ private class AndroidZhihuAnswerPublisher(
                 signFetchRequest()
                 setBody(requestBody)
             }.raiseForStatus(dumpRequest = true)
-            .body<JsonObject>()
+            .body<JsonElement>()
 
-        val message = responseJson["message"]?.jsonPrimitive?.content
+        val response = AccountData.decodeJson(DataHolder.ContentPublishResponse.serializer(), responseElement)
+        val message = response.message
         if (message == "success") {
-            val resultText = responseJson["data"]
-                ?.jsonObject
-                ?.get("result")
-                ?.jsonPrimitive
-                ?.content
-                ?: throw IllegalStateException("发布成功但返回缺少 data.result")
+            val resultText = response.data?.result
+                ?: throw IllegalStateException("发布成功但返回缺少 data.result: $responseElement")
 
-            val resultJson = ZhihuJson.json.parseToJsonElement(resultText).jsonObject
-            return parsePublishAnswerId(resultJson)
+            return parsePublishAnswerId(resultText)
                 ?: throw IllegalStateException("发布成功但无法解析 publish.id")
         }
 
-        val code = responseJson["code"]?.jsonPrimitive?.content?.toIntOrNull()
+        val code = response.code
         if (code == 103003) {
-            throw IllegalStateException(responseJson["message"]?.jsonPrimitive?.content ?: "已回答过该问题，创建回答失败")
+            throw IllegalStateException(response.message ?: "已回答过该问题，创建回答失败")
         }
 
         throw IllegalStateException(
-            "发布失败: ${responseJson["message"]?.jsonPrimitive?.content ?: "unknown"}\n$responseJson",
+            "发布失败: ${response.message ?: "unknown"}\n$responseElement",
         )
     }
 }

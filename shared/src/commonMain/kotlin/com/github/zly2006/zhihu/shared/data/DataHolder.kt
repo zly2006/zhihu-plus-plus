@@ -68,6 +68,44 @@ object DataHolder {
     object DummyContent : Content
 
     @Serializable
+    data class QuestionRelationshipApiResponse(
+        val relationship: QuestionRelationshipApi? = null,
+    )
+
+    @Serializable
+    data class QuestionRelationshipApi(
+        val myAnswer: MyAnswer? = null,
+    )
+
+    @Serializable
+    data class MyAnswer(
+        val isDeleted: Boolean? = null,
+        val answerId: String? = null,
+    )
+
+    @Serializable
+    data class ContentPublishResponse(
+        val message: String? = null,
+        val code: Int? = null,
+        val data: ContentPublishResponseData? = null,
+    )
+
+    @Serializable
+    data class ContentPublishResponseData(
+        val result: String? = null,
+    )
+
+    @Serializable
+    data class PublishResult(
+        val publish: PublishResultPublish? = null,
+    )
+
+    @Serializable
+    data class PublishResultPublish(
+        val id: String? = null,
+    )
+
+    @Serializable
     data class Author(
         val avatarUrl: String,
         val avatarUrlTemplate: String? = null,
