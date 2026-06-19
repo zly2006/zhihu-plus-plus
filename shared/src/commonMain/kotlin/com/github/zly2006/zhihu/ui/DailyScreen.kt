@@ -63,6 +63,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -119,6 +120,7 @@ fun DailyScreen(
     var isRefreshing by remember { mutableStateOf(false) }
     var currentViewingDate by remember { mutableStateOf("") }
     var showDatePicker by remember { mutableStateOf(false) }
+    var pendingDateSelection by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
@@ -151,6 +153,19 @@ fun DailyScreen(
     LaunchedEffect(Unit) {
         if (viewModel.sections.isEmpty()) {
             viewModel.loadLatest(httpClient)
+        }
+    }
+
+    LaunchedEffect(showDatePicker, pendingDateSelection) {
+        if (showDatePicker) return@LaunchedEffect
+        val selectedDate = pendingDateSelection ?: return@LaunchedEffect
+        // DatePickerDialog is hosted in a platform window. Delay page replacement until the closing
+        // dialog has yielded its focus and measure work back to the main content window.
+        withFrameNanos { }
+        viewModel.loadDate(httpClient, selectedDate)
+        listState.scrollToItem(0)
+        if (pendingDateSelection == selectedDate) {
+            pendingDateSelection = null
         }
     }
 
@@ -188,11 +203,7 @@ fun DailyScreen(
                 TextButton(onClick = {
                     showDatePicker = false
                     datePickerState.selectedDateMillis?.let { millis ->
-                        val dateStr = formatDailyDatePickerSelection(millis)
-                        scope.launch {
-                            viewModel.loadDate(httpClient, dateStr)
-                            listState.scrollToItem(0)
-                        }
+                        pendingDateSelection = formatDailyDatePickerSelection(millis)
                     }
                 }) { Text("确认") }
             },
