@@ -116,6 +116,7 @@ import com.github.zly2006.zhihu.ui.subscreens.ColorSchemeScreen
 import com.github.zly2006.zhihu.ui.subscreens.ContentFilterSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.DeveloperSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.OpenSourceLicensesScreen
+import com.github.zly2006.zhihu.ui.subscreens.SettingsSearchScreen
 import com.github.zly2006.zhihu.ui.subscreens.SystemAndUpdateSettingsScreen
 import kotlinx.coroutines.launch
 import kotlin.reflect.KClass
@@ -509,7 +510,9 @@ fun ZhihuMain(
                     NotificationScreen()
                 }
                 composable<Notification.NotificationSettings> {
-                    NotificationSettingsScreen()
+                    NotificationSettingsScreen(
+                        setting = it.toRoute<Notification.NotificationSettings>().setting,
+                    )
                 }
                 composable<SentenceSimilarityTest> {
                     platformAdapter.sentenceSimilarityTest()
@@ -526,7 +529,12 @@ fun ZhihuMain(
                     ContentFilterSettingsScreen(args.setting)
                 }
                 composable<Account.SystemAndUpdateSettings> {
-                    SystemAndUpdateSettingsScreen()
+                    SystemAndUpdateSettingsScreen(
+                        setting = it.toRoute<Account.SystemAndUpdateSettings>().setting,
+                    )
+                }
+                composable<Account.SettingsSearch> {
+                    SettingsSearchScreen()
                 }
                 composable<Account.OpenSourceLicenses> {
                     OpenSourceLicensesScreen()

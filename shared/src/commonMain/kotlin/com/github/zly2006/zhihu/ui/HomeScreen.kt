@@ -448,7 +448,7 @@ fun HomeScreen(
                             leadingIcon = { Icon(Icons.Default.ArrowCircleUp, contentDescription = null) },
                             accept = { Text("查看更新") },
                             onAccept = {
-                                navigator.onNavigate(Account.SystemAndUpdateSettings)
+                                navigator.onNavigate(Account.SystemAndUpdateSettings())
                             },
                             dismiss = { Text("以后") },
                             onDismiss = {

@@ -100,11 +100,14 @@ const val SYSTEM_SETTINGS_AIGC_MARKING_TAG = "system_settings_aigc_marking"
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SystemAndUpdateSettingsScreen() {
+fun SystemAndUpdateSettingsScreen(
+    setting: String? = null,
+) {
     val settings = rememberSettingsStore()
     val updates = rememberSystemUpdateRuntime()
     val openExternalUrl = rememberExternalUrlOpener()
     val navigator = LocalNavigator.current
+    val highlightedSetting = setting.orEmpty()
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
@@ -308,6 +311,8 @@ fun SystemAndUpdateSettingsScreen() {
                             "用于访问 GitHub API 时解除限速，提高更新检查的稳定性。留空则使用匿名访问，检查更新可能会失败。",
                         )
                     },
+                    settingKey = "githubToken",
+                    highlightedKey = highlightedSetting,
                     bottomAction = {
                         OutlinedTextField(
                             value = githubToken,
@@ -339,6 +344,8 @@ fun SystemAndUpdateSettingsScreen() {
                         autoCheckUpdates = it
                         updates.setAutoCheckEnabled(it)
                     },
+                    settingKey = "autoCheckUpdates",
+                    highlightedKey = highlightedSetting,
                 )
 
                 var checkNightlyUpdates by remember { mutableStateOf(settings.getBoolean("checkNightlyUpdates", false)) }
@@ -350,6 +357,8 @@ fun SystemAndUpdateSettingsScreen() {
                         checkNightlyUpdates = it
                         settings.putBoolean("checkNightlyUpdates", it)
                     },
+                    settingKey = "checkNightlyUpdates",
+                    highlightedKey = highlightedSetting,
                 )
 
                 var allowTelemetry by remember { mutableStateOf(settings.getBoolean("allowTelemetry", true)) }
@@ -361,6 +370,8 @@ fun SystemAndUpdateSettingsScreen() {
                         allowTelemetry = it
                         settings.putBoolean("allowTelemetry", it)
                     },
+                    settingKey = "allowTelemetry",
+                    highlightedKey = highlightedSetting,
                 )
 
                 var aigcMarkingEnabled by remember {
@@ -380,6 +391,7 @@ fun SystemAndUpdateSettingsScreen() {
                         settings.putBoolean(AIGC_MARKING_ENABLED_PREFERENCE_KEY, it)
                     },
                     settingKey = AIGC_MARKING_ENABLED_PREFERENCE_KEY,
+                    highlightedKey = highlightedSetting,
                 )
             }
 
@@ -440,6 +452,8 @@ fun SystemAndUpdateSettingsScreen() {
                 SettingItem(
                     title = { Text("防沉迷提醒") },
                     description = { Text("你已经连续浏览知乎 N 小时 M 分钟了，休息一下吧。退出后 5 分钟内重开仍视为连续使用。") },
+                    settingKey = CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES_KEY,
+                    highlightedKey = highlightedSetting,
                     endAction = {
                         ExposedDropdownMenuBox(
                             expanded = reminderExpanded,
