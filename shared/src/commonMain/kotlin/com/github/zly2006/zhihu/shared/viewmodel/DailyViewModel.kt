@@ -46,7 +46,7 @@ class DailyViewModel : ViewModel() {
         isLoading = true
         try {
             val data: DailyStoriesResponse = httpClient.fetchLatestDailyStories()
-            sections = listOf(DailySection(data.date, data.stories))
+            sections = if (data.stories.isEmpty()) emptyList() else listOf(DailySection(data.date, data.stories))
             nextDate = data.date
             error = null
         } catch (e: Exception) {
@@ -66,7 +66,7 @@ class DailyViewModel : ViewModel() {
                 .toString()
                 .replace("-", "")
             val data: DailyStoriesResponse = httpClient.fetchDailyStoriesBefore(nextApiDate)
-            sections = listOf(DailySection(data.date, data.stories))
+            sections = if (data.stories.isEmpty()) emptyList() else listOf(DailySection(data.date, data.stories))
             nextDate = data.date
             error = null
         } catch (e: Exception) {
@@ -82,7 +82,9 @@ class DailyViewModel : ViewModel() {
         isLoadingMore = true
         try {
             val data: DailyStoriesResponse = httpClient.fetchDailyStoriesBefore(date)
-            sections = sections + DailySection(data.date, data.stories)
+            if (data.stories.isNotEmpty()) {
+                sections = sections + DailySection(data.date, data.stories)
+            }
             nextDate = data.date
         } catch (e: Exception) {
             Log.e("DailyViewModel", "Failed to load more daily stories", e)

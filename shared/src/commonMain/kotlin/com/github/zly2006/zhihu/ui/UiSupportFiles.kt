@@ -44,8 +44,6 @@ import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
-import com.github.zly2006.zhihu.shared.data.officialBadge
-import com.github.zly2006.zhihu.shared.data.officialBadgeDetails
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.shared.platform.SettingsStore
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
@@ -327,30 +325,6 @@ fun ArticleVideoAttachmentContent(attachment: JsonElement?) {
 /** 过滤部分设备文本选择菜单中的非预期系统项。 */
 expect fun Modifier.articleMarkdownSelectionWorkaround(): Modifier
 
-data class LoadedQuestionScreenData(
-    val uiState: QuestionScreenUiState,
-    val historyDestination: Question,
-)
-
-internal fun loadedQuestionScreenData(
-    question: Question,
-    questionData: DataHolder.Question,
-): LoadedQuestionScreenData {
-    val historyDestination = Question(question.questionId, questionData.title)
-    return LoadedQuestionScreenData(
-        uiState = QuestionScreenUiState(
-            questionContent = questionData.detail,
-            answerCount = questionData.answerCount,
-            visitCount = questionData.visitCount,
-            commentCount = questionData.commentCount,
-            followerCount = questionData.followerCount,
-            title = questionData.title,
-            isFollowing = questionData.relationship.isFollowing,
-        ),
-        historyDestination = historyDestination,
-    )
-}
-
 /**
  * 问题描述正文的渲染入口。
  *
@@ -624,34 +598,8 @@ fun noopSettingsStore(): SettingsStore = SettingsStore(
     remove = { _ -> },
 )
 
-data class PeopleProfileLoadResult(
-    val profile: PeopleProfileUiState,
-    val urlToken: String?,
-)
-
 internal const val PEOPLE_PROFILE_INCLUDE_PATH =
     "allow_message,is_followed,is_following,is_org,is_blocking,badge_v2,answer_count,follower_count,following_count,articles_count,question_count,pins_count"
-
-internal fun toPeopleProfileLoadResult(
-    loadedPerson: DataHolder.People,
-    isBlockedInRecommendations: Boolean,
-): PeopleProfileLoadResult = PeopleProfileLoadResult(
-    profile = PeopleProfileUiState(
-        avatar = loadedPerson.avatarUrl,
-        name = loadedPerson.name,
-        headline = loadedPerson.headline,
-        officialBadge = loadedPerson.badgeV2.officialBadge(),
-        officialBadgeDetails = loadedPerson.badgeV2.officialBadgeDetails(),
-        followerCount = loadedPerson.followerCount,
-        followingCount = loadedPerson.followingCount,
-        answerCount = loadedPerson.answerCount,
-        articleCount = loadedPerson.articlesCount,
-        isFollowing = loadedPerson.isFollowing,
-        isBlocking = loadedPerson.isBlocking,
-        isBlockedInRecommendations = isBlockedInRecommendations,
-    ),
-    urlToken = loadedPerson.urlToken,
-)
 
 data class HomeAccountState(
     val isLoggedIn: Boolean,

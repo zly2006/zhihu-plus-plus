@@ -1638,8 +1638,7 @@ fun ArticleScreen(
                                 ArticleType.Article -> "文章"
                             }
                             val hasVotersSocialCredit = viewModel.votersTotal > 0
-                            val aigcSupportVoterCount = viewModel.aigcSupportVoterCount
-                            if (!hasVotersSocialCredit && aigcSupportVoterCount <= 0) return
+                            if (!hasVotersSocialCredit && viewModel.aigcSupportVoterCount <= 0) return
                             Spacer(modifier = Modifier.height(8.dp))
                             if (hasVotersSocialCredit) {
                                 val text = viewModel.votersSocialText.ifBlank {
@@ -1662,12 +1661,12 @@ fun ArticleScreen(
                                     modifier = votersTextModifier,
                                 )
                             }
-                            if (aigcSupportVoterCount > 0) {
+                            if (viewModel.aigcSupportVoterCount > 0) {
                                 if (hasVotersSocialCredit) {
                                     Spacer(modifier = Modifier.height(4.dp))
                                 }
                                 Text(
-                                    text = "有 ${formatCompactCount(aigcSupportVoterCount)} 人认为此${contentLabel}包含AIGC内容",
+                                    text = "有 ${formatCompactCount(viewModel.aigcSupportVoterCount)} 人认为此${contentLabel}包含AIGC内容",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.error,
                                 )

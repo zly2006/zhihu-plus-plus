@@ -71,12 +71,9 @@ import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_ROOT_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_SEARCH_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_SUBSCRIPTIONS_LIST_TAG
-import com.github.zly2006.zhihu.ui.PeopleListUiState
-import com.github.zly2006.zhihu.ui.PeopleProfileUiState
 import com.github.zly2006.zhihu.ui.PeopleScreen
 import com.github.zly2006.zhihu.ui.PeopleScreenTestOverrides
-import com.github.zly2006.zhihu.ui.PeopleScreenUiState
-import com.github.zly2006.zhihu.ui.PeopleSortedListUiState
+import com.github.zly2006.zhihu.ui.PersonViewModel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -99,7 +96,7 @@ class PeopleScreenInstrumentedTest {
         /*
          * Expected behavior:
          * 1. The profile header must render the seeded avatar area plus all four statistics from the
-         *    injected offline snapshot, so the test never depends on a real profile fetch.
+         *    injected offline ViewModel, so the test never depends on a real profile fetch.
          * 2. Follow, block, and recommendation-block buttons must each flip the local state exactly
          *    once and report the new boolean through the injected callbacks.
          * 3. On the answer tab, both sort buttons should report deterministic sort keys and a deep
@@ -113,7 +110,7 @@ class PeopleScreenInstrumentedTest {
         val articleSorts = mutableListOf<String>()
         val navigator = setPeopleScreen(
             overrides = PeopleScreenTestOverrides(
-                initialUiState = seededUiState(),
+                viewModel = seededViewModel(),
                 onToggleFollow = { followStates += it },
                 onToggleBlock = { blockStates += it },
                 onToggleRecommendationBlock = { recommendationStates += it },
@@ -196,7 +193,7 @@ class PeopleScreenInstrumentedTest {
         var followingLoadMore = 0
         val navigator = setPeopleScreen(
             overrides = PeopleScreenTestOverrides(
-                initialUiState = seededUiState(itemCount = 18),
+                viewModel = seededViewModel(itemCount = 18),
                 onActivitiesLoadMore = { activitiesLoadMore++ },
                 onCollectionsLoadMore = { collectionsLoadMore++ },
                 onQuestionsLoadMore = { questionsLoadMore++ },
@@ -311,24 +308,21 @@ class PeopleScreenInstrumentedTest {
         val duplicatedAnswerId = 2_544_209_984L
         setPeopleScreen(
             overrides = PeopleScreenTestOverrides(
-                initialUiState = seededUiState(itemCount = 0).copy(
-                    answers = PeopleSortedListUiState(
-                        sortBy = "voteups",
-                        items = listOf(
-                            seededAnswer(
-                                id = duplicatedAnswerId,
-                                questionId = 1001L,
-                                questionTitle = "重复 key 问题 A",
-                                excerpt = "重复 key 回答 A",
-                            ),
-                            seededAnswer(
-                                id = duplicatedAnswerId,
-                                questionId = 1002L,
-                                questionTitle = "重复 key 问题 B",
-                                excerpt = "重复 key 回答 B",
-                            ),
+                viewModel = seededViewModel(
+                    itemCount = 0,
+                    answers = listOf(
+                        seededAnswer(
+                            id = duplicatedAnswerId,
+                            questionId = 1001L,
+                            questionTitle = "重复 key 问题 A",
+                            excerpt = "重复 key 回答 A",
                         ),
-                        isEnd = true,
+                        seededAnswer(
+                            id = duplicatedAnswerId,
+                            questionId = 1002L,
+                            questionTitle = "重复 key 问题 B",
+                            excerpt = "重复 key 回答 B",
+                        ),
                     ),
                 ),
             ),
@@ -344,7 +338,7 @@ class PeopleScreenInstrumentedTest {
     fun headerSearchActionNavigatesToMemberScopedSearchOffline() {
         val navigator = setPeopleScreen(
             overrides = PeopleScreenTestOverrides(
-                initialUiState = seededUiState(),
+                viewModel = seededViewModel(),
             ),
         )
 
@@ -398,7 +392,7 @@ class PeopleScreenInstrumentedTest {
          */
         val navigator = setPeopleScreen(
             overrides = PeopleScreenTestOverrides(
-                initialUiState = seededUiState(itemCount = 8),
+                viewModel = seededViewModel(itemCount = 8),
                 initialPage = 9,
             ),
         )
@@ -443,91 +437,74 @@ class PeopleScreenInstrumentedTest {
         }
     }
 
-    private fun seededUiState(itemCount: Int = 12): PeopleScreenUiState = PeopleScreenUiState(
-        profile = PeopleProfileUiState(
-            avatar = "https://example.invalid/avatar/root.png",
-            name = "离线用户",
-            headline = "离线个人简介",
-            officialBadge = OfficialBadge(
+    private fun seededViewModel(
+        itemCount: Int = 12,
+        answers: List<DataHolder.Answer>? = null,
+    ): PersonViewModel {
+        val seededViewModel = PersonViewModel(ROOT_PERSON.copy())
+        val seededActivities = List(itemCount) { index ->
+            FeedDisplayItem(
+                title = "离线动态 ${index + 1}",
+                summary = "动态摘要 ${index + 1}",
+                details = "动态详情 ${index + 1}",
+                feed = null,
+                navDestinationJson = Search(query = "离线动态 ${index + 1}").toFeedDisplayItemNavDestinationJson(),
+                localFeedId = "activity-${index + 1}",
+            )
+        }
+
+        composeRule.activity.runOnUiThread {
+            seededViewModel.avatar = "https://example.invalid/avatar/root.png"
+            seededViewModel.name = "离线用户"
+            seededViewModel.headline = "离线个人简介"
+            seededViewModel.officialBadge = OfficialBadge(
                 title = "优秀答主",
                 description = "英语等 5 个话题下的优秀答主",
                 iconUrl = DataHolder.ZH_PLUS_AUTHOR_BADGE_ICON,
-            ),
-            officialBadgeDetails = listOf(
+            )
+            seededViewModel.officialBadgeDetails = listOf(
                 OfficialBadge("社区成就", "英语等 5 个话题下的优秀答主"),
-            ),
-            followerCount = 120,
-            followingCount = 45,
-            answerCount = itemCount,
-            articleCount = itemCount,
-            isFollowing = false,
-            isBlocking = false,
-            isBlockedInRecommendations = false,
-        ),
-        answers = PeopleSortedListUiState(
-            sortBy = "voteups",
-            items = List(itemCount) { index -> seededAnswer(index + 1L) },
-            isEnd = false,
-        ),
-        articles = PeopleSortedListUiState(
-            sortBy = "created",
-            items = List(itemCount) { index -> seededArticle(index + 1L) },
-            isEnd = false,
-        ),
-        activities = PeopleListUiState(
-            items = List(itemCount) { index ->
-                FeedDisplayItem(
-                    title = "离线动态 ${index + 1}",
-                    summary = "动态摘要 ${index + 1}",
-                    details = "动态详情 ${index + 1}",
-                    feed = null,
-                    navDestinationJson = Search(query = "离线动态 ${index + 1}").toFeedDisplayItemNavDestinationJson(),
-                    localFeedId = "activity-${index + 1}",
-                )
-            },
-            isEnd = false,
-        ),
-        collections = PeopleListUiState(
-            items = List(itemCount) { index -> seededCollection(index + 1) },
-            isEnd = false,
-        ),
-        questions = PeopleListUiState(
-            items = List(itemCount) { index -> seededQuestion(index + 1L) },
-            isEnd = false,
-        ),
-        pins = PeopleListUiState(
-            items = List(itemCount) { index -> seededPin(index + 1) },
-            isEnd = false,
-        ),
-        columns = PeopleListUiState(
-            items = List(itemCount) { index -> seededColumn(index + 1) },
-            isEnd = false,
-        ),
-        followers = PeopleListUiState(
-            items = List(itemCount) { index -> seededPeople("follower", index + 1, "粉丝") },
-            isEnd = false,
-        ),
-        following = PeopleListUiState(
-            items = List(itemCount) { index -> seededPeople("following", index + 1, "关注的人") },
-            isEnd = false,
-        ),
-        followingColumns = PeopleListUiState(
-            items = List(itemCount) { index -> seededFollowedColumn(index + 1) },
-            isEnd = false,
-        ),
-        followingTopics = PeopleListUiState(
-            items = List(itemCount) { index -> seededFollowedTopic(index + 1) },
-            isEnd = false,
-        ),
-        followingQuestions = PeopleListUiState(
-            items = List(itemCount) { index -> seededFollowedQuestion(index + 1) },
-            isEnd = false,
-        ),
-        followingCollections = PeopleListUiState(
-            items = List(itemCount) { index -> seededFollowedCollection(index + 1) },
-            isEnd = false,
-        ),
-    )
+            )
+            seededViewModel.followerCount = 120
+            seededViewModel.followingCount = 45
+            seededViewModel.answerCount = answers?.size ?: itemCount
+            seededViewModel.articleCount = itemCount
+            seededViewModel.isFollowing = false
+            seededViewModel.isBlocking = false
+            seededViewModel.isBlockedInRecommendations = false
+
+            seededViewModel.answersFeedModel.allData.clear()
+            seededViewModel.answersFeedModel.allData.addAll(
+                answers ?: List(itemCount) { index -> seededAnswer(index + 1L) },
+            )
+            seededViewModel.articlesFeedModel.allData.clear()
+            seededViewModel.articlesFeedModel.allData.addAll(List(itemCount) { index -> seededArticle(index + 1L) })
+            seededViewModel.activitiesFeedModel.displayItems.clear()
+            seededViewModel.activitiesFeedModel.displayItems.addAll(seededActivities)
+            seededViewModel.collectionsFeedModel.allData.clear()
+            seededViewModel.collectionsFeedModel.allData.addAll(List(itemCount) { index -> seededCollection(index + 1) })
+            seededViewModel.questionsFeedModel.allData.clear()
+            seededViewModel.questionsFeedModel.allData.addAll(List(itemCount) { index -> seededQuestion(index + 1L) })
+            seededViewModel.pinsFeedModel.allData.clear()
+            seededViewModel.pinsFeedModel.allData.addAll(List(itemCount) { index -> seededPin(index + 1) })
+            seededViewModel.columnsFeedModel.allData.clear()
+            seededViewModel.columnsFeedModel.allData.addAll(List(itemCount) { index -> seededColumn(index + 1) })
+            seededViewModel.followersFeedModel.allData.clear()
+            seededViewModel.followersFeedModel.allData.addAll(List(itemCount) { index -> seededPeople("follower", index + 1, "粉丝") })
+            seededViewModel.followingFeedModel.allData.clear()
+            seededViewModel.followingFeedModel.allData.addAll(List(itemCount) { index -> seededPeople("following", index + 1, "关注的人") })
+            seededViewModel.followingColumnsFeedModel.allData.clear()
+            seededViewModel.followingColumnsFeedModel.allData.addAll(List(itemCount) { index -> seededFollowedColumn(index + 1) })
+            seededViewModel.followingTopicsFeedModel.allData.clear()
+            seededViewModel.followingTopicsFeedModel.allData.addAll(List(itemCount) { index -> seededFollowedTopic(index + 1) })
+            seededViewModel.followingQuestionsFeedModel.allData.clear()
+            seededViewModel.followingQuestionsFeedModel.allData.addAll(List(itemCount) { index -> seededFollowedQuestion(index + 1) })
+            seededViewModel.followingCollectionsFeedModel.allData.clear()
+            seededViewModel.followingCollectionsFeedModel.allData.addAll(List(itemCount) { index -> seededFollowedCollection(index + 1) })
+        }
+        composeRule.waitForIdle()
+        return seededViewModel
+    }
 
     private fun seededAnswer(
         id: Long,

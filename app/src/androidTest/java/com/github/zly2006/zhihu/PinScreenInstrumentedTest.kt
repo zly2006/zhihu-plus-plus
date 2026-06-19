@@ -22,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -31,7 +32,10 @@ import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
+import com.github.zly2006.zhihu.test.InstrumentedTestEnvironment
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
+import com.github.zly2006.zhihu.test.ZhihuMockApi
 import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
@@ -49,8 +53,11 @@ import com.github.zly2006.zhihu.ui.PIN_SCREEN_SHARE_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.PinLinkCardPreview
 import com.github.zly2006.zhihu.ui.PinScreen
 import com.github.zly2006.zhihu.ui.PinScreenTestOverrides
-import com.github.zly2006.zhihu.ui.PinScreenUiState
 import com.github.zly2006.zhihu.ui.pinScreenPollOptionTag
+import io.ktor.http.HttpMethod
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.serialization.encodeToString
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
@@ -65,46 +72,61 @@ class PinScreenInstrumentedTest {
     @Before
     fun setUp() {
         composeRule.resetAppPreferences()
+        ZhihuMockApi.install(enabled = true)
+        ZhihuMockApi.reset()
+    }
+
+    @After
+    fun tearDown() {
+        ZhihuMockApi.install(enabled = InstrumentedTestEnvironment.isMockMode())
     }
 
     @Test
     fun loadingAndErrorStatesRenderDeterministicallyOffline() {
         /*
          * Expected behavior:
-         * 1. A loading-only injected state should render the dedicated loading container instead of
-         *    trying to fetch pin details from the network.
-         * 2. An error-only injected state should render the visible error message contract exactly
-         *    where PinScreen normally reports load failures.
-         * 3. Switching between those injected states inside tests must remain completely offline and
-         *    deterministic because the screen never enters the production runtime loading path.
+         * 1. A pending mocked pin-detail request should render the dedicated loading container.
+         * 2. A null mocked response should render the visible error message contract exactly where
+         *    PinScreen normally reports load failures.
+         * 3. Both states stay offline while still entering the production loadPinDetail path.
          */
-        composeRule.setScreenContent {
-            PinScreen(
-                pin = Pin(101),
-                testOverrides = PinScreenTestOverrides(
-                    state = PinScreenUiState(isLoading = true),
-                ),
-            )
+        val releasePinDetail = CompletableDeferred<Unit>()
+        mockPinDetailBody(
+            pinId = 101,
+            body = ZhihuJson.json.encodeToString(seededPinContent()),
+            beforeRespond = { releasePinDetail.await() },
+        )
+
+        try {
+            composeRule.setScreenContent {
+                PinScreen(
+                    pin = Pin(101),
+                )
+            }
+            composeRule.waitUntilTagExists(PIN_SCREEN_LOADING_TAG)
+            composeRule.onNodeWithTag(PIN_SCREEN_LOADING_TAG).assertIsDisplayed()
+        } finally {
+            releasePinDetail.complete(Unit)
         }
-        composeRule.onNodeWithTag(PIN_SCREEN_LOADING_TAG).assertIsDisplayed()
+
+        mockPinDetailBody(pinId = 102, body = "null")
 
         composeRule.setScreenContent {
             PinScreen(
-                pin = Pin(101),
-                testOverrides = PinScreenTestOverrides(
-                    state = PinScreenUiState(errorMessage = "离线错误"),
-                ),
+                pin = Pin(102),
             )
         }
+        composeRule.waitUntilTagExists(PIN_SCREEN_ERROR_TAG)
         composeRule.onNodeWithTag(PIN_SCREEN_ERROR_TAG).assertIsDisplayed()
-        composeRule.onNodeWithText("加载失败: 离线错误").assertIsDisplayed()
+        composeRule.onNodeWithText("加载失败: 想法详情为空").assertIsDisplayed()
     }
 
     @Test
     fun pollOptionsRenderAndDispatchVoteOffline() {
         /*
          * Expected behavior:
-         * 1. A seeded pin with bottom_poll should render the poll card without using the network.
+         * 1. A mocked pin detail with bottom_poll should render the poll card without using the
+         *    real network.
          * 2. The poll should expose each option through a stable test tag so UI automation can tap by
          *    semantic identity instead of coordinates.
          * 3. Tapping an unvoted option must dispatch the exact poll id and option id through the
@@ -112,16 +134,12 @@ class PinScreenInstrumentedTest {
          */
         var selectedPollId: String? = null
         var selectedOptionId: String? = null
+        mockPinDetail(content = seededPollPinContent())
 
         composeRule.setScreenContent {
             PinScreen(
                 pin = Pin(101),
                 testOverrides = PinScreenTestOverrides(
-                    state = PinScreenUiState(
-                        pinContent = seededPollPinContent(),
-                        isLiked = false,
-                        likeCount = 9,
-                    ),
                     onPollVote = { pollId, optionId ->
                         selectedPollId = pollId
                         selectedOptionId = optionId
@@ -130,6 +148,7 @@ class PinScreenInstrumentedTest {
             )
         }
 
+        composeRule.waitUntilTagExists(PIN_SCREEN_POLL_CARD_TAG)
         composeRule.onNodeWithTag(PIN_SCREEN_POLL_CARD_TAG).assertIsDisplayed()
         composeRule.onNodeWithText("知乎++好用吗").assertIsDisplayed()
         composeRule.onNodeWithTag(pinScreenPollOptionTag("option-b")).assertIsDisplayed().performClick()
@@ -142,8 +161,8 @@ class PinScreenInstrumentedTest {
     fun contentActionsNavigationDialogsAndSwipeCyclesStayStableOffline() {
         /*
          * Expected behavior:
-         * 1. With a fully seeded local pin, the author row, link card, like button, comment button,
-         *    share button, and back button should all remain interactive without network access.
+         * 1. With a fully mocked pin detail, the author row, link card, like button, comment button,
+         *    share button, and back button should all remain interactive without real network access.
          * 2. Author and link-card clicks must navigate to their deterministic Person and Question
          *    destinations, while the back button must increment only the navigator back counter.
          * 3. Like, comment, and share actions should route through injected callbacks and custom
@@ -153,15 +172,11 @@ class PinScreenInstrumentedTest {
          */
         var likeCount = 0
         var shareActionCount = 0
+        mockPinDetail(content = seededPinContent())
         val navigator = composeRule.setScreenContent {
             PinScreen(
                 pin = Pin(101),
                 testOverrides = PinScreenTestOverrides(
-                    state = PinScreenUiState(
-                        pinContent = seededPinContent(),
-                        isLiked = false,
-                        likeCount = 9,
-                    ),
                     onLikeClick = { likeCount++ },
                     onShareAction = { showShareDialog ->
                         shareActionCount++
@@ -191,6 +206,7 @@ class PinScreenInstrumentedTest {
             )
         }
 
+        composeRule.waitUntilTagExists(PIN_SCREEN_SCROLL_TAG)
         composeRule.onNodeWithTag(PIN_SCREEN_SCROLL_TAG).assertIsDisplayed()
         composeRule.onNodeWithContentDescription("离线优秀答主").assertIsDisplayed()
         composeRule.onNodeWithText("离线点赞者 等 9 人赞同了该想法").assertIsDisplayed()
@@ -222,6 +238,35 @@ class PinScreenInstrumentedTest {
             ),
             navigator.destinations,
         )
+    }
+
+    private fun mockPinDetail(
+        pinId: Long = 101,
+        content: DataHolder.Pin,
+    ) {
+        mockPinDetailBody(
+            pinId = pinId,
+            body = ZhihuJson.json.encodeToString(content),
+        )
+    }
+
+    private fun mockPinDetailBody(
+        pinId: Long,
+        body: String,
+        beforeRespond: suspend () -> Unit = {},
+    ) {
+        ZhihuMockApi.mockJson(
+            method = HttpMethod.Get,
+            url = "https://www.zhihu.com/api/v4/pins/$pinId?include=topics",
+            body = body,
+            beforeRespond = beforeRespond,
+        )
+    }
+
+    private fun MainActivityComposeRule.waitUntilTagExists(tag: String) {
+        waitUntil("Expected node with tag $tag", timeoutMillis = 5_000) {
+            onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
+        }
     }
 
     private fun seededPinContent(): DataHolder.Pin = DataHolder.Pin(

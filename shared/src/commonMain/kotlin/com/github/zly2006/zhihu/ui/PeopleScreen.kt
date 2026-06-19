@@ -67,7 +67,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.navigation.Article
@@ -87,11 +86,6 @@ import com.github.zly2006.zhihu.shared.platform.rememberImagePreviewOpener
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberZhihuWebUrlOpener
 import com.github.zly2006.zhihu.shared.util.raiseForStatus
-import com.github.zly2006.zhihu.ui.FollowedQuestion
-import com.github.zly2006.zhihu.ui.FollowedTopic
-import com.github.zly2006.zhihu.ui.PeopleListUiState
-import com.github.zly2006.zhihu.ui.PeopleProfileUiState
-import com.github.zly2006.zhihu.ui.PeopleSortedListUiState
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.PaginatedList
@@ -116,6 +110,7 @@ import org.jetbrains.compose.resources.painterResource
 import zhihu.shared.generated.resources.Res
 import zhihu.shared.generated.resources.ic_zh_plus_author_badge
 import kotlin.reflect.typeOf
+import androidx.lifecycle.viewmodel.compose.viewModel as composeViewModel
 import com.github.zly2006.zhihu.navigation.Search as SearchDestination
 
 class PeopleAnswersViewModel(
@@ -132,9 +127,16 @@ class PeopleAnswersViewModel(
     override val include: String
         get() = "data[*].is_normal,admin_closed_comment,reward_info,is_collapsed,annotation_action,annotation_detail,collapse_reason,collapsed_by,suggest_edit,comment_count,thanks_count,can_comment,content,editable_content,attachment,voteup_count,reshipment_settings,comment_permission,created_time,updated_time,review_info,excerpt,paid_info,reaction_instruction,is_labeled,label_info,relationship.is_authorized,voting,is_author,is_thanked,is_nothelp,author.badge_v2"
 
+    fun updateSortBy(newSort: String): Boolean {
+        if (sortBy == newSort) {
+            return false
+        }
+        sortBy = newSort
+        return true
+    }
+
     fun changeSortBy(newSort: String, environment: PaginationEnvironment) {
-        if (sortBy != newSort) {
-            sortBy = newSort
+        if (updateSortBy(newSort)) {
             refresh(environment)
         }
     }
@@ -154,9 +156,16 @@ class PeopleArticlesViewModel(
     override val include: String
         get() = "data[*].comment_count,suggest_edit,is_normal,thumbnail_extra_info,thumbnail,can_comment,comment_permission,admin_closed_comment,content,voteup_count,created,updated,upvoted_followees,voting,review_info,reaction_instruction,is_labeled,label_info,author.badge_v2;data[*].vessay_info;data[*].author.badge[?(type=best_answerer)].topics;"
 
+    fun updateSortBy(newSort: String): Boolean {
+        if (sortBy == newSort) {
+            return false
+        }
+        sortBy = newSort
+        return true
+    }
+
     fun changeSortBy(newSort: String, environment: PaginationEnvironment) {
-        if (sortBy != newSort) {
-            sortBy = newSort
+        if (updateSortBy(newSort)) {
             refresh(environment)
         }
     }
@@ -417,21 +426,18 @@ class PersonViewModel(
             ),
         )
 
-        val isBlocked = environment.isUserBlocked(loadedPerson.id)
-        val profile = toPeopleProfileLoadResult(loadedPerson, isBlocked).profile
-
-        this.avatar = profile.avatar
-        this.name = profile.name
-        this.headline = profile.headline
-        this.officialBadge = profile.officialBadge
-        this.officialBadgeDetails = profile.officialBadgeDetails
-        this.followerCount = profile.followerCount
-        this.followingCount = profile.followingCount
-        this.answerCount = profile.answerCount
-        this.articleCount = profile.articleCount
-        this.isFollowing = profile.isFollowing
-        this.isBlocking = profile.isBlocking
-        this.isBlockedInRecommendations = profile.isBlockedInRecommendations
+        this.avatar = loadedPerson.avatarUrl
+        this.name = loadedPerson.name
+        this.headline = loadedPerson.headline
+        this.officialBadge = loadedPerson.badgeV2.officialBadge()
+        this.officialBadgeDetails = loadedPerson.badgeV2.officialBadgeDetails()
+        this.followerCount = loadedPerson.followerCount
+        this.followingCount = loadedPerson.followingCount
+        this.answerCount = loadedPerson.answerCount
+        this.articleCount = loadedPerson.articlesCount
+        this.isFollowing = loadedPerson.isFollowing
+        this.isBlocking = loadedPerson.isBlocking
+        this.isBlockedInRecommendations = environment.isUserBlocked(loadedPerson.id)
         this.memberHashId = loadedPerson.id
         this.person.id = loadedPerson.id
         if (urlToken != null) {
@@ -503,10 +509,10 @@ internal fun peopleProfileUrl(person: Person): String {
 /**
  * 用户主页的测试替身配置。
  *
- * instrumentation 测试通过这里注入固定资料快照、预置 tab 内容和离线回调，避免触碰远程资料拉取或关注状态变更。
+ * instrumentation 测试通过这里注入预填充 ViewModel 和离线回调，避免触碰远程资料拉取或关注状态变更。
  */
 data class PeopleScreenTestOverrides(
-    val initialUiState: PeopleScreenUiState,
+    val viewModel: PersonViewModel,
     val initialPage: Int? = null,
     val onAnswerSortChange: ((String) -> Unit)? = null,
     val onArticleSortChange: ((String) -> Unit)? = null,
@@ -526,77 +532,6 @@ data class PeopleScreenTestOverrides(
     val onFollowingTopicsLoadMore: (() -> Unit)? = null,
     val onFollowingQuestionsLoadMore: (() -> Unit)? = null,
     val onFollowingCollectionsLoadMore: (() -> Unit)? = null,
-)
-
-private fun PersonViewModel.toUiState(): PeopleScreenUiState = PeopleScreenUiState(
-    profile = PeopleProfileUiState(
-        avatar = avatar,
-        name = name,
-        headline = headline,
-        officialBadge = officialBadge,
-        officialBadgeDetails = officialBadgeDetails,
-        followerCount = followerCount,
-        followingCount = followingCount,
-        answerCount = answerCount,
-        articleCount = articleCount,
-        isFollowing = isFollowing,
-        isBlocking = isBlocking,
-        isBlockedInRecommendations = isBlockedInRecommendations,
-    ),
-    answers = PeopleSortedListUiState(
-        sortBy = answersFeedModel.sortBy,
-        items = answersFeedModel.allData,
-        isEnd = answersFeedModel.isEnd,
-    ),
-    articles = PeopleSortedListUiState(
-        sortBy = articlesFeedModel.sortBy,
-        items = articlesFeedModel.allData,
-        isEnd = articlesFeedModel.isEnd,
-    ),
-    activities = PeopleListUiState(
-        items = activitiesFeedModel.displayItems,
-        isEnd = activitiesFeedModel.isEnd,
-    ),
-    collections = PeopleListUiState(
-        items = collectionsFeedModel.allData,
-        isEnd = collectionsFeedModel.isEnd,
-    ),
-    questions = PeopleListUiState(
-        items = questionsFeedModel.allData,
-        isEnd = questionsFeedModel.isEnd,
-    ),
-    pins = PeopleListUiState(
-        items = pinsFeedModel.allData,
-        isEnd = pinsFeedModel.isEnd,
-    ),
-    columns = PeopleListUiState(
-        items = columnsFeedModel.allData,
-        isEnd = columnsFeedModel.isEnd,
-    ),
-    followers = PeopleListUiState(
-        items = followersFeedModel.allData,
-        isEnd = followersFeedModel.isEnd,
-    ),
-    following = PeopleListUiState(
-        items = followingFeedModel.allData,
-        isEnd = followingFeedModel.isEnd,
-    ),
-    followingColumns = PeopleListUiState(
-        items = followingColumnsFeedModel.allData,
-        isEnd = followingColumnsFeedModel.isEnd,
-    ),
-    followingTopics = PeopleListUiState(
-        items = followingTopicsFeedModel.allData,
-        isEnd = followingTopicsFeedModel.isEnd,
-    ),
-    followingQuestions = PeopleListUiState(
-        items = followingQuestionsFeedModel.allData,
-        isEnd = followingQuestionsFeedModel.isEnd,
-    ),
-    followingCollections = PeopleListUiState(
-        items = followingCollectionsFeedModel.allData,
-        isEnd = followingCollectionsFeedModel.isEnd,
-    ),
 )
 
 /**
@@ -636,12 +571,8 @@ private fun PeopleScreenContent(
     val navigator = LocalNavigator.current
     val userMessages = rememberUserMessageSink()
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
-    val viewModel = viewModel { PersonViewModel(person) }
+    val viewModel = testOverrides?.viewModel ?: composeViewModel { PersonViewModel(person) }
     val coroutineScope = rememberCoroutineScope()
-    var testUiState by remember(person.id, person.urlToken, testOverrides?.initialUiState) {
-        mutableStateOf(testOverrides?.initialUiState ?: PeopleScreenUiState())
-    }
-    val uiState = testOverrides?.let { testUiState } ?: viewModel.toUiState()
 
     val pagerState = rememberPagerState(
         initialPage = testOverrides?.initialPage ?: peopleScreenInitialPage(person),
@@ -670,13 +601,10 @@ private fun PeopleScreenContent(
     }
 
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-    val searchMemberHashId = viewModel.memberHashId
-        .takeUnless { it.isBlank() || it == Person.EMPTY_ID }
 
     fun updateAnswersSort(newSort: String) {
         if (testOverrides != null) {
-            if (uiState.answers.sortBy != newSort) {
-                testUiState = uiState.copy(answers = uiState.answers.copy(sortBy = newSort))
+            if (viewModel.answersFeedModel.updateSortBy(newSort)) {
                 testOverrides.onAnswerSortChange?.invoke(newSort)
             }
             return
@@ -686,8 +614,7 @@ private fun PeopleScreenContent(
 
     fun updateArticlesSort(newSort: String) {
         if (testOverrides != null) {
-            if (uiState.articles.sortBy != newSort) {
-                testUiState = uiState.copy(articles = uiState.articles.copy(sortBy = newSort))
+            if (viewModel.articlesFeedModel.updateSortBy(newSort)) {
                 testOverrides.onArticleSortChange?.invoke(newSort)
             }
             return
@@ -705,20 +632,16 @@ private fun PeopleScreenContent(
                 TopAppBar(
                     title = {
                         UserInfoHeader(
-                            profile = uiState.profile,
+                            viewModel = viewModel,
                             pagerState = pagerState,
                             modifier = Modifier
                                 .padding(horizontal = 8.dp)
                                 .testTag(PEOPLE_SCREEN_HEADER_TAG),
                             onFollowToggle = {
                                 if (testOverrides != null) {
-                                    val newFollowing = !uiState.profile.isFollowing
-                                    testUiState = uiState.copy(
-                                        profile = uiState.profile.copy(
-                                            isFollowing = newFollowing,
-                                            followerCount = (uiState.profile.followerCount + if (newFollowing) 1 else -1).coerceAtLeast(0),
-                                        ),
-                                    )
+                                    val newFollowing = !viewModel.isFollowing
+                                    viewModel.isFollowing = newFollowing
+                                    viewModel.followerCount = (viewModel.followerCount + if (newFollowing) 1 else -1).coerceAtLeast(0)
                                     testOverrides.onToggleFollow?.invoke(newFollowing)
                                 } else {
                                     coroutineScope.launch {
@@ -732,8 +655,8 @@ private fun PeopleScreenContent(
                             },
                             onBlockToggle = {
                                 if (testOverrides != null) {
-                                    val newBlocking = !uiState.profile.isBlocking
-                                    testUiState = uiState.copy(profile = uiState.profile.copy(isBlocking = newBlocking))
+                                    val newBlocking = !viewModel.isBlocking
+                                    viewModel.isBlocking = newBlocking
                                     testOverrides.onToggleBlock?.invoke(newBlocking)
                                 } else {
                                     coroutineScope.launch {
@@ -747,10 +670,8 @@ private fun PeopleScreenContent(
                             },
                             onRecommendationBlockToggle = {
                                 if (testOverrides != null) {
-                                    val newRecommendationBlock = !uiState.profile.isBlockedInRecommendations
-                                    testUiState = uiState.copy(
-                                        profile = uiState.profile.copy(isBlockedInRecommendations = newRecommendationBlock),
-                                    )
+                                    val newRecommendationBlock = !viewModel.isBlockedInRecommendations
+                                    viewModel.isBlockedInRecommendations = newRecommendationBlock
                                     testOverrides.onToggleRecommendationBlock?.invoke(newRecommendationBlock)
                                 } else {
                                     coroutineScope.launch {
@@ -771,13 +692,13 @@ private fun PeopleScreenContent(
                     scrollBehavior = scrollBehavior,
                     expandedHeight = 200.dp,
                 )
-                if (searchMemberHashId != null) {
+                if (viewModel.memberHashId.isNotBlank() && viewModel.memberHashId != Person.EMPTY_ID) {
                     IconButton(
                         onClick = {
-                            val memberName = uiState.profile.name.takeIf { it.isNotBlank() } ?: person.name
+                            val memberName = viewModel.name.takeIf { it.isNotBlank() } ?: person.name
                             navigator.onNavigate(
                                 SearchDestination(
-                                    restrictedMemberHashId = searchMemberHashId.orEmpty(),
+                                    restrictedMemberHashId = viewModel.memberHashId,
                                     restrictedMemberName = memberName,
                                 ),
                             )
@@ -836,18 +757,18 @@ private fun PeopleScreenContent(
                                 .testTag("people_screen_page_$page"),
                         ) {
                             SortBar(
-                                currentSort = uiState.answers.sortBy,
+                                currentSort = viewModel.answersFeedModel.sortBy,
                                 onSortChange = ::updateAnswersSort,
                                 hotTag = PEOPLE_SCREEN_ANSWER_SORT_HOT_TAG,
                                 timeTag = PEOPLE_SCREEN_ANSWER_SORT_TIME_TAG,
                             )
                             PaginatedList(
-                                items = uiState.answers.items,
+                                items = viewModel.answersFeedModel.allData,
                                 onLoadMore = {
                                     testOverrides?.onAnswersLoadMore?.invoke()
                                         ?: viewModel.answersFeedModel.loadMore(paginationEnvironment)
                                 },
-                                isEnd = { uiState.answers.isEnd },
+                                isEnd = { viewModel.answersFeedModel.isEnd },
                                 footer = ProgressIndicatorFooter,
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -885,18 +806,18 @@ private fun PeopleScreenContent(
                                 .testTag("people_screen_page_$page"),
                         ) {
                             SortBar(
-                                currentSort = uiState.articles.sortBy,
+                                currentSort = viewModel.articlesFeedModel.sortBy,
                                 onSortChange = ::updateArticlesSort,
                                 hotTag = PEOPLE_SCREEN_ARTICLE_SORT_HOT_TAG,
                                 timeTag = PEOPLE_SCREEN_ARTICLE_SORT_TIME_TAG,
                             )
                             PaginatedList(
-                                items = uiState.articles.items,
+                                items = viewModel.articlesFeedModel.allData,
                                 onLoadMore = {
                                     testOverrides?.onArticlesLoadMore?.invoke()
                                         ?: viewModel.articlesFeedModel.loadMore(paginationEnvironment)
                                 },
-                                isEnd = { uiState.articles.isEnd },
+                                isEnd = { viewModel.articlesFeedModel.isEnd },
                                 footer = ProgressIndicatorFooter,
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -929,12 +850,12 @@ private fun PeopleScreenContent(
                     2 -> {
                         // 动态
                         PaginatedList(
-                            items = uiState.activities.items,
+                            items = viewModel.activitiesFeedModel.displayItems,
                             onLoadMore = {
                                 testOverrides?.onActivitiesLoadMore?.invoke()
                                     ?: viewModel.activitiesFeedModel.loadMore(paginationEnvironment)
                             },
-                            isEnd = { uiState.activities.isEnd },
+                            isEnd = { viewModel.activitiesFeedModel.isEnd },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
@@ -951,12 +872,12 @@ private fun PeopleScreenContent(
                     3 -> {
                         // 收藏
                         PaginatedList(
-                            items = uiState.collections.items,
+                            items = viewModel.collectionsFeedModel.allData,
                             onLoadMore = {
                                 testOverrides?.onCollectionsLoadMore?.invoke()
                                     ?: viewModel.collectionsFeedModel.loadMore(paginationEnvironment)
                             },
-                            isEnd = { uiState.collections.isEnd },
+                            isEnd = { viewModel.collectionsFeedModel.isEnd },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
@@ -973,12 +894,12 @@ private fun PeopleScreenContent(
                     4 -> {
                         // 提问
                         PaginatedList(
-                            items = uiState.questions.items,
+                            items = viewModel.questionsFeedModel.allData,
                             onLoadMore = {
                                 testOverrides?.onQuestionsLoadMore?.invoke()
                                     ?: viewModel.questionsFeedModel.loadMore(paginationEnvironment)
                             },
-                            isEnd = { uiState.questions.isEnd },
+                            isEnd = { viewModel.questionsFeedModel.isEnd },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
@@ -995,12 +916,12 @@ private fun PeopleScreenContent(
                     5 -> {
                         // 想法
                         PaginatedList(
-                            items = uiState.pins.items,
+                            items = viewModel.pinsFeedModel.allData,
                             onLoadMore = {
                                 testOverrides?.onPinsLoadMore?.invoke()
                                     ?: viewModel.pinsFeedModel.loadMore(paginationEnvironment)
                             },
-                            isEnd = { uiState.pins.isEnd },
+                            isEnd = { viewModel.pinsFeedModel.isEnd },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
@@ -1017,12 +938,12 @@ private fun PeopleScreenContent(
                     6 -> {
                         // 专栏
                         PaginatedList(
-                            items = uiState.columns.items,
+                            items = viewModel.columnsFeedModel.allData,
                             onLoadMore = {
                                 testOverrides?.onColumnsLoadMore?.invoke()
                                     ?: viewModel.columnsFeedModel.loadMore(paginationEnvironment)
                             },
-                            isEnd = { uiState.columns.isEnd },
+                            isEnd = { viewModel.columnsFeedModel.isEnd },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
@@ -1039,12 +960,12 @@ private fun PeopleScreenContent(
                     7 -> {
                         // 粉丝
                         PaginatedList(
-                            items = uiState.followers.items,
+                            items = viewModel.followersFeedModel.allData,
                             onLoadMore = {
                                 testOverrides?.onFollowersLoadMore?.invoke()
                                     ?: viewModel.followersFeedModel.loadMore(paginationEnvironment)
                             },
-                            isEnd = { uiState.followers.isEnd },
+                            isEnd = { viewModel.followersFeedModel.isEnd },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
@@ -1062,12 +983,12 @@ private fun PeopleScreenContent(
                     8 -> {
                         // 关注
                         PaginatedList(
-                            items = uiState.following.items,
+                            items = viewModel.followingFeedModel.allData,
                             onLoadMore = {
                                 testOverrides?.onFollowingLoadMore?.invoke()
                                     ?: viewModel.followingFeedModel.loadMore(paginationEnvironment)
                             },
-                            isEnd = { uiState.following.isEnd },
+                            isEnd = { viewModel.followingFeedModel.isEnd },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
                                 .fillMaxSize()
@@ -1084,7 +1005,7 @@ private fun PeopleScreenContent(
 
                     9 -> {
                         FollowingSubscriptionsPage(
-                            uiState = uiState,
+                            viewModel = viewModel,
                             onLoadMore = { subscriptionPage ->
                                 if (testOverrides != null) {
                                     when (subscriptionPage) {
@@ -1114,7 +1035,7 @@ private fun PeopleScreenContent(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun FollowingSubscriptionsPage(
-    uiState: PeopleScreenUiState,
+    viewModel: PersonViewModel,
     onLoadMore: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -1156,9 +1077,9 @@ private fun FollowingSubscriptionsPage(
 
         when (selectedPage) {
             0 -> PaginatedList(
-                items = uiState.followingColumns.items,
+                items = viewModel.followingColumnsFeedModel.allData,
                 onLoadMore = { onLoadMore(0) },
-                isEnd = { uiState.followingColumns.isEnd },
+                isEnd = { viewModel.followingColumnsFeedModel.isEnd },
                 footer = ProgressIndicatorFooter,
                 modifier = Modifier
                     .fillMaxSize()
@@ -1172,9 +1093,9 @@ private fun FollowingSubscriptionsPage(
             }
 
             1 -> PaginatedList(
-                items = uiState.followingTopics.items,
+                items = viewModel.followingTopicsFeedModel.allData,
                 onLoadMore = { onLoadMore(1) },
-                isEnd = { uiState.followingTopics.isEnd },
+                isEnd = { viewModel.followingTopicsFeedModel.isEnd },
                 footer = ProgressIndicatorFooter,
                 modifier = Modifier
                     .fillMaxSize()
@@ -1185,9 +1106,9 @@ private fun FollowingSubscriptionsPage(
             }
 
             2 -> PaginatedList(
-                items = uiState.followingQuestions.items,
+                items = viewModel.followingQuestionsFeedModel.allData,
                 onLoadMore = { onLoadMore(2) },
-                isEnd = { uiState.followingQuestions.isEnd },
+                isEnd = { viewModel.followingQuestionsFeedModel.isEnd },
                 footer = ProgressIndicatorFooter,
                 modifier = Modifier
                     .fillMaxSize()
@@ -1198,9 +1119,9 @@ private fun FollowingSubscriptionsPage(
             }
 
             3 -> PaginatedList(
-                items = uiState.followingCollections.items,
+                items = viewModel.followingCollectionsFeedModel.allData,
                 onLoadMore = { onLoadMore(3) },
-                isEnd = { uiState.followingCollections.isEnd },
+                isEnd = { viewModel.followingCollectionsFeedModel.isEnd },
                 footer = ProgressIndicatorFooter,
                 modifier = Modifier
                     .fillMaxSize()
@@ -1602,7 +1523,7 @@ private fun SortBar(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun UserInfoHeader(
-    profile: PeopleProfileUiState,
+    viewModel: PersonViewModel,
     pagerState: PagerState,
     modifier: Modifier = Modifier,
     onFollowToggle: () -> Unit,
@@ -1620,7 +1541,7 @@ private fun UserInfoHeader(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             AsyncImage(
-                model = profile.avatar,
+                model = viewModel.avatar,
                 contentDescription = "用户头像",
                 modifier = Modifier
                     .testTag(PEOPLE_SCREEN_AVATAR_TAG)
@@ -1628,21 +1549,21 @@ private fun UserInfoHeader(
                     .size(80.dp)
                     .clip(CircleShape)
                     .clickable {
-                        openImagePreview(profile.avatar.substringBefore("_") + ".jpg")
+                        openImagePreview(viewModel.avatar.substringBefore("_") + ".jpg")
                     },
             )
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        profile.name,
+                        viewModel.name,
                         style = MaterialTheme.typography.titleLarge,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false),
                     )
-                    if (profile.officialBadge != null) {
+                    viewModel.officialBadge?.let { badge ->
                         AuthorBadge(
-                            badge = profile.officialBadge,
+                            badge = badge,
                             modifier = Modifier
                                 .padding(start = 6.dp)
                                 .testTag(PEOPLE_SCREEN_OFFICIAL_BADGE_TAG),
@@ -1650,13 +1571,13 @@ private fun UserInfoHeader(
                     }
                 }
                 Text(
-                    profile.headline,
+                    viewModel.headline,
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
                 OfficialBadgeDetails(
-                    badges = profile.officialBadgeDetails,
+                    badges = viewModel.officialBadgeDetails,
                     modifier = Modifier.padding(top = 6.dp),
                 )
             }
@@ -1667,22 +1588,22 @@ private fun UserInfoHeader(
                 .padding(top = 16.dp),
             horizontalArrangement = Arrangement.SpaceAround,
         ) {
-            StatItem("回答", profile.answerCount, onClick = {
+            StatItem("回答", viewModel.answerCount, onClick = {
                 coroutineScope.launch {
                     pagerState.animateScrollToPage(0)
                 }
             }, tag = PEOPLE_SCREEN_ANSWER_COUNT_TAG)
-            StatItem("文章", profile.articleCount, onClick = {
+            StatItem("文章", viewModel.articleCount, onClick = {
                 coroutineScope.launch {
                     pagerState.animateScrollToPage(1)
                 }
             }, tag = PEOPLE_SCREEN_ARTICLE_COUNT_TAG)
-            StatItem("粉丝", profile.followerCount, onClick = {
+            StatItem("粉丝", viewModel.followerCount, onClick = {
                 coroutineScope.launch {
                     pagerState.animateScrollToPage(7)
                 }
             }, tag = PEOPLE_SCREEN_FOLLOWER_COUNT_TAG)
-            StatItem("关注", profile.followingCount, onClick = {
+            StatItem("关注", viewModel.followingCount, onClick = {
                 coroutineScope.launch {
                     pagerState.animateScrollToPage(8)
                 }
@@ -1698,63 +1619,20 @@ private fun UserInfoHeader(
                 onClick = onFollowToggle,
                 modifier = Modifier.testTag(PEOPLE_SCREEN_FOLLOW_BUTTON_TAG),
             ) {
-                Text(if (profile.isFollowing) "取消关注" else "关注")
+                Text(if (viewModel.isFollowing) "取消关注" else "关注")
             }
             OutlinedButton(
                 onClick = onBlockToggle,
                 modifier = Modifier.testTag(PEOPLE_SCREEN_BLOCK_BUTTON_TAG),
             ) {
-                Text(if (profile.isBlocking) "取消拉黑" else "拉黑")
+                Text(if (viewModel.isBlocking) "取消拉黑" else "拉黑")
             }
             OutlinedButton(
                 onClick = onRecommendationBlockToggle,
                 modifier = Modifier.testTag(PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG),
             ) {
-                Text(if (profile.isBlockedInRecommendations) "取消屏蔽推荐" else "屏蔽推荐")
+                Text(if (viewModel.isBlockedInRecommendations) "取消屏蔽推荐" else "屏蔽推荐")
             }
         }
     }
 }
-
-data class PeopleProfileUiState(
-    val avatar: String = "",
-    val name: String = "",
-    val headline: String = "",
-    val officialBadge: OfficialBadge? = null,
-    val officialBadgeDetails: List<OfficialBadge> = emptyList(),
-    val followerCount: Int = 0,
-    val followingCount: Int = 0,
-    val answerCount: Int = 0,
-    val articleCount: Int = 0,
-    val isFollowing: Boolean = false,
-    val isBlocking: Boolean = false,
-    val isBlockedInRecommendations: Boolean = false,
-)
-
-data class PeopleListUiState<T>(
-    val items: List<T> = emptyList(),
-    val isEnd: Boolean = true,
-)
-
-data class PeopleSortedListUiState<T>(
-    val sortBy: String,
-    val items: List<T> = emptyList(),
-    val isEnd: Boolean = true,
-)
-
-data class PeopleScreenUiState(
-    val profile: PeopleProfileUiState = PeopleProfileUiState(),
-    val answers: PeopleSortedListUiState<DataHolder.Answer> = PeopleSortedListUiState(sortBy = "voteups"),
-    val articles: PeopleSortedListUiState<DataHolder.Article> = PeopleSortedListUiState(sortBy = "created"),
-    val activities: PeopleListUiState<FeedDisplayItem> = PeopleListUiState(),
-    val collections: PeopleListUiState<DataHolder.Collection> = PeopleListUiState(),
-    val questions: PeopleListUiState<DataHolder.Question> = PeopleListUiState(),
-    val pins: PeopleListUiState<DataHolder.Pin> = PeopleListUiState(),
-    val columns: PeopleListUiState<DataHolder.Column> = PeopleListUiState(),
-    val followers: PeopleListUiState<DataHolder.People> = PeopleListUiState(),
-    val following: PeopleListUiState<DataHolder.People> = PeopleListUiState(),
-    val followingColumns: PeopleListUiState<DataHolder.Column> = PeopleListUiState(),
-    val followingTopics: PeopleListUiState<FollowedTopic> = PeopleListUiState(),
-    val followingQuestions: PeopleListUiState<FollowedQuestion> = PeopleListUiState(),
-    val followingCollections: PeopleListUiState<DataHolder.Collection> = PeopleListUiState(),
-)
