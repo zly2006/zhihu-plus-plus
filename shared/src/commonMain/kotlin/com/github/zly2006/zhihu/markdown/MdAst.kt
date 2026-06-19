@@ -289,17 +289,22 @@ private fun convertElementToBlock(element: Element): List<MarkdownNode> = when (
 
 private fun createCodeBlock(element: Element): FencedCodeBlock {
     val codeElement = element.selectFirst("code")
-    val language = codeElement
-        ?.classNames()
-        ?.firstOrNull { it.startsWith("language-") }
-        ?.removePrefix("language-")
-        .orEmpty()
+    val language =
+        sequenceOf(
+            parseLanguageFromClassName(codeElement?.classNames().orEmpty()),
+            element.attr("lang").ifBlank { null },
+        ).firstOrNull { !it.isNullOrBlank() }.orEmpty()
 
     return FencedCodeBlock(
         info = language,
         language = language,
         literal = codeElement?.text() ?: element.text(),
     )
+}
+
+private fun parseLanguageFromClassName(classNames: Set<String>): String? {
+    val prefix = "language-"
+    return classNames.firstOrNull { it.startsWith(prefix) }?.removePrefix(prefix)
 }
 
 private fun createListBlock(
@@ -335,7 +340,7 @@ private fun createBlockImage(element: Element): MarkdownNode? {
     }
 
     val src = extractImageUrl(element::attr) ?: return null
-    val caption = element.attr("alt")
+    val caption = element.attr("data-caption").ifBlank { element.attr("alt") }
     return Figure(
         imageUrl = src,
         caption = caption,
@@ -668,7 +673,7 @@ private fun MarkdownNode.appendMarkdownBlock(
         }
 
         is FencedCodeBlock -> {
-            val lang = language.takeIf { it.isNotBlank() } ?: info.takeIf { it.isNotBlank() }
+            val lang = language.takeIf { it.isNotBlank() }
             out.append("```")
             if (lang != null) out.append(lang)
             out.append("\n")
