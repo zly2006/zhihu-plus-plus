@@ -280,6 +280,7 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
             DesktopLoginRequests.requestLogin()
             account = accountStore.load()
         },
+        loadAuthorPollAnnouncements = { emptyList() },
         recordLocalItemOpened = { item ->
             localHomeViewModel?.onLocalItemOpened(item)
         },

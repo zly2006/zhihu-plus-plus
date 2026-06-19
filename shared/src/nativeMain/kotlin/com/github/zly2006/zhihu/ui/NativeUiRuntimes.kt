@@ -134,6 +134,7 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
             isDebuggable = false,
             viewModel = viewModel,
             requestLogin = { userMessages.showMessage("iOS 登录暂未实现") }, // TODO: iOS 登录
+            loadAuthorPollAnnouncements = { emptyList() },
             recordLocalItemOpened = { }, // TODO: iOS 本地推荐记录
             recordLocalItemFeedback = { _, _ -> false },
         )

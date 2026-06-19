@@ -32,6 +32,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.Notification
+import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
@@ -47,9 +48,12 @@ import com.github.zly2006.zhihu.ui.HOME_NOTIFICATION_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.HOME_REFRESH_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.HOME_SEARCH_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.HOME_TOP_ACTIONS_TAG
+import com.github.zly2006.zhihu.ui.HomePollAnnouncement
 import com.github.zly2006.zhihu.ui.HomeScreen
+import com.github.zly2006.zhihu.ui.HomeScreenTestOverrides
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.QQ_GROUP_DISMISSED_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.homeAuthorPollAnnouncementTag
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
 import org.junit.Assert.assertEquals
@@ -157,6 +161,39 @@ class HomeScreenInstrumentedTest {
     }
 
     @Test
+    fun authorPollAnnouncement_navigatesToSeededPinOffline() {
+        /*
+         * Expected behavior:
+         * 1. HomeScreen should be able to render poll announcements discovered at startup without
+         *    waiting for live feeds or a real account.
+         * 2. The card should invite feedback and show the poll title plus compact statistics.
+         * 3. The accept action must navigate to the exact pin that owns the poll.
+         */
+        val recordingNavigator = composeRule.launchHomeScreen(
+            duo3HomeAccount = false,
+            showRefreshFab = false,
+            displayItems = homeFeedFixtureItems(),
+            pollAnnouncements = listOf(
+                HomePollAnnouncement(
+                    pinId = 2051253530787370452L,
+                    pollId = "2051253919255360130",
+                    title = "知乎++好用吗",
+                    optionCount = 5,
+                    memberCount = 0,
+                    isVoted = false,
+                ),
+            ),
+        )
+
+        composeRule.onNodeWithTag(homeAuthorPollAnnouncementTag(2051253530787370452L)).assertIsDisplayed()
+        composeRule.onNodeWithText("请给未来的知乎++提出建议").assertIsDisplayed()
+        composeRule.onNodeWithText("知乎++好用吗\n5 个选项").assertIsDisplayed()
+        composeRule.onNodeWithText("去投票").assertIsDisplayed().performClick()
+
+        assertEquals(listOf(Pin(2051253530787370452L)), recordingNavigator.destinations)
+    }
+
+    @Test
     fun seededOfflineList_scrollsToFarItemsAndBack_stably() {
         /*
          * Expected behavior:
@@ -187,6 +224,7 @@ class HomeScreenInstrumentedTest {
         duo3HomeAccount: Boolean,
         showRefreshFab: Boolean,
         displayItems: List<FeedDisplayItem>,
+        pollAnnouncements: List<HomePollAnnouncement> = emptyList(),
     ): RecordingNavigator {
         setScreenContent {}
         activity.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE).edit(commit = true) {
@@ -208,7 +246,11 @@ class HomeScreenInstrumentedTest {
         waitForIdle()
 
         val recordingNavigator = setScreenContent {
-            HomeScreen(scrollToTopTrigger = 0, innerPadding = PaddingValues())
+            HomeScreen(
+                scrollToTopTrigger = 0,
+                innerPadding = PaddingValues(),
+                testOverrides = HomeScreenTestOverrides(pollAnnouncements = pollAnnouncements),
+            )
         }
         activity.runOnUiThread {
             UpdateManager.updateState.value = UpdateManager.UpdateState.NoUpdate

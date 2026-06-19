@@ -43,12 +43,14 @@ import com.github.zly2006.zhihu.ui.PIN_SCREEN_ERROR_TAG
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_LIKE_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_LINK_CARD_TAG
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_LOADING_TAG
+import com.github.zly2006.zhihu.ui.PIN_SCREEN_POLL_CARD_TAG
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_SCROLL_TAG
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_SHARE_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.PinLinkCardPreview
 import com.github.zly2006.zhihu.ui.PinScreen
 import com.github.zly2006.zhihu.ui.PinScreenTestOverrides
 import com.github.zly2006.zhihu.ui.PinScreenUiState
+import com.github.zly2006.zhihu.ui.pinScreenPollOptionTag
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
@@ -96,6 +98,44 @@ class PinScreenInstrumentedTest {
         }
         composeRule.onNodeWithTag(PIN_SCREEN_ERROR_TAG).assertIsDisplayed()
         composeRule.onNodeWithText("加载失败: 离线错误").assertIsDisplayed()
+    }
+
+    @Test
+    fun pollOptionsRenderAndDispatchVoteOffline() {
+        /*
+         * Expected behavior:
+         * 1. A seeded pin with bottom_poll should render the poll card without using the network.
+         * 2. The poll should expose each option through a stable test tag so UI automation can tap by
+         *    semantic identity instead of coordinates.
+         * 3. Tapping an unvoted option must dispatch the exact poll id and option id through the
+         *    injected callback, matching the production POST contract.
+         */
+        var selectedPollId: String? = null
+        var selectedOptionId: String? = null
+
+        composeRule.setScreenContent {
+            PinScreen(
+                pin = Pin(101),
+                testOverrides = PinScreenTestOverrides(
+                    state = PinScreenUiState(
+                        pinContent = seededPollPinContent(),
+                        isLiked = false,
+                        likeCount = 9,
+                    ),
+                    onPollVote = { pollId, optionId ->
+                        selectedPollId = pollId
+                        selectedOptionId = optionId
+                    },
+                ),
+            )
+        }
+
+        composeRule.onNodeWithTag(PIN_SCREEN_POLL_CARD_TAG).assertIsDisplayed()
+        composeRule.onNodeWithText("知乎++好用吗").assertIsDisplayed()
+        composeRule.onNodeWithTag(pinScreenPollOptionTag("option-b")).assertIsDisplayed().performClick()
+
+        assertEquals("poll-101", selectedPollId)
+        assertEquals("option-b", selectedOptionId)
     }
 
     @Test
@@ -253,4 +293,35 @@ class PinScreenInstrumentedTest {
             ),
         ),
     )
+
+    private fun seededPollPinContent(): DataHolder.Pin =
+        seededPinContent().let { pin ->
+            pin.copy(
+                content = pin.content + DataHolder.Pin.ContentPoll(
+                    duration = 0,
+                    pollId = 2051253919255360130L,
+                ),
+                bottomPoll = DataHolder.Pin.BottomPoll(
+                    voting = DataHolder.Pin.Poll(
+                        id = "poll-101",
+                        title = "知乎++好用吗",
+                        maxSelections = 1,
+                        type = "single",
+                        endAt = -1,
+                        options = listOf(
+                            DataHolder.Pin.PollOption(
+                                id = "option-a",
+                                title = "五颗星",
+                                votingCount = 0,
+                            ),
+                            DataHolder.Pin.PollOption(
+                                id = "option-b",
+                                title = "四颗星",
+                                votingCount = 0,
+                            ),
+                        ),
+                    ),
+                ),
+            )
+        }
 }
