@@ -121,10 +121,12 @@ tasks.register<Exec>("buildRustLib") {
             ).joinToString("\n")
         }
         val addTargetCommands = androidTargets.keys.joinToString("\n") {
-            "rustup target add $it 2>/dev/null || true"
+            "rustup target add $it || true"
         }
         commandLine("sh", "-c", listOf(
             "set -e",
+            // 强制将用户的 cargo bin 目录注入到当前 shell 的 PATH 最前面
+            "export PATH=\"\$HOME/.cargo/bin:\$PATH\"",
             "# Add Android targets if not already added",
             addTargetCommands,
             "",

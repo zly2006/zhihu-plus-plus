@@ -43,6 +43,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Share
@@ -77,6 +78,7 @@ import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.data.decodeQuestionContentDetail
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.navigation.WriteAnswer
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
@@ -125,6 +127,7 @@ const val QUESTION_SORT_UPDATED_TAG = "question_sort_updated"
 const val QUESTION_FOLLOW_BUTTON_TAG = "question_follow_button"
 const val QUESTION_VIEW_LOG_BUTTON_TAG = "question_view_log_button"
 const val QUESTION_SHARE_BUTTON_TAG = "question_share_button"
+const val QUESTION_WRITE_ANSWER_BUTTON_TAG = "question_write_answer_button"
 const val QUESTION_COMMENTS_BUTTON_TAG = "question_comments_button"
 const val QUESTION_STATS_TAG = "question_stats"
 
@@ -157,11 +160,11 @@ fun QuestionScreen(
     val settings = rememberSettingsStore()
     val shareRuntime = rememberShareDialogRuntime()
     val openZhihuWebUrl = rememberZhihuWebUrlOpener()
+    val navigator = LocalNavigator.current
     val viewModel: QuestionFeedViewModel = testOverrides?.viewModel ?: viewModel(key = "question_${question.questionId}") {
         QuestionFeedViewModel(question.questionId)
     }
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
-    val navigator = LocalNavigator.current
     val answerSwitchState = paginationEnvironment.articleAnswerSwitchState()
     val onRefreshAnswers = testOverrides?.onRefreshAnswers ?: { viewModel.refresh(paginationEnvironment) }
     val onLoadMore = testOverrides?.onLoadMore ?: { viewModel.loadMore(paginationEnvironment) }
@@ -420,9 +423,8 @@ fun QuestionScreen(
                                 modifier = Modifier.testTag(QUESTION_VIEW_LOG_BUTTON_TAG),
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                             ) {
-                                Text("查看日志")
+                                Text("日志")
                             }
-                            Spacer(Modifier.width(8.dp))
 
                             Button(
                                 onClick = {
@@ -445,11 +447,29 @@ fun QuestionScreen(
                                 ),
                             ) {
                                 Icon(Icons.Filled.Share, contentDescription = "分享")
-                                Spacer(Modifier.width(8.dp))
-                                Text("分享")
                             }
 
-                            Spacer(Modifier.width(8.dp))
+                            Button(
+                                onClick = {
+                                    navigator.onNavigate(
+                                        WriteAnswer(
+                                            questionId = question.questionId,
+                                            questionTitle = title,
+                                            questionDetail = questionContent,
+                                        ),
+                                    )
+                                },
+                                modifier = Modifier.testTag(QUESTION_WRITE_ANSWER_BUTTON_TAG),
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                ),
+                            ) {
+                                Icon(Icons.Filled.Edit, contentDescription = "写回答")
+                                Spacer(Modifier.width(8.dp))
+                                Text("写回答")
+                            }
                             Button(
                                 onClick = { showComments = true },
                                 modifier = Modifier.testTag(QUESTION_COMMENTS_BUTTON_TAG),

@@ -51,7 +51,9 @@ abstract class ContentFilterDatabase : RoomDatabase() {
 }
 
 @Suppress("NO_ACTUAL_FOR_EXPECT")
-expect object ContentFilterDatabaseConstructor : RoomDatabaseConstructor<ContentFilterDatabase>
+expect object ContentFilterDatabaseConstructor : RoomDatabaseConstructor<ContentFilterDatabase> {
+    override fun initialize(): ContentFilterDatabase
+}
 
 expect fun getContentFilterDatabase(): ContentFilterDatabase
 

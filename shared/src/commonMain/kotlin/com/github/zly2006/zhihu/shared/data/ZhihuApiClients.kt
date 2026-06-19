@@ -40,6 +40,13 @@ internal fun resetZhihuAuthenticatedRequestRefreshThrottleForTesting() {
     lastRefreshMillis = 0
 }
 
+fun Map<String, String>.toCookieHeaderString(): String =
+    entries
+        .asSequence()
+        .mapNotNull { (name, value) ->
+            value.takeIf { it.isNotBlank() }?.let { "$name=$it" }
+        }.joinToString("; ")
+
 suspend fun executeZhihuAuthenticatedRequest(
     client: HttpClient,
     url: String,

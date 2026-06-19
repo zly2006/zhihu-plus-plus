@@ -266,8 +266,8 @@ interface ZhihuApiEnvironment {
 
 suspend fun ZhihuApiEnvironment.fetchContentDetail(destination: NavDestination): DataHolder.Content? =
     runCatching {
-        fetchZhihuContentDetail(destination) { url ->
-            fetchJson(url, "")
+        fetchZhihuContentDetail(destination) { url, include ->
+            fetchJson(url, include)
         }
     }.getOrElse { error ->
         if (error !is CancellationException) {
@@ -278,8 +278,8 @@ suspend fun ZhihuApiEnvironment.fetchContentDetail(destination: NavDestination):
 
 suspend fun ZhihuApiEnvironment.getOrFetchContentDetail(destination: NavDestination): DataHolder.Content? =
     runCatching {
-        ContentDetailCache.getOrFetchContentDetail(destination) { url ->
-            fetchJson(url, "")
+        ContentDetailCache.getOrFetchContentDetail(destination) { url, include ->
+            fetchJson(url, include)
         }
     }.getOrElse { error ->
         if (error !is CancellationException) {

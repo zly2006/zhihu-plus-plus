@@ -18,6 +18,11 @@
 package com.github.zly2006.zhihu.markdown
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import coil3.compose.LocalPlatformContext
+import coil3.network.NetworkHeaders
+import coil3.network.httpHeaders
+import coil3.request.ImageRequest
 import com.hrm.latex.renderer.font.MathFont
 
 interface MarkdownRuntime {
@@ -30,3 +35,31 @@ interface MarkdownRuntime {
 
 @Composable
 expect fun rememberMarkdownRuntime(): MarkdownRuntime
+
+@Composable
+fun rememberMarkdownImageModel(url: String): Any {
+    val context = LocalPlatformContext.current
+    val headerData = rememberMarkdownImageRequestHeaders()
+    val headers = remember(headerData.cookieHeader, headerData.userAgent) {
+        NetworkHeaders
+            .Builder()
+            .set("Cookie", headerData.cookieHeader)
+            .set("User-Agent", headerData.userAgent)
+            .build()
+    }
+    return remember(context, url, headers) {
+        ImageRequest
+            .Builder(context)
+            .data(url)
+            .httpHeaders(headers)
+            .build()
+    }
+}
+
+data class MarkdownImageRequestHeaders(
+    val cookieHeader: String,
+    val userAgent: String,
+)
+
+@Composable
+expect fun rememberMarkdownImageRequestHeaders(): MarkdownImageRequestHeaders
