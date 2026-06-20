@@ -26,14 +26,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.shared.account.IosAccountStore
-import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.viewmodel.NotificationEnvironment
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
-import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
 import io.ktor.client.HttpClient
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -43,12 +40,10 @@ import platform.UIKit.UIApplication
 @Composable
 actual fun rememberArticleActionsRuntime(): ArticleActionsRuntime {
     val userMessages = rememberUserMessageSink()
-    val dialogShareRuntime = rememberShareDialogRuntime()
-    return remember(userMessages, dialogShareRuntime) {
+    return remember(userMessages) {
         object : ArticleActionsRuntime {
             override var ttsState: TtsState by mutableStateOf(TtsState.Ready)
                 private set // TODO: iOS TTS 实现
-            override val shareRuntime = dialogShareRuntime
 
             override fun toggleSpeech(title: String, content: String) =
                 userMessages.showMessage("iOS TTS 暂未实现") // TODO: iOS TTS 实现
@@ -123,21 +118,25 @@ actual fun commentEmojiInlineKey(placeholder: String): String? = null // TODO: i
 actual fun Modifier.commentSelectionWorkaround(): Modifier = this
 
 @Composable
-actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): HomeScreenRuntime {
+actual fun rememberHomeAccountState(): HomeAccountState = HomeAccountState(
+    isLoggedIn = false,
+    avatarUrl = null,
+)
+
+@Composable
+actual fun rememberHomeUpdateAnnouncement(): HomeUpdateAnnouncement? = null
+
+@Composable
+actual fun rememberHomeInstalledAtLeastThreeHours(): Boolean = false
+
+@Composable
+actual fun rememberHomeIsDebuggable(): Boolean = false
+
+@Composable
+actual fun rememberHomeLoginRequester(): () -> Unit {
     val userMessages = rememberUserMessageSink()
-    val viewModel = remember { HomeFeedViewModel() }
-    return remember(userMessages, viewModel) {
-        HomeScreenRuntime(
-            account = HomeAccountState(isLoggedIn = false, avatarUrl = null),
-            updateAnnouncement = null,
-            installedAtLeastThreeHours = false,
-            isDebuggable = false,
-            viewModel = viewModel,
-            requestLogin = { userMessages.showMessage("iOS 登录暂未实现") }, // TODO: iOS 登录
-            loadAuthorPollAnnouncements = { emptyList() },
-            recordLocalItemOpened = { }, // TODO: iOS 本地推荐记录
-            recordLocalItemFeedback = { _, _ -> false },
-        )
+    return remember(userMessages) {
+        { userMessages.showMessage("iOS 登录暂未实现") } // TODO: iOS 登录
     }
 }
 
@@ -156,14 +155,6 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
         )
     }
 }
-
-@Composable
-actual fun rememberPinScreenRuntime(): PinScreenRuntime =
-    remember {
-        PinScreenRuntime(
-            fetchLinkCardPreview = { null },
-        )
-    }
 
 @Composable
 actual fun ZhihuHtmlWebViewContent(html: String) = Unit // TODO: iOS HTML WebView 实现

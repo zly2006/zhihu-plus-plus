@@ -42,18 +42,14 @@ import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.shared.platform.SettingsStore
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
-import com.github.zly2006.zhihu.ui.components.ShareDialogRuntime
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
-import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.getOrFetchContentDetail
 import io.ktor.client.HttpClient
 import kotlinx.serialization.json.JsonElement
@@ -112,9 +108,6 @@ internal fun JsonObject?.booleanCompat(vararg keys: String): Boolean {
         get(key)?.jsonPrimitive?.booleanOrNull
     } ?: false
 }
-
-@Composable
-expect fun rememberPinScreenRuntime(): PinScreenRuntime
 
 /**
  * 想法正文的 HTML 渲染入口。
@@ -359,12 +352,11 @@ expect fun QuestionDetailWebViewContent(
 /**
  * 文章页底部操作区使用的平台桥接。
  *
- * 可见按钮由 common UI 统一绘制，但语音朗读、系统分享、剪贴板和在浏览器打开知乎原文都需要平台实现。
+ * 可见按钮由 common UI 统一绘制，但语音朗读和在浏览器打开知乎原文需要平台实现。
  * 把契约放在这里，可以让操作按钮作为 UI 被测试，同时把副作用留在 shared composable 之外。
  */
 interface ArticleActionsRuntime {
     val ttsState: TtsState
-    val shareRuntime: ShareDialogRuntime
 
     fun toggleSpeech(
         title: String,
@@ -506,29 +498,17 @@ data class ZhihuMainPreferenceSnapshot(
 class ZhihuMainPreferenceState(
     private val readSnapshot: () -> ZhihuMainPreferenceSnapshot,
 ) {
-    private val initialSnapshot = readSnapshot()
+    private var snapshot by mutableStateOf(readSnapshot())
 
-    var duo3HomeAccount by mutableStateOf(initialSnapshot.duo3HomeAccount)
-        private set
-    var duo3NavStyle by mutableStateOf(initialSnapshot.duo3NavStyle)
-        private set
-    var tapToScrollToTopEnabled by mutableStateOf(initialSnapshot.tapToScrollToTopEnabled)
-        private set
-    var autoHideBottomBar by mutableStateOf(initialSnapshot.autoHideBottomBar)
-        private set
-    var selectedBottomBarItemKeys by mutableStateOf(initialSnapshot.selectedBottomBarItemKeys)
-        private set
-    var startDestination by mutableStateOf(initialSnapshot.startDestination)
-        private set
+    val duo3HomeAccount: Boolean get() = snapshot.duo3HomeAccount
+    val duo3NavStyle: Boolean get() = snapshot.duo3NavStyle
+    val tapToScrollToTopEnabled: Boolean get() = snapshot.tapToScrollToTopEnabled
+    val autoHideBottomBar: Boolean get() = snapshot.autoHideBottomBar
+    val selectedBottomBarItemKeys: List<String> get() = snapshot.selectedBottomBarItemKeys
+    val startDestination: TopLevelDestination get() = snapshot.startDestination
 
     fun reload() {
-        val snapshot = readSnapshot()
-        duo3HomeAccount = snapshot.duo3HomeAccount
-        duo3NavStyle = snapshot.duo3NavStyle
-        tapToScrollToTopEnabled = snapshot.tapToScrollToTopEnabled
-        autoHideBottomBar = snapshot.autoHideBottomBar
-        selectedBottomBarItemKeys = snapshot.selectedBottomBarItemKeys
-        startDestination = snapshot.startDestination
+        snapshot = readSnapshot()
     }
 }
 
@@ -607,26 +587,20 @@ data class HomeUpdateAnnouncement(
     val isNightly: Boolean,
 )
 
-/**
- * 首页信息流界面的运行时依赖集合。
- *
- * 首页同时组合推荐数据、账号入口、更新横幅、未读通知和可选账号面板行为。把这些依赖集中在一起后，页面本身可以专注布局：
- * 顶部操作区、信息流列表、刷新入口和临时公告。
- */
-data class HomeScreenRuntime(
-    val account: HomeAccountState,
-    val updateAnnouncement: HomeUpdateAnnouncement?,
-    val installedAtLeastThreeHours: Boolean,
-    val isDebuggable: Boolean,
-    val viewModel: BaseFeedViewModel,
-    val requestLogin: () -> Unit,
-    val loadAuthorPollAnnouncements: suspend () -> List<HomePollAnnouncement>,
-    val recordLocalItemOpened: (FeedDisplayItem) -> Unit,
-    val recordLocalItemFeedback: (FeedDisplayItem, Double) -> Boolean,
-)
+@Composable
+expect fun rememberHomeAccountState(): HomeAccountState
 
 @Composable
-expect fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): HomeScreenRuntime
+expect fun rememberHomeUpdateAnnouncement(): HomeUpdateAnnouncement?
+
+@Composable
+expect fun rememberHomeInstalledAtLeastThreeHours(): Boolean
+
+@Composable
+expect fun rememberHomeIsDebuggable(): Boolean
+
+@Composable
+expect fun rememberHomeLoginRequester(): () -> Unit
 
 interface CommentScreenRuntime {
     fun saveImage(imageUrl: String)

@@ -40,12 +40,10 @@ import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.asApiEnvironment
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
-import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.data.ZHIHU_ME_URL
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
@@ -54,7 +52,6 @@ import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.ui.components.CustomWebView
 import com.github.zly2006.zhihu.ui.components.WebviewComp
-import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.util.EmojiManager
@@ -64,16 +61,10 @@ import com.github.zly2006.zhihu.util.fuckHonorService
 import com.github.zly2006.zhihu.util.saveImageToGallery
 import com.github.zly2006.zhihu.util.shareImage
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
-import com.github.zly2006.zhihu.viewmodel.SharedAndroidPaginationEnvironment
-import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.filter.encodeBlocklistBackup
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.filter.importBlocklistBackupFromJsonText
-import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.notificationEnvironment
-import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.za.MixedHomeFeedViewModel
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -177,13 +168,11 @@ actual fun rememberArticleActionsRuntime(): ArticleActionsRuntime {
     val context = activityContext.applicationContext
     val coroutineScope = rememberCoroutineScope()
     val userMessages = rememberUserMessageSink()
-    val dialogShareRuntime = rememberShareDialogRuntime()
     val articleHost = activityContext.articleHost()
     val ttsState = articleHost?.articleTtsState ?: TtsState.Uninitialized
-    return remember(context, coroutineScope, userMessages, dialogShareRuntime, articleHost, ttsState) {
+    return remember(context, coroutineScope, userMessages, articleHost, ttsState) {
         object : ArticleActionsRuntime {
             override val ttsState: TtsState = ttsState
-            override val shareRuntime = dialogShareRuntime
 
             override fun toggleSpeech(
                 title: String,
@@ -292,20 +281,28 @@ actual fun ArticleWebViewContent(
 actual fun Modifier.articleMarkdownSelectionWorkaround(): Modifier = fuckHonorService()
 
 @Composable
-actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): HomeScreenRuntime {
-    val context = LocalContext.current
+actual fun rememberHomeAccountState(): HomeAccountState {
     val accountData by AccountData.asState()
+    return HomeAccountState(
+        isLoggedIn = accountData.login,
+        avatarUrl = accountData.self?.avatarUrl,
+    )
+}
+
+@Composable
+actual fun rememberHomeUpdateAnnouncement(): HomeUpdateAnnouncement? {
     val updateState by UpdateManager.updateState.collectAsState()
-    val viewModel: BaseFeedViewModel = when (recommendationMode) {
-        RecommendationMode.WEB -> viewModel<HomeFeedViewModel>()
-        RecommendationMode.ANDROID -> viewModel<AndroidHomeFeedViewModel>()
-        RecommendationMode.LOCAL -> viewModel<LocalHomeFeedViewModel>()
-        RecommendationMode.MIXED -> viewModel<MixedHomeFeedViewModel>()
+    return (updateState as? UpdateManager.UpdateState.UpdateAvailable)?.let {
+        HomeUpdateAnnouncement(
+            version = it.version.toString(),
+            isNightly = it.isNightly,
+        )
     }
-    val localHomeViewModel = viewModel as? LocalHomeFeedViewModel
-    val authorPollEnvironment = remember(context) {
-        SharedAndroidPaginationEnvironment(context, allowGuestAccess = false)
-    }
+}
+
+@Composable
+actual fun rememberHomeInstalledAtLeastThreeHours(): Boolean {
+    val context = LocalContext.current
     val installTime = remember {
         try {
             context.packageManager.getPackageInfo(context.packageName, 0).firstInstallTime
@@ -313,52 +310,24 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
             System.currentTimeMillis()
         }
     }
-    val updateAnnouncement = (updateState as? UpdateManager.UpdateState.UpdateAvailable)?.let {
-        HomeUpdateAnnouncement(
-            version = it.version.toString(),
-            isNightly = it.isNightly,
-        )
-    }
+    return System.currentTimeMillis() - installTime >= 3 * 60 * 60 * 1000L
+}
 
-    return HomeScreenRuntime(
-        account = HomeAccountState(
-            isLoggedIn = accountData.login,
-            avatarUrl = accountData.self?.avatarUrl,
-        ),
-        updateAnnouncement = updateAnnouncement,
-        installedAtLeastThreeHours = System.currentTimeMillis() - installTime >= 3 * 60 * 60 * 1000L,
-        isDebuggable = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0,
-        viewModel = viewModel,
-        requestLogin = {
+@Composable
+actual fun rememberHomeIsDebuggable(): Boolean {
+    val context = LocalContext.current
+    return (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+}
+
+@Composable
+actual fun rememberHomeLoginRequester(): () -> Unit {
+    val context = LocalContext.current
+    return remember(context) {
+        {
             val intent = Intent().setClassName(context.packageName, "com.github.zly2006.zhihu.LoginActivity")
             context.startActivity(intent)
-        },
-        loadAuthorPollAnnouncements = {
-            withContext(Dispatchers.IO) {
-                runCatching {
-                    authorPollEnvironment
-                        .fetchJson(ZHIHU_PLUS_AUTHOR_PINS_URL, "")
-                        ?.let(::decodeHomePollAnnouncements)
-                        ?.take(3)
-                        ?: emptyList()
-                }.getOrElse { error ->
-                    Log.e("HomeScreenRuntime", "Failed to load author poll announcements", error)
-                    emptyList()
-                }
-            }
-        },
-        recordLocalItemOpened = { item ->
-            localHomeViewModel?.onLocalItemOpened(item)
-        },
-        recordLocalItemFeedback = { item, feedback ->
-            if (localHomeViewModel != null && item.localContentId != null) {
-                localHomeViewModel.onLocalItemFeedback(item, feedback)
-                true
-            } else {
-                false
-            }
-        },
-    )
+        }
+    }
 }
 
 @Composable
@@ -429,18 +398,6 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
                 }
                 context.startActivity(Intent.createChooser(intent, "查看屏蔽规则"))
                 "已导出到 ${file.absolutePath}"
-            },
-        )
-    }
-}
-
-@Composable
-actual fun rememberPinScreenRuntime(): PinScreenRuntime {
-    val context = LocalContext.current
-    return remember(context) {
-        PinScreenRuntime(
-            fetchLinkCardPreview = { linkCard ->
-                fetchPinLinkCardPreview(linkCard, context.asApiEnvironment())
             },
         )
     }

@@ -145,6 +145,7 @@ import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
 import com.github.zly2006.zhihu.ui.components.VotersSheet
 import com.github.zly2006.zhihu.ui.components.ZhihuTwoRowsTopAppBar
 import com.github.zly2006.zhihu.ui.components.rememberPreferCollapsedExitUntilCollapsedScrollBehavior
+import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.util.smoothGradient
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
@@ -469,6 +470,7 @@ fun ArticleActionsMenu(
     onSetImmersiveDoubleTap: () -> Unit = {},
 ) {
     val articleActionsRuntime = rememberArticleActionsRuntime()
+    val shareRuntime = rememberShareDialogRuntime()
     val coroutineScope = rememberCoroutineScope()
 
     @Composable
@@ -588,7 +590,7 @@ fun ArticleActionsMenu(
             text = "分享",
             onClick = {
                 onDismissRequest()
-                articleActionsRuntime.shareRuntime.share(
+                shareRuntime.share(
                     article,
                     articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName),
                 )
@@ -625,7 +627,7 @@ fun ArticleActionsMenu(
             text = "复制链接",
             onClick = {
                 onDismissRequest()
-                articleActionsRuntime.shareRuntime.copyLink(
+                shareRuntime.copyLink(
                     article,
                     articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName),
                 )

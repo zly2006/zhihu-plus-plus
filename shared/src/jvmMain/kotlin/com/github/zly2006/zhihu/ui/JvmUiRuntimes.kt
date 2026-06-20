@@ -31,13 +31,9 @@ import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.unit.em
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
-import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopLoginRequests
 import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
@@ -47,21 +43,14 @@ import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
-import com.github.zly2006.zhihu.ui.PinLinkCardPreview
-import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
 import com.github.zly2006.zhihu.ui.subscreens.desktopSystemUpdateState
 import com.github.zly2006.zhihu.viewmodel.DesktopPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
-import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
 import com.github.zly2006.zhihu.viewmodel.filter.encodeBlocklistBackup
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.filter.importBlocklistBackupFromJsonText
-import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.za.MixedHomeFeedViewModel
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -76,8 +65,7 @@ import javax.swing.filechooser.FileNameExtensionFilter
 actual fun rememberArticleActionsRuntime(): ArticleActionsRuntime {
     val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
-    val dialogShareRuntime = rememberShareDialogRuntime()
-    return remember(userMessages, coroutineScope, dialogShareRuntime) {
+    return remember(userMessages, coroutineScope) {
         object : ArticleActionsRuntime {
             private var speechProcess: Process? = null
             private var currentTtsState by mutableStateOf(
@@ -85,7 +73,6 @@ actual fun rememberArticleActionsRuntime(): ArticleActionsRuntime {
             )
             override val ttsState: TtsState
                 get() = currentTtsState
-            override val shareRuntime = dialogShareRuntime
 
             override fun toggleSpeech(
                 title: String,
@@ -245,54 +232,36 @@ private fun desktopProjectRoots(): List<File> =
         .take(6)
         .toList()
 
-private object JvmViewModelFactory : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: kotlin.reflect.KClass<T>, extras: androidx.lifecycle.viewmodel.CreationExtras): T = modelClass.java.getDeclaredConstructor().newInstance()
+@Composable
+actual fun rememberHomeAccountState(): HomeAccountState {
+    val accountStore = remember { DesktopAccountStore() }
+    val account = accountStore.load()
+    return HomeAccountState(
+        isLoggedIn = account.login,
+        avatarUrl = account.profile?.avatarUrl,
+    )
 }
 
 @Composable
-actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): HomeScreenRuntime {
-    val accountStore = remember { DesktopAccountStore() }
-    var account by remember { mutableStateOf(accountStore.load()) }
+actual fun rememberHomeUpdateAnnouncement(): HomeUpdateAnnouncement? {
     val updateState by desktopSystemUpdateState.collectAsState()
-    val viewModel: BaseFeedViewModel = when (recommendationMode) {
-        RecommendationMode.ANDROID -> viewModel<AndroidHomeFeedViewModel>(factory = JvmViewModelFactory)
-        RecommendationMode.LOCAL -> viewModel<LocalHomeFeedViewModel>(factory = JvmViewModelFactory)
-        RecommendationMode.MIXED -> viewModel<MixedHomeFeedViewModel>(factory = JvmViewModelFactory)
-        RecommendationMode.WEB -> viewModel<HomeFeedViewModel>(factory = JvmViewModelFactory)
-    }
-    val localHomeViewModel = viewModel as? LocalHomeFeedViewModel
-    val updateAnnouncement = (updateState as? SystemUpdateState.UpdateAvailable)?.let {
+    return (updateState as? SystemUpdateState.UpdateAvailable)?.let {
         HomeUpdateAnnouncement(
             version = it.version,
             isNightly = it.isNightly,
         )
     }
-    return HomeScreenRuntime(
-        account = HomeAccountState(
-            isLoggedIn = account.login,
-            avatarUrl = account.profile?.avatarUrl,
-        ),
-        updateAnnouncement = updateAnnouncement,
-        installedAtLeastThreeHours = false,
-        isDebuggable = true,
-        viewModel = viewModel,
-        requestLogin = {
-            DesktopLoginRequests.requestLogin()
-            account = accountStore.load()
-        },
-        loadAuthorPollAnnouncements = { emptyList() },
-        recordLocalItemOpened = { item ->
-            localHomeViewModel?.onLocalItemOpened(item)
-        },
-        recordLocalItemFeedback = { item, feedback ->
-            if (localHomeViewModel != null && item.localContentId != null) {
-                localHomeViewModel.onLocalItemFeedback(item, feedback)
-                true
-            } else {
-                false
-            }
-        },
-    )
+}
+
+@Composable
+actual fun rememberHomeInstalledAtLeastThreeHours(): Boolean = false
+
+@Composable
+actual fun rememberHomeIsDebuggable(): Boolean = true
+
+@Composable
+actual fun rememberHomeLoginRequester(): () -> Unit = remember {
+    { DesktopLoginRequests.requestLogin() }
 }
 
 @Composable
@@ -421,19 +390,6 @@ actual fun ArticleWebViewContent(
 }
 
 actual fun Modifier.articleMarkdownSelectionWorkaround(): Modifier = this
-
-@Composable
-actual fun rememberPinScreenRuntime(): PinScreenRuntime {
-    val store = remember { DesktopAccountStore() }
-    val environment = remember(store) { DesktopPaginationEnvironment(store) }
-    return remember(environment) {
-        PinScreenRuntime(
-            fetchLinkCardPreview = { linkCard ->
-                fetchPinLinkCardPreview(linkCard, environment)
-            },
-        )
-    }
-}
 
 /**
  * 桌面端不支持 WebView

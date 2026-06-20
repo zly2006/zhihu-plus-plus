@@ -68,6 +68,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
@@ -90,6 +91,7 @@ import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.ui.TopLevelReselectAction
 import com.github.zly2006.zhihu.shared.ui.topLevelReselectAction
+import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.ui.components.AnnouncementCard
 import com.github.zly2006.zhihu.ui.components.AnnouncementCardDefaults
 import com.github.zly2006.zhihu.ui.components.BlockByKeywordsDialog
@@ -103,7 +105,12 @@ import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.components.rememberFeedBlockActions
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
+import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.za.MixedHomeFeedViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
 
 const val PREFERENCE_NAME = "com.github.zly2006.zhihu_preferences"
@@ -160,12 +167,22 @@ fun HomeScreen(
             it.key == settings.getString("recommendationMode", RecommendationMode.MIXED.key)
         } ?: RecommendationMode.MIXED
 
-    val runtime = rememberHomeScreenRuntime(currentRecommendationMode)
+    val account = rememberHomeAccountState()
+    val updateAnnouncement = rememberHomeUpdateAnnouncement()
+    val installedAtLeastThreeHours = rememberHomeInstalledAtLeastThreeHours()
+    val isDebuggable = rememberHomeIsDebuggable()
+    val requestLogin = rememberHomeLoginRequester()
     val feedBlockActions = rememberFeedBlockActions()
-    val viewModel: BaseFeedViewModel = runtime.viewModel
+    val viewModel: BaseFeedViewModel = when (currentRecommendationMode) {
+        RecommendationMode.WEB -> viewModel { HomeFeedViewModel() }
+        RecommendationMode.ANDROID -> viewModel { AndroidHomeFeedViewModel() }
+        RecommendationMode.LOCAL -> viewModel { LocalHomeFeedViewModel() }
+        RecommendationMode.MIXED -> viewModel { MixedHomeFeedViewModel() }
+    }
+    val localHomeViewModel = viewModel as? LocalHomeFeedViewModel
 
     val keySurveyDone = "survey_feedback_done"
-    val installed3Hours = !settings.getBoolean(keySurveyDone, false) && runtime.installedAtLeastThreeHours
+    val installed3Hours = !settings.getBoolean(keySurveyDone, false) && installedAtLeastThreeHours
     var dismissedUpdateVersion by remember { mutableStateOf<String?>(null) }
     var aigcMarkingEnabled by remember {
         mutableStateOf(settings.getBoolean(AIGC_MARKING_ENABLED_PREFERENCE_KEY, false))
@@ -220,11 +237,11 @@ fun HomeScreen(
     }
 
     // 初始加载
-    LaunchedEffect(currentRecommendationMode, runtime.account.isLoggedIn) {
-        if (!runtime.account.isLoggedIn &&
+    LaunchedEffect(currentRecommendationMode, account.isLoggedIn) {
+        if (!account.isLoggedIn &&
             settings.getBoolean("loginForRecommendation", true)
         ) {
-            runtime.requestLogin()
+            requestLogin()
         } else if (viewModel.displayItems.isEmpty()) {
             // 只在第一次加载时刷新，这样可以避免在返回时刷新
             viewModel.refresh(paginationEnvironment)
@@ -233,7 +250,18 @@ fun HomeScreen(
 
     LaunchedEffect(testOverrides) {
         if (testOverrides?.pollAnnouncements == null) {
-            authorPollAnnouncements = runtime.loadAuthorPollAnnouncements()
+            authorPollAnnouncements = try {
+                paginationEnvironment
+                    .fetchJson(ZHIHU_PLUS_AUTHOR_PINS_URL, "")
+                    ?.let(::decodeHomePollAnnouncements)
+                    ?.take(3)
+                    ?: emptyList()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("HomeScreen", "Failed to load author poll announcements", e)
+                emptyList()
+            }
         }
     }
 
@@ -324,7 +352,7 @@ fun HomeScreen(
                                                 }
                                             },
                                         ) {
-                                            val avatarUrl = runtime.account.avatarUrl
+                                            val avatarUrl = account.avatarUrl
                                             if (avatarUrl != null) {
                                                 AsyncImage(
                                                     model = avatarUrl,
@@ -465,7 +493,7 @@ fun HomeScreen(
                 key = { item -> item.stableKey },
                 topContent = {
                     item {
-                        val availableUpdate = runtime.updateAnnouncement
+                        val availableUpdate = updateAnnouncement
 
                         AnnouncementCard(
                             visible = availableUpdate != null && dismissedUpdateVersion != availableUpdate.version,
@@ -579,14 +607,16 @@ fun HomeScreen(
                         else -> null
                     },
                     onLike = {
-                        if (runtime.recordLocalItemFeedback(it, 1.0)) {
+                        if (localHomeViewModel != null && it.localContentId != null) {
+                            localHomeViewModel.onLocalItemFeedback(it, 1.0)
                             userMessages.showShortMessage("已记录喜欢，本地推荐会逐步学习")
                         } else {
                             userMessages.showShortMessage("收到喜欢，功能正在优化")
                         }
                     },
                     onDislike = {
-                        if (runtime.recordLocalItemFeedback(it, -1.0)) {
+                        if (localHomeViewModel != null && it.localContentId != null) {
+                            localHomeViewModel.onLocalItemFeedback(it, -1.0)
                             userMessages.showShortMessage("已降低这类本地推荐的优先级")
                         } else {
                             userMessages.showShortMessage("收到反馈，功能正在优化")
@@ -614,7 +644,7 @@ fun HomeScreen(
 //                            DataHolder.putFeed(feed)
                         (viewModel as? HomeFeedInteractionViewModel)?.onUiContentClick(paginationEnvironment, feed, item)
                     } else if (item.localContentId != null) {
-                        runtime.recordLocalItemOpened(item)
+                        localHomeViewModel?.onLocalItemOpened(item)
                     }
                     if (destination != null) {
                         navigator.onNavigate(destination)
@@ -623,7 +653,7 @@ fun HomeScreen(
             }
 
             if (showRefreshFab) {
-                if (runtime.isDebuggable) {
+                if (isDebuggable) {
                     DraggableRefreshButton(
                         onClick = {
                             val data = Json.encodeToString(viewModel.debugData)
