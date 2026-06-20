@@ -312,8 +312,9 @@ object DataHolder {
                 .mapNotNull { endorsement ->
                     endorsement.elements
                         .orEmpty()
-                        .firstOrNull { element -> element.type == "TEXT" && !element.content.isNullOrBlank() }
-                        ?.content
+                        .filter { element -> element.type == "TEXT" && !element.content.isNullOrBlank() }
+                        .joinToString(" ") { element -> element.content.orEmpty() }
+                        .takeIf { text -> text.isNotBlank() }
                 }
 
         @Serializable
