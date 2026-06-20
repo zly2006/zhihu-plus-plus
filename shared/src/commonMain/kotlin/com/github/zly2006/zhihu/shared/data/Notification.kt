@@ -179,6 +179,17 @@ sealed interface NotificationTarget {
         override val content: String
             get() = excerpt
     }
+
+    @Serializable
+    @SerialName("pin")
+    data class Pin(
+        val url: String,
+        val id: String,
+        override val title: String,
+    ) : NotificationTarget {
+        override val content: String
+            get() = title
+    }
 }
 
 @Serializable
