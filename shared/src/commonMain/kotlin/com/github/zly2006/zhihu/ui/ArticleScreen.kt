@@ -1712,33 +1712,22 @@ fun ArticleScreen(
                             }
                         }
 
-                        @Composable
-                        fun ColumnScope.AnswerLeadingMeta(showCreationStatement: Boolean) {
+                        if (viewModel.content.isNotEmpty() || viewModel.attachment != null) {
                             val hasPinnedDate = pinAnswerDate
                             val hasSocialCredit = viewModel.votersTotal > 0 || viewModel.aigcSupportVoterCount > 0
-                            val hasCreationStatement = showCreationStatement && viewModel.creationStatementText.isNotBlank()
-                            if (!hasPinnedDate && !hasSocialCredit && !hasCreationStatement) return
-                            Column(
-                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                                horizontalAlignment = Alignment.Start,
-                            ) {
-                                if (hasPinnedDate) {
-                                    DateTexts()
-                                }
-                                ArticleVotersSocialCredit()
-                                if (hasCreationStatement) {
-                                    if (hasPinnedDate || hasSocialCredit) {
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                    }
-                                    AnswerCreationStatementChip(viewModel.creationStatementText)
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(16.dp))
-                        }
-
-                        if (viewModel.content.isNotEmpty() || viewModel.attachment != null) {
                             if (useWebView) {
-                                AnswerLeadingMeta(showCreationStatement = false)
+                                if (hasPinnedDate || hasSocialCredit) {
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                        horizontalAlignment = Alignment.Start,
+                                    ) {
+                                        if (hasPinnedDate) {
+                                            DateTexts()
+                                        }
+                                        ArticleVotersSocialCredit()
+                                    }
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                }
                                 ArticleWebViewContent(
                                     article = article,
                                     html = viewModel.content,
@@ -1767,7 +1756,25 @@ fun ArticleScreen(
                                 }
                                 Spacer(modifier = Modifier.height((16 + 36).dp))
                             } else {
-                                AnswerLeadingMeta(showCreationStatement = true)
+                                val hasCreationStatement = viewModel.creationStatementText.isNotBlank()
+                                if (hasPinnedDate || hasSocialCredit || hasCreationStatement) {
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                        horizontalAlignment = Alignment.Start,
+                                    ) {
+                                        if (hasPinnedDate) {
+                                            DateTexts()
+                                        }
+                                        ArticleVotersSocialCredit()
+                                        if (hasCreationStatement) {
+                                            if (hasPinnedDate || hasSocialCredit) {
+                                                Spacer(modifier = Modifier.height(8.dp))
+                                            }
+                                            AnswerCreationStatementChip(viewModel.creationStatementText)
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                }
                                 RenderMarkdown(
                                     html = viewModel.content,
                                     modifier = Modifier.articleMarkdownSelectionWorkaround(),
