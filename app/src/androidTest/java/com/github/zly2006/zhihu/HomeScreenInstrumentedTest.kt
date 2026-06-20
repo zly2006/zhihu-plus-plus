@@ -21,6 +21,7 @@ import android.content.Context
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -76,7 +77,6 @@ class HomeScreenInstrumentedTest {
         composeRule.setScreenContent {}
         composeRule.resetAppPreferences()
         composeRule.activity.runOnUiThread {
-            AccountData.delete(composeRule.activity)
             UpdateManager.updateState.value = UpdateManager.UpdateState.NoUpdate
             clearHomeFeedViewModel()
         }
@@ -177,10 +177,14 @@ class HomeScreenInstrumentedTest {
         val recordingNavigator = composeRule.launchHomeScreen(
             duo3HomeAccount = false,
             showRefreshFab = false,
+            useSeededAccountForNetwork = true,
             displayItems = homeFeedFixtureItems(),
         )
 
-        composeRule.onNodeWithTag(homeAuthorPollAnnouncementTag(2051253530787370452L)).assertIsDisplayed()
+        val announcementTag = homeAuthorPollAnnouncementTag(2051253530787370452L)
+        composeRule.waitUntilRequestCount(HttpMethod.Get, ZHIHU_PLUS_AUTHOR_PINS_URL, 1)
+        composeRule.waitUntilHomeFeedTagExists(announcementTag)
+        composeRule.onNodeWithTag(announcementTag).assertExists()
         composeRule.onNodeWithText("请给未来的知乎++提出建议").assertIsDisplayed()
         composeRule.onNodeWithText("知乎++好用吗\n5 个选项").assertIsDisplayed()
         composeRule.onNodeWithText("去投票").assertIsDisplayed().performClick()
@@ -218,13 +222,14 @@ class HomeScreenInstrumentedTest {
     private fun MainActivityComposeRule.launchHomeScreen(
         duo3HomeAccount: Boolean,
         showRefreshFab: Boolean,
+        useSeededAccountForNetwork: Boolean = false,
         displayItems: List<FeedDisplayItem>,
     ): RecordingNavigator {
         setScreenContent {}
         activity.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE).edit(commit = true) {
             putBoolean("duo3_home_account", duo3HomeAccount)
             putBoolean("showRefreshFab", showRefreshFab)
-            putBoolean("loginForRecommendation", false)
+            putBoolean("loginForRecommendation", useSeededAccountForNetwork)
             putBoolean("filterExplainDialogShown", true)
             putBoolean(QQ_GROUP_DISMISSED_PREFERENCE_KEY, true)
             putBoolean("survey_feedback_done", true)
@@ -232,7 +237,9 @@ class HomeScreenInstrumentedTest {
             putString("recommendationMode", RecommendationMode.WEB.key)
         }
         activity.runOnUiThread {
-            AccountData.delete(activity)
+            if (!useSeededAccountForNetwork) {
+                AccountData.delete(activity)
+            }
             UpdateManager.updateState.value = UpdateManager.UpdateState.NoUpdate
             clearHomeFeedViewModel()
             seedHomeFeedViewModel(displayItems)
@@ -262,6 +269,25 @@ class HomeScreenInstrumentedTest {
     private fun seedHomeFeedViewModel(items: List<FeedDisplayItem>) {
         val viewModel = ViewModelProvider(composeRule.activity)[HomeFeedViewModel::class.java]
         viewModel.addDisplayItems(items)
+    }
+
+    private fun MainActivityComposeRule.waitUntilHomeFeedTagExists(tag: String) {
+        waitUntil("Expected tag $tag in home feed", timeoutMillis = 5_000) {
+            runCatching {
+                onNodeWithTag(HOME_FEED_LIST_TAG).performScrollToNode(hasTestTag(tag))
+                true
+            }.getOrDefault(false)
+        }
+    }
+
+    private fun MainActivityComposeRule.waitUntilRequestCount(
+        method: HttpMethod,
+        urlSubstring: String,
+        count: Int,
+    ) {
+        waitUntil("Expected $count $method requests containing $urlSubstring", timeoutMillis = 5_000) {
+            ZhihuMockApi.requestCount(method, urlSubstring) == count
+        }
     }
 
     private fun homeFeedFixtureItems(count: Int = 8): List<FeedDisplayItem> = List(count) { index ->

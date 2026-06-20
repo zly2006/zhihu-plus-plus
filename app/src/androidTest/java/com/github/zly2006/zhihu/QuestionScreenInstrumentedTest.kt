@@ -40,6 +40,7 @@ import com.github.zly2006.zhihu.test.InstrumentedTestEnvironment
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
 import com.github.zly2006.zhihu.test.ZhihuMockApi
+import com.github.zly2006.zhihu.test.mockRootComments
 import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
@@ -114,6 +115,7 @@ class QuestionScreenInstrumentedTest {
          */
         mockQuestionDetail()
         mockQuestionFollowActions()
+        mockRootComments("https://www.zhihu.com/api/v4/comment_v5/questions/123456789/root_comment")
         val viewModel = seedQuestionViewModel()
 
         setScreen()
@@ -160,6 +162,7 @@ class QuestionScreenInstrumentedTest {
             instrumentation.waitForIdleSync()
 
             composeRule.onNodeWithTag(QUESTION_COMMENTS_BUTTON_TAG).performClick()
+            composeRule.waitUntilTagIsDisplayed(COMMENT_SCREEN_LIST_TAG)
             composeRule.onNodeWithTag(COMMENT_SCREEN_LIST_TAG).assertIsDisplayed()
         } finally {
             instrumentation.removeMonitor(webviewMonitor)

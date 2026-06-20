@@ -33,6 +33,7 @@ import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.test.InstrumentedTestEnvironment
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.ZhihuMockApi
+import com.github.zly2006.zhihu.test.mockRootComments
 import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
@@ -162,6 +163,7 @@ class PinScreenInstrumentedTest {
          */
         mockPinDetail(content = seededPinContent())
         mockPinLike(likedCount = 10)
+        mockRootComments("https://www.zhihu.com/api/v4/comment_v5/pins/101/root_comment")
         val navigator = composeRule.setScreenContent {
             PinScreen(
                 pin = Pin(101),
@@ -184,6 +186,7 @@ class PinScreenInstrumentedTest {
 
         composeRule.onNodeWithTag(PIN_SCREEN_BACK_BUTTON_TAG).performClick()
         composeRule.onNodeWithTag(PIN_SCREEN_COMMENT_BUTTON_TAG).performClick()
+        composeRule.waitUntilTagExists(COMMENT_SCREEN_LIST_TAG)
         composeRule.onNodeWithTag(COMMENT_SCREEN_LIST_TAG).assertIsDisplayed()
 
         assertEquals(1, navigator.backCount)
