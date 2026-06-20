@@ -39,8 +39,6 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.shared.data.SegmentInfoMeta
 import com.github.zly2006.zhihu.shared.nlp.KeywordAnalyzerCore
 import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
-import com.github.zly2006.zhihu.shared.platform.rememberImageSaver
-import com.github.zly2006.zhihu.shared.platform.rememberImageSharer
 import com.github.zly2006.zhihu.shared.util.SegmentHighlightSpan
 import com.github.zly2006.zhihu.ui.articleHost
 import com.github.zly2006.zhihu.util.clipboardManager
@@ -88,15 +86,10 @@ class OpenImageDialog(
         setContentView(
             ComposeView(context).apply {
                 setContent {
-                    val saveImage = rememberImageSaver()
-                    val shareImage = rememberImageSharer()
-
                     OpenImagePreviewContent(
                         urls = imageUrls,
                         initialIndex = initialPage,
                         onDismiss = { dismiss() },
-                        onSaveImage = saveImage,
-                        onShareImage = shareImage,
                         onOpenInBrowser = { imageUrl ->
                             luoTianYiUrlLauncher(context, imageUrl.toUri())
                         },

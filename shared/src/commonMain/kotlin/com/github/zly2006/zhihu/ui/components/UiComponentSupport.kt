@@ -47,6 +47,8 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.DpOffset
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.nlp.KeywordWithWeight
+import com.github.zly2006.zhihu.shared.platform.rememberImageSaver
+import com.github.zly2006.zhihu.shared.platform.rememberImageSharer
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
@@ -184,45 +186,12 @@ fun BlockByKeywordsDialog(
     )
 }
 
-/**
- * 全屏图片预览内容。
- *
- * 调用方负责提供实际图片渲染，[OpenImagePreviewContent] 负责黑色沉浸背景、点击关闭、长按弹出菜单，以及保存、分享、浏览器打开三个动作。
- * 长按菜单使用触点位置作为偏移，保持大图查看时的上下文感。
- */
-@Composable
-fun OpenImagePreviewContent(
-    url: String,
-    onDismiss: () -> Unit,
-    onSaveImage: (String) -> Unit,
-    onShareImage: (String) -> Unit,
-    onOpenInBrowser: (String) -> Unit,
-    imageContent: @Composable (
-        url: String,
-        onClick: () -> Unit,
-        onLongClick: (Offset) -> Unit,
-        onPageSwipeEnabledChange: (Boolean) -> Unit,
-    ) -> Unit,
-) {
-    OpenImagePreviewContent(
-        urls = listOf(url),
-        initialIndex = 0,
-        onDismiss = onDismiss,
-        onSaveImage = onSaveImage,
-        onShareImage = onShareImage,
-        onOpenInBrowser = onOpenInBrowser,
-        imageContent = imageContent,
-    )
-}
-
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun OpenImagePreviewContent(
     urls: List<String>,
     initialIndex: Int,
     onDismiss: () -> Unit,
-    onSaveImage: (String) -> Unit,
-    onShareImage: (String) -> Unit,
     onOpenInBrowser: (String) -> Unit,
     imageContent: @Composable (
         url: String,
@@ -231,6 +200,8 @@ fun OpenImagePreviewContent(
         onPageSwipeEnabledChange: (Boolean) -> Unit,
     ) -> Unit,
 ) {
+    val onSaveImage = rememberImageSaver()
+    val onShareImage = rememberImageSharer()
     var showMenu by remember { mutableStateOf(false) }
     var menuOffset by remember { mutableStateOf(Offset.Zero) }
     val density = LocalDensity.current

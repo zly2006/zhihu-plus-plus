@@ -321,8 +321,6 @@ fun SwipeToReplyContainer(
 @Composable
 private fun ClickableImageWithMenu(
     imageUrl: String,
-    saveImage: (String) -> Unit,
-    shareImage: (String) -> Unit,
     modifier: Modifier = Modifier,
     contentDescription: String = "图片",
     onAction: ((CommentImageMenuAction, String) -> Unit)? = null,
@@ -330,6 +328,8 @@ private fun ClickableImageWithMenu(
     var showContextMenu by remember { mutableStateOf(false) }
     val openImagePreview = rememberImagePreviewOpener()
     val openExternalUrl = rememberExternalUrlOpener()
+    val saveImage = rememberImageSaver()
+    val shareImage = rememberImageSharer()
 
     PlatformBackHandler(enabled = showContextMenu) {
         showContextMenu = false
@@ -416,8 +416,6 @@ fun CommentScreen(
     testOverrides: CommentScreenTestOverrides? = null,
 ) {
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
-    val saveImage = rememberImageSaver()
-    val shareImage = rememberImageSharer()
     var commentInput by remember { mutableStateOf("") }
     var isSending by remember { mutableStateOf(false) }
     var replyToComment by remember { mutableStateOf<CommentModel?>(null) }
@@ -547,8 +545,6 @@ fun CommentScreen(
                                 Column(modifier = modifier) {
                                     CommentItem(
                                         comment = commentItem,
-                                        saveImage = saveImage,
-                                        shareImage = shareImage,
                                         isLiked = isLiked,
                                         likeCount = likeCount,
                                         isLikeLoading = isLikeLoading,
@@ -585,8 +581,6 @@ fun CommentScreen(
                                                     )
                                                     CommentItem(
                                                         comment = childCommentItem,
-                                                        saveImage = saveImage,
-                                                        shareImage = shareImage,
                                                         modifier = Modifier.testTag("comment_row_${childComment.id}"),
                                                         isLiked = liked,
                                                         likeCount = likeCount,
@@ -935,8 +929,6 @@ private fun commentViewModelKey(content: NavDestination): String = when (content
 @Composable
 private fun CommentItem(
     comment: CommentModel,
-    saveImage: (String) -> Unit,
-    shareImage: (String) -> Unit,
     modifier: Modifier = Modifier,
     isLiked: Boolean = false,
     likeCount: Int = 0,
@@ -1066,8 +1058,6 @@ private fun CommentItem(
                     if (commentImg != null) {
                         ClickableImageWithMenu(
                             imageUrl = commentImg,
-                            saveImage = saveImage,
-                            shareImage = shareImage,
                             modifier = Modifier
                                 .testTag("comment_image_${commentData.id}")
                                 .padding(top = 8.dp)
