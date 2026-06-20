@@ -129,6 +129,7 @@ class ArticleViewModel(
     var updatedAt by mutableLongStateOf(0L)
     var createdAt by mutableLongStateOf(0L)
     var ipInfo by mutableStateOf<String?>(null)
+    var endorsementTexts by mutableStateOf<List<String>>(emptyList())
     var aiSummaryText by mutableStateOf("")
         private set
     var aiSummaryError by mutableStateOf<String?>(null)
@@ -195,6 +196,7 @@ class ArticleViewModel(
         val createdAt: Long = 0L,
         val updatedAt: Long = 0L,
         val ipInfo: String? = null,
+        val endorsementTexts: List<String> = emptyList(),
         /** 来源标签，用于 UI 显示，例如 "此问题"、"「收藏夹名称」" */
         val sourceLabel: String = "此问题",
     )
@@ -212,6 +214,7 @@ class ArticleViewModel(
         createdAt = createdAt,
         updatedAt = updatedAt,
         ipInfo = ipInfo,
+        endorsementTexts = endorsementTexts,
         sourceLabel = sourceLabel,
     )
 
@@ -267,6 +270,7 @@ class ArticleViewModel(
                             updatedAt = answer.updatedTime
                             createdAt = answer.createdTime
                             ipInfo = answer.ipInfo
+                            endorsementTexts = answer.endorsementTexts
 
                             environment.postHistoryDestination(
                                 Article(
@@ -308,11 +312,13 @@ class ArticleViewModel(
                             }
                         } else {
                             content = "<h1>你似乎来到了没有知识存在的荒原</h1>"
+                            endorsementTexts = emptyList()
                             Log.e("ArticleViewModel", "Answer not found")
                         }
                     } else if (article.type == ArticleType.Article) {
                         val article = environment.fetchContentDetail(article) as? DataHolder.Article
                         if (article != null) {
+                            endorsementTexts = emptyList()
                             exportSourceContent = article
                             title = article.title
                             content = applySegmentInfosToHtml(

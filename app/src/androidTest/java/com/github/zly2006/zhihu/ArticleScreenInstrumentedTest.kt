@@ -38,6 +38,7 @@ import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
+import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.ArticleScreen
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.TtsState
@@ -70,7 +71,7 @@ class ArticleScreenInstrumentedTest {
             .putBoolean("buttonSkipAnswer", true)
             .putBoolean("autoHideSkipAnswerButton", true)
             .putBoolean("pinAnswerDate", true)
-            .putBoolean("articleUseWebview", false)
+            .putBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)
             .putString("answerDoubleTapAction", AnswerDoubleTapAction.Ask.preferenceValue)
             .commit()
     }
@@ -97,6 +98,27 @@ class ArticleScreenInstrumentedTest {
         composeRule.onNodeWithText("离线作者").assertIsDisplayed()
         composeRule.onNodeWithText("IP属地：上海").assertExists()
         composeRule.onNodeWithText("第 1 段离线正文", substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun answerEndorsementsRenderOffline() {
+        val viewModel = seededAnswerViewModel(ANSWER)
+
+        composeRule.setScreenContent {
+            Scaffold(
+                modifier = androidx.compose.ui.Modifier
+                    .fillMaxSize(),
+            ) { _ ->
+                ArticleScreen(
+                    article = ANSWER,
+                    viewModel = viewModel,
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("知乎圆桌: AI 观察").assertIsDisplayed()
+        composeRule.onNodeWithText("创作声明: 内容包含剧透").assertIsDisplayed()
+        composeRule.onNodeWithText("收录于话题: 科技").assertIsDisplayed()
     }
 
     @Test
@@ -261,6 +283,11 @@ class ArticleScreenInstrumentedTest {
             viewModel.createdAt = 1_710_000_000L
             viewModel.updatedAt = 1_710_000_600L
             viewModel.ipInfo = "上海"
+            viewModel.endorsementTexts = listOf(
+                "知乎圆桌: AI 观察",
+                "创作声明: 内容包含剧透",
+                "收录于话题: 科技",
+            )
         }
         return viewModel
     }

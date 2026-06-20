@@ -302,9 +302,20 @@ object DataHolder {
         val paidInfo: JsonObject? = null,
         val paginationInfo: PaginationInfo? = null,
         val segmentInfos: List<SegmentInfoParagraph> = emptyList(),
+        val endorsements: List<AnswerEndorsement>? = null,
         @Serializable(with = BooleanCompatSerializer::class)
         val allowSegmentInteraction: Boolean = false,
     ) : Content {
+        val endorsementTexts: List<String>
+            get() = endorsements
+                .orEmpty()
+                .mapNotNull { endorsement ->
+                    endorsement.elements
+                        .orEmpty()
+                        .firstOrNull { element -> element.type == "TEXT" && !element.content.isNullOrBlank() }
+                        ?.content
+                }
+
         @Serializable
         data class PaginationInfo(
             val index: Int,
@@ -312,6 +323,17 @@ object DataHolder {
             val nextAnswerIds: List<Long> = emptyList(),
         )
     }
+
+    @Serializable
+    data class AnswerEndorsement(
+        val elements: List<AnswerEndorsementElement>? = null,
+    )
+
+    @Serializable
+    data class AnswerEndorsementElement(
+        val type: String? = null,
+        val content: String? = null,
+    )
 
     @Serializable
     data class Article(
