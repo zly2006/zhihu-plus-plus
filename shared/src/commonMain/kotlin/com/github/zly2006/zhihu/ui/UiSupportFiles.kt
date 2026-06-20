@@ -67,10 +67,6 @@ data class PinLikeResult(
     val likeCount: Int,
 )
 
-data class PinScreenRuntime(
-    val fetchLinkCardPreview: suspend (DataHolder.Pin.ContentLinkCard) -> PinLinkCardPreview?,
-)
-
 internal suspend fun fetchPinLinkCardPreview(
     linkCard: DataHolder.Pin.ContentLinkCard,
     env: ZhihuApiEnvironment,

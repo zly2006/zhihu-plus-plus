@@ -353,6 +353,7 @@ fun PinScreen(
                     val loadedPin = pinContent ?: return@Box
                     PinContent(
                         pin = loadedPin,
+                        environment = paginationEnvironment,
                         isLiked = isLiked,
                         likeCount = likeCount,
                         pollVotingOptionId = pollVotingOptionId,
@@ -380,6 +381,9 @@ fun PinScreen(
                                 try {
                                     submitPinPollVote(paginationEnvironment, pollId, optionId)
                                     pinContent = pinContent?.withSelectedPinPollOption(pollId, optionId)
+                                    val result = togglePinLike(paginationEnvironment, pin, false)
+                                    isLiked = result.isLiked
+                                    likeCount = result.likeCount
                                     pollVotingOptionId = null
                                 } catch (e: Exception) {
                                     pollVotingOptionId = null
@@ -447,6 +451,7 @@ fun PinScreen(
 @Composable
 private fun PinContent(
     pin: DataHolder.Pin,
+    environment: ZhihuApiEnvironment,
     isLiked: Boolean,
     likeCount: Int,
     pollVotingOptionId: String?,
@@ -458,7 +463,6 @@ private fun PinContent(
     linkCardPreviewOverride: PinLinkCardPreview? = null,
 ) {
     val navigator = LocalNavigator.current
-    val runtime = rememberPinScreenRuntime()
     val openExternalUrl = rememberExternalUrlOpener()
 
     Column(
@@ -615,7 +619,7 @@ private fun PinContent(
                     return@LaunchedEffect
                 }
                 isRelatedLoading = true
-                val preview = runtime.fetchLinkCardPreview(linkCard)
+                val preview = fetchPinLinkCardPreview(linkCard, environment)
                 relatedTitle = preview?.title
                 relatedPreview = preview?.preview
                 isRelatedLoading = false
