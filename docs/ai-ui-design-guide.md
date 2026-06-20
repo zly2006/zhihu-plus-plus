@@ -78,6 +78,7 @@ URL 解析集中在 `resolveContent()`。支持知乎问题、回答、文章、
 | `autoHideSkipAnswerButton` | 自动隐藏跳转按钮 | 跳转按钮滚动隐藏 | 仅 `buttonSkipAnswer` 开启时可见 |
 | `pinAnswerDate` | 置顶回答日期 | 回答日期位置 | 影响文章正文布局 |
 | `answerSwitchMode` | 回答切换手势 | `off` / `vertical` / `horizontal` | 会影响转场方向和手势冲突 |
+| `answerSwitchSensitivity` | 回答切换灵敏度 | 上下/左右回答切换触发阈值 | 默认 1.0，数值越高触发距离越短；关闭手势时设置项隐藏 |
 | `answerDoubleTapAction` | 双击回答动作 | 双击正文后的动作 | 可在文章页内动态保存 |
 | `bottom_bar_items` | 底栏页面选择 | 主 pager 页集合和底栏按钮 | 始终经 `normalizeBottomBarSelection()` |
 | `startDestination` | 应用启动默认页面 | 主 pager 初始页 | 只允许选择已显示的底栏项 |

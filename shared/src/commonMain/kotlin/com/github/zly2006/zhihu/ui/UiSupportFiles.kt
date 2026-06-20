@@ -25,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -47,6 +48,9 @@ import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
+import com.github.zly2006.zhihu.ui.components.ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.components.DEFAULT_ANSWER_SWITCH_SENSITIVITY
+import com.github.zly2006.zhihu.ui.components.normalizedAnswerSwitchSensitivity
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.getOrFetchContentDetail
@@ -145,6 +149,7 @@ class ArticleScreenSettingsState(
     isTitleAutoHide: Boolean,
     autoHideArticleBottomBar: Boolean,
     answerSwitchMode: String,
+    answerSwitchSensitivity: Float,
     pinAnswerDate: Boolean,
     useDuo3ArticleActions: Boolean,
     buttonSkipAnswer: Boolean,
@@ -156,6 +161,7 @@ class ArticleScreenSettingsState(
     var isTitleAutoHide by mutableStateOf(isTitleAutoHide)
     var autoHideArticleBottomBar by mutableStateOf(autoHideArticleBottomBar)
     var answerSwitchMode by mutableStateOf(answerSwitchMode)
+    var answerSwitchSensitivity by mutableFloatStateOf(answerSwitchSensitivity)
     var pinAnswerDate by mutableStateOf(pinAnswerDate)
     var useDuo3ArticleActions by mutableStateOf(useDuo3ArticleActions)
     var buttonSkipAnswer by mutableStateOf(buttonSkipAnswer)
@@ -183,6 +189,12 @@ fun rememberArticleScreenSettingsState(): ArticleScreenSettingsState {
             isTitleAutoHide = settings.getBoolean("titleAutoHide", false),
             autoHideArticleBottomBar = settings.getBoolean("autoHideArticleBottomBar", false),
             answerSwitchMode = settings.getString("answerSwitchMode", "vertical"),
+            answerSwitchSensitivity = normalizedAnswerSwitchSensitivity(
+                settings.getFloat(
+                    ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY,
+                    DEFAULT_ANSWER_SWITCH_SENSITIVITY,
+                ),
+            ),
             pinAnswerDate = settings.getBoolean("pinAnswerDate", false),
             useDuo3ArticleActions = settings.getBoolean("duo3_article_actions", false),
             buttonSkipAnswer = settings.getBoolean("buttonSkipAnswer", true),
@@ -210,6 +222,12 @@ fun rememberArticleScreenSettingsState(): ArticleScreenSettingsState {
                 "autoHideSkipAnswerButton" -> state.autoHideSkipAnswerButton = settings.getBoolean(key, true)
                 "answerSwitchMode" -> {
                     state.answerSwitchMode = settings.getString(key, "vertical")
+                }
+
+                ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY -> {
+                    state.answerSwitchSensitivity = normalizedAnswerSwitchSensitivity(
+                        settings.getFloat(key, DEFAULT_ANSWER_SWITCH_SENSITIVITY),
+                    )
                 }
 
                 "pinAnswerDate" -> state.pinAnswerDate = settings.getBoolean(key, false)
