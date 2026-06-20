@@ -67,6 +67,7 @@ import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.NotificationItem
 import com.github.zly2006.zhihu.shared.data.NotificationTarget
@@ -172,9 +173,7 @@ fun NotificationScreen() {
                         onClick = {
                             // 处理点击事件 - 跳转到对应内容
                             when (notification.target) {
-                                is NotificationTarget
-                                    .Comment,
-                                -> {
+                                is NotificationTarget.Comment -> {
                                     userMessages.showMessage("暂不支持跳转到评论，将跳转到对应回答。")
                                     notification.target.target?.navDestination?.let {
                                         navigator.onNavigate(it)
@@ -199,6 +198,7 @@ fun NotificationScreen() {
                                         ),
                                     )
                                 }
+
                                 is NotificationTarget.Article -> {
                                     navigator.onNavigate(
                                         Article(
@@ -207,6 +207,12 @@ fun NotificationScreen() {
                                             id = notification.target.id.toLong(),
                                             excerpt = notification.target.excerpt,
                                         ),
+                                    )
+                                }
+
+                                is NotificationTarget.Pin -> {
+                                    navigator.onNavigate(
+                                        Pin(notification.target.id.toLong()),
                                     )
                                 }
 
