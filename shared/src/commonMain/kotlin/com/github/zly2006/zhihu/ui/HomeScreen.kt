@@ -248,6 +248,7 @@ fun HomeScreen(
             paginationEnvironment
                 .fetchJson(ZHIHU_PLUS_AUTHOR_PINS_URL, "")
                 ?.let(::decodeHomePollAnnouncements)
+                ?.filterNot { it.isVoted }
                 ?.take(3)
                 ?: emptyList()
         } catch (e: CancellationException) {
