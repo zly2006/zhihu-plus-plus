@@ -76,7 +76,7 @@ class PinPollSupportTest {
                 """.trimIndent(),
             ).jsonObject
 
-        val announcements = decodeHomePollAnnouncements(response, nowEpochSeconds = 2_000)
+        val announcements = decodeHomePollAnnouncements(response)
 
         assertEquals(listOf(101L, 102L), announcements.map { it.pinId })
         assertEquals(listOf("poll-101", "poll-102"), announcements.map { it.pollId })
