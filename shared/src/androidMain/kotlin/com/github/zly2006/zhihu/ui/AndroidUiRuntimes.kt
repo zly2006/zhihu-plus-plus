@@ -446,7 +446,7 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
 }
 
 @Composable
-actual fun PinHtmlWebViewContent(html: String) {
+actual fun ZhihuHtmlWebViewContent(html: String) {
     WebviewComp {
         it.isVerticalScrollBarEnabled = false
         it.setupUpWebviewClient()
@@ -457,7 +457,7 @@ actual fun PinHtmlWebViewContent(html: String) {
     }
 }
 
-actual fun supportsPinHtmlWebView(): Boolean = true
+actual fun supportsZhihuHtmlWebView(): Boolean = true
 
 @Composable
 actual fun rememberCommentScreenRuntime(): CommentScreenRuntime {

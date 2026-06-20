@@ -46,10 +46,10 @@ class ZhihuContentPublisherTest {
     @Test
     fun serializesPinDraftPayloadWithObservedPublishShape() {
         val request = SavePinDraftRequest(
-            data = PublishPinData(
+            data = PinContentPayload(
                 publish = PublishTrace(traceId = "trace-id"),
-                title = PublishPinTitle(title = "标题"),
-                hybrid = PublishPinHybrid(
+                title = PinContentTitle(title = "标题"),
+                hybrid = PinContentHybrid(
                     html = "<p>正文</p>",
                     textLength = 2,
                 ),
@@ -84,16 +84,16 @@ class ZhihuContentPublisherTest {
     @Test
     fun serializesPinImagePayloadWithObservedMediaShape() {
         val request = PublishPinRequest(
-            data = PublishPinData(
+            data = PinContentPayload(
                 publish = PublishTrace(traceId = "trace-id"),
-                hybrid = PublishPinHybrid(
+                hybrid = PinContentHybrid(
                     html = "<p>正文</p>",
                     textLength = 2,
                 ),
-                media = PublishPinMedia(
+                media = PinContentMedia(
                     medias = listOf(
-                        PublishPinMediaItem(
-                            image = PublishPinImage(
+                        PinContentMediaItem(
+                            image = PinContentImage(
                                 height = 64,
                                 width = 64,
                                 url = "https://picx.zhimg.com/v2-test.png",

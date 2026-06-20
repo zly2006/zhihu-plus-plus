@@ -20,4 +20,4 @@ package com.github.zly2006.zhihu.editor
 import androidx.compose.runtime.Composable
 
 @Composable
-actual fun rememberZhihuAnswerPublisher(): ZhihuAnswerPublisher = UnsupportedZhihuAnswerPublisher
+actual fun rememberZhihuContentPublisher(): ZhihuContentPublisher = UnsupportedZhihuContentPublisher

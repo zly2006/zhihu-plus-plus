@@ -64,6 +64,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -759,6 +762,7 @@ private fun PinPollCard(
 ) {
     val acceptsVote = poll.acceptsVote()
     val showsResult = poll.isVoted || !acceptsVote
+    val pollVoterCount = poll.memberCount.takeIf { it > 0 } ?: poll.votingCount
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -784,7 +788,10 @@ private fun PinPollCard(
             Spacer(modifier = Modifier.height(12.dp))
             poll.options.forEach { option ->
                 if (showsResult) {
-                    PinPollResultRow(option)
+                    PinPollResultRow(
+                        option = option,
+                        totalVoterCount = pollVoterCount,
+                    )
                 } else {
                     FilledTonalButton(
                         onClick = { onPollVote(poll.id, option.id) },
@@ -817,25 +824,57 @@ private fun PinPollCard(
 }
 
 @Composable
-private fun PinPollResultRow(option: DataHolder.Pin.PollOption) {
+private fun PinPollResultRow(
+    option: DataHolder.Pin.PollOption,
+    totalVoterCount: Int,
+) {
+    val voteFraction = if (totalVoterCount > 0) {
+        (option.votingCount.toFloat() / totalVoterCount).coerceIn(0f, 1f)
+    } else {
+        0f
+    }
+    val rowShape = RoundedCornerShape(12.dp)
+    val indicatorColor = if (option.isSelected) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant
+    }
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .testTag(pinScreenPollOptionTag(option.id)),
-        shape = RoundedCornerShape(12.dp),
+        shape = rowShape,
         color = if (option.isSelected) {
-            MaterialTheme.colorScheme.primaryContainer
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
         } else {
-            MaterialTheme.colorScheme.surface
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
         },
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .drawBehind {
+                    if (voteFraction > 0f) {
+                        drawRoundRect(
+                            color = indicatorColor,
+                            size = Size(
+                                width = size.width * voteFraction,
+                                height = size.height,
+                            ),
+                            cornerRadius = CornerRadius(12.dp.toPx(), 12.dp.toPx()),
+                        )
+                    }
+                }.padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text = option.title,
                 style = MaterialTheme.typography.bodyMedium,
+                color = if (option.isSelected) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
                 modifier = Modifier.weight(1f),
             )
             if (option.isSelected) {

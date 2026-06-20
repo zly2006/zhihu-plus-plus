@@ -34,7 +34,7 @@ import kotlinx.serialization.json.put
  * - Android：用 app 的登录态 Cookie + XSRF + zse96(v2) 签名请求知乎网页 API。
  * - Desktop：当前不实现（避免桌面端误触发导致困惑/风控），但保持编译通过。
  */
-interface ZhihuAnswerPublisher {
+interface ZhihuContentPublisher {
     val isSupported: Boolean
 
     /**
@@ -132,7 +132,7 @@ data class UploadedZhihuImage(
     val url: String,
     val originalUrl: String,
     val watermark: Boolean? = null,
-    val watermarkValue: String? = null,
+    val watermarkMode: String? = null,
     val watermarkUrl: String? = null,
     val rawWidth: Int,
     val rawHeight: Int,
@@ -151,9 +151,9 @@ enum class ZhihuImageUploadSource(
 }
 
 @Composable
-expect fun rememberZhihuAnswerPublisher(): ZhihuAnswerPublisher
+expect fun rememberZhihuContentPublisher(): ZhihuContentPublisher
 
-internal object UnsupportedZhihuAnswerPublisher : ZhihuAnswerPublisher {
+internal object UnsupportedZhihuContentPublisher : ZhihuContentPublisher {
     override val isSupported: Boolean = false
 
     override suspend fun findMyAnswerId(questionId: Long): Long? = null
@@ -202,9 +202,6 @@ internal object UnsupportedZhihuAnswerPublisher : ZhihuAnswerPublisher {
  *
  * 这里不强依赖完整数据模型，只提取我们需要的字段。
  */
-fun parsePublishAnswerId(resultText: String): Long? =
-    parsePublishContentId(resultText)
-
 fun parsePublishContentId(resultText: String): Long? =
     runCatching {
         ZhihuJson.json.decodeFromString(DataHolder.PublishResult.serializer(), resultText)
@@ -359,71 +356,71 @@ data class PublishThanksInvitation(
 @Serializable
 data class SavePinDraftRequest(
     val action: String = "pin",
-    val data: PublishPinData,
+    val data: PinContentPayload,
 )
 
 @Serializable
 data class PublishPinRequest(
     val action: String = "pin",
-    val data: PublishPinData,
+    val data: PinContentPayload,
 )
 
 @Serializable
-data class PublishPinData(
+data class PinContentPayload(
     val publish: PublishTrace,
     val commentsPermission: PublishCommentsPermission = PublishCommentsPermission(),
     @SerialName("extra_info")
-    val extraInfo: PublishPinExtraInfo = PublishPinExtraInfo(),
-    val draft: PublishPinDraft = PublishPinDraft(),
+    val extraInfo: PinContentExtraInfo = PinContentExtraInfo(),
+    val draft: PinContentDraft = PinContentDraft(),
     @OptIn(ExperimentalSerializationApi::class)
     @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val title: PublishPinTitle? = null,
+    val title: PinContentTitle? = null,
     @OptIn(ExperimentalSerializationApi::class)
     @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val hybrid: PublishPinHybrid? = null,
+    val hybrid: PinContentHybrid? = null,
     @OptIn(ExperimentalSerializationApi::class)
     @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val media: PublishPinMedia? = null,
+    val media: PinContentMedia? = null,
     @OptIn(ExperimentalSerializationApi::class)
     @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val topic: PublishPinTopic? = null,
+    val topic: PinContentTopic? = null,
 )
 
 @Serializable
-data class PublishPinExtraInfo(
+data class PinContentExtraInfo(
     @SerialName("view_permission")
     val viewPermission: String = "all",
     val publisher: String = "pc",
 )
 
 @Serializable
-data class PublishPinDraft(
+data class PinContentDraft(
     val disabled: Int = 1,
 )
 
 @Serializable
-data class PublishPinTitle(
+data class PinContentTitle(
     val title: String,
 )
 
 @Serializable
-data class PublishPinHybrid(
+data class PinContentHybrid(
     val html: String,
     val textLength: Int,
 )
 
 @Serializable
-data class PublishPinMedia(
-    val medias: List<PublishPinMediaItem>,
+data class PinContentMedia(
+    val medias: List<PinContentMediaItem>,
 )
 
 @Serializable
-data class PublishPinMediaItem(
-    val image: PublishPinImage,
+data class PinContentMediaItem(
+    val image: PinContentImage,
 )
 
 @Serializable
-data class PublishPinImage(
+data class PinContentImage(
     val height: Int,
     val width: Int,
     val url: String,
@@ -437,12 +434,12 @@ data class PublishPinImage(
 )
 
 @Serializable
-data class PublishPinTopic(
-    val topics: List<PublishPinTopicItem> = emptyList(),
+data class PinContentTopic(
+    val topics: List<PinContentTopicItem> = emptyList(),
 )
 
 @Serializable
-data class PublishPinTopicItem(
+data class PinContentTopicItem(
     @SerialName("topic_id")
     val topicId: String,
     @SerialName("topic_name")

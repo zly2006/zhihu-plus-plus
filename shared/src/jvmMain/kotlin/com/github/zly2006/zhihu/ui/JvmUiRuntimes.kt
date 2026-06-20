@@ -435,10 +435,13 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
     }
 }
 
+/**
+ * 桌面端不支持 WebView
+ */
 @Composable
-actual fun PinHtmlWebViewContent(html: String) = Unit // TODO: 桌面端想法 WebView
+actual fun ZhihuHtmlWebViewContent(html: String) = Unit
 
-actual fun supportsPinHtmlWebView(): Boolean = false
+actual fun supportsZhihuHtmlWebView(): Boolean = false
 
 @Composable
 actual fun rememberNotificationScreenRuntime(

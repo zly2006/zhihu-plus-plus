@@ -104,7 +104,7 @@ class ZhihuImageUploader(
                 url = url,
                 originalUrl = originalUrl,
                 watermark = watermark,
-                watermarkValue = status.watermark,
+                watermarkMode = status.watermark,
                 watermarkUrl = watermarkUrl,
                 rawWidth = rawWidth,
                 rawHeight = rawHeight,

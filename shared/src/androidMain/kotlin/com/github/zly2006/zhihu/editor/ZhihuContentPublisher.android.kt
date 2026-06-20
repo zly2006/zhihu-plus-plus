@@ -40,18 +40,18 @@ import kotlinx.serialization.json.JsonElement
 import java.util.UUID
 
 @Composable
-actual fun rememberZhihuAnswerPublisher(): ZhihuAnswerPublisher {
+actual fun rememberZhihuContentPublisher(): ZhihuContentPublisher {
     val context = LocalContext.current.applicationContext
     return remember(context) {
-        AndroidZhihuAnswerPublisher(context)
+        AndroidZhihuContentPublisher(context)
     }
 }
 
 private const val QUESTION_RELATIONSHIP_INCLUDE = "relationship,relationship.my_answer"
 
-private class AndroidZhihuAnswerPublisher(
+private class AndroidZhihuContentPublisher(
     private val context: Context,
-) : ZhihuAnswerPublisher {
+) : ZhihuContentPublisher {
     override val isSupported: Boolean = true
     private val imageUploader: ZhihuImageUploader by lazy {
         ZhihuImageUploader(
@@ -172,7 +172,7 @@ private class AndroidZhihuAnswerPublisher(
             val resultText = response.data?.result
                 ?: throw IllegalStateException("发布成功但返回缺少 data.result: $responseElement")
 
-            return parsePublishAnswerId(resultText)
+            return parsePublishContentId(resultText)
                 ?: throw IllegalStateException("发布成功但无法解析 publish.id")
         }
 
@@ -203,7 +203,7 @@ private class AndroidZhihuAnswerPublisher(
                 header("x-xsrftoken", xsrf)
                 setBody(
                     SavePinDraftRequest(
-                        data = buildPinPublishData(
+                        data = buildPinContentPayload(
                             title = title,
                             html = html,
                             textLength = textLength,
@@ -231,7 +231,7 @@ private class AndroidZhihuAnswerPublisher(
                 header("x-xsrftoken", xsrf)
                 setBody(
                     PublishPinRequest(
-                        data = buildPinPublishData(
+                        data = buildPinContentPayload(
                             title = title,
                             html = html,
                             textLength = textLength,
@@ -256,21 +256,21 @@ private class AndroidZhihuAnswerPublisher(
         )
     }
 
-    private fun buildPinPublishData(
+    private fun buildPinContentPayload(
         title: String,
         html: String,
         textLength: Int,
         images: List<UploadedZhihuImage>,
-    ): PublishPinData =
-        PublishPinData(
+    ): PinContentPayload =
+        PinContentPayload(
             publish = PublishTrace(traceId = "${System.currentTimeMillis()},${UUID.randomUUID()}"),
             title = title
                 .takeIf { it.isNotBlank() }
-                ?.let { PublishPinTitle(title = it) },
+                ?.let { PinContentTitle(title = it) },
             hybrid = html
                 .takeIf { it.isNotBlank() }
                 ?.let {
-                    PublishPinHybrid(
+                    PinContentHybrid(
                         html = it,
                         textLength = textLength,
                     )
@@ -278,15 +278,15 @@ private class AndroidZhihuAnswerPublisher(
             media = images
                 .takeIf { it.isNotEmpty() }
                 ?.let { uploadedImages ->
-                    PublishPinMedia(
+                    PinContentMedia(
                         medias = uploadedImages.map { image ->
-                            PublishPinMediaItem(
-                                image = PublishPinImage(
+                            PinContentMediaItem(
+                                image = PinContentImage(
                                     height = image.rawHeight,
                                     width = image.rawWidth,
                                     url = image.url,
                                     originalUrl = image.originalUrl,
-                                    watermark = image.watermarkValue
+                                    watermark = image.watermarkMode
                                         ?: image.watermark?.let { if (it) "watermark" else "original" },
                                     watermarkUrl = image.watermarkUrl,
                                 ),
