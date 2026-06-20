@@ -20,9 +20,11 @@ package com.github.zly2006.zhihu.viewmodel.feed
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.SearchResult
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.ZhihuPaging
+import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import io.ktor.http.encodeURLParameter
 import kotlinx.serialization.json.jsonArray
@@ -77,6 +79,8 @@ class SearchViewModel(
         refresh(environment)
     }
 
+    private val filterPipeline = SearchFeedFilterPipeline()
+
     override suspend fun fetchFeeds(environment: PaginationEnvironment) {
         try {
             val url = lastPaging?.next ?: initialUrl
@@ -105,6 +109,35 @@ class SearchViewModel(
             throw e
         } finally {
             isLoading = false
+        }
+    }
+
+    override fun processResponse(
+        environment: PaginationEnvironment,
+        data: List<Feed>,
+        rawData: JsonArray,
+    ) {
+        super.processResponse(environment, filterPipeline.filter(data, environment), rawData)
+    }
+}
+
+/**
+ * 搜索结果使用更保守的过滤策略：只应用用户明确加入本地屏蔽列表的作者规则。
+ *
+ * 推荐流可以继续在内容详情、质量、广告、关键词和主题等阶段做更激进的筛选；搜索的目标是尽量完整展示
+ * 命中内容，所以这里把搜索可复用的阶段收敛为“显式作者屏蔽”。后续如果要给搜索添加其它明确规则，
+ * 应该作为新的阶段接到这个 pipeline，而不是复用推荐流的整套过滤。
+ */
+private class SearchFeedFilterPipeline {
+    fun filter(
+        feeds: List<Feed>,
+        environment: PaginationEnvironment,
+    ): List<Feed> {
+        val blockedUserIds = environment.blockedUserIds()
+        if (blockedUserIds.isEmpty()) return feeds
+
+        return feeds.filterNot { feed ->
+            feed.target?.author?.id in blockedUserIds
         }
     }
 }
