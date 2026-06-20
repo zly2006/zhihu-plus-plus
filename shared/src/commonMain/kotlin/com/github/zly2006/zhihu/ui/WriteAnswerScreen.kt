@@ -46,16 +46,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.editor.UnknownImageFormatException
+import com.github.zly2006.zhihu.editor.ZhihuImageUploadSource
 import com.github.zly2006.zhihu.editor.compileMdToZhihuHtml
 import com.github.zly2006.zhihu.editor.rememberImagePickerLauncher
 import com.github.zly2006.zhihu.editor.rememberZhihuAnswerPublisher
+import com.github.zly2006.zhihu.editor.uploadZhihuImage
 import com.github.zly2006.zhihu.markdown.zhihuHtmlToMarkdown
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
@@ -70,6 +71,7 @@ import com.github.zly2006.zhihu.ui.components.WriteContentFabColumn
 import com.github.zly2006.zhihu.ui.components.WriteContentMarkdownEditor
 import com.github.zly2006.zhihu.ui.components.WriteContentPreviewSheet
 import com.github.zly2006.zhihu.ui.components.replaceSelection
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.yield
 
@@ -147,7 +149,6 @@ fun WriteAnswerScreen(
     }
 
     fun submitAnswer(publish: Boolean) {
-        if (!publisher.isSupported) return
         if (content.text.isBlank()) {
             userMessages.showShortMessage("内容为空")
             return
@@ -191,19 +192,18 @@ fun WriteAnswerScreen(
         }
     }
 
+    val environment = rememberPaginationEnvironment(false)
     val launchImagePicker = rememberImagePickerLauncher { picked ->
-        if (!publisher.isSupported) {
-            userMessages.showShortMessage("当前平台不支持插入图片")
-            return@rememberImagePickerLauncher
-        }
         if (isSubmitting || isUploadingImage) return@rememberImagePickerLauncher
         isUploadingImage = true
         coroutineScope.launch {
             runCatching {
-                publisher.uploadImage(
-                    bytes = picked.bytes,
-                    mimeType = picked.mimeType,
-                    fileName = picked.fileName,
+                uploadZhihuImage(
+                    environment,
+                    picked.bytes,
+                    picked.mimeType,
+                    picked.fileName,
+                    ZhihuImageUploadSource.Article,
                 )
             }.onSuccess { uploaded ->
                 val title = buildString {
@@ -232,8 +232,7 @@ fun WriteAnswerScreen(
         }
     }
 
-    LaunchedEffect(destination.questionId, publisher.isSupported) {
-        if (!publisher.isSupported) return@LaunchedEffect
+    LaunchedEffect(destination.questionId) {
         isDetecting = true
         existingAnswerId = runCatching {
             publisher.findMyAnswerId(destination.questionId)
@@ -279,13 +278,13 @@ fun WriteAnswerScreen(
                 actions = {
                     IconButton(
                         onClick = { showSettingsSheet = true },
-                        enabled = publisher.isSupported && !isSubmitting,
+                        enabled = !isSubmitting,
                     ) {
                         Icon(Icons.Default.Settings, contentDescription = "回答设置")
                     }
                     Button(
                         onClick = { submitAnswer(publish = true) },
-                        enabled = publisher.isSupported && !isSubmitting,
+                        enabled = !isSubmitting && !isUploadingImage,
                     ) {
                         if (isSubmitting) {
                             CircularProgressIndicator(
@@ -300,21 +299,19 @@ fun WriteAnswerScreen(
             )
         },
         floatingActionButton = {
-            if (publisher.isSupported) {
-                WriteContentFabColumn(
-                    previewEnabled = !isSubmitting && content.text.isNotBlank(),
-                    imageEnabled = launchImagePicker != null && !isSubmitting && !isUploadingImage,
-                    saveEnabled = !isSubmitting,
-                    showImageButton = launchImagePicker != null,
-                    isUploadingImage = isUploadingImage,
-                    previewTag = WRITE_ANSWER_FAB_PREVIEW_TAG,
-                    imageTag = WRITE_ANSWER_FAB_IMAGE_TAG,
-                    saveTag = WRITE_ANSWER_FAB_SAVE_TAG,
-                    onPreview = ::showPreview,
-                    onImage = { launchImagePicker?.invoke() },
-                    onSave = { submitAnswer(publish = false) },
-                )
-            }
+            WriteContentFabColumn(
+                previewEnabled = !isSubmitting && content.text.isNotBlank(),
+                imageEnabled = launchImagePicker != null && !isSubmitting && !isUploadingImage,
+                saveEnabled = !isSubmitting,
+                showImageButton = launchImagePicker != null,
+                isUploadingImage = isUploadingImage,
+                previewTag = WRITE_ANSWER_FAB_PREVIEW_TAG,
+                imageTag = WRITE_ANSWER_FAB_IMAGE_TAG,
+                saveTag = WRITE_ANSWER_FAB_SAVE_TAG,
+                onPreview = ::showPreview,
+                onImage = { launchImagePicker?.invoke() },
+                onSave = { submitAnswer(publish = false) },
+            )
         },
     ) { innerPadding ->
         Box(
@@ -326,23 +323,14 @@ fun WriteAnswerScreen(
                     .imePadding()
                     .padding(horizontal = 16.dp),
         ) {
-            if (!publisher.isSupported) {
-                Text(
-                    text = "当前平台暂不支持发布/编辑回答",
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 16.dp),
-                )
-            } else {
-                WriteContentMarkdownEditor(
-                    value = content,
-                    onValueChange = { newValue -> content = newValue },
-                    placeholder = "请输入图文回答内容……",
-                    contentTag = WRITE_ANSWER_CONTENT_TAG,
-                    enabled = !isSubmitting,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
+            WriteContentMarkdownEditor(
+                value = content,
+                onValueChange = { newValue -> content = newValue },
+                placeholder = "请输入图文回答内容……",
+                contentTag = WRITE_ANSWER_CONTENT_TAG,
+                enabled = !isSubmitting,
+                modifier = Modifier.fillMaxSize(),
+            )
         }
     }
 

@@ -45,8 +45,6 @@ import kotlinx.serialization.json.put
  * - Desktop：当前不实现（避免桌面端误触发导致困惑/风控），但保持编译通过。
  */
 interface ZhihuAnswerPublisher {
-    val isSupported: Boolean
-
     /**
      * 探测当前登录账号在该问题下是否已发布过回答。
      *
@@ -64,17 +62,6 @@ interface ZhihuAnswerPublisher {
      * - 优先返回 editable_content（知乎用于编辑器的 HTML），否则退回 content。
      */
     suspend fun fetchAnswerForEditing(answerId: Long): ExistingAnswerForEditing?
-
-    /**
-     * 上传图片到知乎图床（对齐 zhihu_obsidian 的 image_service.ts）并返回：
-     * - 编辑器所需的 `<img data-*>` 元数据
-     * - 便于 Markdown 里引用的图片 URL（通常是 https://picx.zhimg.com/v2-xxx.png 这种）
-     */
-    suspend fun uploadImage(
-        bytes: ByteArray,
-        mimeType: String?,
-        fileName: String?,
-    ): UploadedZhihuImage
 
     /**
      * 写入“问题草稿”（对应 zhihu_obsidian 的 patchDraft）。
@@ -119,8 +106,6 @@ private const val QUESTION_RELATIONSHIP_INCLUDE = "relationship,relationship.my_
 internal class ZhihuApiAnswerPublisher(
     private val environment: ZhihuApiEnvironment,
 ) : ZhihuAnswerPublisher {
-    override val isSupported: Boolean = true
-
     override suspend fun findMyAnswerId(questionId: Long): Long? {
         if (environment.authenticatedCookies()["d_c0"].isNullOrBlank()) return null
 
@@ -150,13 +135,6 @@ internal class ZhihuApiAnswerPublisher(
             tocEnabled = tocEnabled,
         )
     }
-
-    override suspend fun uploadImage(
-        bytes: ByteArray,
-        mimeType: String?,
-        fileName: String?,
-    ): UploadedZhihuImage =
-        uploadZhihuImage(environment, bytes, mimeType, fileName, ZhihuImageUploadSource.Article)
 
     override suspend fun patchDraft(
         questionId: Long,
@@ -239,34 +217,6 @@ internal class ZhihuApiAnswerPublisher(
             "发布失败: ${response.message ?: "unknown"}\n$responseElement",
         )
     }
-}
-
-internal object UnsupportedZhihuAnswerPublisher : ZhihuAnswerPublisher {
-    override val isSupported: Boolean = false
-
-    override suspend fun findMyAnswerId(questionId: Long): Long? = null
-
-    override suspend fun fetchAnswerForEditing(answerId: Long): ExistingAnswerForEditing? = null
-
-    override suspend fun uploadImage(
-        bytes: ByteArray,
-        mimeType: String?,
-        fileName: String?,
-    ): UploadedZhihuImage = throw UnsupportedOperationException("当前平台暂不支持上传图片")
-
-    override suspend fun patchDraft(
-        questionId: Long,
-        answerId: Long?,
-        html: String,
-        tocEnabled: Boolean,
-    ): Unit = throw UnsupportedOperationException("当前平台暂不支持发布/编辑知乎回答")
-
-    override suspend fun publishAnswer(
-        questionId: Long,
-        answerId: Long?,
-        html: String,
-        tocEnabled: Boolean,
-    ): Long = throw UnsupportedOperationException("当前平台暂不支持发布/编辑知乎回答")
 }
 
 @Serializable
