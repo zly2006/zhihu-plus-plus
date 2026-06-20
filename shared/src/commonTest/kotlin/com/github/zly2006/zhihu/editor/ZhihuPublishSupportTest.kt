@@ -17,7 +17,23 @@
 
 package com.github.zly2006.zhihu.editor
 
-import androidx.compose.runtime.Composable
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
-@Composable
-actual fun rememberZhihuContentPublisher(): ZhihuContentPublisher = UnsupportedZhihuContentPublisher
+class ZhihuPublishSupportTest {
+    @Test
+    fun parsesPublishedContentIdFromNestedPublishResult() {
+        assertEquals(
+            123456789L,
+            parsePublishContentId("""{"publish":{"id":"123456789"}}"""),
+        )
+    }
+
+    @Test
+    fun parsesPublishedContentIdFromPinPublishResult() {
+        assertEquals(
+            2051493233436386836L,
+            parsePublishContentId("""{"id":"2051493233436386836","type":"pin"}"""),
+        )
+    }
+}

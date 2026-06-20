@@ -26,23 +26,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 
-class ZhihuContentPublisherTest {
-    @Test
-    fun parsesPublishedContentIdFromNestedPublishResult() {
-        assertEquals(
-            123456789L,
-            parsePublishContentId("""{"publish":{"id":"123456789"}}"""),
-        )
-    }
-
-    @Test
-    fun parsesPublishedContentIdFromPinPublishResult() {
-        assertEquals(
-            2051493233436386836L,
-            parsePublishContentId("""{"id":"2051493233436386836","type":"pin"}"""),
-        )
-    }
-
+class ZhihuPinPublisherTest {
     @Test
     fun serializesPinDraftPayloadWithObservedPublishShape() {
         val request = SavePinDraftRequest(
@@ -123,5 +107,13 @@ class ZhihuContentPublisherTest {
         assertEquals(64, image.getValue("width").jsonPrimitive.int)
         assertEquals("https://picx.zhimg.com/v2-test.png", image.getValue("url").jsonPrimitive.content)
         assertEquals("https://picx.zhimg.com/v2-test.png", image.getValue("originalUrl").jsonPrimitive.content)
+    }
+
+    @Test
+    fun calculatesPinTextLengthFromHtmlText() {
+        assertEquals(
+            7,
+            calculatePinHtmlTextLength("<p>正文 &amp; <b>更多</b></p>"),
+        )
     }
 }

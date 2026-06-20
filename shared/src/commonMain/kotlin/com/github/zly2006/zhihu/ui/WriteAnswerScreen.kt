@@ -53,10 +53,9 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.editor.UnknownImageFormatException
-import com.github.zly2006.zhihu.editor.ZhihuImageUploadSource
 import com.github.zly2006.zhihu.editor.compileMdToZhihuHtml
 import com.github.zly2006.zhihu.editor.rememberImagePickerLauncher
-import com.github.zly2006.zhihu.editor.rememberZhihuContentPublisher
+import com.github.zly2006.zhihu.editor.rememberZhihuAnswerPublisher
 import com.github.zly2006.zhihu.markdown.zhihuHtmlToMarkdown
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
@@ -86,7 +85,7 @@ fun WriteAnswerScreen(
 ) {
     val navigator = LocalNavigator.current
     val userMessages = rememberUserMessageSink()
-    val publisher = rememberZhihuContentPublisher()
+    val publisher = rememberZhihuAnswerPublisher()
     val coroutineScope = rememberCoroutineScope()
     val copyToClipboard = rememberPlainTextClipboard()
     val settings = rememberSettingsStore()
@@ -205,7 +204,6 @@ fun WriteAnswerScreen(
                     bytes = picked.bytes,
                     mimeType = picked.mimeType,
                     fileName = picked.fileName,
-                    source = ZhihuImageUploadSource.Article,
                 )
             }.onSuccess { uploaded ->
                 val title = buildString {

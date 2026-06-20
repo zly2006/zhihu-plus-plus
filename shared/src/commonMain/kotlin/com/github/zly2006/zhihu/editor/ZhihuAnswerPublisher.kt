@@ -18,23 +18,18 @@
 package com.github.zly2006.zhihu.editor
 
 import androidx.compose.runtime.Composable
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import kotlinx.serialization.EncodeDefault
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 /**
- * 将“发布知乎内容”封装为平台能力：
+ * 将“发布/编辑知乎回答”封装为平台能力：
  * - Android：用 app 的登录态 Cookie + XSRF + zse96(v2) 签名请求知乎网页 API。
  * - Desktop：当前不实现（避免桌面端误触发导致困惑/风控），但保持编译通过。
  */
-interface ZhihuContentPublisher {
+interface ZhihuAnswerPublisher {
     val isSupported: Boolean
 
     /**
@@ -64,7 +59,6 @@ interface ZhihuContentPublisher {
         bytes: ByteArray,
         mimeType: String?,
         fileName: String?,
-        source: ZhihuImageUploadSource = ZhihuImageUploadSource.Article,
     ): UploadedZhihuImage
 
     /**
@@ -94,32 +88,6 @@ interface ZhihuContentPublisher {
         html: String,
         tocEnabled: Boolean,
     ): Long
-
-    /**
-     * 保存想法草稿。
-     *
-     * 对应端点：POST https://api.zhihu.com/content/drafts，action=pin。
-     */
-    suspend fun savePinDraft(
-        title: String,
-        html: String,
-        textLength: Int,
-        images: List<UploadedZhihuImage>,
-    )
-
-    /**
-     * 发布一条新的想法。
-     *
-     * 返回值：发布成功后的 pinId。
-     *
-     * 对应端点：POST /api/v4/content/publish，action=pin。
-     */
-    suspend fun publishPin(
-        title: String,
-        html: String,
-        textLength: Int,
-        images: List<UploadedZhihuImage>,
-    ): Long
 }
 
 data class ExistingAnswerForEditing(
@@ -128,32 +96,10 @@ data class ExistingAnswerForEditing(
     val tocEnabled: Boolean,
 )
 
-data class UploadedZhihuImage(
-    val url: String,
-    val originalUrl: String,
-    val watermark: Boolean? = null,
-    val watermarkMode: String? = null,
-    val watermarkUrl: String? = null,
-    val rawWidth: Int,
-    val rawHeight: Int,
-    val imageId: String? = null,
-)
-
-class UnknownImageFormatException(
-    message: String = "无法识别图片格式，已取消上传",
-) : IllegalArgumentException(message)
-
-enum class ZhihuImageUploadSource(
-    val apiValue: String,
-) {
-    Article("article"),
-    Pin("pin"),
-}
-
 @Composable
-expect fun rememberZhihuContentPublisher(): ZhihuContentPublisher
+expect fun rememberZhihuAnswerPublisher(): ZhihuAnswerPublisher
 
-internal object UnsupportedZhihuContentPublisher : ZhihuContentPublisher {
+internal object UnsupportedZhihuAnswerPublisher : ZhihuAnswerPublisher {
     override val isSupported: Boolean = false
 
     override suspend fun findMyAnswerId(questionId: Long): Long? = null
@@ -164,7 +110,6 @@ internal object UnsupportedZhihuContentPublisher : ZhihuContentPublisher {
         bytes: ByteArray,
         mimeType: String?,
         fileName: String?,
-        source: ZhihuImageUploadSource,
     ): UploadedZhihuImage = throw UnsupportedOperationException("当前平台暂不支持上传图片")
 
     override suspend fun patchDraft(
@@ -180,34 +125,7 @@ internal object UnsupportedZhihuContentPublisher : ZhihuContentPublisher {
         html: String,
         tocEnabled: Boolean,
     ): Long = throw UnsupportedOperationException("当前平台暂不支持发布/编辑知乎回答")
-
-    override suspend fun savePinDraft(
-        title: String,
-        html: String,
-        textLength: Int,
-        images: List<UploadedZhihuImage>,
-    ): Unit = throw UnsupportedOperationException("当前平台暂不支持发布知乎想法")
-
-    override suspend fun publishPin(
-        title: String,
-        html: String,
-        textLength: Int,
-        images: List<UploadedZhihuImage>,
-    ): Long = throw UnsupportedOperationException("当前平台暂不支持发布知乎想法")
 }
-
-/**
- * publish 接口的响应是“双层 JSON”：
- * - response.data.result 是 JSON 字符串，需要再次 parse 才能拿到 publish.id
- *
- * 这里不强依赖完整数据模型，只提取我们需要的字段。
- */
-fun parsePublishContentId(resultText: String): Long? =
-    runCatching {
-        ZhihuJson.json.decodeFromString(DataHolder.PublishResult.serializer(), resultText)
-    }.getOrNull()
-        ?.let { result -> result.publish?.id ?: result.id }
-        ?.toLongOrNull()
 
 @Serializable
 data class PatchDraftRequest(
@@ -276,11 +194,6 @@ data class PublishAnswerData(
 )
 
 @Serializable
-data class PublishTrace(
-    val traceId: String,
-)
-
-@Serializable
 data class PublishDraft(
     val disabled: Int = 1,
     val isPublished: Boolean,
@@ -306,12 +219,6 @@ data class PublishHybrid(
 data class PublishReprint(
     @SerialName("reshipment_settings")
     val reshipmentSettings: String = "allowed",
-)
-
-@Serializable
-data class PublishCommentsPermission(
-    @SerialName("comment_permission")
-    val commentPermission: String = "all",
 )
 
 @Serializable
@@ -351,99 +258,6 @@ data class PublishThanksInvitation(
     val thankInviterStatus: String = "close",
     @SerialName("thank_inviter")
     val thankInviter: String = "",
-)
-
-@Serializable
-data class SavePinDraftRequest(
-    val action: String = "pin",
-    val data: PinContentPayload,
-)
-
-@Serializable
-data class PublishPinRequest(
-    val action: String = "pin",
-    val data: PinContentPayload,
-)
-
-@Serializable
-data class PinContentPayload(
-    val publish: PublishTrace,
-    val commentsPermission: PublishCommentsPermission = PublishCommentsPermission(),
-    @SerialName("extra_info")
-    val extraInfo: PinContentExtraInfo = PinContentExtraInfo(),
-    val draft: PinContentDraft = PinContentDraft(),
-    @OptIn(ExperimentalSerializationApi::class)
-    @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val title: PinContentTitle? = null,
-    @OptIn(ExperimentalSerializationApi::class)
-    @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val hybrid: PinContentHybrid? = null,
-    @OptIn(ExperimentalSerializationApi::class)
-    @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val media: PinContentMedia? = null,
-    @OptIn(ExperimentalSerializationApi::class)
-    @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val topic: PinContentTopic? = null,
-)
-
-@Serializable
-data class PinContentExtraInfo(
-    @SerialName("view_permission")
-    val viewPermission: String = "all",
-    val publisher: String = "pc",
-)
-
-@Serializable
-data class PinContentDraft(
-    val disabled: Int = 1,
-)
-
-@Serializable
-data class PinContentTitle(
-    val title: String,
-)
-
-@Serializable
-data class PinContentHybrid(
-    val html: String,
-    val textLength: Int,
-)
-
-@Serializable
-data class PinContentMedia(
-    val medias: List<PinContentMediaItem>,
-)
-
-@Serializable
-data class PinContentMediaItem(
-    val image: PinContentImage,
-)
-
-@Serializable
-data class PinContentImage(
-    val height: Int,
-    val width: Int,
-    val url: String,
-    val originalUrl: String,
-    @OptIn(ExperimentalSerializationApi::class)
-    @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val watermark: String? = null,
-    @OptIn(ExperimentalSerializationApi::class)
-    @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val watermarkUrl: String? = null,
-)
-
-@Serializable
-data class PinContentTopic(
-    val topics: List<PinContentTopicItem> = emptyList(),
-)
-
-@Serializable
-data class PinContentTopicItem(
-    @SerialName("topic_id")
-    val topicId: String,
-    @SerialName("topic_name")
-    val topicName: String,
 )
 
 /**

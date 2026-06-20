@@ -75,8 +75,9 @@ object ZhihuFetchSignature {
         return "2.0_${ZseSigner.encryptZseV4(md5Hex(signSource))}"
     }
 
-    internal fun md5Hex(input: String): String {
-        val message = input.encodeToByteArray()
+    internal fun md5Hex(input: String): String = md5Hex(input.encodeToByteArray())
+
+    internal fun md5Hex(message: ByteArray): String {
         val bitLength = message.size.toLong() * 8
         val paddedLength = (((message.size + 8) / 64) + 1) * 64
         val padded = ByteArray(paddedLength)

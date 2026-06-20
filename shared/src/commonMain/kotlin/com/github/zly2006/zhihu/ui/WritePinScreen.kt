@@ -62,10 +62,10 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.editor.UnknownImageFormatException
 import com.github.zly2006.zhihu.editor.UploadedZhihuImage
-import com.github.zly2006.zhihu.editor.ZhihuImageUploadSource
+import com.github.zly2006.zhihu.editor.calculatePinHtmlTextLength
 import com.github.zly2006.zhihu.editor.compileMdToZhihuHtml
 import com.github.zly2006.zhihu.editor.rememberImagePickerLauncher
-import com.github.zly2006.zhihu.editor.rememberZhihuContentPublisher
+import com.github.zly2006.zhihu.editor.rememberZhihuPinPublisher
 import com.github.zly2006.zhihu.markdown.rememberMarkdownImageModel
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Pin
@@ -92,7 +92,7 @@ private const val PIN_IMAGE_LIMIT = 9
 fun WritePinScreen() {
     val navigator = LocalNavigator.current
     val userMessages = rememberUserMessageSink()
-    val publisher = rememberZhihuContentPublisher()
+    val publisher = rememberZhihuPinPublisher()
     val coroutineScope = rememberCoroutineScope()
     val copyToClipboard = rememberPlainTextClipboard()
     val settings = rememberSettingsStore()
@@ -154,7 +154,7 @@ fun WritePinScreen() {
         coroutineScope.launch {
             runCatching {
                 val html = compileMdToZhihuHtml(markdown = markdownSnapshot)
-                val textLength = html.replace(Regex("<.+?>"), "").length
+                val textLength = calculatePinHtmlTextLength(html)
                 if (publish) {
                     publisher.publishPin(
                         title = title.text.trim(),
@@ -205,7 +205,6 @@ fun WritePinScreen() {
                     bytes = picked.bytes,
                     mimeType = picked.mimeType,
                     fileName = picked.fileName,
-                    source = ZhihuImageUploadSource.Pin,
                 )
             }.onSuccess { uploaded ->
                 images = images + uploaded
