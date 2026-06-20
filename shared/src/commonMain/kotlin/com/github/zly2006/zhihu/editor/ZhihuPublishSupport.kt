@@ -21,7 +21,8 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
+import kotlin.random.Random
+import kotlin.time.Clock
 
 /**
  * publish 接口的响应是“双层 JSON”：
@@ -46,3 +47,25 @@ data class PublishCommentsPermission(
     @SerialName("comment_permission")
     val commentPermission: String = "all",
 )
+
+internal fun newPublishTraceId(): String =
+    "${Clock.System.now().toEpochMilliseconds()},${randomUuidV4()}"
+
+private fun randomUuidV4(random: Random = Random.Default): String {
+    val bytes = ByteArray(16) { random.nextInt(256).toByte() }
+    bytes[6] = ((bytes[6].toInt() and 0x0f) or 0x40).toByte()
+    bytes[8] = ((bytes[8].toInt() and 0x3f) or 0x80).toByte()
+
+    return buildString(36) {
+        bytes.forEachIndexed { index, byte ->
+            if (index == 4 || index == 6 || index == 8 || index == 10) {
+                append('-')
+            }
+            val value = byte.toInt() and 0xff
+            append(UUID_HEX[value ushr 4])
+            append(UUID_HEX[value and 0x0f])
+        }
+    }
+}
+
+private val UUID_HEX = "0123456789abcdef".toCharArray()

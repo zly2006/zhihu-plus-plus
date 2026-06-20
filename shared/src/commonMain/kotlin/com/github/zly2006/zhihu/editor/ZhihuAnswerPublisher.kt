@@ -18,8 +18,23 @@
 package com.github.zly2006.zhihu.editor
 
 import androidx.compose.runtime.Composable
+import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
+import com.github.zly2006.zhihu.shared.util.raiseForStatus
+import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
+import com.github.zly2006.zhihu.viewmodel.fetchContentDetail
+import com.github.zly2006.zhihu.viewmodel.postSigned
+import io.ktor.client.call.body
+import io.ktor.client.request.header
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
+import io.ktor.http.contentType
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -98,6 +113,133 @@ data class ExistingAnswerForEditing(
 
 @Composable
 expect fun rememberZhihuAnswerPublisher(): ZhihuAnswerPublisher
+
+private const val QUESTION_RELATIONSHIP_INCLUDE = "relationship,relationship.my_answer"
+
+internal class ZhihuApiAnswerPublisher(
+    private val environment: ZhihuApiEnvironment,
+) : ZhihuAnswerPublisher {
+    override val isSupported: Boolean = true
+
+    override suspend fun findMyAnswerId(questionId: Long): Long? {
+        if (environment.authenticatedCookies()["d_c0"].isNullOrBlank()) return null
+
+        val element = runCatching {
+            environment.fetchJson("https://api.zhihu.com/questions/$questionId", QUESTION_RELATIONSHIP_INCLUDE)
+        }.getOrNull() ?: return null
+
+        val response = ZhihuJson.decodeJson(DataHolder.QuestionRelationshipApiResponse.serializer(), element)
+        val myAnswer = response.relationship?.myAnswer ?: return null
+
+        if (myAnswer.isDeleted == true) {
+            return null
+        }
+
+        return myAnswer.answerId?.toLongOrNull()
+    }
+
+    override suspend fun fetchAnswerForEditing(answerId: Long): ExistingAnswerForEditing? {
+        val destination = Article(type = ArticleType.Answer, id = answerId)
+        val answer = environment.fetchContentDetail(destination) as? DataHolder.Answer ?: return null
+        val html = answer.editableContent ?: answer.content
+        val tocEnabled = answer.settings?.tableOfContents?.enabled ?: false
+
+        return ExistingAnswerForEditing(
+            answerId = answerId,
+            html = html,
+            tocEnabled = tocEnabled,
+        )
+    }
+
+    override suspend fun uploadImage(
+        bytes: ByteArray,
+        mimeType: String?,
+        fileName: String?,
+    ): UploadedZhihuImage =
+        uploadZhihuImage(environment, bytes, mimeType, fileName, ZhihuImageUploadSource.Article)
+
+    override suspend fun patchDraft(
+        questionId: Long,
+        answerId: Long?,
+        html: String,
+        tocEnabled: Boolean,
+    ) {
+        val xsrf = environment.authenticatedCookies()["_xsrf"]
+            ?: throw IllegalStateException("缺少 _xsrf Cookie，无法写入草稿；请先确保已登录。")
+
+        val body = PatchDraftRequest(
+            content = html,
+            settings = PatchDraftSettings(
+                tableOfContentsEnabled = tocEnabled,
+            ),
+        )
+
+        environment
+            .postSigned("https://www.zhihu.com/api/v4/questions/$questionId/draft") {
+                contentType(ContentType.Application.Json)
+                header(HttpHeaders.Referrer, "https://www.zhihu.com/question/$questionId/answer/${answerId ?: ""}")
+                header("x-xsrftoken", xsrf)
+                setBody(body)
+            }.raiseForStatus(dumpRequest = true)
+    }
+
+    override suspend fun publishAnswer(
+        questionId: Long,
+        answerId: Long?,
+        html: String,
+        tocEnabled: Boolean,
+    ): Long {
+        val xsrf = environment.authenticatedCookies()["_xsrf"]
+            ?: throw IllegalStateException("缺少 _xsrf Cookie，无法发布回答；请先确保已登录。")
+
+        val isPublished = answerId != null
+        val requestBody = PublishAnswerRequest(
+            data = PublishAnswerData(
+                publish = PublishTrace(traceId = newPublishTraceId()),
+                draft = PublishDraft(
+                    isPublished = isPublished,
+                    contentId = answerId?.toString(),
+                ),
+                extraInfo = PublishExtraInfo(
+                    questionId = questionId.toString(),
+                    pcBusinessParams = buildPcBusinessParams(tocEnabled),
+                ),
+                hybrid = PublishHybrid(
+                    html = html,
+                ),
+                contentsTables = PublishContentsTables(
+                    tableOfContentsEnabled = tocEnabled,
+                ),
+            ),
+        )
+
+        val responseElement = environment
+            .postSigned("https://www.zhihu.com/api/v4/content/publish") {
+                contentType(ContentType.Application.Json)
+                header("x-xsrftoken", xsrf)
+                setBody(requestBody)
+            }.raiseForStatus(dumpRequest = true)
+            .body<JsonElement>()
+
+        val response = ZhihuJson.decodeJson(DataHolder.ContentPublishResponse.serializer(), responseElement)
+        if (response.message == "success") {
+            val resultText = response.data?.result
+                ?: throw IllegalStateException("发布成功但返回缺少 data.result: $responseElement")
+
+            return parsePublishContentId(resultText)
+                ?: throw IllegalStateException("发布成功但无法解析 publish.id")
+        }
+
+        val code = response.code
+        if (code == 103003) {
+            throw IllegalStateException(response.message ?: "已回答过该问题，创建回答失败")
+        }
+
+        throw IllegalStateException(
+            "发布失败: ${response.message ?: "unknown"}\n$responseElement",
+        )
+    }
+}
 
 internal object UnsupportedZhihuAnswerPublisher : ZhihuAnswerPublisher {
     override val isSupported: Boolean = false

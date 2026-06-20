@@ -339,6 +339,7 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
                     authorPollEnvironment
                         .fetchJson(ZHIHU_PLUS_AUTHOR_PINS_URL, "")
                         ?.let(::decodeHomePollAnnouncements)
+                        ?.take(3)
                         ?: emptyList()
                 }.getOrElse { error ->
                     Log.e("HomeScreenRuntime", "Failed to load author poll announcements", error)
