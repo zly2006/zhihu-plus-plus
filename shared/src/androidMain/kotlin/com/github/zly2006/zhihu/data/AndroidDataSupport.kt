@@ -19,7 +19,6 @@ package com.github.zly2006.zhihu.data
 
 import android.content.Context
 import android.util.Log
-import androidx.room.RoomDatabase
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import io.ktor.client.HttpClient
 
@@ -42,5 +41,3 @@ fun Context.asApiEnvironment(): ZhihuApiEnvironment {
         }
     }
 }
-
-actual fun <T : RoomDatabase> RoomDatabase.Builder<T>.applyPlatformDriver(): RoomDatabase.Builder<T> = this

@@ -16,9 +16,6 @@
  */
 
 package com.github.zly2006.zhihu.viewmodel.filter
-import androidx.room.Room
-import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDataFile
-import java.io.File
 
 internal val desktopKeywordSemanticMatcher = KeywordSemanticMatcher { text, blockedPhrases, threshold ->
     val normalizedText = text.lowercase()
@@ -47,19 +44,3 @@ private fun extractDesktopSemanticTokens(text: String): List<String> =
         .map { it.value.trim() }
         .filter { it.length >= 2 }
         .toList()
-
-fun desktopContentFilterDatabaseFile(): File =
-    desktopZhihuDataFile("content-filter.db")
-
-private val desktopContentFilterDatabase by lazy {
-    getContentFilterDatabase(desktopContentFilterDatabaseFile().also { it.parentFile?.mkdirs() })
-}
-
-actual fun getContentFilterDatabase(): ContentFilterDatabase = desktopContentFilterDatabase
-
-fun getContentFilterDatabase(databaseFile: File): ContentFilterDatabase =
-    buildContentFilterDatabase(
-        Room.databaseBuilder<ContentFilterDatabase>(
-            name = databaseFile.absolutePath,
-        ),
-    )

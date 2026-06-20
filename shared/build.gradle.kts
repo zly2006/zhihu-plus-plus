@@ -7,7 +7,6 @@ plugins {
     kotlin("plugin.compose")
     kotlin("plugin.serialization")
     id("com.android.kotlin.multiplatform.library")
-    id("com.google.devtools.ksp")
     id("org.jetbrains.compose")
     id("org.jlleitschuh.gradle.ktlint")
 }
@@ -67,10 +66,6 @@ mapOf(
     }
 }
 
-ksp {
-    arg("room.schemaLocation", "$projectDir/schemas")
-}
-
 kotlin {
     compilerOptions {
         freeCompilerArgs.add("-Xexpect-actual-classes")
@@ -106,6 +101,7 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            api(project(":shared-local-db"))
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)
@@ -128,7 +124,6 @@ kotlin {
             implementation("io.github.zly2006:markdown-renderer:0.0.1-alpha.11")
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
-            implementation("androidx.room:room-runtime:2.8.4")
             implementation("com.mikepenz:aboutlibraries-compose-m3:14.0.1")
         }
         commonTest.dependencies {
@@ -161,9 +156,4 @@ kotlin {
             implementation("org.jsoup:jsoup:1.22.1")
         }
     }
-}
-
-dependencies {
-    add("kspAndroid", "androidx.room:room-compiler:2.8.4")
-    add("kspJvm", "androidx.room:room-compiler:2.8.4")
 }

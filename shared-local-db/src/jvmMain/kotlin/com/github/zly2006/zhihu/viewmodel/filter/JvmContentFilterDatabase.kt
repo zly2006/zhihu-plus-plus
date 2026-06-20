@@ -17,14 +17,21 @@
 
 package com.github.zly2006.zhihu.viewmodel.filter
 
-import android.content.Context
-import com.github.zly2006.zhihu.shared.nlp.KeywordWeightExtractor
-import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
+import androidx.room.Room
+import java.io.File
 
-object AndroidContentFilterRuntime {
-    var semanticMatcher: KeywordSemanticMatcher = KeywordSemanticMatcher { _, _, _ -> emptyList() }
-    var keywordWeightExtractor: KeywordWeightExtractor = KeywordWeightExtractor { _, _ -> emptyList() }
+fun desktopContentFilterDatabaseFile(): File =
+    File(File(System.getProperty("user.home"), ".zhihu-plus"), "content-filter.db")
+
+private val desktopContentFilterDatabase by lazy {
+    getContentFilterDatabase(desktopContentFilterDatabaseFile().also { it.parentFile?.mkdirs() })
 }
 
-fun Context.contentFilterSettings(): FeedFilterSettings =
-    androidSettingsStore(this).toFeedFilterSettings()
+actual fun getContentFilterDatabase(): ContentFilterDatabase = desktopContentFilterDatabase
+
+fun getContentFilterDatabase(databaseFile: File): ContentFilterDatabase =
+    buildContentFilterDatabase(
+        Room.databaseBuilder<ContentFilterDatabase>(
+            name = databaseFile.absolutePath,
+        ),
+    )

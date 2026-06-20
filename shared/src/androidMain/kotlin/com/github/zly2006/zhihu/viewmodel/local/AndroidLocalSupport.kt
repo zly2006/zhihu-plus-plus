@@ -20,7 +20,6 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.util.Log
-import androidx.room.Room
 import com.github.zly2006.zhihu.data.asApiEnvironment
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.jsonArray
@@ -51,20 +50,3 @@ private fun isLocalRecommendationNetworkAvailable(context: Context): Boolean = t
 } catch (_: Exception) {
     false
 }
-
-private const val LOCAL_CONTENT_DATABASE_NAME = "local_content_database"
-
-@Volatile
-private var localContentDatabase: LocalContentDatabase? = null
-
-fun getLocalContentDatabase(context: Context): LocalContentDatabase =
-    localContentDatabase ?: synchronized(LocalContentDatabase::class) {
-        localContentDatabase ?: buildLocalContentDatabase(
-            Room.databaseBuilder<LocalContentDatabase>(
-                context.applicationContext,
-                LOCAL_CONTENT_DATABASE_NAME,
-            ),
-        ).also {
-            localContentDatabase = it
-        }
-    }
