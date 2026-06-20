@@ -41,7 +41,7 @@ import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.ArticleScreen
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.TtsState
-import com.github.zly2006.zhihu.ui.rememberArticleActionsRuntime
+import com.github.zly2006.zhihu.ui.rememberArticleTtsState
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import io.ktor.client.HttpClient
@@ -100,14 +100,14 @@ class ArticleScreenInstrumentedTest {
     }
 
     @Test
-    fun articleActionsRuntime_readsTtsStateFromMainActivityHost() {
+    fun articleTtsStateReadsFromMainActivityHost() {
         composeRule.activity.runOnUiThread {
             composeRule.activity.forceTtsStateForTest(TtsState.Ready)
         }
 
         composeRule.setScreenContent {
-            val runtime = rememberArticleActionsRuntime()
-            Text("tts=${runtime.ttsState}")
+            val ttsState = rememberArticleTtsState()
+            Text("tts=$ttsState")
         }
 
         composeRule.onNodeWithText("tts=Ready").assertIsDisplayed()

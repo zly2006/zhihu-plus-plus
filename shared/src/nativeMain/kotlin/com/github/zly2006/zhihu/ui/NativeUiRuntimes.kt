@@ -19,12 +19,11 @@ package com.github.zly2006.zhihu.ui
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.shared.account.IosAccountStore
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
@@ -38,31 +37,31 @@ import platform.Foundation.NSURL
 import platform.UIKit.UIApplication
 
 @Composable
-actual fun rememberArticleActionsRuntime(): ArticleActionsRuntime {
+actual fun rememberArticleTtsState(): TtsState = TtsState.Ready
+
+@Composable
+actual fun rememberArticleSpeechToggler(): (title: String, content: String) -> Unit {
     val userMessages = rememberUserMessageSink()
     return remember(userMessages) {
-        object : ArticleActionsRuntime {
-            override var ttsState: TtsState by mutableStateOf(TtsState.Ready)
-                private set // TODO: iOS TTS 实现
-
-            override fun toggleSpeech(title: String, content: String) =
-                userMessages.showMessage("iOS TTS 暂未实现") // TODO: iOS TTS 实现
-
-            override fun openArticleInBrowser(article: Article) = openIosUrl(articleWebUrl(article))
-        }
+        { _, _ -> userMessages.showMessage("iOS TTS 暂未实现") } // TODO: iOS TTS 实现
     }
 }
 
 @Composable
-actual fun rememberNotificationScreenRuntime(
+actual fun rememberArticleBrowserOpener(): (Article) -> Unit = remember {
+    { article -> openIosUrl(articleWebUrl(article)) }
+}
+
+@Composable
+actual fun rememberNotificationEnvironment(
     viewModel: NotificationViewModel,
     settingsStore: NotificationSettingsStore,
-): NotificationScreenRuntime = remember(settingsStore) {
-    NotificationScreenRuntime(
-        environment = IosNotificationEnvironment(settingsStore),
-        showDebugCopy = false,
-    )
+): NotificationEnvironment = remember(settingsStore) {
+    IosNotificationEnvironment(settingsStore)
 }
+
+@Composable
+actual fun rememberNotificationShowDebugCopy(): Boolean = false
 
 private class IosNotificationEnvironment(
     override val notificationSettingsStore: NotificationSettingsStore,
@@ -79,7 +78,15 @@ private class IosNotificationEnvironment(
 }
 
 @Composable
-actual fun rememberArticleScreenRuntime(): ArticleScreenRuntime = remember { defaultArticleScreenRuntime() }
+actual fun rememberArticleHost(): ArticleHost? = null
+
+@Composable
+actual fun ArticlePreviewPreloadEffect(
+    cached: com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent?,
+    isNext: Boolean,
+    title: String,
+    onImageLoadFailed: () -> Unit,
+) = Unit
 
 @Composable
 actual fun ArticleWebViewContent(
@@ -97,16 +104,18 @@ actual fun ArticleWebViewContent(
 actual fun Modifier.articleMarkdownSelectionWorkaround(): Modifier = this
 
 @Composable
-actual fun rememberCommentScreenRuntime(): CommentScreenRuntime {
+actual fun rememberCommentImageSaver(): (String) -> Unit {
     val userMessages = rememberUserMessageSink()
     return remember(userMessages) {
-        object : CommentScreenRuntime {
-            override fun saveImage(imageUrl: String) =
-                userMessages.showMessage("iOS 图片保存暂未实现") // TODO: iOS 图片保存
+        { userMessages.showMessage("iOS 图片保存暂未实现") } // TODO: iOS 图片保存
+    }
+}
 
-            override fun shareImage(imageUrl: String) =
-                userMessages.showMessage("iOS 图片分享暂未实现") // TODO: iOS 图片分享
-        }
+@Composable
+actual fun rememberCommentImageSharer(): (String) -> Unit {
+    val userMessages = rememberUserMessageSink()
+    return remember(userMessages) {
+        { userMessages.showMessage("iOS 图片分享暂未实现") } // TODO: iOS 图片分享
     }
 }
 
@@ -141,19 +150,41 @@ actual fun rememberHomeLoginRequester(): () -> Unit {
 }
 
 @Composable
-actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
+actual fun rememberAccountSettingsAccountState(): androidx.compose.runtime.State<AccountSettingsAccountState> =
+    remember { mutableStateOf(AccountSettingsAccountState()) }
+
+@Composable
+actual fun rememberAccountProfileRefresher(): suspend () -> Unit = remember {
+    { } // TODO: iOS 刷新用户信息
+}
+
+@Composable
+actual fun rememberAccountLoginRequester(): () -> Unit {
     val userMessages = rememberUserMessageSink()
     return remember(userMessages) {
-        AccountSettingsRuntime(
-            accountState = mutableStateOf(AccountSettingsAccountState()),
-            refreshProfile = { }, // TODO: iOS 刷新用户信息
-            requestLogin = { userMessages.showMessage("iOS 登录暂未实现") }, // TODO: iOS 登录
-            requestQrLoginScan = { userMessages.showMessage("iOS 扫码登录暂未实现") }, // TODO: iOS 扫码登录
-            logout = { }, // TODO: iOS 登出
-            appVersionInfo = { "iOS" },
-            selectMainTab = { }, // TODO: iOS 主 Tab 切换
-        )
+        { userMessages.showMessage("iOS 登录暂未实现") } // TODO: iOS 登录
     }
+}
+
+@Composable
+actual fun rememberAccountQrLoginRequester(): () -> Unit {
+    val userMessages = rememberUserMessageSink()
+    return remember(userMessages) {
+        { userMessages.showMessage("iOS 扫码登录暂未实现") } // TODO: iOS 扫码登录
+    }
+}
+
+@Composable
+actual fun rememberAccountLogoutAction(): () -> Unit = remember {
+    { } // TODO: iOS 登出
+}
+
+@Composable
+actual fun rememberAppVersionInfo(): String = "iOS"
+
+@Composable
+actual fun rememberMainTabSelector(): (TopLevelDestination) -> Unit = remember {
+    { } // TODO: iOS 主 Tab 切换
 }
 
 @Composable
@@ -162,13 +193,15 @@ actual fun ZhihuHtmlWebViewContent(html: String) = Unit // TODO: iOS HTML WebVie
 actual fun supportsZhihuHtmlWebView(): Boolean = false
 
 @Composable
-actual fun rememberBlocklistSettingsPlatformRuntime(
+actual fun rememberBlocklistRuleImporter(
     userMessages: UserMessageSink,
-): BlocklistSettingsRuntime = remember(userMessages) {
-    BlocklistSettingsRuntime(
-        requestImport = { _ -> }, // TODO: iOS 导入规则
-        exportRules = { "" }, // TODO: iOS 导出规则
-    )
+): (((String) -> Unit) -> Unit) = remember(userMessages) {
+    { _ -> userMessages.showMessage("iOS 导入规则暂未实现") } // TODO: iOS 导入规则
+}
+
+@Composable
+actual fun rememberBlocklistRuleExporter(): suspend () -> String = remember {
+    { "" } // TODO: iOS 导出规则
 }
 
 @Composable

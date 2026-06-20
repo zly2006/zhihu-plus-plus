@@ -11,7 +11,7 @@ Treat low call count as a queue for review, not proof of deletion.
 
 Delete or inline a function only after inspecting its declaration, every real call site, and the surrounding contract. Keep small functions that are framework entry points, stable UI/test selectors, platform contracts, interface defaults, Room/serialization hooks, navigation hooks, or meaningful domain boundaries.
 
-`Runtime` / UI `State` dependency bundles are migration debt, not contracts. When a screen or shared UI exposes a `*Runtime`, `*State`, `remember*Runtime`, or similar object that only aggregates ViewModels, settings snapshots, environment methods, callbacks, network/database access, or platform helpers, dismantle it unconditionally. Move each responsibility to the real owner: common UI selects common ViewModels directly, common code calls cross-platform network/database helpers directly, and platform-only effects use narrow expect/actual functions or existing composition locals. Do not preserve a runtime field just because it currently carries login, update, install metadata, debug flags, or another “platform service”; split that service into the smallest real platform primitive or inline it at the caller.
+`Runtime` / UI `State` dependency bundles are migration debt, not contracts. Search for `*Runtime`, `*State`, `remember*Runtime`, and similar dependency-bundle names as a first-class cleanup target instead of waiting for low-call evidence. When a screen or shared UI exposes one of these objects and it aggregates ViewModels, settings snapshots, environment methods, callbacks, network/database access, or platform helpers, dismantle it unconditionally. Move each responsibility to the real owner: common UI selects common ViewModels directly, common code calls cross-platform network/database helpers directly, and platform-only effects use narrow expect/actual functions or existing composition locals. Do not preserve a runtime field just because it currently carries login, update, install metadata, debug flags, or another “platform service”; split that service into the smallest real platform primitive or inline it at the caller.
 
 When merging duplicated platform implementations, do not stop at moving the duplicated body into an environment/interface default if there is still only one real semantic caller. If a ViewModel is the only place that owns the workflow, put the request logic in that ViewModel and let the environment expose only lower-level capabilities such as authenticated cookies and signed requests. Example: a question follow action should live in the question feed ViewModel that catches its errors, not as a one-call `environment.follow...()` wrapper that only chooses POST or DELETE.
 
@@ -19,7 +19,7 @@ Do not push platform or storage dependencies upward just because the current acc
 
 Do not delete runtime guards just to make tests pass or to simplify state. If a throttle, retry limiter, debounce, permission gate, or cache invalidation guard protects production behavior, keep it and make tests reset or inject the relevant state explicitly. Example: an authenticated request refresh throttle should be reset in tests; removing the throttle changes runtime semantics.
 
-When the user asks for a second-stage or broad cleanup, do not continue with tiny one-helper batches. Put the cleanup branch in its own worktree so the main checkout remains available, then process whole-file helper clusters at once. A valid batch should remove or inline at least one complete file's helper cluster and cover at least 30 helper functions unless the user explicitly narrows the scope. If one suspicious helper is found, inspect its surrounding file-level cluster and remove adjacent useless wrappers together instead of deleting one isolated function per commit.
+Default to whole-file or helper-family cleanup batches. Do not wait for the user to ask for a “second stage” before leaving tiny one-helper edits behind. If the current checkout is not already a dedicated cleanup branch or worktree, put broad cleanup in its own worktree so the main checkout remains available, then process whole-file helper clusters at once. A valid broad batch should remove or inline at least one complete file's helper cluster and cover at least 30 helper functions unless the user explicitly narrows the scope. If one suspicious helper is found, inspect its surrounding file-level cluster and remove adjacent useless wrappers together instead of deleting one isolated function per commit.
 
 ## Workflow
 
@@ -33,7 +33,7 @@ python3 .agents/skills/zhihu-pp-ai-slop-cleaner/scripts/scan_low_call_functions.
   --output /tmp/zhihu_low_functions.tsv
 ```
 
-3. Run the similar-function scan when looking for repeated code that is not visible from call counts:
+3. Run the similar-function scan in every cleanup pass; duplicated wrappers often hide outside low-call results:
 
 ```bash
 python3 .agents/skills/zhihu-pp-ai-slop-cleaner/scripts/find_similar_kotlin_functions.py \
@@ -50,13 +50,13 @@ rg -n "\bFUNCTION_NAME\b" app shared desktopApp -g '*.kt'
 ```
 
 6. Classify each candidate:
-   - `delete`: no production caller and no framework/test/runtime entry value.
+   - `delete`: no production caller and no framework/test entry value.
    - `inline`: function body is a pure forwarding call, local one-use wrapper, or renaming shell.
    - `merge`: repeated helpers perform the same operation; replace with one shared helper or add a parameter.
    - `keep`: function is a real contract, domain boundary, parser step, platform actual, override, DAO method, serializer, stable test tag, or improves readability of a complex expression.
    - Runtime/state glue is not classified as `keep`; delete or inline the whole bundle and all of its actual/expect shells.
 
-7. When a candidate lives in a file that already has several related helpers, switch to a file-level pass before editing. Read the nearby functions and classify the whole helper cluster together instead of deleting one `rg` hit at a time. Example: if one signed request helper in an environment file looks unnecessary, inspect adjacent signed helpers in the same file; keep multi-call primitives, but inline a single-call wrapper that only forwards to the lower-level client and adds no contract.
+7. For every candidate, switch to a file-level pass before editing. Read the nearby functions and classify the whole helper cluster together instead of deleting one `rg` hit at a time. Example: if one signed request helper in an environment file looks unnecessary, inspect adjacent signed helpers in the same file; keep multi-call primitives, but inline a single-call wrapper that only forwards to the lower-level client and adds no contract.
 8. Edit only after classification. Prefer the nearest existing API over creating a new helper.
 9. Re-run the relevant scan after each batch and check that deleted or merged names disappeared.
 10. Run project verification in the required order before committing:
@@ -91,7 +91,7 @@ After a user points out one bad conflict direction, audit the whole merge inters
 
 ## What To Keep
 
-- `override`, `expect`, `actual`, `@Serializable` serializer methods, `NavType`, Room DAO, Room converter, migration, lifecycle callback, and JavaScript bridge entry points unless source inspection proves they are unused and removable.
+- Non-runtime `override`, `expect`, `actual`, `@Serializable` serializer methods, `NavType`, Room DAO, Room converter, migration, lifecycle callback, and JavaScript bridge entry points unless source inspection proves they are unused and removable.
 - Interface default implementations that are part of a capability contract.
 - Stable UI test tags and semantic tag builders, even if call count is one.
 - Parser helpers where the name explains a non-obvious grammar or Markdown/HTML rule.

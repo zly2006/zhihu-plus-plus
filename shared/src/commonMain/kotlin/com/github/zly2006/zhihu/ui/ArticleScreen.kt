@@ -469,7 +469,9 @@ fun ArticleActionsMenu(
     onExportRequest: () -> Unit,
     onSetImmersiveDoubleTap: () -> Unit = {},
 ) {
-    val articleActionsRuntime = rememberArticleActionsRuntime()
+    val ttsState = rememberArticleTtsState()
+    val toggleSpeech = rememberArticleSpeechToggler()
+    val openArticleInBrowser = rememberArticleBrowserOpener()
     val shareRuntime = rememberShareDialogRuntime()
     val coroutineScope = rememberCoroutineScope()
 
@@ -535,7 +537,6 @@ fun ArticleActionsMenu(
 
     @Composable
     fun Content() {
-        val ttsState = articleActionsRuntime.ttsState
         MenuActionButton(
             icon = {
                 when (ttsState) {
@@ -556,7 +557,7 @@ fun ArticleActionsMenu(
             onClick = {
                 onDismissRequest()
                 if (ttsState.isSpeaking) {
-                    articleActionsRuntime.toggleSpeech(viewModel.title, viewModel.content)
+                    toggleSpeech(viewModel.title, viewModel.content)
                 } else if (ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)) {
                     // 使用协程在后台处理文本提取，避免UI阻塞
                     viewModel.viewModelScope.launch {
@@ -568,7 +569,7 @@ fun ArticleActionsMenu(
                                 // 回到主线程执行TTS
                                 withContext(Dispatchers.Main) {
                                     if (textToRead.isNotBlank()) {
-                                        articleActionsRuntime.toggleSpeech(viewModel.title, viewModel.content)
+                                        toggleSpeech(viewModel.title, viewModel.content)
                                     }
                                 }
                             }
@@ -665,7 +666,7 @@ fun ArticleActionsMenu(
             text = "在电脑中打开（我计划使用浏览器插件实现，还在写，点击后请手动前往收藏夹打开）",
             onClick = {
                 coroutineScope.launch {
-                    articleActionsRuntime.openArticleInBrowser(article)
+                    openArticleInBrowser(article)
                     onDismissRequest()
                 }
             },
@@ -707,10 +708,8 @@ fun ArticleScreen(
     viewModel: ArticleViewModel,
 ) {
     val navigator = LocalNavigator.current
-    val articleScreenRuntime = rememberArticleScreenRuntime()
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
-    val articleHost = articleScreenRuntime.articleHost
-    val previewPreloader = articleScreenRuntime.previewPreloader
+    val articleHost = rememberArticleHost()
     val backStackEntry by articleHost?.articleNavController?.currentBackStackEntryAsState()
         ?: remember { mutableStateOf(null) }
 
@@ -1771,18 +1770,11 @@ fun ArticleScreen(
 
     val nav = sharedData?.navigator
     if (article.type == ArticleType.Answer && answerSwitchMode == "horizontal") {
-        // 预加载预览内容，确保滑动前相邻回答已经准备好。
-        LaunchedEffect(nav?.nextAnswer) {
-            val cached = nav?.nextAnswer ?: return@LaunchedEffect
-            previewPreloader.preloadPreview(cached, isNext = true, viewModel.title) {
-                userMessages.showMessage("图片加载失败，请向开发者反馈")
-            }
+        ArticlePreviewPreloadEffect(nav?.nextAnswer, isNext = true, viewModel.title) {
+            userMessages.showMessage("图片加载失败，请向开发者反馈")
         }
-        LaunchedEffect(nav?.previousAnswer) {
-            val cached = nav?.previousAnswer ?: return@LaunchedEffect
-            previewPreloader.preloadPreview(cached, isNext = false, viewModel.title) {
-                userMessages.showMessage("图片加载失败，请向开发者反馈")
-            }
+        ArticlePreviewPreloadEffect(nav?.previousAnswer, isNext = false, viewModel.title) {
+            userMessages.showMessage("图片加载失败，请向开发者反馈")
         }
     }
     val progressBarTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp

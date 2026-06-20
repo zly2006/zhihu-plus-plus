@@ -237,34 +237,16 @@ private fun SettingsStore.answerDoubleTapAction(): AnswerDoubleTapAction =
         ),
     )
 
-/**
- * 共享文章页需要的平台服务。
- *
- * 文章页的布局、操作区和渲染路径由 common UI 负责；host 桥接和预加载器由平台提供，因为它们依赖 Android 的
- * Activity/NavController 所有权，或 Desktop 的窗口和运行时服务。
- */
-interface ArticleScreenRuntime {
-    val articleHost: ArticleHost?
-    val previewPreloader: ArticlePreviewPreloader
-}
-
-fun interface ArticlePreviewPreloader {
-    fun preloadPreview(
-        cached: CachedAnswerContent,
-        isNext: Boolean,
-        title: String,
-        onImageLoadFailed: () -> Unit,
-    )
-}
-
-internal fun defaultArticleScreenRuntime(): ArticleScreenRuntime =
-    object : ArticleScreenRuntime {
-        override val articleHost: ArticleHost? = null
-        override val previewPreloader = ArticlePreviewPreloader { _, _, _, _ -> }
-    }
+@Composable
+expect fun rememberArticleHost(): ArticleHost?
 
 @Composable
-expect fun rememberArticleScreenRuntime(): ArticleScreenRuntime
+expect fun ArticlePreviewPreloadEffect(
+    cached: CachedAnswerContent?,
+    isNext: Boolean,
+    title: String,
+    onImageLoadFailed: () -> Unit,
+)
 
 @Composable
 expect fun ArticleWebViewContent(
@@ -349,25 +331,14 @@ expect fun QuestionDetailWebViewContent(
     html: String,
 )
 
-/**
- * 文章页底部操作区使用的平台桥接。
- *
- * 可见按钮由 common UI 统一绘制，但语音朗读和在浏览器打开知乎原文需要平台实现。
- * 把契约放在这里，可以让操作按钮作为 UI 被测试，同时把副作用留在 shared composable 之外。
- */
-interface ArticleActionsRuntime {
-    val ttsState: TtsState
-
-    fun toggleSpeech(
-        title: String,
-        content: String,
-    )
-
-    fun openArticleInBrowser(article: Article)
-}
+@Composable
+expect fun rememberArticleTtsState(): TtsState
 
 @Composable
-expect fun rememberArticleActionsRuntime(): ArticleActionsRuntime
+expect fun rememberArticleSpeechToggler(): (title: String, content: String) -> Unit
+
+@Composable
+expect fun rememberArticleBrowserOpener(): (Article) -> Unit
 
 fun articleActionText(
     article: Article,
@@ -538,24 +509,26 @@ data class AccountSettingsAccountState(
     val urlToken: String? = null,
 )
 
-/**
- * 账号设置页消费的平台与账号服务。
- *
- * composable 自己负责视觉层级：资料头部、快捷入口、设置入口和关于/许可证区域。登录、扫码、退出、版本信息和主 tab 选择仍由平台注入，
- * 这样同一套账号 UI 可以运行在 Android、Desktop、预览和测试中。
- */
-data class AccountSettingsRuntime(
-    val accountState: State<AccountSettingsAccountState>,
-    val refreshProfile: suspend () -> Unit,
-    val requestLogin: () -> Unit,
-    val requestQrLoginScan: () -> Unit,
-    val logout: () -> Unit,
-    val appVersionInfo: () -> String,
-    val selectMainTab: (TopLevelDestination) -> Unit,
-)
+@Composable
+expect fun rememberAccountSettingsAccountState(): State<AccountSettingsAccountState>
 
 @Composable
-expect fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime
+expect fun rememberAccountProfileRefresher(): suspend () -> Unit
+
+@Composable
+expect fun rememberAccountLoginRequester(): () -> Unit
+
+@Composable
+expect fun rememberAccountQrLoginRequester(): () -> Unit
+
+@Composable
+expect fun rememberAccountLogoutAction(): () -> Unit
+
+@Composable
+expect fun rememberAppVersionInfo(): String
+
+@Composable
+expect fun rememberMainTabSelector(): (TopLevelDestination) -> Unit
 
 fun noopSettingsStore(): SettingsStore = SettingsStore(
     getBoolean = { _, defaultValue -> defaultValue },
@@ -602,15 +575,6 @@ expect fun rememberHomeIsDebuggable(): Boolean
 @Composable
 expect fun rememberHomeLoginRequester(): () -> Unit
 
-interface CommentScreenRuntime {
-    fun saveImage(imageUrl: String)
-
-    fun shareImage(imageUrl: String)
-}
-
-@Composable
-expect fun rememberCommentScreenRuntime(): CommentScreenRuntime
-
 @Composable
 expect fun rememberCommentEmojiInlineContent(emojiKeys: Set<String>): Map<String, InlineTextContent>
 
@@ -618,15 +582,19 @@ expect fun commentEmojiInlineKey(placeholder: String): String?
 
 expect fun Modifier.commentSelectionWorkaround(): Modifier
 
-data class BlocklistSettingsRuntime(
-    val requestImport: (((String) -> Unit) -> Unit),
-    val exportRules: suspend () -> String,
-)
+@Composable
+expect fun rememberBlocklistRuleImporter(
+    userMessages: UserMessageSink,
+): (((String) -> Unit) -> Unit)
 
 @Composable
-expect fun rememberBlocklistSettingsPlatformRuntime(
-    userMessages: UserMessageSink,
-): BlocklistSettingsRuntime
+expect fun rememberBlocklistRuleExporter(): suspend () -> String
+
+@Composable
+expect fun rememberCommentImageSaver(): (String) -> Unit
+
+@Composable
+expect fun rememberCommentImageSharer(): (String) -> Unit
 
 @Composable
 expect fun rememberZhihuHttpClient(): HttpClient

@@ -143,7 +143,8 @@ fun BlocklistSettingsScreen(
 ) {
     val navigator = LocalNavigator.current
     val userMessages = rememberUserMessageSink()
-    val runtime = rememberBlocklistSettingsPlatformRuntime(userMessages)
+    val requestImport = rememberBlocklistRuleImporter(userMessages)
+    val exportRules = rememberBlocklistRuleExporter()
     val database = remember { getContentFilterDatabase() }
     val coroutineScope = rememberCoroutineScope()
 
@@ -295,7 +296,7 @@ fun BlocklistSettingsScreen(
                         if (importAction != null) {
                             importAction()
                         } else {
-                            runtime.requestImport { summary ->
+                            requestImport { summary ->
                                 userMessages.showLongMessage("导入成功：$summary")
                                 loadData()
                             }
@@ -313,7 +314,7 @@ fun BlocklistSettingsScreen(
                         } else {
                             coroutineScope.launch {
                                 try {
-                                    userMessages.showLongMessage(runtime.exportRules())
+                                    userMessages.showLongMessage(exportRules())
                                 } catch (e: Exception) {
                                     Log.e("BlocklistSettingsScreen", "Blocklist settings action failed", e)
                                     userMessages.showShortMessage("导出失败: ${e.message}")

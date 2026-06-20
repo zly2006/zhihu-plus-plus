@@ -62,80 +62,93 @@ import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
 
 @Composable
-actual fun rememberArticleActionsRuntime(): ArticleActionsRuntime {
+actual fun rememberArticleTtsState(): TtsState = DesktopArticleSpeechController.currentTtsState
+
+@Composable
+actual fun rememberArticleSpeechToggler(): (title: String, content: String) -> Unit {
     val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
     return remember(userMessages, coroutineScope) {
-        object : ArticleActionsRuntime {
-            private var speechProcess: Process? = null
-            private var currentTtsState by mutableStateOf(
-                if (isDesktopSpeechCommandAvailable()) TtsState.Ready else TtsState.Error,
-            )
-            override val ttsState: TtsState
-                get() = currentTtsState
+        { title, content ->
+            DesktopArticleSpeechController.toggleSpeech(title, content, coroutineScope, userMessages)
+        }
+    }
+}
 
-            override fun toggleSpeech(
-                title: String,
-                content: String,
-            ) {
-                if (currentTtsState.isSpeaking) {
-                    stopSpeaking()
-                } else if (currentTtsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)) {
-                    // 使用协程在后台处理文本提取，避免UI阻塞
-                    coroutineScope.launch {
-                        try {
-                            // 在IO线程中处理文本提取和桌面 TTS 进程，保持 UI 线程可响应
-                            val textToRead = withContext(Dispatchers.IO) {
-                                articleSpeechText(title, content)
-                            }
-                            if (textToRead.isNotBlank()) {
-                                speakText(textToRead, title)
-                            }
-                        } catch (e: Exception) {
-                            currentTtsState = TtsState.Error
-                            userMessages.showMessage("朗读失败：${e.message}")
-                        }
-                    }
-                }
-            }
-
-            override fun openArticleInBrowser(article: Article) {
-                if (openDesktopExternalUrl(articleWebUrl(article))) {
-                    userMessages.showMessage("已发送到浏览器")
-                }
-            }
-
-            private suspend fun speakText(
-                text: String,
-                title: String,
-            ) {
-                currentTtsState = TtsState.LoadingText
-                val process = withContext(Dispatchers.IO) {
-                    ProcessBuilder("say")
-                        .redirectErrorStream(true)
-                        .start()
-                }
-                speechProcess = process
-                currentTtsState = TtsState.Speaking
-                userMessages.showMessage("开始朗读：$title")
-                val exitCode = withContext(Dispatchers.IO) {
-                    process.outputStream.bufferedWriter().use { writer ->
-                        writer.write(text)
-                    }
-                    process.waitFor()
-                }
-                if (speechProcess == process) {
-                    speechProcess = null
-                    currentTtsState = if (exitCode == 0) TtsState.Ready else TtsState.Error
-                }
-            }
-
-            private fun stopSpeaking() {
-                speechProcess?.destroy()
-                speechProcess = null
-                currentTtsState = TtsState.Ready
+@Composable
+actual fun rememberArticleBrowserOpener(): (Article) -> Unit {
+    val userMessages = rememberUserMessageSink()
+    return remember(userMessages) {
+        { article ->
+            if (openDesktopExternalUrl(articleWebUrl(article))) {
+                userMessages.showMessage("已发送到浏览器")
             }
         }
+    }
+}
+
+private object DesktopArticleSpeechController {
+    private var speechProcess: Process? = null
+    var currentTtsState by mutableStateOf(
+        if (isDesktopSpeechCommandAvailable()) TtsState.Ready else TtsState.Error,
+    )
+        private set
+
+    fun toggleSpeech(
+        title: String,
+        content: String,
+        coroutineScope: kotlinx.coroutines.CoroutineScope,
+        userMessages: UserMessageSink,
+    ) {
+        if (currentTtsState.isSpeaking) {
+            stopSpeaking()
+        } else if (currentTtsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)) {
+            coroutineScope.launch {
+                try {
+                    val textToRead = withContext(Dispatchers.IO) {
+                        articleSpeechText(title, content)
+                    }
+                    if (textToRead.isNotBlank()) {
+                        speakText(textToRead, title, userMessages)
+                    }
+                } catch (e: Exception) {
+                    currentTtsState = TtsState.Error
+                    userMessages.showMessage("朗读失败：${e.message}")
+                }
+            }
+        }
+    }
+
+    private suspend fun speakText(
+        text: String,
+        title: String,
+        userMessages: UserMessageSink,
+    ) {
+        currentTtsState = TtsState.LoadingText
+        val process = withContext(Dispatchers.IO) {
+            ProcessBuilder("say")
+                .redirectErrorStream(true)
+                .start()
+        }
+        speechProcess = process
+        currentTtsState = TtsState.Speaking
+        userMessages.showMessage("开始朗读：$title")
+        val exitCode = withContext(Dispatchers.IO) {
+            process.outputStream.bufferedWriter().use { writer ->
+                writer.write(text)
+            }
+            process.waitFor()
+        }
+        if (speechProcess == process) {
+            speechProcess = null
+            currentTtsState = if (exitCode == 0) TtsState.Ready else TtsState.Error
+        }
+    }
+
+    private fun stopSpeaking() {
+        speechProcess?.destroy()
+        speechProcess = null
+        currentTtsState = TtsState.Ready
     }
 }
 
@@ -147,31 +160,35 @@ private fun isDesktopSpeechCommandAvailable(): Boolean =
     }.getOrDefault(false)
 
 @Composable
-actual fun rememberCommentScreenRuntime(): CommentScreenRuntime {
+actual fun rememberCommentImageSaver(): (String) -> Unit {
     val scope = rememberCoroutineScope()
     val userMessages = rememberUserMessageSink()
-    return remember(scope, userMessages) {
-        val store = DesktopAccountStore()
-        object : CommentScreenRuntime {
-            override fun saveImage(imageUrl: String) {
-                scope.launch {
-                    runCatching {
-                        store.saveImageToDownloads(imageUrl, "comment_image")
-                    }.onSuccess { file ->
-                        userMessages.showShortMessage("已保存图片: ${file.absolutePath}")
-                    }.onFailure { error ->
-                        userMessages.showShortMessage("保存失败: ${error.message}")
-                    }
+    val store = remember { DesktopAccountStore() }
+    return remember(scope, userMessages, store) {
+        { imageUrl ->
+            scope.launch {
+                runCatching {
+                    store.saveImageToDownloads(imageUrl, "comment_image")
+                }.onSuccess { file ->
+                    userMessages.showShortMessage("已保存图片: ${file.absolutePath}")
+                }.onFailure { error ->
+                    userMessages.showShortMessage("保存失败: ${error.message}")
                 }
             }
+        }
+    }
+}
 
-            override fun shareImage(imageUrl: String) {
-                runCatching {
-                    copyDesktopPlainText(imageUrl)
-                    userMessages.showShortMessage("已复制图片链接")
-                }.onFailure { error ->
-                    userMessages.showShortMessage("分享失败: ${error.message}")
-                }
+@Composable
+actual fun rememberCommentImageSharer(): (String) -> Unit {
+    val userMessages = rememberUserMessageSink()
+    return remember(userMessages) {
+        { imageUrl ->
+            runCatching {
+                copyDesktopPlainText(imageUrl)
+                userMessages.showShortMessage("已复制图片链接")
+            }.onFailure { error ->
+                userMessages.showShortMessage("分享失败: ${error.message}")
             }
         }
     }
@@ -265,9 +282,9 @@ actual fun rememberHomeLoginRequester(): () -> Unit = remember {
 }
 
 @Composable
-actual fun rememberBlocklistSettingsPlatformRuntime(
+actual fun rememberBlocklistRuleImporter(
     userMessages: UserMessageSink,
-): BlocklistSettingsRuntime {
+): (((String) -> Unit) -> Unit) {
     val database = remember {
         val databaseFile = desktopContentFilterDatabaseFile()
         databaseFile.parentFile?.mkdirs()
@@ -275,38 +292,47 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
     }
     val coroutineScope = rememberCoroutineScope()
     return remember(database, userMessages) {
-        BlocklistSettingsRuntime(
-            requestImport = { onImported ->
-                val selectedFile = chooseBlocklistImportFile()
-                if (selectedFile != null) {
-                    coroutineScope.launch {
-                        try {
-                            val summary = importBlocklistBackupFromJsonText(
-                                keywordDao = database.blockedKeywordDao(),
-                                userDao = database.blockedUserDao(),
-                                topicDao = database.blockedTopicDao(),
-                                text = selectedFile.readText(),
-                            )
-                            onImported(summary)
-                        } catch (e: Exception) {
-                            Log.e("BlocklistSettingsRuntime", "Failed to import blocklist", e)
-                            userMessages.showShortMessage("导入失败: ${e.message}")
-                        }
+        { onImported ->
+            val selectedFile = chooseBlocklistImportFile()
+            if (selectedFile != null) {
+                coroutineScope.launch {
+                    try {
+                        val summary = importBlocklistBackupFromJsonText(
+                            keywordDao = database.blockedKeywordDao(),
+                            userDao = database.blockedUserDao(),
+                            topicDao = database.blockedTopicDao(),
+                            text = selectedFile.readText(),
+                        )
+                        onImported(summary)
+                    } catch (e: Exception) {
+                        Log.e("BlocklistSettings", "Failed to import blocklist", e)
+                        userMessages.showShortMessage("导入失败: ${e.message}")
                     }
                 }
-            },
-            exportRules = {
-                val file = File(desktopContentFilterDatabaseFile().parentFile, "zhihupp_blocklist.json")
-                file.writeText(
-                    encodeBlocklistBackup(
-                        keywordDao = database.blockedKeywordDao(),
-                        userDao = database.blockedUserDao(),
-                        topicDao = database.blockedTopicDao(),
-                    ),
-                )
-                "已导出到 ${file.absolutePath}"
-            },
-        )
+            }
+        }
+    }
+}
+
+@Composable
+actual fun rememberBlocklistRuleExporter(): suspend () -> String {
+    val database = remember {
+        val databaseFile = desktopContentFilterDatabaseFile()
+        databaseFile.parentFile?.mkdirs()
+        getContentFilterDatabase(databaseFile)
+    }
+    return remember(database) {
+        suspend {
+            val file = File(desktopContentFilterDatabaseFile().parentFile, "zhihupp_blocklist.json")
+            file.writeText(
+                encodeBlocklistBackup(
+                    keywordDao = database.blockedKeywordDao(),
+                    userDao = database.blockedUserDao(),
+                    topicDao = database.blockedTopicDao(),
+                ),
+            )
+            "已导出到 ${file.absolutePath}"
+        }
     }
 }
 
@@ -324,35 +350,64 @@ private fun chooseBlocklistImportFile(): File? {
 }
 
 @Composable
-actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
-    val store = remember { DesktopAccountStore() }
-    val accountState = remember { mutableStateOf(store.load().toAccountSettingsAccountState()) }
-    return AccountSettingsRuntime(
-        accountState = accountState,
-        refreshProfile = {
-            val account = store.load()
-            val refreshed = store.refreshAndSaveProfile()
-            if (refreshed != null) {
-                accountState.value = refreshed.toAccountSettingsAccountState()
-            } else {
-                accountState.value = account.toAccountSettingsAccountState()
-            }
-        },
-        requestLogin = {
-            DesktopLoginRequests.requestLogin()
-            accountState.value = store.load().toAccountSettingsAccountState()
-        },
-        requestQrLoginScan = {
-            DesktopLoginRequests.requestLogin()
-            accountState.value = store.load().toAccountSettingsAccountState()
-        },
-        logout = {
-            store.clear()
-            accountState.value = AccountSettingsAccountState()
-        },
-        appVersionInfo = { "desktop" },
-        selectMainTab = { _: TopLevelDestination -> },
-    )
+actual fun rememberAccountSettingsAccountState(): androidx.compose.runtime.State<AccountSettingsAccountState> =
+    DesktopAccountSettingsState.accountState
+
+@Composable
+actual fun rememberAccountProfileRefresher(): suspend () -> Unit = remember {
+    {
+        DesktopAccountSettingsState.refreshProfile()
+    }
+}
+
+@Composable
+actual fun rememberAccountLoginRequester(): () -> Unit = remember {
+    {
+        DesktopLoginRequests.requestLogin()
+        DesktopAccountSettingsState.reload()
+    }
+}
+
+@Composable
+actual fun rememberAccountQrLoginRequester(): () -> Unit = rememberAccountLoginRequester()
+
+@Composable
+actual fun rememberAccountLogoutAction(): () -> Unit = remember {
+    {
+        DesktopAccountSettingsState.clear()
+    }
+}
+
+@Composable
+actual fun rememberAppVersionInfo(): String = "desktop"
+
+@Composable
+actual fun rememberMainTabSelector(): (TopLevelDestination) -> Unit = remember {
+    { _: TopLevelDestination -> }
+}
+
+private object DesktopAccountSettingsState {
+    private val store = DesktopAccountStore()
+    val accountState = mutableStateOf(store.load().toAccountSettingsAccountState())
+
+    suspend fun refreshProfile() {
+        val account = store.load()
+        val refreshed = store.refreshAndSaveProfile()
+        accountState.value = if (refreshed != null) {
+            refreshed.toAccountSettingsAccountState()
+        } else {
+            account.toAccountSettingsAccountState()
+        }
+    }
+
+    fun reload() {
+        accountState.value = store.load().toAccountSettingsAccountState()
+    }
+
+    fun clear() {
+        store.clear()
+        accountState.value = AccountSettingsAccountState()
+    }
 }
 
 private fun com.github.zly2006.zhihu.shared.account.ZhihuAccountSession.toAccountSettingsAccountState(): AccountSettingsAccountState =
@@ -365,7 +420,15 @@ private fun com.github.zly2006.zhihu.shared.account.ZhihuAccountSession.toAccoun
     )
 
 @Composable
-actual fun rememberArticleScreenRuntime(): ArticleScreenRuntime = remember { defaultArticleScreenRuntime() }
+actual fun rememberArticleHost(): ArticleHost? = null
+
+@Composable
+actual fun ArticlePreviewPreloadEffect(
+    cached: com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent?,
+    isNext: Boolean,
+    title: String,
+    onImageLoadFailed: () -> Unit,
+) = Unit
 
 @Composable
 actual fun ArticleWebViewContent(
@@ -400,24 +463,23 @@ actual fun ZhihuHtmlWebViewContent(html: String) = Unit
 actual fun supportsZhihuHtmlWebView(): Boolean = false
 
 @Composable
-actual fun rememberNotificationScreenRuntime(
+actual fun rememberNotificationEnvironment(
     viewModel: NotificationViewModel,
     settingsStore: NotificationSettingsStore,
-): NotificationScreenRuntime {
+): com.github.zly2006.zhihu.viewmodel.NotificationEnvironment {
     val userMessages = rememberUserMessageSink()
     val store = remember { DesktopAccountStore() }
-    val environment = remember(store, settingsStore, userMessages) {
+    return remember(store, settingsStore, userMessages) {
         DesktopPaginationEnvironment(
             store = store,
             notificationSettingsStore = settingsStore,
             showFetchFailureMessage = userMessages::showMessage,
         )
     }
-    return NotificationScreenRuntime(
-        environment = environment,
-        showDebugCopy = true,
-    )
 }
+
+@Composable
+actual fun rememberNotificationShowDebugCopy(): Boolean = true
 
 @Composable
 actual fun rememberZhihuHttpClient(): HttpClient {

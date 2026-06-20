@@ -611,8 +611,7 @@ private fun MainTabsPager(
 
 @Composable
 private fun MyCollectionsTopLevelPage() {
-    val runtime = rememberAccountSettingsPlatformRuntime()
-    val account = runtime.accountState.value
+    val account = rememberAccountSettingsAccountState().value
     CollectionScreen(
         urlToken = account.urlToken,
         showBackButton = false,
