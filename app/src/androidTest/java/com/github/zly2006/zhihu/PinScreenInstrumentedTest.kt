@@ -37,6 +37,7 @@ import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
+import com.github.zly2006.zhihu.ui.COMMENT_SCREEN_LIST_TAG
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_AUTHOR_TAG
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_BACK_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_COMMENT_BUTTON_TAG
@@ -47,7 +48,6 @@ import com.github.zly2006.zhihu.ui.PIN_SCREEN_LOADING_TAG
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_POLL_CARD_TAG
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_SCROLL_TAG
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_SHARE_BUTTON_TAG
-import com.github.zly2006.zhihu.ui.COMMENT_SCREEN_LIST_TAG
 import com.github.zly2006.zhihu.ui.PinScreen
 import com.github.zly2006.zhihu.ui.pinScreenPollOptionTag
 import io.ktor.http.HttpMethod

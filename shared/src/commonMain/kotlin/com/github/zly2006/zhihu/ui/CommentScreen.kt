@@ -173,7 +173,6 @@ enum class CommentImageMenuAction {
 
 data class CommentScreenTestOverrides(
     val viewModel: BaseCommentViewModel? = null,
-    val skipInitialLoad: Boolean = false,
     val onArchiveComment: ((CommentModel) -> Unit)? = null,
     val onImageMenuAction: ((CommentImageMenuAction, String) -> Unit)? = null,
 )
@@ -464,11 +463,11 @@ fun CommentScreen(
     }
 
     // 初始加载评论
-    LaunchedEffect(resolvedContent, testOverrides?.skipInitialLoad) {
+    LaunchedEffect(resolvedContent) {
         if (viewModel.article != resolvedContent) {
             error("Internal Error: Detected content mismatch")
         }
-        if (!(testOverrides?.skipInitialLoad ?: false) && viewModel.errorMessage == null) {
+        if (viewModel.errorMessage == null) {
             viewModel.loadMore(paginationEnvironment)
         }
     }

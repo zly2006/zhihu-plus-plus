@@ -223,8 +223,8 @@ fun QuestionScreen(
         ) { innerPadding ->
             PaginatedList(
                 items = viewModel.displayItems,
-                                onLoadMore = { viewModel.loadMore(paginationEnvironment) },
-                                isEnd = { viewModel.isEnd },
+                onLoadMore = { viewModel.loadMore(paginationEnvironment) },
+                isEnd = { viewModel.isEnd },
                 key = { it.stableKey },
                 modifier = Modifier
                     .padding(innerPadding)
