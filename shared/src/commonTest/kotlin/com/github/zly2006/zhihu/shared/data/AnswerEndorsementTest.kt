@@ -22,7 +22,7 @@ import kotlin.test.assertEquals
 
 class AnswerEndorsementTest {
     @Test
-    fun endorsementTextsUseFirstTextElementFromEachEndorsement() {
+    fun endorsementTextsJoinTextElementsFromEachEndorsement() {
         val answer = ZhihuJson.decodeJson<DataHolder.Answer>(
             ZhihuJson.json.parseToJsonElement(
                 """
@@ -67,8 +67,16 @@ class AnswerEndorsementTest {
                     {
                       "elements": [
                         {
+                          "type": "IMAGE",
+                          "image_key": "zhicon_icon_24_chat_bubble_hash_fill"
+                        },
+                        {
                           "type": "TEXT",
-                          "content": "知乎圆桌: AI 观察"
+                          "content": "话题收录"
+                        },
+                        {
+                          "type": "TEXT",
+                          "content": "我的开源名片"
                         }
                       ]
                     },
@@ -100,7 +108,7 @@ class AnswerEndorsementTest {
 
         assertEquals(
             listOf(
-                "知乎圆桌: AI 观察",
+                "话题收录 我的开源名片",
                 "创作声明: 内容包含剧透",
                 "收录于话题: 科技",
             ),
