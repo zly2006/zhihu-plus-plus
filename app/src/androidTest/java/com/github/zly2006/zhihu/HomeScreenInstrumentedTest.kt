@@ -35,6 +35,7 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Search
+import com.github.zly2006.zhihu.navigation.WritePin
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
@@ -47,6 +48,8 @@ import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.HOME_ACCOUNT_BUTTON_TAG
+import com.github.zly2006.zhihu.ui.HOME_CREATE_FAB_TAG
+import com.github.zly2006.zhihu.ui.HOME_CREATE_MENU_TAG
 import com.github.zly2006.zhihu.ui.HOME_FEED_LIST_TAG
 import com.github.zly2006.zhihu.ui.HOME_NOTIFICATION_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.HOME_REFRESH_BUTTON_TAG
@@ -161,6 +164,44 @@ class HomeScreenInstrumentedTest {
 
         composeRule.onNodeWithTag(HOME_REFRESH_BUTTON_TAG).assertExists()
         assertEquals(0, recordingNavigator.destinations.size)
+        assertEquals(0, recordingNavigator.backCount)
+    }
+
+    @Test
+    fun createFab_opensActionMenu_andRoutesPinOnly() {
+        /*
+         * Expected behavior:
+         * 1. HomeScreen exposes a bottom FAB for creation instead of a top-bar-only write-pin action.
+         * 2. Tapping the FAB opens the creation menu with question, answer, and pin entries.
+         * 3. Question and answer are placeholders that only show the construction toast; pin navigates to WritePin.
+         */
+        val recordingNavigator = composeRule.launchHomeScreen(
+            duo3HomeAccount = false,
+            showRefreshFab = false,
+            displayItems = homeFeedFixtureItems(),
+        )
+
+        composeRule.onNodeWithTag(HOME_CREATE_FAB_TAG).assertIsDisplayed().assertHasClickAction()
+
+        composeRule.onNodeWithTag(HOME_CREATE_FAB_TAG).performClick()
+        composeRule.onNodeWithTag(HOME_CREATE_MENU_TAG).assertIsDisplayed()
+        composeRule.onNodeWithText("提问题").assertIsDisplayed()
+        composeRule.onNodeWithText("写回答").assertIsDisplayed()
+        composeRule.onNodeWithText("发想法").assertIsDisplayed()
+
+        composeRule.onNodeWithText("提问题").performClick()
+        composeRule.onNodeWithText("提问题").assertDoesNotExist()
+        assertEquals(emptyList<Any>(), recordingNavigator.destinations)
+
+        composeRule.onNodeWithTag(HOME_CREATE_FAB_TAG).performClick()
+        composeRule.onNodeWithText("写回答").performClick()
+        composeRule.onNodeWithText("写回答").assertDoesNotExist()
+        assertEquals(emptyList<Any>(), recordingNavigator.destinations)
+
+        composeRule.onNodeWithTag(HOME_CREATE_FAB_TAG).performClick()
+        composeRule.onNodeWithText("发想法").performClick()
+
+        assertEquals(listOf(WritePin), recordingNavigator.destinations)
         assertEquals(0, recordingNavigator.backCount)
     }
 
