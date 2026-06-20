@@ -42,8 +42,6 @@ import kotlinx.serialization.json.JsonElement
  * 想法的标题、正文和图片 payload 与回答发布完全不同，不能与回答编辑流程共用一个发布器。
  */
 interface ZhihuPinPublisher {
-    val isSupported: Boolean
-
     /**
      * 上传图片到知乎图床。想法图片只进入 media.medias，不插入 Markdown 正文。
      */
@@ -86,8 +84,6 @@ expect fun rememberZhihuPinPublisher(): ZhihuPinPublisher
 internal class ZhihuApiPinPublisher(
     private val environment: ZhihuApiEnvironment,
 ) : ZhihuPinPublisher {
-    override val isSupported: Boolean = true
-
     override suspend fun uploadImage(
         bytes: ByteArray,
         mimeType: String?,
@@ -202,30 +198,6 @@ internal class ZhihuApiPinPublisher(
                     )
                 },
         )
-}
-
-internal object UnsupportedZhihuPinPublisher : ZhihuPinPublisher {
-    override val isSupported: Boolean = false
-
-    override suspend fun uploadImage(
-        bytes: ByteArray,
-        mimeType: String?,
-        fileName: String?,
-    ): UploadedZhihuImage = throw UnsupportedOperationException("当前平台暂不支持上传图片")
-
-    override suspend fun savePinDraft(
-        title: String,
-        html: String,
-        textLength: Int,
-        images: List<UploadedZhihuImage>,
-    ): Unit = throw UnsupportedOperationException("当前平台暂不支持发布知乎想法")
-
-    override suspend fun publishPin(
-        title: String,
-        html: String,
-        textLength: Int,
-        images: List<UploadedZhihuImage>,
-    ): Long = throw UnsupportedOperationException("当前平台暂不支持发布知乎想法")
 }
 
 internal fun calculatePinHtmlTextLength(html: String): Int =

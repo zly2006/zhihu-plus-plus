@@ -142,7 +142,6 @@ fun WritePinScreen() {
     }
 
     fun submitPin(publish: Boolean) {
-        if (!publisher.isSupported) return
         val markdownSnapshot = content.text
         val imagesSnapshot = images
         if (markdownSnapshot.isBlank() && imagesSnapshot.isEmpty()) {
@@ -189,10 +188,6 @@ fun WritePinScreen() {
     }
 
     val launchImagePicker = rememberImagePickerLauncher { picked ->
-        if (!publisher.isSupported) {
-            userMessages.showShortMessage("当前平台不支持插入图片")
-            return@rememberImagePickerLauncher
-        }
         if (isSubmitting || isUploadingImage) return@rememberImagePickerLauncher
         if (images.size >= PIN_IMAGE_LIMIT) {
             userMessages.showShortMessage("图片最多添加 $PIN_IMAGE_LIMIT 张")
@@ -234,7 +229,7 @@ fun WritePinScreen() {
                 actions = {
                     Button(
                         onClick = { submitPin(publish = true) },
-                        enabled = publisher.isSupported && !isSubmitting,
+                        enabled = !isSubmitting,
                     ) {
                         if (isSubmitting) {
                             CircularProgressIndicator(
@@ -249,21 +244,19 @@ fun WritePinScreen() {
             )
         },
         floatingActionButton = {
-            if (publisher.isSupported) {
-                WriteContentFabColumn(
-                    previewEnabled = !isSubmitting && content.text.isNotBlank(),
-                    imageEnabled = launchImagePicker != null && !isSubmitting && !isUploadingImage,
-                    saveEnabled = !isSubmitting,
-                    showImageButton = launchImagePicker != null,
-                    isUploadingImage = isUploadingImage,
-                    previewTag = WRITE_PIN_FAB_PREVIEW_TAG,
-                    imageTag = WRITE_PIN_FAB_IMAGE_TAG,
-                    saveTag = WRITE_PIN_FAB_SAVE_TAG,
-                    onPreview = ::showPreview,
-                    onImage = { launchImagePicker?.invoke() },
-                    onSave = { submitPin(publish = false) },
-                )
-            }
+            WriteContentFabColumn(
+                previewEnabled = !isSubmitting && content.text.isNotBlank(),
+                imageEnabled = launchImagePicker != null && !isSubmitting && !isUploadingImage,
+                saveEnabled = !isSubmitting,
+                showImageButton = launchImagePicker != null,
+                isUploadingImage = isUploadingImage,
+                previewTag = WRITE_PIN_FAB_PREVIEW_TAG,
+                imageTag = WRITE_PIN_FAB_IMAGE_TAG,
+                saveTag = WRITE_PIN_FAB_SAVE_TAG,
+                onPreview = ::showPreview,
+                onImage = { launchImagePicker?.invoke() },
+                onSave = { submitPin(publish = false) },
+            )
         },
     ) { innerPadding ->
         Box(
@@ -275,112 +268,103 @@ fun WritePinScreen() {
                     .imePadding()
                     .padding(horizontal = 16.dp),
         ) {
-            if (!publisher.isSupported) {
-                Text(
-                    text = "当前平台暂不支持发布想法",
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 16.dp),
-                )
-            } else {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    BasicTextField(
-                        value = title,
-                        onValueChange = { newValue -> title = newValue },
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .testTag(WRITE_PIN_TITLE_TAG),
-                        enabled = !isSubmitting,
-                        textStyle =
-                            MaterialTheme.typography.titleLarge.copy(
-                                color = MaterialTheme.colorScheme.onBackground,
-                            ),
-                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                        decorationBox = { innerTextField ->
-                            Box(
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(top = 16.dp, bottom = 12.dp),
-                            ) {
-                                if (title.text.isEmpty()) {
-                                    Text(
-                                        text = "标题",
-                                        style = MaterialTheme.typography.titleLarge,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                                innerTextField()
-                            }
-                        },
-                    )
-                    if (images.isNotEmpty()) {
-                        Column(
+            Column(modifier = Modifier.fillMaxSize()) {
+                BasicTextField(
+                    value = title,
+                    onValueChange = { newValue -> title = newValue },
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .testTag(WRITE_PIN_TITLE_TAG),
+                    enabled = !isSubmitting,
+                    textStyle =
+                        MaterialTheme.typography.titleLarge.copy(
+                            color = MaterialTheme.colorScheme.onBackground,
+                        ),
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                    decorationBox = { innerTextField ->
+                        Box(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .padding(bottom = 8.dp)
-                                    .testTag(WRITE_PIN_IMAGE_LIST_TAG),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    .padding(top = 16.dp, bottom = 12.dp),
                         ) {
-                            Text(
-                                text = "图片 ${images.size}/$PIN_IMAGE_LIMIT",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            images.forEachIndexed { index, image ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    AsyncImage(
-                                        model = rememberMarkdownImageModel(image.url),
-                                        contentDescription = "想法图片 ${index + 1}",
-                                        contentScale = ContentScale.Crop,
-                                        modifier =
-                                            Modifier
-                                                .size(56.dp)
-                                                .clip(MaterialTheme.shapes.small),
+                            if (title.text.isEmpty()) {
+                                Text(
+                                    text = "标题",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            innerTextField()
+                        }
+                    },
+                )
+                if (images.isNotEmpty()) {
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp)
+                                .testTag(WRITE_PIN_IMAGE_LIST_TAG),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            text = "图片 ${images.size}/$PIN_IMAGE_LIMIT",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        images.forEachIndexed { index, image ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                AsyncImage(
+                                    model = rememberMarkdownImageModel(image.url),
+                                    contentDescription = "想法图片 ${index + 1}",
+                                    contentScale = ContentScale.Crop,
+                                    modifier =
+                                        Modifier
+                                            .size(56.dp)
+                                            .clip(MaterialTheme.shapes.small),
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "图片 ${index + 1}",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onBackground,
                                     )
-                                    Spacer(Modifier.width(12.dp))
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = "图片 ${index + 1}",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onBackground,
-                                        )
-                                        Text(
-                                            text = "${image.rawWidth} x ${image.rawHeight}",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                    TextButton(
-                                        onClick = {
-                                            images = images.filterIndexed { itemIndex, _ -> itemIndex != index }
-                                        },
-                                        enabled = !isSubmitting,
-                                    ) {
-                                        Text("删除")
-                                    }
+                                    Text(
+                                        text = "${image.rawWidth} x ${image.rawHeight}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                                TextButton(
+                                    onClick = {
+                                        images = images.filterIndexed { itemIndex, _ -> itemIndex != index }
+                                    },
+                                    enabled = !isSubmitting,
+                                ) {
+                                    Text("删除")
                                 }
                             }
                         }
                     }
-                    WriteContentMarkdownEditor(
-                        value = content,
-                        onValueChange = { newValue -> content = newValue },
-                        placeholder = "分享你此刻的想法...",
-                        contentTag = WRITE_PIN_CONTENT_TAG,
-                        enabled = !isSubmitting,
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .weight(1f),
-                        topPadding = 4.dp,
-                    )
                 }
+                WriteContentMarkdownEditor(
+                    value = content,
+                    onValueChange = { newValue -> content = newValue },
+                    placeholder = "分享你此刻的想法...",
+                    contentTag = WRITE_PIN_CONTENT_TAG,
+                    enabled = !isSubmitting,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                    topPadding = 4.dp,
+                )
             }
         }
     }
