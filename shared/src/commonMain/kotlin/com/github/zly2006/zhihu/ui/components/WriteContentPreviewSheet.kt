@@ -41,13 +41,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.markdown.RenderMarkdownText
-import com.github.zly2006.zhihu.ui.PinHtmlWebViewContent
+import com.github.zly2006.zhihu.ui.ZhihuHtmlWebViewContent
 import com.github.zly2006.zhihu.ui.questionSelectionWorkaround
-import com.github.zly2006.zhihu.ui.supportsPinHtmlWebView
+import com.github.zly2006.zhihu.ui.supportsZhihuHtmlWebView
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WriteAnswerPreviewSheet(
+fun WriteContentPreviewSheet(
     sheetState: SheetState,
     useWebView: Boolean,
     isLoading: Boolean,
@@ -89,10 +89,10 @@ fun WriteAnswerPreviewSheet(
                         CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                     }
 
-                    html != null && supportsPinHtmlWebView() -> {
+                    html != null && supportsZhihuHtmlWebView() -> {
                         val scrollState = rememberScrollState()
                         Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState)) {
-                            PinHtmlWebViewContent(html = html)
+                            ZhihuHtmlWebViewContent(html = html)
                         }
                     }
 

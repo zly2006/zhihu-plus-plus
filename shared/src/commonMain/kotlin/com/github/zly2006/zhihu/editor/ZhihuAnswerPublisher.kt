@@ -18,23 +18,33 @@
 package com.github.zly2006.zhihu.editor
 
 import androidx.compose.runtime.Composable
+import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
+import com.github.zly2006.zhihu.shared.util.raiseForStatus
+import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
+import com.github.zly2006.zhihu.viewmodel.fetchContentDetail
+import com.github.zly2006.zhihu.viewmodel.postSigned
+import io.ktor.client.call.body
+import io.ktor.client.request.header
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
+import io.ktor.http.contentType
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 /**
- * 将“发布知乎回答”封装为平台能力：
+ * 将“发布/编辑知乎回答”封装为平台能力：
  * - Android：用 app 的登录态 Cookie + XSRF + zse96(v2) 签名请求知乎网页 API。
  * - Desktop：当前不实现（避免桌面端误触发导致困惑/风控），但保持编译通过。
  */
 interface ZhihuAnswerPublisher {
-    val isSupported: Boolean
-
     /**
      * 探测当前登录账号在该问题下是否已发布过回答。
      *
@@ -52,17 +62,6 @@ interface ZhihuAnswerPublisher {
      * - 优先返回 editable_content（知乎用于编辑器的 HTML），否则退回 content。
      */
     suspend fun fetchAnswerForEditing(answerId: Long): ExistingAnswerForEditing?
-
-    /**
-     * 上传图片到知乎图床（对齐 zhihu_obsidian 的 image_service.ts）并返回：
-     * - 编辑器所需的 `<img data-*>` 元数据
-     * - 便于 Markdown 里引用的图片 URL（通常是 https://picx.zhimg.com/v2-xxx.png 这种）
-     */
-    suspend fun uploadImage(
-        bytes: ByteArray,
-        mimeType: String?,
-        fileName: String?,
-    ): UploadedZhihuImage
 
     /**
      * 写入“问题草稿”（对应 zhihu_obsidian 的 patchDraft）。
@@ -99,63 +98,126 @@ data class ExistingAnswerForEditing(
     val tocEnabled: Boolean,
 )
 
-data class UploadedZhihuImage(
-    val url: String,
-    val originalUrl: String,
-    val watermark: Boolean? = null,
-    val watermarkUrl: String? = null,
-    val rawWidth: Int,
-    val rawHeight: Int,
-)
-
-class UnknownImageFormatException(
-    message: String = "无法识别图片格式，已取消上传",
-) : IllegalArgumentException(message)
-
 @Composable
 expect fun rememberZhihuAnswerPublisher(): ZhihuAnswerPublisher
 
-internal object UnsupportedZhihuAnswerPublisher : ZhihuAnswerPublisher {
-    override val isSupported: Boolean = false
+private const val QUESTION_RELATIONSHIP_INCLUDE = "relationship,relationship.my_answer"
 
-    override suspend fun findMyAnswerId(questionId: Long): Long? = null
+internal class ZhihuApiAnswerPublisher(
+    private val environment: ZhihuApiEnvironment,
+) : ZhihuAnswerPublisher {
+    override suspend fun findMyAnswerId(questionId: Long): Long? {
+        if (environment.authenticatedCookies()["d_c0"].isNullOrBlank()) return null
 
-    override suspend fun fetchAnswerForEditing(answerId: Long): ExistingAnswerForEditing? = null
+        val element = runCatching {
+            environment.fetchJson("https://api.zhihu.com/questions/$questionId", QUESTION_RELATIONSHIP_INCLUDE)
+        }.getOrNull() ?: return null
 
-    override suspend fun uploadImage(
-        bytes: ByteArray,
-        mimeType: String?,
-        fileName: String?,
-    ): UploadedZhihuImage = throw UnsupportedOperationException("当前平台暂不支持上传图片")
+        val response = ZhihuJson.decodeJson(DataHolder.QuestionRelationshipApiResponse.serializer(), element)
+        val myAnswer = response.relationship?.myAnswer ?: return null
+
+        if (myAnswer.isDeleted == true) {
+            return null
+        }
+
+        return myAnswer.answerId?.toLongOrNull()
+    }
+
+    override suspend fun fetchAnswerForEditing(answerId: Long): ExistingAnswerForEditing? {
+        val destination = Article(type = ArticleType.Answer, id = answerId)
+        val answer = environment.fetchContentDetail(destination) as? DataHolder.Answer ?: return null
+        val html = answer.editableContent ?: answer.content
+        val tocEnabled = answer.settings?.tableOfContents?.enabled ?: false
+
+        return ExistingAnswerForEditing(
+            answerId = answerId,
+            html = html,
+            tocEnabled = tocEnabled,
+        )
+    }
 
     override suspend fun patchDraft(
         questionId: Long,
         answerId: Long?,
         html: String,
         tocEnabled: Boolean,
-    ): Unit = throw UnsupportedOperationException("当前平台暂不支持发布/编辑知乎回答")
+    ) {
+        val xsrf = environment.authenticatedCookies()["_xsrf"]
+            ?: throw IllegalStateException("缺少 _xsrf Cookie，无法写入草稿；请先确保已登录。")
+
+        val body = PatchDraftRequest(
+            content = html,
+            settings = PatchDraftSettings(
+                tableOfContentsEnabled = tocEnabled,
+            ),
+        )
+
+        environment
+            .postSigned("https://www.zhihu.com/api/v4/questions/$questionId/draft") {
+                contentType(ContentType.Application.Json)
+                header(HttpHeaders.Referrer, "https://www.zhihu.com/question/$questionId/answer/${answerId ?: ""}")
+                header("x-xsrftoken", xsrf)
+                setBody(body)
+            }.raiseForStatus(dumpRequest = true)
+    }
 
     override suspend fun publishAnswer(
         questionId: Long,
         answerId: Long?,
         html: String,
         tocEnabled: Boolean,
-    ): Long = throw UnsupportedOperationException("当前平台暂不支持发布/编辑知乎回答")
-}
+    ): Long {
+        val xsrf = environment.authenticatedCookies()["_xsrf"]
+            ?: throw IllegalStateException("缺少 _xsrf Cookie，无法发布回答；请先确保已登录。")
 
-/**
- * publish 接口的响应是“双层 JSON”：
- * - response.data.result 是 JSON 字符串，需要再次 parse 才能拿到 publish.id
- *
- * 这里不强依赖完整数据模型，只提取我们需要的字段。
- */
-fun parsePublishAnswerId(resultText: String): Long? =
-    runCatching {
-        ZhihuJson.json.decodeFromString(DataHolder.PublishResult.serializer(), resultText)
-    }.getOrNull()
-        ?.publish
-        ?.id
-        ?.toLongOrNull()
+        val isPublished = answerId != null
+        val requestBody = PublishAnswerRequest(
+            data = PublishAnswerData(
+                publish = PublishTrace(traceId = newPublishTraceId()),
+                draft = PublishDraft(
+                    isPublished = isPublished,
+                    contentId = answerId?.toString(),
+                ),
+                extraInfo = PublishExtraInfo(
+                    questionId = questionId.toString(),
+                    pcBusinessParams = buildPcBusinessParams(tocEnabled),
+                ),
+                hybrid = PublishHybrid(
+                    html = html,
+                ),
+                contentsTables = PublishContentsTables(
+                    tableOfContentsEnabled = tocEnabled,
+                ),
+            ),
+        )
+
+        val responseElement = environment
+            .postSigned("https://www.zhihu.com/api/v4/content/publish") {
+                contentType(ContentType.Application.Json)
+                header("x-xsrftoken", xsrf)
+                setBody(requestBody)
+            }.raiseForStatus(dumpRequest = true)
+            .body<JsonElement>()
+
+        val response = ZhihuJson.decodeJson(DataHolder.ContentPublishResponse.serializer(), responseElement)
+        if (response.message == "success") {
+            val resultText = response.data?.result
+                ?: throw IllegalStateException("发布成功但返回缺少 data.result: $responseElement")
+
+            return parsePublishContentId(resultText)
+                ?: throw IllegalStateException("发布成功但无法解析 publish.id")
+        }
+
+        val code = response.code
+        if (code == 103003) {
+            throw IllegalStateException(response.message ?: "已回答过该问题，创建回答失败")
+        }
+
+        throw IllegalStateException(
+            "发布失败: ${response.message ?: "unknown"}\n$responseElement",
+        )
+    }
+}
 
 @Serializable
 data class PatchDraftRequest(
@@ -224,11 +286,6 @@ data class PublishAnswerData(
 )
 
 @Serializable
-data class PublishTrace(
-    val traceId: String,
-)
-
-@Serializable
 data class PublishDraft(
     val disabled: Int = 1,
     val isPublished: Boolean,
@@ -254,12 +311,6 @@ data class PublishHybrid(
 data class PublishReprint(
     @SerialName("reshipment_settings")
     val reshipmentSettings: String = "allowed",
-)
-
-@Serializable
-data class PublishCommentsPermission(
-    @SerialName("comment_permission")
-    val commentPermission: String = "all",
 )
 
 @Serializable

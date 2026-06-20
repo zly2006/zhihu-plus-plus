@@ -250,6 +250,14 @@ data class WriteAnswer(
     override fun equals(other: Any?): Boolean = other is WriteAnswer && other.questionId == questionId
 }
 
+/**
+ * 从首页发起“发想法”的编辑器页面。
+ *
+ * 想法不是问题下的内容，没有问题 ID；标题可选，正文或图片至少存在其一。
+ */
+@Serializable
+data object WritePin : NavDestination
+
 @Serializable
 data class Person(
     /**

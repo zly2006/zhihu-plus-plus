@@ -17,13 +17,24 @@
 
 package com.github.zly2006.zhihu.editor
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+data class UploadedZhihuImage(
+    val url: String,
+    val originalUrl: String,
+    val watermark: Boolean? = null,
+    val watermarkMode: String? = null,
+    val watermarkUrl: String? = null,
+    val rawWidth: Int,
+    val rawHeight: Int,
+    val imageId: String? = null,
+)
 
-@Composable
-actual fun rememberZhihuAnswerPublisher(): ZhihuAnswerPublisher {
-    val environment = rememberZhihuPublisherEnvironment()
-    return remember(environment) {
-        ZhihuApiAnswerPublisher(environment)
-    }
+class UnknownImageFormatException(
+    message: String = "无法识别图片格式，已取消上传",
+) : IllegalArgumentException(message)
+
+internal enum class ZhihuImageUploadSource(
+    val apiValue: String,
+) {
+    Article("article"),
+    Pin("pin"),
 }

@@ -339,6 +339,7 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
                     authorPollEnvironment
                         .fetchJson(ZHIHU_PLUS_AUTHOR_PINS_URL, "")
                         ?.let(::decodeHomePollAnnouncements)
+                        ?.take(3)
                         ?: emptyList()
                 }.getOrElse { error ->
                     Log.e("HomeScreenRuntime", "Failed to load author poll announcements", error)
@@ -446,7 +447,7 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
 }
 
 @Composable
-actual fun PinHtmlWebViewContent(html: String) {
+actual fun ZhihuHtmlWebViewContent(html: String) {
     WebviewComp {
         it.isVerticalScrollBarEnabled = false
         it.setupUpWebviewClient()
@@ -457,7 +458,7 @@ actual fun PinHtmlWebViewContent(html: String) {
     }
 }
 
-actual fun supportsPinHtmlWebView(): Boolean = true
+actual fun supportsZhihuHtmlWebView(): Boolean = true
 
 @Composable
 actual fun rememberCommentScreenRuntime(): CommentScreenRuntime {

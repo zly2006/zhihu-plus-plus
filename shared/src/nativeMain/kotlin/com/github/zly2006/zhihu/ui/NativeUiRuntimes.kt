@@ -166,9 +166,9 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime =
     }
 
 @Composable
-actual fun PinHtmlWebViewContent(html: String) = Unit // TODO: iOS 想法 WebView 实现
+actual fun ZhihuHtmlWebViewContent(html: String) = Unit // TODO: iOS HTML WebView 实现
 
-actual fun supportsPinHtmlWebView(): Boolean = false
+actual fun supportsZhihuHtmlWebView(): Boolean = false
 
 @Composable
 actual fun rememberBlocklistSettingsPlatformRuntime(

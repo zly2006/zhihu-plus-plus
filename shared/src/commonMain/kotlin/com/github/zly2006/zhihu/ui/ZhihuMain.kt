@@ -110,6 +110,7 @@ import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.navigation.SentenceSimilarityTest
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.navigation.WriteAnswer
+import com.github.zly2006.zhihu.navigation.WritePin
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.BlockedFeedHistoryScreen
@@ -454,6 +455,9 @@ fun ZhihuMain(
                 composable<WriteAnswer> { navEntry ->
                     val args: WriteAnswer = navEntry.toRoute()
                     WriteAnswerScreen(args)
+                }
+                composable<WritePin> {
+                    WritePinScreen()
                 }
                 composable<Article>(
                     typeMap = mapOf(typeOf<ArticleType>() to ArticleTypeNavType),

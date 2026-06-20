@@ -19,11 +19,13 @@ package com.github.zly2006.zhihu.editor
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import com.github.zly2006.zhihu.data.asApiEnvironment
 
 @Composable
-actual fun rememberZhihuAnswerPublisher(): ZhihuAnswerPublisher {
-    val environment = rememberZhihuPublisherEnvironment()
-    return remember(environment) {
-        ZhihuApiAnswerPublisher(environment)
+actual fun rememberZhihuPinPublisher(): ZhihuPinPublisher {
+    val context = LocalContext.current.applicationContext
+    return remember(context) {
+        ZhihuApiPinPublisher(context.asApiEnvironment())
     }
 }

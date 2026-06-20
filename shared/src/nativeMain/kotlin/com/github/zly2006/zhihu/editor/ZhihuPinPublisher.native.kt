@@ -21,9 +21,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 
 @Composable
-actual fun rememberZhihuAnswerPublisher(): ZhihuAnswerPublisher {
+actual fun rememberZhihuPinPublisher(): ZhihuPinPublisher {
     val environment = rememberZhihuPublisherEnvironment()
     return remember(environment) {
-        ZhihuApiAnswerPublisher(environment)
+        ZhihuApiPinPublisher(environment)
     }
 }

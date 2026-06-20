@@ -97,6 +97,7 @@ object DataHolder {
 
     @Serializable
     data class PublishResult(
+        val id: String? = null,
         val publish: PublishResultPublish? = null,
     )
 

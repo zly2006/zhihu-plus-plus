@@ -129,9 +129,9 @@ expect fun rememberPinScreenRuntime(): PinScreenRuntime
 @Composable
 fun PinHtmlContent(html: String) {
     if (rememberSettingsStore().getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false) &&
-        supportsPinHtmlWebView()
+        supportsZhihuHtmlWebView()
     ) {
-        PinHtmlWebViewContent(html)
+        ZhihuHtmlWebViewContent(html)
     } else {
         Spacer(Modifier.height(10.dp))
         RenderMarkdown(
@@ -143,10 +143,10 @@ fun PinHtmlContent(html: String) {
     }
 }
 
-expect fun supportsPinHtmlWebView(): Boolean
+expect fun supportsZhihuHtmlWebView(): Boolean
 
 @Composable
-expect fun PinHtmlWebViewContent(html: String)
+expect fun ZhihuHtmlWebViewContent(html: String)
 
 /**
  * 文章页 Compose UI 使用的运行时设置视图。
