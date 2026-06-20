@@ -62,10 +62,12 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.editor.UnknownImageFormatException
 import com.github.zly2006.zhihu.editor.UploadedZhihuImage
+import com.github.zly2006.zhihu.editor.ZhihuImageUploadSource
 import com.github.zly2006.zhihu.editor.calculatePinHtmlTextLength
 import com.github.zly2006.zhihu.editor.compileMdToZhihuHtml
 import com.github.zly2006.zhihu.editor.rememberImagePickerLauncher
 import com.github.zly2006.zhihu.editor.rememberZhihuPinPublisher
+import com.github.zly2006.zhihu.editor.uploadZhihuImage
 import com.github.zly2006.zhihu.markdown.rememberMarkdownImageModel
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Pin
@@ -75,6 +77,7 @@ import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.components.WriteContentFabColumn
 import com.github.zly2006.zhihu.ui.components.WriteContentMarkdownEditor
 import com.github.zly2006.zhihu.ui.components.WriteContentPreviewSheet
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.yield
 
@@ -187,6 +190,7 @@ fun WritePinScreen() {
         }
     }
 
+    val environment = rememberPaginationEnvironment(false)
     val launchImagePicker = rememberImagePickerLauncher { picked ->
         if (isSubmitting || isUploadingImage) return@rememberImagePickerLauncher
         if (images.size >= PIN_IMAGE_LIMIT) {
@@ -196,10 +200,12 @@ fun WritePinScreen() {
         isUploadingImage = true
         coroutineScope.launch {
             runCatching {
-                publisher.uploadImage(
-                    bytes = picked.bytes,
-                    mimeType = picked.mimeType,
-                    fileName = picked.fileName,
+                uploadZhihuImage(
+                    environment,
+                    picked.bytes,
+                    picked.mimeType,
+                    picked.fileName,
+                    ZhihuImageUploadSource.Pin,
                 )
             }.onSuccess { uploaded ->
                 images = images + uploaded
@@ -229,7 +235,7 @@ fun WritePinScreen() {
                 actions = {
                     Button(
                         onClick = { submitPin(publish = true) },
-                        enabled = !isSubmitting,
+                        enabled = !isSubmitting && !isUploadingImage,
                     ) {
                         if (isSubmitting) {
                             CircularProgressIndicator(

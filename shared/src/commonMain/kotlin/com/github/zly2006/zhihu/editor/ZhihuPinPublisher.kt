@@ -43,15 +43,6 @@ import kotlinx.serialization.json.JsonElement
  */
 interface ZhihuPinPublisher {
     /**
-     * 上传图片到知乎图床。想法图片只进入 media.medias，不插入 Markdown 正文。
-     */
-    suspend fun uploadImage(
-        bytes: ByteArray,
-        mimeType: String?,
-        fileName: String?,
-    ): UploadedZhihuImage
-
-    /**
      * 保存想法草稿。
      *
      * 对应端点：POST https://api.zhihu.com/content/drafts，action=pin。
@@ -84,13 +75,6 @@ expect fun rememberZhihuPinPublisher(): ZhihuPinPublisher
 internal class ZhihuApiPinPublisher(
     private val environment: ZhihuApiEnvironment,
 ) : ZhihuPinPublisher {
-    override suspend fun uploadImage(
-        bytes: ByteArray,
-        mimeType: String?,
-        fileName: String?,
-    ): UploadedZhihuImage =
-        uploadZhihuImage(environment, bytes, mimeType, fileName, ZhihuImageUploadSource.Pin)
-
     override suspend fun savePinDraft(
         title: String,
         html: String,
