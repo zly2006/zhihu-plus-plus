@@ -16,9 +16,12 @@
  */
 
 package com.github.zly2006.zhihu.shared.platform
+
 import android.content.ClipData
 import android.content.Context
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.PredictiveBackHandler
@@ -146,12 +149,27 @@ fun androidSettingsStore(context: Context): SettingsStore {
 
 fun androidUserMessageSink(context: Context): UserMessageSink {
     val appContext = context.applicationContext
+    val mainHandler = Handler(Looper.getMainLooper())
+
+    fun showToast(
+        message: String,
+        duration: Int,
+    ) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            Toast.makeText(appContext, message, duration).show()
+        } else {
+            mainHandler.post {
+                Toast.makeText(appContext, message, duration).show()
+            }
+        }
+    }
+
     return UserMessageSink(
         showShortMessage = { message ->
-            Toast.makeText(appContext, message, Toast.LENGTH_SHORT).show()
+            showToast(message, Toast.LENGTH_SHORT)
         },
         showLongMessage = { message ->
-            Toast.makeText(appContext, message, Toast.LENGTH_LONG).show()
+            showToast(message, Toast.LENGTH_LONG)
         },
     )
 }

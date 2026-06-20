@@ -136,6 +136,7 @@ class CommentScreenInstrumentedTest {
         val navigator = setCommentScreen(
             onChildCommentClick = { childEntryCommentIds += it.item.id },
             testOverrides = CommentScreenTestOverrides(
+                viewModel = viewModel,
                 onArchiveComment = { archivedCommentIds += it.item.id },
             ),
         )
@@ -200,10 +201,11 @@ class CommentScreenInstrumentedTest {
          *    deterministic order instead of starting real dialogs, intents, or storage writes.
          */
         val imageActions = mutableListOf<CommentImageMenuAction>()
-        seedRootCommentViewModel(seedRootComments(count = 4))
+        val viewModel = seedRootCommentViewModel(seedRootComments(count = 4))
 
         setCommentScreen(
             testOverrides = CommentScreenTestOverrides(
+                viewModel = viewModel,
                 onImageMenuAction = { action, _ -> imageActions += action },
             ),
         )
@@ -268,10 +270,11 @@ class CommentScreenInstrumentedTest {
          */
         val childEntryCommentIds = mutableListOf<String>()
         val seededComments = seedRootComments(count = 4)
-        seedRootCommentViewModel(seededComments)
+        val viewModel = seedRootCommentViewModel(seededComments)
 
         setCommentScreen(
             onChildCommentClick = { childEntryCommentIds += it.item.id },
+            testOverrides = CommentScreenTestOverrides(viewModel = viewModel),
         )
 
         composeRule
@@ -418,7 +421,9 @@ class CommentScreenInstrumentedTest {
             )
         }
 
-        setCommentScreen()
+        setCommentScreen(
+            testOverrides = CommentScreenTestOverrides(viewModel = viewModel),
+        )
 
         composeRule.onNodeWithTag("comment_row_allowed-root").assertIsDisplayed()
         composeRule.onNodeWithText("可见根评论作者").assertIsDisplayed()
