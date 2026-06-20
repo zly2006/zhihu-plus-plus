@@ -398,7 +398,7 @@ private fun LoginModeButton(
 private fun QrLoginPane(activity: LoginActivity) {
     val context = LocalContext.current
     SharedQrLoginPane(
-        createClient = { cookies -> AccountData.httpClient(context, cookies) },
+        createClient = { cookies -> AccountData.loginHttpClient(cookies) },
         onLoginSuccess = { cookies -> activity.finalizeLoginFromCookies(cookies) },
         readRiskControlCookies = ::readWebViewCookies,
         riskControlContent = { url, cookies, onCookiesChanged ->

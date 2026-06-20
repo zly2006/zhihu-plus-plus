@@ -40,8 +40,11 @@ import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.HttpClientEngineConfig
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.http.HttpMethod
+import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
@@ -164,14 +167,26 @@ object AccountData {
         return client
     }
 
+    /**
+     * 登录流程(udid 预取 / 二维码)专用客户端：刻意不装 UserAgent 插件，让 [prefetchQrLoginContext] 等
+     * per-request 设置的桌面 UA 成为唯一 User-Agent。账号客户端装了 UserAgent 插件，会与之叠成两个
+     * User-Agent 头，知乎据此发的 d_c0 对 web zse96 签名无效(10003)。cookie 写回传入的 [cookies]。
+     */
+    fun loginHttpClient(cookies: MutableMap<String, String>): HttpClient = HttpClient {
+        install(HttpCookies) { storage = ZhihuCookieStorage(cookies) }
+        install(ContentNegotiation) { json(ZhihuJson.json) }
+    }
+
     suspend fun verifyLogin(context: Context, cookies: Map<String, String>): Boolean {
         val map = cookies.toMutableMap()
-        val httpClient = httpClient(context, map)
         // 网页登录(WebView) 抓到的 d_c0 可能是手机版登录页发的、对桌面 zse96 签名无效的值（实测会让知乎回 10003）；
-        // 手动粘 cookie 又常常只带 z_c0。统一用扫码登录同款 udid 预取换一个有效 d_c0 覆盖掉不可靠的值。
-        // udid 失败时（runCatching）保留原 d_c0，不致比原来更差。
-        runCatching { prefetchQrLoginContext(httpClient, map) }
+        // 手动粘 cookie 又常常只带 z_c0。统一用扫码登录同款 udid 预取换一个有效 d_c0 覆盖掉不可靠的值；
+        // 必须用 loginHttpClient（单一桌面 UA），udid 失败时（runCatching）保留原 d_c0，不致更差。
+        val udidClient = loginHttpClient(map)
+        runCatching { prefetchQrLoginContext(udidClient, map) }
             .onFailure { Log.e("ZhihuLogin", "udid prefetch failed", it) }
+        udidClient.close()
+        val httpClient = httpClient(context, map)
         val session = fetchVerifiedZhihuSession(httpClient, map, data.userAgent) ?: return false
         saveData(
             context,
