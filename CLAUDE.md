@@ -16,6 +16,8 @@
 
 修复已经明确失败的 mock instrument CI 时，拿到失败类或方法后必须先在 `$off-android-avd-ci-debug` 的远端 AVD 上跑定向复现，不要只盯着 GitHub 日志或等待新一轮 run。例子：CI 已经列出某个列表缺失和线程崩溃时，应先把当前 APK 和测试 APK 放到远端 AVD，运行这些失败方法确认现象，再决定改生产代码还是测试注入；不能把“还有 CI 在跑”当成不复现的理由。
 
+修复已经明确失败的 mock instrument CI 时，拿到失败类或方法后必须先在 `$off-android-avd-ci-debug` 的远端 AVD 上跑定向复现，不要只盯着 GitHub 日志或等待新一轮 run。例子：CI 已经列出评论页列表缺失和 Toast 线程崩溃时，应先把当前 APK 和测试 APK 放到远端 AVD，运行这些失败方法确认现象，再决定改生产代码还是测试注入；不能把“还有 CI 在跑”当成不复现的理由。
+
 ### Desktop release jar 运行验证
 
 打包桌面单体 jar 时，不能只验证任务成功、文件大小和 manifest。ProGuard 会改变运行时可达性，尤其会删除 `ServiceLoader` 发现的 provider 类、Room/KSP 生成实现，或改名 JNI 需要按原签名查找的 native 方法，导致启动后才报错。例子：桌面 release jar 必须实际执行 `java -jar` 到数据库和网络初始化路径，并为服务 provider、反射生成类、native 方法添加 keep 规则；否则一个看起来更小的 jar 可能只是被错误裁剪了。
