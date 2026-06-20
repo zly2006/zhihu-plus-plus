@@ -79,7 +79,7 @@ internal fun DataHolder.Pin.withSelectedPinPollOption(
 }
 
 internal fun DataHolder.Pin.Poll.acceptsVote(nowEpochSeconds: Long = Clock.System.now().epochSeconds): Boolean =
-    !isReviewing && (endAt < 0 || endAt > nowEpochSeconds)
+    !isReviewing && (endAt !in 0..nowEpochSeconds)
 
 internal fun DataHolder.Pin.Poll.statusText(nowEpochSeconds: Long = Clock.System.now().epochSeconds): String {
     val voteState = if (isVoted) {
