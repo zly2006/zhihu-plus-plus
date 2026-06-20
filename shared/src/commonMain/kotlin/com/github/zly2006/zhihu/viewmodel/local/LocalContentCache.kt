@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -94,31 +94,34 @@ enum class CrawlingStatus {
     Failed,
 }
 
-enum class CrawlingReason {
+enum class CrawlingReason(
+    val defaultWeight: Double,
+    val displayText: String,
+) {
     /**
      * 已关注用户的内容
      */
-    Following,
+    Following(1.2, "关注用户的最新动态"),
 
     /**
      * 官方推荐的内容
      */
-    Trending,
+    Trending(1.0, "热门推荐"),
 
     /**
      * 已关注用户的赞同
      */
-    FollowingUpvote,
+    FollowingUpvote(0.88, "关注用户点赞的内容"),
 
     /**
      * 用户赞同了某个回答，相同问题的优质回答
      */
-    UpvotedQuestion,
+    UpvotedQuestion(0.95, "相关问题的优质回答"),
 
     /**
      * 相似用户点赞的内容
      */
-    CollaborativeFiltering,
+    CollaborativeFiltering(0.8, "相似用户喜欢的内容"),
 }
 
 private fun currentEpochMillis(): Long = Clock.System.now().toEpochMilliseconds()

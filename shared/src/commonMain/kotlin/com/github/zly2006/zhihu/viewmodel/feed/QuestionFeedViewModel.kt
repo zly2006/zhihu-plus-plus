@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -20,15 +20,19 @@ package com.github.zly2006.zhihu.viewmodel.feed
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.navigation.QuestionAnswerNavigator
 import com.github.zly2006.zhihu.navigation.zhihuQuestionFeedsUrl
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
-import com.github.zly2006.zhihu.viewmodel.ContentBlocklistEnvironment
-import com.github.zly2006.zhihu.viewmodel.ContentInteractionEnvironment
 import com.github.zly2006.zhihu.viewmodel.FeedDisplayEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
-import com.github.zly2006.zhihu.viewmodel.filter.fetchBlockedUserIds
+import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
+import com.github.zly2006.zhihu.viewmodel.deleteSigned
+import com.github.zly2006.zhihu.viewmodel.postSigned
 
 open class QuestionFeedViewModel(
     private val questionId: Long,
@@ -60,25 +64,53 @@ open class QuestionFeedViewModel(
         return super.createDisplayItem(environment, feed)
     }
 
-    suspend fun followQuestion(environment: ContentInteractionEnvironment, questionId: Long, follow: Boolean) {
+    fun createAnswerNavigatorFor(
+        item: FeedDisplayItem,
+        environment: ZhihuApiEnvironment,
+    ): QuestionAnswerNavigator? {
+        val destination = item.navDestination as? Article ?: return null
+        if (destination.type != ArticleType.Answer) return null
+        val index = displayItems.indexOfFirst { it.stableKey == item.stableKey }
+        if (index < 0) return null
+        return QuestionAnswerNavigator(
+            questionId = questionId,
+            initialNextAnswers = displayItems
+                .drop(index + 1)
+                .mapNotNull { it.navDestination as? Article },
+            initialPreviousAnswers = displayItems
+                .take(index)
+                .asReversed()
+                .mapNotNull { it.navDestination as? Article },
+            initialNextUrl = lastPaging?.next.orEmpty(),
+            order = sortOrder,
+            environment = environment,
+        )
+    }
+
+    suspend fun followQuestion(environment: ZhihuApiEnvironment, follow: Boolean) {
         try {
-            environment.followQuestion(questionId, follow)
+            if (environment.authenticatedCookies()["d_c0"] == null) return
+            val url = "https://www.zhihu.com/api/v4/questions/$questionId/followers"
+            if (follow) {
+                environment.postSigned(url)
+            } else {
+                environment.deleteSigned(url)
+            }
         } catch (e: Exception) {
             environment.handleFetchFailure("QuestionFeedViewModel", e)
         }
     }
 
     override fun processResponse(environment: PaginationEnvironment, data: List<Feed>, rawData: kotlinx.serialization.json.JsonArray) {
-        val filtered = filterBlockedAnswers(environment, data)
-        super.processResponse(environment, filtered, rawData)
-    }
-
-    private fun filterBlockedAnswers(environment: ContentBlocklistEnvironment, data: List<Feed>): List<Feed> {
-        val blockedUserIds = environment.fetchBlockedUserIds()
-        if (blockedUserIds.isEmpty()) return data
-        return data.filterNot { feed ->
-            val target = feed.target
-            target is Feed.AnswerTarget && target.author?.id in blockedUserIds
+        val blockedUserIds = environment.blockedUserIds()
+        val filtered = if (blockedUserIds.isEmpty()) {
+            data
+        } else {
+            data.filterNot { feed ->
+                val target = feed.target
+                target is Feed.AnswerTarget && target.author?.id in blockedUserIds
+            }
         }
+        super.processResponse(environment, filtered, rawData)
     }
 }

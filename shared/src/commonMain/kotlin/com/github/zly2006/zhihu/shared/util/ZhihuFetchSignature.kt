@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -47,19 +47,16 @@ fun HttpRequestBuilder.signZhihuFetchRequest(
     body: String? = null,
 ) {
     val dc0 = cookies["d_c0"]?.takeIf { it.isNotBlank() } ?: return
-    val requestBody = body ?: signedJsonBodyOrNull()
-    signZhihuFetchRequest(dc0 = dc0, body = requestBody)
-}
-
-private fun HttpRequestBuilder.signedJsonBodyOrNull(): String? =
-    if (contentType() == ContentType.Application.Json) {
-        body as? String
+    val requestBody = body ?: if (contentType() == ContentType.Application.Json) {
+        this.body as? String
             ?: bodyType?.kotlinType?.let { type ->
-                ZhihuJson.json.encodeToString(serializer(type), body)
+                ZhihuJson.json.encodeToString(serializer(type), this.body)
             }
     } else {
         null
     }
+    signZhihuFetchRequest(dc0 = dc0, body = requestBody)
+}
 
 object ZhihuFetchSignature {
     fun createZse96Header(
@@ -78,8 +75,9 @@ object ZhihuFetchSignature {
         return "2.0_${ZseSigner.encryptZseV4(md5Hex(signSource))}"
     }
 
-    internal fun md5Hex(input: String): String {
-        val message = input.encodeToByteArray()
+    internal fun md5Hex(input: String): String = md5Hex(input.encodeToByteArray())
+
+    internal fun md5Hex(message: ByteArray): String {
         val bitLength = message.size.toLong() * 8
         val paddedLength = (((message.size + 8) / 64) + 1) * 64
         val padded = ByteArray(paddedLength)

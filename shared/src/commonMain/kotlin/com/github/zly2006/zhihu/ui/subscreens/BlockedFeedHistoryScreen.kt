@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -56,7 +56,7 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.util.twoDigitString
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedFeedRecord
-import com.github.zly2006.zhihu.viewmodel.filter.rememberBlockedFeedRecordDao
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -74,7 +74,7 @@ import kotlin.time.Instant
 fun BlockedFeedHistoryScreen() {
     val navigator = LocalNavigator.current
     val coroutineScope = rememberCoroutineScope()
-    val dao = rememberBlockedFeedRecordDao()
+    val dao = getContentFilterDatabase().blockedFeedRecordDao()
 
     val records by dao.observeAll().collectAsState(initial = emptyList())
     var showClearDialog by remember { mutableStateOf(false) }

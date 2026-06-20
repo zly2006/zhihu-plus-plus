@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -52,20 +52,71 @@ class LocalContentInitializer(
     private suspend fun initializeFromHistory() {
         val tasks = mutableListOf<CrawlingTask>()
 
-        // 1. 基于关注用户的内容初始化Following任务
-        initializeFollowingTasks(tasks)
+        repeat(3) { index ->
+            tasks.add(
+                CrawlingTask(
+                    url = zhihuFollowingRecommendUrl(offset = index * 10),
+                    reason = CrawlingReason.Following,
+                    priority = 8,
+                ),
+            )
+        }
 
-        // 2. 初始化热门推荐任务
-        initializeTrendingTasks(tasks)
+        repeat(3) { index ->
+            tasks.add(
+                CrawlingTask(
+                    url = zhihuTopstoryRecommendUrl(limit = 20, offset = index * 20),
+                    reason = CrawlingReason.Trending,
+                    priority = 7,
+                ),
+            )
+        }
 
-        // 3. 基于历史点赞初始化UpvotedQuestion任务
-        initializeUpvotedQuestionTasks(tasks)
+        val recentLikes = dao.getBehaviorsByActionSince("like", nowMillis() - 30 * 24 * 60 * 60 * 1000L)
+        val questionIds = recentLikes
+            .mapNotNull { behavior -> extractQuestionIdFromContentId(behavior.contentId) }
+            .distinct()
+            .take(5)
+        questionIds.forEach { questionId ->
+            tasks.add(
+                CrawlingTask(
+                    url = zhihuQuestionFeedsUrl(questionId, limit = 20),
+                    reason = CrawlingReason.UpvotedQuestion,
+                    priority = 6,
+                ),
+            )
+        }
+        if (questionIds.isEmpty()) {
+            repeat(2) { index ->
+                tasks.add(
+                    CrawlingTask(
+                        url = zhihuTopstoryRecommendUrl(limit = 10, offset = index * 10),
+                        reason = CrawlingReason.UpvotedQuestion,
+                        priority = 6,
+                    ),
+                )
+            }
+        }
 
-        // 4. 初始化关注用户点赞任务
-        initializeFollowingUpvoteTasks(tasks)
+        repeat(2) { index ->
+            tasks.add(
+                CrawlingTask(
+                    url = zhihuFollowingUpvoteRecommendUrl(limit = 20, offset = index * 20),
+                    reason = CrawlingReason.FollowingUpvote,
+                    priority = 5,
+                ),
+            )
+        }
 
-        // 5. 初始化协同过滤任务
-        initializeCollaborativeFilteringTasks(tasks)
+        repeat(2) { index ->
+            tasks.add(
+                CrawlingTask(
+                    url = zhihuTopstoryRecommendUrl(limit = 15, offset = index * 15),
+                    reason = CrawlingReason.CollaborativeFiltering,
+                    priority = 4,
+                ),
+            )
+        }
 
         if (tasks.isNotEmpty()) {
             dao.insertTasks(tasks)
@@ -83,11 +134,60 @@ class LocalContentInitializer(
             // 如果该类型的任务或结果不足，则创建新任务
             if (pendingCount < minTasksPerReason && completedCount < 10) {
                 val additionalTasks = when (reason) {
-                    CrawlingReason.Following -> createFollowingTasks(minTasksPerReason - pendingCount)
-                    CrawlingReason.Trending -> createTrendingTasks(minTasksPerReason - pendingCount)
-                    CrawlingReason.UpvotedQuestion -> createUpvotedQuestionTasks(minTasksPerReason - pendingCount)
-                    CrawlingReason.FollowingUpvote -> createFollowingUpvoteTasks(minTasksPerReason - pendingCount)
-                    CrawlingReason.CollaborativeFiltering -> createCollaborativeFilteringTasks(minTasksPerReason - pendingCount)
+                    CrawlingReason.Following -> (0 until (minTasksPerReason - pendingCount)).map { index ->
+                        CrawlingTask(
+                            url = zhihuFollowingRecommendUrl(offset = index * 10),
+                            reason = CrawlingReason.Following,
+                            priority = 8,
+                        )
+                    }
+                    CrawlingReason.Trending -> (0 until (minTasksPerReason - pendingCount)).map { index ->
+                        CrawlingTask(
+                            url = zhihuTopstoryRecommendUrl(limit = 20, offset = index * 20),
+                            reason = CrawlingReason.Trending,
+                            priority = 7,
+                        )
+                    }
+                    CrawlingReason.UpvotedQuestion -> {
+                        val count = minTasksPerReason - pendingCount
+                        val upvotedQuestionTasks = mutableListOf<CrawlingTask>()
+                        dao.getMostLikedContent(count).forEach { (contentId, _) ->
+                            val questionId = extractQuestionIdFromContentId(contentId)
+                            if (questionId != null) {
+                                upvotedQuestionTasks.add(
+                                    CrawlingTask(
+                                        url = zhihuQuestionFeedsUrl(questionId, limit = 20),
+                                        reason = CrawlingReason.UpvotedQuestion,
+                                        priority = 6,
+                                    ),
+                                )
+                            }
+                        }
+                        while (upvotedQuestionTasks.size < count) {
+                            upvotedQuestionTasks.add(
+                                CrawlingTask(
+                                    url = zhihuTopstoryRecommendUrl(limit = 10, offset = upvotedQuestionTasks.size * 10),
+                                    reason = CrawlingReason.UpvotedQuestion,
+                                    priority = 6,
+                                ),
+                            )
+                        }
+                        upvotedQuestionTasks
+                    }
+                    CrawlingReason.FollowingUpvote -> (0 until (minTasksPerReason - pendingCount)).map { index ->
+                        CrawlingTask(
+                            url = zhihuFollowingUpvoteRecommendUrl(limit = 20, offset = index * 20),
+                            reason = CrawlingReason.FollowingUpvote,
+                            priority = 5,
+                        )
+                    }
+                    CrawlingReason.CollaborativeFiltering -> (0 until (minTasksPerReason - pendingCount)).map { index ->
+                        CrawlingTask(
+                            url = zhihuTopstoryRecommendUrl(limit = 15, offset = index * 15),
+                            reason = CrawlingReason.CollaborativeFiltering,
+                            priority = 4,
+                        )
+                    }
                 }
                 tasks.addAll(additionalTasks)
             }
@@ -96,113 +196,5 @@ class LocalContentInitializer(
         if (tasks.isNotEmpty()) {
             dao.insertTasks(tasks)
         }
-    }
-
-    private fun initializeFollowingTasks(tasks: MutableList<CrawlingTask>) {
-        // 创建基础的关注用户内容爬虫任务
-        repeat(3) { index ->
-            tasks.add(
-                CrawlingTask(
-                    url = zhihuFollowingRecommendUrl(offset = index * 10),
-                    reason = CrawlingReason.Following,
-                    priority = 8,
-                ),
-            )
-        }
-    }
-
-    private fun initializeTrendingTasks(tasks: MutableList<CrawlingTask>) {
-        // 创建热门推荐爬虫任务
-        repeat(3) { index ->
-            tasks.add(
-                CrawlingTask(
-                    url = zhihuTopstoryRecommendUrl(limit = 20, offset = index * 20),
-                    reason = CrawlingReason.Trending,
-                    priority = 7,
-                ),
-            )
-        }
-    }
-
-    private suspend fun initializeUpvotedQuestionTasks(tasks: MutableList<CrawlingTask>) {
-        // 基于用户的历史点赞行为创建相关问题的爬虫任务
-        val recentLikes = dao.getBehaviorsByActionSince("like", nowMillis() - 30 * 24 * 60 * 60 * 1000L)
-
-        // 提取问题ID并创建任务
-        val questionIds = recentLikes
-            .mapNotNull { behavior ->
-                extractQuestionIdFromContentId(behavior.contentId)
-            }.distinct()
-            .take(5)
-
-        questionIds.forEach { questionId ->
-            tasks.add(
-                CrawlingTask(
-                    url = zhihuQuestionFeedsUrl(questionId, limit = 20),
-                    reason = CrawlingReason.UpvotedQuestion,
-                    priority = 6,
-                ),
-            )
-        }
-
-        // 如果没有历史数据，创建默认任务
-        if (questionIds.isEmpty()) {
-            repeat(2) { index ->
-                tasks.add(
-                    CrawlingTask(
-                        url = zhihuTopstoryRecommendUrl(limit = 10, offset = index * 10),
-                        reason = CrawlingReason.UpvotedQuestion,
-                        priority = 6,
-                    ),
-                )
-            }
-        }
-    }
-
-    private fun initializeFollowingUpvoteTasks(tasks: MutableList<CrawlingTask>) {
-        // 创建关注用户点赞内容的爬虫任务
-        repeat(2) { index ->
-            tasks.add(
-                CrawlingTask(
-                    url = zhihuFollowingUpvoteRecommendUrl(limit = 20, offset = index * 20),
-                    reason = CrawlingReason.FollowingUpvote,
-                    priority = 5,
-                ),
-            )
-        }
-    }
-
-    private fun initializeCollaborativeFilteringTasks(tasks: MutableList<CrawlingTask>) {
-        // 创建协同过滤推荐任务
-        repeat(2) { index ->
-            tasks.add(
-                CrawlingTask(
-                    url = zhihuTopstoryRecommendUrl(limit = 15, offset = index * 15),
-                    reason = CrawlingReason.CollaborativeFiltering,
-                    priority = 4,
-                ),
-            )
-        }
-    }
-
-    private suspend fun createUpvotedQuestionTasks(count: Int): List<CrawlingTask> {
-        val tasks = mutableListOf<CrawlingTask>()
-
-        // 尝试基于最近的用户行为创建任务
-        val recentContent = dao.getMostLikedContent(count)
-
-        recentContent.forEach { (contentId, _) ->
-            val questionId = extractQuestionIdFromContentId(contentId)
-            if (questionId != null) {
-                tasks.add(createQuestionFeedTask(questionId))
-            }
-        }
-
-        // 如果不足，用默认任务补充
-        while (tasks.size < count) {
-            tasks.add(createDefaultUpvotedQuestionTasks(tasks.size + 1).last())
-        }
-
-        return tasks
     }
 }

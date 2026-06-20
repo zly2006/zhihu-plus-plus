@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -38,65 +38,6 @@ class BlockedKeywordService(
     private val semanticMatcher: KeywordSemanticMatcher,
 ) {
     /**
-     * 获取所有屏蔽词
-     */
-    suspend fun getAllKeywords(): List<BlockedKeyword> = keywordDao.getAllKeywords()
-
-    /**
-     * 获取NLP语义关键词
-     */
-    suspend fun getNLPSemanticKeywords(): List<BlockedKeyword> =
-        keywordDao.getAllKeywords().filter {
-            it.getKeywordTypeEnum() == KeywordType.NLP_SEMANTIC
-        }
-
-    /**
-     * 添加NLP语义短语（空格分隔的多个关键词）
-     */
-    suspend fun addNLPPhrase(phrase: String): Long {
-        val blockedKeyword = BlockedKeyword(
-            keyword = phrase.trim(),
-            keywordType = KeywordType.NLP_SEMANTIC.name,
-            caseSensitive = false,
-            isRegex = false,
-        )
-        return keywordDao.insertKeyword(blockedKeyword)
-    }
-
-    /**
-     * 更新关键词
-     */
-    suspend fun updateKeyword(keyword: BlockedKeyword) {
-        keywordDao.insertKeyword(keyword)
-    }
-
-    /**
-     * 删除屏蔽词
-     */
-    suspend fun deleteKeyword(keyword: BlockedKeyword) {
-        keywordDao.deleteKeyword(keyword)
-    }
-
-    /**
-     * 删除屏蔽词（通过ID）
-     */
-    suspend fun deleteKeywordById(id: Long) {
-        keywordDao.deleteKeywordById(id)
-    }
-
-    /**
-     * 清空所有屏蔽词
-     */
-    suspend fun clearAllKeywords() {
-        keywordDao.clearAllKeywords()
-    }
-
-    /**
-     * 获取屏蔽词数量
-     */
-    suspend fun getKeywordCount(): Int = keywordDao.getKeywordCount()
-
-    /**
      * 检查内容快照是否应该被 NLP 语义屏蔽。
      * 使用标题、摘要和正文纯文本参与匹配。
      * @param title 标题
@@ -113,7 +54,9 @@ class BlockedKeywordService(
     ): Pair<Boolean, List<MatchedKeywordInfo>> {
         if (title.isBlank()) return Pair(false, emptyList())
 
-        val nlpKeywords = getNLPSemanticKeywords()
+        val nlpKeywords = keywordDao
+            .getAllKeywords()
+            .filter { it.getKeywordTypeEnum() == KeywordType.NLP_SEMANTIC }
         if (nlpKeywords.isEmpty()) return Pair(false, emptyList())
 
         // 获取所有 NLP 短语
@@ -174,38 +117,5 @@ class BlockedKeywordService(
         } catch (e: Exception) {
             Log.e("BlockedKeywordService", "Failed to save blocked content record", e)
         }
-    }
-
-    /**
-     * 获取最近被屏蔽的内容记录
-     */
-    suspend fun getRecentBlockedRecords(limit: Int = 100): List<BlockedContentRecord> =
-        recordDao.getRecentBlockedRecords(limit)
-
-    /**
-     * 删除屏蔽记录
-     */
-    suspend fun deleteBlockedRecord(id: Long) {
-        recordDao.deleteRecord(id)
-    }
-
-    /**
-     * 清空所有屏蔽记录
-     */
-    suspend fun clearAllBlockedRecords() {
-        recordDao.clearAllRecords()
-    }
-
-    /**
-     * 解析匹配关键词JSON
-     */
-    fun parseMatchedKeywords(json: String): List<MatchedKeywordInfo> = try {
-        Json.decodeFromString(
-            kotlinx.serialization.builtins.ListSerializer(MatchedKeywordInfo.serializer()),
-            json,
-        )
-    } catch (e: Exception) {
-        Log.e("BlockedKeywordService", "Failed to parse matched keywords", e)
-        emptyList()
     }
 }

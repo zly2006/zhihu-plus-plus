@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -57,9 +57,6 @@ import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.START_DESTINATION_PREFERENCE_KEY
-import com.github.zly2006.zhihu.ui.subscreens.appearanceSettingsBottomBarItemTag
-import com.github.zly2006.zhihu.ui.subscreens.appearanceSettingsBottomBarMoveDownTag
-import com.github.zly2006.zhihu.ui.subscreens.appearanceSettingsStartDestinationOptionTag
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -132,15 +129,15 @@ class AppearanceSettingsScreenInstrumentedTest {
         // scroll cycle to ensure the rendered state still matches SharedPreferences.
         setUpScreen(setting = APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY)
 
-        scrollUntilTagDisplayed(appearanceSettingsBottomBarItemTag(OnlineHistory.name))
-        composeRule.onNodeWithTag(appearanceSettingsBottomBarItemTag(OnlineHistory.name)).performClick()
+        scrollUntilTagDisplayed("appearanceSettings:bottomBar:item:${OnlineHistory.name}")
+        composeRule.onNodeWithTag("appearanceSettings:bottomBar:item:${OnlineHistory.name}").performClick()
         waitUntilStringSetPreference(
             BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
             expected = setOf(Home.name, Follow.name, Daily.name, Account.name),
             context = "after removing online history",
         )
 
-        composeRule.onNodeWithTag(appearanceSettingsBottomBarItemTag(HotList.name)).performClick()
+        composeRule.onNodeWithTag("appearanceSettings:bottomBar:item:${HotList.name}").performClick()
         waitUntilStringSetPreference(
             BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
             expected = setOf(Home.name, Follow.name, Daily.name, HotList.name, Account.name),
@@ -166,15 +163,15 @@ class AppearanceSettingsScreenInstrumentedTest {
         // row. They should keep the same touch target height while reorder actions still persist.
         setUpScreen(setting = APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY)
 
-        scrollUntilTagDisplayed(appearanceSettingsBottomBarItemTag(HotList.name))
-        val selectedHeight = boundsHeightForTag(appearanceSettingsBottomBarItemTag(Daily.name))
-        val unselectedHeight = boundsHeightForTag(appearanceSettingsBottomBarItemTag(HotList.name))
-        val lockedHeight = boundsHeightForTag(appearanceSettingsBottomBarItemTag(Account.name))
+        scrollUntilTagDisplayed("appearanceSettings:bottomBar:item:${HotList.name}")
+        val selectedHeight = boundsHeightForTag("appearanceSettings:bottomBar:item:${Daily.name}")
+        val unselectedHeight = boundsHeightForTag("appearanceSettings:bottomBar:item:${HotList.name}")
+        val lockedHeight = boundsHeightForTag("appearanceSettings:bottomBar:item:${Account.name}")
 
         assertEquals(selectedHeight.toDouble(), unselectedHeight.toDouble(), 0.5)
         assertEquals(selectedHeight.toDouble(), lockedHeight.toDouble(), 0.5)
 
-        composeRule.onNodeWithTag(appearanceSettingsBottomBarMoveDownTag(Daily.name)).performClick()
+        composeRule.onNodeWithTag("appearanceSettings:bottomBar:moveDown:${Daily.name}").performClick()
         waitUntilStringPreference(
             BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY,
             expected = listOf(Home.name, Follow.name, OnlineHistory.name, Daily.name, Account.name).joinToString(","),

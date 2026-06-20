@@ -49,7 +49,6 @@ import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
-import com.github.zly2006.zhihu.ui.CollectionContentScreenTestOverrides
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
@@ -82,17 +81,16 @@ import top.yukonga.miuix.kmp.window.WindowListPopup
 @Composable
 fun MiuixCollectionContentScreen(
     collectionId: String,
-    testOverrides: CollectionContentScreenTestOverrides? = null,
 ) {
     val navigator = LocalNavigator.current
-    val screenViewModel = testOverrides?.viewModel ?: viewModel { CollectionContentViewModel(collectionId) }
+    val screenViewModel = viewModel { CollectionContentViewModel(collectionId) }
     val collectionEnvironment = rememberPaginationEnvironment(allowGuestAccess = false) as CollectionContentEnvironment
     val listState = rememberLazyListState()
     var showActionsMenu by remember { mutableStateOf(false) }
     var showExportOptionsDialog by remember { mutableStateOf(false) }
-    val isEnd = testOverrides?.let { { it.isEnd } } ?: { screenViewModel.isEnd }
-    val onLoadMore = testOverrides?.onLoadMore ?: { screenViewModel.loadMore(collectionEnvironment) }
-    val onExportAllToHtmlZip = testOverrides?.onExportAllToHtmlZip ?: { includeImages ->
+    val isEnd = { screenViewModel.isEnd }
+    val onLoadMore = { screenViewModel.loadMore(collectionEnvironment) }
+    val onExportAllToHtmlZip = { includeImages: Boolean ->
         screenViewModel.exportAllToHtmlZip(environment = collectionEnvironment, includeImages = includeImages)
     }
     val sharedData = collectionEnvironment.articleAnswerSwitchState()
@@ -101,8 +99,8 @@ fun MiuixCollectionContentScreen(
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
 
-    LaunchedEffect(testOverrides) {
-        if (testOverrides == null && screenViewModel.allData.isEmpty()) {
+    LaunchedEffect(Unit) {
+        if (screenViewModel.allData.isEmpty()) {
             screenViewModel.refresh(collectionEnvironment)
         }
     }
@@ -268,8 +266,7 @@ fun MiuixCollectionContentScreen(
             ) { item ->
                 MiuixFeedCard(item = item) {
                     val dest = navDestination
-                    val repository = collectionEnvironment.answerNavigatorRepository()
-                    if (dest is Article && dest.type == ArticleType.Answer && sharedData != null && repository != null) {
+                    if (dest is Article && dest.type == ArticleType.Answer && sharedData != null) {
                         val idx = screenViewModel.displayItems.indexOf(item)
                         val nextItems = if (idx >= 0) screenViewModel.allData.drop(idx + 1) else emptyList()
                         val prevItems = if (idx > 0) screenViewModel.allData.take(idx).reversed() else emptyList()
@@ -278,7 +275,7 @@ fun MiuixCollectionContentScreen(
                             collectionTitle = screenViewModel.title,
                             initialNextItems = nextItems,
                             initialPreviousItems = prevItems,
-                            repository = repository,
+                            environment = collectionEnvironment,
                         )
                     }
                     dest?.let { navigator.onNavigate(it) }

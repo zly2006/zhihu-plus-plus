@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -82,6 +82,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
@@ -236,7 +237,7 @@ class ArticleViewModel(
                 try {
                     if (article.type == ArticleType.Answer) {
                         val sharedData = environment.articleAnswerSwitchState()
-                        val answer = environment.getContentDetail(article) as? DataHolder.Answer
+                        val answer = environment.fetchContentDetail(article) as? DataHolder.Answer
                         if (answer != null) {
                             exportSourceContent = answer
                             title = answer.question.title
@@ -291,7 +292,7 @@ class ArticleViewModel(
                                 if (!isSameQuestion) {
                                     sharedData?.navigator = QuestionAnswerNavigator(
                                         questionId = questionId,
-                                        repository = environment.answerNavigatorRepository()!!,
+                                        environment = environment,
                                     )
                                 }
                             }
@@ -311,7 +312,7 @@ class ArticleViewModel(
                             Log.e("ArticleViewModel", "Answer not found")
                         }
                     } else if (article.type == ArticleType.Article) {
-                        val article = environment.getContentDetail(article) as? DataHolder.Article
+                        val article = environment.fetchContentDetail(article) as? DataHolder.Article
                         if (article != null) {
                             exportSourceContent = article
                             title = article.title
@@ -885,7 +886,13 @@ class ArticleViewModel(
         }
 
         try {
-            val htmlContent = createOfflineHtmlContent(environment, includeAppAttribution)
+            val htmlContent = withContext(Dispatchers.Default) {
+                environment.buildOfflineArticleExportHtml(
+                    content = requireExportSourceContent(),
+                    includeAppAttribution = includeAppAttribution,
+                    httpClient = httpClient ?: environment.httpClient(),
+                )
+            }
             val savedLocation = withContext(Dispatchers.Default) {
                 environment.saveHtmlToDownloads(
                     displayName = buildArticleExportFileName(
@@ -1002,17 +1009,6 @@ class ArticleViewModel(
             content = requireExportSourceContent(),
             includeAppAttribution = includeAppAttribution,
             extraSectionsHtml = commentsHtml,
-        )
-    }
-
-    private suspend fun createOfflineHtmlContent(
-        environment: ArticleExportContentEnvironment,
-        includeAppAttribution: Boolean,
-    ): String = withContext(Dispatchers.Default) {
-        environment.buildOfflineArticleExportHtml(
-            content = requireExportSourceContent(),
-            includeAppAttribution = includeAppAttribution,
-            httpClient = httpClient ?: environment.accountHttpClient(),
         )
     }
 
@@ -1209,12 +1205,12 @@ class ArticleViewModel(
 }
 
 fun formatArticleDateTime(seconds: Long): String {
-    val instant = kotlinx.datetime.Instant.fromEpochSeconds(seconds)
+    val instant = kotlin.time.Instant.fromEpochSeconds(seconds)
     val dateTime = instant.toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
     return buildString {
         append(dateTime.year.toString().padStart(4, '0'))
         append('-')
-        append((dateTime.month.ordinal + 1).twoDigitString())
+        append(dateTime.month.number.twoDigitString())
         append('-')
         append(dateTime.day.twoDigitString())
         append(' ')

@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -39,11 +39,15 @@ import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.FollowedQuestion
 import com.github.zly2006.zhihu.shared.data.FollowedTopic
 import com.github.zly2006.zhihu.shared.data.OfficialBadge
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
+import com.github.zly2006.zhihu.test.InstrumentedTestEnvironment
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
+import com.github.zly2006.zhihu.test.ZhihuMockApi
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
+import com.github.zly2006.zhihu.test.seedViewModel
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_ACTIVITIES_LIST_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_ANSWERS_LIST_TAG
@@ -71,26 +75,11 @@ import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_ROOT_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_SEARCH_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_SUBSCRIPTIONS_LIST_TAG
-import com.github.zly2006.zhihu.ui.PeopleListUiState
-import com.github.zly2006.zhihu.ui.PeopleProfileUiState
 import com.github.zly2006.zhihu.ui.PeopleScreen
-import com.github.zly2006.zhihu.ui.PeopleScreenTestOverrides
-import com.github.zly2006.zhihu.ui.PeopleScreenUiState
-import com.github.zly2006.zhihu.ui.PeopleSortedListUiState
-import com.github.zly2006.zhihu.ui.peopleScreenAnswerItemTag
-import com.github.zly2006.zhihu.ui.peopleScreenArticleItemTag
-import com.github.zly2006.zhihu.ui.peopleScreenCollectionItemTag
-import com.github.zly2006.zhihu.ui.peopleScreenColumnItemTag
-import com.github.zly2006.zhihu.ui.peopleScreenFollowedQuestionItemTag
-import com.github.zly2006.zhihu.ui.peopleScreenFollowedTopicItemTag
-import com.github.zly2006.zhihu.ui.peopleScreenFollowerActionTag
-import com.github.zly2006.zhihu.ui.peopleScreenFollowerItemTag
-import com.github.zly2006.zhihu.ui.peopleScreenFollowingActionTag
-import com.github.zly2006.zhihu.ui.peopleScreenFollowingItemTag
-import com.github.zly2006.zhihu.ui.peopleScreenPinItemTag
-import com.github.zly2006.zhihu.ui.peopleScreenQuestionItemTag
-import com.github.zly2006.zhihu.ui.peopleScreenSubscriptionTabTag
-import com.github.zly2006.zhihu.ui.peopleScreenTabTag
+import com.github.zly2006.zhihu.ui.PersonViewModel
+import io.ktor.http.HttpMethod
+import kotlinx.serialization.encodeToString
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -106,35 +95,29 @@ class PeopleScreenInstrumentedTest {
     @Before
     fun setUp() {
         composeRule.resetAppPreferences()
+        ZhihuMockApi.install(enabled = true)
+        ZhihuMockApi.reset()
+    }
+
+    @After
+    fun tearDown() {
+        ZhihuMockApi.install(enabled = InstrumentedTestEnvironment.isMockMode())
     }
 
     @Test
     fun headerButtonsStatsAnswerAndArticleTabsRemainDeterministicOffline() {
         /*
          * Expected behavior:
-         * 1. The profile header must render the seeded avatar area plus all four statistics from the
-         *    injected offline snapshot, so the test never depends on a real profile fetch.
-         * 2. Follow, block, and recommendation-block buttons must each flip the local state exactly
-         *    once and report the new boolean through the injected callbacks.
-         * 3. On the answer tab, both sort buttons should report deterministic sort keys and a deep
-         *    scroll should keep the seeded answer row interactive for navigation.
+         * 1. The profile header must render the seeded avatar area plus all four statistics from a
+         *    precreated production ViewModel and a mocked profile fetch.
+         * 2. Follow, block, and recommendation-block buttons must each use the real production
+         *    mutation path while staying offline through mocked HTTP/local database state.
+         * 3. On the answer tab, both sort buttons should issue deterministic production refreshes
+         *    and a deep scroll should keep the seeded answer row interactive for navigation.
          * 4. On the article tab, the same sort and deep-row navigation behavior must remain stable.
          */
-        val followStates = mutableListOf<Boolean>()
-        val blockStates = mutableListOf<Boolean>()
-        val recommendationStates = mutableListOf<Boolean>()
-        val answerSorts = mutableListOf<String>()
-        val articleSorts = mutableListOf<String>()
-        val navigator = setPeopleScreen(
-            overrides = PeopleScreenTestOverrides(
-                initialUiState = seededUiState(),
-                onToggleFollow = { followStates += it },
-                onToggleBlock = { blockStates += it },
-                onToggleRecommendationBlock = { recommendationStates += it },
-                onAnswerSortChange = { answerSorts += it },
-                onArticleSortChange = { articleSorts += it },
-            ),
-        )
+        val viewModel = seededViewModel()
+        val navigator = setPeopleScreen()
 
         composeRule.onNodeWithTag(PEOPLE_SCREEN_ROOT_TAG).assertIsDisplayed()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_HEADER_TAG).assertIsDisplayed()
@@ -149,36 +132,44 @@ class PeopleScreenInstrumentedTest {
         composeRule.onNodeWithTag(PEOPLE_SCREEN_FOLLOW_BUTTON_TAG).performClick()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_BLOCK_BUTTON_TAG).performClick()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG).performClick()
-        assertEquals(listOf(true), followStates)
-        assertEquals(listOf(true), blockStates)
-        assertEquals(listOf(true), recommendationStates)
+        composeRule.waitUntil("Expected profile actions to update state", timeoutMillis = 5_000) {
+            viewModel.isFollowing && viewModel.isBlocking && viewModel.isBlockedInRecommendations
+        }
+        composeRule.waitUntilRequestCount(HttpMethod.Post, "members/${ROOT_PERSON.urlToken}/followers", 1)
+        composeRule.waitUntilRequestCount(HttpMethod.Post, "members/${ROOT_PERSON.urlToken}/actions/block", 1)
 
         composeRule.onNodeWithTag(PEOPLE_SCREEN_ANSWER_SORT_TIME_TAG).performClick()
+        composeRule.waitUntilRequestCount(HttpMethod.Get, "members/${ROOT_PERSON.urlToken}/answers?sort_by=created", 1)
         composeRule.onNodeWithTag(PEOPLE_SCREEN_ANSWER_SORT_HOT_TAG).performClick()
+        composeRule.waitUntil("Expected answer sort to return to voteups", timeoutMillis = 5_000) {
+            viewModel.answersFeedModel.sortBy == "voteups"
+        }
         composeRule.onNodeWithTag(PEOPLE_SCREEN_ANSWERS_LIST_TAG).assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_ANSWERS_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenAnswerItemTag(12)))
-        composeRule.onNodeWithTag(peopleScreenAnswerItemTag(12)).assertIsDisplayed()
+            .performScrollToNode(hasTestTag("people_screen_answer_item_12"))
+        composeRule.onNodeWithTag("people_screen_answer_item_12").assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_ANSWERS_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenAnswerItemTag(2)))
-        composeRule.onNodeWithTag(peopleScreenAnswerItemTag(2)).performClick()
-        assertEquals(listOf("created", "voteups"), answerSorts)
+            .performScrollToNode(hasTestTag("people_screen_answer_item_2"))
+        composeRule.onNodeWithTag("people_screen_answer_item_2").performClick()
 
-        composeRule.onNodeWithTag(peopleScreenTabTag(1)).performClick()
+        composeRule.onNodeWithTag("people_screen_tab_1").performClick()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_ARTICLE_SORT_HOT_TAG).performClick()
+        composeRule.waitUntilRequestCount(HttpMethod.Get, "members/${ROOT_PERSON.urlToken}/articles?sort_by=voteups", 1)
         composeRule.onNodeWithTag(PEOPLE_SCREEN_ARTICLE_SORT_TIME_TAG).performClick()
+        composeRule.waitUntil("Expected article sort to return to created", timeoutMillis = 5_000) {
+            viewModel.articlesFeedModel.sortBy == "created"
+        }
         composeRule.onNodeWithTag(PEOPLE_SCREEN_ARTICLES_LIST_TAG).assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_ARTICLES_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenArticleItemTag(12)))
-        composeRule.onNodeWithTag(peopleScreenArticleItemTag(12)).assertIsDisplayed()
+            .performScrollToNode(hasTestTag("people_screen_article_item_12"))
+        composeRule.onNodeWithTag("people_screen_article_item_12").assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_ARTICLES_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenArticleItemTag(2)))
-        composeRule.onNodeWithTag(peopleScreenArticleItemTag(2)).performClick()
-        assertEquals(listOf("voteups", "created"), articleSorts)
+            .performScrollToNode(hasTestTag("people_screen_article_item_2"))
+        composeRule.onNodeWithTag("people_screen_article_item_2").performClick()
 
         assertEquals(
             listOf(
@@ -194,120 +185,96 @@ class PeopleScreenInstrumentedTest {
         /*
          * Expected behavior:
          * 1. The non-primary tabs must all render from seeded local data, remain scrollable, and
-         *    trigger their dedicated offline load-more callbacks near the tail instead of fetching.
+         *    trigger their production load-more paths near the tail through mocked HTTP.
          * 2. The activities, questions, pins, followers, and following tabs each expose a stable
          *    representative click path that should navigate to the seeded destination exactly once.
          * 3. The collections and columns tabs do not currently navigate anywhere in production, but
          *    their seeded rows still need to stay visible and interactive after swipe cycles.
          * 4. Tab switching itself must remain deterministic through the tagged tab row.
          */
-        var activitiesLoadMore = 0
-        var collectionsLoadMore = 0
-        var questionsLoadMore = 0
-        var pinsLoadMore = 0
-        var columnsLoadMore = 0
-        var followersLoadMore = 0
-        var followingLoadMore = 0
-        val navigator = setPeopleScreen(
-            overrides = PeopleScreenTestOverrides(
-                initialUiState = seededUiState(itemCount = 18),
-                onActivitiesLoadMore = { activitiesLoadMore++ },
-                onCollectionsLoadMore = { collectionsLoadMore++ },
-                onQuestionsLoadMore = { questionsLoadMore++ },
-                onPinsLoadMore = { pinsLoadMore++ },
-                onColumnsLoadMore = { columnsLoadMore++ },
-                onFollowersLoadMore = { followersLoadMore++ },
-                onFollowingLoadMore = { followingLoadMore++ },
-            ),
-        )
+        seededViewModel(itemCount = 18)
+        val navigator = setPeopleScreen()
 
-        composeRule.onNodeWithTag(peopleScreenTabTag(2)).performClick()
+        composeRule.onNodeWithTag("people_screen_tab_2").performClick()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_ACTIVITIES_LIST_TAG).assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_ACTIVITIES_LIST_TAG)
             .performScrollToNode(hasTestTag("people_screen_activity_item_activity-18"))
-        composeRule.waitUntilLoadMore("activities") { activitiesLoadMore }
+        composeRule.waitUntilRequestCount(HttpMethod.Get, "moments/${ROOT_PERSON.urlToken}/activities", 1)
         composeRule.onNodeWithTag("people_screen_activity_item_activity-18").assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_ACTIVITIES_LIST_TAG)
             .performScrollToNode(hasTestTag("people_screen_activity_item_activity-2"))
         composeRule.onNodeWithTag("people_screen_activity_item_activity-2").performClick()
 
-        composeRule.onNodeWithTag(peopleScreenTabTag(3)).performClick()
+        composeRule.onNodeWithTag("people_screen_tab_3").performClick()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_COLLECTIONS_LIST_TAG).assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_COLLECTIONS_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenCollectionItemTag("collection-18")))
-        composeRule.waitUntilLoadMore("collections") { collectionsLoadMore }
+            .performScrollToNode(hasTestTag("people_screen_collection_item_collection-18"))
+        composeRule.waitUntilRequestCount(HttpMethod.Get, "members/${ROOT_PERSON.urlToken}/favlists", 1)
         composeRule.onNodeWithTag(PEOPLE_SCREEN_COLLECTIONS_LIST_TAG).performVerticalSwipeCycle()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_COLLECTIONS_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenCollectionItemTag("collection-18")))
-        composeRule.onNodeWithTag(peopleScreenCollectionItemTag("collection-18")).assertIsDisplayed()
+            .performScrollToNode(hasTestTag("people_screen_collection_item_collection-18"))
+        composeRule.onNodeWithTag("people_screen_collection_item_collection-18").assertIsDisplayed()
 
-        composeRule.onNodeWithTag(peopleScreenTabTag(4)).performClick()
+        composeRule.onNodeWithTag("people_screen_tab_4").performClick()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_QUESTIONS_LIST_TAG).assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_QUESTIONS_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenQuestionItemTag(18)))
-        composeRule.waitUntilLoadMore("questions") { questionsLoadMore }
+            .performScrollToNode(hasTestTag("people_screen_question_item_18"))
+        composeRule.waitUntilRequestCount(HttpMethod.Get, "members/${ROOT_PERSON.urlToken}/questions", 1)
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_QUESTIONS_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenQuestionItemTag(2)))
-        composeRule.onNodeWithTag(peopleScreenQuestionItemTag(2)).performClick()
+            .performScrollToNode(hasTestTag("people_screen_question_item_2"))
+        composeRule.onNodeWithTag("people_screen_question_item_2").performClick()
 
-        composeRule.onNodeWithTag(peopleScreenTabTag(5)).performClick()
+        composeRule.onNodeWithTag("people_screen_tab_5").performClick()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_PINS_LIST_TAG).assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_PINS_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenPinItemTag("18")))
-        composeRule.waitUntilLoadMore("pins") { pinsLoadMore }
+            .performScrollToNode(hasTestTag("people_screen_pin_item_18"))
+        composeRule.waitUntilRequestCount(HttpMethod.Get, "pins/${ROOT_PERSON.urlToken}/moments", 1)
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_PINS_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenPinItemTag("2")))
-        composeRule.onNodeWithTag(peopleScreenPinItemTag("2")).performClick()
+            .performScrollToNode(hasTestTag("people_screen_pin_item_2"))
+        composeRule.onNodeWithTag("people_screen_pin_item_2").performClick()
 
-        composeRule.onNodeWithTag(peopleScreenTabTag(6)).performClick()
+        composeRule.onNodeWithTag("people_screen_tab_6").performClick()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_COLUMNS_LIST_TAG).assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_COLUMNS_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenColumnItemTag("column-18")))
-        composeRule.waitUntilLoadMore("columns") { columnsLoadMore }
+            .performScrollToNode(hasTestTag("people_screen_column_item_column-18"))
+        composeRule.waitUntilRequestCount(HttpMethod.Get, "members/${ROOT_PERSON.urlToken}/column-contributions", 1)
         composeRule.onNodeWithTag(PEOPLE_SCREEN_COLUMNS_LIST_TAG).performVerticalSwipeCycle()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_COLUMNS_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenColumnItemTag("column-18")))
-        composeRule.onNodeWithTag(peopleScreenColumnItemTag("column-18")).assertIsDisplayed()
+            .performScrollToNode(hasTestTag("people_screen_column_item_column-18"))
+        composeRule.onNodeWithTag("people_screen_column_item_column-18").assertIsDisplayed()
 
-        composeRule.onNodeWithTag(peopleScreenTabTag(7)).performClick()
+        composeRule.onNodeWithTag("people_screen_tab_7").performClick()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_FOLLOWERS_LIST_TAG).assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_FOLLOWERS_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenFollowerItemTag("follower-18")))
-        composeRule.waitUntilLoadMore("followers") { followersLoadMore }
+            .performScrollToNode(hasTestTag("people_screen_follower_item_follower-18"))
+        composeRule.waitUntilRequestCount(HttpMethod.Get, "people/${ROOT_PERSON.id}/followers", 1)
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_FOLLOWERS_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenFollowerActionTag("follower-2")))
-        composeRule.onNodeWithTag(peopleScreenFollowerActionTag("follower-2")).performClick()
+            .performScrollToNode(hasTestTag("people_screen_follower_action_follower-2"))
+        composeRule.onNodeWithTag("people_screen_follower_action_follower-2").performClick()
 
-        composeRule.onNodeWithTag(peopleScreenTabTag(8)).performClick()
+        composeRule.onNodeWithTag("people_screen_tab_8").performClick()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_FOLLOWING_LIST_TAG).assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_FOLLOWING_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenFollowingItemTag("following-18")))
-        composeRule.waitUntilLoadMore("following") { followingLoadMore }
+            .performScrollToNode(hasTestTag("people_screen_following_item_following-18"))
+        composeRule.waitUntilRequestCount(HttpMethod.Get, "members/${ROOT_PERSON.urlToken}/followees", 1)
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_FOLLOWING_LIST_TAG)
-            .performScrollToNode(hasTestTag(peopleScreenFollowingActionTag("following-2")))
-        composeRule.onNodeWithTag(peopleScreenFollowingActionTag("following-2")).performClick()
+            .performScrollToNode(hasTestTag("people_screen_following_action_following-2"))
+        composeRule.onNodeWithTag("people_screen_following_action_following-2").performClick()
 
-        assertTrue(activitiesLoadMore > 0)
-        assertTrue(collectionsLoadMore > 0)
-        assertTrue(questionsLoadMore > 0)
-        assertTrue(pinsLoadMore > 0)
-        assertTrue(columnsLoadMore > 0)
-        assertTrue(followersLoadMore > 0)
-        assertTrue(followingLoadMore > 0)
         assertEquals(
             listOf(
                 Search(query = "离线动态 2"),
@@ -323,44 +290,36 @@ class PeopleScreenInstrumentedTest {
     @Test
     fun duplicatedAuthorAnswerKeysDoNotCrashAnswerListOffline() {
         val duplicatedAnswerId = 2_544_209_984L
-        setPeopleScreen(
-            overrides = PeopleScreenTestOverrides(
-                initialUiState = seededUiState(itemCount = 0).copy(
-                    answers = PeopleSortedListUiState(
-                        sortBy = "voteups",
-                        items = listOf(
-                            seededAnswer(
-                                id = duplicatedAnswerId,
-                                questionId = 1001L,
-                                questionTitle = "重复 key 问题 A",
-                                excerpt = "重复 key 回答 A",
-                            ),
-                            seededAnswer(
-                                id = duplicatedAnswerId,
-                                questionId = 1002L,
-                                questionTitle = "重复 key 问题 B",
-                                excerpt = "重复 key 回答 B",
-                            ),
-                        ),
-                        isEnd = true,
-                    ),
+        seededViewModel(
+            itemCount = 0,
+            answers = listOf(
+                seededAnswer(
+                    id = duplicatedAnswerId,
+                    questionId = 1001L,
+                    questionTitle = "重复 key 问题 A",
+                    excerpt = "重复 key 回答 A",
+                ),
+                seededAnswer(
+                    id = duplicatedAnswerId,
+                    questionId = 1002L,
+                    questionTitle = "重复 key 问题 B",
+                    excerpt = "重复 key 回答 B",
                 ),
             ),
+            mockAnswers = emptyList(),
         )
+        setPeopleScreen()
 
         composeRule.onNodeWithTag(PEOPLE_SCREEN_ANSWERS_LIST_TAG).assertIsDisplayed()
         composeRule.onNodeWithText("重复 key 问题 A").assertIsDisplayed()
         composeRule.onNodeWithText("重复 key 问题 B").assertIsDisplayed()
-        composeRule.onAllNodesWithTag(peopleScreenAnswerItemTag(duplicatedAnswerId)).assertCountEquals(2)
+        composeRule.onAllNodesWithTag("people_screen_answer_item_$duplicatedAnswerId").assertCountEquals(2)
     }
 
     @Test
     fun headerSearchActionNavigatesToMemberScopedSearchOffline() {
-        val navigator = setPeopleScreen(
-            overrides = PeopleScreenTestOverrides(
-                initialUiState = seededUiState(),
-            ),
-        )
+        seededViewModel()
+        val navigator = setPeopleScreen()
 
         val headerBounds = composeRule
             .onAllNodesWithTag(PEOPLE_SCREEN_HEADER_TAG)
@@ -410,27 +369,23 @@ class PeopleScreenInstrumentedTest {
          * 3. Followed questions and followed collections use native navigation destinations,
          *    matching the app's existing question and collection-detail screens.
          */
-        val navigator = setPeopleScreen(
-            overrides = PeopleScreenTestOverrides(
-                initialUiState = seededUiState(itemCount = 8),
-                initialPage = 9,
-            ),
-        )
+        seededViewModel(itemCount = 8)
+        val navigator = setPeopleScreen(person = ROOT_PERSON.copy(jumpTo = "关注订阅"))
 
         composeRule.onNodeWithTag(PEOPLE_SCREEN_SUBSCRIPTIONS_LIST_TAG).assertIsDisplayed()
-        composeRule.onNodeWithTag(peopleScreenSubscriptionTabTag(0)).assertExists()
-        composeRule.onNodeWithTag(peopleScreenSubscriptionTabTag(1)).assertExists()
-        composeRule.onNodeWithTag(peopleScreenSubscriptionTabTag(2)).assertExists()
-        composeRule.onNodeWithTag(peopleScreenSubscriptionTabTag(3)).assertExists()
+        composeRule.onNodeWithTag("people_screen_subscription_tab_0").assertExists()
+        composeRule.onNodeWithTag("people_screen_subscription_tab_1").assertExists()
+        composeRule.onNodeWithTag("people_screen_subscription_tab_2").assertExists()
+        composeRule.onNodeWithTag("people_screen_subscription_tab_3").assertExists()
 
-        composeRule.onNodeWithTag(peopleScreenSubscriptionTabTag(1)).performClick()
-        composeRule.onNodeWithTag(peopleScreenFollowedTopicItemTag("topic-1")).assertIsDisplayed()
+        composeRule.onNodeWithTag("people_screen_subscription_tab_1").performClick()
+        composeRule.onNodeWithTag("people_screen_followed_topic_item_topic-1").assertIsDisplayed()
 
-        composeRule.onNodeWithTag(peopleScreenSubscriptionTabTag(2)).performClick()
-        composeRule.onNodeWithTag(peopleScreenFollowedQuestionItemTag("1")).performClick()
+        composeRule.onNodeWithTag("people_screen_subscription_tab_2").performClick()
+        composeRule.onNodeWithTag("people_screen_followed_question_item_1").performClick()
 
-        composeRule.onNodeWithTag(peopleScreenSubscriptionTabTag(3)).performClick()
-        composeRule.onNodeWithTag(peopleScreenCollectionItemTag("follow-collection-1")).performClick()
+        composeRule.onNodeWithTag("people_screen_subscription_tab_3").performClick()
+        composeRule.onNodeWithTag("people_screen_collection_item_follow-collection-1").performClick()
 
         assertEquals(
             listOf(
@@ -441,105 +396,183 @@ class PeopleScreenInstrumentedTest {
         )
     }
 
-    private fun setPeopleScreen(overrides: PeopleScreenTestOverrides): RecordingNavigator = composeRule.setScreenContent {
+    private fun setPeopleScreen(
+        person: Person = ROOT_PERSON,
+    ): RecordingNavigator = composeRule.setScreenContent {
         PeopleScreen(
-            person = ROOT_PERSON,
-            testOverrides = overrides,
+            person = person,
         )
     }
 
-    private fun MainActivityComposeRule.waitUntilLoadMore(
-        listName: String,
-        count: () -> Int,
+    private fun MainActivityComposeRule.waitUntilRequestCount(
+        method: HttpMethod,
+        urlSubstring: String,
+        count: Int,
     ) {
-        waitUntil("Expected $listName tab to request more data", timeoutMillis = 5_000) {
-            count() > 0
+        waitUntil("Expected $count $method requests containing $urlSubstring", timeoutMillis = 5_000) {
+            ZhihuMockApi.requestCount(method, urlSubstring) >= count
         }
     }
 
-    private fun seededUiState(itemCount: Int = 12): PeopleScreenUiState = PeopleScreenUiState(
-        profile = PeopleProfileUiState(
-            avatar = "https://example.invalid/avatar/root.png",
-            name = "离线用户",
-            headline = "离线个人简介",
-            officialBadge = OfficialBadge(
+    private fun seededViewModel(
+        itemCount: Int = 12,
+        answers: List<DataHolder.Answer>? = null,
+        mockAnswers: List<DataHolder.Answer>? = null,
+    ): PersonViewModel {
+        val seededViewModel = composeRule.seedViewModel<PersonViewModel> {
+            PersonViewModel(ROOT_PERSON.copy())
+        }
+        val answerData = answers ?: List(itemCount) { index -> seededAnswer(index + 1L) }
+        val articleData = List(itemCount) { index -> seededArticle(index + 1L) }
+        mockPeopleScreenApis(
+            itemCount = itemCount,
+            answers = mockAnswers ?: answerData,
+            articles = articleData,
+        )
+        val seededActivities = List(itemCount) { index ->
+            FeedDisplayItem(
+                title = "离线动态 ${index + 1}",
+                summary = "动态摘要 ${index + 1}",
+                details = "动态详情 ${index + 1}",
+                feed = null,
+                navDestinationJson = Search(query = "离线动态 ${index + 1}").toFeedDisplayItemNavDestinationJson(),
+                localFeedId = "activity-${index + 1}",
+            )
+        }
+
+        composeRule.activity.runOnUiThread {
+            seededViewModel.avatar = "https://example.invalid/avatar/root.png"
+            seededViewModel.name = "离线用户"
+            seededViewModel.headline = "离线个人简介"
+            seededViewModel.officialBadge = OfficialBadge(
                 title = "优秀答主",
                 description = "英语等 5 个话题下的优秀答主",
                 iconUrl = DataHolder.ZH_PLUS_AUTHOR_BADGE_ICON,
-            ),
-            officialBadgeDetails = listOf(
+            )
+            seededViewModel.officialBadgeDetails = listOf(
                 OfficialBadge("社区成就", "英语等 5 个话题下的优秀答主"),
+            )
+            seededViewModel.followerCount = 120
+            seededViewModel.followingCount = 45
+            seededViewModel.answerCount = answers?.size ?: itemCount
+            seededViewModel.articleCount = itemCount
+            seededViewModel.isFollowing = false
+            seededViewModel.isBlocking = false
+            seededViewModel.isBlockedInRecommendations = false
+            seededViewModel.memberHashId = ROOT_PERSON.id
+
+            seededViewModel.answersFeedModel.allData.clear()
+            seededViewModel.answersFeedModel.allData.addAll(answerData)
+            seededViewModel.articlesFeedModel.allData.clear()
+            seededViewModel.articlesFeedModel.allData.addAll(articleData)
+            seededViewModel.activitiesFeedModel.displayItems.clear()
+            seededViewModel.activitiesFeedModel.displayItems.addAll(seededActivities)
+            seededViewModel.collectionsFeedModel.allData.clear()
+            seededViewModel.collectionsFeedModel.allData.addAll(List(itemCount) { index -> seededCollection(index + 1) })
+            seededViewModel.questionsFeedModel.allData.clear()
+            seededViewModel.questionsFeedModel.allData.addAll(List(itemCount) { index -> seededQuestion(index + 1L) })
+            seededViewModel.pinsFeedModel.allData.clear()
+            seededViewModel.pinsFeedModel.allData.addAll(List(itemCount) { index -> seededPin(index + 1) })
+            seededViewModel.columnsFeedModel.allData.clear()
+            seededViewModel.columnsFeedModel.allData.addAll(List(itemCount) { index -> seededColumn(index + 1) })
+            seededViewModel.followersFeedModel.allData.clear()
+            seededViewModel.followersFeedModel.allData.addAll(List(itemCount) { index -> seededPeople("follower", index + 1, "粉丝") })
+            seededViewModel.followingFeedModel.allData.clear()
+            seededViewModel.followingFeedModel.allData.addAll(List(itemCount) { index -> seededPeople("following", index + 1, "关注的人") })
+            seededViewModel.followingColumnsFeedModel.allData.clear()
+            seededViewModel.followingColumnsFeedModel.allData.addAll(List(itemCount) { index -> seededFollowedColumn(index + 1) })
+            seededViewModel.followingTopicsFeedModel.allData.clear()
+            seededViewModel.followingTopicsFeedModel.allData.addAll(List(itemCount) { index -> seededFollowedTopic(index + 1) })
+            seededViewModel.followingQuestionsFeedModel.allData.clear()
+            seededViewModel.followingQuestionsFeedModel.allData.addAll(List(itemCount) { index -> seededFollowedQuestion(index + 1) })
+            seededViewModel.followingCollectionsFeedModel.allData.clear()
+            seededViewModel.followingCollectionsFeedModel.allData.addAll(List(itemCount) { index -> seededFollowedCollection(index + 1) })
+        }
+        composeRule.waitForIdle()
+        return seededViewModel
+    }
+
+    private fun mockPeopleScreenApis(
+        itemCount: Int,
+        answers: List<DataHolder.Answer>,
+        articles: List<DataHolder.Article>,
+    ) {
+        val token = ROOT_PERSON.urlToken
+        val id = ROOT_PERSON.id
+        ZhihuMockApi.mockJsonPrefix(
+            method = HttpMethod.Get,
+            urlPrefix = "https://api.zhihu.com/people/$token",
+            body = ZhihuJson.json.encodeToString(seededProfile(itemCount)),
+        )
+        ZhihuMockApi.mockJson(
+            method = HttpMethod.Post,
+            url = "https://www.zhihu.com/api/v4/members/$token/followers",
+            body = """{"follower_count":121}""",
+        )
+        ZhihuMockApi.mockJson(
+            method = HttpMethod.Post,
+            url = "https://www.zhihu.com/api/v4/members/$token/actions/block",
+            body = "{}",
+        )
+        mockPagePrefix("https://www.zhihu.com/api/v4/members/$token/answers?sort_by=", answers)
+        mockPagePrefix("https://www.zhihu.com/api/v4/members/$token/articles?sort_by=", articles)
+        mockEmptyPagePrefix("https://www.zhihu.com/api/v3/moments/$token/activities")
+        mockEmptyPagePrefix("https://www.zhihu.com/api/v4/members/$token/favlists")
+        mockEmptyPagePrefix("https://www.zhihu.com/api/v4/members/$token/questions")
+        mockEmptyPagePrefix("https://www.zhihu.com/api/v4/v2/pins/$token/moments")
+        mockEmptyPagePrefix("https://www.zhihu.com/api/v4/members/$token/column-contributions")
+        mockEmptyPagePrefix("https://api.zhihu.com/people/$id/followers")
+        mockEmptyPagePrefix("https://www.zhihu.com/api/v4/members/$token/followees")
+        mockEmptyPagePrefix("https://www.zhihu.com/api/v4/members/$token/following-columns")
+        mockEmptyPagePrefix("https://www.zhihu.com/api/v4/members/$token/following-topic-contributions")
+        mockEmptyPagePrefix("https://www.zhihu.com/api/v4/members/$token/following-questions")
+        mockEmptyPagePrefix("https://www.zhihu.com/api/v4/members/$token/following-favlists")
+    }
+
+    private inline fun <reified T> mockPagePrefix(
+        urlPrefix: String,
+        data: List<T>,
+    ) {
+        ZhihuMockApi.mockJsonPrefix(
+            method = HttpMethod.Get,
+            urlPrefix = urlPrefix,
+            body = """{"data":${ZhihuJson.json.encodeToString(data)}}""",
+        )
+    }
+
+    private fun mockEmptyPagePrefix(urlPrefix: String) {
+        ZhihuMockApi.mockJsonPrefix(
+            method = HttpMethod.Get,
+            urlPrefix = urlPrefix,
+            body = """{"data":[]}""",
+        )
+    }
+
+    private fun seededProfile(itemCount: Int) = DataHolder.People(
+        id = ROOT_PERSON.id,
+        urlToken = ROOT_PERSON.urlToken,
+        name = "离线用户",
+        avatarUrl = "https://example.invalid/avatar/root.png",
+        url = "https://www.zhihu.com/people/${ROOT_PERSON.urlToken}",
+        headline = "离线个人简介",
+        gender = 0,
+        followerCount = 120,
+        followingCount = 45,
+        answerCount = itemCount,
+        articlesCount = itemCount,
+        apiBadgeV2 = DataHolder.BadgeV2(
+            title = "优秀答主",
+            icon = DataHolder.ZH_PLUS_AUTHOR_BADGE_ICON,
+            detailBadges = listOf(
+                DataHolder.BadgeV2.Badge(
+                    type = "best",
+                    detailType = "best_answerer",
+                    title = "社区成就",
+                    description = "英语等 5 个话题下的优秀答主",
+                    icon = DataHolder.ZH_PLUS_AUTHOR_BADGE_ICON,
+                    badgeStatus = "passed",
+                ),
             ),
-            followerCount = 120,
-            followingCount = 45,
-            answerCount = itemCount,
-            articleCount = itemCount,
-            isFollowing = false,
-            isBlocking = false,
-            isBlockedInRecommendations = false,
-        ),
-        answers = PeopleSortedListUiState(
-            sortBy = "voteups",
-            items = List(itemCount) { index -> seededAnswer(index + 1L) },
-            isEnd = false,
-        ),
-        articles = PeopleSortedListUiState(
-            sortBy = "created",
-            items = List(itemCount) { index -> seededArticle(index + 1L) },
-            isEnd = false,
-        ),
-        activities = PeopleListUiState(
-            items = List(itemCount) { index ->
-                FeedDisplayItem(
-                    title = "离线动态 ${index + 1}",
-                    summary = "动态摘要 ${index + 1}",
-                    details = "动态详情 ${index + 1}",
-                    feed = null,
-                    navDestinationJson = Search(query = "离线动态 ${index + 1}").toFeedDisplayItemNavDestinationJson(),
-                    localFeedId = "activity-${index + 1}",
-                )
-            },
-            isEnd = false,
-        ),
-        collections = PeopleListUiState(
-            items = List(itemCount) { index -> seededCollection(index + 1) },
-            isEnd = false,
-        ),
-        questions = PeopleListUiState(
-            items = List(itemCount) { index -> seededQuestion(index + 1L) },
-            isEnd = false,
-        ),
-        pins = PeopleListUiState(
-            items = List(itemCount) { index -> seededPin(index + 1) },
-            isEnd = false,
-        ),
-        columns = PeopleListUiState(
-            items = List(itemCount) { index -> seededColumn(index + 1) },
-            isEnd = false,
-        ),
-        followers = PeopleListUiState(
-            items = List(itemCount) { index -> seededPeople("follower", index + 1, "粉丝") },
-            isEnd = false,
-        ),
-        following = PeopleListUiState(
-            items = List(itemCount) { index -> seededPeople("following", index + 1, "关注的人") },
-            isEnd = false,
-        ),
-        followingColumns = PeopleListUiState(
-            items = List(itemCount) { index -> seededFollowedColumn(index + 1) },
-            isEnd = false,
-        ),
-        followingTopics = PeopleListUiState(
-            items = List(itemCount) { index -> seededFollowedTopic(index + 1) },
-            isEnd = false,
-        ),
-        followingQuestions = PeopleListUiState(
-            items = List(itemCount) { index -> seededFollowedQuestion(index + 1) },
-            isEnd = false,
-        ),
-        followingCollections = PeopleListUiState(
-            items = List(itemCount) { index -> seededFollowedCollection(index + 1) },
-            isEnd = false,
         ),
     )
 

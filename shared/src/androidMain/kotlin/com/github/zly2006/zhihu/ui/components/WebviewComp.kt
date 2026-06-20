@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -90,11 +90,6 @@ import org.jsoup.nodes.Element
 private const val MAIN_ACTIVITY_CLASS = "com.github.zly2006.zhihu.MainActivity"
 private const val WEBVIEW_ACTIVITY_CLASS = "com.github.zly2006.zhihu.WebviewActivity"
 
-// HTML 点击事件监听器接口
-fun interface HtmlClickListener {
-    fun onElementClick(element: Element)
-}
-
 private tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
     is ContextWrapper -> baseContext.findActivity()
@@ -152,7 +147,20 @@ class CustomWebView : WebView {
         }
         this.setupUpWebviewClient {
         }
-        this.setHtmlClickListener(this.defaultHtmlClickListener())
+        htmlClickListener = { clicked ->
+            if (clicked.tagName() == "img") {
+                val url = extractImageUrl(clicked::attr)
+                if (url != null) {
+                    OpenImageDialog(context, url).show()
+                }
+            } else if (clicked.tagName() == "a" && clicked.hasClass("video-box")) {
+                val videoId = clicked.attr("data-lens-id")
+                context.navigateInMainActivity(Video(videoId.toLong()))
+            }
+        }
+        addJavascriptInterface(JsInterface(), "AndroidInterface")
+        @Suppress("SetJavaScriptEnabled")
+        settings.javaScriptEnabled = true
         onLoad(this)
         setOnLongClickListener { view ->
             view.showContextMenu()
@@ -167,7 +175,7 @@ class CustomWebView : WebView {
                     ?: result.extra?.takeIf { !it.startsWith("data") }
                 if (url != null) {
                     menu.add("查看图片").setOnMenuItemClickListener {
-                        openImage(AccountData.httpClient(context), url)
+                        OpenImageDialog(context, url).show()
                         true
                     }
                     menu.add("在浏览器中打开").setOnMenuItemClickListener {
@@ -194,7 +202,8 @@ class CustomWebView : WebView {
     var document: Document? = null
         private set
     var contentId: String? = null
-    private var htmlClickListener: HtmlClickListener? = null
+    internal var htmlClickListener: ((Element) -> Unit)? = null
+        private set
     var scrollToHeightCallback: ((Int, Int) -> Unit)? = null
     var onContentHeightCallback: ((Int) -> Unit)? = null
     var onPageStartedCallback: (() -> Unit)? = null
@@ -236,7 +245,7 @@ class CustomWebView : WebView {
         fun onElementClick(outerHtml: String) {
             val clicked = Jsoup.parse(outerHtml).body().child(0)
             findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
-                htmlClickListener?.onElementClick(clicked)
+                htmlClickListener?.invoke(clicked)
             }
         }
 
@@ -252,53 +261,9 @@ class CustomWebView : WebView {
     }
 
     /**
-     * 设置 HTML 点击事件监听器
-     * 通过注入 JavaScript 监听页面中所有元素的点击事件
-     */
-    fun setHtmlClickListener(listener: HtmlClickListener?) {
-        this.htmlClickListener = listener
-
-        if (listener != null) {
-            // 添加 JavaScript 接口
-            addJavascriptInterface(JsInterface(), "AndroidInterface")
-
-            // 启用 JavaScript
-            @Suppress("SetJavaScriptEnabled")
-            settings.javaScriptEnabled = true
-        } else {
-            // 移除 JavaScript 接口
-            removeJavascriptInterface("AndroidInterface")
-        }
-    }
-
-    fun defaultHtmlClickListener(): HtmlClickListener = HtmlClickListener { clicked ->
-        if (clicked.tagName() == "img") {
-            val url = extractImageUrl(clicked::attr)
-            if (url != null) {
-                val httpClient = AccountData.httpClient(context)
-                this.openImage(httpClient, url)
-            }
-        } else if (clicked.tagName() == "a" && clicked.hasClass("video-box")) {
-            // 处理视频链接点击
-            val videoId = clicked.attr("data-lens-id")
-            context.navigateInMainActivity(Video(videoId.toLong()))
-        }
-    }
-
-    fun applyThemeStyle() {
-        val jsCode = if (ThemeManager.isDarkTheme) {
-            "document.body.classList.add('dark-theme');"
-        } else {
-            "document.body.classList.remove('dark-theme');"
-        }
-
-        evaluateJavascript(jsCode, null)
-    }
-
-    /**
      * 从 assets 文件夹加载 JavaScript 文件内容
      */
-    private fun loadJavaScriptFromAssets(fileName: String): String = try {
+    internal fun loadJavaScriptFromAssets(fileName: String): String = try {
         context.assets.open(fileName).use { inputStream ->
             inputStream.bufferedReader().use { reader ->
                 reader.readText()
@@ -307,19 +272,6 @@ class CustomWebView : WebView {
     } catch (e: Exception) {
         Log.e("WebView-Assets", "Failed to load JavaScript file: $fileName", e)
         ""
-    }
-
-    /**
-     * 注入点击监听的 JavaScript 代码
-     * 这个方法应该在页面加载完成后调用
-     */
-    fun injectClickListenerScript() {
-        if (htmlClickListener != null) {
-            val jsCode = loadJavaScriptFromAssets("click-listener.js")
-            if (jsCode.isNotEmpty()) {
-                evaluateJavascript(jsCode, null)
-            }
-        }
     }
 
     /**
@@ -358,17 +310,6 @@ class CustomWebView : WebView {
             })();
             """.trimIndent()
         evaluateJavascript(js, null)
-    }
-
-    fun injectFootnoteScript() {
-        val jsCode = loadJavaScriptFromAssets("footnotes.js")
-        if (jsCode.isNotEmpty()) {
-            evaluateJavascript(jsCode, null)
-        }
-    }
-
-    fun openImage(httpClient: HttpClient, url: String) {
-        OpenImageDialog(context, httpClient, url).show()
     }
 
     fun loadZhihu(
@@ -723,14 +664,25 @@ fun WebView.setupUpWebviewClient(onPageFinished: ((String) -> Unit)? = null) {
             super.onPageFinished(view, url)
             Log.i("WebView-Page", "Page finished loading: $url")
 
-            // 如果是 CustomWebView，在页面加载完成后注入点击监听脚本和主题样式
             if (view is CustomWebView) {
-                view.injectClickListenerScript()
-                // 注入脚注处理脚本
-                view.injectFootnoteScript()
-                // 注入主题样式
-                view.applyThemeStyle()
-                // 上报内容高度（图片加载完成后再上报一次）
+                if (view.htmlClickListener != null) {
+                    val clickListenerScript = view.loadJavaScriptFromAssets("click-listener.js")
+                    if (clickListenerScript.isNotEmpty()) {
+                        view.evaluateJavascript(clickListenerScript, null)
+                    }
+                }
+                val footnoteScript = view.loadJavaScriptFromAssets("footnotes.js")
+                if (footnoteScript.isNotEmpty()) {
+                    view.evaluateJavascript(footnoteScript, null)
+                }
+                view.evaluateJavascript(
+                    if (ThemeManager.isDarkTheme) {
+                        "document.body.classList.add('dark-theme');"
+                    } else {
+                        "document.body.classList.remove('dark-theme');"
+                    },
+                    null,
+                )
                 view.injectContentHeightReporter()
             }
 

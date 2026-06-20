@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -26,33 +26,20 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonArray
-import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 
 class ZhihuOnlineHistoryClientTest {
     @Test
-    fun buildsOnlineHistoryUrl() {
-        assertEquals(
-            "https://api.zhihu.com/unify-consumption/read_history?offset=20&limit=10",
-            zhihuOnlineHistoryUrl(offset = 20, limit = 10),
-        )
-    }
-
-    @Test
     fun fetchOnlineHistoryPageDecodesSnakeCasePayload() = runTest {
         val client = onlineHistoryMockClient { url ->
-            assertEquals(zhihuOnlineHistoryUrl(), url)
+            assertEquals("https://api.zhihu.com/unify-consumption/read_history?offset=0&limit=10", url)
         }
 
-        val response = client.get(zhihuOnlineHistoryUrl()).body<JsonObject>()
-        val items = decodeOnlineHistoryItems(response["data"]!!.jsonArray)
+        val response = client.get("https://api.zhihu.com/unify-consumption/read_history?offset=0&limit=10").body<JsonObject>()
+        val items = response["data"]!!.jsonArray.map { ZhihuJson.decodeJson<OnlineHistoryItem>(it) }
 
         assertEquals("read_history", items.single().cardType)
         assertEquals(
@@ -67,22 +54,6 @@ class ZhihuOnlineHistoryClientTest {
                 .single()
                 .data.extra.contentToken,
         )
-    }
-
-    @Test
-    fun decodeOnlineHistoryItemsCanIgnoreInvalidEntries() {
-        val data = buildJsonArray {
-            add(
-                buildJsonObject {
-                    put("card_type", "invalid")
-                },
-            )
-        }
-
-        assertFailsWith<SerializationException> {
-            decodeOnlineHistoryItems(data)
-        }
-        assertEquals(emptyList(), decodeOnlineHistoryItems(data, ignoreInvalid = true))
     }
 
     private fun onlineHistoryMockClient(assertUrl: (String) -> Unit): HttpClient = HttpClient(

@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -38,7 +38,9 @@ abstract class LocalContentDatabase : RoomDatabase() {
 }
 
 @Suppress("NO_ACTUAL_FOR_EXPECT")
-expect object LocalContentDatabaseConstructor : RoomDatabaseConstructor<LocalContentDatabase>
+expect object LocalContentDatabaseConstructor : RoomDatabaseConstructor<LocalContentDatabase> {
+    override fun initialize(): LocalContentDatabase
+}
 
 fun buildLocalContentDatabase(
     builder: Builder<LocalContentDatabase>,

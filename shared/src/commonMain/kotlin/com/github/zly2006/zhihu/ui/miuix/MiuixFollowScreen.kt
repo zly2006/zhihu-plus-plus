@@ -77,9 +77,6 @@ import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.rememberFeedBlockActions
-import com.github.zly2006.zhihu.ui.followDynamicItemTag
-import com.github.zly2006.zhihu.ui.followRecommendItemTag
-import com.github.zly2006.zhihu.ui.followingUserItemTag
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
 import com.github.zly2006.zhihu.viewmodel.feed.FollowRecommendViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.FollowViewModel
@@ -264,7 +261,7 @@ fun MiuixFollowingUsersRow() {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
-                            .testTag(followingUserItemTag(user.actor.id))
+                            .testTag("following_users_item_${user.actor.id}")
                             .clickable {
                                 navigator.onNavigate(
                                     Person(
@@ -384,7 +381,7 @@ fun MiuixFollowRecommendScreen(
                 ) { item ->
                     MiuixFeedCard(
                         item = item,
-                        modifier = Modifier.testTag(followRecommendItemTag(item.stableKey)),
+                        modifier = Modifier.testTag("follow_recommend_item_${item.stableKey}"),
                         onBlockUser = { feedItem ->
                             feedBlockActions.handleBlockUser(viewModel, feedItem) { authorInfo ->
                                 userToBlock = authorInfo
@@ -502,7 +499,7 @@ fun MiuixFollowDynamicScreen(
                 ) { item ->
                     MiuixFeedCard(
                         item = item,
-                        modifier = Modifier.testTag(followDynamicItemTag(item.stableKey)),
+                        modifier = Modifier.testTag("follow_dynamic_item_${item.stableKey}"),
                         showSourceLabel = true,
                         onLike = { userMessages.showShortMessage("收到喜欢，功能正在优化") },
                         onDislike = { userMessages.showShortMessage("收到反馈，功能正在优化") },

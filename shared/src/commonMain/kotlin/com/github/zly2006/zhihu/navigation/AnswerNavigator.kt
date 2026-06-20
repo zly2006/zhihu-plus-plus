@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -24,6 +24,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.shared.data.target
@@ -31,23 +32,15 @@ import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import com.github.zly2006.zhihu.viewmodel.CollectionItem
+import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
+import com.github.zly2006.zhihu.viewmodel.filter.ContentType
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
+import com.github.zly2006.zhihu.viewmodel.getOrFetchContentDetail
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-
-interface AnswerNavigatorRepository {
-    suspend fun fetchAnswerContent(article: Article): DataHolder.Answer?
-
-    suspend fun fetchQuestionFeeds(
-        questionId: Long,
-        pageUrl: String?,
-    ): AnswerNavigatorPage<Feed>
-
-    suspend fun fetchCollectionItems(pageUrl: String): AnswerNavigatorPage<CollectionItem>
-
-    suspend fun getAlreadyOpenedAnswerIds(answerIds: List<Long>): Set<Long>
-}
 
 data class AnswerNavigatorPage<T>(
     val items: List<T>,
@@ -98,7 +91,7 @@ fun zhihuQuestionFeedsUrl(
  */
 abstract class AnswerNavigator(
     val sourceName: String,
-    protected val repository: AnswerNavigatorRepository,
+    protected val environment: ZhihuApiEnvironment,
 ) {
     // ── 历史记录 ──────────────────────────────────────────────────────────────
 
@@ -208,20 +201,44 @@ abstract class AnswerNavigator(
 }
 
 /**
- * 从知乎问题的回答列表中导航。
+ * 从问题详情页当前回答序列中导航。
  *
- * 由于默认从最高赞开始，而非上次阅读开始，不建议使用，做fallback。
+ * 优先使用进入详情时已加载的前后回答队列；本地队列耗尽后，再按当前排序继续请求问题 feeds。
  */
 class QuestionAnswerNavigator(
     val questionId: Long,
-    repository: AnswerNavigatorRepository,
-) : AnswerNavigator("此问题", repository) {
+    initialNextAnswers: List<Article> = emptyList(),
+    initialPreviousAnswers: List<Article> = emptyList(),
+    initialNextUrl: String = "",
+    private val order: String? = null,
+    private val getAlreadyOpenedAnswerIds: suspend (List<Long>) -> Set<Long> = { answerIds ->
+        ContentOpenEventSupport
+            .getAlreadyOpenedContentIds(
+                database = getContentFilterDatabase(),
+                content = answerIds.map { ContentType.ANSWER to it.toString() },
+            ).mapNotNull { key ->
+                key.substringAfter(':', "").toLongOrNull()
+            }.toSet()
+    },
+    environment: ZhihuApiEnvironment,
+) : AnswerNavigator("此问题", environment) {
+    private val pendingInitialNextAnswers = ArrayDeque<Article>().also { deque ->
+        initialNextAnswers
+            .filter { it.type == ArticleType.Answer }
+            .forEach { deque.addLast(it) }
+    }
+    private val hasInitialNextAnswers = pendingInitialNextAnswers.isNotEmpty()
     private val destinations = ArrayDeque<Article>()
-    private val previousQueue = mutableStateListOf<Article>()
-    private var nextUrl: String = ""
+    private val previousQueue = mutableStateListOf<Article>().also { list ->
+        list.addAll(initialPreviousAnswers.filter { it.type == ArticleType.Answer })
+    }
+    private var nextUrl: String = initialNextUrl
     private val enqueuedNextIds = mutableSetOf<Long>()
-    private val enqueuedPrevIds = mutableSetOf<Long>()
+    private val enqueuedPrevIds = mutableSetOf<Long>().also { set ->
+        set.addAll(previousQueue.map { it.id })
+    }
     private val knownOpenedIds = mutableSetOf<Long>()
+    private var initialNextAnswersProcessed = false
 
     override val previousAnswerPreview: CachedAnswerContent?
         get() {
@@ -240,7 +257,7 @@ class QuestionAnswerNavigator(
         }
 
     private suspend fun fetchCached(article: Article): CachedAnswerContent? {
-        val detail = repository.fetchAnswerContent(article) ?: return null
+        val detail = environment.getOrFetchContentDetail(article) as? DataHolder.Answer ?: return null
         return CachedAnswerContent(
             article = article,
             title = detail.question.title,
@@ -260,15 +277,26 @@ class QuestionAnswerNavigator(
 
     private suspend fun ensureDestinations(currentArticleId: Long) {
         if (destinations.isNotEmpty()) return
+        if (hasInitialNextAnswers && initialNextAnswersProcessed && nextUrl.isEmpty()) return
         val historyIds = answerHistory.map { it.article.id }.toSet()
         while (destinations.isEmpty()) {
-            val page = repository.fetchQuestionFeeds(
-                questionId = questionId,
-                pageUrl = nextUrl.ifEmpty { null },
-            )
-            nextUrl = page.nextUrl
-            val data = page.items
-            val candidates = data.mapNotNull { feed -> feed.target?.navDestination as? Article }
+            val processingInitialNextAnswers = hasInitialNextAnswers && !initialNextAnswersProcessed
+            val candidates = if (processingInitialNextAnswers) {
+                initialNextAnswersProcessed = true
+                pendingInitialNextAnswers.toList()
+            } else {
+                val url = nextUrl.ifEmpty { zhihuQuestionFeedsUrl(questionId, limit = 6, order = order) }
+                val response = environment.fetchJson(url, "")
+                val page = response?.let {
+                    answerNavigatorPageFromJson(it) { data ->
+                        data.jsonArray.mapNotNull { item ->
+                            runCatching { ZhihuJson.decodeJson<Feed>(item) }.getOrNull()
+                        }
+                    }
+                } ?: AnswerNavigatorPage(emptyList(), "")
+                nextUrl = page.nextUrl
+                page.items.mapNotNull { feed -> feed.target?.navDestination as? Article }
+            }
             val idsToLookup = candidates
                 .asSequence()
                 .filter { it.type == ArticleType.Answer }
@@ -281,7 +309,7 @@ class QuestionAnswerNavigator(
                         id !in knownOpenedIds
                 }.toList()
             if (idsToLookup.isNotEmpty()) {
-                knownOpenedIds += repository.getAlreadyOpenedAnswerIds(idsToLookup)
+                knownOpenedIds += getAlreadyOpenedAnswerIds(idsToLookup)
             }
             val partition = ContentOpenEventSupport.partitionQuestionAnswerCandidates(
                 candidates = candidates,
@@ -301,7 +329,7 @@ class QuestionAnswerNavigator(
                     destinations.addLast(article)
                 }
             }
-            if (nextUrl.isEmpty()) return
+            if (nextUrl.isEmpty() && (!processingInitialNextAnswers || hasInitialNextAnswers)) return
         }
     }
 
@@ -353,7 +381,7 @@ class QuestionAnswerNavigator(
         val nextDest = destinations.firstOrNull() ?: return
         if (nextDest.type != ArticleType.Answer) return
         try {
-            val detail = repository.fetchAnswerContent(nextDest) ?: return
+            val detail = environment.getOrFetchContentDetail(nextDest) as? DataHolder.Answer ?: return
             nextAnswerContent = CachedAnswerContent(
                 article = nextDest,
                 title = detail.question.title,
@@ -388,8 +416,8 @@ class CollectionAnswerNavigator(
     collectionTitle: String,
     initialNextItems: List<CollectionItem>,
     initialPreviousItems: List<CollectionItem> = emptyList(),
-    repository: AnswerNavigatorRepository,
-) : AnswerNavigator("「$collectionTitle」", repository) {
+    environment: ZhihuApiEnvironment,
+) : AnswerNavigator("「$collectionTitle」", environment) {
     private val queue = ArrayDeque<Article>().also { deque ->
         initialNextItems.forEach { item ->
             val article = item.content.navDestination as? Article
@@ -427,7 +455,14 @@ class CollectionAnswerNavigator(
     private suspend fun ensureQueue() {
         if (queue.isNotEmpty() || prefetchedArticle != null) return
         if (nextPageUrl.isEmpty()) return
-        val page = repository.fetchCollectionItems(nextPageUrl)
+        val response = environment.fetchJson(nextPageUrl, "")
+        val page = response?.let {
+            answerNavigatorPageFromJson(it) { data ->
+                data.jsonArray.mapNotNull { item ->
+                    runCatching { ZhihuJson.decodeJson<CollectionItem>(item) }.getOrNull()
+                }
+            }
+        } ?: AnswerNavigatorPage(emptyList(), "")
         nextPageUrl = page.nextUrl
         page.items.forEach { item ->
             val article = item.content.navDestination as? Article
@@ -445,7 +480,7 @@ class CollectionAnswerNavigator(
         }
         val article = previousQueue.removeFirstOrNull() ?: return null
         val cached = try {
-            val detail = repository.fetchAnswerContent(article)
+            val detail = environment.getOrFetchContentDetail(article) as? DataHolder.Answer
             if (detail != null) {
                 CachedAnswerContent(
                     article = article,
@@ -481,7 +516,7 @@ class CollectionAnswerNavigator(
         if (previousAnswerContent != null) return
         val article = previousQueue.firstOrNull() ?: return
         try {
-            val detail = repository.fetchAnswerContent(article) ?: return
+            val detail = environment.getOrFetchContentDetail(article) as? DataHolder.Answer ?: return
             previousAnswerContent = CachedAnswerContent(
                 article = article,
                 title = detail.question.title,
@@ -510,7 +545,7 @@ class CollectionAnswerNavigator(
             prefetchedArticle = queue.removeFirstOrNull()
         }
         try {
-            val detail = repository.fetchAnswerContent(article) ?: return
+            val detail = environment.getOrFetchContentDetail(article) as? DataHolder.Answer ?: return
             nextAnswerContent = CachedAnswerContent(
                 article = article,
                 title = detail.question.title,
@@ -558,8 +593,8 @@ class CollectionAnswerNavigator(
 class PaginationInfoNavigator(
     val questionId: Long,
     initialPaginationInfo: DataHolder.Answer.PaginationInfo,
-    repository: AnswerNavigatorRepository,
-) : AnswerNavigator("此问题", repository) {
+    environment: ZhihuApiEnvironment,
+) : AnswerNavigator("此问题", environment) {
     // 前进队列（有序，无重复）
     private val nextQueue = ArrayDeque<Long>().also { it.addAll(initialPaginationInfo.nextAnswerIds) }
 
@@ -596,7 +631,7 @@ class PaginationInfoNavigator(
         val id = lastKnownNextId ?: return
         if (nextQueue.isNotEmpty()) return
         val dest = Article(id = id, type = ArticleType.Answer)
-        val detail = repository.fetchAnswerContent(dest) ?: return
+        val detail = environment.getOrFetchContentDetail(dest) as? DataHolder.Answer ?: return
         val pagination = detail.paginationInfo ?: return
         pagination.nextAnswerIds.forEach { newId ->
             if (enqueuedNextIds.add(newId)) nextQueue.addLast(newId)
@@ -613,7 +648,7 @@ class PaginationInfoNavigator(
 
     private suspend fun fetchCached(answerId: Long): CachedAnswerContent? {
         val dest = Article(id = answerId, type = ArticleType.Answer)
-        val detail = repository.fetchAnswerContent(dest) ?: return null
+        val detail = environment.getOrFetchContentDetail(dest) as? DataHolder.Answer ?: return null
         return CachedAnswerContent(
             article = dest,
             title = detail.question.title,

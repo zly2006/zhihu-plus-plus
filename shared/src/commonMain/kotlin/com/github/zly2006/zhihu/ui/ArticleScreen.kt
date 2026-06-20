@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -121,6 +121,7 @@ import coil3.compose.AsyncImage
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Element
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
+import com.github.zly2006.zhihu.markdown.RenderVideoBox
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
@@ -144,9 +145,11 @@ import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
 import com.github.zly2006.zhihu.ui.components.VotersSheet
 import com.github.zly2006.zhihu.ui.components.ZhihuTwoRowsTopAppBar
 import com.github.zly2006.zhihu.ui.components.rememberPreferCollapsedExitUntilCollapsedScrollBehavior
+import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.util.smoothGradient
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
+import com.github.zly2006.zhihu.viewmodel.addReadHistory
 import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import com.materialkolor.ktx.harmonize
@@ -155,6 +158,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.jetbrains.compose.resources.painterResource
 import zhihu.shared.generated.resources.Res
 import zhihu.shared.generated.resources.ic_vote_down_24dp
@@ -454,6 +460,38 @@ private fun AigcFlagSheet(
     }
 }
 
+/**
+ * 文章附件中的视频入口渲染。
+ *
+ * 只处理知乎接口里 `attachment.type=video` 的情况，将视频 ID 和缩略图交给统一的视频卡片。普通正文视频仍由 Markdown/WebView 路径处理。
+ */
+@Composable
+fun ArticleVideoAttachmentContent(attachment: JsonElement?) {
+    if (attachment
+            ?.jsonObject
+            ?.get("type")
+            ?.jsonPrimitive
+            ?.content == "video"
+    ) {
+        val videoId = attachment
+            .jsonObject["attachmentId"]
+            ?.jsonPrimitive
+            ?.content
+            ?.toLongOrNull()
+        if (videoId != null) {
+            val thumbnail = attachment
+                .jsonObject["video"]!!
+                .jsonObject["videoInfo"]!!
+                .jsonObject["thumbnail"]!!
+                .jsonPrimitive.content
+            RenderVideoBox(
+                videoId = videoId,
+                thumbnailUrl = thumbnail,
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ArticleActionsMenu(
@@ -466,7 +504,10 @@ fun ArticleActionsMenu(
     onExportRequest: () -> Unit,
     onSetImmersiveDoubleTap: () -> Unit = {},
 ) {
-    val articleActionsRuntime = rememberArticleActionsRuntime()
+    val ttsState = rememberArticleTtsState()
+    val toggleSpeech = rememberArticleSpeechToggler()
+    val openArticleInBrowser = rememberArticleBrowserOpener()
+    val shareRuntime = rememberShareDialogRuntime()
     val coroutineScope = rememberCoroutineScope()
 
     @Composable
@@ -531,7 +572,6 @@ fun ArticleActionsMenu(
 
     @Composable
     fun Content() {
-        val ttsState = articleActionsRuntime.ttsState
         MenuActionButton(
             icon = {
                 when (ttsState) {
@@ -552,7 +592,7 @@ fun ArticleActionsMenu(
             onClick = {
                 onDismissRequest()
                 if (ttsState.isSpeaking) {
-                    articleActionsRuntime.toggleSpeech(viewModel.title, viewModel.content)
+                    toggleSpeech(viewModel.title, viewModel.content)
                 } else if (ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)) {
                     // 使用协程在后台处理文本提取，避免UI阻塞
                     viewModel.viewModelScope.launch {
@@ -564,7 +604,7 @@ fun ArticleActionsMenu(
                                 // 回到主线程执行TTS
                                 withContext(Dispatchers.Main) {
                                     if (textToRead.isNotBlank()) {
-                                        articleActionsRuntime.toggleSpeech(viewModel.title, viewModel.content)
+                                        toggleSpeech(viewModel.title, viewModel.content)
                                     }
                                 }
                             }
@@ -586,7 +626,7 @@ fun ArticleActionsMenu(
             text = "分享",
             onClick = {
                 onDismissRequest()
-                articleActionsRuntime.shareRuntime.share(
+                shareRuntime.share(
                     article,
                     articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName),
                 )
@@ -623,7 +663,7 @@ fun ArticleActionsMenu(
             text = "复制链接",
             onClick = {
                 onDismissRequest()
-                articleActionsRuntime.shareRuntime.copyLink(
+                shareRuntime.copyLink(
                     article,
                     articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName),
                 )
@@ -661,7 +701,7 @@ fun ArticleActionsMenu(
             text = "在电脑中打开（我计划使用浏览器插件实现，还在写，点击后请手动前往收藏夹打开）",
             onClick = {
                 coroutineScope.launch {
-                    articleActionsRuntime.openArticleInBrowser(article)
+                    openArticleInBrowser(article)
                     onDismissRequest()
                 }
             },
@@ -672,7 +712,7 @@ fun ArticleActionsMenu(
     }
 
     if (showMenu) {
-        com.github.zly2006.zhihu.ui.components.MyModalBottomSheet(onDismissRequest) {
+        MyModalBottomSheet(onDismissRequest) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -705,10 +745,8 @@ fun ArticleScreen(
     val navigator = LocalNavigator.current
     // 回答切换在单个导航 entry 内进行（见 ArticleAnswerSlot）；无 slot 时（测试/预览）回退到 push 导航。
     val answerSwitch = LocalArticleAnswerSwitcher.current
-    val articleScreenRuntime = rememberArticleScreenRuntime()
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
-    val articleHost = articleScreenRuntime.articleHost
-    val previewPreloader = articleScreenRuntime.previewPreloader
+    val articleHost = rememberArticleHost()
     // miuix-nav 的返回栈 SnapshotStateList，直接读取栈顶即响应式（替代 currentBackStackEntryAsState）。
     val currentTopDestination = articleHost?.articleNavController?.backStack?.lastOrNull()
 
@@ -723,7 +761,6 @@ fun ArticleScreen(
         mutableStateOf(articleSettings.answerSwitchMode)
     }
     var pinAnswerDate by remember { mutableStateOf(articleSettings.pinAnswerDate) }
-    val readHistoryRecorder = rememberArticleReadHistoryRecorder()
     val userMessages = rememberUserMessageSink()
 
     var previousScrollValue by remember { mutableIntStateOf(0) }
@@ -762,7 +799,10 @@ fun ArticleScreen(
     var isBarSnapping by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        readHistoryRecorder.addReadHistory(article)
+        environment.addReadHistory(
+            contentToken = article.id.toString(),
+            contentTypeName = article.type.name.lowercase(),
+        )
     }
 
     fun upVoteFromDoubleTap() {
@@ -1600,8 +1640,7 @@ fun ArticleScreen(
                                 ArticleType.Article -> "文章"
                             }
                             val hasVotersSocialCredit = viewModel.votersTotal > 0
-                            val aigcSupportVoterCount = viewModel.aigcSupportVoterCount
-                            if (!hasVotersSocialCredit && aigcSupportVoterCount <= 0) return
+                            if (!hasVotersSocialCredit && viewModel.aigcSupportVoterCount <= 0) return
                             Spacer(modifier = Modifier.height(8.dp))
                             if (hasVotersSocialCredit) {
                                 val text = viewModel.votersSocialText.ifBlank {
@@ -1624,12 +1663,12 @@ fun ArticleScreen(
                                     modifier = votersTextModifier,
                                 )
                             }
-                            if (aigcSupportVoterCount > 0) {
+                            if (viewModel.aigcSupportVoterCount > 0) {
                                 if (hasVotersSocialCredit) {
                                     Spacer(modifier = Modifier.height(4.dp))
                                 }
                                 Text(
-                                    text = "有 ${formatCompactCount(aigcSupportVoterCount)} 人认为此${contentLabel}包含AIGC内容",
+                                    text = "有 ${formatCompactCount(viewModel.aigcSupportVoterCount)} 人认为此${contentLabel}包含AIGC内容",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.error,
                                 )
@@ -1732,18 +1771,11 @@ fun ArticleScreen(
 
     val nav = sharedData?.navigator
     if (article.type == ArticleType.Answer && answerSwitchMode == "horizontal") {
-        // 预加载预览内容，确保滑动前相邻回答已经准备好。
-        LaunchedEffect(nav?.nextAnswer) {
-            val cached = nav?.nextAnswer ?: return@LaunchedEffect
-            previewPreloader.preloadPreview(cached, isNext = true, viewModel.title) {
-                userMessages.showMessage("图片加载失败，请向开发者反馈")
-            }
+        ArticlePreviewPreloadEffect(nav?.nextAnswer, isNext = true, viewModel.title) {
+            userMessages.showMessage("图片加载失败，请向开发者反馈")
         }
-        LaunchedEffect(nav?.previousAnswer) {
-            val cached = nav?.previousAnswer ?: return@LaunchedEffect
-            previewPreloader.preloadPreview(cached, isNext = false, viewModel.title) {
-                userMessages.showMessage("图片加载失败，请向开发者反馈")
-            }
+        ArticlePreviewPreloadEffect(nav?.previousAnswer, isNext = false, viewModel.title) {
+            userMessages.showMessage("图片加载失败，请向开发者反馈")
         }
     }
     val progressBarTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp

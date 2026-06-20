@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -21,8 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.latex.rememberLatexFonts
-import com.github.zly2006.zhihu.util.saveImageToGallery
-import com.github.zly2006.zhihu.util.shareImage
+import com.github.zly2006.zhihu.shared.data.toCookieHeaderString
 import com.hrm.latex.renderer.font.MathFont
 
 @Composable
@@ -33,9 +32,14 @@ actual fun rememberMarkdownRuntime(): MarkdownRuntime {
 
     return object : MarkdownRuntime {
         override val mathFont: MathFont? = fontResult.downloaded?.mathFont
-
-        override suspend fun saveMarkdownImage(url: String) = saveImageToGallery(context, httpClient, url)
-
-        override suspend fun shareMarkdownImage(url: String) = shareImage(context, httpClient, url)
     }
+}
+
+@Composable
+actual fun rememberMarkdownImageRequestHeaders(): MarkdownImageRequestHeaders {
+    val userAgent = AccountData.data.userAgent
+    return MarkdownImageRequestHeaders(
+        cookieHeader = AccountData.data.cookies.toCookieHeaderString(),
+        userAgent = userAgent,
+    )
 }

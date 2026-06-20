@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -66,12 +66,12 @@ class FeedGeneratorTest {
     }
 
     @Test
-    fun getReasonDisplayTextKeepsReasonLabels() {
-        assertEquals("关注用户的最新动态", getReasonDisplayText(CrawlingReason.Following))
-        assertEquals("热门推荐", getReasonDisplayText(CrawlingReason.Trending))
-        assertEquals("关注用户点赞的内容", getReasonDisplayText(CrawlingReason.FollowingUpvote))
-        assertEquals("相关问题的优质回答", getReasonDisplayText(CrawlingReason.UpvotedQuestion))
-        assertEquals("相似用户喜欢的内容", getReasonDisplayText(CrawlingReason.CollaborativeFiltering))
+    fun crawlingReasonKeepsReasonLabels() {
+        assertEquals("关注用户的最新动态", CrawlingReason.Following.displayText)
+        assertEquals("热门推荐", CrawlingReason.Trending.displayText)
+        assertEquals("关注用户点赞的内容", CrawlingReason.FollowingUpvote.displayText)
+        assertEquals("相关问题的优质回答", CrawlingReason.UpvotedQuestion.displayText)
+        assertEquals("相似用户喜欢的内容", CrawlingReason.CollaborativeFiltering.displayText)
     }
 
     private fun testLocalContentDatabase(): LocalContentDatabase =

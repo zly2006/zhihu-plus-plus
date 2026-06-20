@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -23,161 +23,33 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.cookies.CookiesStorage
 import io.ktor.client.request.HttpRequestBuilder
-import io.ktor.client.request.get
-import io.ktor.client.request.post
 import io.ktor.client.request.request
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.Cookie
 import io.ktor.http.CookieEncoding
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Url
-import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.plus
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 import kotlin.time.Clock
 
-const val ZHIHU_ONLINE_HISTORY_URL = "https://api.zhihu.com/unify-consumption/read_history"
-const val ZHIHU_CLEAR_ONLINE_HISTORY_URL = "https://api.zhihu.com/read_history/batch_del"
+private var lastRefreshMillis: Long = 0
 
-fun zhihuOnlineHistoryUrl(
-    offset: Int = 0,
-    limit: Int = 10,
-): String = "https://api.zhihu.com/unify-consumption/read_history?offset=$offset&limit=$limit"
-
-fun buildZhihuClearOnlineHistoryBody(): JsonObject = buildJsonObject {
-    put("pairs", JsonArray(emptyList()))
-    put("clear", true)
+internal fun resetZhihuAuthenticatedRequestRefreshThrottleForTesting() {
+    lastRefreshMillis = 0
 }
 
-fun encodeZhihuClearOnlineHistoryBody(): String =
-    ZhihuJson.json.encodeToString(JsonObject.serializer(), buildZhihuClearOnlineHistoryBody())
-
-fun decodeOnlineHistoryItems(
-    data: JsonArray,
-    ignoreInvalid: Boolean = false,
-): List<OnlineHistoryItem> = data.mapNotNull { item ->
-    runCatching {
-        ZhihuJson.decodeJson<OnlineHistoryItem>(item)
-    }.getOrElse { error ->
-        if (ignoreInvalid) {
-            null
-        } else {
-            throw error
-        }
-    }
-}
-
-fun zhihuHotListUrl(
-    limit: Int = 50,
-    mobile: Boolean = true,
-): String = "https://www.zhihu.com/api/v3/feed/topstory/hot-lists/total?limit=$limit&mobile=$mobile"
-
-const val ZHIHU_READ_HISTORY_ADD_URL = "https://www.zhihu.com/api/v4/read_history/add"
-const val ZHIHU_LAST_READ_TOUCH_URL = "https://www.zhihu.com/lastread/touch"
-
-fun buildZhihuReadHistoryBody(
-    contentToken: String,
-    contentType: String,
-): String = buildJsonObject {
-    put("content_token", contentToken)
-    put("content_type", contentType)
-}.toString()
-
-fun encodeZhihuLastReadTouchItems(items: List<List<String>>): String =
-    ZhihuJson.json.encodeToString(items)
-
-fun zhihuLastReadTouchItem(
-    feed: Feed,
-    action: String,
-): List<String>? = when (val target = feed.target) {
-    is Feed.AnswerTarget -> listOf("answer", target.id.toString(), action)
-    is Feed.ArticleTarget -> listOf("article", target.id.toString(), action)
-    is Feed.PinTarget -> listOf("pin", target.id.toString(), action)
-    else -> null
-}
-
-fun zhihuLastReadTouchItems(
-    items: Set<Pair<String, String>>,
-    action: String,
-): List<List<String>> = items.map { (type, id) ->
-    listOf(type, id, action)
-}
-
-const val ZHIHU_NOTIFICATION_RECENT_URL = "https://www.zhihu.com/api/v4/notifications/v2/recent"
-const val ZHIHU_NOTIFICATION_DEFAULT_URL = "https://www.zhihu.com/api/v4/notifications/v2/default"
-const val ZHIHU_NOTIFICATION_FOLLOW_URL = "https://www.zhihu.com/api/v4/notifications/v2/follow"
-const val ZHIHU_NOTIFICATION_VOTE_THANK_URL = "https://www.zhihu.com/api/v4/notifications/v2/vote_thank"
-const val ZHIHU_NOTIFICATION_DEFAULT_READ_ALL_URL =
-    "https://www.zhihu.com/api/v4/notifications/v2/default/actions/readall"
-const val ZHIHU_NOTIFICATION_FOLLOW_READ_ALL_URL =
-    "https://www.zhihu.com/api/v4/notifications/v2/follow/actions/readall"
-const val ZHIHU_NOTIFICATION_VOTE_THANK_READ_ALL_URL =
-    "https://www.zhihu.com/api/v4/notifications/v2/vote_thank/actions/readall"
-
-val ZHIHU_NOTIFICATION_READ_ALL_URLS = listOf(
-    ZHIHU_NOTIFICATION_DEFAULT_READ_ALL_URL,
-    ZHIHU_NOTIFICATION_FOLLOW_READ_ALL_URL,
-    ZHIHU_NOTIFICATION_VOTE_THANK_READ_ALL_URL,
-)
-
-fun zhihuNotificationRecentUrl(
-    limit: Int = 20,
-): String = "https://www.zhihu.com/api/v4/notifications/v2/recent?limit=$limit"
-
-fun zhihuNotificationDefaultUrl(
-    limit: Int = 20,
-): String = "https://www.zhihu.com/api/v4/notifications/v2/default?limit=$limit"
-
-fun zhihuNotificationFollowUrl(
-    limit: Int = 20,
-): String = "https://www.zhihu.com/api/v4/notifications/v2/follow?limit=$limit"
-
-fun zhihuNotificationVoteThankUrl(
-    limit: Int = 20,
-): String = "https://www.zhihu.com/api/v4/notifications/v2/vote_thank?limit=$limit"
-
-suspend fun fetchZhihuUnreadNotificationCount(
-    client: HttpClient,
-    configureRequest: HttpRequestBuilder.() -> Unit = {},
-): Int {
-    val response = client.get(ZHIHU_ME_URL, configureRequest).body<JsonObject>()
-    return ZhihuJson.decodeJson<ZhihuMeNotifications>(response).totalCount
-}
-
-suspend fun markAllZhihuNotificationsAsRead(
-    client: HttpClient,
-    configureRequest: HttpRequestBuilder.() -> Unit = {},
-) {
-    ZHIHU_NOTIFICATION_READ_ALL_URLS.forEach { url ->
-        client.post(url, configureRequest)
-    }
-}
-
-const val ZHIHU_DAILY_LATEST_URL = "https://news-at.zhihu.com/api/4/stories/latest"
-
-fun zhihuDailyBeforeUrl(date: String): String = "https://news-at.zhihu.com/api/4/stories/before/$date"
-
-fun nextDailyApiDate(date: String): String {
-    require(date.length == 8 && date.all { it.isDigit() }) {
-        "date must use yyyyMMdd format"
-    }
-    val localDate = LocalDate.parse("${date.substring(0, 4)}-${date.substring(4, 6)}-${date.substring(6, 8)}")
-    val nextDate = localDate.plus(1, DateTimeUnit.DAY)
-    return nextDate.toString().replace("-", "")
-}
+fun Map<String, String>.toCookieHeaderString(): String =
+    entries
+        .asSequence()
+        .mapNotNull { (name, value) ->
+            value.takeIf { it.isNotBlank() }?.let { "$name=$it" }
+        }.joinToString("; ")
 
 suspend fun executeZhihuAuthenticatedRequest(
     client: HttpClient,
     url: String,
-    lastRefreshMillis: Long,
-    updateLastRefreshMillis: (Long) -> Unit,
-    nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() },
     block: suspend HttpRequestBuilder.() -> Unit = {},
 ): HttpResponse {
     val response = client.request(url) {
@@ -185,7 +57,7 @@ suspend fun executeZhihuAuthenticatedRequest(
     }
     if (response.status != HttpStatusCode.Unauthorized) return response
 
-    if (nowMillis() - lastRefreshMillis < 10_000) {
+    if (Clock.System.now().toEpochMilliseconds() - lastRefreshMillis < 10_000) {
         return response
     }
     try {
@@ -197,8 +69,7 @@ suspend fun executeZhihuAuthenticatedRequest(
         // token 刷新失败（过期/响应异常/缺字段等），给出明确提示而非崩溃或 NPE。
         throw IllegalStateException("登录状态已失效，请重新登录", e)
     }
-    val refreshedAt = nowMillis()
-    updateLastRefreshMillis(refreshedAt)
+    lastRefreshMillis = Clock.System.now().toEpochMilliseconds()
     return client
         .request(url) {
             block()
@@ -208,17 +79,11 @@ suspend fun executeZhihuAuthenticatedRequest(
 suspend fun fetchZhihuAuthenticatedJson(
     client: HttpClient,
     url: String,
-    lastRefreshMillis: Long,
-    updateLastRefreshMillis: (Long) -> Unit,
-    nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() },
     block: suspend HttpRequestBuilder.() -> Unit = {},
 ): JsonObject? {
     val response = executeZhihuAuthenticatedRequest(
         client = client,
         url = url,
-        lastRefreshMillis = lastRefreshMillis,
-        updateLastRefreshMillis = updateLastRefreshMillis,
-        nowMillis = nowMillis,
         block = block,
     )
     if (response.status == HttpStatusCode.NoContent) {

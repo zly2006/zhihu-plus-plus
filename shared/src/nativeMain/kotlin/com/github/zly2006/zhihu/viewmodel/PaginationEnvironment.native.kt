@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -29,6 +29,8 @@ actual fun rememberPaginationEnvironment(allowGuestAccess: Boolean): PaginationE
 
 private class IosPaginationEnvironment : PaginationEnvironment {
     override fun httpClient(): HttpClient = error("HTTP client not available on iOS") // TODO: iOS HTTP 客户端
+
+    override fun authenticatedCookies(): Map<String, String> = emptyMap()
 
     override suspend fun fetchJson(url: String, include: String): JsonObject? = null // TODO: iOS JSON 数据获取
 

@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -16,6 +16,7 @@
  */
 
 package com.github.zly2006.zhihu.viewmodel
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -23,8 +24,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.github.zly2006.zhihu.data.ContentDetailCache
+import com.github.zly2006.zhihu.data.fetchZhihuContentDetail
+import com.github.zly2006.zhihu.data.getOrFetchContentDetail
 import com.github.zly2006.zhihu.navigation.AnswerNavigator
-import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.aigc.AigcVoteClient
@@ -32,11 +35,9 @@ import com.github.zly2006.zhihu.shared.aigc.AigcVoteVoter
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
+import com.github.zly2006.zhihu.shared.data.ZhihuJson.decodeJson
 import com.github.zly2006.zhihu.shared.data.ZhihuPaging
 import com.github.zly2006.zhihu.shared.data.fetchZhihuAuthenticatedJson
-import com.github.zly2006.zhihu.shared.data.fetchZhihuUnreadNotificationCount
-import com.github.zly2006.zhihu.shared.data.markAllZhihuNotificationsAsRead
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
@@ -46,10 +47,13 @@ import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.delete
-import io.ktor.client.request.parameter
 import io.ktor.client.request.post
+import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
+import io.ktor.http.ContentType
 import io.ktor.http.HttpMethod
+import io.ktor.http.URLProtocol
+import io.ktor.http.contentType
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Job
@@ -58,9 +62,11 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import kotlinx.serialization.serializer
 import kotlin.reflect.KType
 
@@ -130,7 +136,7 @@ abstract class PaginationViewModel<T : Any>(
                     }
                     try {
                         @Suppress("UNCHECKED_CAST")
-                        ZhihuJson.decodeJson(serializer(dataType) as KSerializer<T>, it)
+                        decodeJson(serializer(dataType) as KSerializer<T>, it)
                     } catch (e: Exception) {
                         if (shouldLogDecodeFailures) {
                             environment.logDecodeFailure(this::class.simpleName, it, e)
@@ -141,7 +147,7 @@ abstract class PaginationViewModel<T : Any>(
                 jsonArray,
             )
             if ("paging" in json) {
-                lastPaging = ZhihuJson.decodeJson(json["paging"]!!)
+                lastPaging = decodeJson(json["paging"]!!)
             }
         } catch (e: Exception) {
             if (e is kotlin.coroutines.cancellation.CancellationException) throw e
@@ -226,11 +232,7 @@ interface ArticleImageExportRenderer {
 interface ZhihuApiEnvironment {
     fun httpClient(): HttpClient
 
-    fun authenticatedCookies(): Map<String, String> = emptyMap()
-
-    fun lastAuthRefreshMillis(): Long = 0L
-
-    fun updateLastAuthRefreshMillis(value: Long) = Unit
+    fun authenticatedCookies(): Map<String, String>
 
     suspend fun <T> withAuthenticatedClient(
         block: suspend (client: HttpClient, cookies: Map<String, String>) -> T,
@@ -240,17 +242,15 @@ interface ZhihuApiEnvironment {
         url: String,
         include: String,
     ): JsonObject? = withAuthenticatedClient { client, cookies ->
-        fetchZhihuAuthenticatedJson(
-            client = client,
-            url = url.replace("http://", "https://"),
-            lastRefreshMillis = lastAuthRefreshMillis(),
-            updateLastRefreshMillis = ::updateLastAuthRefreshMillis,
-        ) {
+        fetchZhihuAuthenticatedJson(client, url) {
             method = HttpMethod.Get
-            signZhihuFetchRequest(cookies)
-            if (include.isNotEmpty()) {
-                parameter("include", include)
+            url {
+                protocol = URLProtocol.HTTPS
+                if (include.isNotEmpty()) {
+                    parameters["include"] = include
+                }
             }
+            signZhihuFetchRequest(cookies)
         }
     }
 
@@ -258,10 +258,6 @@ interface ZhihuApiEnvironment {
         tag: String?,
         error: Exception,
     )
-
-    fun configureSignedRequest(builder: HttpRequestBuilder) {
-        builder.signZhihuFetchRequest(authenticatedCookies())
-    }
 
     fun xsrfToken(): String = ""
 
@@ -271,6 +267,48 @@ interface ZhihuApiEnvironment {
         error: Exception,
     ) {
         Log.e(tag ?: "PaginationViewModel", "Failed to decode item: $item", error)
+    }
+}
+
+suspend fun ZhihuApiEnvironment.fetchContentDetail(destination: NavDestination): DataHolder.Content? =
+    runCatching {
+        fetchZhihuContentDetail(destination) { url, include ->
+            fetchJson(url, include)
+        }
+    }.getOrElse { error ->
+        if (error !is CancellationException) {
+            Log.e("ZhihuApiEnvironment", "Failed to fetch content detail for $destination", error)
+        }
+        null
+    }
+
+suspend fun ZhihuApiEnvironment.getOrFetchContentDetail(destination: NavDestination): DataHolder.Content? =
+    runCatching {
+        ContentDetailCache.getOrFetchContentDetail(destination) { url, include ->
+            fetchJson(url, include)
+        }
+    }.getOrElse { error ->
+        if (error !is CancellationException) {
+            Log.e("ZhihuApiEnvironment", "Failed to fetch content detail for $destination", error)
+        }
+        null
+    }
+
+suspend fun ZhihuApiEnvironment.addReadHistory(
+    contentToken: String,
+    contentTypeName: String,
+) {
+    if (authenticatedCookies()["d_c0"] == null) return
+    runCatching {
+        postSigned("https://www.zhihu.com/api/v4/read_history/add") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                buildJsonObject {
+                    put("content_token", contentToken)
+                    put("content_type", contentTypeName)
+                }.toString(),
+            )
+        }
     }
 }
 
@@ -291,21 +329,6 @@ suspend fun ZhihuApiEnvironment.deleteSigned(
     client.delete(url) {
         block()
         signZhihuFetchRequest(cookies)
-    }
-}
-
-suspend fun ZhihuApiEnvironment.fetchUnreadNotificationCountSigned(): Int =
-    withAuthenticatedClient { client, cookies ->
-        fetchZhihuUnreadNotificationCount(client) {
-            signZhihuFetchRequest(cookies)
-        }
-    }
-
-suspend fun ZhihuApiEnvironment.markAllNotificationsAsReadSigned() {
-    withAuthenticatedClient { client, cookies ->
-        markAllZhihuNotificationsAsRead(client) {
-            signZhihuFetchRequest(cookies)
-        }
     }
 }
 
@@ -331,27 +354,13 @@ interface FeedDisplayEnvironment {
 interface HistoryEnvironment {
     fun localHistory(): List<NavDestination> = emptyList()
 
-    suspend fun addReadHistory(
-        contentToken: String,
-        contentTypeName: String,
-    ) = Unit
-
     suspend fun clearAllHistory() = Unit
 
     suspend fun postHistoryDestination(destination: NavDestination) = Unit
 }
 
 interface ContentInteractionEnvironment : ZhihuApiEnvironment {
-    suspend fun followQuestion(
-        questionId: Long,
-        follow: Boolean,
-    ) = Unit
-
-    suspend fun sendFeedReadStatus(feed: Feed) = Unit
-
     suspend fun recordContentInteraction(feed: Feed) = Unit
-
-    suspend fun markItemsAsTouched(items: Set<Pair<String, String>>): Set<Pair<String, String>> = emptySet()
 }
 
 interface ContentOpenEnvironment {
@@ -444,19 +453,11 @@ interface ArticleExportEnvironment {
     fun articleImageExportRenderer(loadAssetText: (String) -> String): ArticleImageExportRenderer? = null
 }
 
-interface ArticleContentEnvironment : ZhihuApiEnvironment {
-    fun accountHttpClient(): HttpClient = httpClient()
-
-    suspend fun getContentDetail(article: Article): DataHolder.Content? = null
-}
-
 interface ArticleExportContentEnvironment :
     ArticleExportEnvironment,
-    ArticleContentEnvironment
+    ZhihuApiEnvironment
 
 interface ArticleNavigationEnvironment {
-    fun answerNavigatorRepository(): AnswerNavigatorRepository? = null
-
     fun articleAnswerSwitchState(): ArticleAnswerSwitchState? = null
 }
 
@@ -471,7 +472,7 @@ interface ProfileLoadEnvironment :
     ContentBlocklistEnvironment
 
 interface ArticleLoadEnvironment :
-    ArticleContentEnvironment,
+    ZhihuApiEnvironment,
     ContentLoadEnvironment,
     ArticleNavigationEnvironment
 

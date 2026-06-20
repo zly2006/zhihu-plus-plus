@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -143,6 +143,12 @@ expect fun rememberImagePreviewOpener(): (String) -> Unit
 expect fun rememberImageGalleryOpener(): (List<String>, Int) -> Unit
 
 @Composable
+expect fun rememberImageSaver(): (String) -> Unit
+
+@Composable
+expect fun rememberImageSharer(): (String) -> Unit
+
+@Composable
 expect fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit
 
 /**
@@ -159,14 +165,6 @@ data class DeveloperDiagnostics(
 
 @Composable
 expect fun rememberDeveloperDiagnostics(): DeveloperDiagnostics
-
-data class ScreenSizeDp(
-    val width: Float,
-    val height: Float,
-)
-
-@Composable
-expect fun rememberScreenSizeDp(): ScreenSizeDp
 
 @Composable
 expect fun PlatformBackHandler(

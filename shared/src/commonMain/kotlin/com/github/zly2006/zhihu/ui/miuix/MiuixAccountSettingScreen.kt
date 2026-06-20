@@ -54,7 +54,11 @@ import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.AccountSettingsAccountState
-import com.github.zly2006.zhihu.ui.rememberAccountSettingsPlatformRuntime
+import com.github.zly2006.zhihu.ui.rememberAccountLoginRequester
+import com.github.zly2006.zhihu.ui.rememberAccountLogoutAction
+import com.github.zly2006.zhihu.ui.rememberAccountProfileRefresher
+import com.github.zly2006.zhihu.ui.rememberAccountQrLoginRequester
+import com.github.zly2006.zhihu.ui.rememberAccountSettingsAccountState
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -76,9 +80,12 @@ fun MiuixAccountSettingScreen(
     testAccountData: AccountSettingsAccountState? = null,
 ) {
     val navigator = LocalNavigator.current
-    val runtime = rememberAccountSettingsPlatformRuntime()
+    val refreshProfile = rememberAccountProfileRefresher()
+    val requestLogin = rememberAccountLoginRequester()
+    val requestQrLoginScan = rememberAccountQrLoginRequester()
+    val logout = rememberAccountLogoutAction()
     val settings = rememberSettingsStore()
-    val accountState by runtime.accountState
+    val accountState by rememberAccountSettingsAccountState()
     val data = testAccountData ?: accountState
     val userMessages = rememberUserMessageSink()
     val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
@@ -89,7 +96,7 @@ fun MiuixAccountSettingScreen(
     LaunchedEffect(data.login) {
         if (testAccountData == null && data.login) {
             try {
-                runtime.refreshProfile()
+                refreshProfile()
             } catch (e: Exception) {
                 userMessages.showShortMessage("获取用户信息失败")
             }
@@ -139,7 +146,7 @@ fun MiuixAccountSettingScreen(
                             Spacer(Modifier.width(12.dp))
                             Text(data.username, style = MiuixTheme.textStyles.title3, modifier = Modifier.weight(1f))
                             // 扫码登录：协助电脑端登录，扫到知乎登录二维码后打开 WebView 确认（与 M3 账号页一致）
-                            IconButton(onClick = { runtime.requestQrLoginScan() }) {
+                            IconButton(onClick = { requestQrLoginScan() }) {
                                 Icon(Icons.Default.QrCodeScanner, contentDescription = "扫码登录", tint = MiuixTheme.colorScheme.onSurface)
                             }
                         }
@@ -148,7 +155,7 @@ fun MiuixAccountSettingScreen(
                             title = "登录知乎",
                             summary = "登录后体验完整功能",
                             startAction = { Icon(Icons.AutoMirrored.Filled.Login, null, tint = MiuixTheme.colorScheme.primary) },
-                            onClick = { runtime.requestLogin() },
+                            onClick = { requestLogin() },
                         )
                     }
                 }
@@ -249,7 +256,7 @@ fun MiuixAccountSettingScreen(
                     ) {
                         ArrowPreference(
                             title = "退出登录",
-                            onClick = { runtime.logout() },
+                            onClick = { logout() },
                             startAction = { Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MiuixTheme.colorScheme.error) },
                         )
                     }

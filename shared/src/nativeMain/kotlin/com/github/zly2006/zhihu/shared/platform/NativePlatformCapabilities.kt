@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -44,6 +44,22 @@ actual fun rememberImageGalleryOpener(): (List<String>, Int) -> Unit {
 }
 
 @Composable
+actual fun rememberImageSaver(): (String) -> Unit {
+    val userMessages = rememberUserMessageSink()
+    return remember(userMessages) {
+        { userMessages.showMessage("iOS 图片保存暂未实现") } // TODO: iOS 图片保存
+    }
+}
+
+@Composable
+actual fun rememberImageSharer(): (String) -> Unit {
+    val userMessages = rememberUserMessageSink()
+    return remember(userMessages) {
+        { userMessages.showMessage("iOS 图片分享暂未实现") } // TODO: iOS 图片分享
+    }
+}
+
+@Composable
 actual fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit = remember {
     { _, text ->
         platform.UIKit.UIPasteboard.generalPasteboard.string = text
@@ -71,9 +87,6 @@ actual fun PlatformPredictiveBackHandler(
     onCancel: () -> Unit,
     onBack: () -> Unit,
 ) = PlatformBackHandler(enabled = enabled, onBack = onBack)
-
-@Composable
-actual fun rememberScreenSizeDp(): ScreenSizeDp = ScreenSizeDp(width = 0f, height = 0f) // TODO: iOS 屏幕尺寸获取
 
 @Composable
 actual fun rememberSettingsStore(): SettingsStore = noopSettingsStore() // TODO: iOS 设置存储

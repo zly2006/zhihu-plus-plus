@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -19,20 +19,15 @@ package com.github.zly2006.zhihu.viewmodel.feed
 
 import android.content.Context
 import androidx.lifecycle.viewModelScope
-import com.github.zly2006.zhihu.data.ContentDetailCache
-import com.github.zly2006.zhihu.data.getOrFetch
+import com.github.zly2006.zhihu.data.asApiEnvironment
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
-import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
-import com.github.zly2006.zhihu.viewmodel.filter.getBlocklistManager
-import com.github.zly2006.zhihu.viewmodel.paginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.filter.BlockedTopic
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
+import com.github.zly2006.zhihu.viewmodel.getOrFetchContentDetail
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-
-suspend fun BaseFeedViewModel.pullToRefresh(context: Context) {
-    pullToRefresh(paginationEnvironment(context))
-}
 
 /**
  * 处理用户屏蔽（包含数据获取和屏蔽逻辑）
@@ -45,7 +40,7 @@ fun BaseFeedViewModel.handleBlockUser(
     val userMessages = androidUserMessageSink(context)
     viewModelScope.launch {
         val authorInfo = withContext(Dispatchers.IO) {
-            resolveFeedBlockAuthorInfo(feedItem, androidContentDetailProvider(context))
+            resolveFeedBlockAuthorInfo(feedItem, context.asApiEnvironment()::getOrFetchContentDetail)
         }
         if (authorInfo != null) {
             onShowDialog(authorInfo)
@@ -66,7 +61,7 @@ fun BaseFeedViewModel.handleBlockByKeywords(
     val userMessages = androidUserMessageSink(context)
     viewModelScope.launch {
         val contentInfo = withContext(Dispatchers.IO) {
-            resolveFeedKeywordBlockingContent(feedItem, androidContentDetailProvider(context))
+            resolveFeedKeywordBlockingContent(feedItem, context.asApiEnvironment()::getOrFetchContentDetail)
         }
         if (contentInfo != null) {
             onShowDialog(feedItem to contentInfo)
@@ -87,8 +82,8 @@ fun BaseFeedViewModel.handleBlockTopic(
     val userMessages = androidUserMessageSink(context)
     viewModelScope.launch {
         try {
-            val blocklistManager = getBlocklistManager(context)
-            blocklistManager.addBlockedTopic(topicId, topicName)
+            val database = getContentFilterDatabase(context)
+            database.blockedTopicDao().insertTopic(BlockedTopic(topicId = topicId, topicName = topicName))
             userMessages.showShortMessage("已屏蔽主题「$topicName」")
             removeFeedItemsByBlockedTopic(this@handleBlockTopic, topicId)
         } catch (e: Exception) {
@@ -97,8 +92,3 @@ fun BaseFeedViewModel.handleBlockTopic(
         }
     }
 }
-
-private fun androidContentDetailProvider(context: Context): ContentDetailProvider =
-    ContentDetailProvider { destination ->
-        ContentDetailCache.getOrFetch(context, destination)
-    }

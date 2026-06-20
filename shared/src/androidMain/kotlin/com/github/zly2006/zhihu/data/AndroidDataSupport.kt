@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -20,38 +20,27 @@ package com.github.zly2006.zhihu.data
 import android.content.Context
 import android.util.Log
 import androidx.room.RoomDatabase
-import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.util.signFetchRequest
-import kotlinx.coroutines.CancellationException
+import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
+import io.ktor.client.HttpClient
 
-suspend fun DataHolder.getContentDetail(
-    context: Context,
-    destination: NavDestination,
-): DataHolder.Content? = fetchAndroidContentDetail(context, destination)
+fun Context.asApiEnvironment(): ZhihuApiEnvironment {
+    val appContext = applicationContext
+    AccountData.loadData(appContext)
 
-suspend fun ContentDetailCache.getOrFetch(
-    context: Context,
-    navDestination: NavDestination,
-): DataHolder.Content? = getOrFetch(navDestination) { destination ->
-    fetchAndroidContentDetail(context, destination)
-}
+    return object : ZhihuApiEnvironment {
+        override fun httpClient(): HttpClient = AccountData.httpClient(appContext)
 
-private suspend fun fetchAndroidContentDetail(
-    context: Context,
-    destination: NavDestination,
-): DataHolder.Content? =
-    runCatching {
-        fetchZhihuContentDetail(destination) { url ->
-            AccountData.fetchGet(context, url) {
-                signFetchRequest()
-            }
+        override fun authenticatedCookies(): Map<String, String> = AccountData.data.cookies
+
+        override fun xsrfToken(): String = AccountData.data.cookies["_xsrf"] ?: ""
+
+        override suspend fun handleFetchFailure(
+            tag: String?,
+            error: Exception,
+        ) {
+            Log.e(tag ?: "ZhihuApiEnvironment", "Failed to fetch Zhihu API", error)
         }
-    }.getOrElse { e ->
-        if (e !is CancellationException) {
-            Log.e("getContentDetail", "Failed to fetch content detail for $destination", e)
-        }
-        null
     }
+}
 
 actual fun <T : RoomDatabase> RoomDatabase.Builder<T>.applyPlatformDriver(): RoomDatabase.Builder<T> = this

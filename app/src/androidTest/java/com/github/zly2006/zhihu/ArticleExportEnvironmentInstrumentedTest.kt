@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -98,7 +98,7 @@ class ArticleExportEnvironmentInstrumentedTest {
         val html = environment.buildOfflineArticleExportHtml(
             content = sampleArticleContent(),
             includeAppAttribution = true,
-            httpClient = environment.accountHttpClient(),
+            httpClient = environment.httpClient(),
         )
 
         assertTrue(html.contains("导出环境回归"))

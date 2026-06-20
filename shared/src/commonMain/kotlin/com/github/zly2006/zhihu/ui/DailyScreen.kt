@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -57,11 +57,13 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -80,6 +82,8 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.data.DailySection
 import com.github.zly2006.zhihu.shared.data.DailyStory
+import com.github.zly2006.zhihu.shared.ui.TopLevelReselectAction
+import com.github.zly2006.zhihu.shared.ui.topLevelReselectAction
 import com.github.zly2006.zhihu.shared.util.formatDailyDate
 import com.github.zly2006.zhihu.shared.util.twoDigitString
 import com.github.zly2006.zhihu.shared.viewmodel.DailyViewModel
@@ -96,82 +100,98 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 /**
  * 知乎日报页面。
  *
  * 顶部提供日期切换和刷新，主体展示指定日期的日报内容并支持继续加载历史日期。日报条目可能跳转到站内内容或外部链接，
- * 因此页面同时依赖 [LocalNavigator] 和系统 URI 打开能力；测试入口可以注入固定状态和日期选择回调。
+ * 因此页面同时依赖 [LocalNavigator] 和系统 URI 打开能力。
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalTime::class)
 @Composable
 fun DailyScreen(
-    testState: DailyScreenUiState? = null,
-    onTestDateSelected: ((String) -> Unit)? = null,
-    onTestLoadMore: (() -> Unit)? = null,
+    scrollToTopTrigger: Int = 0,
+    isActive: Boolean = true,
 ) {
     val navigator = LocalNavigator.current
     val httpClient = rememberZhihuHttpClient()
     val uriHandler = LocalUriHandler.current
     val viewModel = viewModel { DailyViewModel() }
-    val isTestMode = testState != null
     var isRefreshing by remember { mutableStateOf(false) }
     var currentViewingDate by remember { mutableStateOf("") }
     var showDatePicker by remember { mutableStateOf(false) }
+    var pendingDateSelection by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
-    val uiState = testState ?: DailyScreenUiState(
-        sections = viewModel.sections,
-        isLoading = viewModel.isLoading,
-        isLoadingMore = viewModel.isLoadingMore,
-        error = viewModel.error,
-    )
-
-    LaunchedEffect(listState, uiState.sections) {
+    var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
+    LaunchedEffect(listState, viewModel.sections) {
         currentViewingDate = resolveViewingDate(
             firstVisibleItemIndex = listState.firstVisibleItemIndex,
-            sections = uiState.sections,
+            sections = viewModel.sections,
         )
         snapshotFlow { listState.firstVisibleItemIndex }
             .collect { index ->
                 currentViewingDate = resolveViewingDate(
                     firstVisibleItemIndex = index,
-                    sections = uiState.sections,
+                    sections = viewModel.sections,
                 )
             }
     }
 
-    LaunchedEffect(listState, isTestMode, onTestLoadMore) {
+    LaunchedEffect(listState) {
         // 滚动到底部时加载更多
         snapshotFlow {
             val info = listState.layoutInfo
             (info.visibleItemsInfo.lastOrNull()?.index ?: 0) to info.totalItemsCount
         }.collect { (last, total) ->
             if (total > 0 && last >= total - 3) {
-                if (isTestMode) {
-                    onTestLoadMore?.invoke()
-                } else {
-                    viewModel.loadMore(httpClient)
-                }
+                viewModel.loadMore(httpClient)
             }
         }
     }
 
-    LaunchedEffect(isTestMode) {
-        if (!isTestMode && viewModel.sections.isEmpty()) {
+    LaunchedEffect(Unit) {
+        if (viewModel.sections.isEmpty()) {
             viewModel.loadLatest(httpClient)
+        }
+    }
+
+    LaunchedEffect(showDatePicker, pendingDateSelection) {
+        if (showDatePicker) return@LaunchedEffect
+        val selectedDate = pendingDateSelection ?: return@LaunchedEffect
+        // DatePickerDialog is hosted in a platform window. Delay page replacement until the closing
+        // dialog has yielded its focus and measure work back to the main content window.
+        withFrameNanos { }
+        viewModel.loadDate(httpClient, selectedDate)
+        listState.scrollToItem(0)
+        if (pendingDateSelection == selectedDate) {
+            pendingDateSelection = null
         }
     }
 
     val doRefresh: () -> Unit = {
         scope.launch {
             isRefreshing = true
-            if (!isTestMode) {
-                viewModel.loadLatest(httpClient)
-                listState.scrollToItem(0)
-            }
+            viewModel.loadLatest(httpClient)
+            listState.scrollToItem(0)
             isRefreshing = false
         }
+    }
+
+    LaunchedEffect(scrollToTopTrigger, isActive) {
+        val action = topLevelReselectAction(
+            triggerDelta = scrollToTopTrigger - cachedScrollToTopTrigger,
+            isAtTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0,
+        )
+        if (isActive) {
+            when (action) {
+                TopLevelReselectAction.Refresh -> doRefresh()
+                TopLevelReselectAction.ScrollToTop -> listState.animateScrollToItem(0)
+                null -> {}
+            }
+        }
+        cachedScrollToTopTrigger = scrollToTopTrigger
     }
 
     if (showDatePicker) {
@@ -184,15 +204,7 @@ fun DailyScreen(
                 TextButton(onClick = {
                     showDatePicker = false
                     datePickerState.selectedDateMillis?.let { millis ->
-                        val dateStr = formatDailyDatePickerSelection(millis)
-                        scope.launch {
-                            if (isTestMode) {
-                                onTestDateSelected?.invoke(dateStr)
-                            } else {
-                                viewModel.loadDate(httpClient, dateStr)
-                                listState.scrollToItem(0)
-                            }
-                        }
+                        pendingDateSelection = formatDailyDatePickerSelection(millis)
                     }
                 }) { Text("确认") }
             },
@@ -252,7 +264,7 @@ fun DailyScreen(
                 .padding(top = scaffoldPadding.calculateTopPadding()),
         ) {
             when {
-                uiState.isLoading -> {
+                viewModel.isLoading -> {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -274,7 +286,7 @@ fun DailyScreen(
                     }
                 }
 
-                uiState.error != null -> {
+                viewModel.error != null -> {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -282,13 +294,13 @@ fun DailyScreen(
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            uiState.error,
+                            viewModel.error.orEmpty(),
                             color = MaterialTheme.colorScheme.error,
                         )
                     }
                 }
 
-                uiState.sections.isEmpty() -> {
+                viewModel.sections.isEmpty() -> {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -311,28 +323,26 @@ fun DailyScreen(
                             .testTag(DAILY_SCREEN_LIST_TAG),
                         contentPadding = PaddingValues(vertical = 8.dp),
                     ) {
-                        uiState.sections.forEach { section ->
+                        viewModel.sections.forEach { section ->
                             // 日期分组标题。
                             item(key = "header_${section.date}") {
                                 DateHeader(
                                     date = formatDailyDate(section.date),
-                                    modifier = Modifier.testTag(dailySectionHeaderTag(section.date)),
+                                    modifier = Modifier.testTag("daily_screen_section_${section.date}"),
                                 )
                             }
                             // 当前日期的日报条目。
                             items(section.stories, key = { "story_${it.id}" }) { story ->
                                 DailyStoryCard(
                                     story = story,
-                                    modifier = Modifier.testTag(dailyStoryCardTag(story.id)),
+                                    modifier = Modifier.testTag("daily_screen_story_${story.id}"),
                                     onClick = {
-                                        if (!isTestMode) {
-                                            scope.launch {
-                                                val destination = fetchDailyStoryDestination(httpClient, story.id)
-                                                if (destination != null) {
-                                                    navigator.onNavigate(destination)
-                                                } else {
-                                                    uriHandler.openUri(story.url)
-                                                }
+                                        scope.launch {
+                                            val destination = fetchDailyStoryDestination(httpClient, story.id)
+                                            if (destination != null) {
+                                                navigator.onNavigate(destination)
+                                            } else {
+                                                uriHandler.openUri(story.url)
                                             }
                                         }
                                     },
@@ -341,7 +351,7 @@ fun DailyScreen(
                         }
 
                         // 底部加载指示器。
-                        if (uiState.isLoadingMore) {
+                        if (viewModel.isLoadingMore) {
                             item(key = "loading_more") {
                                 Box(
                                     modifier = Modifier
@@ -491,7 +501,7 @@ private fun resolveViewingDate(
 }
 
 private fun formatDailyDatePickerSelection(millis: Long): String {
-    val date = kotlin.time.Instant
+    val date = Instant
         .fromEpochMilliseconds(millis)
         .toLocalDateTime(TimeZone.currentSystemDefault())
         .date
@@ -508,13 +518,17 @@ private suspend fun fetchDailyStoryDestination(
         .get("https://daily.zhihu.com/api/7/story/$storyId")
         .body()
     val body = response["body"]?.jsonPrimitive?.content ?: return@withContext null
-    val url = Ksoup.parse(body).selectFirst("a")?.attr("href")
-    url?.let(::resolveContent)
+    val doc = Ksoup.parse(body)
+    return@withContext doc
+        .selectFirst("a.originUrl")
+        ?.attr("href")
+        ?.let(::resolveContent)
+        ?: doc
+            .selectFirst("div.view-more")
+            ?.selectFirst("a")
+            ?.attr("href")
+            ?.let(::resolveContent)
 }
-
-private fun dailySectionHeaderTag(date: String) = "daily_screen_section_$date"
-
-private fun dailyStoryCardTag(storyId: Long) = "daily_screen_story_$storyId"
 
 private const val DAILY_SCREEN_TITLE_TAG = "daily_screen_title"
 private const val DAILY_SCREEN_CURRENT_DATE_TAG = "daily_screen_current_date"
@@ -523,10 +537,3 @@ private const val DAILY_SCREEN_LOADING_TAG = "daily_screen_loading"
 private const val DAILY_SCREEN_ERROR_TAG = "daily_screen_error"
 private const val DAILY_SCREEN_EMPTY_TAG = "daily_screen_empty"
 private const val DAILY_SCREEN_LIST_TAG = "daily_screen_list"
-
-data class DailyScreenUiState(
-    val sections: List<DailySection> = emptyList(),
-    val isLoading: Boolean = false,
-    val isLoadingMore: Boolean = false,
-    val error: String? = null,
-)

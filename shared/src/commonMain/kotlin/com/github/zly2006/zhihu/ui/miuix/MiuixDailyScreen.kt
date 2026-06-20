@@ -68,7 +68,6 @@ import com.github.zly2006.zhihu.shared.viewmodel.DailyViewModel
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
-import com.github.zly2006.zhihu.ui.DailyScreenUiState
 import com.github.zly2006.zhihu.ui.components.AutoHideTopBar
 import com.github.zly2006.zhihu.ui.rememberZhihuHttpClient
 import io.ktor.client.HttpClient
@@ -98,48 +97,33 @@ import kotlin.time.ExperimentalTime
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalTime::class)
 @Composable
-fun MiuixDailyScreen(
-    testState: DailyScreenUiState? = null,
-    onTestDateSelected: ((String) -> Unit)? = null,
-    onTestLoadMore: (() -> Unit)? = null,
-) {
+fun MiuixDailyScreen() {
     val navigator = LocalNavigator.current
     val httpClient = rememberZhihuHttpClient()
     val uriHandler = LocalUriHandler.current
     val viewModel = viewModel { DailyViewModel() }
-    val isTestMode = testState != null
     var isRefreshing by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
-    val uiState = testState ?: DailyScreenUiState(
-        sections = viewModel.sections,
-        isLoading = viewModel.isLoading,
-        isLoadingMore = viewModel.isLoadingMore,
-        error = viewModel.error,
-    )
     val settings = rememberSettingsStore()
     val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
 
-    LaunchedEffect(listState, isTestMode, onTestLoadMore) {
+    LaunchedEffect(listState) {
         snapshotFlow {
             val info = listState.layoutInfo
             (info.visibleItemsInfo.lastOrNull()?.index ?: 0) to info.totalItemsCount
         }.collect { (last, total) ->
             if (total > 0 && last >= total - 3) {
-                if (isTestMode) {
-                    onTestLoadMore?.invoke()
-                } else {
-                    viewModel.loadMore(httpClient)
-                }
+                viewModel.loadMore(httpClient)
             }
         }
     }
 
-    LaunchedEffect(isTestMode) {
-        if (!isTestMode && viewModel.sections.isEmpty()) {
+    LaunchedEffect(Unit) {
+        if (viewModel.sections.isEmpty()) {
             viewModel.loadLatest(httpClient)
         }
     }
@@ -156,12 +140,8 @@ fun MiuixDailyScreen(
                     datePickerState.selectedDateMillis?.let { millis ->
                         val dateStr = formatDailyDatePickerSelection(millis)
                         scope.launch {
-                            if (isTestMode) {
-                                onTestDateSelected?.invoke(dateStr)
-                            } else {
-                                viewModel.loadDate(httpClient, dateStr)
-                                listState.scrollToItem(0)
-                            }
+                            viewModel.loadDate(httpClient, dateStr)
+                            listState.scrollToItem(0)
                         }
                     }
                 }) { Text("确认") }
@@ -199,10 +179,8 @@ fun MiuixDailyScreen(
             onRefresh = {
                 scope.launch {
                     isRefreshing = true
-                    if (!isTestMode) {
-                        viewModel.loadLatest(httpClient)
-                        listState.scrollToItem(0)
-                    }
+                    viewModel.loadLatest(httpClient)
+                    listState.scrollToItem(0)
                     isRefreshing = false
                 }
             },
@@ -214,7 +192,7 @@ fun MiuixDailyScreen(
             ) {
                 when {
                     // 下拉刷新时不显示中心转圈，避免与刷新动画叠加（旧内容仍展示，刷新成功后替换）
-                    uiState.isLoading && !isRefreshing -> {
+                    viewModel.isLoading && !isRefreshing -> {
                         Box(
                             modifier = Modifier.fillMaxSize().testTag(DAILY_SCREEN_LOADING_TAG),
                             contentAlignment = Alignment.Center,
@@ -227,16 +205,16 @@ fun MiuixDailyScreen(
                         }
                     }
 
-                    uiState.error != null -> {
+                    viewModel.error != null -> {
                         Box(
                             modifier = Modifier.fillMaxSize().testTag(DAILY_SCREEN_ERROR_TAG),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text(uiState.error, color = MiuixTheme.colorScheme.error)
+                            Text(viewModel.error.orEmpty(), color = MiuixTheme.colorScheme.error)
                         }
                     }
 
-                    uiState.sections.isEmpty() -> {
+                    viewModel.sections.isEmpty() -> {
                         Box(
                             modifier = Modifier.fillMaxSize().testTag(DAILY_SCREEN_EMPTY_TAG),
                             contentAlignment = Alignment.Center,
@@ -260,7 +238,7 @@ fun MiuixDailyScreen(
                                 bottom = padding.calculateBottomPadding() + 8.dp,
                             ),
                         ) {
-                            uiState.sections.forEach { section ->
+                            viewModel.sections.forEach { section ->
                                 item(key = "header_${section.date}") {
                                     MiuixDateHeader(
                                         date = formatDailyDate(section.date),
@@ -272,14 +250,12 @@ fun MiuixDailyScreen(
                                         story = story,
                                         modifier = Modifier.testTag(dailyStoryCardTag(story.id)),
                                         onClick = {
-                                            if (!isTestMode) {
-                                                scope.launch {
-                                                    val destination = fetchDailyStoryDestination(httpClient, story.id)
-                                                    if (destination != null) {
-                                                        navigator.onNavigate(destination)
-                                                    } else {
-                                                        uriHandler.openUri(story.url)
-                                                    }
+                                            scope.launch {
+                                                val destination = fetchDailyStoryDestination(httpClient, story.id)
+                                                if (destination != null) {
+                                                    navigator.onNavigate(destination)
+                                                } else {
+                                                    uriHandler.openUri(story.url)
                                                 }
                                             }
                                         },
@@ -287,7 +263,7 @@ fun MiuixDailyScreen(
                                 }
                             }
 
-                            if (uiState.isLoadingMore) {
+                            if (viewModel.isLoadingMore) {
                                 item(key = "loading_more") {
                                     Box(
                                         modifier = Modifier.fillMaxWidth().padding(16.dp),

@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -16,17 +16,20 @@
  */
 
 package com.github.zly2006.zhihu.shared.platform
+
 import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.os.Handler
+import android.os.Looper
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.edit
 import androidx.core.net.toUri
@@ -35,7 +38,10 @@ import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.OpenImageDialog
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
+import com.github.zly2006.zhihu.util.saveImageToGallery
+import com.github.zly2006.zhihu.util.shareImage
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 
 private const val WEBVIEW_ACTIVITY_CLASS = "com.github.zly2006.zhihu.WebviewActivity"
 
@@ -68,7 +74,33 @@ actual fun rememberImageGalleryOpener(): (List<String>, Int) -> Unit {
     val context = LocalContext.current
     return remember(context) {
         { urls, initialIndex ->
-            OpenImageDialog(context, AccountData.httpClient(context), urls, initialIndex).show()
+            OpenImageDialog(context, urls, initialIndex).show()
+        }
+    }
+}
+
+@Composable
+actual fun rememberImageSaver(): (String) -> Unit {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    return remember(context, scope) {
+        { imageUrl ->
+            scope.launch {
+                saveImageToGallery(context, AccountData.httpClient(context), imageUrl)
+            }
+        }
+    }
+}
+
+@Composable
+actual fun rememberImageSharer(): (String) -> Unit {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    return remember(context, scope) {
+        { imageUrl ->
+            scope.launch {
+                shareImage(context, AccountData.httpClient(context), imageUrl)
+            }
         }
     }
 }
@@ -153,12 +185,27 @@ fun androidSettingsStore(context: Context): SettingsStore {
 
 fun androidUserMessageSink(context: Context): UserMessageSink {
     val appContext = context.applicationContext
+    val mainHandler = Handler(Looper.getMainLooper())
+
+    fun showToast(
+        message: String,
+        duration: Int,
+    ) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            Toast.makeText(appContext, message, duration).show()
+        } else {
+            mainHandler.post {
+                Toast.makeText(appContext, message, duration).show()
+            }
+        }
+    }
+
     return UserMessageSink(
         showShortMessage = { message ->
-            Toast.makeText(appContext, message, Toast.LENGTH_SHORT).show()
+            showToast(message, Toast.LENGTH_SHORT)
         },
         showLongMessage = { message ->
-            Toast.makeText(appContext, message, Toast.LENGTH_LONG).show()
+            showToast(message, Toast.LENGTH_LONG)
         },
     )
 }
@@ -176,15 +223,6 @@ actual fun rememberIsLiteVariant(): Boolean {
 }
 
 internal fun isAndroidLiteVariantPackageName(packageName: String): Boolean = packageName.endsWith(".lite")
-
-@Composable
-actual fun rememberScreenSizeDp(): ScreenSizeDp {
-    val configuration = LocalConfiguration.current
-    return ScreenSizeDp(
-        width = configuration.screenWidthDp.toFloat(),
-        height = configuration.screenHeightDp.toFloat(),
-    )
-}
 
 @Composable
 actual fun PlatformBackHandler(

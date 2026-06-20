@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -37,9 +37,9 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import com.github.zly2006.zhihu.shared.platform.rememberScreenSizeDp
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import kotlin.math.roundToInt
 
@@ -59,7 +59,7 @@ fun DraggableRefreshButton(
     },
 ) {
     val density = LocalDensity.current
-    val screenSize = rememberScreenSizeDp()
+    val screenSize = LocalWindowInfo.current.containerSize
     val settings = rememberSettingsStore()
 
     var offsetX by remember { mutableFloatStateOf(settings.getFloat("$preferenceName-x", Float.MAX_VALUE)) }
@@ -68,8 +68,8 @@ fun DraggableRefreshButton(
 
     fun adjustFabPosition() {
         with(density) {
-            offsetX = offsetX.coerceIn(0f, screenSize.width.dp.toPx() - 56.dp.toPx())
-            offsetY = offsetY.coerceIn(0f, screenSize.height.dp.toPx() - 250.dp.toPx())
+            offsetX = offsetX.coerceIn(0f, screenSize.width - 56.dp.toPx())
+            offsetY = offsetY.coerceIn(0f, screenSize.height - 250.dp.toPx())
         }
     }
 
@@ -101,8 +101,8 @@ fun DraggableRefreshButton(
                     onDragEnd = {
                         pressing = false
                         adjustFabPosition()
+                        val screenWidth = screenSize.width.toFloat()
                         with(density) {
-                            val screenWidth = screenSize.width.dp.toPx()
                             offsetX =
                                 if (offsetX < screenWidth / 2) {
                                     0f

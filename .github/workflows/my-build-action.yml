@@ -146,7 +146,7 @@ jobs:
           key: gradle-cache-${{ hashFiles('**/*.gradle.kts', '**/gradle-wrapper.properties') }}
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
-      
+
       - name: Install Android NDK
         run: |
           echo "y" | sdkmanager --install "ndk;29.0.14206865"
@@ -193,12 +193,42 @@ jobs:
       # Delete existing nightly release
       - name: Delete existing nightly release
         if: ${{ inputs.minify && inputs.nightly_release }}
-        uses: dev-drprasad/delete-tag-and-release@v1.0
-        continue-on-error: true
+        uses: actions/github-script@v7
         with:
-          tag_name: nightly
-          github_token: ${{ github.token }}
-          delete_release: true
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const tagName = 'nightly';
+
+            const releases = await github.paginate(github.rest.repos.listReleases, {
+              owner,
+              repo,
+              per_page: 100,
+            });
+
+            for (const release of releases.filter(r => r.tag_name === tagName)) {
+              core.info(`Deleting nightly release ${release.id} (${release.name || release.tag_name})`);
+              await github.rest.repos.deleteRelease({
+                owner,
+                repo,
+                release_id: release.id,
+              });
+            }
+
+            try {
+              await github.rest.git.deleteRef({
+                owner,
+                repo,
+                ref: `tags/${tagName}`,
+              });
+              core.info(`Deleted tag ${tagName}`);
+            } catch (error) {
+              if (error.status === 404) {
+                core.info(`Tag ${tagName} does not exist`);
+              } else {
+                throw error;
+              }
+            }
 
       # Generate nightly changelog
       - name: Generate nightly changelog

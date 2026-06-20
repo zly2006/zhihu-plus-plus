@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -250,6 +250,32 @@ data class Question(
 
     override fun toString(): String = "Question(questionId=$questionId)"
 }
+
+/**
+ * 在问题详情页发起“写回答/编辑回答”的编辑器页面。
+ *
+ * 说明：
+ * - 目前编辑器只提供纯文本输入（可输入 Markdown），不做语法高亮等复杂编辑能力。
+ * - 是否是“新回答”还是“更新已有回答”，由上传逻辑在发布前根据登录账号自动探测。
+ */
+@Serializable
+data class WriteAnswer(
+    val questionId: Long,
+    val questionTitle: String = "",
+    val questionDetail: String = "",
+) : NavDestination {
+    override fun hashCode(): Int = questionId.hashCode()
+
+    override fun equals(other: Any?): Boolean = other is WriteAnswer && other.questionId == questionId
+}
+
+/**
+ * 从首页发起“发想法”的编辑器页面。
+ *
+ * 想法不是问题下的内容，没有问题 ID；标题可选，正文或图片至少存在其一。
+ */
+@Serializable
+data object WritePin : NavDestination
 
 @Serializable
 data class Person(

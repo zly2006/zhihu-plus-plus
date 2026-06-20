@@ -47,7 +47,7 @@ import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixConfirmDialog
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
-import com.github.zly2006.zhihu.viewmodel.filter.rememberBlockedFeedRecordDao
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -78,7 +78,7 @@ private fun formatBlockedTime(timestampMillis: Long): String {
 fun MiuixBlockedFeedHistoryScreen() {
     val navigator = LocalNavigator.current
     val coroutineScope = rememberCoroutineScope()
-    val dao = rememberBlockedFeedRecordDao()
+    val dao = getContentFilterDatabase().blockedFeedRecordDao()
     val records by dao.observeAll().collectAsState(initial = emptyList())
     var showClearDialog by remember { mutableStateOf(false) }
     val settings = rememberSettingsStore()

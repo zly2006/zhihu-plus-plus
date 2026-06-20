@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -51,7 +51,11 @@ abstract class ContentFilterDatabase : RoomDatabase() {
 }
 
 @Suppress("NO_ACTUAL_FOR_EXPECT")
-expect object ContentFilterDatabaseConstructor : RoomDatabaseConstructor<ContentFilterDatabase>
+expect object ContentFilterDatabaseConstructor : RoomDatabaseConstructor<ContentFilterDatabase> {
+    override fun initialize(): ContentFilterDatabase
+}
+
+expect fun getContentFilterDatabase(): ContentFilterDatabase
 
 private val migration2To3 = object : Migration(2, 3) {
     override fun migrate(connection: SQLiteConnection) {

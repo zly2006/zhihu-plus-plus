@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -40,50 +40,36 @@ import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.getContentDetail
+import com.github.zly2006.zhihu.data.asApiEnvironment
 import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.Pin
-import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.data.ZHIHU_ME_URL
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
-import com.github.zly2006.zhihu.ui.PinLinkCardPreview
 import com.github.zly2006.zhihu.ui.components.CustomWebView
 import com.github.zly2006.zhihu.ui.components.WebviewComp
-import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.util.EmojiManager
 import com.github.zly2006.zhihu.util.OpenInBrowser
 import com.github.zly2006.zhihu.util.createEmojiInlineContent
 import com.github.zly2006.zhihu.util.fuckHonorService
-import com.github.zly2006.zhihu.util.saveImageToGallery
-import com.github.zly2006.zhihu.util.shareImage
-import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
-import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.filter.exportAllBlocklistToJson
-import com.github.zly2006.zhihu.viewmodel.filter.getBlocklistManager
-import com.github.zly2006.zhihu.viewmodel.filter.importAllBlocklistFromJson
-import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.filter.encodeBlocklistBackup
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
+import com.github.zly2006.zhihu.viewmodel.filter.importBlocklistBackupFromJsonText
 import com.github.zly2006.zhihu.viewmodel.notificationEnvironment
-import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.za.MixedHomeFeedViewModel
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
+import java.io.File
 
 private const val LOGIN_ACTIVITY_CLASS = "com.github.zly2006.zhihu.LoginActivity"
 private const val QR_CODE_SCAN_ACTIVITY_CLASS = "com.github.zly2006.zhihu.QRCodeScanActivity"
@@ -91,9 +77,41 @@ private const val WEBVIEW_ACTIVITY_CLASS = "com.github.zly2006.zhihu.WebviewActi
 private const val QR_SCAN_RESULT_EXTRA = "scan_result"
 
 @Composable
-actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
-    val context = LocalContext.current
+actual fun rememberAccountSettingsAccountState(): androidx.compose.runtime.State<AccountSettingsAccountState> {
     val accountDataState = AccountData.asState()
+    return remember(accountDataState.value) {
+        androidx.compose.runtime.derivedStateOf {
+            accountDataState.value.toAccountSettingsAccountState()
+        }
+    }
+}
+
+@Composable
+actual fun rememberAccountProfileRefresher(): suspend () -> Unit {
+    val context = LocalContext.current
+    return remember(context) {
+        suspend {
+            val data = AccountData.data
+            if (data.login) {
+                val response = context.asApiEnvironment().fetchJson(ZHIHU_ME_URL, "")!!
+                val self = ZhihuJson.decodeJson<com.github.zly2006.zhihu.shared.data.Person>(response)
+                AccountData.saveData(context, data.copy(self = self))
+            }
+        }
+    }
+}
+
+@Composable
+actual fun rememberAccountLoginRequester(): () -> Unit {
+    val context = LocalContext.current
+    return remember(context) {
+        { context.startActivity(Intent().setClassName(context.packageName, LOGIN_ACTIVITY_CLASS)) }
+    }
+}
+
+@Composable
+actual fun rememberAccountQrLoginRequester(): () -> Unit {
+    val context = LocalContext.current
     val scanActivityLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult(),
     ) scan@{ result ->
@@ -107,31 +125,28 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
             )
         }
     }
-    val accountState = remember(accountDataState.value) {
-        androidx.compose.runtime.derivedStateOf {
-            accountDataState.value.toAccountSettingsAccountState()
-        }
+    return remember(context, scanActivityLauncher) {
+        { scanActivityLauncher.launch(Intent().setClassName(context.packageName, QR_CODE_SCAN_ACTIVITY_CLASS)) }
     }
-    return AccountSettingsRuntime(
-        accountState = accountState,
-        refreshProfile = {
-            val data = AccountData.data
-            if (data.login) {
-                val response = AccountData.fetchGet(context, ZHIHU_ME_URL) { signFetchRequest() }!!
-                val self = ZhihuJson.decodeJson<com.github.zly2006.zhihu.shared.data.Person>(response)
-                AccountData.saveData(context, data.copy(self = self))
-            }
-        },
-        requestLogin = {
-            context.startActivity(Intent().setClassName(context.packageName, LOGIN_ACTIVITY_CLASS))
-        },
-        requestQrLoginScan = {
-            scanActivityLauncher.launch(Intent().setClassName(context.packageName, QR_CODE_SCAN_ACTIVITY_CLASS))
-        },
-        logout = { AccountData.delete(context) },
-        appVersionInfo = { context.zhihuVersionInfo() },
-        selectMainTab = { destination -> context.navigateMainTab(destination) },
-    )
+}
+
+@Composable
+actual fun rememberAccountLogoutAction(): () -> Unit {
+    val context = LocalContext.current
+    return remember(context) {
+        { AccountData.delete(context) }
+    }
+}
+
+@Composable
+actual fun rememberAppVersionInfo(): String = LocalContext.current.zhihuVersionInfo()
+
+@Composable
+actual fun rememberMainTabSelector(): (TopLevelDestination) -> Unit {
+    val context = LocalContext.current
+    return remember(context) {
+        { destination -> context.navigateMainTab(destination) }
+    }
 }
 
 fun AccountData.Data.toAccountSettingsAccountState(): AccountSettingsAccountState = AccountSettingsAccountState(
@@ -175,53 +190,38 @@ private fun Context.findActivity(): android.app.Activity? = when (this) {
 }
 
 @Composable
-actual fun rememberArticleActionsRuntime(): ArticleActionsRuntime {
+actual fun rememberArticleTtsState(): TtsState {
+    val articleHost = LocalContext.current.articleHost()
+    return articleHost?.articleTtsState ?: TtsState.Uninitialized
+}
+
+@Composable
+actual fun rememberArticleSpeechToggler(): (title: String, content: String) -> Unit {
     val activityContext = LocalContext.current
-    val context = activityContext.applicationContext
     val coroutineScope = rememberCoroutineScope()
     val userMessages = rememberUserMessageSink()
-    val dialogShareRuntime = rememberShareDialogRuntime()
     val articleHost = activityContext.articleHost()
     val ttsState = articleHost?.articleTtsState ?: TtsState.Uninitialized
-    return remember(context, coroutineScope, userMessages, dialogShareRuntime, articleHost, ttsState) {
-        object : ArticleActionsRuntime {
-            override val ttsState: TtsState = ttsState
-            override val shareRuntime = dialogShareRuntime
-
-            override fun toggleSpeech(
-                title: String,
-                content: String,
-            ) {
-                if (ttsState.isSpeaking) {
-                    articleHost?.stopArticleSpeaking()
-                } else if (ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)) {
-                    // 使用协程在后台处理文本提取，避免UI阻塞
-                    coroutineScope.launch {
-                        try {
-                            // 在IO线程中处理文本提取
-                            withContext(Dispatchers.IO) {
-                                val textToRead = articleSpeechText(title, content)
-
-                                // 回到主线程执行TTS
-                                withContext(Dispatchers.Main) {
-                                    if (textToRead.isNotBlank()) {
-                                        articleHost?.speakArticleText(textToRead, title)
-                                    }
+    return remember(coroutineScope, userMessages, articleHost, ttsState) {
+        { title, content ->
+            if (ttsState.isSpeaking) {
+                articleHost?.stopArticleSpeaking()
+            } else if (ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)) {
+                coroutineScope.launch {
+                    try {
+                        withContext(Dispatchers.IO) {
+                            val textToRead = articleSpeechText(title, content)
+                            withContext(Dispatchers.Main) {
+                                if (textToRead.isNotBlank()) {
+                                    articleHost?.speakArticleText(textToRead, title)
                                 }
                             }
-                        } catch (e: Exception) {
-                            withContext(Dispatchers.Main) {
-                                userMessages.showMessage("朗读失败：${e.message}")
-                            }
+                        }
+                    } catch (e: Exception) {
+                        withContext(Dispatchers.Main) {
+                            userMessages.showMessage("朗读失败：${e.message}")
                         }
                     }
-                }
-            }
-
-            override fun openArticleInBrowser(article: Article) {
-                coroutineScope.launch {
-                    OpenInBrowser.openUrlInBrowser(context, article)
-                    userMessages.showMessage("已发送到浏览器")
                 }
             }
         }
@@ -229,26 +229,45 @@ actual fun rememberArticleActionsRuntime(): ArticleActionsRuntime {
 }
 
 @Composable
-actual fun rememberArticleScreenRuntime(): ArticleScreenRuntime {
-    val context = LocalContext.current
-    return remember(context) {
-        val articleHost = context.articleHost()
-        object : ArticleScreenRuntime {
-            override val articleHost: ArticleHost? = articleHost
-            override val previewPreloader: ArticlePreviewPreloader = ArticlePreviewPreloader { cached, isNext, title, onImageLoadFailed ->
-                val previewWebViewStore = articleHost?.articleAnswerSwitchState as? ArticlePreviewWebViewStore
-                    ?: return@ArticlePreviewPreloader
-                val wv = previewWebViewStore.getOrCreatePreviewWebView(context, isNext, cached.article.id)
-                val articleId = cached.article.id.toString()
-                if (wv.contentId != articleId) {
-                    wv.contentId = articleId
-                    wv.loadZhihu(
-                        "https://www.zhihu.com/answer/${cached.article.id}",
-                        prepareContentDocument(cached.content, onImageLoadFailed),
-                        title,
-                    )
-                }
+actual fun rememberArticleBrowserOpener(): (Article) -> Unit {
+    val context = LocalContext.current.applicationContext
+    val coroutineScope = rememberCoroutineScope()
+    val userMessages = rememberUserMessageSink()
+    return remember(context, coroutineScope, userMessages) {
+        { article ->
+            coroutineScope.launch {
+                OpenInBrowser.openUrlInBrowser(context, article)
+                userMessages.showMessage("已发送到浏览器")
             }
+        }
+    }
+}
+
+@Composable
+actual fun rememberArticleHost(): ArticleHost? = LocalContext.current.articleHost()
+
+@Composable
+actual fun ArticlePreviewPreloadEffect(
+    cached: com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent?,
+    isNext: Boolean,
+    title: String,
+    onImageLoadFailed: () -> Unit,
+) {
+    val context = LocalContext.current
+    val articleHost = context.articleHost()
+    LaunchedEffect(cached?.article?.id, isNext, title, articleHost) {
+        cached ?: return@LaunchedEffect
+        val previewWebViewStore = articleHost?.articleAnswerSwitchState as? ArticlePreviewWebViewStore
+            ?: return@LaunchedEffect
+        val wv = previewWebViewStore.getOrCreatePreviewWebView(context, isNext, cached.article.id)
+        val articleId = cached.article.id.toString()
+        if (wv.contentId != articleId) {
+            wv.contentId = articleId
+            wv.loadZhihu(
+                "https://www.zhihu.com/answer/${cached.article.id}",
+                prepareContentDocument(cached.content, onImageLoadFailed),
+                title,
+            )
         }
     }
 }
@@ -266,7 +285,7 @@ actual fun ArticleWebViewContent(
     onDoubleTap: () -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
-    com.github.zly2006.zhihu.ui.components.WebviewComp(
+    WebviewComp(
         onDoubleTap = onDoubleTap,
         scrollState = scrollState,
     ) {
@@ -295,17 +314,28 @@ actual fun ArticleWebViewContent(
 actual fun Modifier.articleMarkdownSelectionWorkaround(): Modifier = fuckHonorService()
 
 @Composable
-actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): HomeScreenRuntime {
-    val context = LocalContext.current
+actual fun rememberHomeAccountState(): HomeAccountState {
     val accountData by AccountData.asState()
+    return HomeAccountState(
+        isLoggedIn = accountData.login,
+        avatarUrl = accountData.self?.avatarUrl,
+    )
+}
+
+@Composable
+actual fun rememberHomeUpdateAnnouncement(): HomeUpdateAnnouncement? {
     val updateState by UpdateManager.updateState.collectAsState()
-    val viewModel: BaseFeedViewModel = when (recommendationMode) {
-        RecommendationMode.WEB -> viewModel<HomeFeedViewModel>()
-        RecommendationMode.ANDROID -> viewModel<AndroidHomeFeedViewModel>()
-        RecommendationMode.LOCAL -> viewModel<LocalHomeFeedViewModel>()
-        RecommendationMode.MIXED -> viewModel<MixedHomeFeedViewModel>()
+    return (updateState as? UpdateManager.UpdateState.UpdateAvailable)?.let {
+        HomeUpdateAnnouncement(
+            version = it.version.toString(),
+            isNightly = it.isNightly,
+        )
     }
-    val localHomeViewModel = viewModel as? LocalHomeFeedViewModel
+}
+
+@Composable
+actual fun rememberHomeInstalledAtLeastThreeHours(): Boolean {
+    val context = LocalContext.current
     val installTime = remember {
         try {
             context.packageManager.getPackageInfo(context.packageName, 0).firstInstallTime
@@ -313,46 +343,32 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
             System.currentTimeMillis()
         }
     }
-    val updateAnnouncement = (updateState as? UpdateManager.UpdateState.UpdateAvailable)?.let {
-        HomeUpdateAnnouncement(
-            version = it.version.toString(),
-            isNightly = it.isNightly,
-        )
-    }
-
-    return HomeScreenRuntime(
-        account = HomeAccountState(
-            isLoggedIn = accountData.login,
-            avatarUrl = accountData.self?.avatarUrl,
-        ),
-        updateAnnouncement = updateAnnouncement,
-        installedAtLeastThreeHours = System.currentTimeMillis() - installTime >= 3 * 60 * 60 * 1000L,
-        isDebuggable = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0,
-        viewModel = viewModel,
-        requestLogin = {
-            val intent = Intent().setClassName(context.packageName, "com.github.zly2006.zhihu.LoginActivity")
-            context.startActivity(intent)
-        },
-        recordLocalItemOpened = { item ->
-            localHomeViewModel?.onLocalItemOpened(item)
-        },
-        recordLocalItemFeedback = { item, feedback ->
-            if (localHomeViewModel != null && item.localContentId != null) {
-                localHomeViewModel.onLocalItemFeedback(item, feedback)
-                true
-            } else {
-                false
-            }
-        },
-    )
+    return System.currentTimeMillis() - installTime >= 3 * 60 * 60 * 1000L
 }
 
 @Composable
-actual fun rememberBlocklistSettingsPlatformRuntime(
-    userMessages: UserMessageSink,
-): BlocklistSettingsRuntime {
+actual fun rememberHomeIsDebuggable(): Boolean {
     val context = LocalContext.current
-    val manager = remember(context) { getBlocklistManager(context) }
+    return (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+}
+
+@Composable
+actual fun rememberHomeLoginRequester(): () -> Unit {
+    val context = LocalContext.current
+    return remember(context) {
+        {
+            val intent = Intent().setClassName(context.packageName, "com.github.zly2006.zhihu.LoginActivity")
+            context.startActivity(intent)
+        }
+    }
+}
+
+@Composable
+actual fun rememberBlocklistRuleImporter(
+    userMessages: UserMessageSink,
+): (((String) -> Unit) -> Unit) {
+    val context = LocalContext.current
+    val database = remember(context) { getContentFilterDatabase(context) }
     val coroutineScope = rememberCoroutineScope()
     var importCallback by remember { mutableStateOf<((String) -> Unit)?>(null) }
     val importLauncher = rememberLauncherForActivityResult(
@@ -361,63 +377,73 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
         if (uri != null) {
             coroutineScope.launch {
                 try {
-                    val summary = manager.importAllBlocklistFromJson(context, uri)
+                    val summary = withContext(Dispatchers.IO) {
+                        val text = context.contentResolver
+                            .openInputStream(uri)
+                            ?.bufferedReader()
+                            ?.readText()
+                            ?: return@withContext "读取文件失败"
+                        importBlocklistBackupFromJsonText(
+                            keywordDao = database.blockedKeywordDao(),
+                            userDao = database.blockedUserDao(),
+                            topicDao = database.blockedTopicDao(),
+                            text = text,
+                        )
+                    }
                     importCallback?.invoke(summary)
                 } catch (e: Exception) {
-                    Log.e("BlocklistSettingsRuntime", "Failed to import blocklist", e)
+                    Log.e("BlocklistSettings", "Failed to import blocklist", e)
                     userMessages.showShortMessage("导入失败: ${e.message}")
                 }
             }
         }
     }
-    return remember(context, manager, userMessages, importLauncher) {
-        BlocklistSettingsRuntime(
-            requestImport = { onImported ->
-                importCallback = onImported
-                importLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
-            },
-            exportRules = {
-                val file = manager.exportAllBlocklistToJson(context)
-                val intent = Intent().apply {
-                    action = Intent.ACTION_VIEW
-                    setDataAndType(
-                        FileProvider.getUriForFile(
-                            context,
-                            "${context.packageName}.provider",
-                            file,
-                        ),
-                        "application/json",
-                    )
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                }
-                context.startActivity(Intent.createChooser(intent, "查看屏蔽规则"))
-                "已导出到 ${file.absolutePath}"
-            },
-        )
+    return remember(context, database, userMessages, importLauncher) {
+        { onImported ->
+            importCallback = onImported
+            importLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
+        }
     }
 }
 
 @Composable
-actual fun rememberPinScreenRuntime(): PinScreenRuntime {
+actual fun rememberBlocklistRuleExporter(): suspend () -> String {
     val context = LocalContext.current
-    return remember(context) {
-        PinScreenRuntime(
-            fetchLinkCardPreview = { linkCard ->
-                fetchPinLinkCardPreview(linkCard) { destination ->
-                    when (destination) {
-                        is Article -> DataHolder.getContentDetail(context, destination)
-                        is Question -> DataHolder.getContentDetail(context, destination)
-                        is Pin -> DataHolder.getContentDetail(context, destination)
-                        else -> null
-                    }
-                }
-            },
-        )
+    val database = remember(context) { getContentFilterDatabase(context) }
+    return remember(context, database) {
+        suspend {
+            val file = withContext(Dispatchers.IO) {
+                val dir = context.getExternalFilesDir(null) ?: context.filesDir
+                val file = File(dir, "zhihupp_blocklist.json")
+                file.writeText(
+                    encodeBlocklistBackup(
+                        keywordDao = database.blockedKeywordDao(),
+                        userDao = database.blockedUserDao(),
+                        topicDao = database.blockedTopicDao(),
+                    ),
+                )
+                file
+            }
+            val intent = Intent().apply {
+                action = Intent.ACTION_VIEW
+                setDataAndType(
+                    FileProvider.getUriForFile(
+                        context,
+                        "${context.packageName}.provider",
+                        file,
+                    ),
+                    "application/json",
+                )
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(Intent.createChooser(intent, "查看屏蔽规则"))
+            "已导出到 ${file.absolutePath}"
+        }
     }
 }
 
 @Composable
-actual fun PinHtmlWebViewContent(html: String) {
+actual fun ZhihuHtmlWebViewContent(html: String) {
     WebviewComp {
         it.isVerticalScrollBarEnabled = false
         it.setupUpWebviewClient()
@@ -428,28 +454,7 @@ actual fun PinHtmlWebViewContent(html: String) {
     }
 }
 
-actual fun supportsPinHtmlWebView(): Boolean = true
-
-@Composable
-actual fun rememberCommentScreenRuntime(): CommentScreenRuntime {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    return remember(context, scope) {
-        object : CommentScreenRuntime {
-            override fun saveImage(imageUrl: String) {
-                scope.launch {
-                    saveImageToGallery(context, AccountData.httpClient(context), imageUrl)
-                }
-            }
-
-            override fun shareImage(imageUrl: String) {
-                scope.launch {
-                    shareImage(context, AccountData.httpClient(context), imageUrl)
-                }
-            }
-        }
-    }
-}
+actual fun supportsZhihuHtmlWebView(): Boolean = true
 
 @Composable
 actual fun rememberCommentEmojiInlineContent(emojiKeys: Set<String>): Map<String, InlineTextContent> =
@@ -464,18 +469,20 @@ actual fun commentEmojiInlineKey(placeholder: String): String? {
 actual fun Modifier.commentSelectionWorkaround(): Modifier = fuckHonorService()
 
 @Composable
-actual fun rememberNotificationScreenRuntime(
+actual fun rememberNotificationEnvironment(
     viewModel: NotificationViewModel,
     settingsStore: NotificationSettingsStore,
-): NotificationScreenRuntime {
+): com.github.zly2006.zhihu.viewmodel.NotificationEnvironment {
     val context = LocalContext.current
-    val environment = remember(context, settingsStore, viewModel) {
+    return remember(context, settingsStore, viewModel) {
         viewModel.notificationEnvironment(context, settingsStore)
     }
-    return NotificationScreenRuntime(
-        environment = environment,
-        showDebugCopy = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0,
-    )
+}
+
+@Composable
+actual fun rememberNotificationShowDebugCopy(): Boolean {
+    val context = LocalContext.current
+    return (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
 }
 
 interface ArticlePreviewWebViewStore {

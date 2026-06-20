@@ -57,6 +57,7 @@ import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.NotificationItem
 import com.github.zly2006.zhihu.shared.data.NotificationTarget
@@ -71,7 +72,8 @@ import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixListLoadingIndicator
-import com.github.zly2006.zhihu.ui.rememberNotificationScreenRuntime
+import com.github.zly2006.zhihu.ui.rememberNotificationEnvironment
+import com.github.zly2006.zhihu.ui.rememberNotificationShowDebugCopy
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
@@ -93,7 +95,8 @@ fun MiuixNotificationScreen() {
     val settings = rememberSettingsStore()
     val settingsStore = rememberNotificationSettingsStore()
     val viewModel = viewModel { NotificationViewModel() }
-    val runtime = rememberNotificationScreenRuntime(viewModel, settingsStore)
+    val environment = rememberNotificationEnvironment(viewModel, settingsStore)
+    val showDebugCopy = rememberNotificationShowDebugCopy()
     val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
     val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
@@ -105,7 +108,7 @@ fun MiuixNotificationScreen() {
 
     LaunchedEffect(Unit) {
         if (viewModel.allData.isEmpty()) {
-            viewModel.refresh(runtime.environment)
+            viewModel.refresh(environment)
         }
     }
     LaunchedEffect(viewModel.isLoading) {
@@ -127,7 +130,7 @@ fun MiuixNotificationScreen() {
                     if (viewModel.unreadCount > 0) {
                         IconButton(onClick = {
                             coroutineScope.launch {
-                                viewModel.markAllAsRead(runtime.environment)
+                                viewModel.markAllAsRead(environment)
                                 userMessages.showMessage("已全部标记为已读")
                             }
                         }) {
@@ -146,7 +149,7 @@ fun MiuixNotificationScreen() {
             isRefreshing = viewModel.isLoading,
             onRefresh = {
                 isManualRefreshing = true
-                coroutineScope.launch { viewModel.refresh(runtime.environment) }
+                coroutineScope.launch { viewModel.refresh(environment) }
             },
             contentPadding = PaddingValues(top = padding.calculateTopPadding() + 6.dp),
             refreshTexts = listOf("下拉刷新", "释放刷新", "正在刷新...", "刷新完成"),
@@ -170,7 +173,6 @@ fun MiuixNotificationScreen() {
                             NotificationItemCard(
                                 notification = notification,
                                 onClick = {
-                                    viewModel.markAsRead(notification.id)
                                     when (notification.target) {
                                         is NotificationTarget.Comment -> {
                                             userMessages.showMessage("暂不支持跳转到评论，将跳转到对应回答。")
@@ -204,6 +206,9 @@ fun MiuixNotificationScreen() {
                                                 ),
                                             )
                                         }
+                                        is NotificationTarget.Pin -> {
+                                            navigator.onNavigate(Pin(notification.target.id.toLong()))
+                                        }
                                         null -> {}
                                     }
                                 },
@@ -212,7 +217,7 @@ fun MiuixNotificationScreen() {
                     }
                     if (!viewModel.isEnd) {
                         item {
-                            LaunchedEffect(Unit) { viewModel.loadMore(runtime.environment) }
+                            LaunchedEffect(Unit) { viewModel.loadMore(environment) }
                         }
                     }
                 }
@@ -223,7 +228,7 @@ fun MiuixNotificationScreen() {
                     isPullToRefresh = isManualRefreshing,
                 )
 
-                if (runtime.showDebugCopy) {
+                if (showDebugCopy) {
                     androidx.compose.foundation.layout.Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.BottomEnd,
@@ -231,7 +236,7 @@ fun MiuixNotificationScreen() {
                         IconButton(
                             onClick = {
                                 val data = Json.encodeToString(viewModel.debugData)
-                                runtime.environment.setPlainTextClipboard("data", data)
+                                environment.setPlainTextClipboard("data", data)
                                 userMessages.showMessage("已复制调试数据")
                             },
                         ) {

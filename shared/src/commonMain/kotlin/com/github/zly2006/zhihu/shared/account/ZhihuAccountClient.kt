@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -17,20 +17,8 @@
 
 package com.github.zly2006.zhihu.shared.account
 
-import com.github.zly2006.zhihu.shared.data.ZHIHU_READ_HISTORY_ADD_URL
-import com.github.zly2006.zhihu.shared.data.buildZhihuReadHistoryBody
-import com.github.zly2006.zhihu.shared.data.executeZhihuAuthenticatedRequest
 import com.github.zly2006.zhihu.shared.data.fetchVerifiedZhihuSession
-import com.github.zly2006.zhihu.shared.data.fetchZhihuAuthenticatedJson
-import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import io.ktor.client.HttpClient
-import io.ktor.client.request.HttpRequestBuilder
-import io.ktor.client.request.setBody
-import io.ktor.client.statement.HttpResponse
-import io.ktor.http.ContentType
-import io.ktor.http.HttpMethod
-import io.ktor.http.contentType
-import kotlinx.serialization.json.JsonObject
 
 class ZhihuAccountClient(
     private val repository: ZhihuAccountRepository,
@@ -46,7 +34,6 @@ class ZhihuAccountClient(
     private var httpClient: HttpClient? = null
     private var httpClientCookies: Map<String, String>? = null
     private var httpClientUserAgent: String? = null
-    private var lastRefreshMillis = 0L
 
     fun load(): ZhihuAccountSession {
         val cached = session
@@ -116,53 +103,11 @@ class ZhihuAccountClient(
         return refreshed
     }
 
-    suspend fun fetchAuthenticatedJson(
-        url: String,
-        block: suspend HttpRequestBuilder.() -> Unit = {},
-    ): JsonObject? =
-        fetchZhihuAuthenticatedJson(
-            client = httpClient(),
-            url = url,
-            lastRefreshMillis = lastRefreshMillis,
-            updateLastRefreshMillis = { lastRefreshMillis = it },
-            block = block,
-        )
-
-    suspend fun <T> withAuthenticatedResponse(
-        url: String,
-        block: suspend HttpRequestBuilder.() -> Unit = {},
-        transform: suspend (HttpResponse) -> T,
-    ): T {
-        val response = executeZhihuAuthenticatedRequest(
-            client = httpClient(),
-            url = url,
-            lastRefreshMillis = lastRefreshMillis,
-            updateLastRefreshMillis = { lastRefreshMillis = it },
-            block = block,
-        )
-        return transform(response)
-    }
-
     suspend fun <T> withAuthenticatedClient(
         block: suspend (client: HttpClient, cookies: Map<String, String>) -> T,
     ): T {
         val currentSession = load()
         return block(httpClient(), currentSession.cookies)
-    }
-
-    suspend fun addReadHistory(
-        contentToken: String,
-        contentTypeName: String,
-    ) {
-        val currentSession = load()
-        if (currentSession.cookies["d_c0"] == null) return
-        val body = buildZhihuReadHistoryBody(contentToken, contentTypeName)
-        fetchAuthenticatedJson(ZHIHU_READ_HISTORY_ADD_URL) {
-            method = HttpMethod.Post
-            contentType(ContentType.Application.Json)
-            setBody(body)
-            signZhihuFetchRequest(currentSession.cookies, body)
-        }
     }
 
     private fun persistCurrentSession() {

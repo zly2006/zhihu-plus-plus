@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -19,39 +19,43 @@ package com.github.zly2006.zhihu.util
 
 import android.content.Context
 import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.data.asApiEnvironment
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.ui.Collection
-import com.github.zly2006.zhihu.util.signFetchRequest
+import com.github.zly2006.zhihu.viewmodel.postSigned
+import io.ktor.client.call.body
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 object OpenInBrowser {
     suspend fun openUrlInBrowser(context: Context, destination: NavDestination): Boolean {
         val urlToken = AccountData.data.self?.urlToken ?: return false
-        val jojo = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/people/$urlToken/collections?limit=50") { signFetchRequest() }!!
+        val environment = context.asApiEnvironment()
+        val jojo = environment.fetchJson("https://www.zhihu.com/api/v4/people/$urlToken/collections?limit=50", "")!!
         val collection = ZhihuJson
             .decodeJson<List<Collection>>(jojo["data"]!!)
             .firstOrNull { it.description == "com.github.zly2006.zhplus.openinbrowser" }
             ?: ZhihuJson.decodeJson<Collection>(
-                AccountData.fetchPost(context, "https://www.zhihu.com/api/v4/collections") {
-                    signFetchRequest()
-                    contentType(ContentType.Application.Json)
-                    setBody(
-                        buildJsonObject {
-                            put("title", "Zhihu++: 要在浏览器中打开的内容")
-                            put("description", "com.github.zly2006.zhplus.openinbrowser")
-                            put("is_public", false)
-                        },
-                    )
-                }!!["collection"]!!,
+                environment
+                    .postSigned("https://www.zhihu.com/api/v4/collections") {
+                        contentType(ContentType.Application.Json)
+                        setBody(
+                            buildJsonObject {
+                                put("title", "Zhihu++: 要在浏览器中打开的内容")
+                                put("description", "com.github.zly2006.zhplus.openinbrowser")
+                                put("is_public", false)
+                            },
+                        )
+                    }.body<JsonObject>()["collection"]!!,
             )
         if (destination is Article) {
             val contentType = when (destination.type) {

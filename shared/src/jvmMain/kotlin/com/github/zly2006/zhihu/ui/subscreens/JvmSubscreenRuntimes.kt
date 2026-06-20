@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -205,12 +205,7 @@ actual fun rememberDeveloperSettingsRuntime(): DeveloperSettingsRuntime {
 }
 
 @Composable
-actual fun rememberOpenSourceLicensesLibraries(): Libs = remember { loadDesktopOpenSourceLicenses() }
-
-@Composable
-actual fun rememberShowFullVariantLicenses(): Boolean = false
-
-private fun loadDesktopOpenSourceLicenses(): Libs =
+actual fun rememberOpenSourceLicensesLibraries(): Libs = remember {
     loadDesktopAboutLibrariesJson()
         ?.takeIf { it.isNotBlank() }
         ?.let { json ->
@@ -218,6 +213,10 @@ private fun loadDesktopOpenSourceLicenses(): Libs =
                 Libs.Builder().withJson(json).build()
             }.getOrElse { Libs(emptyList(), emptySet()) }
         } ?: Libs(emptyList(), emptySet())
+}
+
+@Composable
+actual fun rememberShowFullVariantLicenses(): Boolean = false
 
 private fun loadDesktopAboutLibrariesJson(): String? {
     val resourceJson = Thread

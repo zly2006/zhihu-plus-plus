@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -193,8 +193,8 @@ sealed interface Feed {
         val id: Long,
         override val url: String,
         override val author: Person,
-        val commentCount: Int,
-        val content: JsonArray,
+        val commentCount: Int = 0,
+        val content: JsonArray? = null,
         val likeCount: Int = 0,
         val excerptTitle: String = "",
         val contentHtml: String = "",

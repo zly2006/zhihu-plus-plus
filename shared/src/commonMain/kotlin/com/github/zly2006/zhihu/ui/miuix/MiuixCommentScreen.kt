@@ -82,21 +82,11 @@ import com.github.zly2006.zhihu.ui.COMMENT_SORT_SCORE_TAG
 import com.github.zly2006.zhihu.ui.COMMENT_SORT_TIME_TAG
 import com.github.zly2006.zhihu.ui.ClickableImageWithMenu
 import com.github.zly2006.zhihu.ui.SwipeToReplyContainer
-import com.github.zly2006.zhihu.ui.commentAuthorTag
-import com.github.zly2006.zhihu.ui.commentChildButtonTag
-import com.github.zly2006.zhihu.ui.commentImageTag
-import com.github.zly2006.zhihu.ui.commentLikeButtonTag
-import com.github.zly2006.zhihu.ui.commentLikeCountTag
-import com.github.zly2006.zhihu.ui.commentReplyButtonTag
-import com.github.zly2006.zhihu.ui.commentReplyCountTag
-import com.github.zly2006.zhihu.ui.commentReplyToAuthorTag
-import com.github.zly2006.zhihu.ui.commentRowTag
 import com.github.zly2006.zhihu.ui.commentSelectionWorkaround
 import com.github.zly2006.zhihu.ui.commentViewModelKey
 import com.github.zly2006.zhihu.ui.dfsSimple
 import com.github.zly2006.zhihu.ui.formatCommentTime
 import com.github.zly2006.zhihu.ui.rememberCommentEmojiInlineContent
-import com.github.zly2006.zhihu.ui.rememberCommentScreenRuntime
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.ChildCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.CommentSortOrder
@@ -129,7 +119,6 @@ fun MiuixCommentScreen(
     listState: LazyListState = rememberLazyListState(),
 ) {
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
-    val runtime = rememberCommentScreenRuntime()
     var commentInput by remember { mutableStateOf("") }
     var isSending by remember { mutableStateOf(false) }
     var replyToComment by remember { mutableStateOf<CommentItem?>(null) }
@@ -191,7 +180,6 @@ fun MiuixCommentScreen(
         Column(modifier = modifier) {
             MiuixCommentRow(
                 comment = commentItem,
-                runtime = runtime,
                 isLiked = isLiked,
                 likeCount = likeCount,
                 toggleLike = {
@@ -216,7 +204,6 @@ fun MiuixCommentScreen(
                         val childCommentItem = CommentItem(item = childComment, clickTarget = null)
                         MiuixCommentRow(
                             comment = childCommentItem,
-                            runtime = runtime,
                             modifier = Modifier.testTag(commentRowTag(childComment.id)),
                             isLiked = liked,
                             likeCount = childLikeCount,
@@ -420,7 +407,6 @@ private fun SortChip(text: String, selected: Boolean, tag: String, onClick: () -
 @Composable
 private fun MiuixCommentRow(
     comment: CommentItem,
-    runtime: com.github.zly2006.zhihu.ui.CommentScreenRuntime,
     modifier: Modifier = Modifier,
     isLiked: Boolean = false,
     likeCount: Int = 0,
@@ -499,7 +485,6 @@ private fun MiuixCommentRow(
                 if (commentImg != null) {
                     ClickableImageWithMenu(
                         imageUrl = commentImg,
-                        runtime = runtime,
                         modifier = Modifier
                             .testTag(commentImageTag(commentData.id))
                             .padding(top = 8.dp)
@@ -562,3 +547,22 @@ private fun MiuixCommentRow(
         }
     }
 }
+
+// 评论项测试 tag 帮助函数（上游清理后从公共 CommentScreen 移除，miuix 评论区按原命名保留供 UI 测试定位）。
+private fun commentRowTag(commentId: String) = "comment_row_$commentId"
+
+private fun commentAuthorTag(commentId: String) = "comment_author_$commentId"
+
+private fun commentReplyToAuthorTag(commentId: String) = "comment_reply_to_author_$commentId"
+
+private fun commentReplyButtonTag(commentId: String) = "comment_reply_button_$commentId"
+
+private fun commentReplyCountTag(commentId: String) = "comment_reply_count_$commentId"
+
+private fun commentLikeButtonTag(commentId: String) = "comment_like_button_$commentId"
+
+private fun commentLikeCountTag(commentId: String) = "comment_like_count_$commentId"
+
+private fun commentChildButtonTag(commentId: String) = "comment_child_button_$commentId"
+
+private fun commentImageTag(commentId: String) = "comment_image_$commentId"

@@ -55,13 +55,14 @@ import com.github.zly2006.zhihu.ui.BlocklistSettingsNlpContent
 import com.github.zly2006.zhihu.ui.BlocklistSettingsTestConfig
 import com.github.zly2006.zhihu.ui.BlocklistSettingsTestTags
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
-import com.github.zly2006.zhihu.ui.rememberBlocklistSettingsPlatformRuntime
+import com.github.zly2006.zhihu.ui.rememberBlocklistRuleExporter
+import com.github.zly2006.zhihu.ui.rememberBlocklistRuleImporter
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeyword
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedTopic
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedUser
 import com.github.zly2006.zhihu.viewmodel.filter.BlocklistStats
 import com.github.zly2006.zhihu.viewmodel.filter.KeywordType
-import com.github.zly2006.zhihu.viewmodel.filter.rememberBlocklistManager
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
@@ -96,8 +97,9 @@ fun MiuixBlocklistSettingsScreen(
 ) {
     val navigator = LocalNavigator.current
     val userMessages = rememberUserMessageSink()
-    val runtime = rememberBlocklistSettingsPlatformRuntime(userMessages)
-    val blocklistManager = rememberBlocklistManager()
+    val requestImport = rememberBlocklistRuleImporter(userMessages)
+    val exportRules = rememberBlocklistRuleExporter()
+    val database = remember { getContentFilterDatabase() }
     val coroutineScope = rememberCoroutineScope()
 
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -121,12 +123,12 @@ fun MiuixBlocklistSettingsScreen(
     fun loadData() {
         coroutineScope.launch {
             try {
-                loadedKeywords = blocklistManager
-                    .getAllBlockedKeywords()
+                loadedKeywords = database
+                    .blockedKeywordDao().getAllKeywords()
                     .filter { it.getKeywordTypeEnum() == KeywordType.EXACT_MATCH }
-                loadedUsers = blocklistManager.getAllBlockedUsers()
-                loadedTopics = blocklistManager.getAllBlockedTopics()
-                loadedStats = blocklistManager.getBlocklistStats()
+                loadedUsers = database.blockedUserDao().getAllUsers()
+                loadedTopics = database.blockedTopicDao().getAllTopics()
+                loadedStats = BlocklistStats(keywordCount = database.blockedKeywordDao().getKeywordCount(), userCount = database.blockedUserDao().getUserCount(), topicCount = database.blockedTopicDao().getTopicCount())
             } catch (e: Exception) {
                 Log.e("MiuixBlocklistSettingsScreen", "加载数据失败", e)
                 userMessages.showShortMessage("加载数据失败: ${e.message}")
@@ -215,7 +217,7 @@ fun MiuixBlocklistSettingsScreen(
                         if (importAction != null) {
                             importAction()
                         } else {
-                            runtime.requestImport { summary ->
+                            requestImport { summary ->
                                 userMessages.showLongMessage("导入成功：$summary")
                                 loadData()
                             }
@@ -234,7 +236,7 @@ fun MiuixBlocklistSettingsScreen(
                         } else {
                             coroutineScope.launch {
                                 try {
-                                    userMessages.showLongMessage(runtime.exportRules())
+                                    userMessages.showLongMessage(exportRules())
                                 } catch (e: Exception) {
                                     Log.e("MiuixBlocklistSettingsScreen", "导出失败", e)
                                     userMessages.showShortMessage("导出失败: ${e.message}")
@@ -324,7 +326,7 @@ private fun KeywordsTab(
     showAddForm: Boolean,
     onDismissForm: () -> Unit,
 ) {
-    val blocklistManager = rememberBlocklistManager()
+    val database = remember { getContentFilterDatabase() }
     val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
 
@@ -340,7 +342,7 @@ private fun KeywordsTab(
                             }
                             coroutineScope.launch {
                                 try {
-                                    blocklistManager.clearAllBlockedKeywords()
+                                    database.blockedKeywordDao().clearAllKeywords()
                                     onReload()
                                 } catch (e: Exception) {
                                     e.printStackTrace()
@@ -353,13 +355,13 @@ private fun KeywordsTab(
             }
             items(keywords, key = { it.id }) { kw ->
                 ArrowPreference(
-                    modifier = Modifier.testTag(BlocklistSettingsTestTags.keywordItem(kw.id)),
+                    modifier = Modifier.testTag("blocklistSettings:keywords:item:${kw.id}"),
                     title = kw.keyword,
                     summary = kwSummary(kw),
                     onClick = {},
                     endActions = {
                         IconButton(
-                            modifier = Modifier.testTag(BlocklistSettingsTestTags.keywordDelete(kw.id)),
+                            modifier = Modifier.testTag("blocklistSettings:keywords:delete:${kw.id}"),
                             onClick = {
                                 testConfig?.onDeleteKeyword?.let {
                                     it(kw)
@@ -367,7 +369,7 @@ private fun KeywordsTab(
                                 }
                                 coroutineScope.launch {
                                     try {
-                                        blocklistManager.removeBlockedKeyword(kw.id)
+                                        database.blockedKeywordDao().deleteKeywordById(kw.id)
                                         onReload()
                                     } catch (e: Exception) {
                                         e.printStackTrace()
@@ -402,7 +404,7 @@ private fun KeywordsTab(
                         }
                         coroutineScope.launch {
                             try {
-                                blocklistManager.addBlockedKeyword(kw, cs, rx)
+                                database.blockedKeywordDao().insertKeyword(BlockedKeyword(keyword = kw.trim(), keywordType = KeywordType.EXACT_MATCH.name, caseSensitive = cs, isRegex = rx))
                                 userMessages.showShortMessage("已添加")
                                 onReload()
                                 onDismissForm()
@@ -426,7 +428,7 @@ private fun UsersTab(
     showAddForm: Boolean,
     onDismissForm: () -> Unit,
 ) {
-    val blocklistManager = rememberBlocklistManager()
+    val database = remember { getContentFilterDatabase() }
     val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
 
@@ -442,7 +444,7 @@ private fun UsersTab(
                             }
                             coroutineScope.launch {
                                 try {
-                                    blocklistManager.clearAllBlockedUsers()
+                                    database.blockedUserDao().clearAllUsers()
                                     onReload()
                                 } catch (e: Exception) {
                                     e.printStackTrace()
@@ -456,7 +458,7 @@ private fun UsersTab(
             items(users, key = { it.userId }) { user ->
                 ArrowPreference(
                     modifier = Modifier
-                        .testTag(BlocklistSettingsTestTags.userItem(user.userId))
+                        .testTag("blocklistSettings:users:item:${user.userId}")
                         .clickable { onNavigate(user) },
                     title = user.userName,
                     summary = "ID: ${user.userId}",
@@ -466,7 +468,7 @@ private fun UsersTab(
                     onClick = {},
                     endActions = {
                         IconButton(
-                            modifier = Modifier.testTag(BlocklistSettingsTestTags.userDelete(user.userId)),
+                            modifier = Modifier.testTag("blocklistSettings:users:delete:${user.userId}"),
                             onClick = {
                                 testConfig?.onDeleteUser?.let {
                                     it(user)
@@ -474,7 +476,7 @@ private fun UsersTab(
                                 }
                                 coroutineScope.launch {
                                     try {
-                                        blocklistManager.removeBlockedUser(user.userId)
+                                        database.blockedUserDao().deleteUserById(user.userId)
                                         onReload()
                                     } catch (e: Exception) {
                                         e.printStackTrace()
@@ -509,7 +511,7 @@ private fun UsersTab(
                         }
                         coroutineScope.launch {
                             try {
-                                blocklistManager.addBlockedUser(id, name)
+                                database.blockedUserDao().insertUser(BlockedUser(userId = id, userName = name))
                                 userMessages.showShortMessage("已添加")
                                 onReload()
                                 onDismissForm()
@@ -534,7 +536,7 @@ private fun TopicsTab(
     showClearConfirm: Boolean,
     onShowClearConfirm: (Boolean) -> Unit,
 ) {
-    val blocklistManager = rememberBlocklistManager()
+    val database = remember { getContentFilterDatabase() }
     val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
 
@@ -559,13 +561,13 @@ private fun TopicsTab(
                 }
                 items(topics, key = { it.topicId }) { topic ->
                     ArrowPreference(
-                        modifier = Modifier.testTag(BlocklistSettingsTestTags.topicItem(topic.topicId)),
+                        modifier = Modifier.testTag("blocklistSettings:topics:item:${topic.topicId}"),
                         title = topic.topicName,
                         summary = "ID: ${topic.topicId}",
                         onClick = {},
                         endActions = {
                             IconButton(
-                                modifier = Modifier.testTag(BlocklistSettingsTestTags.topicDelete(topic.topicId)),
+                                modifier = Modifier.testTag("blocklistSettings:topics:delete:${topic.topicId}"),
                                 onClick = {
                                     testConfig?.onDeleteTopic?.let {
                                         it(topic)
@@ -573,7 +575,7 @@ private fun TopicsTab(
                                     }
                                     coroutineScope.launch {
                                         try {
-                                            blocklistManager.removeBlockedTopic(topic.topicId)
+                                            database.blockedTopicDao().deleteTopicById(topic.topicId)
                                             onReload()
                                         } catch (e: Exception) {
                                             e.printStackTrace()
@@ -600,7 +602,7 @@ private fun TopicsTab(
                             }
                             coroutineScope.launch {
                                 try {
-                                    blocklistManager.addBlockedTopic(id, name)
+                                    database.blockedTopicDao().insertTopic(BlockedTopic(topicId = id, topicName = name))
                                     userMessages.showShortMessage("已添加")
                                     onReload()
                                     onDismissForm()
@@ -628,7 +630,7 @@ private fun TopicsTab(
                     }
                     coroutineScope.launch {
                         try {
-                            blocklistManager.clearAllBlockedTopics()
+                            database.blockedTopicDao().clearAllTopics()
                             onReload()
                         } catch (e: Exception) {
                             e.printStackTrace()

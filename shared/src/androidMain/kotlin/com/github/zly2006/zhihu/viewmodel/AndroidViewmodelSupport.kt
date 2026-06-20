@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -277,16 +277,6 @@ class AndroidArticlePreviewWebViewStore : ArticlePreviewWebViewStore {
     var nextTag: String? = null
         private set
 
-    fun getOrCreateMainWebView(context: Context, answerId: Long): CustomWebView {
-        mainWebView?.let { return it }
-        return createCachedWebView(context)
-            .also {
-                mainWebView = it
-                mainTag = "wv_main_$answerId"
-                it.tag = mainTag
-            }
-    }
-
     fun promoteForNavigation(direction: ArticleAnswerTransitionDirection) {
         when (direction) {
             ArticleAnswerTransitionDirection.HORIZONTAL_NEXT, ArticleAnswerTransitionDirection.VERTICAL_NEXT -> {
@@ -332,12 +322,6 @@ class AndroidArticlePreviewWebViewStore : ArticlePreviewWebViewStore {
             }
     }
 
-    fun clearContentIds() {
-        mainWebView?.contentId = null
-        previousPreviewWebView?.contentId = null
-        nextPreviewWebView?.contentId = null
-    }
-
     fun destroyAll() {
         mainWebView?.destroy()
         mainWebView = null
@@ -369,9 +353,6 @@ class AndroidArticlesSharedData :
     ArticlePreviewWebViewStore {
     private val previewWebViews = AndroidArticlePreviewWebViewStore()
 
-    fun getOrCreateMainWebView(context: Context, answerId: Long) =
-        previewWebViews.getOrCreateMainWebView(context, answerId)
-
     /**
      * 导航时旋转三个 WebView：
      * NEXT: prev→destroy, main→prev, next→main
@@ -390,7 +371,9 @@ class AndroidArticlesSharedData :
 
     override fun reset() {
         super.reset()
-        previewWebViews.clearContentIds()
+        previewWebViews.mainWebView?.contentId = null
+        previewWebViews.previousPreviewWebView?.contentId = null
+        previewWebViews.nextPreviewWebView?.contentId = null
     }
 
     override fun onCleared() {

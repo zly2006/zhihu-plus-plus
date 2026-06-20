@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -96,12 +96,16 @@ object ZhihuMockApi {
         url: String,
         body: String,
         status: HttpStatusCode = HttpStatusCode.OK,
+        beforeRespond: suspend () -> Unit = {},
     ) {
         routes.add(
             0,
             Route(
                 predicate = { request -> request.method == method && request.url.toString() == url },
-                responder = { jsonResponse(status, body) },
+                responder = {
+                    beforeRespond()
+                    jsonResponse(status, body)
+                },
             ),
         )
     }

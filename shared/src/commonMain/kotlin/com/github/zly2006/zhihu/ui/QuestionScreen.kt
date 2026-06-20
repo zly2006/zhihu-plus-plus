@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -43,6 +43,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Share
@@ -75,7 +76,11 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.data.decodeQuestionContentDetail
+import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.navigation.WriteAnswer
+import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberZhihuWebUrlOpener
@@ -89,28 +94,10 @@ import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.viewmodel.ContentLoadEnvironment
+import com.github.zly2006.zhihu.viewmodel.addReadHistory
 import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
-
-/**
- * 问题页的测试替身配置。
- *
- * instrumentation 测试通过这里注入固定状态和副作用回调，让 QuestionScreen 可以离线验证，
- * 不触发真实详情拉取、关注请求或评论加载。
- */
-data class QuestionScreenTestOverrides(
-    val viewModel: QuestionFeedViewModel,
-    val initialUiState: QuestionScreenUiState,
-    val isEnd: Boolean = true,
-    val onRefreshAnswers: (() -> Unit)? = null,
-    val onLoadMore: (() -> Unit)? = null,
-    val onFollowQuestion: ((Boolean) -> Unit)? = null,
-    val onOpenLog: (() -> Unit)? = null,
-    val onShareAction: (() -> Unit)? = null,
-    val commentSheetContent: (@Composable (onDismiss: () -> Unit) -> Unit)? = null,
-    val shareDialogContent: (@Composable (onDismissRequest: () -> Unit) -> Unit)? = null,
-)
 
 const val QUESTION_SCREEN_LIST_TAG = "question_screen_list"
 const val QUESTION_TITLE_TAG = "question_title"
@@ -122,24 +109,22 @@ const val QUESTION_SORT_UPDATED_TAG = "question_sort_updated"
 const val QUESTION_FOLLOW_BUTTON_TAG = "question_follow_button"
 const val QUESTION_VIEW_LOG_BUTTON_TAG = "question_view_log_button"
 const val QUESTION_SHARE_BUTTON_TAG = "question_share_button"
+const val QUESTION_WRITE_ANSWER_BUTTON_TAG = "question_write_answer_button"
 const val QUESTION_COMMENTS_BUTTON_TAG = "question_comments_button"
 const val QUESTION_STATS_TAG = "question_stats"
-
-fun questionFeedItemTag(stableKey: String) = "question_feed_item_$stableKey"
 
 private suspend fun loadQuestion(
     environment: ContentLoadEnvironment,
     question: Question,
-): LoadedQuestionScreenData? {
+): DataHolder.Question? {
     environment.addReadHistory(question.questionId.toString(), "question")
     val include = "read_count,visit_count,answer_count,voteup_count,comment_count,follower_count,detail,excerpt,author,relationship.is_following,topics"
     val jsonObject = environment.fetchJson("https://www.zhihu.com/api/v4/questions/${question.questionId}", include)
         ?: return null
     val questionData = decodeQuestionContentDetail(jsonObject)
-    val loadedData = loadedQuestionScreenData(question, questionData)
-    environment.postHistoryDestination(loadedData.historyDestination)
+    environment.postHistoryDestination(Question(question.questionId, questionData.title))
     environment.recordContentOpenEvent(destination = question, questionId = question.questionId)
-    return loadedData
+    return questionData
 }
 
 /**
@@ -152,69 +137,61 @@ private suspend fun loadQuestion(
 @Composable
 fun QuestionScreen(
     question: Question,
-    testOverrides: QuestionScreenTestOverrides? = null,
 ) {
     val settings = rememberSettingsStore()
     val shareRuntime = rememberShareDialogRuntime()
     val openZhihuWebUrl = rememberZhihuWebUrlOpener()
-    val viewModel: QuestionFeedViewModel = testOverrides?.viewModel ?: viewModel(key = "question_${question.questionId}") {
+    val navigator = LocalNavigator.current
+    val viewModel: QuestionFeedViewModel = viewModel(key = "question_${question.questionId}") {
         QuestionFeedViewModel(question.questionId)
     }
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
-    val initialUiState = testOverrides?.initialUiState ?: QuestionScreenUiState(title = question.title)
-    val initialTitle = initialUiState.title.ifEmpty { question.title }
-    val onRefreshAnswers = testOverrides?.onRefreshAnswers ?: { viewModel.refresh(paginationEnvironment) }
-    val onLoadMore = testOverrides?.onLoadMore ?: { viewModel.loadMore(paginationEnvironment) }
-    val isEnd = testOverrides?.let { { it.isEnd } } ?: { viewModel.isEnd }
-    var questionContent by remember(question.questionId, initialUiState.questionContent) {
-        mutableStateOf(initialUiState.questionContent)
+    val answerSwitchState = paginationEnvironment.articleAnswerSwitchState()
+    var questionContent by remember(question.questionId) {
+        mutableStateOf("")
     }
-    var answerCount by remember(question.questionId, initialUiState.answerCount) {
-        mutableIntStateOf(initialUiState.answerCount)
+    var answerCount by remember(question.questionId) {
+        mutableIntStateOf(0)
     }
-    var visitCount by remember(question.questionId, initialUiState.visitCount) {
-        mutableIntStateOf(initialUiState.visitCount)
+    var visitCount by remember(question.questionId) {
+        mutableIntStateOf(0)
     }
-    var commentCount by remember(question.questionId, initialUiState.commentCount) {
-        mutableIntStateOf(initialUiState.commentCount)
+    var commentCount by remember(question.questionId) {
+        mutableIntStateOf(0)
     }
-    var followerCount by remember(question.questionId, initialUiState.followerCount) {
-        mutableIntStateOf(initialUiState.followerCount)
+    var followerCount by remember(question.questionId) {
+        mutableIntStateOf(0)
     }
-    var title by remember(question.questionId, initialTitle) { mutableStateOf(initialTitle) }
+    var title by remember(question.questionId, question.title) { mutableStateOf(question.title) }
     var showComments by rememberSaveable(question.questionId) { mutableStateOf(false) }
-    var isFollowing by remember(question.questionId, initialUiState.isFollowing) {
-        mutableStateOf(initialUiState.isFollowing)
+    var isFollowing by remember(question.questionId) {
+        mutableStateOf(false)
     }
     var showShareDialog by remember { mutableStateOf(false) }
     val userMessages = rememberUserMessageSink()
-    var isQuestionDetailExpanded by rememberSaveable(question.questionId, initialUiState.isQuestionDetailExpanded) {
-        mutableStateOf(initialUiState.isQuestionDetailExpanded)
+    var isQuestionDetailExpanded by rememberSaveable(question.questionId) {
+        mutableStateOf(true)
     }
     val questionContentPreview = remember(questionContent) { Ksoup.parse(questionContent).text().trim() }
     val shareText = getShareText(question, title)
 
     // 加载问题详情和答案
-    LaunchedEffect(question.questionId, testOverrides) {
-        if (testOverrides != null) {
-            return@LaunchedEffect
-        }
+    LaunchedEffect(question.questionId, viewModel) {
         if (viewModel.displayItems.isEmpty()) {
             launch {
                 viewModel.refresh(paginationEnvironment)
             }
         }
         try {
-            val loaded = loadQuestion(paginationEnvironment, question)
-            if (loaded != null) {
-                val questionData = loaded.uiState
-                questionContent = questionData.questionContent
+            val questionData = loadQuestion(paginationEnvironment, question)
+            if (questionData != null) {
+                questionContent = questionData.detail
                 title = questionData.title
                 answerCount = questionData.answerCount
                 visitCount = questionData.visitCount
                 commentCount = questionData.commentCount
                 followerCount = questionData.followerCount
-                isFollowing = questionData.isFollowing
+                isFollowing = questionData.relationship.isFollowing
             } else {
                 userMessages.showShortMessage("获取问题详情失败")
             }
@@ -246,8 +223,8 @@ fun QuestionScreen(
         ) { innerPadding ->
             PaginatedList(
                 items = viewModel.displayItems,
-                onLoadMore = onLoadMore,
-                isEnd = isEnd,
+                onLoadMore = { viewModel.loadMore(paginationEnvironment) },
+                isEnd = { viewModel.isEnd },
                 key = { it.stableKey },
                 modifier = Modifier
                     .padding(innerPadding)
@@ -329,7 +306,7 @@ fun QuestionScreen(
                                 FilledTonalButton(
                                     onClick = {
                                         viewModel.updateSortOrder("default")
-                                        onRefreshAnswers()
+                                        viewModel.refresh(paginationEnvironment)
                                     },
                                     modifier = Modifier
                                         .testTag(QUESTION_SORT_DEFAULT_TAG)
@@ -350,7 +327,7 @@ fun QuestionScreen(
                                 FilledTonalButton(
                                     onClick = {
                                         viewModel.updateSortOrder("updated")
-                                        onRefreshAnswers()
+                                        viewModel.refresh(paginationEnvironment)
                                     },
                                     modifier = Modifier
                                         .testTag(QUESTION_SORT_UPDATED_TAG)
@@ -374,16 +351,13 @@ fun QuestionScreen(
                                 onClick = {
                                     scope.launch {
                                         val nextFollowing = !isFollowing
-                                        testOverrides?.onFollowQuestion?.invoke(nextFollowing) ?: viewModel.followQuestion(
+                                        viewModel.followQuestion(
                                             paginationEnvironment,
-                                            question.questionId,
                                             nextFollowing,
                                         )
                                         isFollowing = nextFollowing
                                         followerCount += if (isFollowing) 1 else -1
-                                        if (testOverrides == null) {
-                                            userMessages.showShortMessage(if (isFollowing) "已关注问题" else "已取消关注问题")
-                                        }
+                                        userMessages.showShortMessage(if (isFollowing) "已关注问题" else "已取消关注问题")
                                     }
                                 },
                                 modifier = Modifier
@@ -414,31 +388,23 @@ fun QuestionScreen(
                         ) {
                             Button(
                                 onClick = {
-                                    testOverrides?.onOpenLog?.invoke() ?: run {
-                                        try {
-                                            openZhihuWebUrl("https://www.zhihu.com/question/${question.questionId}/log")
-                                        } catch (e: Exception) {
-                                            userMessages.showShortMessage("打开日志失败: ${e.message}")
-                                        }
+                                    try {
+                                        openZhihuWebUrl("https://www.zhihu.com/question/${question.questionId}/log")
+                                    } catch (e: Exception) {
+                                        userMessages.showShortMessage("打开日志失败: ${e.message}")
                                     }
                                 },
                                 modifier = Modifier.testTag(QUESTION_VIEW_LOG_BUTTON_TAG),
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                             ) {
-                                Text("查看日志")
+                                Text("日志")
                             }
-                            Spacer(Modifier.width(8.dp))
 
                             Button(
                                 onClick = {
                                     if (shareText != null) {
-                                        if (testOverrides != null) {
-                                            testOverrides.onShareAction?.invoke()
+                                        handleShareAction(question, settings, shareRuntime) {
                                             showShareDialog = true
-                                        } else {
-                                            handleShareAction(question, settings, shareRuntime) {
-                                                showShareDialog = true
-                                            }
                                         }
                                     }
                                 },
@@ -450,11 +416,29 @@ fun QuestionScreen(
                                 ),
                             ) {
                                 Icon(Icons.Filled.Share, contentDescription = "分享")
-                                Spacer(Modifier.width(8.dp))
-                                Text("分享")
                             }
 
-                            Spacer(Modifier.width(8.dp))
+                            Button(
+                                onClick = {
+                                    navigator.onNavigate(
+                                        WriteAnswer(
+                                            questionId = question.questionId,
+                                            questionTitle = title,
+                                            questionDetail = questionContent,
+                                        ),
+                                    )
+                                },
+                                modifier = Modifier.testTag(QUESTION_WRITE_ANSWER_BUTTON_TAG),
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                ),
+                            ) {
+                                Icon(Icons.Filled.Edit, contentDescription = "写回答")
+                                Spacer(Modifier.width(8.dp))
+                                Text("写回答")
+                            }
                             Button(
                                 onClick = { showComments = true },
                                 modifier = Modifier.testTag(QUESTION_COMMENTS_BUTTON_TAG),
@@ -480,16 +464,16 @@ fun QuestionScreen(
             ) { item ->
                 FeedCard(
                     item = item,
-                    modifier = Modifier.testTag(questionFeedItemTag(item.stableKey)),
-                )
+                    modifier = Modifier.testTag("question_feed_item_${item.stableKey}"),
+                ) {
+                    val dest = navDestination
+                    answerSwitchState?.pendingNavigator = viewModel.createAnswerNavigatorFor(item, paginationEnvironment)
+                    dest?.let { navigator.onNavigate(it) }
+                }
             }
         }
     }
-    testOverrides?.commentSheetContent?.let { content ->
-        if (showComments) {
-            content { showComments = false }
-        }
-    } ?: CommentScreenComponent(
+    CommentScreenComponent(
         showComments = showComments,
         onDismiss = { showComments = false },
         content = question,
@@ -497,11 +481,7 @@ fun QuestionScreen(
 
     // 分享对话框
     if (shareText != null) {
-        testOverrides?.shareDialogContent?.let { content ->
-            if (showShareDialog) {
-                content { showShareDialog = false }
-            }
-        } ?: ShareDialog(
+        ShareDialog(
             content = question,
             shareText = shareText,
             showDialog = showShareDialog,
@@ -509,14 +489,3 @@ fun QuestionScreen(
         )
     }
 }
-
-data class QuestionScreenUiState(
-    val questionContent: String = "",
-    val answerCount: Int = 0,
-    val visitCount: Int = 0,
-    val commentCount: Int = 0,
-    val followerCount: Int = 0,
-    val title: String = "",
-    val isFollowing: Boolean = false,
-    val isQuestionDetailExpanded: Boolean = true,
-)

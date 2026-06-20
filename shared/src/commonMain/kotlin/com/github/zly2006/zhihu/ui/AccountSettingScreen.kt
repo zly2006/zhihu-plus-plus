@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -135,13 +135,18 @@ fun AccountSettingScreen(
     testAccountData: AccountSettingsAccountState? = null,
 ) {
     val navigator = LocalNavigator.current
-    val runtime = rememberAccountSettingsPlatformRuntime()
+    val accountState = rememberAccountSettingsAccountState()
+    val refreshProfile = rememberAccountProfileRefresher()
+    val requestLogin = rememberAccountLoginRequester()
+    val requestQrLoginScan = rememberAccountQrLoginRequester()
+    val logout = rememberAccountLogoutAction()
+    val selectMainTab = rememberMainTabSelector()
     val settings = rememberSettingsStore()
     val copyPlainText = rememberPlainTextClipboard()
     val openSystemUrl = rememberSystemUrlOpener()
     val userMessages = rememberUserMessageSink()
     val updateRuntime = rememberSystemUpdateRuntime()
-    val versionInfo = remember(runtime) { runtime.appVersionInfo() }
+    val versionInfo = rememberAppVersionInfo()
 
     val useDuo3HomeAccount = remember { settings.getBoolean("duo3_home_account", false) }
     val selectedBottomBarItemKeys = remember {
@@ -160,7 +165,7 @@ fun AccountSettingScreen(
     LaunchedEffect(isDeveloper) {
         settings.putBoolean("developer", isDeveloper)
     }
-    val liveData by runtime.accountState
+    val liveData by accountState
     val data = testAccountData ?: liveData
 
     Scaffold(
@@ -178,7 +183,7 @@ fun AccountSettingScreen(
             LaunchedEffect(data.login, refreshAccountProfileOnEnter) {
                 if (refreshAccountProfileOnEnter && data.login) {
                     try {
-                        runtime.refreshProfile()
+                        refreshProfile()
                     } catch (e: Exception) {
                         Log.e("AccountSettingScreen", "Failed to refresh account profile", e)
                         userMessages.showShortMessage("获取用户信息失败")
@@ -219,7 +224,7 @@ fun AccountSettingScreen(
                     Spacer(Modifier.weight(1f))
                     FilledTonalIconButton(
                         onClick = {
-                            runtime.requestQrLoginScan()
+                            requestQrLoginScan()
                         },
                         modifier = Modifier.size(40.dp),
                     ) {
@@ -254,7 +259,7 @@ fun AccountSettingScreen(
                         icon = { Icon(Icons.AutoMirrored.Filled.Login, null) },
                         modifier = Modifier.testTag(ACCOUNT_SETTINGS_LOGIN_ITEM_TAG),
                         onClick = {
-                            runtime.requestLogin()
+                            requestLogin()
                         },
                     )
                 }
@@ -366,7 +371,7 @@ fun AccountSettingScreen(
                                     .background(MaterialTheme.colorScheme.primaryContainer)
                                     .clickable {
                                         onDismissRequest()
-                                        runtime.selectMainTab(OnlineHistory)
+                                        selectMainTab(OnlineHistory)
                                     }.padding(8.dp, 16.dp),
                                 verticalArrangement = Arrangement.Center,
                                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -546,7 +551,7 @@ fun AccountSettingScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        runtime.logout()
+                        logout()
                         showLogoutDialog = false
                     },
                 ) {

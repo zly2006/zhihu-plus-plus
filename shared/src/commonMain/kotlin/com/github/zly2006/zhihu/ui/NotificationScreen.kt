@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -67,6 +67,7 @@ import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.NotificationItem
 import com.github.zly2006.zhihu.shared.data.NotificationTarget
@@ -83,16 +84,14 @@ import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 
-data class NotificationScreenRuntime(
-    val environment: NotificationEnvironment,
-    val showDebugCopy: Boolean,
-)
-
 @Composable
-expect fun rememberNotificationScreenRuntime(
+expect fun rememberNotificationEnvironment(
     viewModel: NotificationViewModel,
     settingsStore: NotificationSettingsStore,
-): NotificationScreenRuntime
+): NotificationEnvironment
+
+@Composable
+expect fun rememberNotificationShowDebugCopy(): Boolean
 
 /**
  * 通知中心页面。
@@ -106,13 +105,14 @@ fun NotificationScreen() {
     val navigator = LocalNavigator.current
     val settingsStore = rememberNotificationSettingsStore()
     val viewModel = viewModel { NotificationViewModel() }
-    val runtime = rememberNotificationScreenRuntime(viewModel, settingsStore)
+    val environment = rememberNotificationEnvironment(viewModel, settingsStore)
+    val showDebugCopy = rememberNotificationShowDebugCopy()
     val coroutineScope = rememberCoroutineScope()
     val userMessages = rememberUserMessageSink()
 
     LaunchedEffect(Unit) {
         if (viewModel.allData.isEmpty()) {
-            viewModel.refresh(runtime.environment)
+            viewModel.refresh(environment)
         }
     }
 
@@ -136,7 +136,7 @@ fun NotificationScreen() {
                     if (viewModel.unreadCount > 0) {
                         IconButton(onClick = {
                             coroutineScope.launch {
-                                viewModel.markAllAsRead(runtime.environment)
+                                viewModel.markAllAsRead(environment)
                                 userMessages.showMessage("已全部标记为已读")
                             }
                         }) {
@@ -157,12 +157,12 @@ fun NotificationScreen() {
     ) { paddingValues ->
         PullToRefreshBox(
             isRefreshing = viewModel.isLoading,
-            onRefresh = { viewModel.refresh(runtime.environment) },
+            onRefresh = { viewModel.refresh(environment) },
             modifier = Modifier.padding(paddingValues),
         ) {
             PaginatedList(
                 items = viewModel.allData,
-                onLoadMore = { viewModel.loadMore(runtime.environment) },
+                onLoadMore = { viewModel.loadMore(environment) },
                 isEnd = { viewModel.isEnd },
                 modifier = Modifier.fillMaxSize(),
                 footer = ProgressIndicatorFooter,
@@ -171,12 +171,9 @@ fun NotificationScreen() {
                     NotificationItemView(
                         notification = notification,
                         onClick = {
-                            viewModel.markAsRead(notification.id)
                             // 处理点击事件 - 跳转到对应内容
                             when (notification.target) {
-                                is NotificationTarget
-                                    .Comment,
-                                -> {
+                                is NotificationTarget.Comment -> {
                                     userMessages.showMessage("暂不支持跳转到评论，将跳转到对应回答。")
                                     notification.target.target?.navDestination?.let {
                                         navigator.onNavigate(it)
@@ -201,6 +198,7 @@ fun NotificationScreen() {
                                         ),
                                     )
                                 }
+
                                 is NotificationTarget.Article -> {
                                     navigator.onNavigate(
                                         Article(
@@ -212,17 +210,23 @@ fun NotificationScreen() {
                                     )
                                 }
 
+                                is NotificationTarget.Pin -> {
+                                    navigator.onNavigate(
+                                        Pin(notification.target.id.toLong()),
+                                    )
+                                }
+
                                 null -> { }
                             }
                         },
                     )
                 }
             }
-            if (runtime.showDebugCopy) {
+            if (showDebugCopy) {
                 DraggableRefreshButton(
                     onClick = {
                         val data = Json.encodeToString(viewModel.debugData)
-                        runtime.environment.setPlainTextClipboard("data", data)
+                        environment.setPlainTextClipboard("data", data)
                         userMessages.showMessage("已复制调试数据")
                     },
                     preferenceName = "copyAll",

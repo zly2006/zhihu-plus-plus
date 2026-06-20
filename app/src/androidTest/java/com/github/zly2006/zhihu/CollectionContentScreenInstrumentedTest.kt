@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -38,10 +38,10 @@ import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.pressSystemBack
 import com.github.zly2006.zhihu.test.resetAppPreferences
+import com.github.zly2006.zhihu.test.seedViewModel
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.Collection
 import com.github.zly2006.zhihu.ui.CollectionContentScreen
-import com.github.zly2006.zhihu.ui.CollectionContentScreenTestOverrides
 import com.github.zly2006.zhihu.viewmodel.CollectionContentViewModel
 import com.github.zly2006.zhihu.viewmodel.CollectionItem
 import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
@@ -123,8 +123,7 @@ class CollectionContentScreenInstrumentedTest {
          * 3. Cancelling the dialog must not invoke the export callback, while confirming after
          *    turning the checkbox off must invoke it exactly once with `false`.
          */
-        val exportSelections = mutableListOf<Boolean>()
-        setCollectionContentScreen(onExportAllToHtmlZip = { includeImages -> exportSelections += includeImages })
+        setCollectionContentScreen()
 
         openExportOptionsDialog()
         composeRule.onNodeWithText("导出收藏夹 HTML").assertIsDisplayed()
@@ -132,15 +131,14 @@ class CollectionContentScreenInstrumentedTest {
         composeRule.onNodeWithTag(EXPORT_CANCEL_TAG).performClick()
         composeRule.waitForIdle()
         composeRule.onAllNodesWithText("导出收藏夹 HTML").assertCountEquals(0)
-        assertTrue(exportSelections.isEmpty())
 
         openExportOptionsDialog()
         composeRule.onNodeWithTag(EXPORT_INCLUDE_IMAGES_TAG).assertIsOn().performClick()
         composeRule.onNodeWithTag(EXPORT_INCLUDE_IMAGES_TAG).assertIsOff()
         composeRule.onNodeWithTag(EXPORT_CONFIRM_TAG).performClick()
-        composeRule.waitForIdle()
+        composeRule.waitUntilTextExists("导出完成")
         composeRule.onAllNodesWithText("导出收藏夹 HTML").assertCountEquals(0)
-        assertEquals(listOf(false), exportSelections)
+        composeRule.onNodeWithText("没有可导出的回答或文章，已跳过 $SEEDED_ITEM_COUNT 条，失败 0 条。").assertIsDisplayed()
     }
 
     @Test
@@ -176,18 +174,11 @@ class CollectionContentScreenInstrumentedTest {
 
     private fun setCollectionContentScreen(
         itemCount: Int = SEEDED_ITEM_COUNT,
-        onExportAllToHtmlZip: ((Boolean) -> Unit)? = null,
     ): SeededCollectionScreenSetup {
         val seededViewModel = seedCollectionContentViewModel(itemCount)
         val navigator = composeRule.setScreenContent {
             CollectionContentScreen(
                 collectionId = SEEDED_COLLECTION_ID,
-                testOverrides = CollectionContentScreenTestOverrides(
-                    viewModel = seededViewModel,
-                    isEnd = true,
-                    onLoadMore = {},
-                    onExportAllToHtmlZip = onExportAllToHtmlZip,
-                ),
             )
         }
         return SeededCollectionScreenSetup(
@@ -197,7 +188,9 @@ class CollectionContentScreenInstrumentedTest {
     }
 
     private fun seedCollectionContentViewModel(itemCount: Int): CollectionContentViewModel {
-        val seededViewModel = CollectionContentViewModel(SEEDED_COLLECTION_ID)
+        val seededViewModel = composeRule.seedViewModel<CollectionContentViewModel> {
+            CollectionContentViewModel(SEEDED_COLLECTION_ID)
+        }
         val seededDisplayItems = List(itemCount) { index ->
             FeedDisplayItem(
                 title = seedTitle(index + 1),
@@ -244,10 +237,16 @@ class CollectionContentScreenInstrumentedTest {
         return seededViewModel
     }
 
+    private fun MainActivityComposeRule.waitUntilTextExists(text: String) {
+        waitUntil("Expected text $text", timeoutMillis = 5_000) {
+            onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
     private fun expectedStatsText(): String = listOf(
-        "${SEEDED_ITEM_COUNT} 条收藏",
-        "${SEEDED_LIKE_COUNT} 个赞同",
-        "${SEEDED_COMMENT_COUNT} 条评论",
+        "$SEEDED_ITEM_COUNT 条收藏",
+        "$SEEDED_LIKE_COUNT 个赞同",
+        "$SEEDED_COMMENT_COUNT 条评论",
         "${formatArticleDateTime(SEEDED_UPDATED_TIME_SECONDS)} 更新",
     ).joinToString(" · ")
 

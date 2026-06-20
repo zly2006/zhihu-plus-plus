@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -26,6 +26,7 @@ import com.github.zly2006.zhihu.shared.util.extractImageUrl
 import com.github.zly2006.zhihu.shared.util.parseSegmentTextParagraph
 import com.github.zly2006.zhihu.ui.components.SegmentedText
 import com.github.zly2006.zhihu.ui.components.segmentedTextStyle
+import com.hrm.markdown.parser.MarkdownParser
 import com.hrm.markdown.parser.ast.BlockQuote
 import com.hrm.markdown.parser.ast.ContainerNode
 import com.hrm.markdown.parser.ast.Document
@@ -80,6 +81,8 @@ fun htmlToMdAst(html: String): Document {
     parsingDocument = null
     return document
 }
+
+fun markdownToMdAst(markdown: String): Document = MarkdownParser().parse(markdown)
 
 internal fun Document.previewImageUrls(): List<String> =
     collectPreviewImageUrls()
@@ -286,17 +289,22 @@ private fun convertElementToBlock(element: Element): List<MarkdownNode> = when (
 
 private fun createCodeBlock(element: Element): FencedCodeBlock {
     val codeElement = element.selectFirst("code")
-    val language = codeElement
-        ?.classNames()
-        ?.firstOrNull { it.startsWith("language-") }
-        ?.removePrefix("language-")
-        .orEmpty()
+    val language =
+        sequenceOf(
+            parseLanguageFromClassName(codeElement?.classNames().orEmpty()),
+            element.attr("lang").ifBlank { null },
+        ).firstOrNull { !it.isNullOrBlank() }.orEmpty()
 
     return FencedCodeBlock(
         info = language,
         language = language,
         literal = codeElement?.text() ?: element.text(),
     )
+}
+
+private fun parseLanguageFromClassName(classNames: Set<String>): String? {
+    val prefix = "language-"
+    return classNames.firstOrNull { it.startsWith(prefix) }?.removePrefix(prefix)
 }
 
 private fun createListBlock(
@@ -332,7 +340,7 @@ private fun createBlockImage(element: Element): MarkdownNode? {
     }
 
     val src = extractImageUrl(element::attr) ?: return null
-    val caption = element.attr("alt")
+    val caption = element.attr("data-caption").ifBlank { element.attr("alt") }
     return Figure(
         imageUrl = src,
         caption = caption,
@@ -595,3 +603,236 @@ private fun extractInlineNode(node: HtmlNode): List<MarkdownNode> = when (node) 
 private fun ContainerNode.appendChildren(children: List<MarkdownNode>) {
     children.forEach(::appendChild)
 }
+
+/**
+ * 把知乎回答的 HTML（DataHolder.Answer.content / editableContent）转换成 Markdown，
+ * 用于编辑已有回答时回填到编辑框。
+ *
+ * 转换链路：
+ * - HTML -> MdAst：复用 [htmlToMdAst]，尽可能按知乎 HTML 的实际结构映射到 [Document]
+ * - MdAst -> Markdown：复用 [Document.toMarkdown]，按项目约定输出可读性优先的 Markdown
+ *
+ */
+fun zhihuHtmlToMarkdown(html: String): String = htmlToMdAst(html).toMarkdown().trim()
+
+/**
+ * 将 [Document] 序列化为 Markdown 文本。
+ *
+ * 当前支持的主要节点：
+ * - 标题：`#` ~ `######`
+ * - 段落：空行分隔
+ * - 引用：`>` 前缀
+ * - 代码块：```lang
+ * - 列表：`-` 与 `1.`，子块简单缩进
+ * - 分隔线：`---`
+ * - 公式：`$...$` / `$$...$$`
+ * - 图片/Figure：`![alt](url)`
+ * - 表格：pipe table（首行表头 + 分隔行）
+ * - 脚注：`[^n]` 与 `[^n]: ...`
+ */
+fun Document.toMarkdown(): String {
+    val out = StringBuilder()
+    for (child in children) {
+        child.appendMarkdownBlock(out, orderedIndex = null)
+    }
+    return out.toString().trimEnd()
+}
+
+private fun MarkdownNode.appendMarkdownBlock(
+    out: StringBuilder,
+    orderedIndex: Int?,
+) {
+    when (this) {
+        is Heading -> {
+            val level = level.coerceIn(1, 6)
+            out.append("#".repeat(level)).append(" ")
+            appendMarkdownInline(out)
+            out.append("\n\n")
+        }
+
+        is Paragraph -> {
+            appendMarkdownInline(out)
+            out.append("\n\n")
+        }
+
+        is BlockQuote -> {
+            val content = buildString {
+                for (child in children) {
+                    child.appendMarkdownBlock(this, orderedIndex = null)
+                }
+            }.trimEnd()
+            val lines = content.lines()
+            for (line in lines) {
+                if (line.isBlank()) {
+                    out.append(">\n")
+                } else {
+                    out.append("> ").append(line).append("\n")
+                }
+            }
+            out.append("\n")
+        }
+
+        is FencedCodeBlock -> {
+            val lang = language.takeIf { it.isNotBlank() }
+            out.append("```")
+            if (lang != null) out.append(lang)
+            out.append("\n")
+            out.append(literal.trimEnd())
+            out.append("\n```\n\n")
+        }
+
+        is ListBlock -> {
+            for ((i, item) in children.filterIsInstance<ListItem>().withIndex()) {
+                val prefix =
+                    if (ordered) {
+                        "${startNumber + i}. "
+                    } else {
+                        "- "
+                    }
+                val itemContent = buildString {
+                    item.appendMarkdownListItem(this)
+                }.trimEnd()
+                val lines = itemContent.lines()
+                if (lines.isEmpty() || lines.all { it.isBlank() }) {
+                    out.append(prefix.trimEnd()).append("\n")
+                    continue
+                }
+                out.append(prefix).append(lines.first()).append("\n")
+                for (line in lines.drop(1)) {
+                    if (line.isBlank()) {
+                        out.append("\n")
+                    } else {
+                        out.append("  ").append(line).append("\n")
+                    }
+                }
+            }
+            out.append("\n")
+        }
+
+        is ThematicBreak -> out.append("---\n\n")
+
+        is MathBlock -> {
+            val tex = literal.trim()
+            out.append("$$").append(tex).append("$$\n\n")
+        }
+
+        is Figure -> {
+            val alt = caption.takeIf { it.isNotBlank() }.orEmpty()
+            out
+                .append("![")
+                .append(alt)
+                .append("](")
+                .append(imageUrl)
+                .append(")\n\n")
+        }
+
+        is Table -> {
+            appendMarkdownTable(out)
+            out.append("\n")
+        }
+
+        is FootnoteDefinition -> {
+            out.append("[^").append(index).append("]: ")
+            val content =
+                buildString {
+                    this@appendMarkdownBlock.appendMarkdownInline(this)
+                }.trim()
+            out.append(content).append("\n\n")
+        }
+
+        else -> {
+            if (this is ContainerNode) {
+                for (child in children) {
+                    child.appendMarkdownBlock(out, orderedIndex = orderedIndex)
+                }
+            }
+        }
+    }
+}
+
+private fun ListItem.appendMarkdownListItem(out: StringBuilder) {
+    val childBlocks = children
+    if (childBlocks.size == 1 && childBlocks.single() is Paragraph) {
+        (childBlocks.single() as Paragraph).appendMarkdownInline(out)
+        return
+    }
+    for (child in childBlocks) {
+        child.appendMarkdownBlock(out, orderedIndex = null)
+    }
+}
+
+private fun MarkdownNode.appendMarkdownInline(out: StringBuilder) {
+    when (this) {
+        is Text -> out.append(literal)
+        is StrongEmphasis -> out.append("**").also { children.forEach { it.appendMarkdownInline(out) } }.append("**")
+        is Emphasis -> out.append("*").also { children.forEach { it.appendMarkdownInline(out) } }.append("*")
+        is Strikethrough -> out.append("~~").also { children.forEach { it.appendMarkdownInline(out) } }.append("~~")
+        is Highlight -> children.forEach { it.appendMarkdownInline(out) }
+        is Subscript -> out.append("<sub>").also { children.forEach { it.appendMarkdownInline(out) } }.append("</sub>")
+        is Superscript -> out.append("<sup>").also { children.forEach { it.appendMarkdownInline(out) } }.append("</sup>")
+        is InlineCode -> out.append("`").append(literal).append("`")
+        is KeyboardInput -> out.append("<kbd>").append(literal).append("</kbd>")
+        is HardLineBreak -> out.append("\n")
+        is InlineMath -> out.append("$").append(literal.trim()).append("$")
+        is FootnoteReference -> out.append("[^").append(index).append("]")
+        is Link -> {
+            val text = buildString { children.forEach { it.appendMarkdownInline(this) } }.ifBlank { destination }
+            out
+                .append("[")
+                .append(text)
+                .append("](")
+                .append(destination)
+                .append(")")
+        }
+
+        is Image -> {
+            val alt = children.filterIsInstance<Text>().joinToString(separator = "") { it.literal }.ifBlank { "" }
+            out
+                .append("![")
+                .append(alt)
+                .append("](")
+                .append(destination)
+                .append(")")
+        }
+
+        else -> if (this is ContainerNode) children.forEach { it.appendMarkdownInline(out) }
+    }
+}
+
+private fun Table.appendMarkdownTable(out: StringBuilder) {
+    val head = children.filterIsInstance<TableHead>().singleOrNull()
+    val body = children.filterIsInstance<TableBody>().singleOrNull()
+    val allRows =
+        buildList {
+            head?.children?.filterIsInstance<TableRow>()?.let(::addAll)
+            body?.children?.filterIsInstance<TableRow>()?.let(::addAll)
+            if (head == null && body == null) addAll(children.filterIsInstance<TableRow>())
+        }
+    if (allRows.isEmpty()) return
+    val headerRow = allRows.first()
+    val headerCells = headerRow.children.filterIsInstance<TableCell>()
+    if (headerCells.isEmpty()) return
+    out.append("| ")
+    headerCells.forEach { cell ->
+        out.append(cell.inlineTextForTable()).append(" | ")
+    }
+    out.append("\n| ")
+    headerCells.forEach { _ ->
+        out.append("--- | ")
+    }
+    out.append("\n")
+    for (row in allRows.drop(1)) {
+        val cells = row.children.filterIsInstance<TableCell>()
+        if (cells.isEmpty()) continue
+        out.append("| ")
+        cells.forEach { cell ->
+            out.append(cell.inlineTextForTable()).append(" | ")
+        }
+        out.append("\n")
+    }
+}
+
+private fun TableCell.inlineTextForTable(): String =
+    buildString { this@inlineTextForTable.appendMarkdownInline(this) }
+        .replace(Regex("[\n\r]+"), " ")
+        .trim()

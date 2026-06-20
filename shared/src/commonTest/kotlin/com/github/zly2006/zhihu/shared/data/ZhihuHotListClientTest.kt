@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -22,22 +22,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class ZhihuHotListClientTest {
-    @Test
-    fun buildsDefaultHotListUrl() {
-        assertEquals(
-            "https://www.zhihu.com/api/v3/feed/topstory/hot-lists/total?limit=50&mobile=true",
-            zhihuHotListUrl(),
-        )
-    }
-
-    @Test
-    fun buildsCustomHotListUrl() {
-        assertEquals(
-            "https://www.zhihu.com/api/v3/feed/topstory/hot-lists/total?limit=20&mobile=false",
-            zhihuHotListUrl(limit = 20, mobile = false),
-        )
-    }
-
     @Test
     fun createsQuestionDisplayItem() {
         val feed = HotListFeed(

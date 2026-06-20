@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -18,12 +18,14 @@
 package com.github.zly2006.zhihu.shared.platform
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.runtime.rememberCoroutineScope
+import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
 import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDataFile
 import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
+import com.github.zly2006.zhihu.shared.desktop.saveImageToDownloads
 import java.util.Properties
+import kotlinx.coroutines.launch
 
 @Composable
 actual fun rememberSettingsStore(): SettingsStore = remember { desktopSettingsStore() }
@@ -149,6 +151,41 @@ actual fun rememberImageGalleryOpener(): (List<String>, Int) -> Unit {
 }
 
 @Composable
+actual fun rememberImageSaver(): (String) -> Unit {
+    val scope = rememberCoroutineScope()
+    val userMessages = rememberUserMessageSink()
+    val store = remember { DesktopAccountStore() }
+    return remember(scope, userMessages, store) {
+        { imageUrl ->
+            scope.launch {
+                runCatching {
+                    store.saveImageToDownloads(imageUrl, "image")
+                }.onSuccess { file ->
+                    userMessages.showShortMessage("已保存图片: ${file.absolutePath}")
+                }.onFailure { error ->
+                    userMessages.showShortMessage("保存失败: ${error.message}")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+actual fun rememberImageSharer(): (String) -> Unit {
+    val userMessages = rememberUserMessageSink()
+    return remember(userMessages) {
+        { imageUrl ->
+            runCatching {
+                copyDesktopPlainText(imageUrl)
+                userMessages.showShortMessage("已复制图片链接")
+            }.onFailure { error ->
+                userMessages.showShortMessage("分享失败: ${error.message}")
+            }
+        }
+    }
+}
+
+@Composable
 actual fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit =
     remember { { _, text -> runCatching { copyDesktopPlainText(text) } } }
 
@@ -190,18 +227,6 @@ private fun showDesktopMessage(message: String) {
     runCatching {
         ProcessBuilder("terminal-notifier", "-message", message, "-sound", "default")
             .start()
-    }
-}
-
-@Composable
-actual fun rememberScreenSizeDp(): ScreenSizeDp {
-    val density = LocalDensity.current
-    val containerSize = LocalWindowInfo.current.containerSize
-    return with(density) {
-        ScreenSizeDp(
-            width = containerSize.width.toDp().value,
-            height = containerSize.height.toDp().value,
-        )
     }
 }
 

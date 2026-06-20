@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -95,6 +95,8 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.navigation.SentenceSimilarityTest
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
+import com.github.zly2006.zhihu.navigation.WriteAnswer
+import com.github.zly2006.zhihu.navigation.WritePin
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
@@ -562,6 +564,12 @@ fun ZhihuMain(
                         QuestionScreen(question)
                     }
                 }
+                entry<WriteAnswer> { writeAnswer ->
+                    WriteAnswerScreen(writeAnswer)
+                }
+                entry<WritePin> {
+                    WritePinScreen()
+                }
                 entry<Article> { article ->
                     // 同一回答链在单个 entry 内用 AnimatedContent 切换：返回键直接回到来源页，
                     // 切换动画两层互补满屏滑动，不透出上一个回答。
@@ -781,17 +789,27 @@ private fun MainTabsPager(
             MainTabPage.HotListPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
                 MiuixHotListScreen(innerPadding)
             } else {
-                HotListScreen(innerPadding)
+                HotListScreen(
+                    innerPadding = innerPadding,
+                    scrollToTopTrigger = scrollToTopTrigger,
+                    isActive = pagerState.currentPage == pageIndex,
+                )
             }
             MainTabPage.DailyPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
                 MiuixDailyScreen()
             } else {
-                DailyScreen()
+                DailyScreen(
+                    scrollToTopTrigger = scrollToTopTrigger,
+                    isActive = pagerState.currentPage == pageIndex,
+                )
             }
             MainTabPage.OnlineHistoryPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
                 MiuixOnlineHistoryScreen()
             } else {
-                OnlineHistoryScreen()
+                OnlineHistoryScreen(
+                    scrollToTopTrigger = scrollToTopTrigger,
+                    isActive = pagerState.currentPage == pageIndex,
+                )
             }
             MainTabPage.MyCollectionsPage -> MyCollectionsTopLevelPage(innerPadding)
             MainTabPage.AccountPage -> if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
@@ -805,8 +823,7 @@ private fun MainTabsPager(
 
 @Composable
 private fun MyCollectionsTopLevelPage(innerPadding: PaddingValues) {
-    val runtime = rememberAccountSettingsPlatformRuntime()
-    val account = runtime.accountState.value
+    val account = rememberAccountSettingsAccountState().value
     if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
         MiuixCollectionScreen(
             urlToken = account.urlToken,

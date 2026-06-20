@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -29,14 +29,9 @@ class FeedContentFilterPipelineTest {
         val database = getContentFilterDatabase(
             createTempDirectory("feed-content-filter-pipeline").resolve("content-filter.db").toFile(),
         )
-        val blocklistService = BlocklistService(
-            keywordDao = database.blockedKeywordDao(),
-            userDao = database.blockedUserDao(),
-            topicDao = database.blockedTopicDao(),
-        )
-        blocklistService.addBlockedUser(userId = "blocked-user", userName = "Blocked")
-        blocklistService.addBlockedKeyword("blocked keyword")
-        blocklistService.addBlockedTopic(topicId = "blocked-topic", topicName = "Blocked Topic")
+        database.blockedUserDao().insertUser(BlockedUser(userId = "blocked-user", userName = "Blocked"))
+        database.blockedKeywordDao().insertKeyword(BlockedKeyword(keyword = "blocked keyword"))
+        database.blockedTopicDao().insertTopic(BlockedTopic(topicId = "blocked-topic", topicName = "Blocked Topic"))
 
         val keywordService = BlockedKeywordService(
             keywordDao = database.blockedKeywordDao(),
@@ -45,12 +40,19 @@ class FeedContentFilterPipelineTest {
                 phrases.filter { text.contains("nlp hit") }.map { it to 0.95 }
             },
         )
-        keywordService.addNLPPhrase("nlp phrase")
+        database.blockedKeywordDao().insertKeyword(
+            BlockedKeyword(
+                keyword = "nlp phrase",
+                keywordType = KeywordType.NLP_SEMANTIC.name,
+            ),
+        )
 
         val notified = mutableListOf<List<FilterableContent>>()
         val result = FeedContentFilterPipeline(
             settings = FeedFilterSettings(),
-            blocklistService = blocklistService,
+            blockedKeywordDao = database.blockedKeywordDao(),
+            blockedUserDao = database.blockedUserDao(),
+            blockedTopicDao = database.blockedTopicDao(),
             blockedKeywordService = keywordService,
             htmlToText = { it },
             onNlpBlocked = { notified.add(it) },
@@ -92,15 +94,18 @@ class FeedContentFilterPipelineTest {
                     .map { it to 0.95 }
             },
         )
-        keywordService.addNLPPhrase("nlp phrase")
+        database.blockedKeywordDao().insertKeyword(
+            BlockedKeyword(
+                keyword = "nlp phrase",
+                keywordType = KeywordType.NLP_SEMANTIC.name,
+            ),
+        )
 
         val result = FeedContentFilterPipeline(
             settings = FeedFilterSettings(),
-            blocklistService = BlocklistService(
-                keywordDao = database.blockedKeywordDao(),
-                userDao = database.blockedUserDao(),
-                topicDao = database.blockedTopicDao(),
-            ),
+            blockedKeywordDao = database.blockedKeywordDao(),
+            blockedUserDao = database.blockedUserDao(),
+            blockedTopicDao = database.blockedTopicDao(),
             blockedKeywordService = keywordService,
         ).filter(
             listOf(

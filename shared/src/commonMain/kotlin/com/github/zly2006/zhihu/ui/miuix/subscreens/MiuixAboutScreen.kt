@@ -74,7 +74,7 @@ import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
-import com.github.zly2006.zhihu.ui.rememberAccountSettingsPlatformRuntime
+import com.github.zly2006.zhihu.ui.rememberAppVersionInfo
 import org.jetbrains.compose.resources.painterResource
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
@@ -96,8 +96,7 @@ private val DarkFlowColors = listOf(Color(0xFF3D2A52), Color(0xFF2A3A5C), Color(
 fun MiuixAboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
     val navigator = LocalNavigator.current
     val openUrl = rememberExternalUrlOpener()
-    val runtime = rememberAccountSettingsPlatformRuntime()
-    val versionInfo = remember(runtime) { runtime.appVersionInfo() }
+    val versionInfo = rememberAppVersionInfo()
     val density = LocalDensity.current
     val darkTheme = ThemeManager.isDarkTheme()
     val lazyListState = rememberLazyListState()

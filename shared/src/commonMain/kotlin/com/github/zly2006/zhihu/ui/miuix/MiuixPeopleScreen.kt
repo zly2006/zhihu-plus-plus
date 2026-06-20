@@ -59,7 +59,6 @@ import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
-import com.github.zly2006.zhihu.ui.PeopleScreenTestOverrides
 import com.github.zly2006.zhihu.ui.PersonViewModel
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
@@ -100,7 +99,6 @@ private val PEOPLE_SCREEN_TITLES = listOf(
 @Composable
 fun MiuixPeopleScreen(
     person: Person,
-    testOverrides: PeopleScreenTestOverrides? = null,
 ) {
     val navigator = LocalNavigator.current
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
@@ -111,7 +109,7 @@ fun MiuixPeopleScreen(
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
 
-    val initialPage = testOverrides?.initialPage ?: 0
+    val initialPage = 0
     val pagerState = rememberPagerState(
         initialPage = initialPage,
         pageCount = { PEOPLE_SCREEN_TITLES.size },
@@ -119,8 +117,7 @@ fun MiuixPeopleScreen(
     val searchMemberHashId = viewModel.memberHashId
         .takeUnless { it.isBlank() || it == Person.EMPTY_ID }
 
-    LaunchedEffect(viewModel, testOverrides) {
-        if (testOverrides != null) return@LaunchedEffect
+    LaunchedEffect(viewModel) {
         try {
             viewModel.load(paginationEnvironment)
         } catch (e: Exception) {

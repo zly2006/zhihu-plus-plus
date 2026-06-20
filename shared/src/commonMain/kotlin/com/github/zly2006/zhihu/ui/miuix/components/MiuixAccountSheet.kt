@@ -46,7 +46,10 @@ import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.theme.AppTokens
 import com.github.zly2006.zhihu.ui.AccountSettingsAccountState
-import com.github.zly2006.zhihu.ui.rememberAccountSettingsPlatformRuntime
+import com.github.zly2006.zhihu.ui.rememberAccountLoginRequester
+import com.github.zly2006.zhihu.ui.rememberAccountLogoutAction
+import com.github.zly2006.zhihu.ui.rememberAccountQrLoginRequester
+import com.github.zly2006.zhihu.ui.rememberAccountSettingsAccountState
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Icon
@@ -71,9 +74,11 @@ fun MiuixAccountSheet(
     if (!show) return
 
     val navigator = LocalNavigator.current
-    val runtime = rememberAccountSettingsPlatformRuntime()
+    val requestLogin = rememberAccountLoginRequester()
+    val requestQrLoginScan = rememberAccountQrLoginRequester()
+    val logout = rememberAccountLogoutAction()
     val settings = rememberSettingsStore()
-    val accountState by runtime.accountState
+    val accountState by rememberAccountSettingsAccountState()
     val data = testAccountData ?: accountState
 
     WindowBottomSheet(
@@ -104,7 +109,7 @@ fun MiuixAccountSheet(
                             Spacer(Modifier.width(12.dp))
                             Text(data.username, style = AppTokens.text.titleMedium, modifier = Modifier.weight(1f))
                             // 扫码登录：协助电脑端登录，扫到知乎登录二维码后打开 WebView 确认（与 M3 账号页一致）
-                            IconButton(onClick = { runtime.requestQrLoginScan() }) {
+                            IconButton(onClick = { requestQrLoginScan() }) {
                                 Icon(Icons.Default.QrCodeScanner, contentDescription = "扫码登录", tint = MiuixTheme.colorScheme.onSurface)
                             }
                         }
@@ -121,7 +126,7 @@ fun MiuixAccountSheet(
                             title = "登录知乎",
                             onClick = {
                                 onDismiss()
-                                runtime.requestLogin()
+                                requestLogin()
                             },
                             startAction = { Icon(Icons.AutoMirrored.Filled.Login, null) },
                         )
@@ -213,7 +218,7 @@ fun MiuixAccountSheet(
                             title = "退出登录",
                             onClick = {
                                 onDismiss()
-                                runtime.logout()
+                                logout()
                             },
                             startAction = { Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MiuixTheme.colorScheme.error) },
                         )

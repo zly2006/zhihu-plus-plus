@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -69,54 +69,21 @@ import com.github.zly2006.zhihu.viewmodel.CollectionHtmlExportDialogState
 import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 
-/**
- * 收藏内容页的测试替身配置。
- *
- * instrumentation 测试通过这里注入预填充 ViewModel 和副作用桩，避免刷新、加载更多或导出流程触发真实网络。
- */
-data class CollectionContentScreenTestOverrides(
-    val viewModel: CollectionContentViewModel,
-    val isEnd: Boolean = true,
-    val onLoadMore: (() -> Unit)? = null,
-    val onExportAllToHtmlZip: ((Boolean) -> Unit)? = null,
-)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CollectionContentScreen(
     collectionId: String,
-): Unit = CollectionContentScreenContent(collectionId, testOverrides = null)
-
-@Composable
-fun CollectionContentScreen(
-    collectionId: String,
-    testOverrides: CollectionContentScreenTestOverrides,
-): Unit = CollectionContentScreenContent(collectionId, testOverrides)
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun CollectionContentScreenContent(
-    collectionId: String,
-    testOverrides: CollectionContentScreenTestOverrides? = null,
 ) {
     val navigator = LocalNavigator.current
-    val screenViewModel = testOverrides?.viewModel ?: viewModel { CollectionContentViewModel(collectionId) }
+    val screenViewModel = viewModel { CollectionContentViewModel(collectionId) }
     val collectionEnvironment = rememberPaginationEnvironment(allowGuestAccess = false) as CollectionContentEnvironment
     val listState = rememberLazyListState()
     var showActionsMenu by remember { mutableStateOf(false) }
     var showExportOptionsDialog by remember { mutableStateOf(false) }
-    val isEnd = testOverrides?.let { { it.isEnd } } ?: { screenViewModel.isEnd }
-    val onLoadMore = testOverrides?.onLoadMore ?: { screenViewModel.loadMore(collectionEnvironment) }
-    val onExportAllToHtmlZip = testOverrides?.onExportAllToHtmlZip ?: { includeImages ->
-        screenViewModel.exportAllToHtmlZip(
-            environment = collectionEnvironment,
-            includeImages = includeImages,
-        )
-    }
     val sharedData = collectionEnvironment.articleAnswerSwitchState()
 
-    LaunchedEffect(testOverrides) {
-        if (testOverrides == null && screenViewModel.allData.isEmpty()) {
+    LaunchedEffect(screenViewModel) {
+        if (screenViewModel.allData.isEmpty()) {
             screenViewModel.refresh(collectionEnvironment)
         }
     }
@@ -181,7 +148,10 @@ private fun CollectionContentScreenContent(
                 onDismiss = { showExportOptionsDialog = false },
                 onConfirm = { includeImages ->
                     showExportOptionsDialog = false
-                    onExportAllToHtmlZip(includeImages)
+                    screenViewModel.exportAllToHtmlZip(
+                        environment = collectionEnvironment,
+                        includeImages = includeImages,
+                    )
                 },
             )
         }
@@ -193,8 +163,8 @@ private fun CollectionContentScreenContent(
         }
         PaginatedList(
             items = screenViewModel.displayItems,
-            onLoadMore = onLoadMore,
-            isEnd = isEnd,
+            onLoadMore = { screenViewModel.loadMore(collectionEnvironment) },
+            isEnd = { screenViewModel.isEnd },
             listState = listState,
             modifier = Modifier
                 .fillMaxSize()
@@ -224,8 +194,7 @@ private fun CollectionContentScreenContent(
                     .testTag("collection_content_item_${item.stableKey}"),
             ) {
                 val dest = navDestination
-                val repository = collectionEnvironment.answerNavigatorRepository()
-                if (dest is Article && dest.type == ArticleType.Answer && sharedData != null && repository != null) {
+                if (dest is Article && dest.type == ArticleType.Answer && sharedData != null) {
                     val idx = screenViewModel.displayItems.indexOf(item)
                     val nextItems = if (idx >= 0) screenViewModel.allData.drop(idx + 1) else emptyList()
                     val prevItems = if (idx > 0) screenViewModel.allData.take(idx).reversed() else emptyList()
@@ -234,7 +203,7 @@ private fun CollectionContentScreenContent(
                         collectionTitle = screenViewModel.title,
                         initialNextItems = nextItems,
                         initialPreviousItems = prevItems,
-                        repository = repository,
+                        environment = collectionEnvironment,
                     )
                 }
                 dest?.let { navigator.onNavigate(it) }

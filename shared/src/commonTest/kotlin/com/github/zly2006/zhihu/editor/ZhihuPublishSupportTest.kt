@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -15,20 +15,25 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.github.zly2006.zhihu.shared.data
+package com.github.zly2006.zhihu.editor
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class ZhihuReadHistoryClientTest {
+class ZhihuPublishSupportTest {
     @Test
-    fun buildsReadHistoryBody() {
+    fun parsesPublishedContentIdFromNestedPublishResult() {
         assertEquals(
-            """{"content_token":"123","content_type":"answer"}""",
-            buildZhihuReadHistoryBody(
-                contentToken = "123",
-                contentType = "answer",
-            ),
+            123456789L,
+            parsePublishContentId("""{"publish":{"id":"123456789"}}"""),
+        )
+    }
+
+    @Test
+    fun parsesPublishedContentIdFromPinPublishResult() {
+        assertEquals(
+            2051493233436386836L,
+            parsePublishContentId("""{"id":"2051493233436386836","type":"pin"}"""),
         )
     }
 }

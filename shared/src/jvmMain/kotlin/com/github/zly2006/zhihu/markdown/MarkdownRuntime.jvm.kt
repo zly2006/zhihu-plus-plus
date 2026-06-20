@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -25,11 +25,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.platform.asComposeFontFamily
+import com.github.zly2006.zhihu.shared.data.toCookieHeaderString
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
-import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
 import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDataFile
-import com.github.zly2006.zhihu.shared.desktop.saveImageToDownloads
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.hrm.latex.renderer.font.MathFont
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -45,7 +43,6 @@ private val LM_MATH_URLS = listOf(
 
 @Composable
 actual fun rememberMarkdownRuntime(): MarkdownRuntime {
-    val userMessages = rememberUserMessageSink()
     val store = remember { DesktopAccountStore() }
     var mathFont by remember { mutableStateOf<MathFont?>(null) }
 
@@ -55,30 +52,21 @@ actual fun rememberMarkdownRuntime(): MarkdownRuntime {
         }.getOrNull()
     }
 
-    return remember(store, userMessages, mathFont) {
+    return remember(mathFont) {
         object : MarkdownRuntime {
             override val mathFont: MathFont? = mathFont
-
-            override suspend fun saveMarkdownImage(url: String) {
-                runCatching {
-                    store.saveImageToDownloads(url, "markdown_image")
-                }.onSuccess { file ->
-                    userMessages.showShortMessage("已保存图片: ${file.absolutePath}")
-                }.onFailure { error ->
-                    userMessages.showShortMessage("保存失败: ${error.message}")
-                }
-            }
-
-            override suspend fun shareMarkdownImage(url: String) {
-                runCatching {
-                    copyDesktopPlainText(url)
-                    userMessages.showShortMessage("已复制图片链接")
-                }.onFailure { error ->
-                    userMessages.showShortMessage("分享失败: ${error.message}")
-                }
-            }
         }
     }
+}
+
+@Composable
+actual fun rememberMarkdownImageRequestHeaders(): MarkdownImageRequestHeaders {
+    val store = remember { DesktopAccountStore() }
+    val session = remember(store) { store.load() }
+    return MarkdownImageRequestHeaders(
+        cookieHeader = session.cookies.toCookieHeaderString(),
+        userAgent = session.userAgent,
+    )
 }
 
 @OptIn(ExperimentalTextApi::class)

@@ -105,6 +105,7 @@ import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.ui.VoteUpState
 import com.github.zly2006.zhihu.ui.articleActionText
 import com.github.zly2006.zhihu.ui.components.AnswerHorizontalOverscroll
+import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.ui.components.AnswerVerticalOverscroll
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
@@ -116,9 +117,11 @@ import com.github.zly2006.zhihu.ui.miuix.components.MiuixExportSheet
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixSheetActionRow
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixVotersSheet
-import com.github.zly2006.zhihu.ui.rememberArticleActionsRuntime
-import com.github.zly2006.zhihu.ui.rememberArticleScreenRuntime
+import com.github.zly2006.zhihu.ui.rememberArticleBrowserOpener
+import com.github.zly2006.zhihu.ui.rememberArticleHost
 import com.github.zly2006.zhihu.ui.rememberArticleScreenSettingsState
+import com.github.zly2006.zhihu.ui.rememberArticleSpeechToggler
+import com.github.zly2006.zhihu.ui.rememberArticleTtsState
 import com.github.zly2006.zhihu.ui.voteUpNeutralContent
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
@@ -162,15 +165,17 @@ fun MiuixArticleScreen(
     // 回答切换在单个导航 entry 内进行（见 ArticleAnswerSlot）；无 slot 时回退到 push 导航。
     val answerSwitch = LocalArticleAnswerSwitcher.current
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
-    val articleActions = rememberArticleActionsRuntime()
+    val ttsState = rememberArticleTtsState()
+    val toggleSpeech = rememberArticleSpeechToggler()
+    val openArticleInBrowser = rememberArticleBrowserOpener()
+    val shareRuntime = rememberShareDialogRuntime()
     val settings = rememberSettingsStore()
     val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = rememberPreferCollapsedExitUntilCollapsedScrollBehavior()
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
-    val articleScreenRuntime = rememberArticleScreenRuntime()
-    val articleHost = articleScreenRuntime.articleHost
+    val articleHost = rememberArticleHost()
     val articleSettings = rememberArticleScreenSettingsState()
     val answerSwitchMode = articleSettings.answerSwitchMode
     val sharedData = if (article.type == ArticleType.Answer) environment.articleAnswerSwitchState() else null
@@ -370,7 +375,7 @@ fun MiuixArticleScreen(
                         },
                         actions = {
                             IconButton(onClick = {
-                                articleActions.shareRuntime.share(article, articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName))
+                                shareRuntime.share(article, articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName))
                             }) {
                                 Icon(Icons.Default.Share, "分享", tint = MiuixTheme.colorScheme.onBackground)
                             }
@@ -464,14 +469,14 @@ fun MiuixArticleScreen(
                             )
                         }
                         // 朗读中显示停止按钮（对齐 M3）
-                        AnimatedVisibility(visible = articleActions.ttsState.isSpeaking) {
+                        AnimatedVisibility(visible = ttsState.isSpeaking) {
                             Box(
                                 modifier = Modifier
                                     .size(barH)
                                     .clip(RoundedCornerShape(50))
                                     .background(voteUpNeutralContent())
                                     .miuixArticleBottomAction {
-                                        articleActions.toggleSpeech(viewModel.title, viewModel.content)
+                                        toggleSpeech(viewModel.title, viewModel.content)
                                         userMessages.showMessage("已停止朗读")
                                     },
                                 contentAlignment = Alignment.Center,
@@ -800,8 +805,8 @@ fun MiuixArticleScreen(
         onDismissRequest = { showActionsMenu = false },
         title = "更多操作",
     ) {
-        val speaking = articleActions.ttsState.isSpeaking
-        val ttsEnabled = articleActions.ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)
+        val speaking = ttsState.isSpeaking
+        val ttsEnabled = ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             MiuixActionMenuRow(
                 if (speaking) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
@@ -809,7 +814,7 @@ fun MiuixArticleScreen(
                 enabled = ttsEnabled,
             ) {
                 showActionsMenu = false
-                articleActions.toggleSpeech(viewModel.title, viewModel.content)
+                toggleSpeech(viewModel.title, viewModel.content)
             }
             MiuixActionMenuRow(Icons.Default.Summarize, "总结本文") {
                 showActionsMenu = false
@@ -823,7 +828,7 @@ fun MiuixArticleScreen(
             }
             MiuixActionMenuRow(Icons.Default.ContentCopy, "复制链接") {
                 showActionsMenu = false
-                articleActions.shareRuntime.copyLink(article, articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName))
+                shareRuntime.copyLink(article, articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName))
             }
             MiuixActionMenuRow(Icons.Default.GetApp, "导出文章 (Markdown、图片、HTML、PDF)") {
                 showActionsMenu = false
@@ -831,7 +836,7 @@ fun MiuixArticleScreen(
             }
             MiuixActionMenuRow(Icons.Default.DesktopWindows, "在电脑中打开") {
                 showActionsMenu = false
-                articleActions.openArticleInBrowser(article)
+                openArticleInBrowser(article)
             }
             MiuixActionMenuRow(Icons.Default.FilterCenterFocus, "沉浸式阅读") {
                 showActionsMenu = false

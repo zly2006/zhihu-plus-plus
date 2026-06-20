@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -21,6 +21,7 @@ import android.content.Context
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -32,16 +33,23 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.Notification
+import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Search
+import com.github.zly2006.zhihu.navigation.WritePin
+import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
+import com.github.zly2006.zhihu.test.ZhihuMockApi
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.HOME_ACCOUNT_BUTTON_TAG
+import com.github.zly2006.zhihu.ui.HOME_CREATE_FAB_TAG
+import com.github.zly2006.zhihu.ui.HOME_CREATE_MENU_TAG
 import com.github.zly2006.zhihu.ui.HOME_FEED_LIST_TAG
 import com.github.zly2006.zhihu.ui.HOME_NOTIFICATION_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.HOME_REFRESH_BUTTON_TAG
@@ -50,8 +58,12 @@ import com.github.zly2006.zhihu.ui.HOME_TOP_ACTIONS_TAG
 import com.github.zly2006.zhihu.ui.HomeScreen
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.QQ_GROUP_DISMISSED_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.ZHIHU_PLUS_AUTHOR_PINS_URL
+import com.github.zly2006.zhihu.ui.homeAuthorPollAnnouncementTag
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
+import io.ktor.http.HttpMethod
+import kotlinx.serialization.encodeToString
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
@@ -68,7 +80,6 @@ class HomeScreenInstrumentedTest {
         composeRule.setScreenContent {}
         composeRule.resetAppPreferences()
         composeRule.activity.runOnUiThread {
-            AccountData.delete(composeRule.activity)
             UpdateManager.updateState.value = UpdateManager.UpdateState.NoUpdate
             clearHomeFeedViewModel()
         }
@@ -157,6 +168,72 @@ class HomeScreenInstrumentedTest {
     }
 
     @Test
+    fun createFab_opensActionMenu_andRoutesPinOnly() {
+        /*
+         * Expected behavior:
+         * 1. HomeScreen exposes a bottom FAB for creation instead of a top-bar-only write-pin action.
+         * 2. Tapping the FAB opens the creation menu with question, answer, and pin entries.
+         * 3. Question and answer are placeholders that only show the construction toast; pin navigates to WritePin.
+         */
+        val recordingNavigator = composeRule.launchHomeScreen(
+            duo3HomeAccount = false,
+            showRefreshFab = false,
+            displayItems = homeFeedFixtureItems(),
+        )
+
+        composeRule.onNodeWithTag(HOME_CREATE_FAB_TAG).assertIsDisplayed().assertHasClickAction()
+
+        composeRule.onNodeWithTag(HOME_CREATE_FAB_TAG).performClick()
+        composeRule.onNodeWithTag(HOME_CREATE_MENU_TAG).assertIsDisplayed()
+        composeRule.onNodeWithText("提问题").assertIsDisplayed()
+        composeRule.onNodeWithText("写回答").assertIsDisplayed()
+        composeRule.onNodeWithText("发想法").assertIsDisplayed()
+
+        composeRule.onNodeWithText("提问题").performClick()
+        composeRule.onNodeWithText("提问题").assertDoesNotExist()
+        assertEquals(emptyList<Any>(), recordingNavigator.destinations)
+
+        composeRule.onNodeWithTag(HOME_CREATE_FAB_TAG).performClick()
+        composeRule.onNodeWithText("写回答").performClick()
+        composeRule.onNodeWithText("写回答").assertDoesNotExist()
+        assertEquals(emptyList<Any>(), recordingNavigator.destinations)
+
+        composeRule.onNodeWithTag(HOME_CREATE_FAB_TAG).performClick()
+        composeRule.onNodeWithText("发想法").performClick()
+
+        assertEquals(listOf(WritePin), recordingNavigator.destinations)
+        assertEquals(0, recordingNavigator.backCount)
+    }
+
+    @Test
+    fun authorPollAnnouncement_navigatesToSeededPinOffline() {
+        /*
+         * Expected behavior:
+         * 1. HomeScreen should be able to render poll announcements discovered at startup without
+         *    waiting for live feeds or a real account.
+         * 2. The card should invite feedback and show the poll title plus compact statistics.
+         * 3. The accept action must navigate to the exact pin that owns the poll.
+         */
+        mockAuthorPollAnnouncement()
+        val recordingNavigator = composeRule.launchHomeScreen(
+            duo3HomeAccount = false,
+            showRefreshFab = false,
+            useSeededAccountForNetwork = true,
+            displayItems = homeFeedFixtureItems(),
+        )
+
+        val announcementTag = homeAuthorPollAnnouncementTag(2051253530787370452L)
+        composeRule.waitUntilRequestCount(HttpMethod.Get, ZHIHU_PLUS_AUTHOR_PINS_URL, 1)
+        composeRule.waitUntilHomeFeedTagExists(announcementTag)
+        composeRule.onNodeWithTag(announcementTag).assertExists()
+        composeRule.onNodeWithText("请给未来的知乎++提出建议").assertIsDisplayed()
+        composeRule.onNodeWithText("知乎++好用吗\n5 个选项").assertIsDisplayed()
+        composeRule.onNodeWithText("去投票").assertIsDisplayed().performClick()
+
+        assertEquals(listOf(Pin(2051253530787370452L)), recordingNavigator.destinations)
+    }
+
+    @Test
     fun seededOfflineList_scrollsToFarItemsAndBack_stably() {
         /*
          * Expected behavior:
@@ -186,13 +263,14 @@ class HomeScreenInstrumentedTest {
     private fun MainActivityComposeRule.launchHomeScreen(
         duo3HomeAccount: Boolean,
         showRefreshFab: Boolean,
+        useSeededAccountForNetwork: Boolean = false,
         displayItems: List<FeedDisplayItem>,
     ): RecordingNavigator {
         setScreenContent {}
         activity.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE).edit(commit = true) {
             putBoolean("duo3_home_account", duo3HomeAccount)
             putBoolean("showRefreshFab", showRefreshFab)
-            putBoolean("loginForRecommendation", false)
+            putBoolean("loginForRecommendation", useSeededAccountForNetwork)
             putBoolean("filterExplainDialogShown", true)
             putBoolean(QQ_GROUP_DISMISSED_PREFERENCE_KEY, true)
             putBoolean("survey_feedback_done", true)
@@ -200,7 +278,9 @@ class HomeScreenInstrumentedTest {
             putString("recommendationMode", RecommendationMode.WEB.key)
         }
         activity.runOnUiThread {
-            AccountData.delete(activity)
+            if (!useSeededAccountForNetwork) {
+                AccountData.delete(activity)
+            }
             UpdateManager.updateState.value = UpdateManager.UpdateState.NoUpdate
             clearHomeFeedViewModel()
             seedHomeFeedViewModel(displayItems)
@@ -208,7 +288,10 @@ class HomeScreenInstrumentedTest {
         waitForIdle()
 
         val recordingNavigator = setScreenContent {
-            HomeScreen(scrollToTopTrigger = 0, innerPadding = PaddingValues())
+            HomeScreen(
+                scrollToTopTrigger = 0,
+                innerPadding = PaddingValues(),
+            )
         }
         activity.runOnUiThread {
             UpdateManager.updateState.value = UpdateManager.UpdateState.NoUpdate
@@ -229,6 +312,25 @@ class HomeScreenInstrumentedTest {
         viewModel.addDisplayItems(items)
     }
 
+    private fun MainActivityComposeRule.waitUntilHomeFeedTagExists(tag: String) {
+        waitUntil("Expected tag $tag in home feed", timeoutMillis = 5_000) {
+            runCatching {
+                onNodeWithTag(HOME_FEED_LIST_TAG).performScrollToNode(hasTestTag(tag))
+                true
+            }.getOrDefault(false)
+        }
+    }
+
+    private fun MainActivityComposeRule.waitUntilRequestCount(
+        method: HttpMethod,
+        urlSubstring: String,
+        count: Int,
+    ) {
+        waitUntil("Expected $count $method requests containing $urlSubstring", timeoutMillis = 5_000) {
+            ZhihuMockApi.requestCount(method, urlSubstring) == count
+        }
+    }
+
     private fun homeFeedFixtureItems(count: Int = 8): List<FeedDisplayItem> = List(count) { index ->
         FeedDisplayItem(
             title = "离线条目 ${index.toString().padStart(2, '0')}",
@@ -236,6 +338,47 @@ class HomeScreenInstrumentedTest {
             details = "离线验证 · 固定假数据",
             feed = null,
             navDestinationJson = Search(query = "fixture-$index").toFeedDisplayItemNavDestinationJson(),
+        )
+    }
+
+    private fun mockAuthorPollAnnouncement() {
+        val pin = DataHolder.Pin(
+            id = "2051253530787370452",
+            url = "https://www.zhihu.com/pin/2051253530787370452",
+            author = DataHolder.Author(
+                avatarUrl = "",
+                gender = 0,
+                headline = "",
+                id = "zhihu-plus-author",
+                isAdvertiser = false,
+                isOrg = false,
+                name = "知乎++作者",
+                type = "people",
+                url = "https://www.zhihu.com/people/scanmenge",
+                urlToken = "scanmenge",
+                userType = "people",
+            ),
+            bottomPoll = DataHolder.Pin.BottomPoll(
+                voting = DataHolder.Pin.Poll(
+                    id = "2051253919255360130",
+                    title = "知乎++好用吗",
+                    maxSelections = 1,
+                    type = "single",
+                    endAt = -1,
+                    options = listOf(
+                        DataHolder.Pin.PollOption(id = "a", title = "非常好用"),
+                        DataHolder.Pin.PollOption(id = "b", title = "还可以"),
+                        DataHolder.Pin.PollOption(id = "c", title = "一般"),
+                        DataHolder.Pin.PollOption(id = "d", title = "不好用"),
+                        DataHolder.Pin.PollOption(id = "e", title = "没用过"),
+                    ),
+                ),
+            ),
+        )
+        ZhihuMockApi.mockJson(
+            method = HttpMethod.Get,
+            url = ZHIHU_PLUS_AUTHOR_PINS_URL,
+            body = """{"data":[${ZhihuJson.json.encodeToString(pin)}]}""",
         )
     }
 }

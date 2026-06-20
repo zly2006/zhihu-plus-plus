@@ -1,5 +1,5 @@
 /*
- * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
  * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -32,6 +32,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Clock
 
 /**
@@ -116,19 +117,34 @@ object ContentDetailCache {
 
 fun zhihuContentDetailUrl(destination: NavDestination): String? = when (destination) {
     is Article -> when (destination.type) {
-        ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${destination.id}?include=content,topics,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,relationship,ip_info,relationship.vote,author.badge_v2"
-        ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${destination.id}?include=content,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,attachment,reaction,ip_info,pagination_info,question.topics,reaction.relation.voting,author.badge_v2"
+        ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${destination.id}"
+        ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${destination.id}"
     }
-    is Question -> "https://www.zhihu.com/api/v4/questions/${destination.questionId}?include=read_count,visit_count,answer_count,voteup_count,comment_count,follower_count,detail,excerpt,author,relationship.is_following,topics"
-    is Pin -> "https://www.zhihu.com/api/v4/pins/${destination.id}?include=topics"
+
+    is Question -> "https://www.zhihu.com/api/v4/questions/${destination.questionId}"
+    is Pin -> "https://www.zhihu.com/api/v4/pins/${destination.id}"
     else -> null
+}
+
+fun zhihuContentDetailInclude(destination: NavDestination): String = when (destination) {
+    is Article -> when (destination.type) {
+        ArticleType.Article -> "content,topics,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,relationship,ip_info,relationship.vote,author.badge_v2"
+        ArticleType.Answer -> ".settings,content,editable_content,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,attachment,reaction,ip_info,pagination_info,question.topics,reaction.relation.voting,author.badge_v2,settings.table_of_contents.enabled"
+    }
+
+    is Question -> "read_count,visit_count,answer_count,voteup_count,comment_count,follower_count,detail,excerpt,author,relationship.is_following,topics"
+    is Pin -> "topics"
+    else -> ""
 }
 
 suspend fun fetchZhihuContentDetail(
     destination: NavDestination,
-    fetchJson: suspend (String) -> JsonObject?,
+    fetchJson: suspend (String, String) -> JsonObject?,
 ): DataHolder.Content? {
-    val json = fetchJson(zhihuContentDetailUrl(destination) ?: return null) ?: return null
+    val url = zhihuContentDetailUrl(destination) ?: return null
+    val include = zhihuContentDetailInclude(destination)
+    val json = fetchJson(url, include) ?: return null
+
     return when (destination) {
         is Article -> decodeArticleContentDetail(destination, json)
         is Question -> decodeQuestionContentDetail(json)
@@ -139,10 +155,17 @@ suspend fun fetchZhihuContentDetail(
 
 suspend fun ContentDetailCache.getOrFetchContentDetail(
     destination: NavDestination,
-    fetchJson: suspend (String) -> JsonObject?,
-): DataHolder.Content? = getOrFetch(destination) { navDestination ->
-    fetchZhihuContentDetail(navDestination, fetchJson)
-}
+    fetchJson: suspend (String, String) -> JsonObject?,
+): DataHolder.Content? =
+    runCatching {
+        getOrFetch(destination) { navDestination ->
+            fetchZhihuContentDetail(navDestination, fetchJson)
+        }
+    }.getOrElse { error ->
+        if (error is CancellationException) throw error
+        Log.e("ContentDetailCache", "Failed to fetch content detail for $destination", error)
+        null
+    }
 
 fun decodeArticleContentDetail(
     article: Article,

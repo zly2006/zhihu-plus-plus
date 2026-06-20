@@ -94,12 +94,20 @@ import com.github.zly2006.zhihu.ui.miuix.components.SearchBox
 import com.github.zly2006.zhihu.ui.miuix.components.SearchPager
 import com.github.zly2006.zhihu.ui.miuix.components.SearchStatus
 import com.github.zly2006.zhihu.ui.miuix.components.searchFilterSummary
-import com.github.zly2006.zhihu.ui.rememberHomeScreenRuntime
+import com.github.zly2006.zhihu.ui.rememberHomeAccountState
+import com.github.zly2006.zhihu.ui.rememberHomeIsDebuggable
+import com.github.zly2006.zhihu.ui.rememberHomeUpdateAnnouncement
 import com.github.zly2006.zhihu.ui.saveSearchHistory
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.SearchViewModel
-import com.github.zly2006.zhihu.viewmodel.fetchUnreadNotificationCountSigned
+import com.github.zly2006.zhihu.shared.data.ZHIHU_ME_URL
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
+import com.github.zly2006.zhihu.shared.data.ZhihuMeNotifications
+import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.za.MixedHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
@@ -153,9 +161,17 @@ fun MiuixHomeScreen(
     val currentRecommendationMode = RecommendationMode.entries.find {
         it.key == recommendationModeKey
     } ?: RecommendationMode.MIXED
-    val runtime = rememberHomeScreenRuntime(currentRecommendationMode)
+    val account = rememberHomeAccountState()
+    val updateAnnouncement = rememberHomeUpdateAnnouncement()
+    val isDebuggable = rememberHomeIsDebuggable()
     val feedBlockActions = rememberFeedBlockActions()
-    val viewModel: BaseFeedViewModel = runtime.viewModel
+    val viewModel: BaseFeedViewModel = when (currentRecommendationMode) {
+        RecommendationMode.WEB -> viewModel { HomeFeedViewModel() }
+        RecommendationMode.ANDROID -> viewModel { AndroidHomeFeedViewModel() }
+        RecommendationMode.LOCAL -> viewModel { LocalHomeFeedViewModel() }
+        RecommendationMode.MIXED -> viewModel { MixedHomeFeedViewModel() }
+    }
+    val localHomeViewModel = viewModel as? LocalHomeFeedViewModel
 
     val listState = rememberLazyListState()
     // 跨导航完整保留搜索浮层状态（展开/折叠、查询词、假框位置 offsetY）：点搜索结果进入文章/回答详情后，
@@ -182,7 +198,7 @@ fun MiuixHomeScreen(
     var showBlockByKeywordsDialog by remember { mutableStateOf(false) }
     var feedToBlockByKeywords by remember { mutableStateOf<Pair<String, String?>?>(null) }
 
-    LaunchedEffect(currentRecommendationMode, runtime.account.isLoggedIn) {
+    LaunchedEffect(currentRecommendationMode, account.isLoggedIn) {
         if (viewModel.displayItems.isEmpty()) {
             viewModel.refresh(paginationEnvironment)
         }
@@ -191,7 +207,10 @@ fun MiuixHomeScreen(
     // 拉取未读通知数（与 M3 HomeScreen 行为一致）
     LaunchedEffect(Unit) {
         try {
-            unreadCount = paginationEnvironment.fetchUnreadNotificationCountSigned()
+            unreadCount = paginationEnvironment
+                .fetchJson(ZHIHU_ME_URL, "")
+                ?.let { ZhihuJson.decodeJson<ZhihuMeNotifications>(it) }
+                ?.totalCount ?: 0
         } catch (_: Exception) {
         }
     }
@@ -292,7 +311,7 @@ fun MiuixHomeScreen(
                                         modifier = Modifier.size(48.dp),
                                     ) {
                                         if (duo3HomeAccount) {
-                                            val avatarUrl = runtime.account.avatarUrl
+                                            val avatarUrl = account.avatarUrl
                                             if (avatarUrl != null) {
                                                 AsyncImage(
                                                     model = avatarUrl,
@@ -407,7 +426,7 @@ fun MiuixHomeScreen(
                             key = { item -> item.stableKey },
                             topContent = {
                                 item {
-                                    val availableUpdate = runtime.updateAnnouncement
+                                    val availableUpdate = updateAnnouncement
 
                                     AnnouncementCard(
                                         visible = availableUpdate != null && dismissedUpdateVersion != availableUpdate.version,
@@ -470,8 +489,8 @@ fun MiuixHomeScreen(
                         ) { item ->
                             MiuixFeedCard(
                                 item = item,
-                                onLike = { runtime.recordLocalItemFeedback(it, 1.0) },
-                                onDislike = { runtime.recordLocalItemFeedback(it, -1.0) },
+                                onLike = { localHomeViewModel?.onLocalItemFeedback(it, 1.0) },
+                                onDislike = { localHomeViewModel?.onLocalItemFeedback(it, -1.0) },
                                 onBlockUser = { feedItem ->
                                     feedBlockActions.handleBlockUser(viewModel, feedItem) { authorInfo ->
                                         userToBlock = authorInfo
@@ -494,7 +513,7 @@ fun MiuixHomeScreen(
                                         (viewModel as HomeFeedInteractionViewModel)
                                             .onUiContentClick(paginationEnvironment, feed, this)
                                     } else if (this.localContentId != null) {
-                                        runtime.recordLocalItemOpened(this)
+                                        localHomeViewModel?.onLocalItemOpened(this)
                                     }
                                     this.navDestination?.let { navigator.onNavigate(it) }
                                 },
@@ -580,7 +599,7 @@ fun MiuixHomeScreen(
         )
 
         if (showRefreshFab) {
-            if (runtime.isDebuggable) {
+            if (isDebuggable) {
                 DraggableRefreshButton(
                     onClick = {
                         val data = Json.encodeToString(viewModel.debugData)
