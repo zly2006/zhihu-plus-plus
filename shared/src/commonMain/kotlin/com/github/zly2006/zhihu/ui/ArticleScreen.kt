@@ -759,6 +759,9 @@ fun ArticleScreen(
     var answerSwitchMode by remember {
         mutableStateOf(articleSettings.answerSwitchMode)
     }
+    var answerSwitchSensitivity by remember {
+        mutableFloatStateOf(articleSettings.answerSwitchSensitivity)
+    }
     var pinAnswerDate by remember { mutableStateOf(articleSettings.pinAnswerDate) }
     val userMessages = rememberUserMessageSink()
 
@@ -876,6 +879,9 @@ fun ArticleScreen(
     }
     LaunchedEffect(articleSettings.answerSwitchMode) {
         answerSwitchMode = articleSettings.answerSwitchMode
+    }
+    LaunchedEffect(articleSettings.answerSwitchSensitivity) {
+        answerSwitchSensitivity = articleSettings.answerSwitchSensitivity
     }
     LaunchedEffect(articleSettings.pinAnswerDate) {
         pinAnswerDate = articleSettings.pinAnswerDate
@@ -1829,6 +1835,7 @@ fun ArticleScreen(
                 isAtTop = { scrollState.value == 0 },
                 isAtBottom = { scrollState.value >= scrollState.maxValue },
                 scrollState = scrollState,
+                answerSwitchSensitivity = answerSwitchSensitivity,
             ) {
                 answerSwitchContent()
             }
@@ -1844,6 +1851,7 @@ fun ArticleScreen(
                 nextContent = nav?.nextAnswer?.let { cached ->
                     { CachedAnswerPreview(cached) }
                 },
+                answerSwitchSensitivity = answerSwitchSensitivity,
             ) {
                 answerSwitchContent()
             }

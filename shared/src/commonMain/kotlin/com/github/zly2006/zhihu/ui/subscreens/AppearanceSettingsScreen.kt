@@ -100,11 +100,16 @@ import com.github.zly2006.zhihu.shared.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KE
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.components.ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.ColorPickerDialog
+import com.github.zly2006.zhihu.ui.components.DEFAULT_ANSWER_SWITCH_SENSITIVITY
+import com.github.zly2006.zhihu.ui.components.MAX_ANSWER_SWITCH_SENSITIVITY
+import com.github.zly2006.zhihu.ui.components.MIN_ANSWER_SWITCH_SENSITIVITY
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemOverall
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
+import com.github.zly2006.zhihu.ui.components.normalizedAnswerSwitchSensitivity
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
@@ -116,6 +121,7 @@ const val PREF_BLOCK_SPACING = "contentBlockSpacing"
 const val APPEARANCE_SETTINGS_SCROLL_TAG = "appearanceSettings.scroll"
 const val APPEARANCE_SETTINGS_START_DESTINATION_TAG = "appearanceSettings.startDestination"
 const val APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG = "appearanceSettings.answerDoubleTap"
+const val APPEARANCE_SETTINGS_ANSWER_SWITCH_SENSITIVITY_TAG = "appearanceSettings.answerSwitchSensitivity"
 const val APPEARANCE_SETTINGS_USE_WEBVIEW_TAG = "appearanceSettings.useWebView"
 const val APPEARANCE_SETTINGS_WEBVIEW_FONT_TAG = "appearanceSettings.webViewFont"
 const val APPEARANCE_SETTINGS_WEBVIEW_OPTIONS_TAG = "appearanceSettings.webViewOptions"
@@ -832,6 +838,44 @@ fun AppearanceSettingsScreen(
                         }
                     },
                 )
+
+                var answerSwitchSensitivity by remember {
+                    mutableStateOf(
+                        normalizedAnswerSwitchSensitivity(
+                            settings.getFloat(
+                                ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY,
+                                DEFAULT_ANSWER_SWITCH_SENSITIVITY,
+                            ),
+                        ),
+                    )
+                }
+                AnimatedVisibility(answerSwitchMode.value != "off") {
+                    SettingItem(
+                        title = { Text("回答切换灵敏度") },
+                        description = {
+                            Text("当前 ${(answerSwitchSensitivity * 10).roundToInt() / 10f}x，数值越高，滑动越短；同时作用于上下和左右切换。")
+                        },
+                        settingKey = ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY,
+                        highlightedKey = settingKey,
+                        bringIntoViewRequester = requesterFor(ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY),
+                        bottomAction = {
+                            Slider(
+                                value = answerSwitchSensitivity,
+                                onValueChange = {
+                                    val sensitivity = (it * 10).roundToInt() / 10f
+                                    answerSwitchSensitivity = sensitivity
+                                    settings.putFloat(ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY, sensitivity)
+                                },
+                                valueRange = MIN_ANSWER_SWITCH_SENSITIVITY..MAX_ANSWER_SWITCH_SENSITIVITY,
+                                steps = 24,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp)
+                                    .testTag(APPEARANCE_SETTINGS_ANSWER_SWITCH_SENSITIVITY_TAG),
+                            )
+                        },
+                    )
+                }
 
                 var answerDoubleTapExpanded by remember { mutableStateOf(false) }
                 val answerDoubleTapAction = remember {
