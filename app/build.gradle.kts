@@ -13,7 +13,6 @@ plugins {
     kotlin("plugin.serialization")
     kotlin("plugin.compose")
     id("kotlin-parcelize")
-    id("com.google.devtools.ksp")
     id("org.jlleitschuh.gradle.ktlint")
 }
 
@@ -25,14 +24,6 @@ ktlint {
         exclude("**/generated/**")
         exclude("**/build/**")
     }
-}
-
-ksp {
-    // Fix cache invalidation by stabilizing inputs
-    arg("room.schemaLocation", "$projectDir/schemas")
-    arg("room.incremental", "true")
-    // Stabilize logLevel to prevent cache invalidation
-    arg("logging.level", "WARN")
 }
 
 android {
@@ -263,8 +254,6 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("com.mikepenz:aboutlibraries-compose-m3:$aboutLibraries")
-    implementation("androidx.room:room-common-jvm:2.8.4")
-    implementation("androidx.room:room-runtime-android:2.8.4")
     "fullImplementation"(project(":sentence_embeddings"))
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

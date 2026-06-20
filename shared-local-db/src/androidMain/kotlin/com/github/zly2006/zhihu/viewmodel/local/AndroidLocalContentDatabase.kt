@@ -15,16 +15,24 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.github.zly2006.zhihu.viewmodel.filter
+package com.github.zly2006.zhihu.viewmodel.local
 
 import android.content.Context
-import com.github.zly2006.zhihu.shared.nlp.KeywordWeightExtractor
-import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
+import androidx.room.Room
 
-object AndroidContentFilterRuntime {
-    var semanticMatcher: KeywordSemanticMatcher = KeywordSemanticMatcher { _, _, _ -> emptyList() }
-    var keywordWeightExtractor: KeywordWeightExtractor = KeywordWeightExtractor { _, _ -> emptyList() }
-}
+private const val LOCAL_CONTENT_DATABASE_NAME = "local_content_database"
 
-fun Context.contentFilterSettings(): FeedFilterSettings =
-    androidSettingsStore(this).toFeedFilterSettings()
+@Volatile
+private var localContentDatabase: LocalContentDatabase? = null
+
+fun getLocalContentDatabase(context: Context): LocalContentDatabase =
+    localContentDatabase ?: synchronized(LocalContentDatabase::class) {
+        localContentDatabase ?: buildLocalContentDatabase(
+            Room.databaseBuilder<LocalContentDatabase>(
+                context.applicationContext,
+                LOCAL_CONTENT_DATABASE_NAME,
+            ),
+        ).also {
+            localContentDatabase = it
+        }
+    }
