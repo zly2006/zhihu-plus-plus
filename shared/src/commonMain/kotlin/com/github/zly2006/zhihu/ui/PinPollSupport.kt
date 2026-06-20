@@ -38,7 +38,6 @@ data class HomePollAnnouncement(
 
 internal fun decodeHomePollAnnouncements(
     response: JsonObject,
-    nowEpochSeconds: Long = Clock.System.now().epochSeconds,
 ): List<HomePollAnnouncement> =
     response["data"]
         ?.jsonArray
@@ -46,7 +45,7 @@ internal fun decodeHomePollAnnouncements(
             val pin = runCatching {
                 ZhihuJson.decodeJson<DataHolder.Pin>(item.jsonObject)
             }.getOrNull()
-            pin?.toHomePollAnnouncement(nowEpochSeconds)
+            pin?.toHomePollAnnouncement()
         }
         ?: emptyList()
 
@@ -81,7 +80,7 @@ internal fun DataHolder.Pin.withSelectedPinPollOption(
 internal fun DataHolder.Pin.Poll.acceptsVote(nowEpochSeconds: Long = Clock.System.now().epochSeconds): Boolean =
     !isReviewing && (endAt !in 0..nowEpochSeconds)
 
-internal fun DataHolder.Pin.Poll.statusText(nowEpochSeconds: Long = Clock.System.now().epochSeconds): String {
+internal fun DataHolder.Pin.Poll.statusText(): String {
     val voteState = if (isVoted) {
         "已投票"
     } else if (maxSelections > 1) {
@@ -91,7 +90,7 @@ internal fun DataHolder.Pin.Poll.statusText(nowEpochSeconds: Long = Clock.System
     }
     val validity = when {
         endAt < 0 -> "长期有效"
-        endAt <= nowEpochSeconds -> "投票已结束"
+        endAt <= Clock.System.now().epochSeconds -> "投票已结束"
         else -> null
     }
     return buildString {
@@ -108,9 +107,9 @@ internal fun DataHolder.Pin.Poll.statusText(nowEpochSeconds: Long = Clock.System
     }
 }
 
-internal fun DataHolder.Pin.toHomePollAnnouncement(nowEpochSeconds: Long): HomePollAnnouncement? {
+internal fun DataHolder.Pin.toHomePollAnnouncement(): HomePollAnnouncement? {
     val poll = bottomPoll?.voting ?: return null
-    if (!poll.acceptsVote(nowEpochSeconds)) {
+    if (!poll.acceptsVote()) {
         return null
     }
     return HomePollAnnouncement(
