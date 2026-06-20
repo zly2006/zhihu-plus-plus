@@ -27,10 +27,6 @@ import com.hrm.latex.renderer.font.MathFont
 
 interface MarkdownRuntime {
     val mathFont: MathFont?
-
-    suspend fun saveMarkdownImage(url: String)
-
-    suspend fun shareMarkdownImage(url: String)
 }
 
 @Composable

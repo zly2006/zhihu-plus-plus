@@ -151,7 +151,7 @@ class CustomWebView : WebView {
             if (clicked.tagName() == "img") {
                 val url = extractImageUrl(clicked::attr)
                 if (url != null) {
-                    OpenImageDialog(context, AccountData.httpClient(context), url).show()
+                    OpenImageDialog(context, url).show()
                 }
             } else if (clicked.tagName() == "a" && clicked.hasClass("video-box")) {
                 val videoId = clicked.attr("data-lens-id")
@@ -175,7 +175,7 @@ class CustomWebView : WebView {
                     ?: result.extra?.takeIf { !it.startsWith("data") }
                 if (url != null) {
                     menu.add("查看图片").setOnMenuItemClickListener {
-                        OpenImageDialog(context, AccountData.httpClient(context), url).show()
+                        OpenImageDialog(context, url).show()
                         true
                     }
                     menu.add("在浏览器中打开").setOnMenuItemClickListener {

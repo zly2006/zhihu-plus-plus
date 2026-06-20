@@ -34,7 +34,6 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CommentHolder
@@ -51,6 +50,7 @@ import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.pressSystemBack
 import com.github.zly2006.zhihu.test.resetAppPreferences
+import com.github.zly2006.zhihu.test.seedViewModel
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.COMMENT_CANCEL_REPLY_TAG
 import com.github.zly2006.zhihu.ui.COMMENT_IMAGE_MENU_BROWSER_TAG
@@ -72,7 +72,6 @@ import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedUser
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.paginationEnvironment
-import io.ktor.client.HttpClient
 import io.ktor.http.HttpMethod
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonArray
@@ -132,17 +131,12 @@ class CommentScreenInstrumentedTest {
         val archivedCommentIds = mutableListOf<String>()
         val childEntryCommentIds = mutableListOf<String>()
         val seededComments = seedRootComments(count = 24)
-        val viewModel = SeededRootCommentViewModel(
-            article = ROOT_ARTICLE,
-            seededComments = seededComments,
-        )
+        val viewModel = seedRootCommentViewModel(seededComments)
 
         val navigator = setCommentScreen(
-            viewModel = viewModel,
             onChildCommentClick = { childEntryCommentIds += it.item.id },
             testOverrides = CommentScreenTestOverrides(
                 viewModel = viewModel,
-                skipInitialLoad = true,
                 onArchiveComment = { archivedCommentIds += it.item.id },
             ),
         )
@@ -207,16 +201,11 @@ class CommentScreenInstrumentedTest {
          *    deterministic order instead of starting real dialogs, intents, or storage writes.
          */
         val imageActions = mutableListOf<CommentImageMenuAction>()
-        val viewModel = SeededRootCommentViewModel(
-            article = ROOT_ARTICLE,
-            seededComments = seedRootComments(count = 4),
-        )
+        val viewModel = seedRootCommentViewModel(seedRootComments(count = 4))
 
         setCommentScreen(
-            viewModel = viewModel,
             testOverrides = CommentScreenTestOverrides(
                 viewModel = viewModel,
-                skipInitialLoad = true,
                 onImageMenuAction = { action, _ -> imageActions += action },
             ),
         )
@@ -281,18 +270,11 @@ class CommentScreenInstrumentedTest {
          */
         val childEntryCommentIds = mutableListOf<String>()
         val seededComments = seedRootComments(count = 4)
-        val viewModel = SeededRootCommentViewModel(
-            article = ROOT_ARTICLE,
-            seededComments = seededComments,
-        )
+        val viewModel = seedRootCommentViewModel(seededComments)
 
         setCommentScreen(
-            viewModel = viewModel,
             onChildCommentClick = { childEntryCommentIds += it.item.id },
-            testOverrides = CommentScreenTestOverrides(
-                viewModel = viewModel,
-                skipInitialLoad = true,
-            ),
+            testOverrides = CommentScreenTestOverrides(viewModel = viewModel),
         )
 
         composeRule
@@ -362,11 +344,10 @@ class CommentScreenInstrumentedTest {
         )
 
         setCommentScreen(
-            viewModel = viewModel,
+            content = viewModel.article,
             activeCommentItem = activeCommentItem,
             testOverrides = CommentScreenTestOverrides(
                 viewModel = viewModel,
-                skipInitialLoad = true,
             ),
         )
 
@@ -401,10 +382,7 @@ class CommentScreenInstrumentedTest {
          * 2. Kept root comments should also drop embedded child comments from blocked users before
          *    the screen receives them.
          */
-        val viewModel = SeededRootCommentViewModel(
-            article = ROOT_ARTICLE,
-            seededComments = emptyList(),
-        )
+        val viewModel = seedRootCommentViewModel(emptyList())
         runBlocking {
             val database = getContentFilterDatabase(composeRule.activity)
             database.blockedUserDao().insertUser(BlockedUser("blocked-root-author", "被屏蔽根评论作者"))
@@ -444,11 +422,7 @@ class CommentScreenInstrumentedTest {
         }
 
         setCommentScreen(
-            viewModel = viewModel,
-            testOverrides = CommentScreenTestOverrides(
-                viewModel = viewModel,
-                skipInitialLoad = true,
-            ),
+            testOverrides = CommentScreenTestOverrides(viewModel = viewModel),
         )
 
         composeRule.onNodeWithTag("comment_row_allowed-root").assertIsDisplayed()
@@ -461,20 +435,28 @@ class CommentScreenInstrumentedTest {
     }
 
     private fun setCommentScreen(
-        viewModel: BaseCommentViewModel,
+        content: NavDestination = ROOT_ARTICLE,
         activeCommentItem: CommentItem? = null,
         onChildCommentClick: (CommentItem) -> Unit = {},
-        testOverrides: CommentScreenTestOverrides,
+        testOverrides: CommentScreenTestOverrides? = null,
     ): RecordingNavigator = composeRule.setScreenContent {
         CommentScreen(
-            content = { viewModel.article },
+            content = { content },
             activeCommentItem = activeCommentItem,
             onChildCommentClick = onChildCommentClick,
             testOverrides = testOverrides,
         )
     }
 
-    private fun httpClient(): HttpClient = AccountData.httpClient(composeRule.activity)
+    private fun seedRootCommentViewModel(seededComments: List<DataHolder.Comment>): SeededRootCommentViewModel =
+        composeRule.seedViewModel<SeededRootCommentViewModel>(
+            key = ROOT_ARTICLE_COMMENT_VIEW_MODEL_KEY,
+        ) {
+            SeededRootCommentViewModel(
+                article = ROOT_ARTICLE,
+                seededComments = seededComments,
+            )
+        }
 
     private class SeededRootCommentViewModel(
         article: NavDestination,
@@ -688,5 +670,6 @@ class CommentScreenInstrumentedTest {
             id = 9001L,
             title = "离线评论宿主回答",
         )
+        val ROOT_ARTICLE_COMMENT_VIEW_MODEL_KEY = "article:${ROOT_ARTICLE.type}:${ROOT_ARTICLE.id}"
     }
 }

@@ -78,6 +78,12 @@ expect fun rememberImagePreviewOpener(): (String) -> Unit
 expect fun rememberImageGalleryOpener(): (List<String>, Int) -> Unit
 
 @Composable
+expect fun rememberImageSaver(): (String) -> Unit
+
+@Composable
+expect fun rememberImageSharer(): (String) -> Unit
+
+@Composable
 expect fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit
 
 @Composable

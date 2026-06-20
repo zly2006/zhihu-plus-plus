@@ -33,7 +33,6 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
-import com.github.zly2006.zhihu.markdown.RenderVideoBox
 import com.github.zly2006.zhihu.navigation.AnswerNavigator
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
@@ -42,33 +41,23 @@ import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.shared.platform.SettingsStore
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
-import com.github.zly2006.zhihu.ui.components.ShareDialogRuntime
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
-import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.getOrFetchContentDetail
 import io.ktor.client.HttpClient
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 data class PinLikeResult(
     val isLiked: Boolean,
     val likeCount: Int,
-)
-
-data class PinScreenRuntime(
-    val fetchLinkCardPreview: suspend (DataHolder.Pin.ContentLinkCard) -> PinLinkCardPreview?,
 )
 
 internal suspend fun fetchPinLinkCardPreview(
@@ -116,9 +105,6 @@ internal fun JsonObject?.booleanCompat(vararg keys: String): Boolean {
         get(key)?.jsonPrimitive?.booleanOrNull
     } ?: false
 }
-
-@Composable
-expect fun rememberPinScreenRuntime(): PinScreenRuntime
 
 /**
  * 想法正文的 HTML 渲染入口。
@@ -248,34 +234,16 @@ private fun SettingsStore.answerDoubleTapAction(): AnswerDoubleTapAction =
         ),
     )
 
-/**
- * 共享文章页需要的平台服务。
- *
- * 文章页的布局、操作区和渲染路径由 common UI 负责；host 桥接和预加载器由平台提供，因为它们依赖 Android 的
- * Activity/NavController 所有权，或 Desktop 的窗口和运行时服务。
- */
-interface ArticleScreenRuntime {
-    val articleHost: ArticleHost?
-    val previewPreloader: ArticlePreviewPreloader
-}
-
-fun interface ArticlePreviewPreloader {
-    fun preloadPreview(
-        cached: CachedAnswerContent,
-        isNext: Boolean,
-        title: String,
-        onImageLoadFailed: () -> Unit,
-    )
-}
-
-internal fun defaultArticleScreenRuntime(): ArticleScreenRuntime =
-    object : ArticleScreenRuntime {
-        override val articleHost: ArticleHost? = null
-        override val previewPreloader = ArticlePreviewPreloader { _, _, _, _ -> }
-    }
+@Composable
+expect fun rememberArticleHost(): ArticleHost?
 
 @Composable
-expect fun rememberArticleScreenRuntime(): ArticleScreenRuntime
+expect fun ArticlePreviewPreloadEffect(
+    cached: CachedAnswerContent?,
+    isNext: Boolean,
+    title: String,
+    onImageLoadFailed: () -> Unit,
+)
 
 @Composable
 expect fun ArticleWebViewContent(
@@ -289,38 +257,6 @@ expect fun ArticleWebViewContent(
     onImageLoadFailed: () -> Unit,
     onDoubleTap: () -> Unit,
 )
-
-/**
- * 文章附件中的视频入口渲染。
- *
- * 只处理知乎接口里 `attachment.type=video` 的情况，将视频 ID 和缩略图交给统一的视频卡片。普通正文视频仍由 Markdown/WebView 路径处理。
- */
-@Composable
-fun ArticleVideoAttachmentContent(attachment: JsonElement?) {
-    if (attachment
-            ?.jsonObject
-            ?.get("type")
-            ?.jsonPrimitive
-            ?.content == "video"
-    ) {
-        val videoId = attachment
-            .jsonObject["attachmentId"]
-            ?.jsonPrimitive
-            ?.content
-            ?.toLongOrNull()
-        if (videoId != null) {
-            val thumbnail = attachment
-                .jsonObject["video"]!!
-                .jsonObject["videoInfo"]!!
-                .jsonObject["thumbnail"]!!
-                .jsonPrimitive.content
-            RenderVideoBox(
-                videoId = videoId,
-                thumbnailUrl = thumbnail,
-            )
-        }
-    }
-}
 
 /** 过滤部分设备文本选择菜单中的非预期系统项。 */
 expect fun Modifier.articleMarkdownSelectionWorkaround(): Modifier
@@ -360,26 +296,14 @@ expect fun QuestionDetailWebViewContent(
     html: String,
 )
 
-/**
- * 文章页底部操作区使用的平台桥接。
- *
- * 可见按钮由 common UI 统一绘制，但语音朗读、系统分享、剪贴板和在浏览器打开知乎原文都需要平台实现。
- * 把契约放在这里，可以让操作按钮作为 UI 被测试，同时把副作用留在 shared composable 之外。
- */
-interface ArticleActionsRuntime {
-    val ttsState: TtsState
-    val shareRuntime: ShareDialogRuntime
-
-    fun toggleSpeech(
-        title: String,
-        content: String,
-    )
-
-    fun openArticleInBrowser(article: Article)
-}
+@Composable
+expect fun rememberArticleTtsState(): TtsState
 
 @Composable
-expect fun rememberArticleActionsRuntime(): ArticleActionsRuntime
+expect fun rememberArticleSpeechToggler(): (title: String, content: String) -> Unit
+
+@Composable
+expect fun rememberArticleBrowserOpener(): (Article) -> Unit
 
 fun articleActionText(
     article: Article,
@@ -510,29 +434,17 @@ data class ZhihuMainPreferenceSnapshot(
 class ZhihuMainPreferenceState(
     private val readSnapshot: () -> ZhihuMainPreferenceSnapshot,
 ) {
-    private val initialSnapshot = readSnapshot()
+    private var snapshot by mutableStateOf(readSnapshot())
 
-    var duo3HomeAccount by mutableStateOf(initialSnapshot.duo3HomeAccount)
-        private set
-    var duo3NavStyle by mutableStateOf(initialSnapshot.duo3NavStyle)
-        private set
-    var tapToScrollToTopEnabled by mutableStateOf(initialSnapshot.tapToScrollToTopEnabled)
-        private set
-    var autoHideBottomBar by mutableStateOf(initialSnapshot.autoHideBottomBar)
-        private set
-    var selectedBottomBarItemKeys by mutableStateOf(initialSnapshot.selectedBottomBarItemKeys)
-        private set
-    var startDestination by mutableStateOf(initialSnapshot.startDestination)
-        private set
+    val duo3HomeAccount: Boolean get() = snapshot.duo3HomeAccount
+    val duo3NavStyle: Boolean get() = snapshot.duo3NavStyle
+    val tapToScrollToTopEnabled: Boolean get() = snapshot.tapToScrollToTopEnabled
+    val autoHideBottomBar: Boolean get() = snapshot.autoHideBottomBar
+    val selectedBottomBarItemKeys: List<String> get() = snapshot.selectedBottomBarItemKeys
+    val startDestination: TopLevelDestination get() = snapshot.startDestination
 
     fun reload() {
-        val snapshot = readSnapshot()
-        duo3HomeAccount = snapshot.duo3HomeAccount
-        duo3NavStyle = snapshot.duo3NavStyle
-        tapToScrollToTopEnabled = snapshot.tapToScrollToTopEnabled
-        autoHideBottomBar = snapshot.autoHideBottomBar
-        selectedBottomBarItemKeys = snapshot.selectedBottomBarItemKeys
-        startDestination = snapshot.startDestination
+        snapshot = readSnapshot()
     }
 }
 
@@ -562,24 +474,26 @@ data class AccountSettingsAccountState(
     val urlToken: String? = null,
 )
 
-/**
- * 账号设置页消费的平台与账号服务。
- *
- * composable 自己负责视觉层级：资料头部、快捷入口、设置入口和关于/许可证区域。登录、扫码、退出、版本信息和主 tab 选择仍由平台注入，
- * 这样同一套账号 UI 可以运行在 Android、Desktop、预览和测试中。
- */
-data class AccountSettingsRuntime(
-    val accountState: State<AccountSettingsAccountState>,
-    val refreshProfile: suspend () -> Unit,
-    val requestLogin: () -> Unit,
-    val requestQrLoginScan: () -> Unit,
-    val logout: () -> Unit,
-    val appVersionInfo: () -> String,
-    val selectMainTab: (TopLevelDestination) -> Unit,
-)
+@Composable
+expect fun rememberAccountSettingsAccountState(): State<AccountSettingsAccountState>
 
 @Composable
-expect fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime
+expect fun rememberAccountProfileRefresher(): suspend () -> Unit
+
+@Composable
+expect fun rememberAccountLoginRequester(): () -> Unit
+
+@Composable
+expect fun rememberAccountQrLoginRequester(): () -> Unit
+
+@Composable
+expect fun rememberAccountLogoutAction(): () -> Unit
+
+@Composable
+expect fun rememberAppVersionInfo(): String
+
+@Composable
+expect fun rememberMainTabSelector(): (TopLevelDestination) -> Unit
 
 fun noopSettingsStore(): SettingsStore = SettingsStore(
     getBoolean = { _, defaultValue -> defaultValue },
@@ -611,35 +525,20 @@ data class HomeUpdateAnnouncement(
     val isNightly: Boolean,
 )
 
-/**
- * 首页信息流界面的运行时依赖集合。
- *
- * 首页同时组合推荐数据、账号入口、更新横幅、未读通知和可选账号面板行为。把这些依赖集中在一起后，页面本身可以专注布局：
- * 顶部操作区、信息流列表、刷新入口和临时公告。
- */
-data class HomeScreenRuntime(
-    val account: HomeAccountState,
-    val updateAnnouncement: HomeUpdateAnnouncement?,
-    val installedAtLeastThreeHours: Boolean,
-    val isDebuggable: Boolean,
-    val viewModel: BaseFeedViewModel,
-    val requestLogin: () -> Unit,
-    val loadAuthorPollAnnouncements: suspend () -> List<HomePollAnnouncement>,
-    val recordLocalItemOpened: (FeedDisplayItem) -> Unit,
-    val recordLocalItemFeedback: (FeedDisplayItem, Double) -> Boolean,
-)
+@Composable
+expect fun rememberHomeAccountState(): HomeAccountState
 
 @Composable
-expect fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): HomeScreenRuntime
-
-interface CommentScreenRuntime {
-    fun saveImage(imageUrl: String)
-
-    fun shareImage(imageUrl: String)
-}
+expect fun rememberHomeUpdateAnnouncement(): HomeUpdateAnnouncement?
 
 @Composable
-expect fun rememberCommentScreenRuntime(): CommentScreenRuntime
+expect fun rememberHomeInstalledAtLeastThreeHours(): Boolean
+
+@Composable
+expect fun rememberHomeIsDebuggable(): Boolean
+
+@Composable
+expect fun rememberHomeLoginRequester(): () -> Unit
 
 @Composable
 expect fun rememberCommentEmojiInlineContent(emojiKeys: Set<String>): Map<String, InlineTextContent>
@@ -648,15 +547,13 @@ expect fun commentEmojiInlineKey(placeholder: String): String?
 
 expect fun Modifier.commentSelectionWorkaround(): Modifier
 
-data class BlocklistSettingsRuntime(
-    val requestImport: (((String) -> Unit) -> Unit),
-    val exportRules: suspend () -> String,
-)
+@Composable
+expect fun rememberBlocklistRuleImporter(
+    userMessages: UserMessageSink,
+): (((String) -> Unit) -> Unit)
 
 @Composable
-expect fun rememberBlocklistSettingsPlatformRuntime(
-    userMessages: UserMessageSink,
-): BlocklistSettingsRuntime
+expect fun rememberBlocklistRuleExporter(): suspend () -> String
 
 @Composable
 expect fun rememberZhihuHttpClient(): HttpClient

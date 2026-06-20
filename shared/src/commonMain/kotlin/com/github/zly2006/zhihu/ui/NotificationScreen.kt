@@ -83,16 +83,14 @@ import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 
-data class NotificationScreenRuntime(
-    val environment: NotificationEnvironment,
-    val showDebugCopy: Boolean,
-)
-
 @Composable
-expect fun rememberNotificationScreenRuntime(
+expect fun rememberNotificationEnvironment(
     viewModel: NotificationViewModel,
     settingsStore: NotificationSettingsStore,
-): NotificationScreenRuntime
+): NotificationEnvironment
+
+@Composable
+expect fun rememberNotificationShowDebugCopy(): Boolean
 
 /**
  * 通知中心页面。
@@ -106,13 +104,14 @@ fun NotificationScreen() {
     val navigator = LocalNavigator.current
     val settingsStore = rememberNotificationSettingsStore()
     val viewModel = viewModel { NotificationViewModel() }
-    val runtime = rememberNotificationScreenRuntime(viewModel, settingsStore)
+    val environment = rememberNotificationEnvironment(viewModel, settingsStore)
+    val showDebugCopy = rememberNotificationShowDebugCopy()
     val coroutineScope = rememberCoroutineScope()
     val userMessages = rememberUserMessageSink()
 
     LaunchedEffect(Unit) {
         if (viewModel.allData.isEmpty()) {
-            viewModel.refresh(runtime.environment)
+            viewModel.refresh(environment)
         }
     }
 
@@ -136,7 +135,7 @@ fun NotificationScreen() {
                     if (viewModel.unreadCount > 0) {
                         IconButton(onClick = {
                             coroutineScope.launch {
-                                viewModel.markAllAsRead(runtime.environment)
+                                viewModel.markAllAsRead(environment)
                                 userMessages.showMessage("已全部标记为已读")
                             }
                         }) {
@@ -157,12 +156,12 @@ fun NotificationScreen() {
     ) { paddingValues ->
         PullToRefreshBox(
             isRefreshing = viewModel.isLoading,
-            onRefresh = { viewModel.refresh(runtime.environment) },
+            onRefresh = { viewModel.refresh(environment) },
             modifier = Modifier.padding(paddingValues),
         ) {
             PaginatedList(
                 items = viewModel.allData,
-                onLoadMore = { viewModel.loadMore(runtime.environment) },
+                onLoadMore = { viewModel.loadMore(environment) },
                 isEnd = { viewModel.isEnd },
                 modifier = Modifier.fillMaxSize(),
                 footer = ProgressIndicatorFooter,
@@ -217,11 +216,11 @@ fun NotificationScreen() {
                     )
                 }
             }
-            if (runtime.showDebugCopy) {
+            if (showDebugCopy) {
                 DraggableRefreshButton(
                     onClick = {
                         val data = Json.encodeToString(viewModel.debugData)
-                        runtime.environment.setPlainTextClipboard("data", data)
+                        environment.setPlainTextClipboard("data", data)
                         userMessages.showMessage("已复制调试数据")
                     },
                     preferenceName = "copyAll",

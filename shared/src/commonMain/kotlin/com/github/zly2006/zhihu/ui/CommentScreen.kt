@@ -129,6 +129,8 @@ import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
 import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberImagePreviewOpener
+import com.github.zly2006.zhihu.shared.platform.rememberImageSaver
+import com.github.zly2006.zhihu.shared.platform.rememberImageSharer
 import com.github.zly2006.zhihu.shared.util.twoDigitString
 import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
@@ -171,7 +173,6 @@ enum class CommentImageMenuAction {
 
 data class CommentScreenTestOverrides(
     val viewModel: BaseCommentViewModel? = null,
-    val skipInitialLoad: Boolean = false,
     val onArchiveComment: ((CommentModel) -> Unit)? = null,
     val onImageMenuAction: ((CommentImageMenuAction, String) -> Unit)? = null,
 )
@@ -320,7 +321,6 @@ fun SwipeToReplyContainer(
 @Composable
 private fun ClickableImageWithMenu(
     imageUrl: String,
-    runtime: CommentScreenRuntime,
     modifier: Modifier = Modifier,
     contentDescription: String = "图片",
     onAction: ((CommentImageMenuAction, String) -> Unit)? = null,
@@ -328,6 +328,8 @@ private fun ClickableImageWithMenu(
     var showContextMenu by remember { mutableStateOf(false) }
     val openImagePreview = rememberImagePreviewOpener()
     val openExternalUrl = rememberExternalUrlOpener()
+    val saveImage = rememberImageSaver()
+    val shareImage = rememberImageSharer()
 
     PlatformBackHandler(enabled = showContextMenu) {
         showContextMenu = false
@@ -341,8 +343,8 @@ private fun ClickableImageWithMenu(
         when (action) {
             CommentImageMenuAction.Open -> openImagePreview(imageUrl)
             CommentImageMenuAction.OpenInBrowser -> openExternalUrl(imageUrl)
-            CommentImageMenuAction.Save -> runtime.saveImage(imageUrl)
-            CommentImageMenuAction.Share -> runtime.shareImage(imageUrl)
+            CommentImageMenuAction.Save -> saveImage(imageUrl)
+            CommentImageMenuAction.Share -> shareImage(imageUrl)
         }
     }
 
@@ -414,7 +416,6 @@ fun CommentScreen(
     testOverrides: CommentScreenTestOverrides? = null,
 ) {
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
-    val runtime = rememberCommentScreenRuntime()
     var commentInput by remember { mutableStateOf("") }
     var isSending by remember { mutableStateOf(false) }
     var replyToComment by remember { mutableStateOf<CommentModel?>(null) }
@@ -460,11 +461,11 @@ fun CommentScreen(
     }
 
     // 初始加载评论
-    LaunchedEffect(resolvedContent, testOverrides?.skipInitialLoad) {
+    LaunchedEffect(resolvedContent) {
         if (viewModel.article != resolvedContent) {
             error("Internal Error: Detected content mismatch")
         }
-        if (!(testOverrides?.skipInitialLoad ?: false) && viewModel.errorMessage == null) {
+        if (viewModel.errorMessage == null) {
             viewModel.loadMore(paginationEnvironment)
         }
     }
@@ -544,7 +545,6 @@ fun CommentScreen(
                                 Column(modifier = modifier) {
                                     CommentItem(
                                         comment = commentItem,
-                                        runtime = runtime,
                                         isLiked = isLiked,
                                         likeCount = likeCount,
                                         isLikeLoading = isLikeLoading,
@@ -581,7 +581,6 @@ fun CommentScreen(
                                                     )
                                                     CommentItem(
                                                         comment = childCommentItem,
-                                                        runtime = runtime,
                                                         modifier = Modifier.testTag("comment_row_${childComment.id}"),
                                                         isLiked = liked,
                                                         likeCount = likeCount,
@@ -930,7 +929,6 @@ private fun commentViewModelKey(content: NavDestination): String = when (content
 @Composable
 private fun CommentItem(
     comment: CommentModel,
-    runtime: CommentScreenRuntime,
     modifier: Modifier = Modifier,
     isLiked: Boolean = false,
     likeCount: Int = 0,
@@ -1060,7 +1058,6 @@ private fun CommentItem(
                     if (commentImg != null) {
                         ClickableImageWithMenu(
                             imageUrl = commentImg,
-                            runtime = runtime,
                             modifier = Modifier
                                 .testTag("comment_image_${commentData.id}")
                                 .padding(top = 8.dp)

@@ -44,6 +44,22 @@ actual fun rememberImageGalleryOpener(): (List<String>, Int) -> Unit {
 }
 
 @Composable
+actual fun rememberImageSaver(): (String) -> Unit {
+    val userMessages = rememberUserMessageSink()
+    return remember(userMessages) {
+        { userMessages.showMessage("iOS 图片保存暂未实现") } // TODO: iOS 图片保存
+    }
+}
+
+@Composable
+actual fun rememberImageSharer(): (String) -> Unit {
+    val userMessages = rememberUserMessageSink()
+    return remember(userMessages) {
+        { userMessages.showMessage("iOS 图片分享暂未实现") } // TODO: iOS 图片分享
+    }
+}
+
+@Composable
 actual fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit = remember {
     { _, text ->
         platform.UIKit.UIPasteboard.generalPasteboard.string = text

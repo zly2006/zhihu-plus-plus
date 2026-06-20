@@ -17,9 +17,6 @@
 
 package com.github.zly2006.zhihu
 
-import androidx.compose.foundation.clickable
-import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -36,10 +33,12 @@ import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.test.InstrumentedTestEnvironment
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.ZhihuMockApi
+import com.github.zly2006.zhihu.test.mockRootComments
 import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
+import com.github.zly2006.zhihu.ui.COMMENT_SCREEN_LIST_TAG
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_AUTHOR_TAG
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_BACK_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_COMMENT_BUTTON_TAG
@@ -50,9 +49,7 @@ import com.github.zly2006.zhihu.ui.PIN_SCREEN_LOADING_TAG
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_POLL_CARD_TAG
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_SCROLL_TAG
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_SHARE_BUTTON_TAG
-import com.github.zly2006.zhihu.ui.PinLinkCardPreview
 import com.github.zly2006.zhihu.ui.PinScreen
-import com.github.zly2006.zhihu.ui.PinScreenTestOverrides
 import com.github.zly2006.zhihu.ui.pinScreenPollOptionTag
 import io.ktor.http.HttpMethod
 import kotlinx.coroutines.CompletableDeferred
@@ -130,21 +127,15 @@ class PinScreenInstrumentedTest {
          * 2. The poll should expose each option through a stable test tag so UI automation can tap by
          *    semantic identity instead of coordinates.
          * 3. Tapping an unvoted option must dispatch the exact poll id and option id through the
-         *    injected callback, matching the production POST contract.
+         *    production POST contract.
          */
-        var selectedPollId: String? = null
-        var selectedOptionId: String? = null
         mockPinDetail(content = seededPollPinContent())
+        mockPinPollVote()
+        mockPinLike(likedCount = 10)
 
         composeRule.setScreenContent {
             PinScreen(
                 pin = Pin(101),
-                testOverrides = PinScreenTestOverrides(
-                    onPollVote = { pollId, optionId ->
-                        selectedPollId = pollId
-                        selectedOptionId = optionId
-                    },
-                ),
             )
         }
 
@@ -153,8 +144,8 @@ class PinScreenInstrumentedTest {
         composeRule.onNodeWithText("知乎++好用吗").assertIsDisplayed()
         composeRule.onNodeWithTag(pinScreenPollOptionTag("option-b")).assertIsDisplayed().performClick()
 
-        assertEquals("poll-101", selectedPollId)
-        assertEquals("option-b", selectedOptionId)
+        composeRule.waitUntilRequestCount(HttpMethod.Post, "api/v4/polls/poll-101", 1)
+        composeRule.waitUntilRequestCount(HttpMethod.Post, "api/v4/pins/101/voters/up", 1)
     }
 
     @Test
@@ -165,44 +156,17 @@ class PinScreenInstrumentedTest {
          *    share button, and back button should all remain interactive without real network access.
          * 2. Author and link-card clicks must navigate to their deterministic Person and Question
          *    destinations, while the back button must increment only the navigator back counter.
-         * 3. Like, comment, and share actions should route through injected callbacks and custom
-         *    test content, proving PinScreen can be exercised without real bottom sheets or shares.
+         * 3. Like, comment, and share actions should route through mocked HTTP and the real dialog
+         *    surfaces, proving PinScreen can be exercised without test-only production branches.
          * 4. Vertical and horizontal swipe cycles on the main scroll container must preserve all of
          *    the seeded content and action affordances afterward.
          */
-        var likeCount = 0
-        var shareActionCount = 0
         mockPinDetail(content = seededPinContent())
+        mockPinLike(likedCount = 10)
+        mockRootComments("https://www.zhihu.com/api/v4/comment_v5/pins/101/root_comment")
         val navigator = composeRule.setScreenContent {
             PinScreen(
                 pin = Pin(101),
-                testOverrides = PinScreenTestOverrides(
-                    onLikeClick = { likeCount++ },
-                    onShareAction = { showShareDialog ->
-                        shareActionCount++
-                        showShareDialog()
-                    },
-                    linkCardPreview = PinLinkCardPreview(
-                        title = "离线关联问题",
-                        preview = "这是关联内容的固定摘要",
-                    ),
-                    commentScreenContent = { showComments, onDismiss, _ ->
-                        if (showComments) {
-                            Text(
-                                text = "离线评论面板",
-                                modifier = Modifier.clickable { onDismiss() },
-                            )
-                        }
-                    },
-                    shareDialogContent = { showDialog, onDismissRequest, _, _ ->
-                        if (showDialog) {
-                            Text(
-                                text = "离线分享面板",
-                                modifier = Modifier.clickable { onDismissRequest() },
-                            )
-                        }
-                    },
-                ),
             )
         }
 
@@ -215,17 +179,16 @@ class PinScreenInstrumentedTest {
         composeRule.onNodeWithTag(PIN_SCREEN_AUTHOR_TAG).assertIsDisplayed().performClick()
         composeRule.onNodeWithTag(PIN_SCREEN_LINK_CARD_TAG).assertIsDisplayed().performClick()
         composeRule.onNodeWithTag(PIN_SCREEN_LIKE_BUTTON_TAG).performClick()
-
-        composeRule.onNodeWithTag(PIN_SCREEN_COMMENT_BUTTON_TAG).performClick()
-        composeRule.onNodeWithText("离线评论面板").assertIsDisplayed().performClick()
+        composeRule.waitUntilRequestCount(HttpMethod.Post, "api/v4/pins/101/voters/up", 1)
 
         composeRule.onNodeWithTag(PIN_SCREEN_SHARE_BUTTON_TAG).performClick()
-        composeRule.onNodeWithText("离线分享面板").assertIsDisplayed().performClick()
+        composeRule.onNodeWithText("复制链接").assertIsDisplayed().performClick()
 
         composeRule.onNodeWithTag(PIN_SCREEN_BACK_BUTTON_TAG).performClick()
+        composeRule.onNodeWithTag(PIN_SCREEN_COMMENT_BUTTON_TAG).performClick()
+        composeRule.waitUntilTagExists(COMMENT_SCREEN_LIST_TAG)
+        composeRule.onNodeWithTag(COMMENT_SCREEN_LIST_TAG).assertIsDisplayed()
 
-        assertEquals(1, likeCount)
-        assertEquals(1, shareActionCount)
         assertEquals(1, navigator.backCount)
         assertEquals(
             listOf(
@@ -237,6 +200,25 @@ class PinScreenInstrumentedTest {
                 Question(questionId = 987654321L),
             ),
             navigator.destinations,
+        )
+    }
+
+    private fun mockPinPollVote(pollId: String = "poll-101") {
+        ZhihuMockApi.mockJson(
+            method = HttpMethod.Post,
+            url = "https://www.zhihu.com/api/v4/polls/$pollId",
+            body = "{}",
+        )
+    }
+
+    private fun mockPinLike(
+        pinId: Long = 101,
+        likedCount: Int,
+    ) {
+        ZhihuMockApi.mockJson(
+            method = HttpMethod.Post,
+            url = "https://www.zhihu.com/api/v4/pins/$pinId/voters/up",
+            body = """{"liked_count":$likedCount}""",
         )
     }
 
@@ -266,6 +248,16 @@ class PinScreenInstrumentedTest {
     private fun MainActivityComposeRule.waitUntilTagExists(tag: String) {
         waitUntil("Expected node with tag $tag", timeoutMillis = 5_000) {
             onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    private fun MainActivityComposeRule.waitUntilRequestCount(
+        method: HttpMethod,
+        urlSubstring: String,
+        count: Int,
+    ) {
+        waitUntil("Expected $count $method requests containing $urlSubstring", timeoutMillis = 5_000) {
+            ZhihuMockApi.requestCount(method, urlSubstring) == count
         }
     }
 

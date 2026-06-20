@@ -18,9 +18,13 @@
 package com.github.zly2006.zhihu.shared.platform
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopPropertiesFile
 import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
 import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
+import com.github.zly2006.zhihu.shared.desktop.saveImageToDownloads
+import kotlinx.coroutines.launch
 
 @Composable
 actual fun rememberSettingsStore(): SettingsStore = remember { desktopSettingsStore() }
@@ -105,6 +109,41 @@ actual fun rememberImageGalleryOpener(): (List<String>, Int) -> Unit {
         { urls, initialIndex ->
             if (urls.isNotEmpty()) {
                 urls[initialIndex.coerceIn(0, urls.lastIndex)].let(openExternalUrl)
+            }
+        }
+    }
+}
+
+@Composable
+actual fun rememberImageSaver(): (String) -> Unit {
+    val scope = rememberCoroutineScope()
+    val userMessages = rememberUserMessageSink()
+    val store = remember { DesktopAccountStore() }
+    return remember(scope, userMessages, store) {
+        { imageUrl ->
+            scope.launch {
+                runCatching {
+                    store.saveImageToDownloads(imageUrl, "image")
+                }.onSuccess { file ->
+                    userMessages.showShortMessage("已保存图片: ${file.absolutePath}")
+                }.onFailure { error ->
+                    userMessages.showShortMessage("保存失败: ${error.message}")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+actual fun rememberImageSharer(): (String) -> Unit {
+    val userMessages = rememberUserMessageSink()
+    return remember(userMessages) {
+        { imageUrl ->
+            runCatching {
+                copyDesktopPlainText(imageUrl)
+                userMessages.showShortMessage("已复制图片链接")
+            }.onFailure { error ->
+                userMessages.showShortMessage("分享失败: ${error.message}")
             }
         }
     }
