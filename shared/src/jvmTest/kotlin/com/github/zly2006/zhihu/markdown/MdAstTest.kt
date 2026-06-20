@@ -49,6 +49,45 @@ class MdAstTest {
     }
 
     @Test
+    fun video_box_anchor_should_convert_to_link_when_native_blocks_disabled() {
+        val document = htmlToMdAst(
+            """
+            <a class="video-box" href="https://link.zhihu.com/?target=https%3A//www.zhihu.com/video/2029631316597973958" data-lens-id="2029631316597973958">
+              <img src="https://example.com/cover.jpg" />
+            </a>
+            """.trimIndent(),
+            noNativeBlock = true,
+        )
+
+        assertFalse(document.allNodes().any { it is NativeBlock })
+        assertEquals("[视频](https://www.zhihu.com/video/2029631316597973958)", document.toMarkdown())
+    }
+
+    @Test
+    fun highlighted_paragraph_should_skip_segmented_native_block_when_native_blocks_disabled() {
+        val document = htmlToMdAst(
+            """
+            <p data-pid="seg-1"><span class="highlight-wrap other has-comments"
+                data-highlight-id="abc"
+                data-highlight-like-count="5"
+                data-highlight-comment-count="1"
+                data-highlight-my-comment-count="0"
+                data-highlight-is-like="true"
+                data-highlight-is-span="false"
+                data-highlight-content-id="42"
+                data-highlight-content-type="answer"
+                data-highlight-pid="seg-1"
+                data-highlight-start-offset="0"
+                data-highlight-end-offset="7">第一句需要划线</span>，第二句保持原样。</p>
+            """.trimIndent(),
+            noNativeBlock = true,
+        )
+
+        assertFalse(document.allNodes().any { it is NativeBlock })
+        assertEquals("第一句需要划线，第二句保持原样。", document.toMarkdown())
+    }
+
+    @Test
     fun inline_equation_in_list_item_should_stay_in_single_paragraph() {
         val document = htmlToMdAst(
             """
