@@ -18,6 +18,13 @@
 package com.github.zly2006.zhihu.editor
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import com.github.zly2006.zhihu.viewmodel.DesktopPaginationEnvironment
 
 @Composable
-actual fun rememberZhihuPinPublisher(): ZhihuPinPublisher = UnsupportedZhihuPinPublisher
+actual fun rememberZhihuPinPublisher(): ZhihuPinPublisher {
+    val environment = remember { DesktopPaginationEnvironment() }
+    return remember(environment) {
+        ZhihuApiPinPublisher(environment)
+    }
+}

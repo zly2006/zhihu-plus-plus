@@ -18,6 +18,12 @@
 package com.github.zly2006.zhihu.editor
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 
 @Composable
-actual fun rememberZhihuAnswerPublisher(): ZhihuAnswerPublisher = UnsupportedZhihuAnswerPublisher
+actual fun rememberZhihuAnswerPublisher(): ZhihuAnswerPublisher {
+    val environment = rememberZhihuPublisherEnvironment()
+    return remember(environment) {
+        ZhihuApiAnswerPublisher(environment)
+    }
+}
