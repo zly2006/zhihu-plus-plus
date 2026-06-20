@@ -36,9 +36,7 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopLoginRequests
-import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
 import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
-import com.github.zly2006.zhihu.shared.desktop.saveImageToDownloads
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
@@ -158,41 +156,6 @@ private fun isDesktopSpeechCommandAvailable(): Boolean =
             .start()
             .waitFor() == 0
     }.getOrDefault(false)
-
-@Composable
-actual fun rememberCommentImageSaver(): (String) -> Unit {
-    val scope = rememberCoroutineScope()
-    val userMessages = rememberUserMessageSink()
-    val store = remember { DesktopAccountStore() }
-    return remember(scope, userMessages, store) {
-        { imageUrl ->
-            scope.launch {
-                runCatching {
-                    store.saveImageToDownloads(imageUrl, "comment_image")
-                }.onSuccess { file ->
-                    userMessages.showShortMessage("已保存图片: ${file.absolutePath}")
-                }.onFailure { error ->
-                    userMessages.showShortMessage("保存失败: ${error.message}")
-                }
-            }
-        }
-    }
-}
-
-@Composable
-actual fun rememberCommentImageSharer(): (String) -> Unit {
-    val userMessages = rememberUserMessageSink()
-    return remember(userMessages) {
-        { imageUrl ->
-            runCatching {
-                copyDesktopPlainText(imageUrl)
-                userMessages.showShortMessage("已复制图片链接")
-            }.onFailure { error ->
-                userMessages.showShortMessage("分享失败: ${error.message}")
-            }
-        }
-    }
-}
 
 @Composable
 actual fun rememberCommentEmojiInlineContent(emojiKeys: Set<String>): Map<String, InlineTextContent> =

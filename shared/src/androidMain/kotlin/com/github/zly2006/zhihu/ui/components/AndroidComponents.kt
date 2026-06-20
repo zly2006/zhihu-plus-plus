@@ -29,7 +29,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
@@ -40,12 +39,12 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.shared.data.SegmentInfoMeta
 import com.github.zly2006.zhihu.shared.nlp.KeywordAnalyzerCore
 import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
+import com.github.zly2006.zhihu.shared.platform.rememberImageSaver
+import com.github.zly2006.zhihu.shared.platform.rememberImageSharer
 import com.github.zly2006.zhihu.shared.util.SegmentHighlightSpan
 import com.github.zly2006.zhihu.ui.articleHost
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
-import com.github.zly2006.zhihu.util.saveImageToGallery
-import com.github.zly2006.zhihu.util.shareImage
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.feed.handleBlockByKeywords
 import com.github.zly2006.zhihu.viewmodel.feed.handleBlockTopic
@@ -54,7 +53,6 @@ import com.github.zly2006.zhihu.viewmodel.filter.AndroidContentFilterRuntime
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeyword
 import com.github.zly2006.zhihu.viewmodel.filter.KeywordType
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
-import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.delete
 import io.ktor.client.request.post
@@ -62,7 +60,6 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
-import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import me.saket.telephoto.zoomable.coil3.ZoomableAsyncImage
@@ -71,15 +68,13 @@ import me.saket.telephoto.zoomable.rememberZoomableState
 
 class OpenImageDialog(
     context: Context,
-    private val httpClient: HttpClient,
     urls: List<String>,
     initialIndex: Int = 0,
 ) : ComponentDialog(context) {
     constructor(
         context: Context,
-        httpClient: HttpClient,
         url: String,
-    ) : this(context, httpClient, listOf(url), 0)
+    ) : this(context, listOf(url), 0)
 
     private val imageUrls = urls
         .filter { it.isNotBlank() && !it.startsWith("data") }
@@ -93,22 +88,15 @@ class OpenImageDialog(
         setContentView(
             ComposeView(context).apply {
                 setContent {
-                    val scope = rememberCoroutineScope()
+                    val saveImage = rememberImageSaver()
+                    val shareImage = rememberImageSharer()
 
                     OpenImagePreviewContent(
                         urls = imageUrls,
                         initialIndex = initialPage,
                         onDismiss = { dismiss() },
-                        onSaveImage = { imageUrl ->
-                            scope.launch {
-                                saveImageToGallery(context, httpClient, imageUrl)
-                            }
-                        },
-                        onShareImage = { imageUrl ->
-                            scope.launch {
-                                shareImage(context, httpClient, imageUrl)
-                            }
-                        },
+                        onSaveImage = saveImage,
+                        onShareImage = shareImage,
                         onOpenInBrowser = { imageUrl ->
                             luoTianYiUrlLauncher(context, imageUrl.toUri())
                         },

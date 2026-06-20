@@ -122,6 +122,7 @@ import coil3.compose.AsyncImage
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Element
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
+import com.github.zly2006.zhihu.markdown.RenderVideoBox
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
@@ -158,6 +159,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.jetbrains.compose.resources.painterResource
 import zhihu.shared.generated.resources.Res
 import zhihu.shared.generated.resources.ic_vote_down_24dp
@@ -457,6 +461,38 @@ private fun AigcFlagSheet(
     }
 }
 
+/**
+ * 文章附件中的视频入口渲染。
+ *
+ * 只处理知乎接口里 `attachment.type=video` 的情况，将视频 ID 和缩略图交给统一的视频卡片。普通正文视频仍由 Markdown/WebView 路径处理。
+ */
+@Composable
+fun ArticleVideoAttachmentContent(attachment: JsonElement?) {
+    if (attachment
+            ?.jsonObject
+            ?.get("type")
+            ?.jsonPrimitive
+            ?.content == "video"
+    ) {
+        val videoId = attachment
+            .jsonObject["attachmentId"]
+            ?.jsonPrimitive
+            ?.content
+            ?.toLongOrNull()
+        if (videoId != null) {
+            val thumbnail = attachment
+                .jsonObject["video"]!!
+                .jsonObject["videoInfo"]!!
+                .jsonObject["thumbnail"]!!
+                .jsonPrimitive.content
+            RenderVideoBox(
+                videoId = videoId,
+                thumbnailUrl = thumbnail,
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ArticleActionsMenu(
@@ -677,7 +713,7 @@ fun ArticleActionsMenu(
     }
 
     if (showMenu) {
-        com.github.zly2006.zhihu.ui.components.MyModalBottomSheet(onDismissRequest) {
+        MyModalBottomSheet(onDismissRequest) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()

@@ -104,22 +104,6 @@ actual fun ArticleWebViewContent(
 actual fun Modifier.articleMarkdownSelectionWorkaround(): Modifier = this
 
 @Composable
-actual fun rememberCommentImageSaver(): (String) -> Unit {
-    val userMessages = rememberUserMessageSink()
-    return remember(userMessages) {
-        { userMessages.showMessage("iOS 图片保存暂未实现") } // TODO: iOS 图片保存
-    }
-}
-
-@Composable
-actual fun rememberCommentImageSharer(): (String) -> Unit {
-    val userMessages = rememberUserMessageSink()
-    return remember(userMessages) {
-        { userMessages.showMessage("iOS 图片分享暂未实现") } // TODO: iOS 图片分享
-    }
-}
-
-@Composable
 actual fun rememberCommentEmojiInlineContent(emojiKeys: Set<String>): Map<String, InlineTextContent> = emptyMap() // TODO: iOS 表情内联内容
 
 actual fun commentEmojiInlineKey(placeholder: String): String? = null // TODO: iOS 表情内联 key

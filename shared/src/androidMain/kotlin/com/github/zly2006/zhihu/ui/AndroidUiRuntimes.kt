@@ -58,8 +58,6 @@ import com.github.zly2006.zhihu.util.EmojiManager
 import com.github.zly2006.zhihu.util.OpenInBrowser
 import com.github.zly2006.zhihu.util.createEmojiInlineContent
 import com.github.zly2006.zhihu.util.fuckHonorService
-import com.github.zly2006.zhihu.util.saveImageToGallery
-import com.github.zly2006.zhihu.util.shareImage
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import com.github.zly2006.zhihu.viewmodel.filter.encodeBlocklistBackup
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
@@ -287,7 +285,7 @@ actual fun ArticleWebViewContent(
     onDoubleTap: () -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
-    com.github.zly2006.zhihu.ui.components.WebviewComp(
+    WebviewComp(
         onDoubleTap = onDoubleTap,
         scrollState = scrollState,
     ) {
@@ -457,32 +455,6 @@ actual fun ZhihuHtmlWebViewContent(html: String) {
 }
 
 actual fun supportsZhihuHtmlWebView(): Boolean = true
-
-@Composable
-actual fun rememberCommentImageSaver(): (String) -> Unit {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    return remember(context, scope) {
-        { imageUrl ->
-            scope.launch {
-                saveImageToGallery(context, AccountData.httpClient(context), imageUrl)
-            }
-        }
-    }
-}
-
-@Composable
-actual fun rememberCommentImageSharer(): (String) -> Unit {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    return remember(context, scope) {
-        { imageUrl ->
-            scope.launch {
-                shareImage(context, AccountData.httpClient(context), imageUrl)
-            }
-        }
-    }
-}
 
 @Composable
 actual fun rememberCommentEmojiInlineContent(emojiKeys: Set<String>): Map<String, InlineTextContent> =

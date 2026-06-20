@@ -43,7 +43,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -66,6 +65,8 @@ import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberImageGalleryOpener
+import com.github.zly2006.zhihu.shared.platform.rememberImageSaver
+import com.github.zly2006.zhihu.shared.platform.rememberImageSharer
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.LocalSegmentActionSheetHost
@@ -79,7 +80,6 @@ import com.hrm.markdown.parser.ast.Document
 import com.hrm.markdown.renderer.Markdown
 import com.hrm.markdown.renderer.MarkdownImageData
 import com.hrm.markdown.renderer.MarkdownTheme
-import kotlinx.coroutines.launch
 
 @Composable
 fun RenderImage(
@@ -87,13 +87,13 @@ fun RenderImage(
     modifier: Modifier,
     imageUrls: List<String> = listOf(data.url),
 ) {
-    val runtime = rememberMarkdownRuntime()
     val openImageGallery = rememberImageGalleryOpener()
     val openExternalUrl = rememberExternalUrlOpener()
+    val saveImage = rememberImageSaver()
+    val shareImage = rememberImageSharer()
     var expanded by remember { mutableStateOf(false) }
     var pressOffset by remember { mutableStateOf(DpOffset.Zero) }
     val density = LocalDensity.current
-    val coroutineScope = rememberCoroutineScope()
     val hapticFeedback = LocalHapticFeedback.current
     val previewUrls = remember(imageUrls, data.url) {
         imageUrls.ifEmpty { listOf(data.url) }
@@ -156,18 +156,14 @@ fun RenderImage(
                     text = { Text("保存图片") },
                     onClick = {
                         expanded = false
-                        coroutineScope.launch {
-                            runtime.saveMarkdownImage(data.url)
-                        }
+                        saveImage(data.url)
                     },
                 )
                 DropdownMenuItem(
                     text = { Text("分享图片") },
                     onClick = {
                         expanded = false
-                        coroutineScope.launch {
-                            runtime.shareMarkdownImage(data.url)
-                        }
+                        shareImage(data.url)
                     },
                 )
             }
