@@ -65,6 +65,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.FilterCenterFocus
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.GetApp
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.SkipNext
@@ -1065,6 +1066,7 @@ fun ArticleScreen(
                 viewModel.content = pending.content
                 viewModel.voteUpCount = pending.voteUpCount
                 viewModel.commentCount = pending.commentCount
+                viewModel.creationStatementText = pending.creationStatementText
                 sharedData.pendingInitialContent = null
             }
         }
@@ -1711,10 +1713,11 @@ fun ArticleScreen(
                         }
 
                         @Composable
-                        fun ColumnScope.AnswerLeadingMeta() {
+                        fun ColumnScope.AnswerLeadingMeta(showCreationStatement: Boolean) {
                             val hasPinnedDate = pinAnswerDate
                             val hasSocialCredit = viewModel.votersTotal > 0 || viewModel.aigcSupportVoterCount > 0
-                            if (!hasPinnedDate && !hasSocialCredit) return
+                            val hasCreationStatement = showCreationStatement && viewModel.creationStatementText.isNotBlank()
+                            if (!hasPinnedDate && !hasSocialCredit && !hasCreationStatement) return
                             Column(
                                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                                 horizontalAlignment = Alignment.Start,
@@ -1723,13 +1726,19 @@ fun ArticleScreen(
                                     DateTexts()
                                 }
                                 ArticleVotersSocialCredit()
+                                if (hasCreationStatement) {
+                                    if (hasPinnedDate || hasSocialCredit) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                    }
+                                    AnswerCreationStatementChip(viewModel.creationStatementText)
+                                }
                             }
                             Spacer(modifier = Modifier.height(16.dp))
                         }
 
                         if (viewModel.content.isNotEmpty() || viewModel.attachment != null) {
                             if (useWebView) {
-                                AnswerLeadingMeta()
+                                AnswerLeadingMeta(showCreationStatement = false)
                                 ArticleWebViewContent(
                                     article = article,
                                     html = viewModel.content,
@@ -1758,7 +1767,7 @@ fun ArticleScreen(
                                 }
                                 Spacer(modifier = Modifier.height((16 + 36).dp))
                             } else {
-                                AnswerLeadingMeta()
+                                AnswerLeadingMeta(showCreationStatement = true)
                                 RenderMarkdown(
                                     html = viewModel.content,
                                     modifier = Modifier.articleMarkdownSelectionWorkaround(),
@@ -2207,6 +2216,10 @@ private fun CachedAnswerPreview(
                     }
                 }
             }
+            if (cached.creationStatementText.isNotBlank()) {
+                Spacer(Modifier.height(10.dp))
+                AnswerCreationStatementChip(cached.creationStatementText)
+            }
             if (cached.content.isNotEmpty()) {
                 Spacer(Modifier.height(10.dp))
                 RenderMarkdown(
@@ -2219,6 +2232,38 @@ private fun CachedAnswerPreview(
                 )
             }
             Spacer(modifier = Modifier.height((16 + 36).dp))
+        }
+    }
+}
+
+@Composable
+private fun AnswerCreationStatementChip(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(50),
+        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+        contentColor = MaterialTheme.colorScheme.primary,
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 10.dp, top = 5.dp, end = 8.dp, bottom = 5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = text,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(modifier = Modifier.width(2.dp))
+            Icon(
+                imageVector = Icons.Filled.KeyboardArrowDown,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+            )
         }
     }
 }
