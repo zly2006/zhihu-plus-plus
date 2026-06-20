@@ -507,34 +507,6 @@ internal fun peopleProfileUrl(person: Person): String {
 }
 
 /**
- * 用户主页的测试替身配置。
- *
- * instrumentation 测试通过这里注入预填充 ViewModel 和离线回调，避免触碰远程资料拉取或关注状态变更。
- */
-data class PeopleScreenTestOverrides(
-    val viewModel: PersonViewModel,
-    val initialPage: Int? = null,
-    val onAnswerSortChange: ((String) -> Unit)? = null,
-    val onArticleSortChange: ((String) -> Unit)? = null,
-    val onToggleFollow: ((Boolean) -> Unit)? = null,
-    val onToggleBlock: ((Boolean) -> Unit)? = null,
-    val onToggleRecommendationBlock: ((Boolean) -> Unit)? = null,
-    val onAnswersLoadMore: (() -> Unit)? = null,
-    val onArticlesLoadMore: (() -> Unit)? = null,
-    val onActivitiesLoadMore: (() -> Unit)? = null,
-    val onCollectionsLoadMore: (() -> Unit)? = null,
-    val onQuestionsLoadMore: (() -> Unit)? = null,
-    val onPinsLoadMore: (() -> Unit)? = null,
-    val onColumnsLoadMore: (() -> Unit)? = null,
-    val onFollowersLoadMore: (() -> Unit)? = null,
-    val onFollowingLoadMore: (() -> Unit)? = null,
-    val onFollowingColumnsLoadMore: (() -> Unit)? = null,
-    val onFollowingTopicsLoadMore: (() -> Unit)? = null,
-    val onFollowingQuestionsLoadMore: (() -> Unit)? = null,
-    val onFollowingCollectionsLoadMore: (() -> Unit)? = null,
-)
-
-/**
  * 用户主页的生产入口。
  *
  * 用户页展示资料头部、关注/屏蔽状态、回答、文章、想法、收藏等内容 tab，并支持从 `Person.jumpTo` 跳到指定子区域。
@@ -543,58 +515,36 @@ data class PeopleScreenTestOverrides(
 @Composable
 fun PeopleScreen(
     person: Person,
-): Unit = PeopleScreenContent(person, testOverrides = null)
-
-/**
- * 用户主页的测试入口。
- *
- * 与生产入口复用同一套内容布局，但允许测试注入资料状态和各 tab 的分页模型，避免 UI 测试依赖真实用户数据。
- */
-@Composable
-fun PeopleScreen(
-    person: Person,
-    testOverrides: PeopleScreenTestOverrides,
-): Unit = PeopleScreenContent(person, testOverrides)
-
-/**
- * 用户主页的实际布局实现。
- *
- * 这里统一处理资料头部、关注/屏蔽操作、顶部 tab、各类用户内容列表、分享和跳转逻辑。新增 tab 或快捷跳转时，要同步处理
- * [Person.jumpTo]、测试 override 和可访问的 tab 文案。
- */
-@OptIn(ExperimentalFoundationApi::class, ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
-@Composable
-private fun PeopleScreenContent(
-    person: Person,
-    testOverrides: PeopleScreenTestOverrides? = null,
 ) {
     val navigator = LocalNavigator.current
     val userMessages = rememberUserMessageSink()
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
-    val viewModel = testOverrides?.viewModel ?: composeViewModel { PersonViewModel(person) }
+    val viewModel = composeViewModel { PersonViewModel(person) }
     val coroutineScope = rememberCoroutineScope()
 
     val pagerState = rememberPagerState(
-        initialPage = testOverrides?.initialPage ?: peopleScreenInitialPage(person),
+        initialPage = peopleScreenInitialPage(person),
         pageCount = { PEOPLE_SCREEN_TITLES.size },
     )
 
-    LaunchedEffect(viewModel, testOverrides) {
-        if (testOverrides != null) {
-            return@LaunchedEffect
-        }
+    LaunchedEffect(viewModel) {
         try {
             viewModel.load(paginationEnvironment)
         } catch (e: Exception) {
             userMessages.showShortMessage("加载用户信息失败: ${e.message}")
         }
     }
-    LaunchedEffect(pagerState.currentPage, testOverrides) {
-        if (testOverrides != null) {
-            return@LaunchedEffect
-        }
+    LaunchedEffect(pagerState.currentPage) {
         try {
-            viewModel.subFeedModels.getOrNull(pagerState.currentPage)?.loadMore(paginationEnvironment)
+            viewModel.subFeedModels.getOrNull(pagerState.currentPage)?.let { feedModel ->
+                val hasData = when (feedModel) {
+                    is BaseFeedViewModel -> feedModel.allData.isNotEmpty() || feedModel.displayItems.isNotEmpty()
+                    else -> feedModel.allData.isNotEmpty()
+                }
+                if (!hasData) {
+                    feedModel.loadMore(paginationEnvironment)
+                }
+            }
         } catch (e: Exception) {
             userMessages.showShortMessage("加载页面内容失败: ${e.message}")
         }
@@ -603,22 +553,10 @@ private fun PeopleScreenContent(
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
     fun updateAnswersSort(newSort: String) {
-        if (testOverrides != null) {
-            if (viewModel.answersFeedModel.updateSortBy(newSort)) {
-                testOverrides.onAnswerSortChange?.invoke(newSort)
-            }
-            return
-        }
         viewModel.answersFeedModel.changeSortBy(newSort, paginationEnvironment)
     }
 
     fun updateArticlesSort(newSort: String) {
-        if (testOverrides != null) {
-            if (viewModel.articlesFeedModel.updateSortBy(newSort)) {
-                testOverrides.onArticleSortChange?.invoke(newSort)
-            }
-            return
-        }
         viewModel.articlesFeedModel.changeSortBy(newSort, paginationEnvironment)
     }
 
@@ -638,49 +576,30 @@ private fun PeopleScreenContent(
                                 .padding(horizontal = 8.dp)
                                 .testTag(PEOPLE_SCREEN_HEADER_TAG),
                             onFollowToggle = {
-                                if (testOverrides != null) {
-                                    val newFollowing = !viewModel.isFollowing
-                                    viewModel.isFollowing = newFollowing
-                                    viewModel.followerCount = (viewModel.followerCount + if (newFollowing) 1 else -1).coerceAtLeast(0)
-                                    testOverrides.onToggleFollow?.invoke(newFollowing)
-                                } else {
-                                    coroutineScope.launch {
-                                        try {
-                                            viewModel.toggleFollow(paginationEnvironment)
-                                        } catch (e: Exception) {
-                                            userMessages.showShortMessage("操作失败: ${e.message}")
-                                        }
+                                coroutineScope.launch {
+                                    try {
+                                        viewModel.toggleFollow(paginationEnvironment)
+                                    } catch (e: Exception) {
+                                        userMessages.showShortMessage("操作失败: ${e.message}")
                                     }
                                 }
                             },
                             onBlockToggle = {
-                                if (testOverrides != null) {
-                                    val newBlocking = !viewModel.isBlocking
-                                    viewModel.isBlocking = newBlocking
-                                    testOverrides.onToggleBlock?.invoke(newBlocking)
-                                } else {
-                                    coroutineScope.launch {
-                                        try {
-                                            viewModel.toggleBlock(paginationEnvironment)
-                                        } catch (e: Exception) {
-                                            userMessages.showShortMessage("操作失败: ${e.message}")
-                                        }
+                                coroutineScope.launch {
+                                    try {
+                                        viewModel.toggleBlock(paginationEnvironment)
+                                    } catch (e: Exception) {
+                                        userMessages.showShortMessage("操作失败: ${e.message}")
                                     }
                                 }
                             },
                             onRecommendationBlockToggle = {
-                                if (testOverrides != null) {
-                                    val newRecommendationBlock = !viewModel.isBlockedInRecommendations
-                                    viewModel.isBlockedInRecommendations = newRecommendationBlock
-                                    testOverrides.onToggleRecommendationBlock?.invoke(newRecommendationBlock)
-                                } else {
-                                    coroutineScope.launch {
-                                        try {
-                                            viewModel.toggleRecommendationBlock(paginationEnvironment)
-                                            userMessages.showShortMessage(if (viewModel.isBlockedInRecommendations) "已屏蔽推荐" else "已取消屏蔽推荐")
-                                        } catch (e: Exception) {
-                                            userMessages.showShortMessage("操作失败: ${e.message}")
-                                        }
+                                coroutineScope.launch {
+                                    try {
+                                        viewModel.toggleRecommendationBlock(paginationEnvironment)
+                                        userMessages.showShortMessage(if (viewModel.isBlockedInRecommendations) "已屏蔽推荐" else "已取消屏蔽推荐")
+                                    } catch (e: Exception) {
+                                        userMessages.showShortMessage("操作失败: ${e.message}")
                                     }
                                 }
                             },
@@ -764,10 +683,7 @@ private fun PeopleScreenContent(
                             )
                             PaginatedList(
                                 items = viewModel.answersFeedModel.allData,
-                                onLoadMore = {
-                                    testOverrides?.onAnswersLoadMore?.invoke()
-                                        ?: viewModel.answersFeedModel.loadMore(paginationEnvironment)
-                                },
+                                onLoadMore = { viewModel.answersFeedModel.loadMore(paginationEnvironment) },
                                 isEnd = { viewModel.answersFeedModel.isEnd },
                                 footer = ProgressIndicatorFooter,
                                 modifier = Modifier
@@ -813,10 +729,7 @@ private fun PeopleScreenContent(
                             )
                             PaginatedList(
                                 items = viewModel.articlesFeedModel.allData,
-                                onLoadMore = {
-                                    testOverrides?.onArticlesLoadMore?.invoke()
-                                        ?: viewModel.articlesFeedModel.loadMore(paginationEnvironment)
-                                },
+                                onLoadMore = { viewModel.articlesFeedModel.loadMore(paginationEnvironment) },
                                 isEnd = { viewModel.articlesFeedModel.isEnd },
                                 footer = ProgressIndicatorFooter,
                                 modifier = Modifier
@@ -851,10 +764,7 @@ private fun PeopleScreenContent(
                         // 动态
                         PaginatedList(
                             items = viewModel.activitiesFeedModel.displayItems,
-                            onLoadMore = {
-                                testOverrides?.onActivitiesLoadMore?.invoke()
-                                    ?: viewModel.activitiesFeedModel.loadMore(paginationEnvironment)
-                            },
+                            onLoadMore = { viewModel.activitiesFeedModel.loadMore(paginationEnvironment) },
                             isEnd = { viewModel.activitiesFeedModel.isEnd },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
@@ -873,10 +783,7 @@ private fun PeopleScreenContent(
                         // 收藏
                         PaginatedList(
                             items = viewModel.collectionsFeedModel.allData,
-                            onLoadMore = {
-                                testOverrides?.onCollectionsLoadMore?.invoke()
-                                    ?: viewModel.collectionsFeedModel.loadMore(paginationEnvironment)
-                            },
+                            onLoadMore = { viewModel.collectionsFeedModel.loadMore(paginationEnvironment) },
                             isEnd = { viewModel.collectionsFeedModel.isEnd },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
@@ -895,10 +802,7 @@ private fun PeopleScreenContent(
                         // 提问
                         PaginatedList(
                             items = viewModel.questionsFeedModel.allData,
-                            onLoadMore = {
-                                testOverrides?.onQuestionsLoadMore?.invoke()
-                                    ?: viewModel.questionsFeedModel.loadMore(paginationEnvironment)
-                            },
+                            onLoadMore = { viewModel.questionsFeedModel.loadMore(paginationEnvironment) },
                             isEnd = { viewModel.questionsFeedModel.isEnd },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
@@ -917,10 +821,7 @@ private fun PeopleScreenContent(
                         // 想法
                         PaginatedList(
                             items = viewModel.pinsFeedModel.allData,
-                            onLoadMore = {
-                                testOverrides?.onPinsLoadMore?.invoke()
-                                    ?: viewModel.pinsFeedModel.loadMore(paginationEnvironment)
-                            },
+                            onLoadMore = { viewModel.pinsFeedModel.loadMore(paginationEnvironment) },
                             isEnd = { viewModel.pinsFeedModel.isEnd },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
@@ -939,10 +840,7 @@ private fun PeopleScreenContent(
                         // 专栏
                         PaginatedList(
                             items = viewModel.columnsFeedModel.allData,
-                            onLoadMore = {
-                                testOverrides?.onColumnsLoadMore?.invoke()
-                                    ?: viewModel.columnsFeedModel.loadMore(paginationEnvironment)
-                            },
+                            onLoadMore = { viewModel.columnsFeedModel.loadMore(paginationEnvironment) },
                             isEnd = { viewModel.columnsFeedModel.isEnd },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
@@ -961,10 +859,7 @@ private fun PeopleScreenContent(
                         // 粉丝
                         PaginatedList(
                             items = viewModel.followersFeedModel.allData,
-                            onLoadMore = {
-                                testOverrides?.onFollowersLoadMore?.invoke()
-                                    ?: viewModel.followersFeedModel.loadMore(paginationEnvironment)
-                            },
+                            onLoadMore = { viewModel.followersFeedModel.loadMore(paginationEnvironment) },
                             isEnd = { viewModel.followersFeedModel.isEnd },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
@@ -984,10 +879,7 @@ private fun PeopleScreenContent(
                         // 关注
                         PaginatedList(
                             items = viewModel.followingFeedModel.allData,
-                            onLoadMore = {
-                                testOverrides?.onFollowingLoadMore?.invoke()
-                                    ?: viewModel.followingFeedModel.loadMore(paginationEnvironment)
-                            },
+                            onLoadMore = { viewModel.followingFeedModel.loadMore(paginationEnvironment) },
                             isEnd = { viewModel.followingFeedModel.isEnd },
                             footer = ProgressIndicatorFooter,
                             modifier = Modifier
@@ -1007,20 +899,11 @@ private fun PeopleScreenContent(
                         FollowingSubscriptionsPage(
                             viewModel = viewModel,
                             onLoadMore = { subscriptionPage ->
-                                if (testOverrides != null) {
-                                    when (subscriptionPage) {
-                                        0 -> testOverrides.onFollowingColumnsLoadMore?.invoke()
-                                        1 -> testOverrides.onFollowingTopicsLoadMore?.invoke()
-                                        2 -> testOverrides.onFollowingQuestionsLoadMore?.invoke()
-                                        3 -> testOverrides.onFollowingCollectionsLoadMore?.invoke()
-                                    }
-                                } else {
-                                    when (subscriptionPage) {
-                                        0 -> viewModel.followingColumnsFeedModel.loadMore(paginationEnvironment)
-                                        1 -> viewModel.followingTopicsFeedModel.loadMore(paginationEnvironment)
-                                        2 -> viewModel.followingQuestionsFeedModel.loadMore(paginationEnvironment)
-                                        3 -> viewModel.followingCollectionsFeedModel.loadMore(paginationEnvironment)
-                                    }
+                                when (subscriptionPage) {
+                                    0 -> viewModel.followingColumnsFeedModel.loadMore(paginationEnvironment)
+                                    1 -> viewModel.followingTopicsFeedModel.loadMore(paginationEnvironment)
+                                    2 -> viewModel.followingQuestionsFeedModel.loadMore(paginationEnvironment)
+                                    3 -> viewModel.followingCollectionsFeedModel.loadMore(paginationEnvironment)
                                 }
                             },
                             modifier = Modifier.testTag("people_screen_page_$page"),

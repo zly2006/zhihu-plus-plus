@@ -180,22 +180,6 @@ const val PIN_SCREEN_LINK_CARD_TAG = "pin_screen_link_card"
 const val PIN_SCREEN_LIKE_BUTTON_TAG = "pin_screen_like_button"
 const val PIN_SCREEN_COMMENT_BUTTON_TAG = "pin_screen_comment_button"
 
-data class PinScreenTestOverrides(
-    val onLikeClick: (() -> Unit)? = null,
-    val onPollVote: ((pollId: String, optionId: String) -> Unit)? = null,
-    val onShareAction: ((showShareDialog: () -> Unit) -> Unit)? = null,
-    val linkCardPreview: PinLinkCardPreview? = null,
-    val commentScreenContent: (@Composable (showComments: Boolean, onDismiss: () -> Unit, content: Pin) -> Unit)? = null,
-    val shareDialogContent: (
-        @Composable (
-            showDialog: Boolean,
-            onDismissRequest: () -> Unit,
-            content: Pin,
-            shareText: String,
-        ) -> Unit
-    )? = null,
-)
-
 /**
  * 想法详情页。
  *
@@ -206,7 +190,6 @@ data class PinScreenTestOverrides(
 @Composable
 fun PinScreen(
     pin: Pin,
-    testOverrides: PinScreenTestOverrides? = null,
 ) {
     val navigator = LocalNavigator.current
     val coroutineScope = rememberCoroutineScope()
@@ -305,10 +288,9 @@ fun PinScreen(
                         onClick = {
                             val shareText = getShareText(pin)
                             if (shareText != null) {
-                                testOverrides?.onShareAction?.invoke { showShareDialog = true }
-                                    ?: handleShareAction(pin, settings, shareRuntime) {
-                                        showShareDialog = true
-                                    }
+                                handleShareAction(pin, settings, shareRuntime) {
+                                    showShareDialog = true
+                                }
                             }
                         },
                         modifier = Modifier.testTag(PIN_SCREEN_SHARE_BUTTON_TAG),
@@ -359,7 +341,7 @@ fun PinScreen(
                         pollVotingOptionId = pollVotingOptionId,
                         pollErrorMessage = pollErrorMessage,
                         onLikeClick = {
-                            testOverrides?.onLikeClick?.invoke() ?: coroutineScope.launch {
+                            coroutineScope.launch {
                                 val result = togglePinLike(paginationEnvironment, pin, isLiked)
                                 isLiked = result.isLiked
                                 likeCount = result.likeCount
@@ -375,7 +357,7 @@ fun PinScreen(
                             }
                         },
                         onPollVote = { pollId, optionId ->
-                            testOverrides?.onPollVote?.invoke(pollId, optionId) ?: coroutineScope.launch {
+                            coroutineScope.launch {
                                 pollVotingOptionId = optionId
                                 pollErrorMessage = null
                                 try {
@@ -391,16 +373,9 @@ fun PinScreen(
                                 }
                             }
                         },
-                        linkCardPreviewOverride = testOverrides?.linkCardPreview,
                     )
 
-                    if (testOverrides?.commentScreenContent != null) {
-                        testOverrides.commentScreenContent.invoke(
-                            showComments,
-                            { showComments = false },
-                            pin,
-                        )
-                    } else if (showComments) {
+                    if (showComments) {
                         CommentScreenComponent(
                             showComments = showComments,
                             onDismiss = { showComments = false },
@@ -410,21 +385,12 @@ fun PinScreen(
 
                     val shareText = getShareText(pin)
                     if (shareText != null) {
-                        if (testOverrides?.shareDialogContent != null) {
-                            testOverrides.shareDialogContent.invoke(
-                                showShareDialog,
-                                { showShareDialog = false },
-                                pin,
-                                shareText,
-                            )
-                        } else {
-                            ShareDialog(
-                                content = pin,
-                                shareText = shareText,
-                                showDialog = showShareDialog,
-                                onDismissRequest = { showShareDialog = false },
-                            )
-                        }
+                        ShareDialog(
+                            content = pin,
+                            shareText = shareText,
+                            showDialog = showShareDialog,
+                            onDismissRequest = { showShareDialog = false },
+                        )
                     }
 
                     VotersSheet(
@@ -460,7 +426,6 @@ private fun PinContent(
     onCommentClick: () -> Unit,
     onSocialCreditClick: () -> Unit,
     onPollVote: (pollId: String, optionId: String) -> Unit,
-    linkCardPreviewOverride: PinLinkCardPreview? = null,
 ) {
     val navigator = LocalNavigator.current
     val openExternalUrl = rememberExternalUrlOpener()
@@ -603,21 +568,17 @@ private fun PinContent(
             it is DataHolder.Pin.ContentLinkCard
         } as? DataHolder.Pin.ContentLinkCard
         if (linkCard != null) {
-            var relatedTitle by remember(linkCard.dataContentType, linkCard.dataContentId, linkCard.url, linkCardPreviewOverride) {
-                mutableStateOf(linkCardPreviewOverride?.title)
+            var relatedTitle by remember(linkCard.dataContentType, linkCard.dataContentId, linkCard.url) {
+                mutableStateOf<String?>(null)
             }
-            var relatedPreview by remember(linkCard.dataContentType, linkCard.dataContentId, linkCard.url, linkCardPreviewOverride) {
-                mutableStateOf(linkCardPreviewOverride?.preview)
+            var relatedPreview by remember(linkCard.dataContentType, linkCard.dataContentId, linkCard.url) {
+                mutableStateOf<String?>(null)
             }
-            var isRelatedLoading by remember(linkCard.dataContentType, linkCard.dataContentId, linkCard.url, linkCardPreviewOverride) {
-                mutableStateOf(linkCardPreviewOverride == null)
+            var isRelatedLoading by remember(linkCard.dataContentType, linkCard.dataContentId, linkCard.url) {
+                mutableStateOf(true)
             }
 
-            LaunchedEffect(linkCard.dataContentType, linkCard.dataContentId, linkCard.url, linkCardPreviewOverride) {
-                if (linkCardPreviewOverride != null) {
-                    isRelatedLoading = false
-                    return@LaunchedEffect
-                }
+            LaunchedEffect(linkCard.dataContentType, linkCard.dataContentId, linkCard.url) {
                 isRelatedLoading = true
                 val preview = fetchPinLinkCardPreview(linkCard, environment)
                 relatedTitle = preview?.title

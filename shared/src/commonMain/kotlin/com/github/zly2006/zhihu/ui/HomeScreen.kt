@@ -131,10 +131,6 @@ fun homeAuthorPollAnnouncementTag(pinId: Long): String = "$HOME_AUTHOR_POLL_ANNO
 private fun authorPollAnnouncementDismissedKey(announcement: HomePollAnnouncement): String =
     "dismissAuthorPollAnnouncement_${announcement.pinId}_${announcement.pollId}"
 
-data class HomeScreenTestOverrides(
-    val pollAnnouncements: List<HomePollAnnouncement>? = null,
-)
-
 /**
  * 首页信息流页面。
  *
@@ -147,7 +143,6 @@ data class HomeScreenTestOverrides(
 fun HomeScreen(
     scrollToTopTrigger: Int,
     innerPadding: PaddingValues,
-    testOverrides: HomeScreenTestOverrides? = null,
 ) {
     val navigator = LocalNavigator.current
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = true)
@@ -190,8 +185,8 @@ fun HomeScreen(
     var showAigcMarkingAnnouncement by remember {
         mutableStateOf(!settings.getBoolean(AIGC_MARKING_ANNOUNCEMENT_DISMISSED_PREFERENCE_KEY, false))
     }
-    var authorPollAnnouncements by remember(testOverrides?.pollAnnouncements) {
-        mutableStateOf(testOverrides?.pollAnnouncements ?: emptyList())
+    var authorPollAnnouncements by remember {
+        mutableStateOf(emptyList<HomePollAnnouncement>())
     }
 
     // 首次启动提示
@@ -248,20 +243,18 @@ fun HomeScreen(
         }
     }
 
-    LaunchedEffect(testOverrides) {
-        if (testOverrides?.pollAnnouncements == null) {
-            authorPollAnnouncements = try {
-                paginationEnvironment
-                    .fetchJson(ZHIHU_PLUS_AUTHOR_PINS_URL, "")
-                    ?.let(::decodeHomePollAnnouncements)
-                    ?.take(3)
-                    ?: emptyList()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.e("HomeScreen", "Failed to load author poll announcements", e)
-                emptyList()
-            }
+    LaunchedEffect(Unit) {
+        authorPollAnnouncements = try {
+            paginationEnvironment
+                .fetchJson(ZHIHU_PLUS_AUTHOR_PINS_URL, "")
+                ?.let(::decodeHomePollAnnouncements)
+                ?.take(3)
+                ?: emptyList()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e("HomeScreen", "Failed to load author poll announcements", e)
+            emptyList()
         }
     }
 
