@@ -42,7 +42,6 @@ import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
 import com.github.zly2006.zhihu.util.buildArticleExportFileName
 import com.github.zly2006.zhihu.util.buildCollectionExportZipFileName
 import com.github.zly2006.zhihu.util.sanitizeArticleExportFileNamePart
-import com.github.zly2006.zhihu.viewmodel.CollectionItem
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeywordService
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedUser
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
@@ -51,7 +50,6 @@ import com.github.zly2006.zhihu.viewmodel.filter.ContentType
 import com.github.zly2006.zhihu.viewmodel.filter.FeedContentFilterPipeline
 import com.github.zly2006.zhihu.viewmodel.filter.FeedDisplayFilterPipeline
 import com.github.zly2006.zhihu.viewmodel.filter.ForegroundReadFilterPipeline
-import com.github.zly2006.zhihu.viewmodel.filter.desktopKeywordSemanticMatcher
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.filter.toFeedFilterSettings
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
@@ -237,7 +235,7 @@ class DesktopPaginationEnvironment(
                 blockedKeywordService = BlockedKeywordService(
                     keywordDao = contentFilterDb.blockedKeywordDao(),
                     recordDao = contentFilterDb.blockedContentRecordDao(),
-                    semanticMatcher = desktopKeywordSemanticMatcher,
+                    semanticMatcher = null,
                 ),
             ),
             blockedFeedRecordDao = contentFilterDb.blockedFeedRecordDao(),
