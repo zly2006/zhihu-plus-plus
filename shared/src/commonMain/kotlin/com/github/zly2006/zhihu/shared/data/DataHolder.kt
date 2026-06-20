@@ -26,7 +26,6 @@ import kotlin.jvm.JvmInline
 object DataHolder {
     const val ZH_PLUS_AUTHOR_USER_ID = "ea09b6c82124e0162caa10d658058c10"
     const val ZH_PLUS_AUTHOR_BADGE_ICON = "zhplus://zh_plus_author_badge_icon"
-    private const val CREATION_STATEMENT_BLOCK_TEXT = "DisclaimerLabel"
 
     val zhPlusAuthorBadgeV2 = BadgeV2(
         title = "知乎++ 作者",
@@ -307,15 +306,15 @@ object DataHolder {
         @Serializable(with = BooleanCompatSerializer::class)
         val allowSegmentInteraction: Boolean = false,
     ) : Content {
-        val creationStatementText: String
+        val endorsementTexts: List<String>
             get() = endorsements
                 .orEmpty()
-                .firstOrNull { endorsement -> endorsement.za?.blockText == CREATION_STATEMENT_BLOCK_TEXT }
-                ?.elements
-                .orEmpty()
-                .firstOrNull { element -> element.type == "TEXT" && !element.content.isNullOrBlank() }
-                ?.content
-                ?: ""
+                .mapNotNull { endorsement ->
+                    endorsement.elements
+                        .orEmpty()
+                        .firstOrNull { element -> element.type == "TEXT" && !element.content.isNullOrBlank() }
+                        ?.content
+                }
 
         @Serializable
         data class PaginationInfo(
@@ -328,12 +327,6 @@ object DataHolder {
     @Serializable
     data class AnswerEndorsement(
         val elements: List<AnswerEndorsementElement>? = null,
-        val za: AnswerEndorsementZa? = null,
-    )
-
-    @Serializable
-    data class AnswerEndorsementZa(
-        val blockText: String? = null,
     )
 
     @Serializable

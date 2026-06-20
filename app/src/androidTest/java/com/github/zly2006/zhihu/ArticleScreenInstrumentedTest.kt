@@ -101,7 +101,7 @@ class ArticleScreenInstrumentedTest {
     }
 
     @Test
-    fun answerCreationStatementRendersOffline() {
+    fun answerEndorsementsRenderOffline() {
         val viewModel = seededAnswerViewModel(ANSWER)
 
         composeRule.setScreenContent {
@@ -116,7 +116,9 @@ class ArticleScreenInstrumentedTest {
             }
         }
 
+        composeRule.onNodeWithText("知乎圆桌: AI 观察").assertIsDisplayed()
         composeRule.onNodeWithText("创作声明: 内容包含剧透").assertIsDisplayed()
+        composeRule.onNodeWithText("收录于话题: 科技").assertIsDisplayed()
     }
 
     @Test
@@ -281,7 +283,11 @@ class ArticleScreenInstrumentedTest {
             viewModel.createdAt = 1_710_000_000L
             viewModel.updatedAt = 1_710_000_600L
             viewModel.ipInfo = "上海"
-            viewModel.creationStatementText = "创作声明: 内容包含剧透"
+            viewModel.endorsementTexts = listOf(
+                "知乎圆桌: AI 观察",
+                "创作声明: 内容包含剧透",
+                "收录于话题: 科技",
+            )
         }
         return viewModel
     }

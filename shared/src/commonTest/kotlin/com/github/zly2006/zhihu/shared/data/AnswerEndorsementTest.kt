@@ -22,7 +22,7 @@ import kotlin.test.assertEquals
 
 class AnswerEndorsementTest {
     @Test
-    fun creationStatementUsesDisclaimerEndorsementText() {
+    fun endorsementTextsUseFirstTextElementFromEachEndorsement() {
         val answer = ZhihuJson.decodeJson<DataHolder.Answer>(
             ZhihuJson.json.parseToJsonElement(
                 """
@@ -70,10 +70,7 @@ class AnswerEndorsementTest {
                           "type": "TEXT",
                           "content": "知乎圆桌: AI 观察"
                         }
-                      ],
-                      "za": {
-                        "block_text": "RoundTableLabel"
-                      }
+                      ]
                     },
                     {
                       "elements": [
@@ -85,10 +82,7 @@ class AnswerEndorsementTest {
                           "type": "TEXT",
                           "content": "创作声明: 内容包含剧透"
                         }
-                      ],
-                      "za": {
-                        "block_text": "DisclaimerLabel"
-                      }
+                      ]
                     },
                     {
                       "elements": [
@@ -96,10 +90,7 @@ class AnswerEndorsementTest {
                           "type": "TEXT",
                           "content": "收录于话题: 科技"
                         }
-                      ],
-                      "za": {
-                        "block_text": "TopicLabel"
-                      }
+                      ]
                     }
                   ]
                 }
@@ -107,6 +98,13 @@ class AnswerEndorsementTest {
             ),
         )
 
-        assertEquals("创作声明: 内容包含剧透", answer.creationStatementText)
+        assertEquals(
+            listOf(
+                "知乎圆桌: AI 观察",
+                "创作声明: 内容包含剧透",
+                "收录于话题: 科技",
+            ),
+            answer.endorsementTexts,
+        )
     }
 }

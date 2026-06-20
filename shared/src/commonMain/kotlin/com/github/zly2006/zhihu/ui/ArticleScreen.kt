@@ -33,6 +33,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -730,7 +732,7 @@ fun ArticleActionsMenu(
  * 文章/回答详情页。
  *
  * 页面负责加载知乎回答或专栏文章，展示标题、作者、正文、附件视频、评论入口、分享/复制/朗读/浏览器打开等底部操作，
- * 并根据阅读设置切换 Compose Markdown 或 WebView 渲染。回答页还承载同题回答切换手势和对应转场状态，因此改动时要同时关注
+ * 正文主路径使用 Compose Markdown 渲染。回答页还承载同题回答切换手势和对应转场状态，因此改动时要同时关注
  * `answerSwitchMode`、`buttonSkipAnswer`、`autoHideArticleBottomBar`、`titleAutoHide`、`answerDoubleTapAction` 和
  * `ARTICLE_USE_WEBVIEW_PREFERENCE_KEY`。
  */
@@ -738,6 +740,7 @@ fun ArticleActionsMenu(
     ExperimentalMaterial3Api::class,
     ExperimentalFoundationApi::class,
     ExperimentalMaterial3ExpressiveApi::class,
+    ExperimentalLayoutApi::class,
 )
 @Composable
 fun ArticleScreen(
@@ -788,8 +791,6 @@ fun ArticleScreen(
             articleSettings.answerDoubleTapAction,
         )
     }
-    var useWebView by remember { mutableStateOf(articleSettings.useWebView) }
-
     // 跟手隐藏标题栏和底栏：用滚动增量直接驱动像素偏移。
     val topBarOffset = remember { Animatable(0f) }
     val bottomBarOffset = remember { Animatable(0f) }
@@ -880,9 +881,6 @@ fun ArticleScreen(
     }
     LaunchedEffect(articleSettings.pinAnswerDate) {
         pinAnswerDate = articleSettings.pinAnswerDate
-    }
-    LaunchedEffect(articleSettings.useWebView) {
-        useWebView = articleSettings.useWebView
     }
     LaunchedEffect(articleSettings.answerDoubleTapAction) {
         answerDoubleTapAction = articleSettings.answerDoubleTapAction
@@ -1066,7 +1064,7 @@ fun ArticleScreen(
                 viewModel.content = pending.content
                 viewModel.voteUpCount = pending.voteUpCount
                 viewModel.commentCount = pending.commentCount
-                viewModel.creationStatementText = pending.creationStatementText
+                viewModel.endorsementTexts = pending.endorsementTexts
                 sharedData.pendingInitialContent = null
             }
         }
@@ -1715,19 +1713,35 @@ fun ArticleScreen(
                         if (viewModel.content.isNotEmpty() || viewModel.attachment != null) {
                             val hasPinnedDate = pinAnswerDate
                             val hasSocialCredit = viewModel.votersTotal > 0 || viewModel.aigcSupportVoterCount > 0
-                            if (useWebView) {
-                                if (hasPinnedDate || hasSocialCredit) {
-                                    Column(
-                                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                                        horizontalAlignment = Alignment.Start,
-                                    ) {
-                                        if (hasPinnedDate) {
-                                            DateTexts()
-                                        }
-                                        ArticleVotersSocialCredit()
+                            val endorsementTexts = viewModel.endorsementTexts
+                            val hasEndorsements = endorsementTexts.isNotEmpty()
+                            if (hasPinnedDate || hasSocialCredit || hasEndorsements) {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                    horizontalAlignment = Alignment.Start,
+                                ) {
+                                    if (hasPinnedDate) {
+                                        DateTexts()
                                     }
-                                    Spacer(modifier = Modifier.height(16.dp))
+                                    ArticleVotersSocialCredit()
+                                    if (hasEndorsements) {
+                                        if (hasPinnedDate || hasSocialCredit) {
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                        }
+                                        FlowRow(
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                                        ) {
+                                            endorsementTexts.forEach { endorsementText ->
+                                                AnswerEndorsementChip(endorsementText)
+                                            }
+                                        }
+                                    }
                                 }
+                                Spacer(modifier = Modifier.height(16.dp))
+                            }
+                            if (articleSettings.useWebView) {
+                                // WebView 正文渲染已经废弃，只保留为紧急回退路径；正文外 UI 不再为它单独分支。
                                 ArticleWebViewContent(
                                     article = article,
                                     html = viewModel.content,
@@ -1756,25 +1770,6 @@ fun ArticleScreen(
                                 }
                                 Spacer(modifier = Modifier.height((16 + 36).dp))
                             } else {
-                                val hasCreationStatement = viewModel.creationStatementText.isNotBlank()
-                                if (hasPinnedDate || hasSocialCredit || hasCreationStatement) {
-                                    Column(
-                                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                                        horizontalAlignment = Alignment.Start,
-                                    ) {
-                                        if (hasPinnedDate) {
-                                            DateTexts()
-                                        }
-                                        ArticleVotersSocialCredit()
-                                        if (hasCreationStatement) {
-                                            if (hasPinnedDate || hasSocialCredit) {
-                                                Spacer(modifier = Modifier.height(8.dp))
-                                            }
-                                            AnswerCreationStatementChip(viewModel.creationStatementText)
-                                        }
-                                    }
-                                    Spacer(modifier = Modifier.height(16.dp))
-                                }
                                 RenderMarkdown(
                                     html = viewModel.content,
                                     modifier = Modifier.articleMarkdownSelectionWorkaround(),
@@ -2094,6 +2089,7 @@ fun ArticleScreen(
  * 内容来自 [CachedAnswerContent]，包含标题、作者信息、投票/评论计数和 HTML 正文。正文使用 Compose Markdown，
  * 因此这里是轻量预览，不持有 WebView 或答案切换共享状态。
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CachedAnswerPreview(
     cached: CachedAnswerContent,
@@ -2223,9 +2219,16 @@ private fun CachedAnswerPreview(
                     }
                 }
             }
-            if (cached.creationStatementText.isNotBlank()) {
+            if (cached.endorsementTexts.isNotEmpty()) {
                 Spacer(Modifier.height(10.dp))
-                AnswerCreationStatementChip(cached.creationStatementText)
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    cached.endorsementTexts.forEach { endorsementText ->
+                        AnswerEndorsementChip(endorsementText)
+                    }
+                }
             }
             if (cached.content.isNotEmpty()) {
                 Spacer(Modifier.height(10.dp))
@@ -2244,7 +2247,7 @@ private fun CachedAnswerPreview(
 }
 
 @Composable
-private fun AnswerCreationStatementChip(
+private fun AnswerEndorsementChip(
     text: String,
     modifier: Modifier = Modifier,
 ) {

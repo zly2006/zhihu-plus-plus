@@ -271,7 +271,7 @@ class QuestionAnswerNavigator(
             createdAt = detail.createdTime,
             updatedAt = detail.updatedTime,
             ipInfo = detail.ipInfo,
-            creationStatementText = detail.creationStatementText,
+            endorsementTexts = detail.endorsementTexts,
             sourceLabel = sourceName,
         )
     }
@@ -396,7 +396,7 @@ class QuestionAnswerNavigator(
                 createdAt = detail.createdTime,
                 updatedAt = detail.updatedTime,
                 ipInfo = detail.ipInfo,
-                creationStatementText = detail.creationStatementText,
+                endorsementTexts = detail.endorsementTexts,
                 sourceLabel = sourceName,
             )
         } catch (e: Exception) {
@@ -497,7 +497,7 @@ class CollectionAnswerNavigator(
                     createdAt = detail.createdTime,
                     updatedAt = detail.updatedTime,
                     ipInfo = detail.ipInfo,
-                    creationStatementText = detail.creationStatementText,
+                    endorsementTexts = detail.endorsementTexts,
                     sourceLabel = sourceName,
                 )
             } else {
@@ -533,7 +533,7 @@ class CollectionAnswerNavigator(
                 createdAt = detail.createdTime,
                 updatedAt = detail.updatedTime,
                 ipInfo = detail.ipInfo,
-                creationStatementText = detail.creationStatementText,
+                endorsementTexts = detail.endorsementTexts,
                 sourceLabel = sourceName,
             )
         } catch (e: Exception) {
@@ -563,7 +563,7 @@ class CollectionAnswerNavigator(
                 createdAt = detail.createdTime,
                 updatedAt = detail.updatedTime,
                 ipInfo = detail.ipInfo,
-                creationStatementText = detail.creationStatementText,
+                endorsementTexts = detail.endorsementTexts,
                 sourceLabel = sourceName,
             )
         } catch (e: Exception) {
@@ -667,7 +667,7 @@ class PaginationInfoNavigator(
             createdAt = detail.createdTime,
             updatedAt = detail.updatedTime,
             ipInfo = detail.ipInfo,
-            creationStatementText = detail.creationStatementText,
+            endorsementTexts = detail.endorsementTexts,
             sourceLabel = sourceName,
         )
     }
