@@ -11,6 +11,8 @@ Treat low call count as a queue for review, not proof of deletion.
 
 Delete or inline a function only after inspecting its declaration, every real call site, and the surrounding contract. Keep small functions that are framework entry points, stable UI/test selectors, platform contracts, interface defaults, Room/serialization hooks, navigation hooks, or meaningful domain boundaries.
 
+`Runtime` / UI `State` dependency bundles are migration debt, not contracts. When a screen or shared UI exposes a `*Runtime`, `*State`, `remember*Runtime`, or similar object that only aggregates ViewModels, settings snapshots, environment methods, callbacks, network/database access, or platform helpers, dismantle it unconditionally. Move each responsibility to the real owner: common UI selects common ViewModels directly, common code calls cross-platform network/database helpers directly, and platform-only effects use narrow expect/actual functions or existing composition locals. Do not preserve a runtime field just because it currently carries login, update, install metadata, debug flags, or another “platform service”; split that service into the smallest real platform primitive or inline it at the caller.
+
 When merging duplicated platform implementations, do not stop at moving the duplicated body into an environment/interface default if there is still only one real semantic caller. If a ViewModel is the only place that owns the workflow, put the request logic in that ViewModel and let the environment expose only lower-level capabilities such as authenticated cookies and signed requests. Example: a question follow action should live in the question feed ViewModel that catches its errors, not as a one-call `environment.follow...()` wrapper that only chooses POST or DELETE.
 
 Do not push platform or storage dependencies upward just because the current accessor is only convenient from UI code. If a lower-level navigation or filtering component owns the query, make the cross-platform dependency available at that level instead of threading a database or platform handle through screen and ViewModel calls. Example: answer switching should ask its own support layer for already-opened content, not force the article loading call to accept a database parameter that exists only to be forwarded.
@@ -52,6 +54,7 @@ rg -n "\bFUNCTION_NAME\b" app shared desktopApp -g '*.kt'
    - `inline`: function body is a pure forwarding call, local one-use wrapper, or renaming shell.
    - `merge`: repeated helpers perform the same operation; replace with one shared helper or add a parameter.
    - `keep`: function is a real contract, domain boundary, parser step, platform actual, override, DAO method, serializer, stable test tag, or improves readability of a complex expression.
+   - Runtime/state glue is not classified as `keep`; delete or inline the whole bundle and all of its actual/expect shells.
 
 7. When a candidate lives in a file that already has several related helpers, switch to a file-level pass before editing. Read the nearby functions and classify the whole helper cluster together instead of deleting one `rg` hit at a time. Example: if one signed request helper in an environment file looks unnecessary, inspect adjacent signed helpers in the same file; keep multi-call primitives, but inline a single-call wrapper that only forwards to the lower-level client and adds no contract.
 8. Edit only after classification. Prefer the nearest existing API over creating a new helper.
@@ -78,6 +81,7 @@ rg -n "TODO|unused|deprecated wrapper|pure forwarding" app shared desktopApp -g 
 - Same-file helper names that only rename an environment/platform method with no branch, state, permission, or lifecycle boundary.
 - Cross-platform duplicate helpers that do identical formatting, parsing, URL normalization, or ID construction.
 - Dead debug helpers, stale reset hooks, stale bulk methods, and comment-referenced methods with no production caller.
+- `*Runtime`, `*State`, `remember*Runtime`, and UI dependency-bundle fields, even when they still have multiple call sites. Treat each field as a forwarding layer to eliminate, not as a surface to preserve.
 
 ## Merge Conflict Boundary
 
@@ -93,6 +97,7 @@ After a user points out one bad conflict direction, audit the whole merge inters
 - Parser helpers where the name explains a non-obvious grammar or Markdown/HTML rule.
 - UI composables that isolate a meaningful visual unit rather than only forwarding parameters.
 - Platform code that intentionally differs by Android/JVM/native behavior.
+- These keep rules do not protect runtime/state dependency bundles or their expect/actual constructors.
 
 ## Scan Script Notes
 
