@@ -58,14 +58,17 @@ fun AnswerHorizontalOverscroll(
     onNavigateNext: () -> Unit,
     previousContent: (@Composable () -> Unit)?,
     nextContent: (@Composable () -> Unit)?,
+    answerSwitchSensitivity: Float = DEFAULT_ANSWER_SWITCH_SENSITIVITY,
     content: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current
     val hapticFeedback = LocalHapticFeedback.current
     val coroutineScope = rememberCoroutineScope()
 
-    val maxOverscrollPx = with(density) { MAX_HORIZONTAL_OVERSCROLL_DP.toPx() }
-    val triggerThresholdPx = with(density) { HORIZONTAL_TRIGGER_THRESHOLD_DP.toPx() }
+    val maxOverscrollPx = with(density) { MAX_HORIZONTAL_OVERSCROLL_DP.dp.toPx() }
+    val triggerThresholdPx = with(density) {
+        (HORIZONTAL_TRIGGER_THRESHOLD_DP / normalizedAnswerSwitchSensitivity(answerSwitchSensitivity)).dp.toPx()
+    }
 
     val overscrollOffset = remember { Animatable(0f) }
     var hasTriggeredHaptic by remember { mutableStateOf(false) }
@@ -77,7 +80,7 @@ fun AnswerHorizontalOverscroll(
             .fillMaxSize()
             .clipToBounds()
             .onSizeChanged { containerWidthPx = it.width.toFloat() }
-            .pointerInput(canGoPrevious, canGoNext) {
+            .pointerInput(canGoPrevious, canGoNext, triggerThresholdPx) {
                 detectHorizontalDragGestures(
                     onDragStart = {
                         rawDragAccumulator = 0f
@@ -189,6 +192,6 @@ fun AnswerHorizontalOverscroll(
     }
 }
 
-private val MAX_HORIZONTAL_OVERSCROLL_DP = 300.dp
-private val HORIZONTAL_TRIGGER_THRESHOLD_DP = 46.dp
+private const val MAX_HORIZONTAL_OVERSCROLL_DP = 300f
+private const val HORIZONTAL_TRIGGER_THRESHOLD_DP = 46f
 private const val HORIZONTAL_DAMPING_FACTOR = 1.2f

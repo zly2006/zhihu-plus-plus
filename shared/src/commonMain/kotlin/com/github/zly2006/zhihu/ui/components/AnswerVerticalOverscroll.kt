@@ -95,6 +95,7 @@ fun AnswerVerticalOverscroll(
     isAtTop: () -> Boolean,
     isAtBottom: () -> Boolean,
     scrollState: ScrollState,
+    answerSwitchSensitivity: Float = DEFAULT_ANSWER_SWITCH_SENSITIVITY,
     isContentNonScrollable: Boolean = scrollState.maxValue == 0,
     content: @Composable () -> Unit,
 ) {
@@ -103,7 +104,9 @@ fun AnswerVerticalOverscroll(
     val coroutineScope = rememberCoroutineScope()
 
     val maxOverscrollPx = with(density) { MAX_OVERSCROLL_DP.dp.toPx() }
-    val triggerThresholdPx = with(density) { TRIGGER_THRESHOLD_DP.dp.toPx() }
+    val triggerThresholdPx = with(density) {
+        (TRIGGER_THRESHOLD_DP / normalizedAnswerSwitchSensitivity(answerSwitchSensitivity)).dp.toPx()
+    }
 
     val overscrollOffset = remember { Animatable(0f) }
     var hasTriggeredHaptic by remember { mutableStateOf(false) }
@@ -114,6 +117,7 @@ fun AnswerVerticalOverscroll(
     val currentCanGoNext by rememberUpdatedState(nextAnswer != null)
     val currentOnNavigatePrevious by rememberUpdatedState(onNavigatePrevious)
     val currentOnNavigateNext by rememberUpdatedState(onNavigateNext)
+    val currentTriggerThresholdPx by rememberUpdatedState(triggerThresholdPx)
 
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
@@ -136,7 +140,7 @@ fun AnswerVerticalOverscroll(
                             dampingFactor = DAMPING_FACTOR,
                         )
                         coroutineScope.launch { overscrollOffset.snapTo(newOffset) }
-                        if (hasTriggeredHaptic && abs(newOffset) < triggerThresholdPx) {
+                        if (hasTriggeredHaptic && abs(newOffset) < currentTriggerThresholdPx) {
                             hasTriggeredHaptic = false
                         }
                         return Offset(0f, delta)
@@ -170,7 +174,7 @@ fun AnswerVerticalOverscroll(
                         dampingFactor = DAMPING_FACTOR,
                     )
                     coroutineScope.launch { overscrollOffset.snapTo(newOffset) }
-                    if (!hasTriggeredHaptic && abs(newOffset) >= triggerThresholdPx) {
+                    if (!hasTriggeredHaptic && abs(newOffset) >= currentTriggerThresholdPx) {
                         hasTriggeredHaptic = true
                         hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                     }
@@ -183,7 +187,7 @@ fun AnswerVerticalOverscroll(
                 if (overscrollOffset.value != 0f) {
                     val currentOffset = overscrollOffset.value
                     var didNavigate = false
-                    if (abs(currentOffset) >= triggerThresholdPx) {
+                    if (abs(currentOffset) >= currentTriggerThresholdPx) {
                         if (currentOffset > 0 && currentCanGoPrevious) {
                             currentOnNavigatePrevious()
                             didNavigate = true
@@ -263,11 +267,11 @@ fun AnswerVerticalOverscroll(
                                             dampingFactor = DAMPING_FACTOR,
                                         )
                                         coroutineScope.launch { overscrollOffset.snapTo(newOffset) }
-                                        if (!hasTriggeredHaptic && abs(newOffset) >= triggerThresholdPx) {
+                                        if (!hasTriggeredHaptic && abs(newOffset) >= currentTriggerThresholdPx) {
                                             hasTriggeredHaptic = true
                                             hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                                         }
-                                        if (hasTriggeredHaptic && abs(newOffset) < triggerThresholdPx) {
+                                        if (hasTriggeredHaptic && abs(newOffset) < currentTriggerThresholdPx) {
                                             hasTriggeredHaptic = false
                                         }
                                     }
@@ -275,7 +279,7 @@ fun AnswerVerticalOverscroll(
 
                                 val currentOffset = overscrollOffset.value
                                 var didNavigate = false
-                                if (abs(currentOffset) >= triggerThresholdPx) {
+                                if (abs(currentOffset) >= currentTriggerThresholdPx) {
                                     if (currentOffset > 0 && currentCanGoPrevious) {
                                         currentOnNavigatePrevious()
                                         didNavigate = true
