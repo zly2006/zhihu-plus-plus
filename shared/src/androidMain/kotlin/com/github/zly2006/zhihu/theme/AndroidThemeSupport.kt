@@ -59,6 +59,11 @@ object AndroidThemeSettings {
         context.settings.putString("themeMode", mode.name)
     }
 
+    fun setThemeStyle(context: Context, style: ThemeStyle) {
+        ThemeManager.setThemeStyle(style)
+        context.settings.putString("themeStyle", style.name)
+    }
+
     private fun readSnapshot(context: Context): ThemeSnapshot {
         val settings = context.settings
         val themeModeValue = settings.getString("themeMode", ThemeMode.SYSTEM.name)
@@ -73,6 +78,7 @@ object AndroidThemeSettings {
             backgroundColorLight = settings.getInt("backgroundColorLight", 0xFFFFFFFF.toInt()),
             backgroundColorDark = settings.getInt("backgroundColorDark", 0xFF121212.toInt()),
             themeMode = themeMode,
+            themeStyle = ThemeStyle.fromValueOrDefault(settings.getString("themeStyle", ThemeStyle.Material3.name)),
         )
     }
 

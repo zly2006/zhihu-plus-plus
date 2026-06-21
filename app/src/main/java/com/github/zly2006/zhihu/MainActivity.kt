@@ -39,9 +39,6 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.rememberNavController
-import androidx.navigation.toRoute
 import coil3.ImageLoader
 import coil3.SingletonImageLoader
 import coil3.disk.DiskCache
@@ -103,6 +100,8 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import top.yukonga.miuix.kmp.nav.core.NavController
+import top.yukonga.miuix.kmp.nav.core.rememberNavController
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -115,7 +114,7 @@ class MainActivity :
     }
 
     val sharedData by viewModels<SharedData>()
-    override val articleNavController: NavHostController
+    override val articleNavController: NavController<NavDestination>
         get() = navController
     override val articleAnswerSwitchState: ArticleAnswerSwitchState
         get() = ViewModelProvider(this)[AndroidArticlesSharedData::class.java]
@@ -155,7 +154,7 @@ class MainActivity :
     var ttsEngine: TtsEngine = TtsEngine.Uninitialized // 默认使用Pico TTS引擎
     private var isTtsInitialized = false
 
-    lateinit var navController: NavHostController
+    lateinit var navController: NavController<NavDestination>
     private lateinit var continuousUsageReminderManager: ContinuousUsageReminderManager
     private var pendingContentOpenIdentity: TrackedContentIdentity? = null
     private var pendingContentOpenFrom: String? = null
@@ -254,7 +253,7 @@ class MainActivity :
         }
 
         setContent {
-            navController = rememberNavController()
+            navController = rememberNavController<NavDestination>(MainTabs)
             ZhihuTheme {
                 Box(Modifier.semantics { testTagsAsResourceId = true }) {
                     AndroidZhihuMain(navController = navController)
@@ -479,11 +478,8 @@ class MainActivity :
         preparePendingContentOpen(route)
         history.add(route)
         if (route is Video) {
-            val current = runCatching {
-                navController.currentBackStackEntry?.toRoute<Article>()
-            }.getOrNull() ?: runCatching {
-                navController.currentBackStackEntry?.toRoute<Question>()
-            }.getOrNull()
+            val top = navController.backStack.lastOrNull()
+            val current = top as? Article ?: top as? Question
             if (current == null) {
                 androidUserMessageSink(this).showShortMessage("无法打开视频：未知的内容类型")
                 return
@@ -520,15 +516,11 @@ class MainActivity :
             navigateToMainTabs()
             return
         }
-        navController.navigate(route) {
-            if (popup) {
-                launchSingleTop = true
-                popUpTo(MainTabs) {
-                    // clear the back stack and viewModels
-                    saveState = true
-                }
-            }
+        if (popup) {
+            // deeplink/剪贴板跳转：清栈回到 MainTabs 根再 push（MainTabs 是 startDestination，pager 状态随根 entry 保留）。
+            navController.popUntil { it is MainTabs }
         }
+        navController.push(route)
     }
 
     override fun consumePendingContentOpenFrom(destination: NavDestination): String {
@@ -551,7 +543,7 @@ class MainActivity :
         }
         pendingContentOpenIdentity = identity
         pendingContentOpenFrom = if (
-            runCatching { navController.currentBackStackEntry?.toRoute<MainTabs>() }.getOrNull() != null
+            navController.backStack.lastOrNull() is MainTabs
         ) {
             currentMainTabOpenFrom
         } else {
@@ -561,13 +553,8 @@ class MainActivity :
     }
 
     private fun navigateToMainTabs() {
-        navController.navigate(MainTabs) {
-            launchSingleTop = true
-            restoreState = true
-            popUpTo(MainTabs) {
-                saveState = true
-            }
-        }
+        // 清栈回到 MainTabs 根（pager 状态保存在根 entry 内，随之保留）。
+        navController.popUntil { it is MainTabs }
     }
 
     fun navigateMainTab(destination: TopLevelDestination) {
@@ -585,21 +572,15 @@ class MainActivity :
         }
     }
 
-    private fun currentContentOpenSource(): NavDestination? {
-        val currentEntry = navController.currentBackStackEntry
-        return runCatching {
-            currentEntry?.toRoute<Article>()
-        }.getOrNull() ?: runCatching {
-            currentEntry?.toRoute<Question>()
-        }.getOrNull() ?: runCatching {
-            currentEntry?.toRoute<Pin>()
-        }.getOrNull() ?: runCatching {
-            currentEntry?.toRoute<CollectionContent>()
-        }.getOrNull() ?: runCatching {
-            currentEntry?.toRoute<History>()
-        }.getOrNull() ?: runCatching {
-            currentEntry?.toRoute<Notification>()
-        }.getOrNull()
+    private fun currentMainTabOpenFrom(): String? = if (navController.backStack.lastOrNull() is MainTabs) {
+        currentMainTabOpenFrom
+    } else {
+        null
+    }
+
+    private fun currentContentOpenSource(): NavDestination? = when (val top = navController.backStack.lastOrNull()) {
+        is Article, is Question, is Pin, is CollectionContent, is History, is Notification -> top
+        else -> null
     }
 
     override fun postHistoryDestination(destination: NavDestination) {

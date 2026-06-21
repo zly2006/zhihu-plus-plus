@@ -49,6 +49,7 @@ import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.ui.TopLevelReselectAction
 import com.github.zly2006.zhihu.shared.ui.topLevelReselectAction
+import com.github.zly2006.zhihu.ui.components.AutoHideTopBar
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
@@ -107,44 +108,46 @@ fun OnlineHistoryScreen(
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            TopAppBar(
-                title = { Text("历史记录") },
-                actions = {
-                    var showActionsMenu by remember { mutableStateOf(false) }
-                    PlatformBackHandler(enabled = showActionsMenu) {
-                        showActionsMenu = false
-                    }
-                    IconButton(
-                        modifier = Modifier.testTag(ONLINE_HISTORY_OVERFLOW_TAG),
-                        onClick = { showActionsMenu = true },
-                    ) {
-                        Icon(
-                            Icons.Filled.MoreVert,
-                            contentDescription = "更多选项",
-                        )
-
-                        DropdownMenu(
-                            expanded = showActionsMenu,
-                            onDismissRequest = { showActionsMenu = false },
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("查看本地历史记录") },
-                                onClick = {
-                                    showActionsMenu = false
-                                    navigator.onNavigate(History)
-                                },
-                            )
-                            DropdownMenuItem(
-                                text = { Text("清除历史记录") },
-                                onClick = {
-                                    showActionsMenu = false
-                                    showClearHistoryDialog = true
-                                },
-                            )
+            AutoHideTopBar {
+                TopAppBar(
+                    title = { Text("历史记录") },
+                    actions = {
+                        var showActionsMenu by remember { mutableStateOf(false) }
+                        PlatformBackHandler(enabled = showActionsMenu) {
+                            showActionsMenu = false
                         }
-                    }
-                },
-            )
+                        IconButton(
+                            modifier = Modifier.testTag(ONLINE_HISTORY_OVERFLOW_TAG),
+                            onClick = { showActionsMenu = true },
+                        ) {
+                            Icon(
+                                Icons.Filled.MoreVert,
+                                contentDescription = "更多选项",
+                            )
+
+                            DropdownMenu(
+                                expanded = showActionsMenu,
+                                onDismissRequest = { showActionsMenu = false },
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("查看本地历史记录") },
+                                    onClick = {
+                                        showActionsMenu = false
+                                        navigator.onNavigate(History)
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("清除历史记录") },
+                                    onClick = {
+                                        showActionsMenu = false
+                                        showClearHistoryDialog = true
+                                    },
+                                )
+                            }
+                        }
+                    },
+                )
+            }
         },
     ) { innerPadding ->
         if (showClearHistoryDialog) {

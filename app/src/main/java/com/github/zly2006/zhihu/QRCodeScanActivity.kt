@@ -63,7 +63,10 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.github.zly2006.zhihu.QRCodeScanActivity.Companion.LOGIN_PREFIX
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.theme.ThemeStyle
 import com.github.zly2006.zhihu.theme.ZhihuTheme
+import com.github.zly2006.zhihu.ui.miuix.MiuixQRCodeScanScreen
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import com.journeyapps.barcodescanner.ScanContract
@@ -77,19 +80,22 @@ class QRCodeScanActivity : ComponentActivity() {
 
         setContent {
             ZhihuTheme {
-                QRCodeScanScreen(
-                    onBack = { finish() },
-                    onScanResult = { result ->
-                        // 仅当是知乎登陆URL，返回扫描结果
-                        if (result.startsWith(LOGIN_PREFIX)) {
-                            val resultIntent = Intent().apply {
-                                putExtra(EXTRA_SCAN_RESULT, result)
-                            }
-                            setResult(RESULT_OK, resultIntent)
+                val onBack = { finish() }
+                val onScanResult = { result: String ->
+                    // 仅当是知乎登陆URL，返回扫描结果
+                    if (result.startsWith(LOGIN_PREFIX)) {
+                        val resultIntent = Intent().apply {
+                            putExtra(EXTRA_SCAN_RESULT, result)
                         }
-                        finish()
-                    },
-                )
+                        setResult(RESULT_OK, resultIntent)
+                    }
+                    finish()
+                }
+                if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                    MiuixQRCodeScanScreen(onBack = onBack, onScanResult = onScanResult)
+                } else {
+                    QRCodeScanScreen(onBack = onBack, onScanResult = onScanResult)
+                }
             }
         }
     }

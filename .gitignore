@@ -58,3 +58,6 @@ __pycache__/
 # IntelliJ generated apks
 app/lite
 app/full
+
+# IDE / build output
+bin/

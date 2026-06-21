@@ -20,18 +20,39 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
-import com.github.zly2006.zhihu.shared.desktop.DesktopPropertiesFile
 import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
+import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDataFile
 import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
 import com.github.zly2006.zhihu.shared.desktop.saveImageToDownloads
+import java.util.Properties
 import kotlinx.coroutines.launch
 
 @Composable
 actual fun rememberSettingsStore(): SettingsStore = remember { desktopSettingsStore() }
 
+private val desktopSettingsChangeListeners = mutableSetOf<(String) -> Unit>()
+
+private fun notifyDesktopSettingChanged(key: String) {
+    desktopSettingsChangeListeners.toList().forEach { it(key) }
+}
+
 fun desktopSettingsStore(): SettingsStore {
-    val propertiesFile = DesktopPropertiesFile("settings.properties", "Zhihu++ desktop settings")
-    val properties = propertiesFile.properties
+    val settingsFile = desktopZhihuDataFile("settings.properties")
+    val properties = Properties()
+
+    fun load() {
+        properties.clear()
+        if (settingsFile.isFile) settingsFile.inputStream().use(properties::load)
+    }
+
+    fun save() {
+        settingsFile.parentFile?.mkdirs()
+        settingsFile.outputStream().use { output ->
+            properties.store(output, "Zhihu++ desktop settings")
+        }
+    }
+
+    load()
 
     return SettingsStore(
         getBoolean = { key, defaultValue ->
@@ -39,21 +60,24 @@ fun desktopSettingsStore(): SettingsStore {
         },
         putBoolean = { key, value ->
             properties.setProperty(key, value.toString())
-            propertiesFile.save()
+            save()
+            notifyDesktopSettingChanged(key)
         },
         getString = { key, defaultValue ->
             properties.getProperty(key) ?: defaultValue
         },
         putString = { key, value ->
             properties.setProperty(key, value)
-            propertiesFile.save()
+            save()
+            notifyDesktopSettingChanged(key)
         },
         getStringOrNull = { key ->
             properties.getProperty(key)
         },
         putStringSet = { key, value ->
             properties.setProperty(key, value.joinToString("\u001F"))
-            propertiesFile.save()
+            save()
+            notifyDesktopSettingChanged(key)
         },
         getStringSet = { key, defaultValue ->
             properties
@@ -67,25 +91,37 @@ fun desktopSettingsStore(): SettingsStore {
         },
         putInt = { key, value ->
             properties.setProperty(key, value.toString())
-            propertiesFile.save()
+            save()
+            notifyDesktopSettingChanged(key)
         },
         getLong = { key, defaultValue ->
             properties.getProperty(key)?.toLongOrNull() ?: defaultValue
         },
         putLong = { key, value ->
             properties.setProperty(key, value.toString())
-            propertiesFile.save()
+            save()
+            notifyDesktopSettingChanged(key)
         },
         getFloat = { key, defaultValue ->
             properties.getProperty(key)?.toFloatOrNull() ?: defaultValue
         },
         putFloat = { key, value ->
             properties.setProperty(key, value.toString())
-            propertiesFile.save()
+            save()
+            notifyDesktopSettingChanged(key)
         },
         remove = { key ->
             properties.remove(key)
-            propertiesFile.save()
+            save()
+            notifyDesktopSettingChanged(key)
+        },
+        observeKeyChanges = { onChanged ->
+            val listener: (String) -> Unit = { key ->
+                load()
+                onChanged(key)
+            }
+            desktopSettingsChangeListeners += listener
+            { desktopSettingsChangeListeners -= listener }
         },
     )
 }
@@ -154,16 +190,44 @@ actual fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit =
     remember { { _, text -> runCatching { copyDesktopPlainText(text) } } }
 
 @Composable
-actual fun rememberUserMessageSink(): UserMessageSink = remember {
-    UserMessageSink(
-        showShortMessage = { message ->
-            println(message)
+actual fun rememberDeveloperDiagnostics(): DeveloperDiagnostics = remember {
+    DeveloperDiagnostics(
+        appInfo = "desktop",
+        deviceInfo = "${System.getProperty("os.name")} ${System.getProperty("os.version")}",
+        networkStatus = "未知",
+        readClipboardText = {
             runCatching {
-                ProcessBuilder("terminal-notifier", "-message", message, "-sound", "default")
-                    .start()
-            }
+                java.awt.Toolkit
+                    .getDefaultToolkit()
+                    .systemClipboard
+                    .getData(java.awt.datatransfer.DataFlavor.stringFlavor) as? String
+            }.getOrNull()
+        },
+        exportAllSettings = {
+            runCatching {
+                val file = desktopZhihuDataFile("settings.properties")
+                if (file.isFile) {
+                    Properties()
+                        .apply { file.inputStream().use(::load) }
+                        .entries
+                        .joinToString("\n") { "${it.key}: ${it.value}" }
+                } else {
+                    "(空)"
+                }
+            }.getOrDefault("(空)")
         },
     )
+}
+
+@Composable
+actual fun rememberUserMessageSink(): UserMessageSink = remember { UserMessageSink(::showDesktopMessage) }
+
+private fun showDesktopMessage(message: String) {
+    println(message)
+    runCatching {
+        ProcessBuilder("terminal-notifier", "-message", message, "-sound", "default")
+            .start()
+    }
 }
 
 @Composable

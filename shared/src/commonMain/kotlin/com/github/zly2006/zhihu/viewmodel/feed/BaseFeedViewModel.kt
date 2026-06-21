@@ -47,21 +47,24 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
     }
 
     suspend fun pullToRefresh(environment: PaginationEnvironment) {
-        isPullToRefresh = true
-        displayItems.clear()
         if (isLoading) return
-        errorMessage = null
-        debugData.clear()
-        allData.clear()
-        lastPaging = null // 重置 lastPaging
-        isLoading = true
+        isPullToRefresh = true
         try {
-            fetchFeeds(environment)
-        } catch (e: Exception) {
-            errorHandle(e)
+            displayItems.clear()
+            errorMessage = null
+            debugData.clear()
+            allData.clear()
+            lastPaging = null // 重置 lastPaging
+            isLoading = true
+            try {
+                fetchFeeds(environment)
+            } catch (e: Exception) {
+                errorHandle(e)
+            }
+            isLoading = false
+        } finally {
+            isPullToRefresh = false
         }
-        isLoading = false
-        isPullToRefresh = false
     }
 
     open fun createDisplayItem(environment: FeedDisplayEnvironment, feed: Feed): FeedDisplayItem {

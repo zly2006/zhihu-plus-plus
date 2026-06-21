@@ -49,6 +49,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -118,8 +119,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewModelScope
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.toRoute
 import coil3.compose.AsyncImage
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Element
@@ -747,10 +746,12 @@ fun ArticleScreen(
     viewModel: ArticleViewModel,
 ) {
     val navigator = LocalNavigator.current
+    // 回答切换在单个导航 entry 内进行（见 ArticleAnswerSlot）；无 slot 时（测试/预览）回退到 push 导航。
+    val answerSwitch = LocalArticleAnswerSwitcher.current
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
     val articleHost = rememberArticleHost()
-    val backStackEntry by articleHost?.articleNavController?.currentBackStackEntryAsState()
-        ?: remember { mutableStateOf(null) }
+    // miuix-nav 的返回栈 SnapshotStateList，直接读取栈顶即响应式（替代 currentBackStackEntryAsState）。
+    val currentTopDestination = articleHost?.articleNavController?.backStack?.lastOrNull()
 
     val scrollState = rememberScrollState()
     val articleSettings = rememberArticleScreenSettingsState()
@@ -1019,7 +1020,7 @@ fun ArticleScreen(
             }
         }
     }
-    val showBottomBarSlot = backStackEntry?.hasRoute(Article::class) == true || articleHost == null
+    val showBottomBarSlot = currentTopDestination is Article || articleHost == null
     val navigationBarsPadding = WindowInsets.navigationBars.asPaddingValues()
     val bottomBarObscuredHeightPx by remember(
         showBottomBarSlot,
@@ -1105,17 +1106,8 @@ fun ArticleScreen(
         if (prev != null) {
             sharedData.pendingInitialContent = prev
             sharedData.promoteForNavigation(sharedData.answerTransitionDirection)
-            val navController = articleHost?.articleNavController
-            if (navController != null) {
-                if (navController.currentBackStackEntry?.hasRoute(Article::class) == true &&
-                    navController.currentBackStackEntry
-                        ?.toRoute<Article>()
-                        ?.type == ArticleType.Answer
-                ) {
-                    navController.popBackStack()
-                }
-            }
-            navigator.onNavigate(prev.article)
+            answerSwitch?.invoke(prev.article, sharedData.answerTransitionDirection)
+                ?: navigator.onNavigate(prev.article)
         } else {
             // 无历史时尝试从来源（如收藏夹）向前加载
             sharedData?.pendingInitialContent = sharedData.navigator?.previousAnswerPreview
@@ -1124,17 +1116,8 @@ fun ArticleScreen(
                 val prevCached = sharedData?.navigator?.loadPrevious()
                 if (prevCached != null) {
                     sharedData.pendingInitialContent = prevCached
-                    val navController = articleHost?.articleNavController
-                    if (navController != null) {
-                        if (navController.currentBackStackEntry?.hasRoute(Article::class) == true &&
-                            navController.currentBackStackEntry
-                                ?.toRoute<Article>()
-                                ?.type == ArticleType.Answer
-                        ) {
-                            navController.popBackStack()
-                        }
-                    }
-                    navigator.onNavigate(prevCached.article)
+                    answerSwitch?.invoke(prevCached.article, sharedData.answerTransitionDirection)
+                        ?: navigator.onNavigate(prevCached.article)
                 }
             }
         }
@@ -1154,17 +1137,8 @@ fun ArticleScreen(
         if (historyNext != null) {
             sharedData.pendingInitialContent = historyNext
             sharedData.promoteForNavigation(sharedData.answerTransitionDirection)
-            val navController = articleHost?.articleNavController
-            if (navController != null) {
-                if (navController.currentBackStackEntry?.hasRoute(Article::class) == true &&
-                    navController.currentBackStackEntry
-                        ?.toRoute<Article>()
-                        ?.type == ArticleType.Answer
-                ) {
-                    navController.popBackStack()
-                }
-            }
-            navigator.onNavigate(historyNext.article)
+            answerSwitch?.invoke(historyNext.article, sharedData.answerTransitionDirection)
+                ?: navigator.onNavigate(historyNext.article)
         } else {
             // 没有前向历史，从导航器加载
             sharedData?.pendingInitialContent = sharedData.navigator?.nextAnswer
@@ -1172,17 +1146,8 @@ fun ArticleScreen(
             coroutineScope.launch {
                 val nextArticle = sharedData?.navigator?.loadNext()
                 if (nextArticle != null) {
-                    val navController = articleHost?.articleNavController
-                    if (navController != null) {
-                        if (navController.currentBackStackEntry?.hasRoute(Article::class) == true &&
-                            navController.currentBackStackEntry
-                                ?.toRoute<Article>()
-                                ?.type == ArticleType.Answer
-                        ) {
-                            navController.popBackStack()
-                        }
-                    }
-                    navigator.onNavigate(nextArticle)
+                    answerSwitch?.invoke(nextArticle, sharedData.answerTransitionDirection)
+                        ?: navigator.onNavigate(nextArticle)
                 }
             }
         }
@@ -1220,7 +1185,7 @@ fun ArticleScreen(
                             navigationIcon = {
                                 IconButton(
                                     onClick = {
-                                        articleHost?.articleNavController?.popBackStack()
+                                        articleHost?.articleNavController?.pop()
                                     },
                                     colors = IconButtonDefaults.iconButtonColors(
                                         containerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -1343,7 +1308,7 @@ fun ArticleScreen(
             } else {
                 @Composable {
                     // 防止在导航动画和预测性返回手势过程中，底部操作栏闪烁。
-                    val showBottomBarCondition = backStackEntry?.hasRoute(Article::class) == true || articleHost == null
+                    val showBottomBarCondition = currentTopDestination is Article || articleHost == null
 
                     // 操作栏内容的共享组合，按 useDuo3ArticleActions 切换两套视觉。
                     @Composable
@@ -2104,28 +2069,39 @@ private fun CachedAnswerPreview(
     Scaffold(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp)
             .background(
                 color = MaterialTheme.colorScheme.background,
                 shape = RectangleShape,
             ),
         topBar = {
-            Box(
+            // 与正文页 ZhihuTwoRowsTopAppBar 展开态对齐：整宽，上行图标(返回/分享) + 下方完整大标题(headlineMedium)。
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.background),
+                    .background(MaterialTheme.colorScheme.background)
+                    .statusBarsPadding(),
             ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    IconButton(onClick = {}) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    }
+                    Spacer(Modifier.weight(1f))
+                    IconButton(onClick = {}) {
+                        Icon(Icons.Default.Share, contentDescription = "分享")
+                    }
+                }
                 Text(
                     text = cached.title,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    lineHeight = 32.sp,
-                    modifier = Modifier.padding(bottom = 8.dp),
+                    style = MaterialTheme.typography.headlineMedium,
+                    modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
                 )
             }
         },
         bottomBar = {
-            Column {
+            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -2176,7 +2152,7 @@ private fun CachedAnswerPreview(
                 .padding(
                     start = innerPadding.calculateStartPadding(LocalLayoutDirection.current),
                     end = innerPadding.calculateEndPadding(LocalLayoutDirection.current),
-                ),
+                ).padding(horizontal = 16.dp),
         ) {
             Spacer(modifier = Modifier.height(innerPadding.calculateTopPadding()))
             Row(

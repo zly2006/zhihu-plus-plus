@@ -31,7 +31,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavHostController
 import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.AnswerNavigator
@@ -58,6 +57,7 @@ import io.ktor.client.HttpClient
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.jsonPrimitive
+import top.yukonga.miuix.kmp.nav.core.NavController
 
 data class PinLikeResult(
     val isLiked: Boolean,
@@ -370,7 +370,7 @@ fun articleSpeechText(
  * 让 common 文章 UI 能同时运行在 Android、Desktop 和测试环境里，而不依赖平台类。
  */
 interface ArticleHost {
-    val articleNavController: NavHostController
+    val articleNavController: NavController<NavDestination>
     val articleAnswerSwitchState: ArticleAnswerSwitchState
     val articleTtsState: TtsState
     var clipboardDestination: NavDestination?
@@ -439,6 +439,7 @@ data class ZhihuMainPreferenceSnapshot(
     val duo3NavStyle: Boolean,
     val tapToScrollToTopEnabled: Boolean,
     val autoHideBottomBar: Boolean,
+    val autoHideTopBar: Boolean,
     val selectedBottomBarItemKeys: List<String>,
     val startDestination: TopLevelDestination,
 )
@@ -458,6 +459,7 @@ class ZhihuMainPreferenceState(
     val duo3NavStyle: Boolean get() = snapshot.duo3NavStyle
     val tapToScrollToTopEnabled: Boolean get() = snapshot.tapToScrollToTopEnabled
     val autoHideBottomBar: Boolean get() = snapshot.autoHideBottomBar
+    val autoHideTopBar: Boolean get() = snapshot.autoHideTopBar
     val selectedBottomBarItemKeys: List<String> get() = snapshot.selectedBottomBarItemKeys
     val startDestination: TopLevelDestination get() = snapshot.startDestination
 
@@ -469,7 +471,24 @@ class ZhihuMainPreferenceState(
 @Composable
 fun rememberZhihuMainPreferenceState(
     readSnapshot: () -> ZhihuMainPreferenceSnapshot,
-): ZhihuMainPreferenceState = remember { ZhihuMainPreferenceState(readSnapshot) }
+    settings: SettingsStore? = null,
+    observedKeys: Set<String> = emptySet(),
+): ZhihuMainPreferenceState {
+    val state = remember { ZhihuMainPreferenceState(readSnapshot) }
+    DisposableEffect(settings, observedKeys, state) {
+        if (settings == null || observedKeys.isEmpty()) {
+            onDispose {}
+        } else {
+            val unregister = settings.observeKeyChanges { key ->
+                if (key in observedKeys) {
+                    state.reload()
+                }
+            }
+            onDispose(unregister)
+        }
+    }
+    return state
+}
 
 /**
  * 当前平台注入 [ZhihuMain] 的导航回调。

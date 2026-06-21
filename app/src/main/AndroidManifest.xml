@@ -2,6 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
           xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- miuix-blur 声明 minSdk 33，但其 33+ API（RuntimeShader）已在运行时由
+         rememberMiuixBlurBackdrop 的 isRuntimeShaderSupported() 守卫，低版本自动无模糊，
+         故放行该库以支持 minSdk 27 设备安装。 -->
+    <uses-sdk tools:overrideLibrary="top.yukonga.miuix.kmp.blur"/>
+
     <uses-feature
             android:name="android.hardware.camera"
             android:required="false"/>

@@ -711,7 +711,7 @@ object DataHolder {
         val urlToken: String? = null,
         val name: String,
         val useDefaultAvatar: Boolean = false,
-        val avatarUrl: String,
+        val avatarUrl: String = "",
         val avatarUrlTemplate: String = "",
         val isOrg: Boolean = false,
         val type: String = "people",

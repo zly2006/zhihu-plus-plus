@@ -80,6 +80,9 @@ class AccountSettingScreenInstrumentedTest {
     @Before
     fun setUp() {
         composeRule.resetAppPreferences()
+        // createAndroidComposeRule<MainActivity> 会短暂渲染首页，登出态下 HomeScreen 的初始
+        // LaunchedEffect 会调用 requestLogin() 拉起 LoginActivity 盖住被测屏幕。关闭该自动跳转。
+        preferences.edit().putBoolean("loginForRecommendation", false).commit()
         AccountData.delete(composeRule.activity)
     }
 

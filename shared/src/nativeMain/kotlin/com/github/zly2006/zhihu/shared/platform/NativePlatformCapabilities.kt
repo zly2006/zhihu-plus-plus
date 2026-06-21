@@ -67,6 +67,17 @@ actual fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit =
 }
 
 @Composable
+actual fun rememberDeveloperDiagnostics(): DeveloperDiagnostics = remember {
+    DeveloperDiagnostics(
+        appInfo = "iOS",
+        deviceInfo = "iOS",
+        networkStatus = "未知",
+        readClipboardText = { platform.UIKit.UIPasteboard.generalPasteboard.string },
+        exportAllSettings = { "(空)" }, // TODO: iOS 配置导出
+    )
+}
+
+@Composable
 actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) = Unit // TODO: iOS 返回手势处理
 
 @Composable

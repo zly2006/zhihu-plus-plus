@@ -32,11 +32,17 @@ import com.github.zly2006.zhihu.shared.account.ZhihuAccountSession
 import com.github.zly2006.zhihu.shared.account.ZhihuAccountSessionStore
 import com.github.zly2006.zhihu.shared.data.Person
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
+import com.github.zly2006.zhihu.shared.data.fetchVerifiedZhihuSession
+import com.github.zly2006.zhihu.shared.data.ZhihuCookieStorage
 import com.github.zly2006.zhihu.shared.data.installZhihuCommonClientConfig
+import com.github.zly2006.zhihu.shared.login.prefetchQrLoginContext
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.HttpClientEngineConfig
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.cookies.HttpCookies
+import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
@@ -151,8 +157,33 @@ object AccountData {
         return client
     }
 
-    suspend fun verifyLogin(context: Context, cookies: Map<String, String>): Boolean =
-        accountClient(context).verifyAndSave(cookies.toMutableMap())
+    /**
+     * 登录流程(udid 预取 / 二维码)专用客户端：刻意不装 UserAgent 插件，让 [prefetchQrLoginContext] 等
+     * per-request 设置的桌面 UA 成为唯一 User-Agent。账号客户端装了 UserAgent 插件，会与之叠成两个
+     * User-Agent 头，知乎据此发的 d_c0 对 web zse96 签名无效(10003)。cookie 写回传入的 [cookies]。
+     */
+    fun loginHttpClient(cookies: MutableMap<String, String>): HttpClient = HttpClient {
+        install(HttpCookies) { storage = ZhihuCookieStorage(cookies) }
+        install(ContentNegotiation) { json(ZhihuJson.json) }
+    }
+
+    suspend fun verifyLogin(context: Context, cookies: Map<String, String>): Boolean {
+        val map = cookies.toMutableMap()
+        // 网页登录(WebView) 抓到的 d_c0 可能是手机版登录页发的、对桌面 zse96 签名无效的值（实测会让知乎回 10003）；
+        // 手动粘 cookie 又常常只带 z_c0。统一用扫码登录同款 udid 预取换一个有效 d_c0 覆盖掉不可靠的值；
+        // 必须用 loginHttpClient（单一桌面 UA），udid 失败时（runCatching）保留原 d_c0，不致更差。
+        val udidClient = loginHttpClient(map)
+        runCatching { prefetchQrLoginContext(udidClient, map) }
+            .onFailure { Log.e("ZhihuLogin", "udid prefetch failed", it) }
+        udidClient.close()
+        val httpClient = httpClient(context, map)
+        val session = fetchVerifiedZhihuSession(httpClient, map, data.userAgent) ?: return false
+        saveData(
+            context,
+            session.toAndroidData(),
+        )
+        return true
+    }
 
     fun delete(context: Context) {
         accountClient(context).clear()
