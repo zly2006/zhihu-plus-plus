@@ -139,4 +139,72 @@ class ZhihuNotificationClientTest {
         assertEquals(3, notifications.voteThankNotificationsCount)
         assertEquals(6, notifications.totalCount)
     }
+
+    @Test
+    fun decodesMobileUnreadNotificationCountsFromHeadEntries() {
+        val overview: MobileNotificationMessageOverview = ZhihuJson.decodeJson(
+            ZhihuJson.json.parseToJsonElement(
+                """
+                {
+                  "head": [
+                    {
+                      "type": "entry",
+                      "detail_title": "评论转发@",
+                      "unread_count": 1
+                    },
+                    {
+                      "type": "entry",
+                      "detail_title": "赞同喜欢",
+                      "unread_count": 2
+                    }
+                  ]
+                }
+                """.trimIndent(),
+            ),
+        )
+
+        assertEquals("评论转发@", overview.head[0].detailTitle)
+        assertEquals(1, overview.head[0].unreadCount)
+        assertEquals("赞同喜欢", overview.head[1].detailTitle)
+        assertEquals(2, overview.head[1].unreadCount)
+    }
+
+    @Test
+    fun decodesMobileTimelineNotificationWithTargetSource() {
+        val notification: MobileNotificationTimelineItem = ZhihuJson.decodeJson(
+            ZhihuJson.json.parseToJsonElement(
+                """
+                {
+                  "id": "mobile-notification",
+                  "unique_id": "mobile-notification-unique",
+                  "type": "aggregate_notification",
+                  "card_type": "noti_simple_card",
+                  "is_read": false,
+                  "created": 1781990000,
+                  "head": {
+                    "avatar_url": "https://pic.example/avatar.jpg",
+                    "target_link": "https://www.zhihu.com/people/tester"
+                  },
+                  "content": {
+                    "title": "测试用户 评论了你的回答",
+                    "sub_title": "评论和回复",
+                    "text": "<p>测试评论</p>",
+                    "target_link": "zhihu://comment/list/answer/2?anchor_comment_id=3"
+                  },
+                  "target_source": {
+                    "text": "测试回答标题",
+                    "target_link": "https://www.zhihu.com/question/1/answer/2"
+                  }
+                }
+                """.trimIndent(),
+            ),
+        )
+
+        assertEquals("mobile-notification-unique", notification.stableId)
+        assertEquals(false, notification.isRead)
+        assertEquals(1781990000, notification.created)
+        assertEquals("https://pic.example/avatar.jpg", notification.head?.avatarUrl)
+        assertEquals("测试用户 评论了你的回答", notification.content?.title)
+        assertEquals("测试回答标题", notification.targetSource?.text)
+    }
 }

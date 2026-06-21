@@ -47,7 +47,7 @@ class AndroidNotificationSettingsStore(
         preferences.edit { putBoolean("$KEY_DISPLAY_IN_APP${type.name}", enabled) }
 
     override fun getAutoMarkAsReadEnabled(): Boolean =
-        preferences.getBoolean(KEY_AUTO_MARK_AS_READ, true)
+        preferences.getBoolean(KEY_AUTO_MARK_AS_READ, false)
 
     override fun setAutoMarkAsReadEnabled(enabled: Boolean) = preferences.edit { putBoolean(KEY_AUTO_MARK_AS_READ, enabled) }
 

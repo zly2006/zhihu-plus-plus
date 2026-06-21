@@ -43,7 +43,7 @@ private class DesktopNotificationSettingsStore : NotificationSettingsStore {
         setBoolean("$KEY_DISPLAY_IN_APP${type.name}", enabled)
 
     override fun getAutoMarkAsReadEnabled(): Boolean =
-        properties.getProperty(KEY_AUTO_MARK_AS_READ)?.toBooleanStrictOrNull() ?: true
+        properties.getProperty(KEY_AUTO_MARK_AS_READ)?.toBooleanStrictOrNull() ?: false
 
     override fun setAutoMarkAsReadEnabled(enabled: Boolean) = setBoolean(KEY_AUTO_MARK_AS_READ, enabled)
 

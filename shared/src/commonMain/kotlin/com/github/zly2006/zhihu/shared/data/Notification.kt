@@ -53,6 +53,94 @@ data class NotificationItem(
     val target: NotificationTarget? = null,
 )
 
+@Serializable
+data class MobileNotificationMessageOverview(
+    val head: List<MobileNotificationHeadEntry> = emptyList(),
+)
+
+@Serializable
+data class MobileNotificationHeadEntry(
+    val detailTitle: String = "",
+    val unreadCount: Int = 0,
+)
+
+@Serializable
+data class MobileNotificationTimelineItem(
+    val id: String = "",
+    val uniqueId: String = "",
+    val type: String = "",
+    val cardType: String = "",
+    val detailTitle: String = "",
+    val isRead: Boolean = true,
+    val unreadCount: Int = 0,
+    val created: Long = 0,
+    val createdStr: String = "",
+    val head: MobileNotificationHead? = null,
+    val content: MobileNotificationContent? = null,
+    val targetSource: MobileNotificationTargetSource? = null,
+    val target: MobileNotificationTarget? = null,
+) {
+    val stableId: String
+        get() = uniqueId.ifBlank { id.ifBlank { "$created-$cardType-$detailTitle" } }
+}
+
+@Serializable
+data class MobileNotificationHead(
+    val author: MobileNotificationAuthor? = null,
+    val avatarUrl: String = "",
+    val targetLink: String = "",
+    val avatarUrls: List<String> = emptyList(),
+)
+
+@Serializable
+data class MobileNotificationAuthor(
+    val id: String? = null,
+    val name: String = "",
+    val urlToken: String = "",
+    val headline: String = "",
+    val avatarUrl: String = "",
+)
+
+@Serializable
+data class MobileNotificationContent(
+    val title: String = "",
+    val subTitle: String = "",
+    val text: String = "",
+    val subText: String = "",
+    val abstractText: String = "",
+    val targetLink: String = "",
+    val subTargetLink: String = "",
+    val subIcon: String = "",
+    val isDeleted: Boolean = false,
+    val isSubDeleted: Boolean = false,
+    val hasVideo: Boolean = false,
+)
+
+@Serializable
+data class MobileNotificationTargetSource(
+    val topText: String = "",
+    val subText: String = "",
+    val text: String = "",
+    val fullText: String = "",
+    val targetLink: String = "",
+    val isDeleted: Boolean = false,
+    val hasVideo: Boolean = false,
+    val image: String = "",
+    val objectId: String = "",
+    val subTextIsLink: Boolean = false,
+)
+
+@Serializable
+data class MobileNotificationTarget(
+    val id: String = "",
+    val type: String = "",
+    val name: String = "",
+    val urlToken: String = "",
+    val headline: String = "",
+    val avatarUrl: String = "",
+    val url: String = "",
+)
+
 object NotificationActorsSerializer : KSerializer<List<NotificationActor>> {
     override val descriptor: SerialDescriptor
         get() = ListSerializer(NotificationActor.serializer()).descriptor
