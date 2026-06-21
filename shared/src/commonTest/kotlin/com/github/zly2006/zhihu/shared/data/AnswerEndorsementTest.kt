@@ -65,22 +65,50 @@ class AnswerEndorsementTest {
                   "voteup_count": 3,
                   "endorsements": [
                     {
+                      "background_color": {
+                        "alpha": 0.1,
+                        "group": "GYL02A"
+                      },
                       "elements": [
                         {
                           "type": "IMAGE",
-                          "image_key": "zhicon_icon_24_chat_bubble_hash_fill"
+                          "image_key": "zhicon_icon_24_chat_bubble_hash_fill",
+                          "image_color": {
+                            "alpha": 1,
+                            "group": "GYL02A"
+                          }
                         },
                         {
                           "type": "TEXT",
-                          "content": "话题收录"
+                          "content": "话题收录",
+                          "font_color": {
+                            "alpha": 1,
+                            "group": "GYL02A"
+                          }
                         },
                         {
                           "type": "TEXT",
-                          "content": "我的开源名片"
+                          "content": "我的开源名片",
+                          "font_color": {
+                            "alpha": 1,
+                            "group": "GYL02A"
+                          }
+                        },
+                        {
+                          "type": "IMAGE",
+                          "image_key": "zhicon_icon_16_arrow_right",
+                          "image_color": {
+                            "alpha": 1,
+                            "group": "GYL02A"
+                          }
                         }
                       ]
                     },
                     {
+                      "background_color": {
+                        "alpha": 0.1,
+                        "group": "GBL01A"
+                      },
                       "elements": [
                         {
                           "type": "TEXT",
@@ -88,7 +116,20 @@ class AnswerEndorsementTest {
                         },
                         {
                           "type": "TEXT",
-                          "content": "创作声明: 内容包含剧透"
+                          "content": "创作声明: 内容包含剧透",
+                          "font_color": {
+                            "alpha": 1,
+                            "group": "GBL07A"
+                          }
+                        },
+                        {
+                          "type": "IMAGE",
+                          "image_key": "zhicon_icon_16_arrow_down",
+                          "selected_image_key": "zhicon_icon_16_arrow_up",
+                          "image_color": {
+                            "alpha": 1,
+                            "group": "GBL07A"
+                          }
                         }
                       ]
                     },
@@ -113,6 +154,28 @@ class AnswerEndorsementTest {
                 "收录于话题: 科技",
             ),
             answer.endorsementTexts,
+        )
+        assertEquals(
+            listOf(
+                DataHolder.AnswerEndorsementDisplay(
+                    text = "话题收录 我的开源名片",
+                    backgroundColor = DataHolder.AnswerEndorsementColor(alpha = 0.1f, group = "GYL02A"),
+                    textColor = DataHolder.AnswerEndorsementColor(alpha = 1f, group = "GYL02A"),
+                    leadingIconKey = "zhicon_icon_24_chat_bubble_hash_fill",
+                    leadingIconColor = DataHolder.AnswerEndorsementColor(alpha = 1f, group = "GYL02A"),
+                    trailingIconKey = "zhicon_icon_16_arrow_right",
+                ),
+                DataHolder.AnswerEndorsementDisplay(
+                    text = "创作声明: 内容包含剧透",
+                    backgroundColor = DataHolder.AnswerEndorsementColor(alpha = 0.1f, group = "GBL01A"),
+                    textColor = DataHolder.AnswerEndorsementColor(alpha = 1f, group = "GBL07A"),
+                    trailingIconKey = "zhicon_icon_16_arrow_down",
+                ),
+                DataHolder.AnswerEndorsementDisplay(
+                    text = "收录于话题: 科技",
+                ),
+            ),
+            answer.endorsementItems,
         )
     }
 }

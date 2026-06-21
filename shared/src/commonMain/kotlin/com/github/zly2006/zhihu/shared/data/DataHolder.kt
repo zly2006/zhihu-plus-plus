@@ -307,15 +307,12 @@ object DataHolder {
         val allowSegmentInteraction: Boolean = false,
     ) : Content {
         val endorsementTexts: List<String>
+            get() = endorsementItems.map { item -> item.text }
+
+        val endorsementItems: List<AnswerEndorsementDisplay>
             get() = endorsements
                 .orEmpty()
-                .mapNotNull { endorsement ->
-                    endorsement.elements
-                        .orEmpty()
-                        .filter { element -> element.type == "TEXT" && !element.content.isNullOrBlank() }
-                        .joinToString(" ") { element -> element.content.orEmpty() }
-                        .takeIf { text -> text.isNotBlank() }
-                }
+                .mapNotNull { endorsement -> endorsement.display }
 
         @Serializable
         data class PaginationInfo(
@@ -327,13 +324,59 @@ object DataHolder {
 
     @Serializable
     data class AnswerEndorsement(
+        val actionUrl: String? = null,
+        val backgroundColor: AnswerEndorsementColor? = null,
         val elements: List<AnswerEndorsementElement>? = null,
+    ) {
+        val display: AnswerEndorsementDisplay?
+            get() {
+                val elements = elements.orEmpty()
+                val textElements = elements.filter { element ->
+                    element.type == "TEXT" && !element.content.isNullOrBlank()
+                }
+                val text = textElements
+                    .joinToString(" ") { element -> element.content.orEmpty() }
+                    .takeIf { value -> value.isNotBlank() } ?: return null
+                val leadingImage = elements.firstOrNull { element ->
+                    element.type == "IMAGE" && !element.imageKey.isNullOrBlank() && !element.imageKey.contains("arrow")
+                }
+                val trailingImage = elements.lastOrNull { element ->
+                    element.type == "IMAGE" && element.imageKey?.contains("arrow") == true
+                }
+                return AnswerEndorsementDisplay(
+                    text = text,
+                    backgroundColor = backgroundColor,
+                    textColor = textElements.firstNotNullOfOrNull { element -> element.fontColor },
+                    leadingIconKey = leadingImage?.imageKey,
+                    leadingIconColor = leadingImage?.imageColor,
+                    trailingIconKey = trailingImage?.imageKey,
+                )
+            }
+    }
+
+    data class AnswerEndorsementDisplay(
+        val text: String,
+        val backgroundColor: AnswerEndorsementColor? = null,
+        val textColor: AnswerEndorsementColor? = null,
+        val leadingIconKey: String? = null,
+        val leadingIconColor: AnswerEndorsementColor? = null,
+        val trailingIconKey: String? = null,
+    )
+
+    @Serializable
+    data class AnswerEndorsementColor(
+        val alpha: Float = 1f,
+        val group: String? = null,
     )
 
     @Serializable
     data class AnswerEndorsementElement(
         val type: String? = null,
         val content: String? = null,
+        val fontColor: AnswerEndorsementColor? = null,
+        val imageKey: String? = null,
+        val imageColor: AnswerEndorsementColor? = null,
+        val selectedImageKey: String? = null,
     )
 
     @Serializable

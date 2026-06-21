@@ -34,6 +34,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.navigation.AnswerNavigator
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.resetAppPreferences
@@ -116,7 +117,7 @@ class ArticleScreenInstrumentedTest {
             }
         }
 
-        composeRule.onNodeWithText("知乎圆桌: AI 观察").assertIsDisplayed()
+        composeRule.onNodeWithText("话题收录 我的开源名片").assertIsDisplayed()
         composeRule.onNodeWithText("创作声明: 内容包含剧透").assertIsDisplayed()
         composeRule.onNodeWithText("收录于话题: 科技").assertIsDisplayed()
     }
@@ -283,10 +284,24 @@ class ArticleScreenInstrumentedTest {
             viewModel.createdAt = 1_710_000_000L
             viewModel.updatedAt = 1_710_000_600L
             viewModel.ipInfo = "上海"
-            viewModel.endorsementTexts = listOf(
-                "知乎圆桌: AI 观察",
-                "创作声明: 内容包含剧透",
-                "收录于话题: 科技",
+            viewModel.endorsements = listOf(
+                DataHolder.AnswerEndorsementDisplay(
+                    text = "话题收录 我的开源名片",
+                    backgroundColor = DataHolder.AnswerEndorsementColor(alpha = 0.1f, group = "GYL02A"),
+                    textColor = DataHolder.AnswerEndorsementColor(group = "GYL02A"),
+                    leadingIconKey = "zhicon_icon_24_chat_bubble_hash_fill",
+                    leadingIconColor = DataHolder.AnswerEndorsementColor(group = "GYL02A"),
+                    trailingIconKey = "zhicon_icon_16_arrow_right",
+                ),
+                DataHolder.AnswerEndorsementDisplay(
+                    text = "创作声明: 内容包含剧透",
+                    backgroundColor = DataHolder.AnswerEndorsementColor(alpha = 0.1f, group = "GBL01A"),
+                    textColor = DataHolder.AnswerEndorsementColor(group = "GBL07A"),
+                    trailingIconKey = "zhicon_icon_16_arrow_down",
+                ),
+                DataHolder.AnswerEndorsementDisplay(
+                    text = "收录于话题: 科技",
+                ),
             )
         }
         return viewModel
