@@ -67,7 +67,6 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.FilterCenterFocus
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.GetApp
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.SkipNext
@@ -1070,7 +1069,7 @@ fun ArticleScreen(
                 viewModel.content = pending.content
                 viewModel.voteUpCount = pending.voteUpCount
                 viewModel.commentCount = pending.commentCount
-                viewModel.endorsementTexts = pending.endorsementTexts
+                viewModel.endorsements = pending.endorsements
                 sharedData.pendingInitialContent = null
             }
         }
@@ -1719,8 +1718,8 @@ fun ArticleScreen(
                         if (viewModel.content.isNotEmpty() || viewModel.attachment != null) {
                             val hasPinnedDate = pinAnswerDate
                             val hasSocialCredit = viewModel.votersTotal > 0 || viewModel.aigcSupportVoterCount > 0
-                            val endorsementTexts = viewModel.endorsementTexts
-                            val hasEndorsements = endorsementTexts.isNotEmpty()
+                            val endorsements = viewModel.endorsements
+                            val hasEndorsements = endorsements.isNotEmpty()
                             if (hasPinnedDate || hasSocialCredit || hasEndorsements) {
                                 Column(
                                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
@@ -1738,8 +1737,8 @@ fun ArticleScreen(
                                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                                             verticalArrangement = Arrangement.spacedBy(8.dp),
                                         ) {
-                                            endorsementTexts.forEach { endorsementText ->
-                                                AnswerEndorsementChip(endorsementText)
+                                            endorsements.forEach { endorsement ->
+                                                AnswerEndorsementChip(endorsement)
                                             }
                                         }
                                     }
@@ -2227,14 +2226,14 @@ private fun CachedAnswerPreview(
                     }
                 }
             }
-            if (cached.endorsementTexts.isNotEmpty()) {
+            if (cached.endorsements.isNotEmpty()) {
                 Spacer(Modifier.height(10.dp))
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    cached.endorsementTexts.forEach { endorsementText ->
-                        AnswerEndorsementChip(endorsementText)
+                    cached.endorsements.forEach { endorsement ->
+                        AnswerEndorsementChip(endorsement)
                     }
                 }
             }
@@ -2250,38 +2249,6 @@ private fun CachedAnswerPreview(
                 )
             }
             Spacer(modifier = Modifier.height((16 + 36).dp))
-        }
-    }
-}
-
-@Composable
-private fun AnswerEndorsementChip(
-    text: String,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(50),
-        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-        contentColor = MaterialTheme.colorScheme.primary,
-    ) {
-        Row(
-            modifier = Modifier.padding(start = 10.dp, top = 5.dp, end = 8.dp, bottom = 5.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = text,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(modifier = Modifier.width(2.dp))
-            Icon(
-                imageVector = Icons.Filled.KeyboardArrowDown,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
-            )
         }
     }
 }

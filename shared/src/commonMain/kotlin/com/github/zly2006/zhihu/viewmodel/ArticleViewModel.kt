@@ -129,7 +129,12 @@ class ArticleViewModel(
     var updatedAt by mutableLongStateOf(0L)
     var createdAt by mutableLongStateOf(0L)
     var ipInfo by mutableStateOf<String?>(null)
-    var endorsementTexts by mutableStateOf<List<String>>(emptyList())
+    var endorsements by mutableStateOf<List<DataHolder.AnswerEndorsementDisplay>>(emptyList())
+    var endorsementTexts: List<String>
+        get() = endorsements.map { endorsement -> endorsement.text }
+        set(value) {
+            endorsements = value.map { text -> DataHolder.AnswerEndorsementDisplay(text = text) }
+        }
     var aiSummaryText by mutableStateOf("")
         private set
     var aiSummaryError by mutableStateOf<String?>(null)
@@ -196,10 +201,13 @@ class ArticleViewModel(
         val createdAt: Long = 0L,
         val updatedAt: Long = 0L,
         val ipInfo: String? = null,
-        val endorsementTexts: List<String> = emptyList(),
+        val endorsements: List<DataHolder.AnswerEndorsementDisplay> = emptyList(),
         /** 来源标签，用于 UI 显示，例如 "此问题"、"「收藏夹名称」" */
         val sourceLabel: String = "此问题",
-    )
+    ) {
+        val endorsementTexts: List<String>
+            get() = endorsements.map { endorsement -> endorsement.text }
+    }
 
     fun toCachedContent(sourceLabel: String = "此问题"): CachedAnswerContent = CachedAnswerContent(
         article = article,
@@ -214,7 +222,7 @@ class ArticleViewModel(
         createdAt = createdAt,
         updatedAt = updatedAt,
         ipInfo = ipInfo,
-        endorsementTexts = endorsementTexts,
+        endorsements = endorsements,
         sourceLabel = sourceLabel,
     )
 
@@ -270,7 +278,7 @@ class ArticleViewModel(
                             updatedAt = answer.updatedTime
                             createdAt = answer.createdTime
                             ipInfo = answer.ipInfo
-                            endorsementTexts = answer.endorsementTexts
+                            endorsements = answer.endorsementItems
 
                             environment.postHistoryDestination(
                                 Article(
@@ -312,13 +320,13 @@ class ArticleViewModel(
                             }
                         } else {
                             content = "<h1>你似乎来到了没有知识存在的荒原</h1>"
-                            endorsementTexts = emptyList()
+                            endorsements = emptyList()
                             Log.e("ArticleViewModel", "Answer not found")
                         }
                     } else if (article.type == ArticleType.Article) {
                         val article = environment.fetchContentDetail(article) as? DataHolder.Article
                         if (article != null) {
-                            endorsementTexts = emptyList()
+                            endorsements = emptyList()
                             exportSourceContent = article
                             title = article.title
                             content = applySegmentInfosToHtml(
