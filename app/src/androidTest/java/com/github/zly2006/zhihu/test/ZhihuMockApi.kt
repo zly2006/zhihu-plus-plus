@@ -192,6 +192,29 @@ object ZhihuMockApi {
         )
         mockJson(
             method = HttpMethod.Get,
+            url = "https://api.zhihu.com/notifications/v3/message/v3?limit=20",
+            body =
+                """
+                {
+                  "head": [
+                    {"type": "entry", "detail_title": "评论转发@", "unread_count": 0},
+                    {"type": "entry", "detail_title": "赞同喜欢", "unread_count": 0},
+                    {"type": "entry", "detail_title": "收藏了我", "unread_count": 0},
+                    {"type": "entry", "detail_title": "关注订阅", "unread_count": 0}
+                  ],
+                  "data": []
+                }
+                """.trimIndent(),
+        )
+        listOf("comment", "like", "follow", "favlist_me").forEach { entry ->
+            mockJson(
+                method = HttpMethod.Get,
+                url = "https://api.zhihu.com/notifications/v3/timeline/entry/$entry?limit=20",
+                body = emptyFeedResponse,
+            )
+        }
+        mockJson(
+            method = HttpMethod.Get,
             url = "https://api.zhihu.com/unify-consumption/read_history?offset=0&limit=10&include=data%5B%2A%5D.content%2Cexcerpt%2Cheadline",
             body = emptyFeedResponse,
         )
