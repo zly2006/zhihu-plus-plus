@@ -34,7 +34,7 @@ kotlin {
 
     androidLibrary {
         namespace = "com.github.zly2006.zhihu.shared.localdb"
-        compileSdk = 36
+        compileSdk = 37
         minSdk = 27
 
         compilerOptions {
@@ -61,7 +61,7 @@ kotlin {
         commonMain.dependencies {
             api("androidx.room:room-runtime:2.8.4")
             api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
-            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
+            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
