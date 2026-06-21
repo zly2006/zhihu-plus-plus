@@ -65,12 +65,12 @@ class NotificationScreenInstrumentedTest {
         setNotificationScreenContent()
 
         composeRule.onNodeWithText("消息").assertIsDisplayed()
-        composeRule.onNodeWithText("评论转发@").assertIsDisplayed()
-        composeRule.onNodeWithText("赞同喜欢").assertIsDisplayed()
-        composeRule.onNodeWithText("收藏了我").assertIsDisplayed()
-        composeRule.onNodeWithText("关注订阅").assertIsDisplayed()
-        composeRule.onNodeWithTag("notification_category_comment").assertHasClickAction()
-        composeRule.onNodeWithTag("notification_category_like").assertHasClickAction()
+        MobileNotificationCategory.entries.forEach { category ->
+            composeRule
+                .onNodeWithTag("notification_category_${category.entryName}")
+                .assertExists()
+                .assertHasClickAction()
+        }
         composeRule.onNodeWithContentDescription("返回").assertExists().assertHasClickAction()
         composeRule.onNodeWithContentDescription("设置").assertExists().assertHasClickAction()
         composeRule.onNodeWithContentDescription("已读").assertDoesNotExist()
