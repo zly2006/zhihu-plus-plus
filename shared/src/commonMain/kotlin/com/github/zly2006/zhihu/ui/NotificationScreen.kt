@@ -20,6 +20,7 @@ package com.github.zly2006.zhihu.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -33,11 +34,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Circle
+import androidx.compose.material.icons.automirrored.outlined.Comment
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.CopyAll
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MarkChatRead
+import androidx.compose.material.icons.filled.PersonAddAlt1
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -54,24 +61,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Person
-import com.github.zly2006.zhihu.navigation.Pin
-import com.github.zly2006.zhihu.navigation.Question
-import com.github.zly2006.zhihu.shared.data.NotificationItem
-import com.github.zly2006.zhihu.shared.data.NotificationTarget
-import com.github.zly2006.zhihu.shared.data.navDestination
+import com.github.zly2006.zhihu.navigation.resolveContent
+import com.github.zly2006.zhihu.shared.data.MobileNotificationTimelineItem
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.notification.rememberNotificationSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
@@ -79,6 +81,8 @@ import com.github.zly2006.zhihu.shared.util.formatRelativeTime
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
+import com.github.zly2006.zhihu.util.parseHtmlTextWithTheme
+import com.github.zly2006.zhihu.viewmodel.MobileNotificationCategory
 import com.github.zly2006.zhihu.viewmodel.NotificationEnvironment
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import kotlinx.coroutines.launch
@@ -96,7 +100,7 @@ expect fun rememberNotificationShowDebugCopy(): Boolean
 /**
  * 通知中心页面。
  *
- * 页面按通知设置过滤应用内展示项，加载通知列表并在进入页面后按设置自动标记已读。系统通知、应用内显示和自动已读由
+ * 页面按通知设置过滤应用内展示项，用户显式开启时才会在进入页面后自动标记已读。系统通知、应用内显示和自动已读由
  * `NotificationSettingsStore` 管理，不走普通 `SettingsStore`，改动时要同时检查通知设置页。
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -124,7 +128,7 @@ fun NotificationScreen() {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("通知")
+                        Text("消息")
                     }
                 },
                 navigationIcon = {
@@ -160,66 +164,32 @@ fun NotificationScreen() {
             onRefresh = { viewModel.refresh(environment) },
             modifier = Modifier.padding(paddingValues),
         ) {
-            PaginatedList(
-                items = viewModel.allData,
-                onLoadMore = { viewModel.loadMore(environment) },
-                isEnd = { viewModel.isEnd },
+            Column(
                 modifier = Modifier.fillMaxSize(),
-                footer = ProgressIndicatorFooter,
-            ) { notification ->
-                if (viewModel.shouldShowNotification(settingsStore, notification)) {
-                    NotificationItemView(
-                        notification = notification,
-                        onClick = {
-                            // 处理点击事件 - 跳转到对应内容
-                            when (notification.target) {
-                                is NotificationTarget.Comment -> {
-                                    userMessages.showMessage("暂不支持跳转到评论，将跳转到对应回答。")
-                                    notification.target.target?.navDestination?.let {
-                                        navigator.onNavigate(it)
-                                    } ?: userMessages.showMessage("导航失败")
-                                }
-
-                                is NotificationTarget.Question -> {
-                                    navigator.onNavigate(Question(notification.target.id.toLong(), notification.target.title))
-                                }
-
-                                is NotificationTarget.People -> {
-                                    navigator.onNavigate(Person(notification.target.id, notification.target.urlToken, name = notification.target.name))
-                                }
-
-                                is NotificationTarget.Answer -> {
-                                    navigator.onNavigate(
-                                        Article(
-                                            title = notification.target.title,
-                                            type = ArticleType.Answer,
-                                            id = notification.target.id.toLong(),
-                                            excerpt = notification.target.excerpt,
-                                        ),
-                                    )
-                                }
-
-                                is NotificationTarget.Article -> {
-                                    navigator.onNavigate(
-                                        Article(
-                                            title = notification.target.title,
-                                            type = ArticleType.Article,
-                                            id = notification.target.id.toLong(),
-                                            excerpt = notification.target.excerpt,
-                                        ),
-                                    )
-                                }
-
-                                is NotificationTarget.Pin -> {
-                                    navigator.onNavigate(
-                                        Pin(notification.target.id.toLong()),
-                                    )
-                                }
-
-                                null -> { }
-                            }
-                        },
-                    )
+            ) {
+                NotificationCategoryRow(
+                    selectedCategory = viewModel.selectedCategory,
+                    unreadCounts = viewModel.categoryUnreadCounts,
+                    showUnreadBadges = settingsStore.getUnreadBadgeEnabled(),
+                    onCategoryClick = { category -> viewModel.selectCategory(category, environment) },
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                PaginatedList(
+                    items = viewModel.allData,
+                    onLoadMore = { viewModel.loadMore(environment) },
+                    isEnd = { viewModel.isEnd },
+                    modifier = Modifier.weight(1f),
+                    footer = ProgressIndicatorFooter,
+                ) { notification ->
+                    if (viewModel.shouldShowNotification(settingsStore, notification)) {
+                        NotificationItemView(
+                            notification = notification,
+                            onClick = {
+                                notification.navDestination()?.let { navigator.onNavigate(it) }
+                                    ?: userMessages.showMessage("暂不支持打开此通知")
+                            },
+                        )
+                    }
                 }
             }
             if (showDebugCopy) {
@@ -239,8 +209,105 @@ fun NotificationScreen() {
 }
 
 @Composable
+private fun NotificationCategoryRow(
+    selectedCategory: MobileNotificationCategory,
+    unreadCounts: Map<MobileNotificationCategory, Int>,
+    showUnreadBadges: Boolean,
+    onCategoryClick: (MobileNotificationCategory) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+    ) {
+        MobileNotificationCategory.entries.forEach { category ->
+            NotificationCategoryButton(
+                category = category,
+                unreadCount = unreadCounts[category] ?: 0,
+                showUnreadBadge = showUnreadBadges,
+                selected = category == selectedCategory,
+                onClick = { onCategoryClick(category) },
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun NotificationCategoryButton(
+    category: MobileNotificationCategory,
+    unreadCount: Int,
+    showUnreadBadge: Boolean,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val containerColor = if (selected) {
+        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
+    } else {
+        Color.Transparent
+    }
+    val contentColor = if (selected) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
+
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .testTag("notification_category_${category.entryName}")
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Box(
+            modifier = Modifier.size(56.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            BadgedBox(
+                badge = {
+                    if (showUnreadBadge && unreadCount > 0) {
+                        Badge(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError,
+                        ) {
+                            Text(formatUnreadCount(unreadCount))
+                        }
+                    }
+                },
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = containerColor,
+                    modifier = Modifier.size(48.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = category.icon(),
+                            contentDescription = category.detailTitle,
+                            modifier = Modifier.size(30.dp),
+                            tint = contentColor,
+                        )
+                    }
+                }
+            }
+        }
+        Text(
+            text = category.detailTitle,
+            style = MaterialTheme.typography.labelMedium,
+            color = contentColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
 fun NotificationItemView(
-    notification: NotificationItem,
+    notification: MobileNotificationTimelineItem,
     onClick: () -> Unit,
 ) {
     val backgroundColor = if (notification.isRead) {
@@ -260,53 +327,83 @@ fun NotificationItemView(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
-            // 头部：头像和时间
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.Top,
             ) {
+                Box(
+                    modifier = Modifier
+                        .width(10.dp)
+                        .padding(top = 10.dp, end = 4.dp),
+                ) {
+                    if (!notification.isRead) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.error,
+                            shape = CircleShape,
+                            modifier = Modifier.size(6.dp),
+                        ) {}
+                    }
+                }
+                val avatarUrl = notification.avatarUrl()
+                if (avatarUrl.isNotBlank()) {
+                    AsyncImage(
+                        model = avatarUrl,
+                        contentDescription = "",
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                }
+
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.weight(1f),
                 ) {
-                    val extend = notification.content.extend
-                    if (extend?.icon != null) {
-                        AsyncImage(
-                            model = extend.icon,
-                            contentDescription = "",
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                    Column(
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(
+                            text = parseHtmlTextWithTheme(notification.displayTitle()),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
+                        notification.displaySubtitle().takeIf { it.isNotBlank() }?.let { subtitle ->
+                            Spacer(modifier = Modifier.height(3.dp))
+                            Text(
+                                text = parseHtmlTextWithTheme(subtitle),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        notification.displayText().takeIf { it.isNotBlank() }?.let { content ->
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = parseHtmlTextWithTheme(content),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 3,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
-
-                    // 通知内容
-                    Text(
-                        text = buildNotificationText(notification),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
                 }
 
-                // 未读标记
-                if (!notification.isRead) {
-                    Icon(
-                        imageVector = Icons.Default.Circle,
-                        contentDescription = "未读",
-                        modifier = Modifier.size(8.dp),
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                }
+                Text(
+                    text = formatRelativeTime(notification.created),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 8.dp),
+                )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // 目标内容预览
-            notification.target?.let { target ->
-                Spacer(modifier = Modifier.height(8.dp))
+            notification.sourceText().takeIf { it.isNotBlank() }?.let { sourceText ->
+                Spacer(modifier = Modifier.height(10.dp))
                 Surface(
                     shape = RoundedCornerShape(8.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
@@ -315,73 +412,89 @@ fun NotificationItemView(
                     Column(
                         modifier = Modifier.padding(12.dp),
                     ) {
-                        target.title?.let { title ->
-                            Text(
-                                text = title,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                        target.content?.let { content ->
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = content.replace(Regex("<[^>]*>"), ""), // 简单去除HTML标签
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 3,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
+                        Text(
+                            text = parseHtmlTextWithTheme(sourceText),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
                 }
             }
+        }
+    }
+}
 
-            Spacer(modifier = Modifier.height(8.dp))
+private fun MobileNotificationCategory.icon(): ImageVector = when (this) {
+    MobileNotificationCategory.Comment -> Icons.AutoMirrored.Outlined.Comment
+    MobileNotificationCategory.Like -> Icons.Filled.Favorite
+    MobileNotificationCategory.Favorite -> Icons.Filled.Bookmark
+    MobileNotificationCategory.Follow -> Icons.Filled.PersonAddAlt1
+}
 
-            // 时间
-            Text(
-                text = formatRelativeTime(notification.createTime),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+private fun MobileNotificationTimelineItem.displayTitle(): String =
+    content
+        ?.title
+        ?.takeIf { it.isNotBlank() }
+        ?: detailTitle.takeIf { it.isNotBlank() }
+        ?: target?.name?.takeIf { it.isNotBlank() }
+        ?: "通知"
+
+private fun MobileNotificationTimelineItem.displaySubtitle(): String =
+    content
+        ?.subTitle
+        ?.takeIf { it.isNotBlank() }
+        ?: target?.headline?.takeIf { it.isNotBlank() }
+        ?: ""
+
+private fun MobileNotificationTimelineItem.displayText(): String =
+    content
+        ?.text
+        ?.takeIf { it.isNotBlank() }
+        ?: content?.abstractText?.takeIf { it.isNotBlank() }
+        ?: content?.subText?.takeIf { it.isNotBlank() }
+        ?: ""
+
+private fun MobileNotificationTimelineItem.sourceText(): String =
+    targetSource
+        ?.text
+        ?.takeIf { it.isNotBlank() }
+        ?: targetSource?.fullText?.takeIf { it.isNotBlank() }
+        ?: ""
+
+private fun MobileNotificationTimelineItem.avatarUrl(): String =
+    head
+        ?.avatarUrl
+        ?.takeIf { it.isNotBlank() }
+        ?: head?.author?.avatarUrl?.takeIf { it.isNotBlank() }
+        ?: target?.avatarUrl?.takeIf { it.isNotBlank() }
+        ?: content?.subIcon?.takeIf { it.isNotBlank() }
+        ?: ""
+
+private fun MobileNotificationTimelineItem.navDestination(): NavDestination? {
+    target
+        ?.takeIf { it.type == "people" && (it.urlToken.isNotBlank() || it.id.isNotBlank()) }
+        ?.let {
+            return Person(
+                id = it.id.ifBlank { Person.EMPTY_ID },
+                urlToken = it.urlToken,
+                name = it.name.ifBlank { "loading..." },
             )
         }
+    return listOf(
+        content?.targetLink,
+        content?.subTargetLink,
+        targetSource?.targetLink,
+        head?.targetLink,
+    ).firstNotNullOfOrNull { link ->
+        link?.takeIf { it.isNotBlank() }?.let(::resolveContent)
     }
 }
 
-/**
- * 构建通知文本
- */
-@Composable
-private fun buildNotificationText(notification: NotificationItem) = buildAnnotatedString {
-    val content = notification.content
-
-    // 显示actors
-    if (content.actors.isNotEmpty()) {
-        content.actors.forEachIndexed { index, actor ->
-            withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
-                append(actor.name)
-            }
-            if (index < content.actors.size - 1) {
-                append("、")
-            }
-        }
-        append(" ")
+private fun formatUnreadCount(count: Int): String =
+    if (count > 99) {
+        "99+"
+    } else {
+        count.toString()
     }
-
-    if (notification.mergeCount > 1 && content.actors.size != notification.mergeCount) {
-        append(" 等${notification.mergeCount}人")
-    }
-
-    // 显示动作
-    append(content.verb)
-
-    // 显示目标
-    content.target?.let { target ->
-        append(" ")
-        withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary)) {
-            append(target.text)
-        }
-    }
-}

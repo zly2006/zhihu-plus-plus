@@ -157,7 +157,7 @@ class NotificationSettingsScreenInstrumentedTest {
             ToggleCase(
                 title = "打开通知自动已读",
                 group = ToggleGroup.AutoMarkAsRead,
-                defaultValue = true,
+                defaultValue = false,
                 labelOccurrenceCount = 1,
                 labelOccurrenceIndex = 0,
             ),

@@ -21,20 +21,20 @@ import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.navigation.Notification
-import com.github.zly2006.zhihu.shared.data.NotificationActor
-import com.github.zly2006.zhihu.shared.data.NotificationContent
-import com.github.zly2006.zhihu.shared.data.NotificationItem
-import com.github.zly2006.zhihu.shared.data.NotificationLink
+import com.github.zly2006.zhihu.shared.data.MobileNotificationContent
+import com.github.zly2006.zhihu.shared.data.MobileNotificationTimelineItem
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.NotificationScreen
+import com.github.zly2006.zhihu.viewmodel.MobileNotificationCategory
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -64,7 +64,13 @@ class NotificationScreenInstrumentedTest {
          */
         setNotificationScreenContent()
 
-        composeRule.onNodeWithText("通知").assertIsDisplayed()
+        composeRule.onNodeWithText("消息").assertIsDisplayed()
+        composeRule.onNodeWithText("评论转发@").assertIsDisplayed()
+        composeRule.onNodeWithText("赞同喜欢").assertIsDisplayed()
+        composeRule.onNodeWithText("收藏了我").assertIsDisplayed()
+        composeRule.onNodeWithText("关注订阅").assertIsDisplayed()
+        composeRule.onNodeWithTag("notification_category_comment").assertHasClickAction()
+        composeRule.onNodeWithTag("notification_category_like").assertHasClickAction()
         composeRule.onNodeWithContentDescription("返回").assertExists().assertHasClickAction()
         composeRule.onNodeWithContentDescription("设置").assertExists().assertHasClickAction()
         composeRule.onNodeWithContentDescription("已读").assertDoesNotExist()
@@ -102,6 +108,24 @@ class NotificationScreenInstrumentedTest {
         assertEquals(listOf(Notification.NotificationSettings), recordingNavigator.destinations)
     }
 
+    @Test
+    fun notificationScreen_showsCategoryUnreadCountBadge() {
+        /*
+         * Expected behavior:
+         * 1. The test preloads per-category unread counts into the screen ViewModel.
+         * 2. The top category row should render that count as a visible badge on the matching category.
+         * 3. The badge should be part of the category button, not a separate toolbar count.
+         */
+        composeRule.seedNotificationViewModel(
+            unreadCounts = mapOf(MobileNotificationCategory.Like to 2),
+        )
+        composeRule.setScreenContent {
+            NotificationScreen()
+        }
+
+        composeRule.onNodeWithText("2").assertIsDisplayed()
+    }
+
     private fun setNotificationScreenContent(): RecordingNavigator {
         composeRule.seedNotificationViewModel()
         return composeRule.setScreenContent {
@@ -109,33 +133,31 @@ class NotificationScreenInstrumentedTest {
         }
     }
 
-    private fun notificationFixture() = NotificationItem(
+    private fun notificationFixture() = MobileNotificationTimelineItem(
         id = "local-notification",
-        type = "notification",
+        type = "aggregate_notification",
         isRead = true,
-        createTime = 1_713_420_000L,
-        content = NotificationContent(
-            verb = "voteup_answer",
-            actors = listOf(
-                NotificationActor(
-                    name = "测试用户",
-                    type = "people",
-                    link = "https://www.zhihu.com/people/test-user",
-                    urlToken = "test-user",
-                ),
-            ),
-            target = NotificationLink(
-                text = "测试回答",
-                link = "https://www.zhihu.com/question/1/answer/2",
-            ),
+        created = 1_713_420_000L,
+        content = MobileNotificationContent(
+            title = "测试用户 赞同了你的回答",
+            subTitle = "赞同喜欢",
+            targetLink = "https://www.zhihu.com/question/1/answer/2",
         ),
     )
 
-    private fun MainActivityComposeRule.seedNotificationViewModel() {
+    private fun MainActivityComposeRule.seedNotificationViewModel(
+        unreadCounts: Map<MobileNotificationCategory, Int> = emptyMap(),
+    ) {
         activity.runOnUiThread {
             val viewModel = ViewModelProvider(activity)[NotificationViewModel::class.java]
             viewModel.allData.clear()
             viewModel.allData += notificationFixture()
+            if (unreadCounts.isNotEmpty()) {
+                NotificationViewModel::class.java
+                    .getDeclaredMethod("setCategoryUnreadCounts", Map::class.java)
+                    .apply { isAccessible = true }
+                    .invoke(viewModel, unreadCounts)
+            }
         }
         waitForIdle()
     }
