@@ -445,7 +445,6 @@ private fun MobileNotificationTimelineItem.displaySubtitle(): String =
     content
         ?.subTitle
         ?.takeIf { it.isNotBlank() }
-        ?: target?.headline?.takeIf { it.isNotBlank() }
         ?: ""
 
 private fun MobileNotificationTimelineItem.displayText(): String =
