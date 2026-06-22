@@ -187,16 +187,16 @@ val ktor = "3.5.0"
 val coil = "3.5.0"
 val aboutLibraries = "15.0.0"
 val composeVersion = "1.11.1"
-val material3Version = "1.12.0-alpha02"
 val jetbrainsLifecycleVersion = "2.10.0"
 val androidxLifecycleVersion = "2.11.0"
 
-// Force material3 to one version across app/shared/desktop.
-// 根因：KMP 元数据配置和平台配置曾解析到不同 material3 版本，导致 commonMain 使用的
-// internal API 在 Android/JVM 平台编译期不可见。
+// Force material3 to 1.10.0-alpha05，与 shared 模块保持一致。
+// 根因：shared 模块 commonMain 通过 material-kolor 的 strictly 约束解析到 1.10.0-alpha05，
+// 但平台配置和本模块如果没有 force，会各自解析到不同版本（1.9.0 或 1.11.0-alpha07），
+// 导致运行时类冲突或编译时 internal API 不可见。
 configurations.configureEach {
     resolutionStrategy {
-        force("org.jetbrains.compose.material3:material3:$material3Version")
+        force("org.jetbrains.compose.material3:material3:1.10.0-alpha05")
     }
 }
 
@@ -210,9 +210,9 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.8.0")
     implementation("androidx.browser:browser:1.10.0")
 
-    implementation("io.github.zly2006:markdown-parser-android:0.0.1-alpha.12")
-    implementation("io.github.zly2006:markdown-renderer-android:0.0.1-alpha.12")
-    implementation("io.github.zly2006:latex-renderer-android:1.4.7-zly")
+    implementation("io.github.zly2006:markdown-parser-android:0.0.1-alpha.11")
+    implementation("io.github.zly2006:markdown-renderer-android:0.0.1-alpha.11")
+    implementation("io.github.zly2006:latex-renderer-android:1.4.6-zly")
 
     implementation("io.coil-kt.coil3:coil-compose:$coil")
     implementation("io.coil-kt.coil3:coil-network-ktor3-android:$coil")
@@ -242,7 +242,7 @@ dependencies {
     // Compose (core from JetBrains KMP)
     implementation("org.jetbrains.compose.runtime:runtime:$composeVersion")
     implementation("org.jetbrains.compose.foundation:foundation:$composeVersion")
-    implementation("org.jetbrains.compose.material3:material3:$material3Version")
+    implementation("org.jetbrains.compose.material3:material3:1.10.0-alpha05")
     implementation("org.jetbrains.compose.ui:ui:$composeVersion")
     implementation("org.jetbrains.compose.ui:ui-graphics:$composeVersion")
     implementation("org.jetbrains.compose.animation:animation:$composeVersion")
