@@ -195,16 +195,21 @@ fun CollectionContentScreen(
             ) {
                 val dest = navDestination
                 if (dest is Article && dest.type == ArticleType.Answer && sharedData != null) {
-                    val idx = screenViewModel.displayItems.indexOf(item)
-                    val nextItems = if (idx >= 0) screenViewModel.allData.drop(idx + 1) else emptyList()
-                    val prevItems = if (idx > 0) screenViewModel.allData.take(idx).reversed() else emptyList()
-                    sharedData.pendingNavigator = CollectionAnswerNavigator(
-                        collectionId = collectionId,
-                        collectionTitle = screenViewModel.title,
-                        initialNextItems = nextItems,
-                        initialPreviousItems = prevItems,
-                        environment = collectionEnvironment,
-                    )
+                    val articles = screenViewModel.displayItems.mapNotNull { displayItem ->
+                        val article = displayItem.navDestination as? Article
+                        if (article?.type == ArticleType.Answer) article else null
+                    }
+                    val articleIndex = articles.indexOfFirst { it.id == dest.id }
+                    if (articleIndex >= 0) {
+                        sharedData.pendingNavigator = CollectionAnswerNavigator.fromCollectionList(
+                            collectionId = collectionId,
+                            collectionTitle = screenViewModel.title,
+                            orderedArticles = articles,
+                            cursorIndex = articleIndex,
+                            nextPageUrl = screenViewModel.nextPagingUrl,
+                            environment = collectionEnvironment,
+                        )
+                    }
                 }
                 dest?.let { navigator.onNavigate(it) }
             }

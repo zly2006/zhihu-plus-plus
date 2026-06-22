@@ -28,10 +28,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.markdown.htmlToMdAst
 import com.github.zly2006.zhihu.markdown.toMarkdown
+import com.github.zly2006.zhihu.navigation.AnswerNavigator
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionAnswerNavigator
-import com.github.zly2006.zhihu.navigation.PaginationInfoNavigator
+import com.github.zly2006.zhihu.navigation.PaginationAnswerNavigator
 import com.github.zly2006.zhihu.navigation.QuestionAnswerNavigator
 import com.github.zly2006.zhihu.shared.aigc.AigcVoteFlagResponse
 import com.github.zly2006.zhihu.shared.aigc.AigcVoteFlagStatusResponse
@@ -56,6 +57,7 @@ import com.github.zly2006.zhihu.shared.util.mergeSummaryChunk
 import com.github.zly2006.zhihu.shared.util.parseZhidaSsePayload
 import com.github.zly2006.zhihu.shared.util.serializeZhidaSummaryRequest
 import com.github.zly2006.zhihu.shared.util.twoDigitString
+import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
 import com.github.zly2006.zhihu.ui.Collection
 import com.github.zly2006.zhihu.ui.CollectionResponse
 import com.github.zly2006.zhihu.ui.VoteUpState
@@ -240,7 +242,59 @@ class ArticleViewModel(
     open class ArticlesSharedData : ArticleAnswerSwitchData()
 
     @OptIn(ExperimentalStdlibApi::class)
-    fun loadArticle(environment: ArticleLoadEnvironment) {
+    fun onCurrentPageReady(
+        environment: ArticleLoadEnvironment,
+        warmStart: Boolean,
+        onReady: () -> Unit = {},
+    ) {
+        if (httpClient == null) return
+        if (warmStart) {
+            viewModelScope.launch {
+                withContext(Dispatchers.Default) {
+                    try {
+                        if (article.type != ArticleType.Answer) return@withContext
+                        val sharedData = environment.articleAnswerSwitchState()
+                        environment.postHistoryDestination(
+                            Article(
+                                id = article.id,
+                                type = ArticleType.Answer,
+                                title = title,
+                                authorName = authorName,
+                                authorBio = authorBio,
+                                avatarSrc = authorAvatarSrc,
+                                excerpt = null,
+                            ),
+                        )
+                        environment.recordOpenEvent(article, questionId)
+                        if (sharedData?.navigator !is CollectionAnswerNavigator) {
+                            ensureDirectEntryNavigator(
+                                sharedData = sharedData,
+                                answerId = article.id,
+                                questionId = questionId,
+                                environment = environment,
+                            )
+                        }
+                        sharedData?.navigator?.pushAnswer(
+                            toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"),
+                        )
+                        loadAnswerRelationshipEndorsement(environment)
+                        loadMoreVoters(environment, reset = true)
+                    } catch (e: Exception) {
+                        Log.e("ArticleViewModel", "Failed to finish answer switch load", e)
+                    }
+                }
+                onReady()
+            }
+        } else {
+            loadArticle(environment, onReady)
+        }
+    }
+
+    @OptIn(ExperimentalStdlibApi::class)
+    fun loadArticle(
+        environment: ArticleLoadEnvironment,
+        onReady: () -> Unit = {},
+    ) {
         if (httpClient == null) return
         viewModelScope.launch {
             withContext(Dispatchers.Default) {
@@ -292,32 +346,20 @@ class ArticleViewModel(
                                 ),
                             )
                             environment.recordOpenEvent(article, answer.question.id)
-                            // 设置问题回答导航器（如果当前不是收藏夹导航器）
                             if (sharedData?.navigator !is CollectionAnswerNavigator) {
-                                val existingNav = sharedData?.navigator
-                                val isSameQuestion = when (existingNav) {
-                                    is QuestionAnswerNavigator -> existingNav.questionId == questionId
-                                    is PaginationInfoNavigator -> existingNav.questionId == questionId
-                                    else -> false
-                                }
-                                if (!isSameQuestion) {
-                                    sharedData?.navigator = QuestionAnswerNavigator(
-                                        questionId = questionId,
-                                        environment = environment,
-                                    )
-                                }
+                                ensureDirectEntryNavigator(
+                                    sharedData = sharedData,
+                                    answerId = answer.id,
+                                    questionId = answer.question.id,
+                                    environment = environment,
+                                    paginationInfo = answer.paginationInfo,
+                                )
                             }
-                            sharedData?.navigator?.pushAnswer(toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"))
+                            sharedData?.navigator?.pushAnswer(
+                                toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"),
+                            )
                             loadAnswerRelationshipEndorsement(environment)
                             loadMoreVoters(environment, reset = true)
-
-                            // 仅在无前向历史时预取下一个回答
-                            sharedData?.navigator?.let { nav ->
-                                if (nav.currentAnswerIndex >= nav.answerHistory.size - 1) {
-                                    nav.prefetchNext(article.id)
-                                }
-                                nav.prefetchPrevious(article.id)
-                            }
                         } else {
                             content = "<h1>你似乎来到了没有知识存在的荒原</h1>"
                             endorsements = emptyList()
@@ -376,6 +418,7 @@ class ArticleViewModel(
                     Log.e("ArticleViewModel", "Failed to load content", e)
                 }
             }
+            onReady()
         }
     }
 
@@ -1077,6 +1120,49 @@ class ArticleViewModel(
         environment.setPlainTextClipboard("Zhihu Article", markdown)
 
         userMessages.showShortMessage("文章已复制到剪贴板")
+    }
+
+    fun scheduleNeighborPrefetch(environment: ArticleLoadEnvironment, articleId: Long) {
+        if (httpClient == null) return
+        viewModelScope.launch(Dispatchers.Default) {
+            environment.articleAnswerSwitchState()?.navigator?.let { prefetchNeighborAnswers(it, articleId) }
+        }
+    }
+
+    fun currentAnswerPaginationInfo(): DataHolder.Answer.PaginationInfo? =
+        (exportSourceContent as? DataHolder.Answer)?.paginationInfo
+
+    private fun ensureDirectEntryNavigator(
+        sharedData: ArticleAnswerSwitchState?,
+        answerId: Long,
+        questionId: Long,
+        environment: ZhihuApiEnvironment,
+        paginationInfo: DataHolder.Answer.PaginationInfo? = null,
+    ) {
+        if (sharedData == null || sharedData.navigator is CollectionAnswerNavigator) return
+        val existingNav = sharedData.navigator
+        val isSameQuestion = when (existingNav) {
+            is QuestionAnswerNavigator -> existingNav.questionId == questionId
+            is PaginationAnswerNavigator -> existingNav.session.questionId == questionId
+            else -> false
+        }
+        if (existingNav == null || !isSameQuestion) {
+            val newNav = PaginationAnswerNavigator.forDirectEntry(
+                answerId = answerId,
+                questionId = questionId,
+                environment = environment,
+            )
+            sharedData.navigator = newNav
+            sharedData.sessionRegistry.active = newNav
+        }
+        paginationInfo?.let { pagination ->
+            sharedData.navigator?.session?.mergePagination(pagination)
+        }
+    }
+
+    private suspend fun prefetchNeighborAnswers(nav: AnswerNavigator, articleId: Long) {
+        nav.prefetchNext(articleId)
+        nav.prefetchPrevious(articleId)
     }
 }
 

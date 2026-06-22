@@ -91,9 +91,11 @@ fun AnswerHorizontalOverscroll(
                         var didNavigate = false
                         if (abs(currentOffset) >= triggerThresholdPx) {
                             if (currentOffset > 0 && canGoPrevious) {
+                                coroutineScope.launch { overscrollOffset.snapTo(0f) }
                                 onNavigatePrevious()
                                 didNavigate = true
                             } else if (currentOffset < 0 && canGoNext) {
+                                coroutineScope.launch { overscrollOffset.snapTo(0f) }
                                 onNavigateNext()
                                 didNavigate = true
                             }

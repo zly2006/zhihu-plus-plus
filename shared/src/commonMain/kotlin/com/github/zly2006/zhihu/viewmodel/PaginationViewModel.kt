@@ -28,6 +28,7 @@ import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.data.fetchZhihuContentDetail
 import com.github.zly2006.zhihu.data.getOrFetchContentDetail
 import com.github.zly2006.zhihu.navigation.AnswerNavigator
+import com.github.zly2006.zhihu.navigation.AnswerSwitchSessionRegistry
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.aigc.AigcVoteClient
@@ -81,6 +82,7 @@ abstract class PaginationViewModel<T : Any>(
         protected set
     var allowGuestAccess = false
     protected var lastPaging: ZhihuPaging? by mutableStateOf(null)
+    val nextPagingUrl: String get() = lastPaging?.next.orEmpty()
     open val isEnd: Boolean get() = lastPaging?.isEnd == true
     protected abstract val initialUrl: String
     private var currentJob: Job? = null
@@ -178,9 +180,11 @@ open class ArticleAnswerSwitchData :
     /** 活跃的导航器：管理来源、历史记录和预取 */
     override var navigator: AnswerNavigator? by mutableStateOf(null)
 
+    override val sessionRegistry = AnswerSwitchSessionRegistry()
+
     /**
      * 导航前由来源界面设置（如 CollectionContentScreen）。
-     * [reset] 时会将其应用到 [navigator]。
+     * 进入 ArticleScreen 时由 registry 接管，不会经 [reset] 覆盖挂起会话。
      */
     override var pendingNavigator: AnswerNavigator? = null
 
@@ -200,12 +204,14 @@ open class ArticleAnswerSwitchData :
     // 沉浸式阅读模式
     override var isImmersiveMode by mutableStateOf(false)
 
-    override fun reset() {
-        navigator = pendingNavigator
-        pendingNavigator = null
+    override fun clearSwitchUiState() {
         pendingInitialContent = null
         navigatingFromAnswerSwitch = false
         isImmersiveMode = false
+    }
+
+    override fun reset() {
+        clearSwitchUiState()
     }
 
     override fun promoteForNavigation(direction: ArticleAnswerTransitionDirection) = Unit

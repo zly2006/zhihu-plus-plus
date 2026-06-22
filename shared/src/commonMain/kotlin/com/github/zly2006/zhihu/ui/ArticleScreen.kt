@@ -88,6 +88,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -136,6 +137,7 @@ import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.shared.util.formatCompactCount
 import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.ui.components.AnswerContentSkeleton
 import com.github.zly2006.zhihu.ui.components.AnswerHorizontalOverscroll
 import com.github.zly2006.zhihu.ui.components.AnswerVerticalOverscroll
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
@@ -1050,30 +1052,87 @@ fun ArticleScreen(
     }
     ArticleImmersiveModeEffect(isImmersiveMode)
 
-    LaunchedEffect(article.id) {
-        // Bug 2: 在主线程检查标志并重置（避免跨线程可见性问题）
+    DisposableEffect(backStackEntry?.id, sharedData) {
+        val entryId = backStackEntry?.id
+        onDispose {
+            if (entryId != null && sharedData != null) {
+                val navigator = sharedData.navigator
+                if (navigator != null) {
+                    sharedData.sessionRegistry.suspend(entryId, navigator)
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(article.id, backStackEntry?.id) {
+        val switchDirection = sharedData?.answerTransitionDirection ?: ArticleAnswerTransitionDirection.DEFAULT
+        val fromSwitch = sharedData?.navigatingFromAnswerSwitch == true
+        val settleDirection = switchDirection.takeIf { fromSwitch }
         if (sharedData != null) {
-            if (!sharedData.navigatingFromAnswerSwitch) {
-                sharedData.reset()
+            val entryId = backStackEntry?.id
+            if (!fromSwitch) {
+                if (entryId != null) {
+                    val restored = sharedData.sessionRegistry.resume(entryId)
+                    if (restored != null) {
+                        sharedData.sessionRegistry.active = restored
+                        sharedData.navigator = restored
+                    } else {
+                        sharedData.pendingNavigator?.let { pending ->
+                            sharedData.sessionRegistry.adoptPending(pending)
+                            sharedData.pendingNavigator = null
+                            sharedData.navigator = pending
+                        }
+                    }
+                } else {
+                    sharedData.pendingNavigator?.let { pending ->
+                        sharedData.sessionRegistry.adoptPending(pending)
+                        sharedData.pendingNavigator = null
+                        sharedData.navigator = pending
+                    }
+                }
+                sharedData.clearSwitchUiState()
+            } else {
+                sharedData.navigator = sharedData.sessionRegistry.active ?: sharedData.navigator
             }
             sharedData.navigatingFromAnswerSwitch = false
             sharedData.answerTransitionDirection = ArticleAnswerTransitionDirection.DEFAULT
 
-            // 从 pendingInitialContent 预填充 viewModel，消除空白帧
             val pending = sharedData.pendingInitialContent
+            val warmStart = pending?.content?.isNotEmpty() == true
             if (pending != null) {
                 viewModel.title = pending.title
                 viewModel.authorName = pending.authorName
                 viewModel.authorBio = pending.authorBio
                 viewModel.authorAvatarSrc = pending.authorAvatarUrl
+                viewModel.authorBadge = pending.authorBadge
                 viewModel.content = pending.content
                 viewModel.voteUpCount = pending.voteUpCount
                 viewModel.commentCount = pending.commentCount
                 viewModel.endorsements = pending.endorsements
+                viewModel.createdAt = pending.createdAt
+                viewModel.updatedAt = pending.updatedAt
+                viewModel.ipInfo = pending.ipInfo
                 sharedData.pendingInitialContent = null
             }
+
+            viewModel.onCurrentPageReady(environment, warmStart) {
+                coroutineScope.launch {
+                    delay(350)
+                    withContext(Dispatchers.Default) {
+                        val paginationInfo = viewModel.currentAnswerPaginationInfo()
+                        sharedData.navigator?.onPageSettled(
+                            article.id,
+                            settleDirection,
+                            paginationInfo,
+                        ) { id ->
+                            viewModel.scheduleNeighborPrefetch(environment, id)
+                        }
+                    }
+                }
+            }
+        } else {
+            viewModel.onCurrentPageReady(environment, warmStart = false)
         }
-        viewModel.loadArticle(environment)
         viewModel.loadCollections(environment)
         viewModel.loadAigcFlagStatus(environment)
     }
@@ -1092,6 +1151,22 @@ fun ArticleScreen(
         }
     }
 
+    val navigateToAnswer: (CachedAnswerContent) -> Unit = { cached ->
+        sharedData?.pendingInitialContent = cached
+        sharedData?.promoteForNavigation(sharedData.answerTransitionDirection)
+        val navController = articleHost?.articleNavController
+        if (navController != null) {
+            if (navController.currentBackStackEntry?.hasRoute(Article::class) == true &&
+                navController.currentBackStackEntry
+                    ?.toRoute<Article>()
+                    ?.type == ArticleType.Answer
+            ) {
+                navController.popBackStack()
+            }
+        }
+        navigator.onNavigate(cached.article)
+    }
+
     val navigateToPrevious: () -> Unit = {
         sharedData?.answerTransitionDirection = if (answerSwitchMode == "horizontal") {
             ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS
@@ -1099,42 +1174,20 @@ fun ArticleScreen(
             ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS
         }
         sharedData?.navigatingFromAnswerSwitch = true
-        // 更新当前回答内容到历史
-        sharedData?.navigator?.pushAnswer(viewModel.toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"))
-        val prev = sharedData?.navigator?.goToPrevious()
-        if (prev != null) {
-            sharedData.pendingInitialContent = prev
-            sharedData.promoteForNavigation(sharedData.answerTransitionDirection)
-            val navController = articleHost?.articleNavController
-            if (navController != null) {
-                if (navController.currentBackStackEntry?.hasRoute(Article::class) == true &&
-                    navController.currentBackStackEntry
-                        ?.toRoute<Article>()
-                        ?.type == ArticleType.Answer
-                ) {
-                    navController.popBackStack()
-                }
-            }
-            navigator.onNavigate(prev.article)
-        } else {
-            // 无历史时尝试从来源（如收藏夹）向前加载
-            sharedData?.pendingInitialContent = sharedData.navigator?.previousAnswerPreview
-            sharedData?.promoteForNavigation(sharedData.answerTransitionDirection)
-            coroutineScope.launch {
-                val prevCached = sharedData?.navigator?.loadPrevious()
-                if (prevCached != null) {
-                    sharedData.pendingInitialContent = prevCached
-                    val navController = articleHost?.articleNavController
-                    if (navController != null) {
-                        if (navController.currentBackStackEntry?.hasRoute(Article::class) == true &&
-                            navController.currentBackStackEntry
-                                ?.toRoute<Article>()
-                                ?.type == ArticleType.Answer
-                        ) {
-                            navController.popBackStack()
-                        }
+        sharedData?.navigator?.pushAnswer(
+            viewModel.toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"),
+        )
+        val nav = sharedData?.navigator
+        if (nav != null) {
+            val cached = nav.resolvePreviousForNavigation()
+            if (cached != null) {
+                navigateToAnswer(cached)
+            } else {
+                coroutineScope.launch {
+                    val loaded = withContext(Dispatchers.Default) { nav.loadPreviousCached() }
+                    if (loaded != null) {
+                        navigateToAnswer(loaded)
                     }
-                    navigator.onNavigate(prevCached.article)
                 }
             }
         }
@@ -1147,42 +1200,20 @@ fun ArticleScreen(
             ArticleAnswerTransitionDirection.VERTICAL_NEXT
         }
         sharedData?.navigatingFromAnswerSwitch = true
-        // 更新当前回答内容到历史
-        sharedData?.navigator?.pushAnswer(viewModel.toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"))
-        // 优先使用前向历史
-        val historyNext = sharedData?.navigator?.goToNext()
-        if (historyNext != null) {
-            sharedData.pendingInitialContent = historyNext
-            sharedData.promoteForNavigation(sharedData.answerTransitionDirection)
-            val navController = articleHost?.articleNavController
-            if (navController != null) {
-                if (navController.currentBackStackEntry?.hasRoute(Article::class) == true &&
-                    navController.currentBackStackEntry
-                        ?.toRoute<Article>()
-                        ?.type == ArticleType.Answer
-                ) {
-                    navController.popBackStack()
-                }
-            }
-            navigator.onNavigate(historyNext.article)
-        } else {
-            // 没有前向历史，从导航器加载
-            sharedData?.pendingInitialContent = sharedData.navigator?.nextAnswer
-            sharedData?.promoteForNavigation(sharedData.answerTransitionDirection)
-            coroutineScope.launch {
-                val nextArticle = sharedData?.navigator?.loadNext()
-                if (nextArticle != null) {
-                    val navController = articleHost?.articleNavController
-                    if (navController != null) {
-                        if (navController.currentBackStackEntry?.hasRoute(Article::class) == true &&
-                            navController.currentBackStackEntry
-                                ?.toRoute<Article>()
-                                ?.type == ArticleType.Answer
-                        ) {
-                            navController.popBackStack()
-                        }
+        sharedData?.navigator?.pushAnswer(
+            viewModel.toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"),
+        )
+        val nav = sharedData?.navigator
+        if (nav != null) {
+            val cached = nav.resolveNextForNavigation()
+            if (cached != null) {
+                navigateToAnswer(cached)
+            } else {
+                coroutineScope.launch {
+                    val loaded = withContext(Dispatchers.Default) { nav.loadNextCached() }
+                    if (loaded != null) {
+                        navigateToAnswer(loaded)
                     }
-                    navigator.onNavigate(nextArticle)
                 }
             }
         }
@@ -1802,6 +1833,8 @@ fun ArticleScreen(
                                     },
                                 )
                             }
+                        } else if (article.type == ArticleType.Answer && viewModel.title.isNotEmpty()) {
+                            AnswerContentSkeleton(modifier = Modifier.fillMaxWidth())
                         }
                     }
                     // 状态栏渐变遮罩，仅 duo3 路径需要；主视觉路径不绘制。
@@ -1821,11 +1854,16 @@ fun ArticleScreen(
     } // answerSwitchContent 结束。
 
     val nav = sharedData?.navigator
+
+    @Suppress("UNUSED_VARIABLE")
+    val neighborQueueRevision = nav?.queueRevision
     if (article.type == ArticleType.Answer && answerSwitchMode == "horizontal") {
-        ArticlePreviewPreloadEffect(nav?.nextAnswer, isNext = true, viewModel.title) {
+        val nextPreload = nav?.neighborNextSlot?.cached ?: nav?.nextAnswer?.takeIf { it.content.isNotEmpty() }
+        val prevPreload = nav?.neighborPrevSlot?.cached ?: nav?.previousAnswer?.takeIf { it.content.isNotEmpty() }
+        ArticlePreviewPreloadEffect(nextPreload, isNext = true, viewModel.title) {
             userMessages.showMessage("图片加载失败，请向开发者反馈")
         }
-        ArticlePreviewPreloadEffect(nav?.previousAnswer, isNext = false, viewModel.title) {
+        ArticlePreviewPreloadEffect(prevPreload, isNext = false, viewModel.title) {
             userMessages.showMessage("图片加载失败，请向开发者反馈")
         }
     }
@@ -1851,8 +1889,8 @@ fun ArticleScreen(
             }
         } else if (article.type == ArticleType.Answer && answerSwitchMode == "horizontal") {
             AnswerHorizontalOverscroll(
-                canGoPrevious = nav?.previousAnswer != null,
-                canGoNext = nav?.nextAnswer != null,
+                canGoPrevious = nav?.hasPreviousCandidate == true,
+                canGoNext = nav?.hasNextCandidate == true,
                 onNavigatePrevious = navigateToPrevious,
                 onNavigateNext = navigateToNext,
                 previousContent = nav?.previousAnswer?.let { cached ->
@@ -2247,6 +2285,9 @@ private fun CachedAnswerPreview(
                     header = {},
                     footer = {},
                 )
+            } else {
+                Spacer(Modifier.height(10.dp))
+                AnswerContentSkeleton(lineCount = 5)
             }
             Spacer(modifier = Modifier.height((16 + 36).dp))
         }

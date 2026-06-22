@@ -42,6 +42,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -322,6 +323,7 @@ fun AnswerVerticalOverscroll(
                 icon = Icons.Filled.ArrowUpward,
                 isTriggered = overscrollOffset.value >= triggerThresholdPx,
                 progress = progress,
+                isContentLoading = previousAnswer.content.isEmpty(),
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.TopCenter)
@@ -341,6 +343,7 @@ fun AnswerVerticalOverscroll(
                 isTriggered = abs(overscrollOffset.value) >= triggerThresholdPx,
                 progress = progress,
                 reverseLayout = true,
+                isContentLoading = nextAnswer.content.isEmpty(),
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
@@ -368,6 +371,7 @@ private fun AnswerPreviewCard(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     isTriggered: Boolean,
     progress: Float,
+    isContentLoading: Boolean = false,
     reverseLayout: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
@@ -444,12 +448,30 @@ private fun AnswerPreviewCard(
         Column {
             if (reverseLayout) {
                 authorRow()
+                if (isContentLoading) {
+                    Spacer(Modifier.height(6.dp))
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .size(18.dp)
+                            .align(Alignment.CenterHorizontally),
+                        strokeWidth = 2.dp,
+                    )
+                }
                 Spacer(Modifier.height(8.dp))
                 labelRow()
             } else {
                 labelRow()
                 Spacer(Modifier.height(8.dp))
                 authorRow()
+                if (isContentLoading) {
+                    Spacer(Modifier.height(6.dp))
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .size(18.dp)
+                            .align(Alignment.CenterHorizontally),
+                        strokeWidth = 2.dp,
+                    )
+                }
             }
         }
     }

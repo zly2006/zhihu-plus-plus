@@ -255,8 +255,9 @@ actual fun ArticlePreviewPreloadEffect(
 ) {
     val context = LocalContext.current
     val articleHost = context.articleHost()
-    LaunchedEffect(cached?.article?.id, isNext, title, articleHost) {
+    LaunchedEffect(cached?.article?.id, cached?.content, isNext, title, articleHost) {
         cached ?: return@LaunchedEffect
+        if (cached.content.isBlank()) return@LaunchedEffect
         val previewWebViewStore = articleHost?.articleAnswerSwitchState as? ArticlePreviewWebViewStore
             ?: return@LaunchedEffect
         val wv = previewWebViewStore.getOrCreatePreviewWebView(context, isNext, cached.article.id)

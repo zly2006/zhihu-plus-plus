@@ -70,18 +70,17 @@ open class QuestionFeedViewModel(
     ): QuestionAnswerNavigator? {
         val destination = item.navDestination as? Article ?: return null
         if (destination.type != ArticleType.Answer) return null
-        val index = displayItems.indexOfFirst { it.stableKey == item.stableKey }
-        if (index < 0) return null
-        return QuestionAnswerNavigator(
+        val articles = displayItems.mapNotNull { displayItem ->
+            val article = displayItem.navDestination as? Article
+            if (article?.type == ArticleType.Answer) article else null
+        }
+        val articleIndex = articles.indexOfFirst { it.id == destination.id }
+        if (articleIndex < 0) return null
+        return QuestionAnswerNavigator.fromQuestionList(
             questionId = questionId,
-            initialNextAnswers = displayItems
-                .drop(index + 1)
-                .mapNotNull { it.navDestination as? Article },
-            initialPreviousAnswers = displayItems
-                .take(index)
-                .asReversed()
-                .mapNotNull { it.navDestination as? Article },
-            initialNextUrl = lastPaging?.next.orEmpty(),
+            orderedArticles = articles,
+            cursorIndex = articleIndex,
+            feedsNextUrl = lastPaging?.next.orEmpty(),
             order = sortOrder,
             environment = environment,
         )

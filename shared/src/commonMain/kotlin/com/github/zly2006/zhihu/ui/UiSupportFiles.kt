@@ -35,6 +35,7 @@ import androidx.navigation.NavHostController
 import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.AnswerNavigator
+import com.github.zly2006.zhihu.navigation.AnswerSwitchSessionRegistry
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
@@ -396,11 +397,15 @@ interface ArticleHost {
 interface ArticleAnswerSwitchState {
     var navigator: AnswerNavigator?
     var pendingNavigator: AnswerNavigator?
+    val sessionRegistry: AnswerSwitchSessionRegistry
     var pendingInitialContent: CachedAnswerContent?
     var navigatingFromAnswerSwitch: Boolean
     var answerSwitchDisposeInProgress: Boolean
     var answerTransitionDirection: ArticleAnswerTransitionDirection
     var isImmersiveMode: Boolean
+
+    /** 仅清理 UI 交接状态，不覆盖或销毁已挂起的 navigator 会话。 */
+    fun clearSwitchUiState()
 
     fun reset()
 
