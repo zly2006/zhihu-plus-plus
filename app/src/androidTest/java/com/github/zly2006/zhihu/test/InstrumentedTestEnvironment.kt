@@ -19,14 +19,12 @@ package com.github.zly2006.zhihu.test
 
 import android.content.Context
 import android.os.Bundle
-import androidx.test.platform.app.InstrumentationRegistry
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.shared.data.Person
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 
 object InstrumentedTestEnvironment {
     const val DATA_MODE_ARG = "zhpp_data_mode"
-    private const val SECRET_ACCOUNT_ASSET_PATH = "secret/account.json"
 
     enum class DataMode {
         MOCK,
@@ -45,7 +43,7 @@ object InstrumentedTestEnvironment {
 
     fun isMockMode(): Boolean = currentDataMode == DataMode.MOCK
 
-    fun reseed(context: Context, assetContext: Context = InstrumentationRegistry.getInstrumentation().context) {
+    fun reseed(context: Context) {
         context
             .getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
             .edit()
@@ -82,7 +80,7 @@ object InstrumentedTestEnvironment {
             }
 
             DataMode.REAL -> {
-                val secretAccountData = loadRealAccountData(assetContext)
+                val secretAccountData = loadRealAccountData(context)
                 AccountData.saveData(
                     context,
                     secretAccountData.copy(
@@ -96,14 +94,11 @@ object InstrumentedTestEnvironment {
     }
 
     private fun loadRealAccountData(context: Context): AccountData.Data = try {
-        val json = context.assets
-            .open(SECRET_ACCOUNT_ASSET_PATH)
-            .bufferedReader()
-            .use { it.readText() }
+        val json = context.filesDir.resolve("account.json").readText()
         AccountData.json.decodeFromString(AccountData.Data.serializer(), json)
     } catch (e: Exception) {
         throw IllegalStateException(
-            "Real-data mode requires project-root .secret/account.json packaged into androidTest assets as $SECRET_ACCOUNT_ASSET_PATH",
+            "Real-data mode requires account JSON restored manually to target app files/account.json before instrumentation",
             e,
         )
     }
