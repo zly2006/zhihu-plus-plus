@@ -20,6 +20,7 @@ package com.github.zly2006.zhihu.ui.components
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -42,13 +43,14 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlin.math.max
 import kotlin.math.roundToInt
 
 /**
- * 左右 overscroll 切换回答容器。
+ * 左右回答切换容器。
  *
- * 主内容水平偏移，相邻回答的预览内容由调用方通过 [previousContent] / [nextContent] 提供，并从侧边露出。
- * 使用 tanh 阻尼、震动反馈、spring 回弹。
+ * 视觉上按三页 pager 处理：左侧上一页、中央当前页、右侧下一页。拖动未触发时回弹；触发后先完成整页滑动，
+ * 再把真正的 route 交给调用方替换，避免 NavHost 再播放一次入场动画。
  */
 @Composable
 fun AnswerHorizontalOverscroll(
@@ -65,46 +67,68 @@ fun AnswerHorizontalOverscroll(
     val hapticFeedback = LocalHapticFeedback.current
     val coroutineScope = rememberCoroutineScope()
 
-    val maxOverscrollPx = with(density) { MAX_HORIZONTAL_OVERSCROLL_DP.dp.toPx() }
-    val triggerThresholdPx = with(density) {
-        (HORIZONTAL_TRIGGER_THRESHOLD_DP / normalizedAnswerSwitchSensitivity(answerSwitchSensitivity)).dp.toPx()
+    val minimumTriggerThresholdPx = with(density) {
+        (MIN_HORIZONTAL_TRIGGER_THRESHOLD_DP / normalizedAnswerSwitchSensitivity(answerSwitchSensitivity)).dp.toPx()
     }
-
-    val overscrollOffset = remember { Animatable(0f) }
+    val pageOffset = remember { Animatable(0f) }
     var hasTriggeredHaptic by remember { mutableStateOf(false) }
-    var rawDragAccumulator by remember { mutableFloatStateOf(0f) }
+    var isCommitting by remember { mutableStateOf(false) }
     var containerWidthPx by remember { mutableFloatStateOf(0f) }
+    val commitThresholdPx = max(containerWidthPx * HORIZONTAL_COMMIT_RATIO, minimumTriggerThresholdPx)
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .clipToBounds()
             .onSizeChanged { containerWidthPx = it.width.toFloat() }
-            .pointerInput(canGoPrevious, canGoNext, triggerThresholdPx) {
+            .pointerInput(canGoPrevious, canGoNext, commitThresholdPx, containerWidthPx) {
                 detectHorizontalDragGestures(
                     onDragStart = {
-                        rawDragAccumulator = 0f
+                        if (isCommitting) return@detectHorizontalDragGestures
                         hasTriggeredHaptic = false
+                        coroutineScope.launch { pageOffset.stop() }
                     },
                     onDragEnd = {
-                        val currentOffset = overscrollOffset.value
-                        var didNavigate = false
-                        if (abs(currentOffset) >= triggerThresholdPx) {
-                            if (currentOffset > 0 && canGoPrevious) {
-                                coroutineScope.launch { overscrollOffset.snapTo(0f) }
-                                onNavigatePrevious()
-                                didNavigate = true
-                            } else if (currentOffset < 0 && canGoNext) {
-                                coroutineScope.launch { overscrollOffset.snapTo(0f) }
-                                onNavigateNext()
-                                didNavigate = true
+                        if (isCommitting) return@detectHorizontalDragGestures
+                        val currentOffset = pageOffset.value
+                        val targetDirection = when {
+                            currentOffset >= commitThresholdPx && canGoPrevious -> 1
+                            currentOffset <= -commitThresholdPx && canGoNext -> -1
+                            else -> 0
+                        }
+                        coroutineScope.launch {
+                            hasTriggeredHaptic = false
+                            if (targetDirection == 0 || containerWidthPx <= 0f) {
+                                pageOffset.animateTo(
+                                    0f,
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessMedium,
+                                    ),
+                                )
+                                return@launch
+                            }
+                            isCommitting = true
+                            try {
+                                pageOffset.animateTo(
+                                    targetDirection * containerWidthPx,
+                                    animationSpec = tween(HORIZONTAL_COMMIT_ANIMATION_MS),
+                                )
+                                if (targetDirection > 0) {
+                                    onNavigatePrevious()
+                                } else {
+                                    onNavigateNext()
+                                }
+                            } finally {
+                                isCommitting = false
                             }
                         }
-                        rawDragAccumulator = 0f
-                        hasTriggeredHaptic = false
-                        if (!didNavigate) {
+                    },
+                    onDragCancel = {
+                        if (!isCommitting) {
                             coroutineScope.launch {
-                                overscrollOffset.animateTo(
+                                hasTriggeredHaptic = false
+                                pageOffset.animateTo(
                                     0f,
                                     animationSpec = spring(
                                         dampingRatio = Spring.DampingRatioMediumBouncy,
@@ -114,37 +138,27 @@ fun AnswerHorizontalOverscroll(
                             }
                         }
                     },
-                    onDragCancel = {
-                        rawDragAccumulator = 0f
-                        hasTriggeredHaptic = false
-                        coroutineScope.launch { overscrollOffset.snapTo(0f) }
-                    },
                 ) { _, dragAmount ->
+                    if (isCommitting || containerWidthPx <= 0f) return@detectHorizontalDragGestures
                     val canDragRight = dragAmount > 0 && canGoPrevious
                     val canDragLeft = dragAmount < 0 && canGoNext
-                    val continuing = (overscrollOffset.value > 0 && dragAmount > 0) ||
-                        (overscrollOffset.value < 0 && dragAmount < 0)
-                    val reversing = (overscrollOffset.value > 0 && dragAmount < 0) ||
-                        (overscrollOffset.value < 0 && dragAmount > 0)
+                    val continuing = (pageOffset.value > 0 && dragAmount > 0) ||
+                        (pageOffset.value < 0 && dragAmount < 0)
+                    val reversing = (pageOffset.value > 0 && dragAmount < 0) ||
+                        (pageOffset.value < 0 && dragAmount > 0)
 
                     if (canDragRight || canDragLeft || continuing || reversing) {
-                        rawDragAccumulator += dragAmount
-                        if ((rawDragAccumulator > 0 && !canGoPrevious) ||
-                            (rawDragAccumulator < 0 && !canGoNext)
-                        ) {
-                            rawDragAccumulator = 0f
-                        }
-                        val newOffset = dampedOverscrollOffset(
-                            rawDelta = rawDragAccumulator,
-                            maxOverscrollPx = maxOverscrollPx,
-                            dampingFactor = HORIZONTAL_DAMPING_FACTOR,
-                        )
-                        coroutineScope.launch { overscrollOffset.snapTo(newOffset) }
-                        if (!hasTriggeredHaptic && abs(newOffset) >= triggerThresholdPx) {
+                        val newOffset = (pageOffset.value + dragAmount)
+                            .coerceIn(
+                                if (canGoNext) -containerWidthPx else 0f,
+                                if (canGoPrevious) containerWidthPx else 0f,
+                            )
+                        coroutineScope.launch { pageOffset.snapTo(newOffset) }
+                        if (!hasTriggeredHaptic && abs(newOffset) >= commitThresholdPx) {
                             hasTriggeredHaptic = true
                             hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                         }
-                        if (hasTriggeredHaptic && abs(newOffset) < triggerThresholdPx) {
+                        if (hasTriggeredHaptic && abs(newOffset) < commitThresholdPx) {
                             hasTriggeredHaptic = false
                         }
                     }
@@ -158,7 +172,7 @@ fun AnswerHorizontalOverscroll(
                     .fillMaxSize()
                     .offset {
                         IntOffset(
-                            (overscrollOffset.value - containerWidthPx).roundToInt(),
+                            (pageOffset.value - containerWidthPx).roundToInt(),
                             0,
                         )
                     },
@@ -174,7 +188,7 @@ fun AnswerHorizontalOverscroll(
                     .fillMaxSize()
                     .offset {
                         IntOffset(
-                            (overscrollOffset.value + containerWidthPx).roundToInt(),
+                            (pageOffset.value + containerWidthPx).roundToInt(),
                             0,
                         )
                     },
@@ -187,13 +201,13 @@ fun AnswerHorizontalOverscroll(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .offset { IntOffset(overscrollOffset.value.roundToInt(), 0) },
+                .offset { IntOffset(pageOffset.value.roundToInt(), 0) },
         ) {
             content()
         }
     }
 }
 
-private const val MAX_HORIZONTAL_OVERSCROLL_DP = 300f
-private const val HORIZONTAL_TRIGGER_THRESHOLD_DP = 46f
-private const val HORIZONTAL_DAMPING_FACTOR = 1.2f
+private const val MIN_HORIZONTAL_TRIGGER_THRESHOLD_DP = 46f
+private const val HORIZONTAL_COMMIT_RATIO = 0.25f
+private const val HORIZONTAL_COMMIT_ANIMATION_MS = 180

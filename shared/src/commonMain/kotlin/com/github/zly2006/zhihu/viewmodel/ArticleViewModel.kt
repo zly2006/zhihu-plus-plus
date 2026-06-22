@@ -101,6 +101,7 @@ class ArticleViewModel(
     val httpClient: HttpClient?,
     private val userMessages: UserMessageSink = UserMessageSink(showShortMessage = {}),
     registerOnPause: (((() -> Unit) -> Unit))? = null,
+    initialCachedContent: CachedAnswerContent? = null,
 ) : ViewModel() {
     var permissionRequestCount by mutableIntStateOf(0)
     var title by mutableStateOf("")
@@ -229,6 +230,9 @@ class ArticleViewModel(
     )
 
     init {
+        initialCachedContent
+            ?.takeIf { cached -> cached.article.id == article.id && cached.article.type == article.type }
+            ?.let(::applyCachedContent)
         Log.i("zhihu-scroll", "me is $this")
         registerOnPause?.invoke {
             rememberedScrollYSync = false
@@ -240,6 +244,21 @@ class ArticleViewModel(
 
     // todo: replace this with sqlite
     open class ArticlesSharedData : ArticleAnswerSwitchData()
+
+    private fun applyCachedContent(cached: CachedAnswerContent) {
+        title = cached.title
+        authorName = cached.authorName
+        authorBio = cached.authorBio
+        authorAvatarSrc = cached.authorAvatarUrl
+        authorBadge = cached.authorBadge
+        content = cached.content
+        voteUpCount = cached.voteUpCount
+        commentCount = cached.commentCount
+        endorsements = cached.endorsements
+        createdAt = cached.createdAt
+        updatedAt = cached.updatedAt
+        ipInfo = cached.ipInfo
+    }
 
     @OptIn(ExperimentalStdlibApi::class)
     fun onCurrentPageReady(

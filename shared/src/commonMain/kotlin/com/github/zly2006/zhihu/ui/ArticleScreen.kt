@@ -51,6 +51,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -119,13 +121,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.navOptions
 import androidx.navigation.toRoute
 import coil3.compose.AsyncImage
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Element
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.markdown.RenderVideoBox
+import com.github.zly2006.zhihu.navigation.AnswerNavigator
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
@@ -154,6 +159,7 @@ import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.util.smoothGradient
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
+import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.addReadHistory
 import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
@@ -217,6 +223,107 @@ internal fun prepareContentDocument(
             }
         }.body()
         .html()
+
+@Composable
+private fun AnswerHorizontalPagerScreen(
+    initialArticle: Article,
+    initialViewModel: ArticleViewModel,
+    navigator: AnswerNavigator,
+    environment: PaginationEnvironment,
+    userMessages: com.github.zly2006.zhihu.shared.platform.UserMessageSink,
+) {
+    @Suppress("UNUSED_VARIABLE")
+    val queueRevision = navigator.queueRevision
+    val answerIds = navigator.session.orderedIds.toList()
+    if (answerIds.isEmpty()) {
+        ArticleScreen(
+            article = initialArticle,
+            viewModel = initialViewModel,
+            horizontalPagerEnabled = false,
+            isPagerPageActive = true,
+        )
+        return
+    }
+
+    val coroutineScope = rememberCoroutineScope()
+    val initialPage = answerIds
+        .indexOf(initialArticle.id)
+        .takeIf { it >= 0 }
+        ?: navigator.session.cursor.coerceIn(0, answerIds.lastIndex)
+    val pagerState = rememberPagerState(initialPage = initialPage) { answerIds.size }
+
+    suspend fun loadPageAtEdge(isNext: Boolean): Int? {
+        val cached = withContext(Dispatchers.Default) {
+            if (isNext) {
+                navigator.loadNextCached()
+            } else {
+                navigator.loadPreviousCached()
+            }
+        } ?: return null
+        return navigator.session.orderedIds
+            .indexOf(cached.article.id)
+            .takeIf { it >= 0 }
+    }
+
+    fun navigatePager(isNext: Boolean) {
+        coroutineScope.launch {
+            val directTarget = pagerState.currentPage + if (isNext) 1 else -1
+            val target = directTarget.takeIf { it in navigator.session.orderedIds.indices }
+                ?: loadPageAtEdge(isNext)
+                ?: return@launch
+            pagerState.animateScrollToPage(target)
+        }
+    }
+
+    LaunchedEffect(pagerState.settledPage, answerIds) {
+        val currentAnswerId = answerIds.getOrNull(pagerState.settledPage) ?: return@LaunchedEffect
+        withContext(Dispatchers.Default) {
+            navigator.onPageSettled(
+                articleId = currentAnswerId,
+                direction = null,
+                paginationInfo = null,
+            ) { id ->
+                navigator.prefetchPrevious(id)
+                navigator.prefetchNext(id)
+            }
+        }
+    }
+
+    HorizontalPager(
+        state = pagerState,
+        key = { page -> answerIds[page] },
+        modifier = Modifier.fillMaxSize(),
+    ) { page ->
+        val answerId = answerIds[page]
+        val pageArticle = remember(answerId) {
+            Article(
+                id = answerId,
+                type = ArticleType.Answer,
+            )
+        }
+        val initialCachedContent = navigator.session.entryById[answerId]?.cached
+        val pageViewModel: ArticleViewModel = if (answerId == initialArticle.id) {
+            initialViewModel
+        } else {
+            viewModel(key = "answer_pager_$answerId") {
+                ArticleViewModel(
+                    article = pageArticle,
+                    httpClient = environment.httpClient(),
+                    userMessages = userMessages,
+                    initialCachedContent = initialCachedContent,
+                )
+            }
+        }
+        ArticleScreen(
+            article = pageArticle,
+            viewModel = pageViewModel,
+            horizontalPagerEnabled = false,
+            pagerNavigateToPrevious = { navigatePager(isNext = false) },
+            pagerNavigateToNext = { navigatePager(isNext = true) },
+            isPagerPageActive = page == pagerState.settledPage,
+        )
+    }
+}
 
 @Composable
 private fun rememberBottomBarAvoidingBringIntoViewSpec(
@@ -747,6 +854,10 @@ fun ArticleActionsMenu(
 fun ArticleScreen(
     article: Article,
     viewModel: ArticleViewModel,
+    horizontalPagerEnabled: Boolean = true,
+    pagerNavigateToPrevious: (() -> Unit)? = null,
+    pagerNavigateToNext: (() -> Unit)? = null,
+    isPagerPageActive: Boolean = true,
 ) {
     val navigator = LocalNavigator.current
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
@@ -803,11 +914,13 @@ fun ArticleScreen(
     var previousScrollForBarOffset by remember { mutableIntStateOf(0) }
     var isBarSnapping by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        environment.addReadHistory(
-            contentToken = article.id.toString(),
-            contentTypeName = article.type.name.lowercase(),
-        )
+    LaunchedEffect(article.type, article.id, isPagerPageActive) {
+        if (isPagerPageActive) {
+            environment.addReadHistory(
+                contentToken = article.id.toString(),
+                contentTypeName = article.type.name.lowercase(),
+            )
+        }
     }
 
     fun upVoteFromDoubleTap() {
@@ -821,6 +934,31 @@ fun ArticleScreen(
         environment.articleAnswerSwitchState()
     } else {
         null
+    }
+
+    if (
+        horizontalPagerEnabled &&
+        article.type == ArticleType.Answer &&
+        answerSwitchMode == "horizontal"
+    ) {
+        val nav = sharedData?.navigator ?: sharedData?.sessionRegistry?.active
+        if (nav == null || nav.session.orderedIds.isEmpty()) {
+            ArticleScreen(
+                article = article,
+                viewModel = viewModel,
+                horizontalPagerEnabled = false,
+                isPagerPageActive = true,
+            )
+        } else {
+            AnswerHorizontalPagerScreen(
+                initialArticle = article,
+                initialViewModel = viewModel,
+                navigator = nav,
+                environment = environment,
+                userMessages = userMessages,
+            )
+        }
+        return
     }
 
     // 沉浸式阅读模式
@@ -1055,7 +1193,7 @@ fun ArticleScreen(
     DisposableEffect(backStackEntry?.id, sharedData) {
         val entryId = backStackEntry?.id
         onDispose {
-            if (entryId != null && sharedData != null) {
+            if (horizontalPagerEnabled && entryId != null && sharedData != null) {
                 val navigator = sharedData.navigator
                 if (navigator != null) {
                     sharedData.sessionRegistry.suspend(entryId, navigator)
@@ -1069,13 +1207,21 @@ fun ArticleScreen(
         val fromSwitch = sharedData?.navigatingFromAnswerSwitch == true
         val settleDirection = switchDirection.takeIf { fromSwitch }
         if (sharedData != null) {
-            val entryId = backStackEntry?.id
-            if (!fromSwitch) {
-                if (entryId != null) {
-                    val restored = sharedData.sessionRegistry.resume(entryId)
-                    if (restored != null) {
-                        sharedData.sessionRegistry.active = restored
-                        sharedData.navigator = restored
+            if (horizontalPagerEnabled) {
+                val entryId = backStackEntry?.id
+                if (!fromSwitch) {
+                    if (entryId != null) {
+                        val restored = sharedData.sessionRegistry.resume(entryId)
+                        if (restored != null) {
+                            sharedData.sessionRegistry.active = restored
+                            sharedData.navigator = restored
+                        } else {
+                            sharedData.pendingNavigator?.let { pending ->
+                                sharedData.sessionRegistry.adoptPending(pending)
+                                sharedData.pendingNavigator = null
+                                sharedData.navigator = pending
+                            }
+                        }
                     } else {
                         sharedData.pendingNavigator?.let { pending ->
                             sharedData.sessionRegistry.adoptPending(pending)
@@ -1083,21 +1229,15 @@ fun ArticleScreen(
                             sharedData.navigator = pending
                         }
                     }
+                    sharedData.clearSwitchUiState()
                 } else {
-                    sharedData.pendingNavigator?.let { pending ->
-                        sharedData.sessionRegistry.adoptPending(pending)
-                        sharedData.pendingNavigator = null
-                        sharedData.navigator = pending
-                    }
+                    sharedData.navigator = sharedData.sessionRegistry.active ?: sharedData.navigator
                 }
-                sharedData.clearSwitchUiState()
-            } else {
-                sharedData.navigator = sharedData.sessionRegistry.active ?: sharedData.navigator
+                sharedData.navigatingFromAnswerSwitch = false
+                sharedData.answerTransitionDirection = ArticleAnswerTransitionDirection.DEFAULT
             }
-            sharedData.navigatingFromAnswerSwitch = false
-            sharedData.answerTransitionDirection = ArticleAnswerTransitionDirection.DEFAULT
 
-            val pending = sharedData.pendingInitialContent
+            val pending = sharedData.pendingInitialContent.takeIf { isPagerPageActive }
             val warmStart = pending?.content?.isNotEmpty() == true
             if (pending != null) {
                 viewModel.title = pending.title
@@ -1119,13 +1259,15 @@ fun ArticleScreen(
                 coroutineScope.launch {
                     delay(350)
                     withContext(Dispatchers.Default) {
-                        val paginationInfo = viewModel.currentAnswerPaginationInfo()
-                        sharedData.navigator?.onPageSettled(
-                            article.id,
-                            settleDirection,
-                            paginationInfo,
-                        ) { id ->
-                            viewModel.scheduleNeighborPrefetch(environment, id)
+                        if (isPagerPageActive) {
+                            val paginationInfo = viewModel.currentAnswerPaginationInfo()
+                            sharedData.navigator?.onPageSettled(
+                                article.id,
+                                settleDirection,
+                                paginationInfo,
+                            ) { id ->
+                                viewModel.scheduleNeighborPrefetch(environment, id)
+                            }
                         }
                     }
                 }
@@ -1137,16 +1279,16 @@ fun ArticleScreen(
         viewModel.loadAigcFlagStatus(environment)
     }
 
-    LaunchedEffect(article.type, article.id, viewModel.content) {
-        if (viewModel.content.isNotBlank()) {
+    LaunchedEffect(article.type, article.id, viewModel.content, isPagerPageActive) {
+        if (isPagerPageActive && viewModel.content.isNotBlank()) {
             viewModel.updateAigcReadProgress(scrollState.value, scrollState.maxValue)
             delay(15_000)
             viewModel.updateAigcReadProgress(scrollState.value, scrollState.maxValue)
             viewModel.syncAigcReadEventIfEligible(environment)
         }
     }
-    LaunchedEffect(scrollState.maxValue, viewModel.content) {
-        if (viewModel.content.isNotBlank()) {
+    LaunchedEffect(scrollState.maxValue, viewModel.content, isPagerPageActive) {
+        if (isPagerPageActive && viewModel.content.isNotBlank()) {
             viewModel.updateAigcReadProgress(scrollState.value, scrollState.maxValue)
         }
     }
@@ -1155,68 +1297,78 @@ fun ArticleScreen(
         sharedData?.pendingInitialContent = cached
         sharedData?.promoteForNavigation(sharedData.answerTransitionDirection)
         val navController = articleHost?.articleNavController
-        if (navController != null) {
-            if (navController.currentBackStackEntry?.hasRoute(Article::class) == true &&
-                navController.currentBackStackEntry
-                    ?.toRoute<Article>()
-                    ?.type == ArticleType.Answer
-            ) {
-                navController.popBackStack()
+        val currentEntry = navController?.currentBackStackEntry
+        if (navController != null &&
+            currentEntry?.hasRoute(Article::class) == true &&
+            currentEntry.toRoute<Article>().type == ArticleType.Answer
+        ) {
+            navController.navigate(
+                cached.article,
+                navOptions {
+                    launchSingleTop = true
+                    popUpTo(currentEntry.id) {
+                        inclusive = true
+                    }
+                },
+            )
+        } else {
+            navigator.onNavigate(cached.article)
+        }
+    }
+
+    suspend fun resolveAnswerForNavigation(
+        isNext: Boolean,
+        nav: com.github.zly2006.zhihu.navigation.AnswerNavigator,
+    ): CachedAnswerContent? {
+        val cached = if (isNext) {
+            nav.resolveNextForNavigation()
+        } else {
+            nav.resolvePreviousForNavigation()
+        }
+        if (cached != null) return cached
+        return if (isNext) {
+            nav.loadNextCached()
+        } else {
+            nav.loadPreviousCached()
+        }
+    }
+
+    fun navigateToAdjacentAnswer(isNext: Boolean) {
+        if (!horizontalPagerEnabled && answerSwitchMode == "horizontal") {
+            if (isNext) {
+                pagerNavigateToNext?.invoke()
+            } else {
+                pagerNavigateToPrevious?.invoke()
+            }
+            return
+        }
+        sharedData?.answerTransitionDirection = when {
+            answerSwitchMode == "horizontal" && isNext -> ArticleAnswerTransitionDirection.HORIZONTAL_NEXT
+            answerSwitchMode == "horizontal" -> ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS
+            isNext -> ArticleAnswerTransitionDirection.VERTICAL_NEXT
+            else -> ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS
+        }
+        sharedData?.navigatingFromAnswerSwitch = true
+        sharedData?.navigator?.pushAnswer(
+            viewModel.toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"),
+        )
+        val nav = sharedData?.navigator ?: return
+        coroutineScope.launch {
+            val cached = withContext(Dispatchers.Default) {
+                resolveAnswerForNavigation(isNext, nav)
+            }
+            if (cached != null) {
+                navigateToAnswer(cached)
             }
         }
-        navigator.onNavigate(cached.article)
     }
 
     val navigateToPrevious: () -> Unit = {
-        sharedData?.answerTransitionDirection = if (answerSwitchMode == "horizontal") {
-            ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS
-        } else {
-            ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS
-        }
-        sharedData?.navigatingFromAnswerSwitch = true
-        sharedData?.navigator?.pushAnswer(
-            viewModel.toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"),
-        )
-        val nav = sharedData?.navigator
-        if (nav != null) {
-            val cached = nav.resolvePreviousForNavigation()
-            if (cached != null) {
-                navigateToAnswer(cached)
-            } else {
-                coroutineScope.launch {
-                    val loaded = withContext(Dispatchers.Default) { nav.loadPreviousCached() }
-                    if (loaded != null) {
-                        navigateToAnswer(loaded)
-                    }
-                }
-            }
-        }
+        navigateToAdjacentAnswer(isNext = false)
     }
 
     val navigateToNext: () -> Unit = {
-        sharedData?.answerTransitionDirection = if (answerSwitchMode == "horizontal") {
-            ArticleAnswerTransitionDirection.HORIZONTAL_NEXT
-        } else {
-            ArticleAnswerTransitionDirection.VERTICAL_NEXT
-        }
-        sharedData?.navigatingFromAnswerSwitch = true
-        sharedData?.navigator?.pushAnswer(
-            viewModel.toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"),
-        )
-        val nav = sharedData?.navigator
-        if (nav != null) {
-            val cached = nav.resolveNextForNavigation()
-            if (cached != null) {
-                navigateToAnswer(cached)
-            } else {
-                coroutineScope.launch {
-                    val loaded = withContext(Dispatchers.Default) { nav.loadNextCached() }
-                    if (loaded != null) {
-                        navigateToAnswer(loaded)
-                    }
-                }
-            }
-        }
+        navigateToAdjacentAnswer(isNext = true)
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -1887,7 +2039,7 @@ fun ArticleScreen(
             ) {
                 answerSwitchContent()
             }
-        } else if (article.type == ArticleType.Answer && answerSwitchMode == "horizontal") {
+        } else if (horizontalPagerEnabled && article.type == ArticleType.Answer && answerSwitchMode == "horizontal") {
             AnswerHorizontalOverscroll(
                 canGoPrevious = nav?.hasPreviousCandidate == true,
                 canGoNext = nav?.hasNextCandidate == true,

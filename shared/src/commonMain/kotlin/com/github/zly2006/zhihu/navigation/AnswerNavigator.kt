@@ -17,8 +17,6 @@
 
 package com.github.zly2006.zhihu.navigation
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
