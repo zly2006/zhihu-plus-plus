@@ -1220,7 +1220,11 @@ fun ArticleScreen(
                             navigationIcon = {
                                 IconButton(
                                     onClick = {
-                                        articleHost?.articleNavController?.popBackStack()
+                                        if (articleHost != null) {
+                                            articleHost.articleNavController.popBackStack()
+                                        } else {
+                                            navigator.onNavigateBack()
+                                        }
                                     },
                                     colors = IconButtonDefaults.iconButtonColors(
                                         containerColor = MaterialTheme.colorScheme.surfaceVariant,
