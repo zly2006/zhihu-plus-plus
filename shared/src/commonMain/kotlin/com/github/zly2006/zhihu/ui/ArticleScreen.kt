@@ -52,6 +52,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -149,12 +150,14 @@ import com.github.zly2006.zhihu.ui.components.AnswerVerticalOverscroll
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.CollectionDialogComponent
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
+import com.github.zly2006.zhihu.ui.components.DEFAULT_ANSWER_SWITCH_SENSITIVITY
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
 import com.github.zly2006.zhihu.ui.components.VotersSheet
 import com.github.zly2006.zhihu.ui.components.ZhihuTwoRowsTopAppBar
+import com.github.zly2006.zhihu.ui.components.normalizedAnswerSwitchSensitivity
 import com.github.zly2006.zhihu.ui.components.rememberPreferCollapsedExitUntilCollapsedScrollBehavior
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.util.smoothGradient
@@ -232,6 +235,7 @@ private fun AnswerHorizontalPagerScreen(
     navigator: AnswerNavigator,
     environment: PaginationEnvironment,
     userMessages: com.github.zly2006.zhihu.shared.platform.UserMessageSink,
+    answerSwitchSensitivity: Float = DEFAULT_ANSWER_SWITCH_SENSITIVITY,
 ) {
     @Suppress("UNUSED_VARIABLE")
     val queueRevision = navigator.queueRevision
@@ -252,6 +256,12 @@ private fun AnswerHorizontalPagerScreen(
         .takeIf { it >= 0 }
         ?: navigator.session.cursor.coerceIn(0, answerIds.lastIndex)
     val pagerState = rememberPagerState(initialPage = initialPage) { answerIds.size }
+    val normalizedSensitivity = normalizedAnswerSwitchSensitivity(answerSwitchSensitivity)
+    val snapPositionalThreshold = 0.3f / normalizedSensitivity
+    val flingBehavior = PagerDefaults.flingBehavior(
+        state = pagerState,
+        snapPositionalThreshold = snapPositionalThreshold,
+    )
 
     suspend fun loadPageAtEdge(isNext: Boolean): Int? {
         val cached = withContext(Dispatchers.Default) {
@@ -293,6 +303,7 @@ private fun AnswerHorizontalPagerScreen(
     HorizontalPager(
         state = pagerState,
         key = { page -> answerIds[page] },
+        flingBehavior = flingBehavior,
         modifier = Modifier.fillMaxSize(),
     ) { page ->
         val answerId = answerIds[page]
@@ -982,6 +993,7 @@ fun ArticleScreen(
                 navigator = nav,
                 environment = environment,
                 userMessages = userMessages,
+                answerSwitchSensitivity = answerSwitchSensitivity,
             )
         }
         return
