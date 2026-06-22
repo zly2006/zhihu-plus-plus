@@ -135,6 +135,7 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.navigation.newAnswerSessionId
 import com.github.zly2006.zhihu.shared.data.Person
 import com.github.zly2006.zhihu.shared.data.ZhihuPaging
 import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
@@ -299,6 +300,7 @@ private fun AnswerHorizontalPagerScreen(
             Article(
                 id = answerId,
                 type = ArticleType.Answer,
+                answerSessionId = initialArticle.answerSessionId,
             )
         }
         val initialCachedContent = navigator.session.entryById[answerId]?.cached
@@ -935,23 +937,47 @@ fun ArticleScreen(
     } else {
         null
     }
+    val effectiveAnswerSessionId = if (article.type == ArticleType.Answer) {
+        remember(article.type, article.id, article.answerSessionId, backStackEntry?.id) {
+            article.answerSessionId ?: newAnswerSessionId(article.id)
+        }
+    } else {
+        null
+    }
+    if (article.type == ArticleType.Answer) {
+        viewModel.answerSessionId = effectiveAnswerSessionId
+    }
+
+    fun currentAnswerNavigator(): AnswerNavigator? =
+        if (effectiveAnswerSessionId != null) {
+            sharedData?.sessionRegistry?.get(effectiveAnswerSessionId)
+        } else {
+            sharedData?.navigator
+        }
 
     if (
         horizontalPagerEnabled &&
         article.type == ArticleType.Answer &&
         answerSwitchMode == "horizontal"
     ) {
-        val nav = sharedData?.navigator ?: sharedData?.sessionRegistry?.active
+        val nav = effectiveAnswerSessionId?.let { sessionId ->
+            sharedData?.sessionRegistry?.get(sessionId)
+        }
+        val sessionArticle = if (article.answerSessionId == effectiveAnswerSessionId) {
+            article
+        } else {
+            article.copy(answerSessionId = effectiveAnswerSessionId)
+        }
         if (nav == null || nav.session.orderedIds.isEmpty()) {
             ArticleScreen(
-                article = article,
+                article = sessionArticle,
                 viewModel = viewModel,
                 horizontalPagerEnabled = false,
                 isPagerPageActive = true,
             )
         } else {
             AnswerHorizontalPagerScreen(
-                initialArticle = article,
+                initialArticle = sessionArticle,
                 initialViewModel = viewModel,
                 navigator = nav,
                 environment = environment,
@@ -1191,14 +1217,8 @@ fun ArticleScreen(
     ArticleImmersiveModeEffect(isImmersiveMode)
 
     DisposableEffect(backStackEntry?.id, sharedData) {
-        val entryId = backStackEntry?.id
         onDispose {
-            if (horizontalPagerEnabled && entryId != null && sharedData != null) {
-                val navigator = sharedData.navigator
-                if (navigator != null) {
-                    sharedData.sessionRegistry.suspend(entryId, navigator)
-                }
-            }
+            // Navigator 按本次回答详情实例 id 归属，不再按返回栈 entry 迁移或复用。
         }
     }
 
@@ -1208,31 +1228,10 @@ fun ArticleScreen(
         val settleDirection = switchDirection.takeIf { fromSwitch }
         if (sharedData != null) {
             if (horizontalPagerEnabled) {
-                val entryId = backStackEntry?.id
-                if (!fromSwitch) {
-                    if (entryId != null) {
-                        val restored = sharedData.sessionRegistry.resume(entryId)
-                        if (restored != null) {
-                            sharedData.sessionRegistry.active = restored
-                            sharedData.navigator = restored
-                        } else {
-                            sharedData.pendingNavigator?.let { pending ->
-                                sharedData.sessionRegistry.adoptPending(pending)
-                                sharedData.pendingNavigator = null
-                                sharedData.navigator = pending
-                            }
-                        }
-                    } else {
-                        sharedData.pendingNavigator?.let { pending ->
-                            sharedData.sessionRegistry.adoptPending(pending)
-                            sharedData.pendingNavigator = null
-                            sharedData.navigator = pending
-                        }
-                    }
-                    sharedData.clearSwitchUiState()
-                } else {
-                    sharedData.navigator = sharedData.sessionRegistry.active ?: sharedData.navigator
+                currentAnswerNavigator()?.let { routeNavigator ->
+                    sharedData.navigator = routeNavigator
                 }
+                sharedData.clearSwitchUiState()
                 sharedData.navigatingFromAnswerSwitch = false
                 sharedData.answerTransitionDirection = ArticleAnswerTransitionDirection.DEFAULT
             }
@@ -1261,12 +1260,14 @@ fun ArticleScreen(
                     withContext(Dispatchers.Default) {
                         if (isPagerPageActive) {
                             val paginationInfo = viewModel.currentAnswerPaginationInfo()
-                            sharedData.navigator?.onPageSettled(
+                            val pageNavigator = currentAnswerNavigator()
+                            pageNavigator?.onPageSettled(
                                 article.id,
                                 settleDirection,
                                 paginationInfo,
                             ) { id ->
-                                viewModel.scheduleNeighborPrefetch(environment, id)
+                                pageNavigator.prefetchPrevious(id)
+                                pageNavigator.prefetchNext(id)
                             }
                         }
                     }
@@ -1296,6 +1297,7 @@ fun ArticleScreen(
     val navigateToAnswer: (CachedAnswerContent) -> Unit = { cached ->
         sharedData?.pendingInitialContent = cached
         sharedData?.promoteForNavigation(sharedData.answerTransitionDirection)
+        val nextArticle = cached.article.copy(answerSessionId = effectiveAnswerSessionId)
         val navController = articleHost?.articleNavController
         val currentEntry = navController?.currentBackStackEntry
         if (navController != null &&
@@ -1303,7 +1305,7 @@ fun ArticleScreen(
             currentEntry.toRoute<Article>().type == ArticleType.Answer
         ) {
             navController.navigate(
-                cached.article,
+                nextArticle,
                 navOptions {
                     launchSingleTop = true
                     popUpTo(currentEntry.id) {
@@ -1312,7 +1314,7 @@ fun ArticleScreen(
                 },
             )
         } else {
-            navigator.onNavigate(cached.article)
+            navigator.onNavigate(nextArticle)
         }
     }
 
@@ -1349,10 +1351,10 @@ fun ArticleScreen(
             else -> ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS
         }
         sharedData?.navigatingFromAnswerSwitch = true
-        sharedData?.navigator?.pushAnswer(
-            viewModel.toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"),
+        val nav = currentAnswerNavigator() ?: return
+        nav.pushAnswer(
+            viewModel.toCachedContent(sourceLabel = nav.sourceName),
         )
-        val nav = sharedData?.navigator ?: return
         coroutineScope.launch {
             val cached = withContext(Dispatchers.Default) {
                 resolveAnswerForNavigation(isNext, nav)
@@ -2005,7 +2007,7 @@ fun ArticleScreen(
         }
     } // answerSwitchContent 结束。
 
-    val nav = sharedData?.navigator
+    val nav = currentAnswerNavigator()
 
     @Suppress("UNUSED_VARIABLE")
     val neighborQueueRevision = nav?.queueRevision

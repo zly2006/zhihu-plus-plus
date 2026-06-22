@@ -58,6 +58,7 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionAnswerNavigator
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.navigation.newAnswerSessionId
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
 import com.github.zly2006.zhihu.ui.components.FeedCard
@@ -195,23 +196,29 @@ fun CollectionContentScreen(
             ) {
                 val dest = navDestination
                 if (dest is Article && dest.type == ArticleType.Answer && sharedData != null) {
+                    val sessionId = newAnswerSessionId(dest.id)
                     val articles = screenViewModel.displayItems.mapNotNull { displayItem ->
                         val article = displayItem.navDestination as? Article
                         if (article?.type == ArticleType.Answer) article else null
                     }
                     val articleIndex = articles.indexOfFirst { it.id == dest.id }
                     if (articleIndex >= 0) {
-                        sharedData.pendingNavigator = CollectionAnswerNavigator.fromCollectionList(
-                            collectionId = collectionId,
-                            collectionTitle = screenViewModel.title,
-                            orderedArticles = articles,
-                            cursorIndex = articleIndex,
-                            nextPageUrl = screenViewModel.nextPagingUrl,
-                            environment = collectionEnvironment,
+                        sharedData.sessionRegistry.put(
+                            sessionId,
+                            CollectionAnswerNavigator.fromCollectionList(
+                                collectionId = collectionId,
+                                collectionTitle = screenViewModel.title,
+                                orderedArticles = articles,
+                                cursorIndex = articleIndex,
+                                nextPageUrl = screenViewModel.nextPagingUrl,
+                                environment = collectionEnvironment,
+                            ),
                         )
                     }
+                    navigator.onNavigate(dest.copy(answerSessionId = sessionId))
+                } else {
+                    dest?.let { navigator.onNavigate(it) }
                 }
-                dest?.let { navigator.onNavigate(it) }
             }
         }
     }

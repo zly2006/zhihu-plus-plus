@@ -396,7 +396,6 @@ interface ArticleHost {
  */
 interface ArticleAnswerSwitchState {
     var navigator: AnswerNavigator?
-    var pendingNavigator: AnswerNavigator?
     val sessionRegistry: AnswerSwitchSessionRegistry
     var pendingInitialContent: CachedAnswerContent?
     var navigatingFromAnswerSwitch: Boolean

@@ -182,12 +182,6 @@ open class ArticleAnswerSwitchData :
 
     override val sessionRegistry = AnswerSwitchSessionRegistry()
 
-    /**
-     * 导航前由来源界面设置（如 CollectionContentScreen）。
-     * 进入 ArticleScreen 时由 registry 接管，不会经 [reset] 覆盖挂起会话。
-     */
-    override var pendingNavigator: AnswerNavigator? = null
-
     // 用于消除切换闪动：导航前设置，新页面用它初始化
     override var pendingInitialContent: CachedAnswerContent? = null
 

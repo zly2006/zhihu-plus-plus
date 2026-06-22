@@ -76,9 +76,12 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.data.decodeQuestionContentDetail
+import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.WriteAnswer
+import com.github.zly2006.zhihu.navigation.newAnswerSessionId
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
@@ -467,8 +470,15 @@ fun QuestionScreen(
                     modifier = Modifier.testTag("question_feed_item_${item.stableKey}"),
                 ) {
                     val dest = navDestination
-                    answerSwitchState?.pendingNavigator = viewModel.createAnswerNavigatorFor(item, paginationEnvironment)
-                    dest?.let { navigator.onNavigate(it) }
+                    if (dest is Article && dest.type == ArticleType.Answer) {
+                        val sessionId = newAnswerSessionId(dest.id)
+                        viewModel.createAnswerNavigatorFor(item, paginationEnvironment)?.let { answerNavigator ->
+                            answerSwitchState?.sessionRegistry?.put(sessionId, answerNavigator)
+                        }
+                        navigator.onNavigate(dest.copy(answerSessionId = sessionId))
+                    } else {
+                        dest?.let { navigator.onNavigate(it) }
+                    }
                 }
             }
         }

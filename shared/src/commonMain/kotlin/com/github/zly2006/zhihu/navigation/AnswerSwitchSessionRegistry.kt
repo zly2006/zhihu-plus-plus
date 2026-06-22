@@ -17,42 +17,28 @@
 
 package com.github.zly2006.zhihu.navigation
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateMapOf
 
 /**
- * 按 [NavBackStackEntry.id] 挂起 / 恢复回答切换会话，支持导航栈嵌套多队列。
+ * 按回答详情实例 id 存取回答切换会话，避免不同来源的详情页共用同一个 navigator。
  */
 class AnswerSwitchSessionRegistry {
-    var active: AnswerNavigator? by mutableStateOf(null)
+    private val navigatorsBySessionId = mutableStateMapOf<String, AnswerNavigator>()
 
-    private val suspended = mutableMapOf<String, AnswerNavigator>()
-
-    fun suspend(entryId: String, navigator: AnswerNavigator) {
-        suspended[entryId] = navigator
-        if (active === navigator) {
-            active = null
-        }
+    fun put(
+        sessionId: String,
+        navigator: AnswerNavigator,
+    ) {
+        navigatorsBySessionId[sessionId] = navigator
     }
 
-    fun resume(entryId: String): AnswerNavigator? = suspended[entryId]
+    fun get(sessionId: String): AnswerNavigator? = navigatorsBySessionId[sessionId]
 
-    fun remove(entryId: String) {
-        suspended.remove(entryId)
-        if (active?.let { suspended.containsValue(it) } == false && active != null) {
-            // active may still point to removed if same ref — caller sets active explicitly
-        }
+    fun removeSession(sessionId: String) {
+        navigatorsBySessionId.remove(sessionId)
     }
 
     fun clear() {
-        suspended.clear()
-        active = null
-    }
-
-    fun adoptPending(pending: AnswerNavigator?): AnswerNavigator? {
-        if (pending == null) return null
-        active = pending
-        return pending
+        navigatorsBySessionId.clear()
     }
 }

@@ -104,6 +104,7 @@ class ArticleViewModel(
     initialCachedContent: CachedAnswerContent? = null,
 ) : ViewModel() {
     var permissionRequestCount by mutableIntStateOf(0)
+    var answerSessionId: String? = article.answerSessionId
     var title by mutableStateOf("")
     var authorId by mutableStateOf("")
     var authorUrlToken by mutableStateOf("")
@@ -285,7 +286,7 @@ class ArticleViewModel(
                             ),
                         )
                         environment.recordOpenEvent(article, questionId)
-                        if (sharedData?.navigator !is CollectionAnswerNavigator) {
+                        if (currentAnswerNavigator(sharedData) !is CollectionAnswerNavigator) {
                             ensureDirectEntryNavigator(
                                 sharedData = sharedData,
                                 answerId = article.id,
@@ -293,8 +294,9 @@ class ArticleViewModel(
                                 environment = environment,
                             )
                         }
-                        sharedData?.navigator?.pushAnswer(
-                            toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"),
+                        val currentNavigator = currentAnswerNavigator(sharedData)
+                        currentNavigator?.pushAnswer(
+                            toCachedContent(sourceLabel = currentNavigator.sourceName),
                         )
                         loadAnswerRelationshipEndorsement(environment)
                         loadMoreVoters(environment, reset = true)
@@ -365,7 +367,7 @@ class ArticleViewModel(
                                 ),
                             )
                             environment.recordOpenEvent(article, answer.question.id)
-                            if (sharedData?.navigator !is CollectionAnswerNavigator) {
+                            if (currentAnswerNavigator(sharedData) !is CollectionAnswerNavigator) {
                                 ensureDirectEntryNavigator(
                                     sharedData = sharedData,
                                     answerId = answer.id,
@@ -374,8 +376,9 @@ class ArticleViewModel(
                                     paginationInfo = answer.paginationInfo,
                                 )
                             }
-                            sharedData?.navigator?.pushAnswer(
-                                toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"),
+                            val currentNavigator = currentAnswerNavigator(sharedData)
+                            currentNavigator?.pushAnswer(
+                                toCachedContent(sourceLabel = currentNavigator.sourceName),
                             )
                             loadAnswerRelationshipEndorsement(environment)
                             loadMoreVoters(environment, reset = true)
@@ -1144,7 +1147,7 @@ class ArticleViewModel(
     fun scheduleNeighborPrefetch(environment: ArticleLoadEnvironment, articleId: Long) {
         if (httpClient == null) return
         viewModelScope.launch(Dispatchers.Default) {
-            environment.articleAnswerSwitchState()?.navigator?.let { prefetchNeighborAnswers(it, articleId) }
+            currentAnswerNavigator(environment.articleAnswerSwitchState())?.let { prefetchNeighborAnswers(it, articleId) }
         }
     }
 
@@ -1158,8 +1161,9 @@ class ArticleViewModel(
         environment: ZhihuApiEnvironment,
         paginationInfo: DataHolder.Answer.PaginationInfo? = null,
     ) {
-        if (sharedData == null || sharedData.navigator is CollectionAnswerNavigator) return
-        val existingNav = sharedData.navigator
+        if (sharedData == null || currentAnswerNavigator(sharedData) is CollectionAnswerNavigator) return
+        val sessionId = answerSessionId
+        val existingNav = currentAnswerNavigator(sharedData)
         val isSameQuestion = when (existingNav) {
             is QuestionAnswerNavigator -> existingNav.questionId == questionId
             is PaginationAnswerNavigator -> existingNav.session.questionId == questionId
@@ -1171,11 +1175,23 @@ class ArticleViewModel(
                 questionId = questionId,
                 environment = environment,
             )
-            sharedData.navigator = newNav
-            sharedData.sessionRegistry.active = newNav
+            if (sessionId != null) {
+                sharedData.sessionRegistry.put(sessionId, newNav)
+            } else {
+                sharedData.navigator = newNav
+            }
         }
         paginationInfo?.let { pagination ->
-            sharedData.navigator?.session?.mergePagination(pagination)
+            currentAnswerNavigator(sharedData)?.session?.mergePagination(pagination)
+        }
+    }
+
+    private fun currentAnswerNavigator(sharedData: ArticleAnswerSwitchState?): AnswerNavigator? {
+        val sessionId = answerSessionId
+        return if (sessionId != null) {
+            sharedData?.sessionRegistry?.get(sessionId)
+        } else {
+            sharedData?.navigator
         }
     }
 
