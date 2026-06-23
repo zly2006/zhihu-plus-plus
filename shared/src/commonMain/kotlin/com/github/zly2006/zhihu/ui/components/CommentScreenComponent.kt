@@ -54,6 +54,7 @@ fun CommentScreenComponent(
     showComments: Boolean,
     onDismiss: () -> Unit,
     content: NavDestination,
+    forcePlatformWindowForArticle: Boolean = false,
 ) {
     var activeChildComment by remember { mutableStateOf<CommentItem?>(null) }
     val contentStateKey = commentContentStateKey(content)
@@ -102,7 +103,7 @@ fun CommentScreenComponent(
                 shouldDismissOnClickOutside = true,
             ),
             dragHandle = { DragHandleTitle("评论") },
-            usePlatformWindow = content !is Article,
+            usePlatformWindow = forcePlatformWindowForArticle || content !is Article,
         ) {
             CommentScreen(
                 content = { content },
@@ -122,7 +123,7 @@ fun CommentScreenComponent(
                 shouldDismissOnClickOutside = true,
             ),
             dragHandle = { DragHandleTitle("回复") },
-            usePlatformWindow = childTarget.article !is Article,
+            usePlatformWindow = forcePlatformWindowForArticle || childTarget.article !is Article,
         ) {
             CommentScreen(
                 content = { childTarget },

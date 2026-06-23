@@ -45,6 +45,7 @@ import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -910,6 +911,20 @@ fun ArticleScreen(
     var showVoters by rememberSaveable(article.type, article.id) { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val hapticFeedback = LocalHapticFeedback.current
+
+    LaunchedEffect(isPagerPageActive) {
+        if (!isPagerPageActive) {
+            showComments = false
+            showCollectionDialog = false
+            showActionsMenu = false
+            showSummaryDialog = false
+            showAigcFlagSheet = false
+            showExportDialog = false
+            showDoubleTapActionDialog = false
+            showVoters = false
+            viewModel.cancelAiSummary()
+        }
+    }
 
     val useDuo3ArticleActions = remember { articleSettings.useDuo3ArticleActions }
     var buttonSkipAnswer by remember { mutableStateOf(articleSettings.buttonSkipAnswer) }
@@ -2126,7 +2141,7 @@ fun ArticleScreen(
     ArticleActionsMenu(
         article = article,
         viewModel = viewModel,
-        showMenu = showActionsMenu,
+        showMenu = showActionsMenu && isPagerPageActive,
         onDismissRequest = { showActionsMenu = false },
         onSummaryRequest = {
             showSummaryDialog = true
@@ -2146,7 +2161,7 @@ fun ArticleScreen(
     )
 
     ArticleSummarySheet(
-        showDialog = showSummaryDialog,
+        showDialog = showSummaryDialog && isPagerPageActive,
         summaryText = viewModel.aiSummaryText,
         loading = viewModel.aiSummaryLoading,
         errorMessage = viewModel.aiSummaryError,
@@ -2164,12 +2179,12 @@ fun ArticleScreen(
         toggleImmersive()
     }
 
-    PlatformBackHandler(showActionsMenu) {
+    PlatformBackHandler(showActionsMenu && isPagerPageActive) {
         showActionsMenu = false
     }
 
     AigcFlagSheet(
-        showDialog = showAigcFlagSheet,
+        showDialog = showAigcFlagSheet && isPagerPageActive,
         viewModel = viewModel,
         onDismissRequest = { showAigcFlagSheet = false },
         onSubmitRequest = { viewModel.submitAigcFlag(environment) },
@@ -2177,7 +2192,7 @@ fun ArticleScreen(
 
     // 使用新的收藏夹对话框组件
     CollectionDialogComponent(
-        showDialog = showCollectionDialog,
+        showDialog = showCollectionDialog && isPagerPageActive,
         onDismiss = { showCollectionDialog = false },
         collections = viewModel.collections,
         onLoadCollections = { viewModel.loadCollections(environment) },
@@ -2190,12 +2205,13 @@ fun ArticleScreen(
     )
 
     CommentScreenComponent(
-        showComments = showComments,
+        showComments = showComments && isPagerPageActive,
         onDismiss = { showComments = false },
         content = article,
+        forcePlatformWindowForArticle = !horizontalPagerEnabled,
     )
     VotersSheet(
-        show = showVoters,
+        show = showVoters && isPagerPageActive,
         title = "${formatCompactCount(viewModel.votersTotal)} 人赞同了该回答",
         voters = viewModel.voters,
         isLoading = viewModel.votersLoading,
@@ -2209,7 +2225,7 @@ fun ArticleScreen(
             navigator.onNavigate(person)
         },
     )
-    if (showDoubleTapActionDialog) {
+    if (showDoubleTapActionDialog && isPagerPageActive) {
         MyModalBottomSheet(
             onDismissRequest = { showDoubleTapActionDialog = false },
         ) {
@@ -2277,7 +2293,7 @@ fun ArticleScreen(
     }
     // 导出对话框
     ExportDialogComponent(
-        showDialog = showExportDialog,
+        showDialog = showExportDialog && isPagerPageActive,
         onDismiss = { showExportDialog = false },
         onExportHtml = { includeAppAttribution, onComplete ->
             viewModel.exportToHtml(environment, includeAppAttribution, onComplete)

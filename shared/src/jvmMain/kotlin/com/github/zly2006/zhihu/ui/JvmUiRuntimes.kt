@@ -398,6 +398,7 @@ actual fun ArticleWebViewContent(
     article: Article,
     html: String,
     title: String,
+    modifier: Modifier,
     scrollState: ScrollState,
     rememberedScrollY: Int,
     rememberedScrollYSync: Boolean,
@@ -407,7 +408,7 @@ actual fun ArticleWebViewContent(
 ) {
     RenderMarkdown(
         html = html,
-        modifier = Modifier,
+        modifier = modifier,
         selectable = true,
         enableScroll = false,
         header = {},

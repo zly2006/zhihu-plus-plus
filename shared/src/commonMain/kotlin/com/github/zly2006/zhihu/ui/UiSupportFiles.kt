@@ -269,6 +269,7 @@ expect fun ArticleWebViewContent(
     article: Article,
     html: String,
     title: String,
+    modifier: Modifier = Modifier,
     scrollState: ScrollState,
     rememberedScrollY: Int,
     rememberedScrollYSync: Boolean,
