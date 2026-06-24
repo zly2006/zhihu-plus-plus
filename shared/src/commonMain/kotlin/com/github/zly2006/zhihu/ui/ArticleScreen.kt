@@ -747,6 +747,8 @@ fun ArticleScreen(
     answerSwitchPagerEnabled: Boolean = true,
     pagerNavigateToPrevious: (() -> Unit)? = null,
     pagerNavigateToNext: (() -> Unit)? = null,
+    commentsHostedByPager: Boolean = false,
+    onRequestOpenComments: () -> Unit = {},
     isPagerPageActive: Boolean = true,
 ) {
     val navigator = LocalNavigator.current
@@ -790,7 +792,9 @@ fun ArticleScreen(
 
     LaunchedEffect(isPagerPageActive) {
         if (!isPagerPageActive) {
-            showComments = false
+            if (!commentsHostedByPager) {
+                showComments = false
+            }
             showCollectionDialog = false
             showActionsMenu = false
             showSummaryDialog = false
@@ -902,6 +906,14 @@ fun ArticleScreen(
 
     val toggleImmersive: () -> Unit = { isImmersiveMode = !isImmersiveMode }
 
+    fun openComments() {
+        if (commentsHostedByPager) {
+            onRequestOpenComments()
+        } else {
+            showComments = true
+        }
+    }
+
     fun performAnswerDoubleTapAction(action: AnswerDoubleTapAction) {
         when (action) {
             AnswerDoubleTapAction.None -> Unit
@@ -909,7 +921,7 @@ fun ArticleScreen(
             AnswerDoubleTapAction.VoteUp -> upVoteFromDoubleTap()
             AnswerDoubleTapAction.OpenComments -> {
                 hapticFeedback.performHapticFeedback(HapticFeedbackType.Confirm)
-                showComments = true
+                openComments()
             }
             AnswerDoubleTapAction.ToggleImmersive -> {
                 toggleImmersive()
@@ -1452,7 +1464,7 @@ fun ArticleScreen(
                                         }
                                     }
                                     Button(
-                                        onClick = { showComments = true },
+                                        onClick = { openComments() },
                                         contentPadding = PaddingValues(start = 8.dp, end = 12.dp),
                                         colors = voteUpNeutralButtonColors(),
                                     ) {
@@ -1621,7 +1633,7 @@ fun ArticleScreen(
                                     }
 
                                     Button(
-                                        onClick = { showComments = true },
+                                        onClick = { openComments() },
                                         contentPadding = PaddingValues(start = 8.dp, end = 12.dp),
                                         colors = ButtonDefaults.buttonColors(
                                             containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -1959,12 +1971,13 @@ fun ArticleScreen(
         },
     )
 
-    CommentScreenComponent(
-        showComments = showComments && isPagerPageActive,
-        onDismiss = { showComments = false },
-        content = article,
-        forcePlatformWindowForArticle = !answerSwitchPagerEnabled,
-    )
+    if (!commentsHostedByPager) {
+        CommentScreenComponent(
+            showComments = showComments && isPagerPageActive,
+            onDismiss = { showComments = false },
+            content = article,
+        )
+    }
     VotersSheet(
         show = showVoters && isPagerPageActive,
         title = "${formatCompactCount(viewModel.votersTotal)} 人赞同了该回答",
@@ -2025,7 +2038,7 @@ fun ArticleScreen(
                     onClick = {
                         showDoubleTapActionDialog = false
                         saveAnswerDoubleTapAction(AnswerDoubleTapAction.OpenComments)
-                        showComments = true
+                        openComments()
                         userMessages.showMessage("已将双击回答动作设为：${AnswerDoubleTapAction.OpenComments.label}")
                     },
                     modifier = Modifier.fillMaxWidth(),

@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerDefaults
@@ -26,14 +27,19 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.navigation.AnswerNavigator
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
+import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.DEFAULT_ANSWER_SWITCH_SENSITIVITY
 import com.github.zly2006.zhihu.ui.components.LocalVerticalPagerScrollGate
 import com.github.zly2006.zhihu.ui.components.normalizedAnswerSwitchSensitivity
@@ -85,6 +91,12 @@ internal fun AnswerSwitchPagerScreen(
         state = pagerState,
         snapPositionalThreshold = snapPositionalThreshold,
     )
+    val commentSessionKey = initialArticle.answerSessionId ?: "answer-${initialArticle.id}"
+    var showComments by rememberSaveable(commentSessionKey) { mutableStateOf(false) }
+
+    LaunchedEffect(pagerState.settledPage) {
+        showComments = false
+    }
 
     suspend fun loadPageAtEdge(isNext: Boolean): Int? {
         val cached = withContext(Dispatchers.Default) {
@@ -164,34 +176,57 @@ internal fun AnswerSwitchPagerScreen(
             answerSwitchPagerEnabled = false,
             pagerNavigateToPrevious = { navigatePager(isNext = false) },
             pagerNavigateToNext = { navigatePager(isNext = true) },
+            commentsHostedByPager = true,
+            onRequestOpenComments = { showComments = true },
             isPagerPageActive = page == pagerState.settledPage,
         )
     }
 
-    when (orientation) {
-        AnswerPagerOrientation.Horizontal -> {
-            HorizontalPager(
-                state = pagerState,
-                key = { page -> answerIds[page] },
-                flingBehavior = flingBehavior,
-                modifier = Modifier.fillMaxSize(),
-            ) { page ->
-                PagerPage(page)
-            }
+    val settledAnswerId = answerIds.getOrNull(pagerState.settledPage)
+    val settledArticle = remember(settledAnswerId, initialArticle.answerSessionId) {
+        settledAnswerId?.let { answerId ->
+            Article(
+                id = answerId,
+                type = ArticleType.Answer,
+                answerSessionId = initialArticle.answerSessionId,
+            )
         }
-        AnswerPagerOrientation.Vertical -> {
-            CompositionLocalProvider(LocalVerticalPagerScrollGate provides verticalScrollGate) {
-                VerticalPager(
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        when (orientation) {
+            AnswerPagerOrientation.Horizontal -> {
+                HorizontalPager(
                     state = pagerState,
                     key = { page -> answerIds[page] },
                     flingBehavior = flingBehavior,
-                    beyondViewportPageCount = 1,
-                    userScrollEnabled = false,
                     modifier = Modifier.fillMaxSize(),
                 ) { page ->
                     PagerPage(page)
                 }
             }
+            AnswerPagerOrientation.Vertical -> {
+                CompositionLocalProvider(LocalVerticalPagerScrollGate provides verticalScrollGate) {
+                    VerticalPager(
+                        state = pagerState,
+                        key = { page -> answerIds[page] },
+                        flingBehavior = flingBehavior,
+                        beyondViewportPageCount = 1,
+                        userScrollEnabled = false,
+                        modifier = Modifier.fillMaxSize(),
+                    ) { page ->
+                        PagerPage(page)
+                    }
+                }
+            }
+        }
+
+        if (settledArticle != null) {
+            CommentScreenComponent(
+                showComments = showComments,
+                onDismiss = { showComments = false },
+                content = settledArticle,
+            )
         }
     }
 }

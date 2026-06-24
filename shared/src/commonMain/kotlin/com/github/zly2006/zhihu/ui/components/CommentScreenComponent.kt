@@ -44,6 +44,7 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
+import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
 import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
 import com.github.zly2006.zhihu.theme.Typography
 import com.github.zly2006.zhihu.ui.CommentScreen
@@ -54,7 +55,6 @@ fun CommentScreenComponent(
     showComments: Boolean,
     onDismiss: () -> Unit,
     content: NavDestination,
-    forcePlatformWindowForArticle: Boolean = false,
 ) {
     var activeChildComment by remember { mutableStateOf<CommentItem?>(null) }
     val contentStateKey = commentContentStateKey(content)
@@ -93,6 +93,14 @@ fun CommentScreenComponent(
         onDismiss()
     }
 
+    PlatformBackHandler(enabled = showComments) {
+        if (activeChildComment != null && childTarget != null) {
+            activeChildComment = null
+        } else {
+            dismissRootComments()
+        }
+    }
+
     if (showComments) {
         MyModalBottomSheet(
             onDismissRequest = { dismissRootComments() },
@@ -103,7 +111,7 @@ fun CommentScreenComponent(
                 shouldDismissOnClickOutside = true,
             ),
             dragHandle = { DragHandleTitle("评论") },
-            usePlatformWindow = forcePlatformWindowForArticle || content !is Article,
+            usePlatformWindow = content !is Article,
         ) {
             CommentScreen(
                 content = { content },
@@ -123,7 +131,7 @@ fun CommentScreenComponent(
                 shouldDismissOnClickOutside = true,
             ),
             dragHandle = { DragHandleTitle("回复") },
-            usePlatformWindow = forcePlatformWindowForArticle || childTarget.article !is Article,
+            usePlatformWindow = childTarget.article !is Article,
         ) {
             CommentScreen(
                 content = { childTarget },
