@@ -853,7 +853,7 @@ fun AppearanceSettingsScreen(
                     SettingItem(
                         title = { Text("回答切换灵敏度") },
                         description = {
-                            Text("当前 ${(answerSwitchSensitivity * 10).roundToInt() / 10f}x，数值越高，滑动越短；同时作用于上下和左右切换。")
+                            Text("当前 ${(answerSwitchSensitivity * 10).roundToInt() / 10f}x，数值越高，滑动越短；作用于 pager 翻页触发阈值。")
                         },
                         settingKey = ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY,
                         highlightedKey = settingKey,

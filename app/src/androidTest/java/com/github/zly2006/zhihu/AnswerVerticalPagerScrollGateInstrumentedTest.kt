@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
@@ -34,13 +35,12 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
-import com.github.zly2006.zhihu.ui.components.AnswerVerticalOverscroll
-import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
+import com.github.zly2006.zhihu.ui.components.LocalVerticalPagerScrollGate
+import com.github.zly2006.zhihu.ui.components.rememberVerticalPagerScrollGate
+import com.github.zly2006.zhihu.ui.components.verticalPagerScrollGate
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -48,7 +48,7 @@ import org.junit.runner.RunWith
 import java.util.concurrent.atomic.AtomicInteger
 
 @RunWith(AndroidJUnit4::class)
-class AnswerVerticalOverscrollInstrumentedTest {
+class AnswerVerticalPagerScrollGateInstrumentedTest {
     @get:Rule
     val composeRule: MainActivityComposeRule = createAndroidComposeRule<MainActivity>()
 
@@ -58,23 +58,22 @@ class AnswerVerticalOverscrollInstrumentedTest {
     }
 
     @Test
-    fun bottomOverscrollSwipeUpTriggersNextAnswerNavigation() {
+    fun bottomBoundarySwipeUpTriggersNextPageNavigation() {
         val nextNavigationCount = AtomicInteger(0)
 
         composeRule.setScreenContent {
             val scrollState = rememberScrollState()
-            AnswerVerticalOverscroll(
-                previousAnswer = null,
-                nextAnswer = NEXT_ANSWER,
+            val gate = rememberVerticalPagerScrollGate(
                 onNavigatePrevious = {},
                 onNavigateNext = { nextNavigationCount.incrementAndGet() },
-                isAtTop = { scrollState.value == 0 },
-                isAtBottom = { scrollState.value >= scrollState.maxValue },
-                scrollState = scrollState,
-            ) {
+                canGoPrevious = { false },
+                canGoNext = { true },
+            )
+            CompositionLocalProvider(LocalVerticalPagerScrollGate provides gate) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
+                        .verticalPagerScrollGate(scrollState = scrollState, enabled = true)
                         .verticalScroll(scrollState)
                         .testTag(ANSWER_CONTENT_TAG),
                 ) {
@@ -102,22 +101,7 @@ class AnswerVerticalOverscrollInstrumentedTest {
     }
 
     private companion object {
-        const val ANSWER_CONTENT_TAG = "answer_vertical_overscroll_content"
-        const val ANSWER_BOTTOM_TAG = "answer_vertical_overscroll_bottom"
-
-        val NEXT_ANSWER = ArticleViewModel.CachedAnswerContent(
-            article = Article(
-                type = ArticleType.Answer,
-                id = 778L,
-                title = "下一个离线回答",
-            ),
-            title = "下一个离线回答",
-            authorName = "离线作者",
-            authorBio = "离线签名",
-            authorAvatarUrl = "",
-            content = "下一个离线回答正文",
-            voteUpCount = 1,
-            commentCount = 2,
-        )
+        const val ANSWER_CONTENT_TAG = "answer_vertical_pager_gate_content"
+        const val ANSWER_BOTTOM_TAG = "answer_vertical_pager_gate_bottom"
     }
 }
