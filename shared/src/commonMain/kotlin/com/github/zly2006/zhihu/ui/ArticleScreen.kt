@@ -1653,14 +1653,19 @@ fun ArticleScreen(
             },
         ) { innerPadding ->
             CompositionLocalProvider(LocalBringIntoViewSpec provides articleBringIntoViewSpec) {
-                Box {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalPagerScrollGate(
+                            scrollState = scrollState,
+                            enabled = isPagerPageActive,
+                        ),
+                ) {
                     Column(
                         modifier = Modifier
+                            .fillMaxSize()
                             .padding(horizontal = 16.dp)
-                            .verticalPagerScrollGate(
-                                scrollState = scrollState,
-                                enabled = isPagerPageActive,
-                            ).verticalScroll(scrollState)
+                            .verticalScroll(scrollState)
                             .padding(innerPadding)
                             .padding(top = 8.dp),
                     ) {

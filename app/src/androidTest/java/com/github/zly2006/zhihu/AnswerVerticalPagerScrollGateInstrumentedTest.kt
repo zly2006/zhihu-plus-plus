@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -70,19 +71,24 @@ class AnswerVerticalPagerScrollGateInstrumentedTest {
                 canGoNext = { true },
             )
             CompositionLocalProvider(LocalVerticalPagerScrollGate provides gate) {
-                Column(
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalPagerScrollGate(scrollState = scrollState, enabled = true)
-                        .verticalScroll(scrollState)
                         .testTag(ANSWER_CONTENT_TAG),
                 ) {
-                    Text("离线回答正文顶部")
-                    Spacer(Modifier.height(1800.dp))
-                    Text(
-                        text = "离线回答正文底部",
-                        modifier = Modifier.testTag(ANSWER_BOTTOM_TAG),
-                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(scrollState),
+                    ) {
+                        Text("离线回答正文顶部")
+                        Spacer(Modifier.height(1800.dp))
+                        Text(
+                            text = "离线回答正文底部",
+                            modifier = Modifier.testTag(ANSWER_BOTTOM_TAG),
+                        )
+                    }
                 }
             }
         }
@@ -100,8 +106,52 @@ class AnswerVerticalPagerScrollGateInstrumentedTest {
         }
     }
 
+    @Test
+    fun shortContentSwipeUpOnEmptyAreaBelowTextTriggersNextPageNavigation() {
+        val nextNavigationCount = AtomicInteger(0)
+
+        composeRule.setScreenContent {
+            val scrollState = rememberScrollState()
+            val gate = rememberVerticalPagerScrollGate(
+                onNavigatePrevious = {},
+                onNavigateNext = { nextNavigationCount.incrementAndGet() },
+                canGoPrevious = { false },
+                canGoNext = { true },
+            )
+            CompositionLocalProvider(LocalVerticalPagerScrollGate provides gate) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalPagerScrollGate(scrollState = scrollState, enabled = true)
+                        .testTag(ANSWER_PAGE_TAG),
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(scrollState),
+                    ) {
+                        Text(
+                            text = "短正文",
+                            modifier = Modifier.testTag(ANSWER_SHORT_TEXT_TAG),
+                        )
+                    }
+                }
+            }
+        }
+
+        composeRule.onNodeWithTag(ANSWER_PAGE_TAG).performTouchInput {
+            swipeUp(startY = bottom * 0.85f, endY = bottom * 0.15f, durationMillis = 700)
+        }
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            nextNavigationCount.get() == 1
+        }
+    }
+
     private companion object {
         const val ANSWER_CONTENT_TAG = "answer_vertical_pager_gate_content"
         const val ANSWER_BOTTOM_TAG = "answer_vertical_pager_gate_bottom"
+        const val ANSWER_PAGE_TAG = "answer_vertical_pager_gate_page"
+        const val ANSWER_SHORT_TEXT_TAG = "answer_vertical_pager_gate_short_text"
     }
 }

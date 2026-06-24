@@ -251,16 +251,19 @@ fun Modifier.verticalPagerScrollGate(
 ): Modifier {
     val gate = LocalVerticalPagerScrollGate.current ?: return this
     if (!enabled) return this
+    // 须挂在 fillMaxSize 容器上；内层 Column 也需 fillMaxSize + verticalScroll，
+    // 否则短正文下方空白区域不在 scroll 命中范围内，无法切页。
     val isContentNonScrollable = scrollState.maxValue == 0
+    if (isContentNonScrollable) {
+        return this.then(gate.nonScrollablePointerInputModifier())
+    }
     val connection = remember(gate, scrollState) {
         gate.nestedScrollConnection(
             isAtTop = { scrollState.value == 0 },
             isAtBottom = { scrollState.value >= scrollState.maxValue },
         )
     }
-    return this
-        .nestedScroll(connection)
-        .then(if (isContentNonScrollable) gate.nonScrollablePointerInputModifier() else Modifier)
+    return this.nestedScroll(connection)
 }
 
 private const val MAX_OVERSCROLL_DP = 200f
