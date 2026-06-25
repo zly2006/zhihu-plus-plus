@@ -85,6 +85,8 @@ import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
 import com.github.zly2006.zhihu.shared.platform.rememberIsLiteVariant
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
+import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
 import com.github.zly2006.zhihu.util.parseHtmlTextWithTheme
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -482,6 +484,9 @@ private fun FeedCardContent(
     duo3CardLargeTitle: Boolean,
     showSourceLabel: Boolean,
 ) {
+    val settings = rememberSettingsStore()
+    val fontSizePercent = remember { settings.getInt(PREF_FONT_SIZE, 100) }
+    val lineHeightPercent = remember { settings.getInt(PREF_LINE_HEIGHT, 160) }
     val navigator = LocalNavigator.current
     if (duo3CardLayout) {
         // ── 新排版（duo3）────────────────────────────────────────────────────
@@ -509,7 +514,10 @@ private fun FeedCardContent(
             Row {
                 Text(
                     text = parseHtmlTextWithTheme(item.summary ?: ""),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontSize = 14.sp * fontSizePercent / 100,
+                        lineHeight = 14.sp * fontSizePercent / 100 * lineHeightPercent / 100,
+                    ),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 4,
                     overflow = TextOverflow.Ellipsis,
@@ -633,7 +641,8 @@ private fun FeedCardContent(
             Column(modifier = Modifier.weight(2f)) {
                 Text(
                     text = parseHtmlTextWithTheme(item.summary ?: ""),
-                    fontSize = 14.sp,
+                    fontSize = 14.sp * fontSizePercent / 100,
+                    lineHeight = 14.sp * fontSizePercent / 100 * lineHeightPercent / 100,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = if (item.isFiltered) 0.dp else 3.dp),
