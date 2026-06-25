@@ -76,6 +76,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.buildAnnotatedString
@@ -105,11 +107,13 @@ import com.github.zly2006.zhihu.ui.components.ColorPickerDialog
 import com.github.zly2006.zhihu.ui.components.DEFAULT_ANSWER_SWITCH_SENSITIVITY
 import com.github.zly2006.zhihu.ui.components.MAX_ANSWER_SWITCH_SENSITIVITY
 import com.github.zly2006.zhihu.ui.components.MIN_ANSWER_SWITCH_SENSITIVITY
+import com.github.zly2006.zhihu.ui.components.PageTurnScrollEffect
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemOverall
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
 import com.github.zly2006.zhihu.ui.components.normalizedAnswerSwitchSensitivity
+import com.github.zly2006.zhihu.ui.components.pageTurnFabVisible
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
@@ -118,6 +122,11 @@ const val DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY = "duo3_card_large_title"
 const val PREF_FONT_SIZE = "contentFontSize"
 const val PREF_LINE_HEIGHT = "contentLineHeight"
 const val PREF_BLOCK_SPACING = "contentBlockSpacing"
+const val PREF_PAGE_TURN_PERCENT = "pageTurnPercent"
+const val DEFAULT_PAGE_TURN_PERCENT = 90
+const val PREF_VOLUME_KEY_PAGE_TURN = "volumeKeyPageTurn"
+const val PREF_SHOW_PAGE_TURN_FAB = "showPageTurnFab"
+const val PREF_SHOW_PAGE_TURN_GUIDE = "showPageTurnGuide"
 const val APPEARANCE_SETTINGS_SCROLL_TAG = "appearanceSettings.scroll"
 const val APPEARANCE_SETTINGS_START_DESTINATION_TAG = "appearanceSettings.startDestination"
 const val APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG = "appearanceSettings.answerDoubleTap"
@@ -345,9 +354,16 @@ fun AppearanceSettingsScreen(
             )
         },
     ) { innerPadding ->
+        val density = LocalDensity.current
+        var rawViewportHeight by remember { mutableIntStateOf(0) }
+        val topPx = with(density) { innerPadding.calculateTopPadding().toPx().toInt() }
+        val bottomPx = with(density) { innerPadding.calculateBottomPadding().toPx().toInt() }
+        val viewportHeight = (rawViewportHeight - topPx - bottomPx).coerceAtLeast(0)
+        PageTurnScrollEffect(scrollState, viewportHeight, scrollBehavior.state)
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .onSizeChanged { rawViewportHeight = it.height }
                 .verticalScroll(scrollState)
                 .testTag(APPEARANCE_SETTINGS_SCROLL_TAG)
                 .padding(innerPadding)
@@ -590,6 +606,68 @@ fun AppearanceSettingsScreen(
                             steps = 29,
                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                         )
+                    },
+                )
+            }
+
+            // ── 翻页 ───────────────────────────────────────────────────────────
+            SettingItemGroup(
+                title = "翻页",
+            ) {
+                var pageTurnPercent by remember {
+                    mutableIntStateOf(settings.getInt(PREF_PAGE_TURN_PERCENT, DEFAULT_PAGE_TURN_PERCENT))
+                }
+                SettingItem(
+                    title = { Text("翻页百分比") },
+                    description = { Text("每次翻页滚动的屏幕比例 ($pageTurnPercent%)，降低可避免悬浮栏遮挡内容。") },
+                    bottomAction = {
+                        Slider(
+                            value = pageTurnPercent.toFloat(),
+                            onValueChange = {
+                                val pct = (it / 5).roundToInt() * 5
+                                pageTurnPercent = pct
+                                settings.putInt(PREF_PAGE_TURN_PERCENT, pct)
+                            },
+                            valueRange = 30f..100f,
+                            steps = 13,
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        )
+                    },
+                )
+
+                val volumeKeyPageTurn = remember {
+                    mutableStateOf(settings.getBoolean(PREF_VOLUME_KEY_PAGE_TURN, false))
+                }
+                SettingItemWithSwitch(
+                    title = { Text("使用音量键翻页") },
+                    description = { Text("按音量键时翻页而非调节音量，适合墨水屏设备。") },
+                    checked = volumeKeyPageTurn.value,
+                    onCheckedChange = {
+                        volumeKeyPageTurn.value = it
+                        settings.putBoolean(PREF_VOLUME_KEY_PAGE_TURN, it)
+                    },
+                )
+
+                SettingItemWithSwitch(
+                    title = { Text("显示翻页悬浮按钮") },
+                    description = { Text("在页面上显示可拖动的上下翻页按钮。") },
+                    checked = pageTurnFabVisible.value,
+                    onCheckedChange = {
+                        pageTurnFabVisible.value = it
+                        settings.putBoolean(PREF_SHOW_PAGE_TURN_FAB, it)
+                    },
+                )
+
+                val showPageTurnGuide = remember {
+                    mutableStateOf(settings.getBoolean(PREF_SHOW_PAGE_TURN_GUIDE, false))
+                }
+                SettingItemWithSwitch(
+                    title = { Text("显示翻页范围标记") },
+                    description = { Text("用两条虚线标记翻页边界，帮助定位翻页后的阅读位置。") },
+                    checked = showPageTurnGuide.value,
+                    onCheckedChange = {
+                        showPageTurnGuide.value = it
+                        settings.putBoolean(PREF_SHOW_PAGE_TURN_GUIDE, it)
                     },
                 )
             }

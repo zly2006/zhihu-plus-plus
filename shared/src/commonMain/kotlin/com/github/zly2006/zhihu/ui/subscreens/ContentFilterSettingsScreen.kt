@@ -53,12 +53,15 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.Account
@@ -69,6 +72,7 @@ import com.github.zly2006.zhihu.shared.filter.rememberContentFilterMaintenance
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
+import com.github.zly2006.zhihu.ui.components.PageTurnScrollEffect
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
@@ -132,9 +136,16 @@ fun ContentFilterSettingsScreen(
             )
         },
     ) { innerPadding ->
+        val density = LocalDensity.current
+        var rawViewportHeight by remember { mutableIntStateOf(0) }
+        val topPx = with(density) { innerPadding.calculateTopPadding().toPx().toInt() }
+        val bottomPx = with(density) { innerPadding.calculateBottomPadding().toPx().toInt() }
+        val viewportHeight = (rawViewportHeight - topPx - bottomPx).coerceAtLeast(0)
+        PageTurnScrollEffect(scrollState, viewportHeight, scrollBehavior.state)
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .onSizeChanged { rawViewportHeight = it.height }
                 .verticalScroll(scrollState)
                 .testTag("contentFilterSettings:scroll")
                 .padding(innerPadding)
