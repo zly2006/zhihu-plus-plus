@@ -1206,7 +1206,8 @@ fun ArticleScreen(
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
-    val answerSwitchContent: @Composable () -> Unit = {
+    @Composable
+    fun MainContent() {
         val scrollBehavior = rememberPreferCollapsedExitUntilCollapsedScrollBehavior()
         // 记录历史最大滚动范围，避免顶栏展开/收起时 maxValue 短暂变化导致 scrollBehavior 抖动。
         var scrollStateMaxValue by remember { mutableIntStateOf(0) }
@@ -1222,7 +1223,7 @@ fun ArticleScreen(
             topBar = if (isImmersiveMode) {
                 {}
             } else {
-                @Composable {
+                {
                     Box(
                         modifier = Modifier
                             .onSizeChanged {
@@ -1845,7 +1846,7 @@ fun ArticleScreen(
                 }
             }
         }
-    } // answerSwitchContent 结束。
+    } // MainContent 结束。
 
     val progressBarTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp
     val progressBarBottomPadding = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 96.dp
@@ -1853,7 +1854,7 @@ fun ArticleScreen(
     Box(
         modifier = Modifier.fillMaxSize().then(answerDoubleTapModifier),
     ) {
-        answerSwitchContent()
+        MainContent()
 
         VerticalReadingProgressBar(
             scrollState = scrollState,

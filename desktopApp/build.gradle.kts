@@ -34,12 +34,13 @@ java {
     }
 }
 
-// Force material3 to one version across app/shared/desktop.
-// 根因：KMP 元数据配置和平台配置曾解析到不同 material3 版本，导致 commonMain 使用的
-// internal API 在 Android/JVM 平台编译期不可见。
+// Force material3 to 1.10.0-alpha05，与 shared 模块保持一致。
+// 根因：shared 模块 commonMain 通过 material-kolor 的 strictly 约束解析到 1.10.0-alpha05，
+// 但平台配置和本模块如果没有 force，会各自解析到不同版本（1.9.0 或 1.11.0-alpha07），
+// 导致运行时类冲突或编译时 internal API 不可见。
 configurations.configureEach {
     resolutionStrategy {
-        force("org.jetbrains.compose.material3:material3:1.12.0-alpha02")
+        force("org.jetbrains.compose.material3:material3:1.10.0-alpha05")
     }
 }
 
