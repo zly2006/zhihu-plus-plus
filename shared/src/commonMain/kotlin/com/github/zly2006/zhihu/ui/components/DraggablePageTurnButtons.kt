@@ -64,7 +64,9 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_FAB_OPACITY
 import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_PAGE_TURN_PERCENT
+import com.github.zly2006.zhihu.ui.subscreens.PREF_FAB_OPACITY
 import com.github.zly2006.zhihu.ui.subscreens.PREF_PAGE_TURN_PERCENT
 import com.github.zly2006.zhihu.ui.subscreens.PREF_SHOW_PAGE_TURN_FAB
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -85,6 +87,9 @@ val pageTurnModalDepth = androidx.compose.runtime.mutableIntStateOf(0)
 
 /** 翻页悬浮按钮的全局可见性，由设置页开关直接写入，PageTurnFab 读取。 */
 val pageTurnFabVisible = androidx.compose.runtime.mutableStateOf(false)
+
+/** 所有悬浮按钮的透明度百分比（10–100），由设置页写入，各 FAB 读取。 */
+val fabOpacityPercent = androidx.compose.runtime.mutableIntStateOf(100)
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -119,6 +124,9 @@ fun DraggablePageTurnButtons(
 
     val hapticFeedback = LocalHapticFeedback.current
 
+    val opacityFraction = fabOpacityPercent.intValue / 100f
+    val fabColor = FloatingActionButtonDefaults.containerColor.copy(alpha = opacityFraction)
+    val iconTint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = opacityFraction)
     Column(
         modifier = modifier
             .offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) }
@@ -156,7 +164,7 @@ fun DraggablePageTurnButtons(
     ) {
         Surface(
             shape = CircleShape,
-            color = FloatingActionButtonDefaults.containerColor,
+            color = fabColor,
             modifier = Modifier
                 .size(buttonSize)
                 .combinedClickable(
@@ -167,13 +175,13 @@ fun DraggablePageTurnButtons(
                 ),
         ) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "上翻页")
+                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "上翻页", tint = iconTint)
             }
         }
         Spacer(modifier = Modifier.height(4.dp))
         Surface(
             shape = CircleShape,
-            color = FloatingActionButtonDefaults.containerColor,
+            color = fabColor,
             modifier = Modifier
                 .size(buttonSize)
                 .combinedClickable(
@@ -184,7 +192,7 @@ fun DraggablePageTurnButtons(
                 ),
         ) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "下翻页")
+                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "下翻页", tint = iconTint)
             }
         }
     }
@@ -202,6 +210,7 @@ fun PageTurnFab(
     val settings = rememberSettingsStore()
     LaunchedEffect(Unit) {
         pageTurnFabVisible.value = settings.getBoolean(PREF_SHOW_PAGE_TURN_FAB, false)
+        fabOpacityPercent.intValue = settings.getInt(PREF_FAB_OPACITY, DEFAULT_FAB_OPACITY).coerceIn(10, 100)
     }
     if (!pageTurnFabVisible.value) return
     val channel = LocalPageTurnChannel.current

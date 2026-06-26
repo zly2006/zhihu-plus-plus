@@ -25,7 +25,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -87,9 +89,17 @@ fun DraggableRefreshButton(
     )
     val hapticFeedback = LocalHapticFeedback.current
 
+    val opacityFraction = fabOpacityPercent.intValue / 100f
     FloatingActionButton(
         onClick = onClick,
         shape = CircleShape,
+        containerColor = FloatingActionButtonDefaults.containerColor.copy(alpha = opacityFraction),
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = opacityFraction),
+        elevation = if (opacityFraction < 1f) {
+            FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
+        } else {
+            FloatingActionButtonDefaults.elevation()
+        },
         modifier = modifier
             .offset { IntOffset(animatedOffsetX.roundToInt(), animatedOffsetY.roundToInt()) }
             .pointerInput(Unit) {

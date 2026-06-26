@@ -112,6 +112,7 @@ import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemOverall
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
+import com.github.zly2006.zhihu.ui.components.fabOpacityPercent
 import com.github.zly2006.zhihu.ui.components.normalizedAnswerSwitchSensitivity
 import com.github.zly2006.zhihu.ui.components.pageTurnFabVisible
 import kotlinx.coroutines.delay
@@ -127,6 +128,8 @@ const val DEFAULT_PAGE_TURN_PERCENT = 90
 const val PREF_VOLUME_KEY_PAGE_TURN = "volumeKeyPageTurn"
 const val PREF_SHOW_PAGE_TURN_FAB = "showPageTurnFab"
 const val PREF_SHOW_PAGE_TURN_GUIDE = "showPageTurnGuide"
+const val PREF_FAB_OPACITY = "fabOpacity"
+const val DEFAULT_FAB_OPACITY = 100
 const val APPEARANCE_SETTINGS_SCROLL_TAG = "appearanceSettings.scroll"
 const val APPEARANCE_SETTINGS_START_DESTINATION_TAG = "appearanceSettings.startDestination"
 const val APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG = "appearanceSettings.answerDoubleTap"
@@ -543,6 +546,28 @@ fun AppearanceSettingsScreen(
                         },
                     )
                 }
+
+                var fabOpacity by remember {
+                    mutableIntStateOf(settings.getInt(PREF_FAB_OPACITY, DEFAULT_FAB_OPACITY))
+                }
+                SettingItem(
+                    title = { Text("悬浮按钮透明度") },
+                    description = { Text("控制所有悬浮按钮的透明度 ($fabOpacity%)。") },
+                    bottomAction = {
+                        Slider(
+                            value = fabOpacity.toFloat(),
+                            onValueChange = {
+                                val v = (it / 5).roundToInt() * 5
+                                fabOpacity = v
+                                fabOpacityPercent.intValue = v
+                                settings.putInt(PREF_FAB_OPACITY, v)
+                            },
+                            valueRange = 10f..100f,
+                            steps = 17,
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        )
+                    },
+                )
             }
             // ── 阅读 ────────────────────────────────────────────────────────────
             SettingItemGroup(
@@ -689,7 +714,7 @@ fun AppearanceSettingsScreen(
                 )
 
                 SettingItemWithSwitch(
-                    title = { Text("显示刷新 FAB 按钮") },
+                    title = { Text("显示刷新悬浮按钮") },
                     description = { Text("在页面上显示可拖动的刷新按钮。") },
                     checked = showRefreshFab.value,
                     onCheckedChange = {
