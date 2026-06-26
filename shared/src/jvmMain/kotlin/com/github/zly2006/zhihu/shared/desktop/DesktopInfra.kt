@@ -16,6 +16,7 @@
  */
 
 package com.github.zly2006.zhihu.shared.desktop
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -378,27 +379,6 @@ internal fun openDesktopExternalUrl(url: String): Boolean = runCatching {
 internal fun copyDesktopPlainText(text: String) =
     Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
 
-/**
- * 桌面端读取风控验证 cookies，对应 Android 端的 readWebViewCookies。
- *
- * Android 端通过 CookieManager.getCookie() 读取全局 cookie store，
- * 桌面端通过 JavaScript document.cookie 读取当前页面 cookies，
- * 并由 DesktopWebviewComp 的 onPageFinished 回调触发。
- *
- * 注意：此处返回空 map，实际 cookies 由 DesktopRiskControlWebView
- * 内部维护并通过 onCookiesChanged 回传给 SharedQrLoginPane。
- */
 private fun readDesktopRiskControlCookies(
     @Suppress("UNUSED_PARAMETER") url: String?,
 ): Map<String, String> = emptyMap()
-
-/**
- * 风控验证页面的 WebView 容器，对应 Android 端 LoginActivity 中 WebviewComp 的职责。
- *
- * 在 SharedQrLoginPane 触发风控时，该 Composable 会加载验证 URL 并在页面加载完成后
- * 将 cookies 回传给 SharedQrLoginPane，用户完成验证后点击"完成验证后继续扫码"即可继续登录。
- *
- * Android 端通过 CookieManager.getCookie() 读取全局 cookie store 来获取验证后的 cookies；
- * 桌面端的 JavaFX WebView 使用独立的 cookie store，通过 JavaScript document.cookie
- * 读取并由 onCookiesChanged 回调回传。
- */
