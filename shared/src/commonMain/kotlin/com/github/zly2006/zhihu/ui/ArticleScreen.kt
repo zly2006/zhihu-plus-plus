@@ -29,6 +29,7 @@ import androidx.compose.foundation.gestures.BringIntoViewSpec
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -128,13 +129,14 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
 import com.github.zly2006.zhihu.navigation.newAnswerSessionId
 import com.github.zly2006.zhihu.shared.data.Person
 import com.github.zly2006.zhihu.shared.data.ZhihuPaging
 import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
-import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.shared.util.formatCompactCount
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.components.AnswerContentSkeleton
@@ -143,13 +145,19 @@ import com.github.zly2006.zhihu.ui.components.CollectionDialogComponent
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
+import com.github.zly2006.zhihu.ui.components.LocalPageTurnChannel
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
+import com.github.zly2006.zhihu.ui.components.PageTurnGuideOverlay
 import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
 import com.github.zly2006.zhihu.ui.components.VotersSheet
 import com.github.zly2006.zhihu.ui.components.ZhihuTwoRowsTopAppBar
+import com.github.zly2006.zhihu.ui.components.pageTurnModalDepth
 import com.github.zly2006.zhihu.ui.components.rememberPreferCollapsedExitUntilCollapsedScrollBehavior
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.ui.components.verticalPagerScrollGate
+import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_PAGE_TURN_PERCENT
+import com.github.zly2006.zhihu.ui.subscreens.PREF_PAGE_TURN_PERCENT
+import com.github.zly2006.zhihu.ui.subscreens.PREF_SHOW_PAGE_TURN_GUIDE
 import com.github.zly2006.zhihu.util.smoothGradient
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.addReadHistory
@@ -781,8 +789,19 @@ fun ArticleScreen(
     var navigatingToNextAnswer by remember { mutableStateOf(false) }
     val density = LocalDensity.current
     val scrollDeltaThreshold = with(density) { ScrollThresholdDp.toPx() }
+    var pageKeyViewportHeight by remember { mutableIntStateOf(0) }
+    var lastPageTurnDirection by remember { mutableIntStateOf(0) }
+    var isPageTurnScrolling by remember { mutableStateOf(false) }
+    val pageKeySettings = rememberSettingsStore()
+    val pageTurnPercent = remember { pageKeySettings.getInt(PREF_PAGE_TURN_PERCENT, DEFAULT_PAGE_TURN_PERCENT) }
+    val showPageTurnGuide = remember { pageKeySettings.getBoolean(PREF_SHOW_PAGE_TURN_GUIDE, false) }
+
+    if (showPageTurnGuide && lastPageTurnDirection != 0 && scrollState.isScrollInProgress && !isPageTurnScrolling) {
+        lastPageTurnDirection = 0
+    }
     var topBarHeight by remember { mutableIntStateOf(0) }
     var showComments by rememberSaveable(article.type, article.id) { mutableStateOf(false) }
+    var segmentCommentTarget by remember { mutableStateOf<SegmentCommentHolder?>(null) }
     var showCollectionDialog by remember { mutableStateOf(false) }
     var showActionsMenu by remember { mutableStateOf(false) }
     var showSummaryDialog by remember { mutableStateOf(false) }
@@ -831,6 +850,43 @@ fun ArticleScreen(
                 contentToken = article.id.toString(),
                 contentTypeName = article.type.name.lowercase(),
             )
+        }
+    }
+
+    val pageTurnChannel = LocalPageTurnChannel.current
+    LaunchedEffect(pageTurnChannel) {
+        pageTurnChannel.collect { direction ->
+            if (pageTurnModalDepth.intValue > 0) return@collect
+            lastPageTurnDirection = direction.coerceIn(-1, 1)
+            isPageTurnScrolling = true
+            try {
+                when (direction) {
+                    Int.MAX_VALUE -> {
+                        scrollState.scrollTo(scrollState.maxValue)
+                        if (isTitleAutoHide && topBarHeightPx > 0f) topBarOffset.snapTo(-topBarHeightPx)
+                    }
+                    Int.MIN_VALUE -> {
+                        scrollState.scrollTo(0)
+                        topBarOffset.snapTo(0f)
+                    }
+                    else -> {
+                        if (isTitleAutoHide && topBarHeightPx > 0f && direction > 0) {
+                            topBarOffset.snapTo(-topBarHeightPx)
+                        }
+                        val visibleTopBar = (topBarHeightPx + topBarOffset.value).coerceAtLeast(0f)
+                        val visibleBottomBar = (bottomBarHeightPx - bottomBarOffset.value).coerceAtLeast(0f)
+                        val effectiveViewport = pageKeyViewportHeight - visibleTopBar.toInt() - visibleBottomBar.toInt()
+                        if (effectiveViewport > 0) {
+                            scrollState.scrollBy(effectiveViewport * pageTurnPercent / 100f * direction)
+                        }
+                        if (direction < 0 && scrollState.value == 0 && isTitleAutoHide) {
+                            topBarOffset.snapTo(0f)
+                        }
+                    }
+                }
+            } finally {
+                isPageTurnScrolling = false
+            }
         }
     }
 
@@ -1232,6 +1288,19 @@ fun ArticleScreen(
         LaunchedEffect(scrollState.maxValue) {
             if (scrollState.maxValue != Int.MAX_VALUE) {
                 scrollStateMaxValue = max(scrollState.maxValue, scrollStateMaxValue)
+            }
+        }
+        LaunchedEffect(pageTurnChannel) {
+            pageTurnChannel.collect { direction ->
+                if (pageTurnModalDepth.intValue > 0) return@collect
+                val state = scrollBehavior.state
+                if (direction > 0 || direction == Int.MAX_VALUE) {
+                    state.heightOffset = state.heightOffsetLimit
+                } else if (direction == Int.MIN_VALUE) {
+                    state.heightOffset = 0f
+                } else if (direction < 0 && scrollState.value == 0) {
+                    state.heightOffset = 0f
+                }
             }
         }
         Scaffold(
@@ -1690,7 +1759,7 @@ fun ArticleScreen(
                         .verticalPagerScrollGate(
                             scrollState = scrollState,
                             enabled = isPagerPageActive,
-                        ),
+                        ).onSizeChanged { pageKeyViewportHeight = it.height },
                 ) {
                     Column(
                         modifier = Modifier
@@ -1844,6 +1913,7 @@ fun ArticleScreen(
                                         }
                                         Spacer(modifier = Modifier.height((16 + 36).dp))
                                     },
+                                    onOpenSegmentComment = { segmentCommentTarget = it },
                                 )
                             }
                         } else if (article.type == ArticleType.Answer && viewModel.title.isNotEmpty()) {
@@ -1921,6 +1991,17 @@ fun ArticleScreen(
                 }
             }
         }
+
+        if (showPageTurnGuide) {
+            val visibleTopBar = (topBarHeightPx + topBarOffset.value).coerceAtLeast(0f)
+            val visibleBottomBar = (bottomBarHeightPx - bottomBarOffset.value).coerceAtLeast(0f)
+            PageTurnGuideOverlay(
+                pageTurnPercent,
+                topInsetPx = visibleTopBar,
+                bottomInsetPx = visibleBottomBar,
+                lastDirection = lastPageTurnDirection,
+            )
+        }
     }
 
     // 全屏菜单
@@ -1995,6 +2076,13 @@ fun ArticleScreen(
             showComments = showComments && isPagerPageActive,
             onDismiss = { showComments = false },
             content = article,
+        )
+    }
+    segmentCommentTarget?.let { target ->
+        CommentScreenComponent(
+            showComments = isPagerPageActive,
+            onDismiss = { segmentCommentTarget = null },
+            content = target,
         )
     }
     VotersSheet(

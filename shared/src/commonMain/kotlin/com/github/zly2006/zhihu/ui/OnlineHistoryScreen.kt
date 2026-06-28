@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.ui
 
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -42,6 +43,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.navigation.History
 import com.github.zly2006.zhihu.navigation.LocalNavigator
@@ -69,6 +72,7 @@ const val ONLINE_HISTORY_OVERFLOW_TAG = "online_history_overflow"
 fun OnlineHistoryScreen(
     scrollToTopTrigger: Int = 0,
     isActive: Boolean = true,
+    outerBottomPadding: Dp = 0.dp,
 ) {
     val navigator = LocalNavigator.current
     val viewModel: OnlineHistoryViewModel = viewModel { OnlineHistoryViewModel() }
@@ -179,6 +183,7 @@ fun OnlineHistoryScreen(
                     .testTag("online_history_list"),
                 items = viewModel.displayItems,
                 listState = listState,
+                contentPadding = PaddingValues(bottom = outerBottomPadding),
                 onLoadMore = { viewModel.loadMore(paginationEnvironment) },
                 isEnd = { viewModel.isEnd },
             ) { item ->
