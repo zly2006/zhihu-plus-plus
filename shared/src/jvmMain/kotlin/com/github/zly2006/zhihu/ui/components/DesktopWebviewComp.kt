@@ -70,6 +70,7 @@ fun DesktopWebviewComp(
         modifier = modifier,
         factory = {
             JFXPanel().also { jfxPanel ->
+                jfxPanel.enableInputMethods(false)
                 Platform.runLater {
                     val webView = WebView().apply {
                         engine.userAgent = userAgent
@@ -123,8 +124,6 @@ fun DesktopRiskControlWebView(
     cookies: Map<String, String>,
     onCookiesChanged: (Map<String, String>) -> Unit,
 ) {
-    var latestCookies by remember { mutableStateOf(cookies) }
-
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
@@ -135,7 +134,6 @@ fun DesktopRiskControlWebView(
             initialCookies = cookies,
             onPageFinished = {},
             onCookiesChanged = { updatedCookies ->
-                latestCookies = updatedCookies
                 onCookiesChanged(updatedCookies)
             },
         )
