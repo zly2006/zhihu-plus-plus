@@ -58,11 +58,11 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.decodeFromJsonElement
 import kotlin.time.Clock
 
 const val ZHIHU_HOME_URL = "https://www.zhihu.com/"
@@ -77,6 +77,10 @@ private const val QRCODE_URL = "https://www.zhihu.com/api/v3/account/api/login/q
 private const val DESKTOP_SEC_CH_UA = "\"Not:A-Brand\";v=\"99\", \"Google Chrome\";v=\"145\", \"Chromium\";v=\"145\""
 private const val DESKTOP_SEC_CH_UA_MOBILE = "?0"
 private const val DESKTOP_SEC_CH_UA_PLATFORM = "\"Windows\""
+private const val DEFAULT_QR_LOGIN_DEADLINE_MILLIS = 120_000L
+private const val MAX_QR_LOGIN_TTL_SECONDS = 86_400L
+private const val MAX_QR_LOGIN_TTL_MILLIS = MAX_QR_LOGIN_TTL_SECONDS * 1000
+private const val QR_LOGIN_REQUEST_TIMEOUT_MILLIS = 10_000L
 
 @Serializable
 data class ZhihuQrCodeResponse(
@@ -173,18 +177,13 @@ suspend fun pollQrCodeLogin(
         currentCoroutineContext().ensureActive()
 
         try {
-            val response = client.get("$QRCODE_URL/$token/scan_info") {
-                createZhihuLoginHeaders(cookies, ZHIHU_SIGNIN_URL, isPolling = true).forEach { (key, value) ->
-                    header(key, value)
+            val response = withTimeoutOrNull(QR_LOGIN_REQUEST_TIMEOUT_MILLIS) {
+                client.get("$QRCODE_URL/$token/scan_info") {
+                    createZhihuLoginHeaders(cookies, ZHIHU_SIGNIN_URL, isPolling = true).forEach { (key, value) ->
+                        header(key, value)
+                    }
                 }
-            }
-            if (response.status == HttpStatusCode.Forbidden) {
-                onRiskControl(
-                    "知乎限制了当前网络环境的登录请求，请先完成网络环境验证。",
-                    ZHIHU_RISK_CONTROL_URL,
-                )
-                return false
-            }
+            } ?: throw IllegalStateException("二维码登录轮询超时")
             val body = response.bodyAsText()
             val scanInfo = runCatching {
                 decodeZhihuLoginJsonTyped(
@@ -192,6 +191,13 @@ suspend fun pollQrCodeLogin(
                     ZhihuJson.json.parseToJsonElement(body),
                 )
             }.getOrDefault(ZhihuQrScanInfo())
+            if (response.status == HttpStatusCode.Forbidden) {
+                onRiskControl(
+                    scanInfo.error?.message ?: "知乎限制了当前网络环境的登录请求，请先完成网络环境验证。",
+                    scanInfo.error?.redirect ?: ZHIHU_RISK_CONTROL_URL,
+                )
+                return false
+            }
 
             syncCookiesFromScanInfo(cookies, scanInfo)
 
@@ -206,6 +212,10 @@ suspend fun pollQrCodeLogin(
             if (scanInfo.status == 1 && !hasPromptedConfirm) {
                 hasPromptedConfirm = true
                 onScanned()
+            }
+
+            if (isQrLoginExpired(scanInfo)) {
+                return false
             }
 
             val loginSucceeded = isQrLoginSuccessful(scanInfo)
@@ -237,7 +247,6 @@ suspend fun pollQrCodeLogin(
 
 fun createDesktopHeaders(referer: String? = null): MutableMap<String, String> {
     val headers = mutableMapOf(
-        "accept-encoding" to "gzip",
         "Accept" to "application/json, text/plain, */*",
         "Accept-Language" to "en-US,en;q=0.9",
         "User-Agent" to ZHIHU_DESKTOP_USER_AGENT,
@@ -315,6 +324,11 @@ fun isQrLoginSuccessful(scanInfo: ZhihuQrScanInfo): Boolean {
     return loginStatus in setOf("CONFIRMED", "LOGIN_SUCCESS", "SUCCESS", "OK", "LOGGED_IN")
 }
 
+fun isQrLoginExpired(scanInfo: ZhihuQrScanInfo): Boolean {
+    val loginStatus = scanInfo.loginStatus.orEmpty().uppercase()
+    return scanInfo.status == 2 || loginStatus in setOf("EXPIRED", "QR_CODE_EXPIRED", "LOGIN_EXPIRED")
+}
+
 fun isRiskControlResponse(
     statusCode: Int,
     scanInfo: ZhihuQrScanInfo,
@@ -324,10 +338,19 @@ fun isRiskControlResponse(
 }
 
 fun normalizeDeadline(expiresAt: Long?): Long {
+    val now = currentEpochMillis()
     if (expiresAt == null || expiresAt <= 0) {
-        return currentEpochMillis() + 120_000
+        return now + DEFAULT_QR_LOGIN_DEADLINE_MILLIS
     }
-    return if (expiresAt < 10_000_000_000L) {
+    val nowSeconds = now / 1000
+    return if (expiresAt < nowSeconds) {
+        // Zhihu currently returns expires_at as a TTL in the QR flow, despite the field name.
+        when {
+            expiresAt <= MAX_QR_LOGIN_TTL_SECONDS -> now + expiresAt * 1000
+            expiresAt <= MAX_QR_LOGIN_TTL_MILLIS -> now + expiresAt
+            else -> now + DEFAULT_QR_LOGIN_DEADLINE_MILLIS
+        }
+    } else if (expiresAt < 10_000_000_000L) {
         expiresAt * 1000
     } else {
         expiresAt
@@ -380,8 +403,12 @@ fun SharedQrLoginPane(
         isWorking = true
 
         try {
-            prefetchQrLoginContext(client, cookies)
-            val qrCode = requestQrCode(client, cookies)
+            withTimeoutOrNull(QR_LOGIN_REQUEST_TIMEOUT_MILLIS) {
+                prefetchQrLoginContext(client, cookies)
+            } ?: throw IllegalStateException("二维码登录初始化超时，请重试")
+            val qrCode = withTimeoutOrNull(QR_LOGIN_REQUEST_TIMEOUT_MILLIS) {
+                requestQrCode(client, cookies)
+            } ?: throw IllegalStateException("二维码获取超时，请重试")
             sessionCookies = cookies.toMap()
             val qrLink = qrCode.link ?: throw IllegalStateException("知乎没有返回二维码链接")
             val qrToken = qrCode.token ?: qrCode.qrcodeToken ?: throw IllegalStateException("知乎没有返回二维码 token")
@@ -528,6 +555,9 @@ fun SharedQrLoginPane(
         ) {
             OutlinedButton(
                 onClick = {
+                    qrBitmap = null
+                    statusText = "正在刷新二维码"
+                    isWorking = true
                     riskControlUrl = null
                     riskControlMessage = null
                     refreshKey += 1

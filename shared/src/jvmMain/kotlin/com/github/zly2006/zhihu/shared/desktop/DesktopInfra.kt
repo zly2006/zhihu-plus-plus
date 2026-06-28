@@ -16,6 +16,7 @@
  */
 
 package com.github.zly2006.zhihu.shared.desktop
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -45,6 +46,7 @@ import com.github.zly2006.zhihu.shared.login.SharedQrLoginPane
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.DesktopZhihuMain
+import com.github.zly2006.zhihu.ui.components.DesktopRiskControlWebView
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
@@ -260,6 +262,14 @@ fun DesktopQrLoginScreen(
                 onQrReady = {
                     notifyUser("需要扫码登录 JVM 端")
                 },
+                readRiskControlCookies = ::readDesktopRiskControlCookies,
+                riskControlContent = { url, cookies, onCookiesChanged ->
+                    DesktopRiskControlWebView(
+                        url = url,
+                        cookies = cookies,
+                        onCookiesChanged = onCookiesChanged,
+                    )
+                },
             )
         } else {
             Column(
@@ -368,3 +378,7 @@ internal fun openDesktopExternalUrl(url: String): Boolean = runCatching {
 
 internal fun copyDesktopPlainText(text: String) =
     Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
+
+private fun readDesktopRiskControlCookies(
+    @Suppress("UNUSED_PARAMETER") url: String?,
+): Map<String, String> = emptyMap()
