@@ -809,23 +809,6 @@ fun ArticleScreen(
         }
     }
 
-    LaunchedEffect(
-        article.type,
-        article.id,
-        isPagerPageActive,
-        pageOwnsHistory,
-        answerSwitchPagerEnabled,
-        commentsHostedByPager,
-        answerSwitchMode,
-    ) {
-        Log.e(
-            "ZHPP_HISTORY_DEBUG",
-            "ArticleScreen state article=${article.type}:${article.id} active=$isPagerPageActive " +
-                "pageOwnsHistory=$pageOwnsHistory answerSwitchPagerEnabled=$answerSwitchPagerEnabled " +
-                "commentsHostedByPager=$commentsHostedByPager answerSwitchMode=$answerSwitchMode",
-        )
-    }
-
     val useDuo3ArticleActions = remember { articleSettings.useDuo3ArticleActions }
     var buttonSkipAnswer by remember { mutableStateOf(articleSettings.buttonSkipAnswer) }
     var autoHideSkipAnswerButton by remember { mutableStateOf(articleSettings.autoHideSkipAnswerButton) }
@@ -843,19 +826,11 @@ fun ArticleScreen(
     var isBarSnapping by remember { mutableStateOf(false) }
 
     LaunchedEffect(article.type, article.id, isPagerPageActive, pageOwnsHistory) {
-        Log.e(
-            "ZHPP_HISTORY_DEBUG",
-            "ArticleScreen online-history effect article=${article.type}:${article.id} " +
-                "active=$isPagerPageActive pageOwnsHistory=$pageOwnsHistory",
-        )
         if (isPagerPageActive && pageOwnsHistory) {
             environment.addReadHistory(
                 contentToken = article.id.toString(),
                 contentTypeName = article.type.name.lowercase(),
             )
-            Log.e("ZHPP_HISTORY_DEBUG", "ArticleScreen submitted online history article=${article.type}:${article.id}")
-        } else {
-            Log.e("ZHPP_HISTORY_DEBUG", "ArticleScreen skip online history article=${article.type}:${article.id}")
         }
     }
 
@@ -883,18 +858,11 @@ fun ArticleScreen(
     }
 
     LaunchedEffect(article.id, isPagerPageActive, pageOwnsHistory, viewModel.answerOpenRecordRevision) {
-        Log.e(
-            "ZHPP_HISTORY_DEBUG",
-            "ArticleScreen local-history effect article=${article.type}:${article.id} active=$isPagerPageActive " +
-                "pageOwnsHistory=$pageOwnsHistory revision=${viewModel.answerOpenRecordRevision}",
-        )
         if (pageOwnsHistory) {
             viewModel.tryRecordAnswerOpenIfReady(
                 environment = environment,
                 isActive = isPagerPageActive,
             )
-        } else {
-            Log.e("ZHPP_HISTORY_DEBUG", "ArticleScreen skip ViewModel local history article=${article.type}:${article.id}")
         }
     }
 
@@ -1187,11 +1155,6 @@ fun ArticleScreen(
     }
 
     LaunchedEffect(article.id) {
-        Log.e(
-            "ZHPP_HISTORY_DEBUG",
-            "ArticleScreen onCurrentPageReady effect article=${article.type}:${article.id} " +
-                "commentsHostedByPager=$commentsHostedByPager alignNavigatorOnReady=${!commentsHostedByPager}",
-        )
         if (sharedData != null) {
             if (answerSwitchPagerEnabled) {
                 currentAnswerNavigator()?.let { routeNavigator ->

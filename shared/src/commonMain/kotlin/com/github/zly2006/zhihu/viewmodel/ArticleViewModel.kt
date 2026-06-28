@@ -290,11 +290,6 @@ class ArticleViewModel(
         answerOpenRecordReady = destination
         answerOpenQuestionId = questionId?.takeIf { it > 0L }
         answerOpenRecordRevision++
-        Log.e(
-            "ZHPP_HISTORY_DEBUG",
-            "VM mark ready route=${article.type}:${article.id} destination=${destination.type}:${destination.id} " +
-                "title=${destination.title} question=${answerOpenQuestionId} revision=$answerOpenRecordRevision",
-        )
     }
 
     @OptIn(ExperimentalStdlibApi::class)
@@ -302,29 +297,19 @@ class ArticleViewModel(
         environment: ArticleLoadEnvironment,
         isActive: Boolean,
     ) {
-        Log.e(
-            "ZHPP_HISTORY_DEBUG",
-            "VM try record route=${article.type}:${article.id} isActive=$isActive recorded=$answerOpenRecorded " +
-                "ready=${answerOpenRecordReady?.id} question=$answerOpenQuestionId revision=$answerOpenRecordRevision",
-        )
         if (httpClient == null) {
-            Log.e("ZHPP_HISTORY_DEBUG", "VM skip record: httpClient null route=${article.type}:${article.id}")
             return
         }
         if (article.type != ArticleType.Answer) {
-            Log.e("ZHPP_HISTORY_DEBUG", "VM skip record: not answer route=${article.type}:${article.id}")
             return
         }
         if (!isActive) {
-            Log.e("ZHPP_HISTORY_DEBUG", "VM skip record: inactive route=${article.type}:${article.id}")
             return
         }
         if (answerOpenRecorded) {
-            Log.e("ZHPP_HISTORY_DEBUG", "VM skip record: already recorded route=${article.type}:${article.id}")
             return
         }
         val destination = answerOpenRecordReady ?: run {
-            Log.e("ZHPP_HISTORY_DEBUG", "VM skip record: ready null route=${article.type}:${article.id}")
             return
         }
         answerOpenRecorded = true
@@ -338,22 +323,12 @@ class ArticleViewModel(
                     if (resolvedQuestionId != null && resolvedQuestionId > 0L) {
                         questionId = resolvedQuestionId
                     }
-                    Log.e(
-                        "ZHPP_HISTORY_DEBUG",
-                        "VM post history start route=${article.type}:${article.id} destination=${destination.type}:${destination.id} " +
-                            "question=$resolvedQuestionId",
-                    )
                     environment.postHistoryDestination(destination)
                     environment.recordOpenEvent(destination, resolvedQuestionId)
-                    Log.e(
-                        "ZHPP_HISTORY_DEBUG",
-                        "VM post history success route=${article.type}:${article.id} destination=${destination.id}",
-                    )
                 } catch (e: Exception) {
                     answerOpenRecorded = false
                     userMessages.showShortMessage("本地回答记录失败: ${e.message}")
                     Log.e("ArticleViewModel", "Failed to record answer page open", e)
-                    Log.e("ZHPP_HISTORY_DEBUG", "VM post history failed route=${article.type}:${article.id}", e)
                 }
             }
         }
@@ -366,11 +341,6 @@ class ArticleViewModel(
         alignNavigatorOnReady: Boolean = true,
         onReady: () -> Unit = {},
     ) {
-        Log.e(
-            "ZHPP_HISTORY_DEBUG",
-            "VM onCurrentPageReady route=${article.type}:${article.id} warmStart=$warmStart " +
-                "alignNavigatorOnReady=$alignNavigatorOnReady",
-        )
         if (httpClient == null) return
         if (warmStart) {
             viewModelScope.launch {
@@ -407,10 +377,8 @@ class ArticleViewModel(
                         val currentNavigator = currentAnswerNavigator(sharedData)
                         val cachedContent = toCachedContent(sourceLabel = currentNavigator?.sourceName ?: "此问题")
                         if (alignNavigatorOnReady) {
-                            Log.e("ZHPP_HISTORY_DEBUG", "VM warm cache pushAnswer answer=${cachedContent.article.id}")
                             currentNavigator?.pushAnswer(cachedContent)
                         } else {
-                            Log.e("ZHPP_HISTORY_DEBUG", "VM warm cache markNeighborReady answer=${cachedContent.article.id}")
                             currentNavigator?.session?.markNeighborReady(cachedContent)
                         }
                         loadAnswerRelationshipEndorsement(environment)
@@ -436,10 +404,6 @@ class ArticleViewModel(
         alignNavigatorOnReady: Boolean = true,
         onReady: () -> Unit = {},
     ) {
-        Log.e(
-            "ZHPP_HISTORY_DEBUG",
-            "VM loadArticle start route=${article.type}:${article.id} alignNavigatorOnReady=$alignNavigatorOnReady",
-        )
         if (httpClient == null) return
         viewModelScope.launch {
             withContext(Dispatchers.Default) {
@@ -448,11 +412,6 @@ class ArticleViewModel(
                         val sharedData = environment.articleAnswerSwitchState()
                         val answer = environment.fetchContentDetail(article) as? DataHolder.Answer
                         if (answer != null) {
-                            Log.e(
-                                "ZHPP_HISTORY_DEBUG",
-                                "VM loadArticle answer fetched route=${article.id} answer=${answer.id} " +
-                                    "question=${answer.question.id} contentLen=${answer.content.length}",
-                            )
                             exportSourceContent = answer
                             title = answer.question.title
                             authorName = answer.author.name
@@ -510,10 +469,8 @@ class ArticleViewModel(
                             val currentNavigator = currentAnswerNavigator(sharedData)
                             val cachedContent = toCachedContent(sourceLabel = currentNavigator?.sourceName ?: "此问题")
                             if (alignNavigatorOnReady) {
-                                Log.e("ZHPP_HISTORY_DEBUG", "VM cache pushAnswer answer=${cachedContent.article.id}")
                                 currentNavigator?.pushAnswer(cachedContent)
                             } else {
-                                Log.e("ZHPP_HISTORY_DEBUG", "VM cache markNeighborReady answer=${cachedContent.article.id}")
                                 currentNavigator?.session?.markNeighborReady(cachedContent)
                             }
                             loadAnswerRelationshipEndorsement(environment)
