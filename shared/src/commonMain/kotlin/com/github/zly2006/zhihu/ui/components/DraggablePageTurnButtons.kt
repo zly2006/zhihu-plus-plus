@@ -304,8 +304,17 @@ fun PageTurnLazyListEffect(
                     }
                 }
                 when (direction) {
-                    Int.MAX_VALUE -> listState.scrollToItem(listState.layoutInfo.totalItemsCount - 1)
-                    Int.MIN_VALUE -> listState.scrollToItem(0)
+                    Int.MAX_VALUE -> {
+                        val lastIndex = listState.layoutInfo.totalItemsCount - 1
+                        if (lastIndex >= 0) {
+                            listState.scrollToItem(lastIndex)
+                        }
+                    }
+                    Int.MIN_VALUE -> {
+                        if (listState.layoutInfo.totalItemsCount > 0) {
+                            listState.scrollToItem(0)
+                        }
+                    }
                     else -> {
                         val layout = listState.layoutInfo
                         val viewport = layout.viewportEndOffset - layout.viewportStartOffset -
