@@ -242,7 +242,9 @@ open class SharedAndroidPaginationEnvironment(
     override fun localHistory(): List<NavDestination> = HistoryStorage(context).history
 
     override suspend fun postHistoryDestination(destination: NavDestination) {
+        Log.e("ZHPP_HISTORY_DEBUG", "AndroidEnv postHistoryDestination start destination=$destination")
         HistoryStorage(context).add(destination)
+        Log.e("ZHPP_HISTORY_DEBUG", "AndroidEnv postHistoryDestination queued destination=$destination")
     }
 
     override suspend fun isUserBlocked(userId: String): Boolean =
@@ -302,7 +304,15 @@ open class SharedAndroidPaginationEnvironment(
         destination: ArticleDestination,
         questionId: Long?,
     ) {
+        Log.e(
+            "ZHPP_HISTORY_DEBUG",
+            "AndroidEnv recordOpenEvent start destination=$destination question=$questionId",
+        )
         recordContentOpenEvent(destination, questionId)
+        Log.e(
+            "ZHPP_HISTORY_DEBUG",
+            "AndroidEnv recordOpenEvent done destination=$destination question=$questionId",
+        )
     }
 
     override suspend fun applyHomeFeedFilters(items: List<FeedDisplayItem>): HomeFeedFilterResult {

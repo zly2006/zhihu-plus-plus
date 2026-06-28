@@ -168,6 +168,7 @@ abstract class AnswerNavigator(
             createdAt = detail.createdTime,
             updatedAt = detail.updatedTime,
             ipInfo = detail.ipInfo,
+            excerpt = detail.excerpt,
             endorsements = detail.endorsementItems,
             sourceLabel = sourceName,
         )

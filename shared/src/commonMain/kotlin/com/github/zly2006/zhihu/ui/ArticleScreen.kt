@@ -134,6 +134,7 @@ import com.github.zly2006.zhihu.shared.data.ZhihuPaging
 import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
+import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.shared.util.formatCompactCount
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.components.AnswerContentSkeleton
@@ -767,6 +768,8 @@ fun ArticleScreen(
     var answerSwitchMode by remember {
         mutableStateOf(articleSettings.answerSwitchMode)
     }
+    val pageOwnsHistory = !commentsHostedByPager &&
+        !(answerSwitchPagerEnabled && article.type == ArticleType.Answer && answerSwitchMode != "off")
     var answerSwitchSensitivity by remember {
         mutableFloatStateOf(articleSettings.answerSwitchSensitivity)
     }
@@ -806,6 +809,23 @@ fun ArticleScreen(
         }
     }
 
+    LaunchedEffect(
+        article.type,
+        article.id,
+        isPagerPageActive,
+        pageOwnsHistory,
+        answerSwitchPagerEnabled,
+        commentsHostedByPager,
+        answerSwitchMode,
+    ) {
+        Log.e(
+            "ZHPP_HISTORY_DEBUG",
+            "ArticleScreen state article=${article.type}:${article.id} active=$isPagerPageActive " +
+                "pageOwnsHistory=$pageOwnsHistory answerSwitchPagerEnabled=$answerSwitchPagerEnabled " +
+                "commentsHostedByPager=$commentsHostedByPager answerSwitchMode=$answerSwitchMode",
+        )
+    }
+
     val useDuo3ArticleActions = remember { articleSettings.useDuo3ArticleActions }
     var buttonSkipAnswer by remember { mutableStateOf(articleSettings.buttonSkipAnswer) }
     var autoHideSkipAnswerButton by remember { mutableStateOf(articleSettings.autoHideSkipAnswerButton) }
@@ -822,12 +842,20 @@ fun ArticleScreen(
     var previousScrollForBarOffset by remember { mutableIntStateOf(0) }
     var isBarSnapping by remember { mutableStateOf(false) }
 
-    LaunchedEffect(article.type, article.id, isPagerPageActive) {
-        if (isPagerPageActive) {
+    LaunchedEffect(article.type, article.id, isPagerPageActive, pageOwnsHistory) {
+        Log.e(
+            "ZHPP_HISTORY_DEBUG",
+            "ArticleScreen online-history effect article=${article.type}:${article.id} " +
+                "active=$isPagerPageActive pageOwnsHistory=$pageOwnsHistory",
+        )
+        if (isPagerPageActive && pageOwnsHistory) {
             environment.addReadHistory(
                 contentToken = article.id.toString(),
                 contentTypeName = article.type.name.lowercase(),
             )
+            Log.e("ZHPP_HISTORY_DEBUG", "ArticleScreen submitted online history article=${article.type}:${article.id}")
+        } else {
+            Log.e("ZHPP_HISTORY_DEBUG", "ArticleScreen skip online history article=${article.type}:${article.id}")
         }
     }
 
@@ -844,7 +872,7 @@ fun ArticleScreen(
         null
     }
     val effectiveAnswerSessionId = if (article.type == ArticleType.Answer) {
-        remember(article.type, article.id, article.answerSessionId, backStackEntry?.id) {
+        remember(article.type, article.id, article.answerSessionId) {
             article.answerSessionId ?: newAnswerSessionId(article.id)
         }
     } else {
@@ -852,6 +880,22 @@ fun ArticleScreen(
     }
     if (article.type == ArticleType.Answer) {
         viewModel.answerSessionId = effectiveAnswerSessionId
+    }
+
+    LaunchedEffect(article.id, isPagerPageActive, pageOwnsHistory, viewModel.answerOpenRecordRevision) {
+        Log.e(
+            "ZHPP_HISTORY_DEBUG",
+            "ArticleScreen local-history effect article=${article.type}:${article.id} active=$isPagerPageActive " +
+                "pageOwnsHistory=$pageOwnsHistory revision=${viewModel.answerOpenRecordRevision}",
+        )
+        if (pageOwnsHistory) {
+            viewModel.tryRecordAnswerOpenIfReady(
+                environment = environment,
+                isActive = isPagerPageActive,
+            )
+        } else {
+            Log.e("ZHPP_HISTORY_DEBUG", "ArticleScreen skip ViewModel local history article=${article.type}:${article.id}")
+        }
     }
 
     fun currentAnswerNavigator(): AnswerNavigator? =
@@ -1142,7 +1186,12 @@ fun ArticleScreen(
         }
     }
 
-    LaunchedEffect(article.id, backStackEntry?.id) {
+    LaunchedEffect(article.id) {
+        Log.e(
+            "ZHPP_HISTORY_DEBUG",
+            "ArticleScreen onCurrentPageReady effect article=${article.type}:${article.id} " +
+                "commentsHostedByPager=$commentsHostedByPager alignNavigatorOnReady=${!commentsHostedByPager}",
+        )
         if (sharedData != null) {
             if (answerSwitchPagerEnabled) {
                 currentAnswerNavigator()?.let { routeNavigator ->
@@ -1151,20 +1200,26 @@ fun ArticleScreen(
                 sharedData.clearSwitchUiState()
             }
 
-            viewModel.onCurrentPageReady(environment, warmStart = false) {
-                coroutineScope.launch {
-                    delay(350)
-                    withContext(Dispatchers.Default) {
-                        if (isPagerPageActive) {
-                            val paginationInfo = viewModel.currentAnswerPaginationInfo()
-                            val pageNavigator = currentAnswerNavigator()
-                            pageNavigator?.onPageSettled(
-                                article.id,
-                                direction = null,
-                                paginationInfo,
-                            ) { id ->
-                                pageNavigator.prefetchPrevious(id)
-                                pageNavigator.prefetchNext(id)
+            viewModel.onCurrentPageReady(
+                environment = environment,
+                warmStart = false,
+                alignNavigatorOnReady = !commentsHostedByPager,
+            ) {
+                if (!commentsHostedByPager) {
+                    coroutineScope.launch {
+                        delay(350)
+                        withContext(Dispatchers.Default) {
+                            if (isPagerPageActive) {
+                                val paginationInfo = viewModel.currentAnswerPaginationInfo()
+                                val pageNavigator = currentAnswerNavigator()
+                                pageNavigator?.onPageSettled(
+                                    article.id,
+                                    direction = null,
+                                    paginationInfo,
+                                ) { id ->
+                                    pageNavigator.prefetchPrevious(id)
+                                    pageNavigator.prefetchNext(id)
+                                }
                             }
                         }
                     }

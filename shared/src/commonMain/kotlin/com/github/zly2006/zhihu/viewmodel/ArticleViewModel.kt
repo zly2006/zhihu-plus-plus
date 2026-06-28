@@ -184,6 +184,11 @@ class ArticleViewModel(
     private val openedAtEpochSeconds = Clock.System.now().epochSeconds
     private var aiSummaryJob: Job? = null
     private var exportSourceContent: DataHolder.Content? = null
+    private var answerOpenRecordReady: Article? = null
+    private var answerOpenQuestionId: Long? = null
+    private var answerOpenRecorded = false
+    var answerOpenRecordRevision by mutableIntStateOf(0)
+        private set
 
     // scroll fix
     var rememberedScrollY by mutableIntStateOf(0)
@@ -205,6 +210,7 @@ class ArticleViewModel(
         val createdAt: Long = 0L,
         val updatedAt: Long = 0L,
         val ipInfo: String? = null,
+        val excerpt: String? = article.excerpt,
         val endorsements: List<DataHolder.AnswerEndorsementDisplay> = emptyList(),
         /** 来源标签，用于 UI 显示，例如 "此问题"、"「收藏夹名称」" */
         val sourceLabel: String = "此问题",
@@ -226,6 +232,7 @@ class ArticleViewModel(
         createdAt = createdAt,
         updatedAt = updatedAt,
         ipInfo = ipInfo,
+        excerpt = article.excerpt,
         endorsements = endorsements,
         sourceLabel = sourceLabel,
     )
@@ -259,14 +266,111 @@ class ArticleViewModel(
         createdAt = cached.createdAt
         updatedAt = cached.updatedAt
         ipInfo = cached.ipInfo
+        article.excerpt = cached.excerpt
+        if (cached.content.isNotBlank() && cached.article.type == ArticleType.Answer) {
+            markAnswerOpenRecordReady(
+                destination = Article(
+                    id = article.id,
+                    type = ArticleType.Answer,
+                    title = title,
+                    authorName = authorName,
+                    authorBio = authorBio,
+                    avatarSrc = authorAvatarSrc,
+                    excerpt = cached.excerpt,
+                ),
+                questionId = null,
+            )
+        }
+    }
+
+    private fun markAnswerOpenRecordReady(
+        destination: Article,
+        questionId: Long?,
+    ) {
+        answerOpenRecordReady = destination
+        answerOpenQuestionId = questionId?.takeIf { it > 0L }
+        answerOpenRecordRevision++
+        Log.e(
+            "ZHPP_HISTORY_DEBUG",
+            "VM mark ready route=${article.type}:${article.id} destination=${destination.type}:${destination.id} " +
+                "title=${destination.title} question=${answerOpenQuestionId} revision=$answerOpenRecordRevision",
+        )
+    }
+
+    @OptIn(ExperimentalStdlibApi::class)
+    fun tryRecordAnswerOpenIfReady(
+        environment: ArticleLoadEnvironment,
+        isActive: Boolean,
+    ) {
+        Log.e(
+            "ZHPP_HISTORY_DEBUG",
+            "VM try record route=${article.type}:${article.id} isActive=$isActive recorded=$answerOpenRecorded " +
+                "ready=${answerOpenRecordReady?.id} question=$answerOpenQuestionId revision=$answerOpenRecordRevision",
+        )
+        if (httpClient == null) {
+            Log.e("ZHPP_HISTORY_DEBUG", "VM skip record: httpClient null route=${article.type}:${article.id}")
+            return
+        }
+        if (article.type != ArticleType.Answer) {
+            Log.e("ZHPP_HISTORY_DEBUG", "VM skip record: not answer route=${article.type}:${article.id}")
+            return
+        }
+        if (!isActive) {
+            Log.e("ZHPP_HISTORY_DEBUG", "VM skip record: inactive route=${article.type}:${article.id}")
+            return
+        }
+        if (answerOpenRecorded) {
+            Log.e("ZHPP_HISTORY_DEBUG", "VM skip record: already recorded route=${article.type}:${article.id}")
+            return
+        }
+        val destination = answerOpenRecordReady ?: run {
+            Log.e("ZHPP_HISTORY_DEBUG", "VM skip record: ready null route=${article.type}:${article.id}")
+            return
+        }
+        answerOpenRecorded = true
+        viewModelScope.launch {
+            withContext(Dispatchers.Default) {
+                try {
+                    val sharedData = environment.articleAnswerSwitchState()
+                    val resolvedQuestionId = answerOpenQuestionId
+                        ?: questionId.takeIf { it > 0L }
+                        ?: currentAnswerNavigator(sharedData)?.session?.questionId
+                    if (resolvedQuestionId != null && resolvedQuestionId > 0L) {
+                        questionId = resolvedQuestionId
+                    }
+                    Log.e(
+                        "ZHPP_HISTORY_DEBUG",
+                        "VM post history start route=${article.type}:${article.id} destination=${destination.type}:${destination.id} " +
+                            "question=$resolvedQuestionId",
+                    )
+                    environment.postHistoryDestination(destination)
+                    environment.recordOpenEvent(destination, resolvedQuestionId)
+                    Log.e(
+                        "ZHPP_HISTORY_DEBUG",
+                        "VM post history success route=${article.type}:${article.id} destination=${destination.id}",
+                    )
+                } catch (e: Exception) {
+                    answerOpenRecorded = false
+                    userMessages.showShortMessage("本地回答记录失败: ${e.message}")
+                    Log.e("ArticleViewModel", "Failed to record answer page open", e)
+                    Log.e("ZHPP_HISTORY_DEBUG", "VM post history failed route=${article.type}:${article.id}", e)
+                }
+            }
+        }
     }
 
     @OptIn(ExperimentalStdlibApi::class)
     fun onCurrentPageReady(
         environment: ArticleLoadEnvironment,
         warmStart: Boolean,
+        alignNavigatorOnReady: Boolean = true,
         onReady: () -> Unit = {},
     ) {
+        Log.e(
+            "ZHPP_HISTORY_DEBUG",
+            "VM onCurrentPageReady route=${article.type}:${article.id} warmStart=$warmStart " +
+                "alignNavigatorOnReady=$alignNavigatorOnReady",
+        )
         if (httpClient == null) return
         if (warmStart) {
             viewModelScope.launch {
@@ -274,30 +378,41 @@ class ArticleViewModel(
                     try {
                         if (article.type != ArticleType.Answer) return@withContext
                         val sharedData = environment.articleAnswerSwitchState()
-                        environment.postHistoryDestination(
-                            Article(
+                        val resolvedQuestionId = questionId.takeIf { it > 0L }
+                            ?: currentAnswerNavigator(sharedData)?.session?.questionId
+                            ?: 0L
+                        if (resolvedQuestionId > 0L) {
+                            questionId = resolvedQuestionId
+                        }
+                        markAnswerOpenRecordReady(
+                            destination = Article(
                                 id = article.id,
                                 type = ArticleType.Answer,
                                 title = title,
                                 authorName = authorName,
                                 authorBio = authorBio,
                                 avatarSrc = authorAvatarSrc,
-                                excerpt = null,
+                                excerpt = article.excerpt,
                             ),
+                            questionId = resolvedQuestionId,
                         )
-                        environment.recordOpenEvent(article, questionId)
-                        if (currentAnswerNavigator(sharedData) !is CollectionAnswerNavigator) {
+                        if (alignNavigatorOnReady && currentAnswerNavigator(sharedData) !is CollectionAnswerNavigator) {
                             ensureDirectEntryNavigator(
                                 sharedData = sharedData,
                                 answerId = article.id,
-                                questionId = questionId,
+                                questionId = resolvedQuestionId,
                                 environment = environment,
                             )
                         }
                         val currentNavigator = currentAnswerNavigator(sharedData)
-                        currentNavigator?.pushAnswer(
-                            toCachedContent(sourceLabel = currentNavigator.sourceName),
-                        )
+                        val cachedContent = toCachedContent(sourceLabel = currentNavigator?.sourceName ?: "此问题")
+                        if (alignNavigatorOnReady) {
+                            Log.e("ZHPP_HISTORY_DEBUG", "VM warm cache pushAnswer answer=${cachedContent.article.id}")
+                            currentNavigator?.pushAnswer(cachedContent)
+                        } else {
+                            Log.e("ZHPP_HISTORY_DEBUG", "VM warm cache markNeighborReady answer=${cachedContent.article.id}")
+                            currentNavigator?.session?.markNeighborReady(cachedContent)
+                        }
                         loadAnswerRelationshipEndorsement(environment)
                         loadMoreVoters(environment, reset = true)
                     } catch (e: Exception) {
@@ -307,15 +422,24 @@ class ArticleViewModel(
                 onReady()
             }
         } else {
-            loadArticle(environment, onReady)
+            loadArticle(
+                environment = environment,
+                alignNavigatorOnReady = alignNavigatorOnReady,
+                onReady = onReady,
+            )
         }
     }
 
     @OptIn(ExperimentalStdlibApi::class)
     fun loadArticle(
         environment: ArticleLoadEnvironment,
+        alignNavigatorOnReady: Boolean = true,
         onReady: () -> Unit = {},
     ) {
+        Log.e(
+            "ZHPP_HISTORY_DEBUG",
+            "VM loadArticle start route=${article.type}:${article.id} alignNavigatorOnReady=$alignNavigatorOnReady",
+        )
         if (httpClient == null) return
         viewModelScope.launch {
             withContext(Dispatchers.Default) {
@@ -324,6 +448,11 @@ class ArticleViewModel(
                         val sharedData = environment.articleAnswerSwitchState()
                         val answer = environment.fetchContentDetail(article) as? DataHolder.Answer
                         if (answer != null) {
+                            Log.e(
+                                "ZHPP_HISTORY_DEBUG",
+                                "VM loadArticle answer fetched route=${article.id} answer=${answer.id} " +
+                                    "question=${answer.question.id} contentLen=${answer.content.length}",
+                            )
                             exportSourceContent = answer
                             title = answer.question.title
                             authorName = answer.author.name
@@ -353,21 +482,23 @@ class ArticleViewModel(
                             updatedAt = answer.updatedTime
                             createdAt = answer.createdTime
                             ipInfo = answer.ipInfo
+                            article.excerpt = answer.excerpt
                             endorsements = answer.endorsementItems
 
-                            environment.postHistoryDestination(
-                                Article(
-                                    id = answer.id,
-                                    type = ArticleType.Answer,
-                                    title = answer.question.title,
-                                    authorName = answer.author.name,
-                                    authorBio = answer.author.headline,
-                                    avatarSrc = answer.author.avatarUrl,
-                                    excerpt = answer.excerpt,
-                                ),
+                            val historyDestination = Article(
+                                id = answer.id,
+                                type = ArticleType.Answer,
+                                title = answer.question.title,
+                                authorName = answer.author.name,
+                                authorBio = answer.author.headline,
+                                avatarSrc = answer.author.avatarUrl,
+                                excerpt = answer.excerpt,
                             )
-                            environment.recordOpenEvent(article, answer.question.id)
-                            if (currentAnswerNavigator(sharedData) !is CollectionAnswerNavigator) {
+                            markAnswerOpenRecordReady(
+                                destination = historyDestination,
+                                questionId = answer.question.id,
+                            )
+                            if (alignNavigatorOnReady && currentAnswerNavigator(sharedData) !is CollectionAnswerNavigator) {
                                 ensureDirectEntryNavigator(
                                     sharedData = sharedData,
                                     answerId = answer.id,
@@ -377,9 +508,14 @@ class ArticleViewModel(
                                 )
                             }
                             val currentNavigator = currentAnswerNavigator(sharedData)
-                            currentNavigator?.pushAnswer(
-                                toCachedContent(sourceLabel = currentNavigator.sourceName),
-                            )
+                            val cachedContent = toCachedContent(sourceLabel = currentNavigator?.sourceName ?: "此问题")
+                            if (alignNavigatorOnReady) {
+                                Log.e("ZHPP_HISTORY_DEBUG", "VM cache pushAnswer answer=${cachedContent.article.id}")
+                                currentNavigator?.pushAnswer(cachedContent)
+                            } else {
+                                Log.e("ZHPP_HISTORY_DEBUG", "VM cache markNeighborReady answer=${cachedContent.article.id}")
+                                currentNavigator?.session?.markNeighborReady(cachedContent)
+                            }
                             loadAnswerRelationshipEndorsement(environment)
                             loadMoreVoters(environment, reset = true)
                         } else {

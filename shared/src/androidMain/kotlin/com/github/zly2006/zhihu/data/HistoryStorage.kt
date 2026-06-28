@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.data
 
 import android.content.Context
+import android.util.Log
 import androidx.core.content.ContextCompat
 import com.github.zly2006.zhihu.navigation.NavDestination
 import kotlinx.serialization.json.Json
@@ -34,13 +35,20 @@ class HistoryStorage(
     }
 
     fun add(data: NavDestination) {
+        Log.e("ZHPP_HISTORY_DEBUG", "HistoryStorage.add requested data=$data")
         ContextCompat.getMainExecutor(activity).execute {
+            load(replaceExisting = true)
+            Log.e(
+                "ZHPP_HISTORY_DEBUG",
+                "HistoryStorage.add executing data=$data beforeSize=${this._history.size} contains=${data in this._history}",
+            )
             this._history.remove(data)
             this._history[data] = data
             while (this._history.size > 1000) {
                 this._history.remove(this._history.keys.first())
             }
             save()
+            Log.e("ZHPP_HISTORY_DEBUG", "HistoryStorage.add saved data=$data afterSize=${this._history.size}")
         }
     }
 
@@ -48,16 +56,29 @@ class HistoryStorage(
         val json = Json.encodeToString(this._history.values.toList())
         val file = File(activity.filesDir, "history.json")
         file.writeText(json)
+        Log.e(
+            "ZHPP_HISTORY_DEBUG",
+            "HistoryStorage.save file=${file.absolutePath} count=${this._history.size} bytes=${file.length()}",
+        )
     }
 
-    fun load() {
+    fun load(replaceExisting: Boolean = false) {
         val file = File(activity.filesDir, "history.json")
         if (file.exists()) {
             runCatching {
                 val json = file.readText()
                 val data = Json.decodeFromString<List<NavDestination>>(json)
+                if (replaceExisting) {
+                    _history.clear()
+                }
                 data.forEach { _history[it] = it }
+                Log.e(
+                    "ZHPP_HISTORY_DEBUG",
+                    "HistoryStorage.load file=${file.absolutePath} count=${this._history.size} bytes=${file.length()}",
+                )
             }
+        } else {
+            Log.e("ZHPP_HISTORY_DEBUG", "HistoryStorage.load missing file=${file.absolutePath}")
         }
     }
 
