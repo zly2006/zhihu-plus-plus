@@ -35,6 +35,7 @@ class HistoryStorage(
 
     fun add(data: NavDestination) {
         ContextCompat.getMainExecutor(activity).execute {
+            load(replaceExisting = true)
             this._history.remove(data)
             this._history[data] = data
             while (this._history.size > 1000) {
@@ -50,12 +51,15 @@ class HistoryStorage(
         file.writeText(json)
     }
 
-    fun load() {
+    fun load(replaceExisting: Boolean = false) {
         val file = File(activity.filesDir, "history.json")
         if (file.exists()) {
             runCatching {
                 val json = file.readText()
                 val data = Json.decodeFromString<List<NavDestination>>(json)
+                if (replaceExisting) {
+                    _history.clear()
+                }
                 data.forEach { _history[it] = it }
             }
         }

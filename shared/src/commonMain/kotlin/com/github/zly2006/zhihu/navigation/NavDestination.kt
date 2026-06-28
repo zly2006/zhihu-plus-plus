@@ -21,6 +21,7 @@ import com.github.zly2006.zhihu.shared.util.Log
 import io.ktor.http.Url
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlin.random.Random
 
 @Serializable
 sealed interface NavDestination
@@ -199,6 +200,7 @@ data class Article(
     @SerialName("article_type_1")
     val type: ArticleType,
     val id: Long,
+    val answerSessionId: String? = null,
     var authorName: String = "loading...",
     var authorBio: String = "loading...",
     var avatarSrc: String? = null,
@@ -208,6 +210,9 @@ data class Article(
 
     override fun equals(other: Any?): Boolean = other is Article && other.id == id && other.type == type
 }
+
+fun newAnswerSessionId(answerId: Long): String =
+    "answer-$answerId-${Random.nextLong().toString().replace("-", "n")}"
 
 @Serializable
 data class CommentHolder(
