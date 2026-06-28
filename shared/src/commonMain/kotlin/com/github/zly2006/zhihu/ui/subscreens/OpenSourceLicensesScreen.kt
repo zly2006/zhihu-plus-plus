@@ -20,6 +20,8 @@ package com.github.zly2006.zhihu.ui.subscreens
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DataObject
@@ -34,11 +36,14 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.ui.components.PageTurnLazyListEffect
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.mikepenz.aboutlibraries.Libs
@@ -107,6 +112,7 @@ val fullVariantManualLibraries = listOf(
 @Composable
 fun OpenSourceLicensesContent(
     modifier: Modifier = Modifier,
+    lazyListState: LazyListState = rememberLazyListState(),
     contentPadding: PaddingValues,
     manualLibraries: List<ManualLicenseEntry>,
     onOpenUrl: (String) -> Unit,
@@ -114,6 +120,7 @@ fun OpenSourceLicensesContent(
     LibrariesContainer(
         libraries = rememberOpenSourceLicensesLibraries(),
         modifier = modifier,
+        lazyListState = lazyListState,
         contentPadding = contentPadding,
         header = {
             if (manualLibraries.isNotEmpty()) {
@@ -174,7 +181,12 @@ fun OpenSourceLicensesScreen() {
             )
         },
     ) { innerPadding ->
+        val listState = rememberLazyListState()
+        val settings = rememberSettingsStore()
+        val pageTurnPercent = remember { settings.getInt(PREF_PAGE_TURN_PERCENT, DEFAULT_PAGE_TURN_PERCENT) }
+        PageTurnLazyListEffect(listState, pageTurnPercent, topBarState = scrollBehavior.state)
         OpenSourceLicensesContent(
+            lazyListState = listState,
             contentPadding = PaddingValues(16.dp),
             manualLibraries = manualLibraries,
             onOpenUrl = uriHandler::openUri,
