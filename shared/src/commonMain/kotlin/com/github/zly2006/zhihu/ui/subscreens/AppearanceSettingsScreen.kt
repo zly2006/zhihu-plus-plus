@@ -638,6 +638,14 @@ fun AppearanceSettingsScreen(
             // ── 翻页 ───────────────────────────────────────────────────────────
             SettingItemGroup(
                 title = "翻页",
+                header = {
+                    Text(
+                        "适合墨水屏电纸书等无触屏滑动体验的设备。",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    )
+                },
             ) {
                 var pageTurnPercent by remember {
                     mutableIntStateOf(settings.getInt(PREF_PAGE_TURN_PERCENT, DEFAULT_PAGE_TURN_PERCENT))
@@ -665,7 +673,7 @@ fun AppearanceSettingsScreen(
                 }
                 SettingItemWithSwitch(
                     title = { Text("使用音量键翻页") },
-                    description = { Text("按音量键时翻页而非调节音量，适合墨水屏设备。") },
+                    description = { Text("按音量键时翻页而非调节音量。") },
                     checked = volumeKeyPageTurn.value,
                     onCheckedChange = {
                         volumeKeyPageTurn.value = it
