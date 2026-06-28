@@ -26,6 +26,7 @@ import com.github.zly2006.zhihu.shared.util.extractImageUrl
 import com.github.zly2006.zhihu.shared.util.parseSegmentTextParagraph
 import com.github.zly2006.zhihu.ui.components.SegmentedText
 import com.github.zly2006.zhihu.ui.components.segmentedTextStyle
+import com.hrm.markdown.parser.LineRange
 import com.hrm.markdown.parser.MarkdownParser
 import com.hrm.markdown.parser.ast.BlockQuote
 import com.hrm.markdown.parser.ast.ContainerNode
@@ -82,10 +83,22 @@ fun htmlToMdAst(
         document.appendChild(definition)
     }
     parsingDocument = null
+    document.assignStableLineRanges()
     return document
 }
 
 fun markdownToMdAst(markdown: String): Document = MarkdownParser().parse(markdown)
+
+private fun MarkdownNode.assignStableLineRanges(startLine: Int = 0): Int {
+    lineRange = LineRange(startLine, startLine)
+    var nextLine = startLine + 1
+    if (this is ContainerNode) {
+        children.forEach { child ->
+            nextLine = child.assignStableLineRanges(nextLine)
+        }
+    }
+    return nextLine
+}
 
 internal fun Document.previewImageUrls(): List<String> =
     collectPreviewImageUrls()

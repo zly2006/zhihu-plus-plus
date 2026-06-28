@@ -115,6 +115,7 @@ class MainActivity :
     }
 
     val sharedData by viewModels<SharedData>()
+    val pageTurnFlow = kotlinx.coroutines.flow.MutableSharedFlow<Int>(extraBufferCapacity = 1)
     override val articleNavController: NavHostController
         get() = navController
     override val articleAnswerSwitchState: ArticleAnswerSwitchState
@@ -255,9 +256,17 @@ class MainActivity :
 
         setContent {
             navController = rememberNavController()
-            ZhihuTheme {
-                Box(Modifier.semantics { testTagsAsResourceId = true }) {
-                    AndroidZhihuMain(navController = navController)
+            androidx.compose.runtime.CompositionLocalProvider(
+                com.github.zly2006.zhihu.ui.components.LocalPageTurnChannel provides pageTurnFlow,
+            ) {
+                ZhihuTheme {
+                    Box(
+                        Modifier.semantics { testTagsAsResourceId = true },
+                    ) {
+                        AndroidZhihuMain(navController = navController)
+                        com.github.zly2006.zhihu.ui.components
+                            .PageTurnFab()
+                    }
                 }
             }
         }
@@ -384,6 +393,36 @@ class MainActivity :
     override fun onStop() {
         continuousUsageReminderManager.onAppBackground()
         super.onStop()
+    }
+
+    private var longPressConsumed = false
+
+    private fun pageTurnDirection(keyCode: Int): Int? = when (keyCode) {
+        android.view.KeyEvent.KEYCODE_PAGE_DOWN -> 1
+        android.view.KeyEvent.KEYCODE_PAGE_UP -> -1
+        android.view.KeyEvent.KEYCODE_VOLUME_DOWN ->
+            if (androidSettingsStore(this).getBoolean("volumeKeyPageTurn", false)) 1 else null
+        android.view.KeyEvent.KEYCODE_VOLUME_UP ->
+            if (androidSettingsStore(this).getBoolean("volumeKeyPageTurn", false)) -1 else null
+        else -> null
+    }
+
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        val direction = pageTurnDirection(event.keyCode) ?: return super.dispatchKeyEvent(event)
+        if (event.action == android.view.KeyEvent.ACTION_DOWN) {
+            if (event.isLongPress) {
+                longPressConsumed = true
+                pageTurnFlow.tryEmit(if (direction > 0) Int.MAX_VALUE else Int.MIN_VALUE)
+            } else if (event.repeatCount == 0) {
+                longPressConsumed = false
+            }
+        } else if (event.action == android.view.KeyEvent.ACTION_UP) {
+            if (!longPressConsumed) {
+                pageTurnFlow.tryEmit(direction)
+            }
+            longPressConsumed = false
+        }
+        return true
     }
 
     override val developerRuntimeInfo: DeveloperRuntimeInfo

@@ -27,6 +27,7 @@ import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -92,6 +93,13 @@ fun CommentScreenComponent(
         onDismiss()
     }
 
+    val childSheetVisible = showComments && activeChildComment != null && childTarget != null
+
+    DisposableEffect(showComments) {
+        if (showComments) pageTurnModalDepth.intValue++
+        onDispose { if (showComments) pageTurnModalDepth.intValue-- }
+    }
+
     if (showComments) {
         MyModalBottomSheet(
             onDismissRequest = { dismissRootComments() },
@@ -102,17 +110,22 @@ fun CommentScreenComponent(
                 shouldDismissOnClickOutside = true,
             ),
             dragHandle = { DragHandleTitle("评论") },
-            usePlatformWindow = content !is Article,
+            usePlatformWindow = false,
         ) {
             CommentScreen(
                 content = { content },
                 onChildCommentClick = { activeChildComment = it },
                 listState = rootListState,
+                skipPageTurn = childSheetVisible,
             )
         }
     }
+    DisposableEffect(childSheetVisible) {
+        if (childSheetVisible) pageTurnModalDepth.intValue++
+        onDispose { if (childSheetVisible) pageTurnModalDepth.intValue-- }
+    }
 
-    if (showComments && activeChildComment != null && childTarget != null) {
+    if (childSheetVisible) {
         MyModalBottomSheet(
             onDismissRequest = { activeChildComment = null },
             sheetState = childSheetState,
@@ -122,7 +135,7 @@ fun CommentScreenComponent(
                 shouldDismissOnClickOutside = true,
             ),
             dragHandle = { DragHandleTitle("回复") },
-            usePlatformWindow = childTarget.article !is Article,
+            usePlatformWindow = false,
         ) {
             CommentScreen(
                 content = { childTarget },

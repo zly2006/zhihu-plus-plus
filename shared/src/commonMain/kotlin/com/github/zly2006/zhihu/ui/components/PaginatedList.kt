@@ -41,6 +41,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_PAGE_TURN_PERCENT
+import com.github.zly2006.zhihu.ui.subscreens.PREF_PAGE_TURN_PERCENT
+import com.github.zly2006.zhihu.ui.subscreens.PREF_SHOW_PAGE_TURN_GUIDE
 import kotlinx.coroutines.delay
 
 val ProgressIndicatorFooter: @Composable (LazyListState) -> Unit = { state ->
@@ -123,6 +127,16 @@ fun <T> PaginatedList(
     topContent: LazyListScope.() -> Unit = {},
     itemContent: @Composable LazyItemScope.(T) -> Unit,
 ) {
+    val settings = rememberSettingsStore()
+    val pageTurnPercent = remember { settings.getInt(PREF_PAGE_TURN_PERCENT, DEFAULT_PAGE_TURN_PERCENT) }
+    val showPageTurnGuide = remember { settings.getBoolean(PREF_SHOW_PAGE_TURN_GUIDE, false) }
+    val guideState = remember { PageTurnGuideState() }
+    PageTurnLazyListEffect(listState, pageTurnPercent, guideState)
+
+    if (showPageTurnGuide && guideState.lastDirection != 0 && listState.isScrollInProgress && !guideState.isScrolling) {
+        guideState.lastDirection = 0
+    }
+
     val shouldLoadMore by remember {
         derivedStateOf {
             val layoutInfo = listState.layoutInfo
@@ -144,40 +158,51 @@ fun <T> PaginatedList(
         }
     }
 
-    LazyColumn(
-        state = listState,
-        modifier = modifier,
-        contentPadding = contentPadding,
-    ) {
-        topContent(this)
+    Box {
+        LazyColumn(
+            state = listState,
+            modifier = modifier,
+            contentPadding = contentPadding,
+        ) {
+            topContent(this)
 
-        if (key != null) {
-            val itemKeys = uniquePaginatedListKeys(items, key)
-            itemsIndexed(items, key = { index, _ -> itemKeys[index] }) { _, item ->
-                PaginatedListItem(item, itemContent)
+            if (key != null) {
+                val itemKeys = uniquePaginatedListKeys(items, key)
+                itemsIndexed(items, key = { index, _ -> itemKeys[index] }) { _, item ->
+                    PaginatedListItem(item, itemContent)
+                }
+            } else {
+                items(items) { item ->
+                    PaginatedListItem(item, itemContent)
+                }
             }
-        } else {
-            items(items) { item ->
-                PaginatedListItem(item, itemContent)
+
+            item {
+                if (isEnd()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "已经到底啦",
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                } else {
+                    footer?.invoke(listState)
+                }
             }
         }
 
-        item {
-            if (isEnd()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = "已经到底啦",
-                        textAlign = TextAlign.Center,
-                    )
-                }
-            } else {
-                footer?.invoke(listState)
-            }
+        if (showPageTurnGuide) {
+            PageTurnGuideOverlay(
+                pageTurnPercent,
+                topInsetPx = listState.layoutInfo.beforeContentPadding.toFloat(),
+                bottomInsetPx = listState.layoutInfo.afterContentPadding.toFloat(),
+                lastDirection = guideState.lastDirection,
+            )
         }
     }
 }
