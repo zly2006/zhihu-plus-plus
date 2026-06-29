@@ -65,8 +65,10 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_FAB_OPACITY
+import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_FAB_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_PAGE_TURN_PERCENT
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FAB_OPACITY
+import com.github.zly2006.zhihu.ui.subscreens.PREF_FAB_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_PAGE_TURN_PERCENT
 import com.github.zly2006.zhihu.ui.subscreens.PREF_SHOW_PAGE_TURN_FAB
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -91,6 +93,9 @@ val pageTurnFabVisible = androidx.compose.runtime.mutableStateOf(false)
 /** 所有悬浮按钮的透明度百分比（10–100），由设置页写入，各 FAB 读取。 */
 val fabOpacityPercent = androidx.compose.runtime.mutableIntStateOf(100)
 
+/** 所有悬浮按钮的大小百分比（50–150），由设置页写入，各 FAB 读取。默认 100 对应 56dp。 */
+val fabSizePercent = androidx.compose.runtime.mutableIntStateOf(100)
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DraggablePageTurnButtons(
@@ -107,8 +112,10 @@ fun DraggablePageTurnButtons(
 
     var pressing by remember { mutableStateOf(false) }
 
-    val buttonSize = 40.dp
-    val columnHeight = buttonSize * 2 + 4.dp
+    val baseFabSize = 56.dp
+    val buttonSize = baseFabSize * fabSizePercent.intValue / 100
+    val gap = 4.dp
+    val columnHeight = buttonSize * 2 + gap
     val defaultY = with(density) { screenSize.height - columnHeight.toPx() - 80.dp.toPx() }
     var offsetX by remember { mutableFloatStateOf(settings.getFloat("$preferenceName-x", 0f)) }
     var offsetY by remember { mutableFloatStateOf(settings.getFloat("$preferenceName-y", defaultY)) }
@@ -178,7 +185,7 @@ fun DraggablePageTurnButtons(
                 Icon(Icons.Default.KeyboardArrowUp, contentDescription = "上翻页", tint = iconTint)
             }
         }
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(gap))
         Surface(
             shape = CircleShape,
             color = fabColor,
@@ -211,6 +218,7 @@ fun PageTurnFab(
     LaunchedEffect(Unit) {
         pageTurnFabVisible.value = settings.getBoolean(PREF_SHOW_PAGE_TURN_FAB, false)
         fabOpacityPercent.intValue = settings.getInt(PREF_FAB_OPACITY, DEFAULT_FAB_OPACITY).coerceIn(10, 100)
+        fabSizePercent.intValue = settings.getInt(PREF_FAB_SIZE, DEFAULT_FAB_SIZE).coerceIn(50, 150)
     }
     if (!pageTurnFabVisible.value) return
     val channel = LocalPageTurnChannel.current

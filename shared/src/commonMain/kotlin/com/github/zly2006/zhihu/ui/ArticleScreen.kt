@@ -1847,7 +1847,19 @@ fun ArticleScreen(
                                         )
                                     }
                                 }
-                                Spacer(modifier = Modifier.height((16 + 36).dp))
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 12.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(
+                                        "— · —",
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                        fontSize = 14.sp,
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(36.dp))
                             } else {
                                 RenderMarkdown(
                                     html = viewModel.content,
@@ -1872,7 +1884,19 @@ fun ArticleScreen(
                                                 )
                                             }
                                         }
-                                        Spacer(modifier = Modifier.height((16 + 36).dp))
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 12.dp),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Text(
+                                                "— · —",
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                                fontSize = 14.sp,
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.height(36.dp))
                                     },
                                     onOpenSegmentComment = { segmentCommentTarget = it },
                                 )
