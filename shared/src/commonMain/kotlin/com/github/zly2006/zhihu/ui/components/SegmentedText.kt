@@ -17,12 +17,17 @@
 
 package com.github.zly2006.zhihu.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material.icons.filled.ThumbUp
@@ -45,6 +50,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Rect
@@ -55,6 +61,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.LinkInteractionListener
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextLinkStyles
@@ -87,6 +95,8 @@ import kotlinx.serialization.json.put
  * 如果它直接从这个子树里打开底部弹窗或评论弹窗，Compose 文本选择工具栏可能会跨弹窗窗口换算坐标，
  * 触发 `IllegalArgumentException: layouts are not part of the same hierarchy`。
  */
+private const val COMMENT_BADGE_ID = "comment_badge"
+
 internal val LocalSegmentCommentHost = staticCompositionLocalOf<(SegmentCommentHolder) -> Unit> {
     error("LocalSegmentCommentHost is not provided")
 }
@@ -182,6 +192,12 @@ fun SegmentedText(
     val showSegmentActionSheet = LocalSegmentActionSheetHost.current
 
     val onHighlightClick = remember(parts) { { highlight: SegmentHighlightSpan -> selectedHighlight = highlight } }
+    val onBadgeClick = remember(parts) {
+        { highlight: SegmentHighlightSpan ->
+            highlight.toSegmentCommentHolder()?.let { openSegmentComments(it) }
+            Unit
+        }
+    }
 
     SegmentTextRenderer(
         parts = parts,
@@ -190,6 +206,7 @@ fun SegmentedText(
         overflow = overflow,
         style = style,
         onHighlightClick = onHighlightClick,
+        onBadgeClick = onBadgeClick,
     )
 
     val selected = selectedHighlight
@@ -256,10 +273,17 @@ private fun SegmentTextRenderer(
     overflow: TextOverflow,
     style: TextStyle,
     onHighlightClick: (SegmentHighlightSpan) -> Unit,
+    onBadgeClick: (SegmentHighlightSpan) -> Unit,
 ) {
     val highlightTextColor = MaterialTheme.colorScheme.onSurface
+    val commentCountColor = MaterialTheme.colorScheme.primary
     val highlightUnderlineColor = MaterialTheme.colorScheme.outlineVariant
     var textLayoutResult by remember(parts) { mutableStateOf<TextLayoutResult?>(null) }
+
+    val scale = style.fontSize.value / 16f
+    val badgeIconDp = (16 * scale).dp
+    val badgeFontSp = (12 * scale).sp
+    val badgeHeight = (16 * scale).sp
 
     val annotatedText = remember(parts, highlightTextColor, onHighlightClick) {
         buildSegmentAnnotatedText(
@@ -269,8 +293,53 @@ private fun SegmentTextRenderer(
         )
     }
 
+    val commentBadgeContent = remember(parts, commentCountColor, scale, onBadgeClick) {
+        buildMap {
+            parts.forEachIndexed { index, part ->
+                val highlight = part.highlight ?: return@forEachIndexed
+                if (highlight.meta.commentCount <= 0) return@forEachIndexed
+                val digits = highlight.meta.commentCount
+                    .toString()
+                    .length
+                val badgeWidth = ((18 + 8 * digits) * scale).sp
+                put(
+                    "${COMMENT_BADGE_ID}_$index",
+                    InlineTextContent(
+                        placeholder = Placeholder(
+                            width = badgeWidth,
+                            height = badgeHeight,
+                            placeholderVerticalAlign = PlaceholderVerticalAlign.TextCenter,
+                        ),
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxSize().clickable(
+                                interactionSource = null,
+                                indication = null,
+                            ) { onBadgeClick(highlight) },
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.Comment,
+                                contentDescription = null,
+                                modifier = Modifier.size(badgeIconDp),
+                                tint = commentCountColor,
+                            )
+                            Text(
+                                text = highlight.meta.commentCount.toString(),
+                                color = commentCountColor,
+                                fontSize = badgeFontSp,
+                                lineHeight = badgeFontSp,
+                            )
+                        }
+                    },
+                )
+            }
+        }
+    }
+
     BasicText(
         text = annotatedText,
+        inlineContent = commentBadgeContent,
         modifier = modifier.drawBehind {
             val layout = textLayoutResult ?: return@drawBehind
             val strokeWidth = 1.dp.toPx()
@@ -373,7 +442,7 @@ private fun buildSegmentAnnotatedText(
     highlightTextColor: androidx.compose.ui.graphics.Color,
     onHighlightClick: (SegmentHighlightSpan) -> Unit,
 ): AnnotatedString = buildAnnotatedString {
-    parts.forEach { part ->
+    parts.forEachIndexed { index, part ->
         val highlight = part.highlight
         if (highlight == null) {
             append(part.text)
@@ -386,6 +455,10 @@ private fun buildSegmentAnnotatedText(
                 ),
             ) {
                 append(part.text)
+            }
+            if (highlight.meta.commentCount > 0) {
+                val badgeKey = "${COMMENT_BADGE_ID}_$index"
+                appendInlineContent(badgeKey, index.toString())
             }
         }
     }

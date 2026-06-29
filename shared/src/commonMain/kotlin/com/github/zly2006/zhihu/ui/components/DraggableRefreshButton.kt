@@ -21,6 +21,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
@@ -64,13 +65,14 @@ fun DraggableRefreshButton(
     val screenSize = LocalWindowInfo.current.containerSize
     val settings = rememberSettingsStore()
 
+    val fabSize = 56.dp * fabSizePercent.intValue / 100
     var offsetX by remember { mutableFloatStateOf(settings.getFloat("$preferenceName-x", Float.MAX_VALUE)) }
     var offsetY by remember { mutableFloatStateOf(settings.getFloat("$preferenceName-y", Float.MAX_VALUE)) }
     var pressing by remember { mutableStateOf(false) }
 
     fun adjustFabPosition() {
         with(density) {
-            offsetX = offsetX.coerceIn(0f, screenSize.width - 56.dp.toPx())
+            offsetX = offsetX.coerceIn(0f, screenSize.width - fabSize.toPx())
             offsetY = offsetY.coerceIn(0f, screenSize.height - 250.dp.toPx())
         }
     }
@@ -101,6 +103,7 @@ fun DraggableRefreshButton(
             FloatingActionButtonDefaults.elevation()
         },
         modifier = modifier
+            .size(fabSize)
             .offset { IntOffset(animatedOffsetX.roundToInt(), animatedOffsetY.roundToInt()) }
             .pointerInput(Unit) {
                 detectDragGestures(
@@ -117,7 +120,7 @@ fun DraggableRefreshButton(
                                 if (offsetX < screenWidth / 2) {
                                     0f
                                 } else {
-                                    screenWidth - 56.dp.toPx()
+                                    screenWidth - fabSize.toPx()
                                 }
                         }
                         settings.putFloat("$preferenceName-x", offsetX)
