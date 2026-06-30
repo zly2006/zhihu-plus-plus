@@ -140,6 +140,7 @@ import com.github.zly2006.zhihu.ui.components.PageTurnLazyListEffect
 import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_PAGE_TURN_PERCENT
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
+import com.github.zly2006.zhihu.ui.subscreens.PREF_PAGE_TURN_FILL_LAST_PAGE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_PAGE_TURN_PERCENT
 import com.github.zly2006.zhihu.ui.subscreens.PREF_SHOW_PAGE_TURN_GUIDE
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
@@ -483,6 +484,7 @@ fun CommentScreen(
     val pageKeySettings = rememberSettingsStore()
     val pageTurnPercent = remember { pageKeySettings.getInt(PREF_PAGE_TURN_PERCENT, DEFAULT_PAGE_TURN_PERCENT) }
     val showPageTurnGuide = remember { pageKeySettings.getBoolean(PREF_SHOW_PAGE_TURN_GUIDE, false) }
+    val fillLastPage = remember { pageKeySettings.getBoolean(PREF_PAGE_TURN_FILL_LAST_PAGE, false) }
     val guideState = remember { PageTurnGuideState() }
     PageTurnLazyListEffect(listState, pageTurnPercent, guideState, skip = skipPageTurn)
 
@@ -820,6 +822,21 @@ fun CommentScreen(
                                                 "— · —",
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                                                 fontSize = 14.sp,
+                                            )
+                                        }
+                                    }
+                                    if (fillLastPage && (listState.canScrollForward || listState.canScrollBackward)) {
+                                        item(key = "page_turn_bottom_spacer") {
+                                            val d = LocalDensity.current
+                                            val viewport = listState.layoutInfo.let {
+                                                it.viewportEndOffset - it.viewportStartOffset
+                                            }
+                                            Spacer(
+                                                modifier = Modifier.height(
+                                                    with(d) {
+                                                        (viewport * pageTurnPercent / 100).toDp()
+                                                    },
+                                                ),
                                             )
                                         }
                                     }
