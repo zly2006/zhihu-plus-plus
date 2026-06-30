@@ -129,6 +129,7 @@ const val DEFAULT_PAGE_TURN_PERCENT = 90
 const val PREF_VOLUME_KEY_PAGE_TURN = "volumeKeyPageTurn"
 const val PREF_SHOW_PAGE_TURN_FAB = "showPageTurnFab"
 const val PREF_SHOW_PAGE_TURN_GUIDE = "showPageTurnGuide"
+const val PREF_PAGE_TURN_FILL_LAST_PAGE = "pageTurnFillLastPage"
 const val PREF_FAB_SIZE = "fabSize"
 const val DEFAULT_FAB_SIZE = 100
 const val PREF_FAB_OPACITY = "fabOpacity"
@@ -693,6 +694,9 @@ fun AppearanceSettingsScreen(
                     },
                 )
 
+                val fillLastPage = remember {
+                    mutableStateOf(settings.getBoolean(PREF_PAGE_TURN_FILL_LAST_PAGE, false))
+                }
                 val volumeKeyPageTurn = remember {
                     mutableStateOf(settings.getBoolean(PREF_VOLUME_KEY_PAGE_TURN, false))
                 }
@@ -703,6 +707,10 @@ fun AppearanceSettingsScreen(
                     onCheckedChange = {
                         volumeKeyPageTurn.value = it
                         settings.putBoolean(PREF_VOLUME_KEY_PAGE_TURN, it)
+                        if (!it && !pageTurnFabVisible.value) {
+                            fillLastPage.value = false
+                            settings.putBoolean(PREF_PAGE_TURN_FILL_LAST_PAGE, false)
+                        }
                     },
                 )
 
@@ -713,6 +721,10 @@ fun AppearanceSettingsScreen(
                     onCheckedChange = {
                         pageTurnFabVisible.value = it
                         settings.putBoolean(PREF_SHOW_PAGE_TURN_FAB, it)
+                        if (!it && !volumeKeyPageTurn.value) {
+                            fillLastPage.value = false
+                            settings.putBoolean(PREF_PAGE_TURN_FILL_LAST_PAGE, false)
+                        }
                     },
                 )
 
@@ -728,6 +740,17 @@ fun AppearanceSettingsScreen(
                         settings.putBoolean(PREF_SHOW_PAGE_TURN_GUIDE, it)
                     },
                 )
+                if (volumeKeyPageTurn.value || pageTurnFabVisible.value) {
+                    SettingItemWithSwitch(
+                        title = { Text("末页补全空白") },
+                        description = { Text("剩余内容不足一页时，在底部补足空白，确保最后一次翻页完整。") },
+                        checked = fillLastPage.value,
+                        onCheckedChange = {
+                            fillLastPage.value = it
+                            settings.putBoolean(PREF_PAGE_TURN_FILL_LAST_PAGE, it)
+                        },
+                    )
+                }
             }
 
             // ── 信息流 ──────────────────────────────────────────────────────────

@@ -156,6 +156,7 @@ import com.github.zly2006.zhihu.ui.components.pageTurnModalDepth
 import com.github.zly2006.zhihu.ui.components.rememberPreferCollapsedExitUntilCollapsedScrollBehavior
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_PAGE_TURN_PERCENT
+import com.github.zly2006.zhihu.ui.subscreens.PREF_PAGE_TURN_FILL_LAST_PAGE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_PAGE_TURN_PERCENT
 import com.github.zly2006.zhihu.ui.subscreens.PREF_SHOW_PAGE_TURN_GUIDE
 import com.github.zly2006.zhihu.util.smoothGradient
@@ -788,6 +789,7 @@ fun ArticleScreen(
     val pageKeySettings = rememberSettingsStore()
     val pageTurnPercent = remember { pageKeySettings.getInt(PREF_PAGE_TURN_PERCENT, DEFAULT_PAGE_TURN_PERCENT) }
     val showPageTurnGuide = remember { pageKeySettings.getBoolean(PREF_SHOW_PAGE_TURN_GUIDE, false) }
+    val fillLastPage = remember { pageKeySettings.getBoolean(PREF_PAGE_TURN_FILL_LAST_PAGE, false) }
 
     if (showPageTurnGuide && lastPageTurnDirection != 0 && scrollState.isScrollInProgress && !isPageTurnScrolling) {
         lastPageTurnDirection = 0
@@ -1860,6 +1862,15 @@ fun ArticleScreen(
                                     )
                                 }
                                 Spacer(modifier = Modifier.height(36.dp))
+                                if (fillLastPage && scrollState.maxValue > 0) {
+                                    Spacer(
+                                        modifier = Modifier.height(
+                                            with(density) {
+                                                (pageKeyViewportHeight * pageTurnPercent / 100).toDp()
+                                            },
+                                        ),
+                                    )
+                                }
                             } else {
                                 RenderMarkdown(
                                     html = viewModel.content,
@@ -1897,6 +1908,15 @@ fun ArticleScreen(
                                             )
                                         }
                                         Spacer(modifier = Modifier.height(36.dp))
+                                        if (fillLastPage && scrollState.maxValue > 0) {
+                                            Spacer(
+                                                modifier = Modifier.height(
+                                                    with(density) {
+                                                        (pageKeyViewportHeight * pageTurnPercent / 100).toDp()
+                                                    },
+                                                ),
+                                            )
+                                        }
                                     },
                                     onOpenSegmentComment = { segmentCommentTarget = it },
                                 )
