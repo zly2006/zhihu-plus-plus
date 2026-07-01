@@ -93,6 +93,8 @@ import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
+import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
+import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
 import com.github.zly2006.zhihu.viewmodel.ContentLoadEnvironment
 import com.github.zly2006.zhihu.viewmodel.addReadHistory
 import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
@@ -279,13 +281,20 @@ fun QuestionScreen(
                                         enter = fadeIn() + expandVertically(expandFrom = Alignment.Top),
                                         exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top),
                                     ) {
+                                        val fontSizePercent = remember {
+                                            settings.getInt(PREF_FONT_SIZE, 100)
+                                        }
+                                        val lineHeightPercent = remember {
+                                            settings.getInt(PREF_LINE_HEIGHT, 160)
+                                        }
                                         Text(
                                             text = questionContentPreview,
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .padding(top = 10.dp)
                                                 .testTag(QUESTION_DETAIL_PREVIEW_TAG),
-                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontSize = 16.sp * fontSizePercent / 100,
+                                            lineHeight = 16.sp * fontSizePercent / 100 * lineHeightPercent / 100,
                                             maxLines = 3,
                                             overflow = TextOverflow.Ellipsis,
                                         )
