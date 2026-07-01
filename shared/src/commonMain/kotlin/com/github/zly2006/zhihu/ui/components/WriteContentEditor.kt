@@ -17,6 +17,11 @@
 
 package com.github.zly2006.zhihu.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,15 +34,23 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
@@ -124,6 +137,17 @@ fun WriteContentFabColumn(
     onSave: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var expanded by rememberSaveable { mutableStateOf(true) }
+    val opacityFraction = fabOpacityPercent.intValue / 100f
+    val enabledContainer = MaterialTheme.colorScheme.primaryContainer.copy(alpha = opacityFraction)
+    val disabledContainer = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = opacityFraction)
+    val enabledContent = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = opacityFraction)
+    val disabledContent = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = opacityFraction)
+    val fabElevation = if (opacityFraction < 1f) {
+        FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
+    } else {
+        FloatingActionButtonDefaults.elevation()
+    }
     Column(
         modifier =
             modifier
@@ -132,80 +156,73 @@ fun WriteContentFabColumn(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalAlignment = Alignment.End,
     ) {
-        ExtendedFloatingActionButton(
-            onClick = { if (previewEnabled) onPreview() },
-            containerColor =
-                if (previewEnabled) {
-                    MaterialTheme.colorScheme.primaryContainer
-                } else {
-                    MaterialTheme.colorScheme.surfaceVariant
-                },
-            contentColor =
-                if (previewEnabled) {
-                    MaterialTheme.colorScheme.onPrimaryContainer
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
-            modifier = Modifier.testTag(previewTag),
-            icon = {
-                Icon(Icons.Filled.Visibility, contentDescription = "预览")
-            },
-            text = {
-                Text("预览")
-            },
-        )
-        if (showImageButton) {
-            ExtendedFloatingActionButton(
-                onClick = { if (imageEnabled) onImage() },
-                containerColor =
-                    if (imageEnabled) {
-                        MaterialTheme.colorScheme.primaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.surfaceVariant
+        val enterTransition = expandVertically(expandFrom = Alignment.Bottom) + fadeIn()
+        val exitTransition = shrinkVertically(shrinkTowards = Alignment.Bottom) + fadeOut()
+        AnimatedVisibility(visible = expanded, enter = enterTransition, exit = exitTransition) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalAlignment = Alignment.End,
+            ) {
+                ExtendedFloatingActionButton(
+                    onClick = { if (previewEnabled) onPreview() },
+                    containerColor = if (previewEnabled) enabledContainer else disabledContainer,
+                    contentColor = if (previewEnabled) enabledContent else disabledContent,
+                    elevation = fabElevation,
+                    modifier = Modifier.testTag(previewTag),
+                    icon = {
+                        Icon(Icons.Filled.Visibility, contentDescription = "预览")
                     },
-                contentColor =
-                    if (imageEnabled) {
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
+                    text = {
+                        Text("预览")
                     },
-                modifier = Modifier.testTag(imageTag),
-                icon = {
-                    if (isUploadingImage) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            strokeWidth = 2.dp,
-                        )
-                    } else {
-                        Icon(Icons.Filled.Image, contentDescription = "插入图片")
-                    }
-                },
-                text = {
-                    Text("图片")
-                },
+                )
+                if (showImageButton) {
+                    ExtendedFloatingActionButton(
+                        onClick = { if (imageEnabled) onImage() },
+                        containerColor = if (imageEnabled) enabledContainer else disabledContainer,
+                        contentColor = if (imageEnabled) enabledContent else disabledContent,
+                        elevation = fabElevation,
+                        modifier = Modifier.testTag(imageTag),
+                        icon = {
+                            if (isUploadingImage) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp,
+                                )
+                            } else {
+                                Icon(Icons.Filled.Image, contentDescription = "插入图片")
+                            }
+                        },
+                        text = {
+                            Text("图片")
+                        },
+                    )
+                }
+                ExtendedFloatingActionButton(
+                    onClick = { if (saveEnabled) onSave() },
+                    containerColor = if (saveEnabled) enabledContainer else disabledContainer,
+                    contentColor = if (saveEnabled) enabledContent else disabledContent,
+                    elevation = fabElevation,
+                    modifier = Modifier.testTag(saveTag),
+                    icon = {
+                        Icon(Icons.Filled.Save, contentDescription = "保存草稿")
+                    },
+                    text = {
+                        Text("草稿")
+                    },
+                )
+            }
+        }
+        SmallFloatingActionButton(
+            onClick = { expanded = !expanded },
+            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = opacityFraction),
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = opacityFraction),
+            elevation = fabElevation,
+        ) {
+            Icon(
+                imageVector = if (expanded) Icons.Filled.Close else Icons.Filled.Add,
+                contentDescription = if (expanded) "收起" else "展开",
             )
         }
-        ExtendedFloatingActionButton(
-            onClick = { if (saveEnabled) onSave() },
-            containerColor =
-                if (saveEnabled) {
-                    MaterialTheme.colorScheme.primaryContainer
-                } else {
-                    MaterialTheme.colorScheme.surfaceVariant
-                },
-            contentColor =
-                if (saveEnabled) {
-                    MaterialTheme.colorScheme.onPrimaryContainer
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
-            modifier = Modifier.testTag(saveTag),
-            icon = {
-                Icon(Icons.Filled.Save, contentDescription = "保存草稿")
-            },
-            text = {
-                Text("草稿")
-            },
-        )
     }
 }
