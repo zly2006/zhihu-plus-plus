@@ -622,29 +622,31 @@ fun CommentScreen(
                                                     )
                                                 }
                                             }
-                                            Button(
-                                                onClick = { onChildCommentClick(commentItem) },
-                                                modifier = Modifier
-                                                    .height(28.dp)
-                                                    .testTag("comment_child_button_${commentItem.item.id}"),
-                                                shape = RoundedCornerShape(50),
-                                                colors = ButtonDefaults.buttonColors(
-                                                    containerColor = actionChipColor,
-                                                    contentColor = MaterialTheme.colorScheme.onSurface,
-                                                ),
-                                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                                            ) {
-                                                Icon(
-                                                    Icons.AutoMirrored.Outlined.Comment,
-                                                    contentDescription = "查看子评论",
-                                                    modifier = Modifier.size(16.dp),
-                                                    tint = actionChipIconColor,
-                                                )
-                                                Text(
-                                                    "查看 ${commentItem.item.childCommentCount} 条子评论",
-                                                    fontSize = 12.sp,
-                                                    modifier = Modifier.padding(vertical = 1.dp, horizontal = 4.dp),
-                                                )
+                                            if (commentItem.item.childCommentCount > commentItem.item.childComments.size) {
+                                                Button(
+                                                    onClick = { onChildCommentClick(commentItem) },
+                                                    modifier = Modifier
+                                                        .height(28.dp)
+                                                        .testTag("comment_child_button_${commentItem.item.id}"),
+                                                    shape = RoundedCornerShape(50),
+                                                    colors = ButtonDefaults.buttonColors(
+                                                        containerColor = actionChipColor,
+                                                        contentColor = MaterialTheme.colorScheme.onSurface,
+                                                    ),
+                                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                                                ) {
+                                                    Icon(
+                                                        Icons.AutoMirrored.Outlined.Comment,
+                                                        contentDescription = "查看子评论",
+                                                        modifier = Modifier.size(16.dp),
+                                                        tint = actionChipIconColor,
+                                                    )
+                                                    Text(
+                                                        "查看 ${commentItem.item.childCommentCount} 条子评论",
+                                                        fontSize = 12.sp,
+                                                        modifier = Modifier.padding(vertical = 1.dp, horizontal = 4.dp),
+                                                    )
+                                                }
                                             }
                                         }
                                     }
