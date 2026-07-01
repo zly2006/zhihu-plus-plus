@@ -122,7 +122,9 @@ import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.components.fabOpacityPercent
+import com.github.zly2006.zhihu.ui.components.fabSizePercent
 import com.github.zly2006.zhihu.ui.components.rememberFeedBlockActions
+import com.github.zly2006.zhihu.ui.subscreens.PREF_SHOW_CREATE_FAB
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
@@ -177,6 +179,7 @@ fun HomeScreen(
 
     val duo3HomeAccount = settings.getBoolean("duo3_home_account", false)
     val showRefreshFab = settings.getBoolean("showRefreshFab", true)
+    val showCreateFab = settings.getBoolean(PREF_SHOW_CREATE_FAB, true)
     val showUnreadBadge = notificationSettings.getUnreadBadgeEnabled()
     var showAccountBottomSheet by remember { mutableStateOf(false) }
     var showCreateMenu by remember { mutableStateOf(false) }
@@ -688,113 +691,116 @@ fun HomeScreen(
             }
         }
 
-        AnimatedVisibility(
-            visible = showCreateMenu,
-            enter = fadeIn(animationSpec = tween(durationMillis = 120)),
-            exit = fadeOut(animationSpec = tween(durationMillis = 120)),
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.16f))
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                    ) {
-                        showCreateMenu = false
-                    },
-            )
-        }
-
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(
-                    end = 16.dp,
-                    bottom = innerPadding.calculateBottomPadding() + 16.dp,
-                ),
-            horizontalAlignment = Alignment.End,
-        ) {
+        if (showCreateFab) {
             AnimatedVisibility(
                 visible = showCreateMenu,
-                enter = fadeIn(animationSpec = tween(durationMillis = 120)) +
-                    scaleIn(
-                        initialScale = 0.92f,
-                        transformOrigin = TransformOrigin(1f, 1f),
-                        animationSpec = tween(durationMillis = 180),
-                    ) +
-                    slideInVertically(animationSpec = tween(durationMillis = 180)) { it / 8 },
-                exit = fadeOut(animationSpec = tween(durationMillis = 90)) +
-                    scaleOut(
-                        targetScale = 0.96f,
-                        transformOrigin = TransformOrigin(1f, 1f),
-                        animationSpec = tween(durationMillis = 120),
-                    ) +
-                    slideOutVertically(animationSpec = tween(durationMillis = 120)) { it / 8 },
+                enter = fadeIn(animationSpec = tween(durationMillis = 120)),
+                exit = fadeOut(animationSpec = tween(durationMillis = 120)),
             ) {
-                Column(horizontalAlignment = Alignment.End) {
-                    Surface(
-                        modifier = Modifier
-                            .width(180.dp)
-                            .testTag(HOME_CREATE_MENU_TAG),
-                        shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainer,
-                        tonalElevation = 6.dp,
-                        shadowElevation = 6.dp,
-                    ) {
-                        Column {
-                            DropdownMenuItem(
-                                modifier = Modifier.testTag(HOME_WRITE_QUESTION_BUTTON_TAG),
-                                text = { Text("提问题") },
-                                leadingIcon = {
-                                    Icon(Icons.AutoMirrored.Default.HelpOutline, contentDescription = null)
-                                },
-                                onClick = {
-                                    showCreateMenu = false
-                                    userMessages.showShortMessage("正在施工")
-                                },
-                            )
-                            DropdownMenuItem(
-                                modifier = Modifier.testTag(HOME_WRITE_ANSWER_BUTTON_TAG),
-                                text = { Text("写回答") },
-                                leadingIcon = {
-                                    Icon(Icons.Default.Edit, contentDescription = null)
-                                },
-                                onClick = {
-                                    showCreateMenu = false
-                                    userMessages.showShortMessage("正在施工")
-                                },
-                            )
-                            DropdownMenuItem(
-                                modifier = Modifier.testTag(HOME_WRITE_PIN_BUTTON_TAG),
-                                text = { Text("发想法") },
-                                leadingIcon = {
-                                    Icon(Icons.Default.MarkUnreadChatAlt, contentDescription = null)
-                                },
-                                onClick = {
-                                    showCreateMenu = false
-                                    navigator.onNavigate(WritePin)
-                                },
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.16f))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                        ) {
+                            showCreateMenu = false
+                        },
+                )
             }
-            val createFabOpacity = fabOpacityPercent.intValue / 100f
-            FloatingActionButton(
-                modifier = Modifier.testTag(HOME_CREATE_FAB_TAG),
-                onClick = { showCreateMenu = !showCreateMenu },
-                shape = CircleShape,
-                containerColor = FloatingActionButtonDefaults.containerColor.copy(alpha = createFabOpacity),
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = createFabOpacity),
-                elevation = if (createFabOpacity < 1f) {
-                    FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
-                } else {
-                    FloatingActionButtonDefaults.elevation()
-                },
+
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(
+                        end = 16.dp,
+                        bottom = innerPadding.calculateBottomPadding() + 16.dp,
+                    ),
+                horizontalAlignment = Alignment.End,
             ) {
-                Icon(Icons.Default.Add, contentDescription = "创作")
+                AnimatedVisibility(
+                    visible = showCreateMenu,
+                    enter = fadeIn(animationSpec = tween(durationMillis = 120)) +
+                        scaleIn(
+                            initialScale = 0.92f,
+                            transformOrigin = TransformOrigin(1f, 1f),
+                            animationSpec = tween(durationMillis = 180),
+                        ) +
+                        slideInVertically(animationSpec = tween(durationMillis = 180)) { it / 8 },
+                    exit = fadeOut(animationSpec = tween(durationMillis = 90)) +
+                        scaleOut(
+                            targetScale = 0.96f,
+                            transformOrigin = TransformOrigin(1f, 1f),
+                            animationSpec = tween(durationMillis = 120),
+                        ) +
+                        slideOutVertically(animationSpec = tween(durationMillis = 120)) { it / 8 },
+                ) {
+                    Column(horizontalAlignment = Alignment.End) {
+                        Surface(
+                            modifier = Modifier
+                                .width(180.dp)
+                                .testTag(HOME_CREATE_MENU_TAG),
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainer,
+                            tonalElevation = 6.dp,
+                            shadowElevation = 6.dp,
+                        ) {
+                            Column {
+                                DropdownMenuItem(
+                                    modifier = Modifier.testTag(HOME_WRITE_QUESTION_BUTTON_TAG),
+                                    text = { Text("提问题") },
+                                    leadingIcon = {
+                                        Icon(Icons.AutoMirrored.Default.HelpOutline, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        showCreateMenu = false
+                                        userMessages.showShortMessage("正在施工")
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    modifier = Modifier.testTag(HOME_WRITE_ANSWER_BUTTON_TAG),
+                                    text = { Text("写回答") },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.Edit, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        showCreateMenu = false
+                                        userMessages.showShortMessage("正在施工")
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    modifier = Modifier.testTag(HOME_WRITE_PIN_BUTTON_TAG),
+                                    text = { Text("发想法") },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.MarkUnreadChatAlt, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        showCreateMenu = false
+                                        navigator.onNavigate(WritePin)
+                                    },
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                }
+                val createFabOpacity = fabOpacityPercent.intValue / 100f
+                val createFabSize = 56.dp * fabSizePercent.intValue / 100
+                FloatingActionButton(
+                    modifier = Modifier.size(createFabSize).testTag(HOME_CREATE_FAB_TAG),
+                    onClick = { showCreateMenu = !showCreateMenu },
+                    shape = CircleShape,
+                    containerColor = FloatingActionButtonDefaults.containerColor.copy(alpha = createFabOpacity),
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = createFabOpacity),
+                    elevation = if (createFabOpacity < 1f) {
+                        FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
+                    } else {
+                        FloatingActionButtonDefaults.elevation()
+                    },
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "创作")
+                }
             }
         }
     }

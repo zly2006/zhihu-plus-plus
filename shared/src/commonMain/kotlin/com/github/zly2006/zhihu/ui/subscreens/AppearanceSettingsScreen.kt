@@ -113,6 +113,7 @@ import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemOverall
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
 import com.github.zly2006.zhihu.ui.components.fabOpacityPercent
+import com.github.zly2006.zhihu.ui.components.fabSizePercent
 import com.github.zly2006.zhihu.ui.components.normalizedAnswerSwitchSensitivity
 import com.github.zly2006.zhihu.ui.components.pageTurnFabVisible
 import kotlinx.coroutines.delay
@@ -128,6 +129,10 @@ const val DEFAULT_PAGE_TURN_PERCENT = 90
 const val PREF_VOLUME_KEY_PAGE_TURN = "volumeKeyPageTurn"
 const val PREF_SHOW_PAGE_TURN_FAB = "showPageTurnFab"
 const val PREF_SHOW_PAGE_TURN_GUIDE = "showPageTurnGuide"
+const val PREF_PAGE_TURN_FILL_LAST_PAGE = "pageTurnFillLastPage"
+const val PREF_FAB_SIZE = "fabSize"
+const val DEFAULT_FAB_SIZE = 100
+const val PREF_SHOW_CREATE_FAB = "showCreateFab"
 const val PREF_FAB_OPACITY = "fabOpacity"
 const val DEFAULT_FAB_OPACITY = 100
 const val APPEARANCE_SETTINGS_SCROLL_TAG = "appearanceSettings.scroll"
@@ -547,6 +552,28 @@ fun AppearanceSettingsScreen(
                     )
                 }
 
+                var fabSize by remember {
+                    mutableIntStateOf(settings.getInt(PREF_FAB_SIZE, DEFAULT_FAB_SIZE))
+                }
+                SettingItem(
+                    title = { Text("悬浮按钮大小") },
+                    description = { Text("控制所有悬浮按钮的大小 ($fabSize%)。") },
+                    bottomAction = {
+                        Slider(
+                            value = fabSize.toFloat(),
+                            onValueChange = {
+                                val v = (it / 10).roundToInt() * 10
+                                fabSize = v
+                                fabSizePercent.intValue = v
+                                settings.putInt(PREF_FAB_SIZE, v)
+                            },
+                            valueRange = 50f..150f,
+                            steps = 9,
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        )
+                    },
+                )
+
                 var fabOpacity by remember {
                     mutableIntStateOf(settings.getInt(PREF_FAB_OPACITY, DEFAULT_FAB_OPACITY))
                 }
@@ -584,8 +611,9 @@ fun AppearanceSettingsScreen(
                         Slider(
                             value = fontSize.toFloat(),
                             onValueChange = {
-                                fontSize = it.toInt()
-                                settings.putInt(PREF_FONT_SIZE, it.toInt())
+                                val v = (it / 10).roundToInt() * 10
+                                fontSize = v
+                                settings.putInt(PREF_FONT_SIZE, v)
                             },
                             valueRange = 50f..200f,
                             steps = 14,
@@ -602,8 +630,9 @@ fun AppearanceSettingsScreen(
                         Slider(
                             value = lineHeight.toFloat(),
                             onValueChange = {
-                                lineHeight = it.toInt()
-                                settings.putInt(PREF_LINE_HEIGHT, it.toInt())
+                                val v = (it / 10).roundToInt() * 10
+                                lineHeight = v
+                                settings.putInt(PREF_LINE_HEIGHT, v)
                             },
                             valueRange = 100f..300f,
                             steps = 19,
@@ -668,6 +697,9 @@ fun AppearanceSettingsScreen(
                     },
                 )
 
+                val fillLastPage = remember {
+                    mutableStateOf(settings.getBoolean(PREF_PAGE_TURN_FILL_LAST_PAGE, false))
+                }
                 val volumeKeyPageTurn = remember {
                     mutableStateOf(settings.getBoolean(PREF_VOLUME_KEY_PAGE_TURN, false))
                 }
@@ -678,6 +710,10 @@ fun AppearanceSettingsScreen(
                     onCheckedChange = {
                         volumeKeyPageTurn.value = it
                         settings.putBoolean(PREF_VOLUME_KEY_PAGE_TURN, it)
+                        if (!it && !pageTurnFabVisible.value) {
+                            fillLastPage.value = false
+                            settings.putBoolean(PREF_PAGE_TURN_FILL_LAST_PAGE, false)
+                        }
                     },
                 )
 
@@ -688,6 +724,10 @@ fun AppearanceSettingsScreen(
                     onCheckedChange = {
                         pageTurnFabVisible.value = it
                         settings.putBoolean(PREF_SHOW_PAGE_TURN_FAB, it)
+                        if (!it && !volumeKeyPageTurn.value) {
+                            fillLastPage.value = false
+                            settings.putBoolean(PREF_PAGE_TURN_FILL_LAST_PAGE, false)
+                        }
                     },
                 )
 
@@ -703,6 +743,17 @@ fun AppearanceSettingsScreen(
                         settings.putBoolean(PREF_SHOW_PAGE_TURN_GUIDE, it)
                     },
                 )
+                if (volumeKeyPageTurn.value || pageTurnFabVisible.value) {
+                    SettingItemWithSwitch(
+                        title = { Text("末页补全空白") },
+                        description = { Text("剩余内容不足一页时，在底部补足空白，确保最后一次翻页完整。") },
+                        checked = fillLastPage.value,
+                        onCheckedChange = {
+                            fillLastPage.value = it
+                            settings.putBoolean(PREF_PAGE_TURN_FILL_LAST_PAGE, it)
+                        },
+                    )
+                }
             }
 
             // ── 信息流 ──────────────────────────────────────────────────────────
@@ -712,7 +763,7 @@ fun AppearanceSettingsScreen(
             ) {
                 val showFeedThumbnail = remember { mutableStateOf(settings.getBoolean("showFeedThumbnail", true)) }
                 SettingItemWithSwitch(
-                    title = { Text("显示 Feed 卡片缩略图") },
+                    title = { Text("显示信息流卡片缩略图") },
                     description = { Text("在信息流卡片中显示文章缩略图。") },
                     checked = showFeedThumbnail.value,
                     onCheckedChange = {
@@ -728,6 +779,19 @@ fun AppearanceSettingsScreen(
                     onCheckedChange = {
                         showRefreshFab.value = it
                         settings.putBoolean("showRefreshFab", it)
+                    },
+                )
+
+                val showCreateFab = remember {
+                    mutableStateOf(settings.getBoolean(PREF_SHOW_CREATE_FAB, true))
+                }
+                SettingItemWithSwitch(
+                    title = { Text("显示发布悬浮按钮") },
+                    description = { Text("在主页显示「提问题」等发布按钮。") },
+                    checked = showCreateFab.value,
+                    onCheckedChange = {
+                        showCreateFab.value = it
+                        settings.putBoolean(PREF_SHOW_CREATE_FAB, it)
                     },
                 )
 

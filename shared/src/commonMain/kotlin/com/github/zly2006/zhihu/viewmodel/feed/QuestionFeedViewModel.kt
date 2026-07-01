@@ -56,6 +56,7 @@ open class QuestionFeedViewModel(
                 authorName = target.author?.name ?: "未知作者",
                 avatarSrc = target.author?.avatarUrl,
                 summary = target.excerpt,
+                summaryIsHtml = true,
                 details = target.detailsText,
                 feed = feed,
                 title = "",
