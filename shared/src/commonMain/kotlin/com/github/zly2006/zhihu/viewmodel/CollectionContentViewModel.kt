@@ -96,6 +96,7 @@ class CollectionContentViewModel(
     private fun createDisplayItem(item: CollectionItem): FeedDisplayItem = FeedDisplayItem(
         title = item.content.title,
         summary = item.content.excerpt,
+        summaryIsHtml = true,
         details = item.content.detailsText,
         navDestinationJson = item.content.navDestination?.toFeedDisplayItemNavDestinationJson(),
         feed = null,

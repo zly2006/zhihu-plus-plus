@@ -33,6 +33,8 @@ data class FeedDisplayItem(
     val localFeedId: String? = null,
     val localReason: String? = null,
     val sourceLabel: String? = null,
+    val titleIsHtml: Boolean = false,
+    val summaryIsHtml: Boolean = false,
     val segmentInfos: List<SegmentInfoParagraph> = emptyList(),
     val segmentSourceUrl: String? = null,
 ) {
@@ -145,6 +147,7 @@ private fun Feed.toTargetDisplayItem(
         is Feed.PinTarget -> FeedDisplayItem(
             title = target.author.name + "的想法",
             summary = target.excerpt,
+            summaryIsHtml = true,
             details = target.detailsText,
             avatarSrc = target.author.avatarUrl,
             authorName = target.author.name,
