@@ -116,6 +116,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewModelScope
@@ -1849,28 +1850,7 @@ fun ArticleScreen(
                                         )
                                     }
                                 }
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 12.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Text(
-                                        "— · —",
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                        fontSize = 14.sp,
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(36.dp))
-                                if (fillLastPage && scrollState.maxValue > 0) {
-                                    Spacer(
-                                        modifier = Modifier.height(
-                                            with(density) {
-                                                (pageKeyViewportHeight * pageTurnPercent / 100).toDp()
-                                            },
-                                        ),
-                                    )
-                                }
+                                ContentEndSpacer(fillLastPage, scrollState.maxValue > 0, density, pageKeyViewportHeight, pageTurnPercent)
                             } else {
                                 RenderMarkdown(
                                     html = viewModel.content,
@@ -1895,28 +1875,7 @@ fun ArticleScreen(
                                                 )
                                             }
                                         }
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(vertical = 12.dp),
-                                            contentAlignment = Alignment.Center,
-                                        ) {
-                                            Text(
-                                                "— · —",
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                                fontSize = 14.sp,
-                                            )
-                                        }
-                                        Spacer(modifier = Modifier.height(36.dp))
-                                        if (fillLastPage && scrollState.maxValue > 0) {
-                                            Spacer(
-                                                modifier = Modifier.height(
-                                                    with(density) {
-                                                        (pageKeyViewportHeight * pageTurnPercent / 100).toDp()
-                                                    },
-                                                ),
-                                            )
-                                        }
+                                        ContentEndSpacer(fillLastPage, scrollState.maxValue > 0, density, pageKeyViewportHeight, pageTurnPercent)
                                     },
                                     onOpenSegmentComment = { segmentCommentTarget = it },
                                 )
@@ -2233,6 +2192,38 @@ fun ArticleScreen(
  * 内容来自 [CachedAnswerContent]，包含标题、作者信息、投票/评论计数和 HTML 正文。正文使用 Compose Markdown，
  * 因此这里是轻量预览，不持有 WebView 或答案切换共享状态。
  */
+@Composable
+private fun ContentEndSpacer(
+    fillLastPage: Boolean,
+    hasScrollableContent: Boolean,
+    density: Density,
+    pageKeyViewportHeight: Int,
+    pageTurnPercent: Int,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            "— · —",
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            fontSize = 14.sp,
+        )
+    }
+    Spacer(modifier = Modifier.height(36.dp))
+    if (fillLastPage && hasScrollableContent) {
+        Spacer(
+            modifier = Modifier.height(
+                with(density) {
+                    (pageKeyViewportHeight * pageTurnPercent / 100).toDp()
+                },
+            ),
+        )
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CachedAnswerPreview(

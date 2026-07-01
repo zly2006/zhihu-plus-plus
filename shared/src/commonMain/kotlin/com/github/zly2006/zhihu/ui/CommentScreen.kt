@@ -829,13 +829,13 @@ fun CommentScreen(
                                     }
                                     if (fillLastPage && (listState.canScrollForward || listState.canScrollBackward)) {
                                         item(key = "page_turn_bottom_spacer") {
-                                            val d = LocalDensity.current
+                                            val density = LocalDensity.current
                                             val viewport = listState.layoutInfo.let {
                                                 it.viewportEndOffset - it.viewportStartOffset
                                             }
                                             Spacer(
                                                 modifier = Modifier.height(
-                                                    with(d) {
+                                                    with(density) {
                                                         (viewport * pageTurnPercent / 100).toDp()
                                                     },
                                                 ),

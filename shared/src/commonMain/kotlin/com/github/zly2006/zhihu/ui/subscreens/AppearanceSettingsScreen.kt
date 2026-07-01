@@ -132,6 +132,7 @@ const val PREF_SHOW_PAGE_TURN_GUIDE = "showPageTurnGuide"
 const val PREF_PAGE_TURN_FILL_LAST_PAGE = "pageTurnFillLastPage"
 const val PREF_FAB_SIZE = "fabSize"
 const val DEFAULT_FAB_SIZE = 100
+const val PREF_SHOW_CREATE_FAB = "showCreateFab"
 const val PREF_FAB_OPACITY = "fabOpacity"
 const val DEFAULT_FAB_OPACITY = 100
 const val APPEARANCE_SETTINGS_SCROLL_TAG = "appearanceSettings.scroll"
@@ -610,8 +611,9 @@ fun AppearanceSettingsScreen(
                         Slider(
                             value = fontSize.toFloat(),
                             onValueChange = {
-                                fontSize = it.toInt()
-                                settings.putInt(PREF_FONT_SIZE, it.toInt())
+                                val v = (it / 10).roundToInt() * 10
+                                fontSize = v
+                                settings.putInt(PREF_FONT_SIZE, v)
                             },
                             valueRange = 50f..200f,
                             steps = 14,
@@ -628,8 +630,9 @@ fun AppearanceSettingsScreen(
                         Slider(
                             value = lineHeight.toFloat(),
                             onValueChange = {
-                                lineHeight = it.toInt()
-                                settings.putInt(PREF_LINE_HEIGHT, it.toInt())
+                                val v = (it / 10).roundToInt() * 10
+                                lineHeight = v
+                                settings.putInt(PREF_LINE_HEIGHT, v)
                             },
                             valueRange = 100f..300f,
                             steps = 19,
@@ -780,7 +783,7 @@ fun AppearanceSettingsScreen(
                 )
 
                 val showCreateFab = remember {
-                    mutableStateOf(settings.getBoolean("showCreateFab", true))
+                    mutableStateOf(settings.getBoolean(PREF_SHOW_CREATE_FAB, true))
                 }
                 SettingItemWithSwitch(
                     title = { Text("显示发布悬浮按钮") },
@@ -788,7 +791,7 @@ fun AppearanceSettingsScreen(
                     checked = showCreateFab.value,
                     onCheckedChange = {
                         showCreateFab.value = it
-                        settings.putBoolean("showCreateFab", it)
+                        settings.putBoolean(PREF_SHOW_CREATE_FAB, it)
                     },
                 )
 

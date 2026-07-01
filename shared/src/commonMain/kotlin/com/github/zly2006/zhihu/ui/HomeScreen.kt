@@ -124,6 +124,7 @@ import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.components.fabOpacityPercent
 import com.github.zly2006.zhihu.ui.components.fabSizePercent
 import com.github.zly2006.zhihu.ui.components.rememberFeedBlockActions
+import com.github.zly2006.zhihu.ui.subscreens.PREF_SHOW_CREATE_FAB
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
@@ -178,7 +179,7 @@ fun HomeScreen(
 
     val duo3HomeAccount = settings.getBoolean("duo3_home_account", false)
     val showRefreshFab = settings.getBoolean("showRefreshFab", true)
-    val showCreateFab = settings.getBoolean("showCreateFab", true)
+    val showCreateFab = settings.getBoolean(PREF_SHOW_CREATE_FAB, true)
     val showUnreadBadge = notificationSettings.getUnreadBadgeEnabled()
     var showAccountBottomSheet by remember { mutableStateOf(false) }
     var showCreateMenu by remember { mutableStateOf(false) }
