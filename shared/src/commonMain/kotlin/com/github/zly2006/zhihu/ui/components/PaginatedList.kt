@@ -36,9 +36,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
@@ -158,10 +162,14 @@ fun <T> PaginatedList(
         }
     }
 
+    var lazyColumnTopOffset by remember { mutableFloatStateOf(0f) }
+
     Box {
         LazyColumn(
             state = listState,
-            modifier = modifier,
+            modifier = modifier.onGloballyPositioned {
+                lazyColumnTopOffset = it.positionInParent().y
+            },
             contentPadding = contentPadding,
         ) {
             topContent(this)
@@ -199,7 +207,7 @@ fun <T> PaginatedList(
         if (showPageTurnGuide) {
             PageTurnGuideOverlay(
                 pageTurnPercent,
-                topInsetPx = listState.layoutInfo.beforeContentPadding.toFloat(),
+                topInsetPx = lazyColumnTopOffset + listState.layoutInfo.beforeContentPadding.toFloat(),
                 bottomInsetPx = listState.layoutInfo.afterContentPadding.toFloat(),
                 lastDirection = guideState.lastDirection,
             )
