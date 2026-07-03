@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
@@ -54,7 +55,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.util.twoDigitString
+import com.github.zly2006.zhihu.ui.components.PageTurnLazyListEffect
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedFeedRecord
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.launch
@@ -108,7 +111,12 @@ fun BlockedFeedHistoryScreen() {
                 Text("暂无屏蔽记录", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
+            val settings = rememberSettingsStore()
+            val pageTurnPercent = remember { settings.getInt(PREF_PAGE_TURN_PERCENT, DEFAULT_PAGE_TURN_PERCENT) }
+            val listState = rememberLazyListState()
+            PageTurnLazyListEffect(listState, pageTurnPercent)
             LazyColumn(
+                state = listState,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)

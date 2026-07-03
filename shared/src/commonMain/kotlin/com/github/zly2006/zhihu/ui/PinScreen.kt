@@ -67,6 +67,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -90,11 +92,18 @@ import com.github.zly2006.zhihu.shared.util.formatCompactCount
 import com.github.zly2006.zhihu.shared.util.twoDigitString
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
+import com.github.zly2006.zhihu.ui.components.PageTurnGuideOverlay
+import com.github.zly2006.zhihu.ui.components.PageTurnGuideState
+import com.github.zly2006.zhihu.ui.components.PageTurnScrollEffect
 import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.VotersSheet
 import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
+import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_PAGE_TURN_PERCENT
+import com.github.zly2006.zhihu.ui.subscreens.PREF_PAGE_TURN_FILL_LAST_PAGE
+import com.github.zly2006.zhihu.ui.subscreens.PREF_PAGE_TURN_PERCENT
+import com.github.zly2006.zhihu.ui.subscreens.PREF_SHOW_PAGE_TURN_GUIDE
 import com.github.zly2006.zhihu.viewmodel.ContentLoadEnvironment
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.addReadHistory
@@ -429,291 +438,318 @@ private fun PinContent(
 ) {
     val navigator = LocalNavigator.current
     val openExternalUrl = rememberExternalUrlOpener()
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .testTag(PIN_SCREEN_SCROLL_TAG)
-            .padding(16.dp),
+    val density = LocalDensity.current
+    val scrollState = rememberScrollState()
+    var viewportHeight by remember { mutableIntStateOf(0) }
+    val settings = rememberSettingsStore()
+    val pageTurnPercent = remember { settings.getInt(PREF_PAGE_TURN_PERCENT, DEFAULT_PAGE_TURN_PERCENT) }
+    val showPageTurnGuide = remember { settings.getBoolean(PREF_SHOW_PAGE_TURN_GUIDE, false) }
+    val fillLastPage = remember { settings.getBoolean(PREF_PAGE_TURN_FILL_LAST_PAGE, false) }
+    val guideState = remember { PageTurnGuideState() }
+    PageTurnScrollEffect(scrollState, viewportHeight, guideState = guideState)
+    if (showPageTurnGuide &&
+        guideState.lastDirection != 0 &&
+        scrollState.isScrollInProgress &&
+        !guideState.isScrolling
     ) {
-        // 作者信息。
-        Row(
+        guideState.lastDirection = 0
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .testTag(PIN_SCREEN_AUTHOR_TAG)
-                .clickable {
-                    navigator.onNavigate(
-                        Person(
-                            id = pin.author.id,
-                            urlToken = pin.author.urlToken,
-                            name = pin.author.name,
-                        ),
-                    )
-                },
-            verticalAlignment = Alignment.CenterVertically,
+                .fillMaxSize()
+                .onSizeChanged { viewportHeight = it.height }
+                .verticalScroll(scrollState)
+                .testTag(PIN_SCREEN_SCROLL_TAG)
+                .padding(16.dp),
         ) {
+            // 作者信息。
             Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                AsyncImage(
-                    model = pin.author.avatarUrl,
-                    contentDescription = "头像",
-                    modifier = Modifier
-                        .size(42.dp)
-                        .clip(CircleShape),
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            pin.author.name,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false),
-                        )
-                        val authorBadge = pin.author.badgeV2.officialBadge()
-                        if (authorBadge != null) {
-                            Spacer(modifier = Modifier.width(4.dp))
-                            AuthorBadge(authorBadge)
-                        }
-                    }
-                    if (pin.author.headline.isNotEmpty()) {
-                        Text(
-                            pin.author.headline,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-            }
-            if (!pin.selfCreate) {
-                Surface(
-                    shape = RoundedCornerShape(18.dp),
-                    color = if (pin.author.isFollowing) {
-                        MaterialTheme.colorScheme.surfaceVariant
-                    } else {
-                        MaterialTheme.colorScheme.primaryContainer
-                    },
-                ) {
-                    Text(
-                        text = if (pin.author.isFollowing) "已关注" else "关注",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (pin.author.isFollowing) {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        } else {
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        },
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Text(
-            buildString {
-                append("发布于")
-                append(Instant.fromEpochSeconds(pin.created).toLocalDateTime(TimeZone.currentSystemDefault()).run { "$year-${(month.ordinal + 1).twoDigitString()}-${day.twoDigitString()} ${hour.twoDigitString()}:${minute.twoDigitString()}" })
-                if (pin.updated > pin.created) {
-                    append(" · 编辑于")
-                    append(Instant.fromEpochSeconds(pin.updated).toLocalDateTime(TimeZone.currentSystemDefault()).run { "$year-${(month.ordinal + 1).twoDigitString()}-${day.twoDigitString()} ${hour.twoDigitString()}:${minute.twoDigitString()}" })
-                }
-            },
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-
-        if (likeCount > 0) {
-            // 社交证明。
-            Spacer(modifier = Modifier.height(8.dp))
-            val firstLiker = pin.likers.firstOrNull()
-            Text(
-                text = if (firstLiker != null) {
-                    "${firstLiker.name} 等 ${formatCompactCount(likeCount)} 人赞同了该想法"
-                } else {
-                    "${formatCompactCount(likeCount)} 人赞同了该想法"
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.clickable(onClick = onSocialCreditClick),
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // 想法正文。
-        PinHtmlContent(pin.contentHtml)
-
-        val votingPoll = pin.bottomPoll?.voting
-        if (votingPoll != null) {
-            Spacer(modifier = Modifier.height(16.dp))
-            PinPollCard(
-                poll = votingPoll,
-                votingOptionId = pollVotingOptionId,
-                errorMessage = pollErrorMessage,
-                onPollVote = onPollVote,
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        val linkCard = pin.content.firstOrNull {
-            it is DataHolder.Pin.ContentLinkCard
-        } as? DataHolder.Pin.ContentLinkCard
-        if (linkCard != null) {
-            var relatedTitle by remember(linkCard.dataContentType, linkCard.dataContentId, linkCard.url) {
-                mutableStateOf<String?>(null)
-            }
-            var relatedPreview by remember(linkCard.dataContentType, linkCard.dataContentId, linkCard.url) {
-                mutableStateOf<String?>(null)
-            }
-            var isRelatedLoading by remember(linkCard.dataContentType, linkCard.dataContentId, linkCard.url) {
-                mutableStateOf(true)
-            }
-
-            LaunchedEffect(linkCard.dataContentType, linkCard.dataContentId, linkCard.url) {
-                isRelatedLoading = true
-                val preview = fetchPinLinkCardPreview(linkCard, environment)
-                relatedTitle = preview?.title
-                relatedPreview = preview?.preview
-                isRelatedLoading = false
-            }
-
-            Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .testTag(PIN_SCREEN_LINK_CARD_TAG)
+                    .testTag(PIN_SCREEN_AUTHOR_TAG)
                     .clickable {
-                        val targetUrl = linkCard.url.takeIf { it.isNotBlank() }
-                        val destination = targetUrl?.let(::resolveContent)
-
-                        if (destination != null) {
-                            navigator.onNavigate(destination)
-                        } else {
-                            targetUrl?.let {
-                                openExternalUrl(it)
+                        navigator.onNavigate(
+                            Person(
+                                id = pin.author.id,
+                                urlToken = pin.author.urlToken,
+                                name = pin.author.name,
+                            ),
+                        )
+                    },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    AsyncImage(
+                        model = pin.author.avatarUrl,
+                        contentDescription = "头像",
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(CircleShape),
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                pin.author.name,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false),
+                            )
+                            val authorBadge = pin.author.badgeV2.officialBadge()
+                            if (authorBadge != null) {
+                                Spacer(modifier = Modifier.width(4.dp))
+                                AuthorBadge(authorBadge)
                             }
                         }
-                    },
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                ),
-            ) {
-                Column(
-                    modifier = Modifier.padding(12.dp),
-                ) {
-                    Text(
-                        "关联内容",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    if (isRelatedLoading) {
-                        Text(
-                            text = "正在加载关联内容...",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    } else if (!relatedTitle.isNullOrBlank()) {
-                        Text(
-                            text = relatedTitle!!,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        if (!relatedPreview.isNullOrBlank()) {
-                            Spacer(modifier = Modifier.height(4.dp))
+                        if (pin.author.headline.isNotEmpty()) {
                             Text(
-                                text = relatedPreview!!,
-                                style = MaterialTheme.typography.bodyMedium,
+                                pin.author.headline,
+                                style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 3,
+                                maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
                         }
-                    } else {
-                        Text(
-                            text = "${linkCardTypeLabel(linkCard.dataContentType)} · ${linkCard.dataContentId}",
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
                     }
-                    if (relatedTitle.isNullOrBlank() && linkCard.url.isNotBlank()) {
-                        Spacer(modifier = Modifier.height(4.dp))
+                }
+                if (!pin.selfCreate) {
+                    Surface(
+                        shape = RoundedCornerShape(18.dp),
+                        color = if (pin.author.isFollowing) {
+                            MaterialTheme.colorScheme.surfaceVariant
+                        } else {
+                            MaterialTheme.colorScheme.primaryContainer
+                        },
+                    ) {
                         Text(
-                            text = linkCard.url,
+                            text = if (pin.author.isFollowing) "已关注" else "关注",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary,
+                            color = if (pin.author.isFollowing) {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            } else {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            },
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                         )
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(24.dp))
-        }
 
-        // 统计与操作区。
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-        ) {
-            FilledTonalButton(
-                onClick = onLikeClick,
-                modifier = Modifier.testTag(PIN_SCREEN_LIKE_BUTTON_TAG),
-            ) {
-                Icon(
-                    if (isLiked) Icons.Filled.ThumbUp else Icons.Outlined.OutlinedThumbUp,
-                    contentDescription = "赞",
-                    modifier = Modifier.size(20.dp),
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    "$likeCount",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
+            Spacer(modifier = Modifier.height(12.dp))
 
-            FilledTonalButton(
-                onClick = onCommentClick,
-                modifier = Modifier.testTag(PIN_SCREEN_COMMENT_BUTTON_TAG),
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Filled.Comment,
-                    contentDescription = "评论",
-                    modifier = Modifier.size(20.dp),
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    "${pin.commentCount}",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
-        }
-
-        // 话题列表。
-        val topics = pin.topics
-        if (topics?.isNotEmpty() == true) {
-            Spacer(modifier = Modifier.height(24.dp))
             Text(
-                "话题",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
+                buildString {
+                    append("发布于")
+                    append(Instant.fromEpochSeconds(pin.created).toLocalDateTime(TimeZone.currentSystemDefault()).run { "$year-${(month.ordinal + 1).twoDigitString()}-${day.twoDigitString()} ${hour.twoDigitString()}:${minute.twoDigitString()}" })
+                    if (pin.updated > pin.created) {
+                        append(" · 编辑于")
+                        append(Instant.fromEpochSeconds(pin.updated).toLocalDateTime(TimeZone.currentSystemDefault()).run { "$year-${(month.ordinal + 1).twoDigitString()}-${day.twoDigitString()} ${hour.twoDigitString()}:${minute.twoDigitString()}" })
+                    }
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            pin.topics.forEach { topic ->
+
+            if (likeCount > 0) {
+                // 社交证明。
+                Spacer(modifier = Modifier.height(8.dp))
+                val firstLiker = pin.likers.firstOrNull()
                 Text(
-                    "# ${topic.name}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(vertical = 4.dp),
+                    text = if (firstLiker != null) {
+                        "${firstLiker.name} 等 ${formatCompactCount(likeCount)} 人赞同了该想法"
+                    } else {
+                        "${formatCompactCount(likeCount)} 人赞同了该想法"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.clickable(onClick = onSocialCreditClick),
                 )
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 想法正文。
+            PinHtmlContent(pin.contentHtml)
+
+            val votingPoll = pin.bottomPoll?.voting
+            if (votingPoll != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                PinPollCard(
+                    poll = votingPoll,
+                    votingOptionId = pollVotingOptionId,
+                    errorMessage = pollErrorMessage,
+                    onPollVote = onPollVote,
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            val linkCard = pin.content.firstOrNull {
+                it is DataHolder.Pin.ContentLinkCard
+            } as? DataHolder.Pin.ContentLinkCard
+            if (linkCard != null) {
+                var relatedTitle by remember(linkCard.dataContentType, linkCard.dataContentId, linkCard.url) {
+                    mutableStateOf<String?>(null)
+                }
+                var relatedPreview by remember(linkCard.dataContentType, linkCard.dataContentId, linkCard.url) {
+                    mutableStateOf<String?>(null)
+                }
+                var isRelatedLoading by remember(linkCard.dataContentType, linkCard.dataContentId, linkCard.url) {
+                    mutableStateOf(true)
+                }
+
+                LaunchedEffect(linkCard.dataContentType, linkCard.dataContentId, linkCard.url) {
+                    isRelatedLoading = true
+                    val preview = fetchPinLinkCardPreview(linkCard, environment)
+                    relatedTitle = preview?.title
+                    relatedPreview = preview?.preview
+                    isRelatedLoading = false
+                }
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag(PIN_SCREEN_LINK_CARD_TAG)
+                        .clickable {
+                            val targetUrl = linkCard.url.takeIf { it.isNotBlank() }
+                            val destination = targetUrl?.let(::resolveContent)
+
+                            if (destination != null) {
+                                navigator.onNavigate(destination)
+                            } else {
+                                targetUrl?.let {
+                                    openExternalUrl(it)
+                                }
+                            }
+                        },
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    ),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                    ) {
+                        Text(
+                            "关联内容",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        if (isRelatedLoading) {
+                            Text(
+                                text = "正在加载关联内容...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        } else if (!relatedTitle.isNullOrBlank()) {
+                            Text(
+                                text = relatedTitle!!,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            if (!relatedPreview.isNullOrBlank()) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = relatedPreview!!,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 3,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        } else {
+                            Text(
+                                text = "${linkCardTypeLabel(linkCard.dataContentType)} · ${linkCard.dataContentId}",
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        }
+                        if (relatedTitle.isNullOrBlank() && linkCard.url.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = linkCard.url,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+
+            // 统计与操作区。
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+            ) {
+                FilledTonalButton(
+                    onClick = onLikeClick,
+                    modifier = Modifier.testTag(PIN_SCREEN_LIKE_BUTTON_TAG),
+                ) {
+                    Icon(
+                        if (isLiked) Icons.Filled.ThumbUp else Icons.Outlined.OutlinedThumbUp,
+                        contentDescription = "赞",
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        "$likeCount",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+
+                FilledTonalButton(
+                    onClick = onCommentClick,
+                    modifier = Modifier.testTag(PIN_SCREEN_COMMENT_BUTTON_TAG),
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.Comment,
+                        contentDescription = "评论",
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        "${pin.commentCount}",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
+
+            // 话题列表。
+            val topics = pin.topics
+            if (topics?.isNotEmpty() == true) {
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    "话题",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                pin.topics.forEach { topic ->
+                    Text(
+                        "# ${topic.name}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(vertical = 4.dp),
+                    )
+                }
+            }
+
+            ContentEndSpacer(fillLastPage, scrollState.maxValue > 0, density, viewportHeight, pageTurnPercent)
+        }
+        if (showPageTurnGuide) {
+            PageTurnGuideOverlay(
+                pageTurnPercent,
+                lastDirection = guideState.lastDirection,
+            )
         }
     }
 }

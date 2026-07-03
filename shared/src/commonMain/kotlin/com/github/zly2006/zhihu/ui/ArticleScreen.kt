@@ -2193,7 +2193,7 @@ fun ArticleScreen(
  * 因此这里是轻量预览，不持有 WebView 或答案切换共享状态。
  */
 @Composable
-private fun ContentEndSpacer(
+internal fun ContentEndSpacer(
     fillLastPage: Boolean,
     hasScrollableContent: Boolean,
     density: Density,

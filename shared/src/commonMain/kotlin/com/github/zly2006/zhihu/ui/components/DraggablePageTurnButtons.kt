@@ -246,6 +246,7 @@ fun PageTurnScrollEffect(
     scrollState: ScrollState,
     viewportHeight: Int,
     topBarState: TopAppBarState? = null,
+    guideState: PageTurnGuideState? = null,
 ) {
     val settings = rememberSettingsStore()
     val pageTurnPercent = remember { settings.getInt(PREF_PAGE_TURN_PERCENT, DEFAULT_PAGE_TURN_PERCENT) }
@@ -254,27 +255,35 @@ fun PageTurnScrollEffect(
     LaunchedEffect(channel) {
         channel.collect { direction ->
             if (pageTurnModalDepth.intValue > 0) return@collect
-            var barCollapseDelta = 0f
-            if (topBarState != null) {
-                val oldOffset = topBarState.heightOffset
-                if (direction > 0 || direction == Int.MAX_VALUE) {
-                    topBarState.heightOffset = topBarState.heightOffsetLimit
-                } else if (direction == Int.MIN_VALUE) {
-                    topBarState.heightOffset = 0f
-                }
-                barCollapseDelta = topBarState.heightOffset - oldOffset
+            guideState?.let {
+                it.lastDirection = direction.coerceIn(-1, 1)
+                it.isScrolling = true
             }
-            when (direction) {
-                Int.MAX_VALUE -> scrollState.scrollTo(scrollState.maxValue)
-                Int.MIN_VALUE -> scrollState.scrollTo(0)
-                else -> if (currentViewportHeight > 0) {
-                    val afterCollapseViewport = currentViewportHeight - barCollapseDelta
-                    val scrollAmount = afterCollapseViewport * pageTurnPercent / 100f * direction + barCollapseDelta
-                    scrollState.scrollBy(scrollAmount)
-                    if (topBarState != null && direction < 0 && scrollState.value == 0) {
+            try {
+                var barCollapseDelta = 0f
+                if (topBarState != null) {
+                    val oldOffset = topBarState.heightOffset
+                    if (direction > 0 || direction == Int.MAX_VALUE) {
+                        topBarState.heightOffset = topBarState.heightOffsetLimit
+                    } else if (direction == Int.MIN_VALUE) {
                         topBarState.heightOffset = 0f
                     }
+                    barCollapseDelta = topBarState.heightOffset - oldOffset
                 }
+                when (direction) {
+                    Int.MAX_VALUE -> scrollState.scrollTo(scrollState.maxValue)
+                    Int.MIN_VALUE -> scrollState.scrollTo(0)
+                    else -> if (currentViewportHeight > 0) {
+                        val afterCollapseViewport = currentViewportHeight - barCollapseDelta
+                        val scrollAmount = afterCollapseViewport * pageTurnPercent / 100f * direction + barCollapseDelta
+                        scrollState.scrollBy(scrollAmount)
+                        if (topBarState != null && direction < 0 && scrollState.value == 0) {
+                            topBarState.heightOffset = 0f
+                        }
+                    }
+                }
+            } finally {
+                guideState?.let { it.isScrolling = false }
             }
         }
     }
