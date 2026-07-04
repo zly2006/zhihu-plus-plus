@@ -64,6 +64,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
@@ -90,6 +93,7 @@ import com.github.zly2006.zhihu.viewmodel.feed.SearchViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.ZHIHU_HOT_SEARCH_URL
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.yield
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonArray
@@ -136,12 +140,15 @@ fun SearchScreen(
     val settings = rememberSettingsStore()
     val viewModel = viewModel { SearchViewModel(search.query, search.restrictedMemberHashId) }
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
+    val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    val searchInputFocusRequester = remember { FocusRequester() }
     var searchText by remember { mutableStateOf(search.query) }
     val coroutineScope = rememberCoroutineScope()
     val isMemberSearch = search.isRestrictedToMember
     val memberSearchName = search.restrictedMemberName.ifBlank { "TA" }
     val searchPlaceholder = if (isMemberSearch) "搜索 $memberSearchName 的创作" else "搜索内容"
+    val shouldAutoFocusSearchInput = search.query.isBlank()
 
     val showHotSearch = remember { mutableStateOf(!isMemberSearch && settings.getBoolean("showSearchHotSearch", true)) }
     val hotSearchItems = remember(testHotSearchQueries) {
@@ -165,6 +172,8 @@ fun SearchScreen(
     fun submitSearch(query: String) {
         val trimmedQuery = query.trim()
         if (trimmedQuery.isEmpty()) return
+        focusManager.clearFocus(force = true)
+        keyboardController?.hide()
         if (showSearchHistory.value) {
             searchHistoryItems.remove(trimmedQuery)
             searchHistoryItems.add(0, trimmedQuery)
@@ -243,6 +252,15 @@ fun SearchScreen(
         }
     }
 
+    LaunchedEffect(shouldAutoFocusSearchInput) {
+        if (shouldAutoFocusSearchInput) {
+            // 等待导航切换后的第一帧，让搜索框以“进入即输入”的状态出现，而不是先切页再补抢焦点。
+            yield()
+            searchInputFocusRequester.requestFocus()
+            keyboardController?.show()
+        }
+    }
+
     LaunchedEffect(viewModel.errorMessage) {
         viewModel.errorMessage?.let {
             userMessages.showMessage(it, UserMessageDuration.Long)
@@ -283,6 +301,7 @@ fun SearchScreen(
                                     onValueChange = { searchText = it },
                                     modifier = Modifier
                                         .weight(1f)
+                                        .focusRequester(searchInputFocusRequester)
                                         .testTag("search_input"),
                                     textStyle = MaterialTheme.typography.bodyLarge.copy(
                                         color = MaterialTheme.colorScheme.onSurface,

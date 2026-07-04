@@ -20,6 +20,7 @@ package com.github.zly2006.zhihu
 import android.content.Context
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -70,7 +71,7 @@ class SearchScreenInstrumentedTest {
     fun searchBoxEditingClearImeAndBackAreDeterministic() {
         // This test disables hot-search entirely so the screen stays offline and deterministic.
         // Expected behavior:
-        // 1. The search field starts empty and shows its placeholder.
+        // 1. The search field starts empty, is focused immediately, and shows its placeholder.
         // 2. Text input and replacement update the editable value exactly.
         // 3. Triggering the IME search action navigates with the final query instead of touching the network.
         // 4. The clear button resets the field back to the placeholder state.
@@ -89,6 +90,7 @@ class SearchScreenInstrumentedTest {
 
         val searchInput = composeRule.onNodeWithTag("search_input")
         searchInput.assertIsDisplayed()
+        searchInput.assertIsFocused()
         composeRule.onNodeWithText("搜索内容").assertIsDisplayed()
 
         // Typing should produce an exact editable value and reveal the explicit clear affordance.
@@ -148,6 +150,7 @@ class SearchScreenInstrumentedTest {
         composeRule.onAllNodesWithTag("search_hot_list").assertCountEquals(0)
 
         val searchInput = composeRule.onNodeWithTag("search_input")
+        searchInput.assertIsFocused()
         searchInput.performTextInput("限定关键词")
         searchInput.performImeAction()
         composeRule.waitForIdle()
@@ -163,6 +166,25 @@ class SearchScreenInstrumentedTest {
             recordingNavigator.destinations,
         )
         assertEquals("""["全局历史"]""", preferences.getString("searchHistoryQueries", null))
+    }
+
+    @Test
+    fun prefilledSearchDoesNotStealFocusFromResultsState() {
+        composeRule.activity
+            .getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("showSearchHotSearch", false)
+            .commit()
+
+        composeRule.setScreenContent {
+            SearchScreen(
+                search = Search(query = "已有关键词"),
+                testHotSearchQueries = emptyList(),
+            )
+        }
+
+        composeRule.onNodeWithTag("search_input").assertIsDisplayed().assertTextEquals("已有关键词")
+        composeRule.onAllNodesWithText("搜索内容").assertCountEquals(0)
     }
 
     @Test
