@@ -17,12 +17,16 @@
 
 package com.github.zly2006.zhihu.ui
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -30,9 +34,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -63,6 +70,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -72,7 +80,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -117,6 +130,7 @@ const val QUESTION_VIEW_LOG_BUTTON_TAG = "question_view_log_button"
 const val QUESTION_SHARE_BUTTON_TAG = "question_share_button"
 const val QUESTION_WRITE_ANSWER_BUTTON_TAG = "question_write_answer_button"
 const val QUESTION_COMMENTS_BUTTON_TAG = "question_comments_button"
+private const val QUESTION_DETAIL_COLLAPSE_THRESHOLD = 100
 const val QUESTION_STATS_TAG = "question_stats"
 
 private suspend fun loadQuestion(
@@ -154,6 +168,7 @@ fun QuestionScreen(question: Question) {
         }
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val answerSwitchState = paginationEnvironment.articleAnswerSwitchState()
+    val listState = rememberLazyListState()
     var questionContent by remember(question.questionId) { mutableStateOf("") }
     var answerCount by remember(question.questionId) { mutableIntStateOf(0) }
     var visitCount by remember(question.questionId) { mutableIntStateOf(0) }
@@ -164,11 +179,19 @@ fun QuestionScreen(question: Question) {
     var isFollowing by remember(question.questionId) { mutableStateOf(false) }
     var showShareDialog by remember { mutableStateOf(false) }
     val userMessages = rememberUserMessageSink()
-    var isQuestionDetailExpanded by rememberSaveable(question.questionId) { mutableStateOf(true) }
+    var isQuestionDetailExpanded by rememberSaveable(question.questionId) { mutableStateOf(false) }
+    var questionDetailExpandedHeightPx by remember(question.questionId) { mutableIntStateOf(0) }
+    var questionDetailCollapsedHeightPx by remember(question.questionId) { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
     val questionContentPreview =
         remember(questionContent) { Ksoup.parse(questionContent).text().trim() }
     val shareText = getShareText(question, title)
+    val topBarTitleThresholdPx = with(LocalDensity.current) { 160.dp.roundToPx() }
+    val showTopBarTitle by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset >= topBarTitleThresholdPx
+        }
+    }
 
     // 加载问题详情和答案
     LaunchedEffect(question.questionId, viewModel) {
@@ -197,6 +220,8 @@ fun QuestionScreen(question: Question) {
         modifier = Modifier.fillMaxSize(),
         topBar = {
             QuestionTopBar(
+                title = title,
+                showTitle = showTopBarTitle,
                 onNavigateBack = navigator.onNavigateBack,
                 onOpenLog = {
                     try {
@@ -223,6 +248,7 @@ fun QuestionScreen(question: Question) {
                 onLoadMore = { viewModel.loadMore(paginationEnvironment) },
                 isEnd = { viewModel.isEnd },
                 key = { it.stableKey },
+                listState = listState,
                 modifier = Modifier.testTag(QUESTION_SCREEN_LIST_TAG),
                 contentPadding =
                     PaddingValues(
@@ -250,7 +276,23 @@ fun QuestionScreen(question: Question) {
                                     questionContent = questionContent,
                                     questionContentPreview = questionContentPreview,
                                     isExpanded = isQuestionDetailExpanded,
-                                    onToggleExpanded = { isQuestionDetailExpanded = !isQuestionDetailExpanded },
+                                    onToggleExpanded = {
+                                        if (isQuestionDetailExpanded) {
+                                            val heightDeltaPx =
+                                                (questionDetailExpandedHeightPx - questionDetailCollapsedHeightPx)
+                                                    .coerceAtLeast(0)
+                                            isQuestionDetailExpanded = false
+                                            if (heightDeltaPx > 0) {
+                                                scope.launch {
+                                                    listState.scrollBy(-heightDeltaPx.toFloat())
+                                                }
+                                            }
+                                        } else {
+                                            isQuestionDetailExpanded = true
+                                        }
+                                    },
+                                    onExpandedHeightChange = { questionDetailExpandedHeightPx = it },
+                                    onCollapsedHeightChange = { questionDetailCollapsedHeightPx = it },
                                 )
                             }
                             QuestionPrimaryActions(
@@ -314,13 +356,30 @@ fun QuestionScreen(question: Question) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun QuestionTopBar(
+    title: String,
+    showTitle: Boolean,
     onNavigateBack: () -> Unit,
     onOpenLog: () -> Unit,
     onShare: () -> Unit,
     canShare: Boolean,
 ) {
     TopAppBar(
-        title = { Text("问题") },
+        title = {
+            AnimatedContent(
+                targetState = showTitle,
+                transitionSpec = {
+                    (fadeIn() + slideInVertically(initialOffsetY = { it / 2 })) togetherWith
+                        (fadeOut() + slideOutVertically(targetOffsetY = { -it / 2 }))
+                },
+                label = "question_top_bar_title",
+            ) { shouldShowTitle ->
+                Text(
+                    text = if (shouldShowTitle) title else "问题",
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        },
         navigationIcon = {
             IconButton(onClick = onNavigateBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
@@ -378,9 +437,9 @@ private fun QuestionHeaderSection(
                 onClick = onShowComments,
                 modifier = Modifier.testTag(QUESTION_COMMENTS_BUTTON_TAG),
             ) {
-                Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "查看评论")
+                Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
                 Spacer(Modifier.width(8.dp))
-                Text("查看评论")
+                Text("$commentCount")
             }
         }
     }
@@ -393,52 +452,112 @@ private fun QuestionDetailSection(
     questionContentPreview: String,
     isExpanded: Boolean,
     onToggleExpanded: () -> Unit,
+    onExpandedHeightChange: (Int) -> Unit,
+    onCollapsedHeightChange: (Int) -> Unit,
 ) {
+    // 允许收起：字数>=阈值 或者 有图片
+    val allowDetailCollapse = questionContentPreview.length >= QUESTION_DETAIL_COLLAPSE_THRESHOLD || questionContent.contains("<img")
+    val showExpandedDetail = isExpanded || !allowDetailCollapse
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = "问题详情",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium,
-            )
-            TextButton(
-                onClick = onToggleExpanded,
-                modifier = Modifier.testTag(QUESTION_DETAIL_TOGGLE_TAG),
+        if (showExpandedDetail) {
+            Column(
+                modifier =
+                    Modifier
+                        .testTag(QUESTION_DETAIL_CONTENT_TAG)
+                        .onSizeChanged { onExpandedHeightChange(it.height) },
             ) {
-                Icon(
-                    imageVector = if (isExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                    contentDescription = null,
-                )
-                Spacer(Modifier.width(4.dp))
-                Text(if (isExpanded) "收起详情" else "展开详情")
-            }
-        }
-        AnimatedVisibility(
-            visible = isExpanded,
-            enter = fadeIn() + expandVertically(expandFrom = Alignment.Top),
-            exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top),
-        ) {
-            Column(modifier = Modifier.testTag(QUESTION_DETAIL_CONTENT_TAG)) {
                 QuestionDetailContent(questionId = questionId, html = questionContent)
+                if (allowDetailCollapse) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                    ) {
+                        TextButton(
+                            onClick = onToggleExpanded,
+                            modifier = Modifier.testTag(QUESTION_DETAIL_TOGGLE_TAG),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.ExpandLess,
+                                contentDescription = null,
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text("收起详情")
+                        }
+                    }
+                }
             }
         }
-        AnimatedVisibility(
-            visible = !isExpanded && questionContentPreview.isNotEmpty(),
-            enter = fadeIn() + expandVertically(expandFrom = Alignment.Top),
-            exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top),
+        if (!showExpandedDetail && questionContentPreview.isNotEmpty()) {
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .testTag(QUESTION_DETAIL_PREVIEW_TAG)
+                        .onSizeChanged { onCollapsedHeightChange(it.height) },
+            ) {
+                Text(
+                    text = questionContentPreview,
+                    modifier = Modifier.fillMaxWidth(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 6,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                QuestionDetailExpandOverlay(
+                    onExpand = onToggleExpanded,
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuestionDetailExpandOverlay(
+    onExpand: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    Box(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .height(88.dp)
+                .padding(top = 24.dp),
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(72.dp)
+                    .align(Alignment.BottomCenter)
+                    .blur(12.dp)
+                    .background(
+                        brush =
+                            Brush.verticalGradient(
+                                listOf(
+                                    Color.Transparent,
+                                    surfaceColor.copy(alpha = 0.7f),
+                                    surfaceColor,
+                                ),
+                            ),
+                    ),
+        )
+        TextButton(
+            onClick = onExpand,
+            modifier =
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .offset(y = 4.dp)
+                    .padding(end = 4.dp, bottom = 0.dp)
+                    .testTag(QUESTION_DETAIL_TOGGLE_TAG),
         ) {
-            Text(
-                text = questionContentPreview,
-                modifier = Modifier.fillMaxWidth().testTag(QUESTION_DETAIL_PREVIEW_TAG),
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            Icon(
+                imageVector = Icons.Filled.ExpandMore,
+                contentDescription = null,
             )
+            Spacer(Modifier.width(4.dp))
+            Text("展开详情")
         }
     }
 }

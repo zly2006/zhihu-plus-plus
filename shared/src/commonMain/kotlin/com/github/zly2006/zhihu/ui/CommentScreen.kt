@@ -984,6 +984,12 @@ private fun CommentItem(
 ) {
     val navigator = LocalNavigator.current
     val commentData = comment.item
+    val authorPerson =
+        Person(
+            id = commentData.author.id,
+            name = commentData.author.name,
+            urlToken = commentData.author.urlToken,
+        )
 
     Column(modifier = modifier.fillMaxWidth()) {
         // 作者信息
@@ -996,7 +1002,8 @@ private fun CommentItem(
                 contentDescription = "头像",
                 modifier = Modifier
                     .size(36.dp)
-                    .clip(CircleShape),
+                    .clip(CircleShape)
+                    .clickable { navigator.onNavigate(authorPerson) },
                 contentScale = ContentScale.Crop,
             )
             Spacer(modifier = Modifier.width(8.dp))
@@ -1014,15 +1021,7 @@ private fun CommentItem(
                         fontSize = 16.sp,
                         modifier = Modifier
                             .testTag("comment_author_${commentData.id}")
-                            .clickable {
-                                navigator.onNavigate(
-                                    Person(
-                                        id = commentData.author.id,
-                                        name = commentData.author.name,
-                                        urlToken = commentData.author.urlToken,
-                                    ),
-                                )
-                            },
+                            .clickable { navigator.onNavigate(authorPerson) },
                     )
 
                     val authorTag = comment.item.authorTag
