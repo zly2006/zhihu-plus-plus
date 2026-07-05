@@ -23,38 +23,44 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.QuestionAnswer
+import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -66,13 +72,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.data.decodeQuestionContentDetail
@@ -118,9 +124,11 @@ private suspend fun loadQuestion(
     question: Question,
 ): DataHolder.Question? {
     environment.addReadHistory(question.questionId.toString(), "question")
-    val include = "read_count,visit_count,answer_count,voteup_count,comment_count,follower_count,detail,excerpt,author,relationship.is_following,topics"
-    val jsonObject = environment.fetchJson("https://www.zhihu.com/api/v4/questions/${question.questionId}", include)
-        ?: return null
+    val include =
+        "read_count,visit_count,answer_count,voteup_count,comment_count,follower_count,detail,excerpt,author,relationship.is_following,topics"
+    val jsonObject =
+        environment.fetchJson("https://www.zhihu.com/api/v4/questions/${question.questionId}", include)
+            ?: return null
     val questionData = decodeQuestionContentDetail(jsonObject)
     environment.postHistoryDestination(Question(question.questionId, questionData.title))
     environment.recordContentOpenEvent(destination = question, questionId = question.questionId)
@@ -130,57 +138,42 @@ private suspend fun loadQuestion(
 /**
  * 问题详情页。
  *
- * 顶部展示问题标题、描述、关注状态和统计信息，主体是该问题下回答的信息流列表。页面会记录内容打开来源和历史记录，
- * 并复用文章/回答卡片、评论底部表单和分享入口；正文描述同样受 WebView/Markdown 渲染设置影响。
+ * 顶部展示问题标题、描述、关注状态和统计信息，主体是该问题下回答的信息流列表。页面会记录内容打开来源和历史记录， 并复用文章/回答卡片、评论底部表单和分享入口；正文描述同样受
+ * WebView/Markdown 渲染设置影响。
  */
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun QuestionScreen(
-    question: Question,
-) {
+fun QuestionScreen(question: Question) {
     val settings = rememberSettingsStore()
     val shareRuntime = rememberShareDialogRuntime()
     val openZhihuWebUrl = rememberZhihuWebUrlOpener()
     val navigator = LocalNavigator.current
-    val viewModel: QuestionFeedViewModel = viewModel(key = "question_${question.questionId}") {
-        QuestionFeedViewModel(question.questionId)
-    }
+    val viewModel: QuestionFeedViewModel =
+        viewModel(key = "question_${question.questionId}") {
+            QuestionFeedViewModel(question.questionId)
+        }
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val answerSwitchState = paginationEnvironment.articleAnswerSwitchState()
-    var questionContent by remember(question.questionId) {
-        mutableStateOf("")
-    }
-    var answerCount by remember(question.questionId) {
-        mutableIntStateOf(0)
-    }
-    var visitCount by remember(question.questionId) {
-        mutableIntStateOf(0)
-    }
-    var commentCount by remember(question.questionId) {
-        mutableIntStateOf(0)
-    }
-    var followerCount by remember(question.questionId) {
-        mutableIntStateOf(0)
-    }
+    var questionContent by remember(question.questionId) { mutableStateOf("") }
+    var answerCount by remember(question.questionId) { mutableIntStateOf(0) }
+    var visitCount by remember(question.questionId) { mutableIntStateOf(0) }
+    var commentCount by remember(question.questionId) { mutableIntStateOf(0) }
+    var followerCount by remember(question.questionId) { mutableIntStateOf(0) }
     var title by remember(question.questionId, question.title) { mutableStateOf(question.title) }
     var showComments by rememberSaveable(question.questionId) { mutableStateOf(false) }
-    var isFollowing by remember(question.questionId) {
-        mutableStateOf(false)
-    }
+    var isFollowing by remember(question.questionId) { mutableStateOf(false) }
     var showShareDialog by remember { mutableStateOf(false) }
     val userMessages = rememberUserMessageSink()
-    var isQuestionDetailExpanded by rememberSaveable(question.questionId) {
-        mutableStateOf(true)
-    }
-    val questionContentPreview = remember(questionContent) { Ksoup.parse(questionContent).text().trim() }
+    var isQuestionDetailExpanded by rememberSaveable(question.questionId) { mutableStateOf(true) }
+    val scope = rememberCoroutineScope()
+    val questionContentPreview =
+        remember(questionContent) { Ksoup.parse(questionContent).text().trim() }
     val shareText = getShareText(question, title)
 
     // 加载问题详情和答案
     LaunchedEffect(question.questionId, viewModel) {
         if (viewModel.displayItems.isEmpty()) {
-            launch {
-                viewModel.refresh(paginationEnvironment)
-            }
+            launch { viewModel.refresh(paginationEnvironment) }
         }
         try {
             val questionData = loadQuestion(paginationEnvironment, question)
@@ -200,226 +193,78 @@ fun QuestionScreen(
         }
     }
 
-    FeedPullToRefresh(viewModel, padding = PaddingValues(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())) {
-        Scaffold(
-            modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars),
-            topBar = {
-                SelectionContainer(
-                    modifier = Modifier.questionSelectionWorkaround(),
-                ) {
-                    Row {
-                        Text(
-                            text = title,
-                            fontSize = 24.sp,
-                            lineHeight = 32.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier
-                                .padding(16.dp)
-                                .testTag(QUESTION_TITLE_TAG),
-                        )
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        topBar = {
+            QuestionTopBar(
+                onNavigateBack = navigator.onNavigateBack,
+                onOpenLog = {
+                    try {
+                        openZhihuWebUrl("https://www.zhihu.com/question/${question.questionId}/log")
+                    } catch (e: Exception) {
+                        userMessages.showShortMessage("打开日志失败: ${e.message}")
                     }
-                }
-            },
-        ) { innerPadding ->
+                },
+                onShare = {
+                    if (shareText != null) {
+                        handleShareAction(question, settings, shareRuntime) { showShareDialog = true }
+                    }
+                },
+                canShare = shareText != null,
+            )
+        },
+    ) { innerPadding ->
+        FeedPullToRefresh(
+            viewModel,
+            padding = PaddingValues(top = innerPadding.calculateTopPadding()),
+        ) {
             PaginatedList(
                 items = viewModel.displayItems,
                 onLoadMore = { viewModel.loadMore(paginationEnvironment) },
                 isEnd = { viewModel.isEnd },
                 key = { it.stableKey },
-                modifier = Modifier
-                    .padding(innerPadding)
-                    .testTag(QUESTION_SCREEN_LIST_TAG),
+                modifier = Modifier.testTag(QUESTION_SCREEN_LIST_TAG),
+                contentPadding =
+                    PaddingValues(
+                        top = innerPadding.calculateTopPadding() + 8.dp,
+                        bottom = innerPadding.calculateBottomPadding(),
+                    ),
                 footer = ProgressIndicatorFooter,
                 topContent = {
-                    item(1) {
-                        Box(
-                            Modifier.padding(horizontal = 16.dp),
+                    item {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
                         ) {
+                            QuestionHeaderSection(
+                                title = title,
+                                answerCount = answerCount,
+                                visitCount = visitCount,
+                                commentCount = commentCount,
+                                followerCount = followerCount,
+                                onShowComments = { showComments = true },
+                            )
                             if (questionContent.isNotEmpty()) {
-                                Column {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        Text(
-                                            text = "问题详情",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Medium,
-                                        )
-                                        TextButton(
-                                            onClick = { isQuestionDetailExpanded = !isQuestionDetailExpanded },
-                                            modifier = Modifier.testTag(QUESTION_DETAIL_TOGGLE_TAG),
-                                        ) {
-                                            Icon(
-                                                imageVector = if (isQuestionDetailExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                                                contentDescription = null,
-                                            )
-                                            Spacer(Modifier.width(4.dp))
-                                            Text(if (isQuestionDetailExpanded) "收起详情" else "展开详情")
-                                        }
-                                    }
-                                    AnimatedVisibility(
-                                        visible = isQuestionDetailExpanded,
-                                        enter = fadeIn() + expandVertically(expandFrom = Alignment.Top),
-                                        exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top),
-                                    ) {
-                                        Column(
-                                            modifier = Modifier.testTag(QUESTION_DETAIL_CONTENT_TAG),
-                                        ) {
-                                            Spacer(Modifier.height(10.dp))
-                                            QuestionDetailContent(
-                                                questionId = question.questionId,
-                                                html = questionContent,
-                                            )
-                                        }
-                                    }
-                                    AnimatedVisibility(
-                                        visible = !isQuestionDetailExpanded && questionContentPreview.isNotEmpty(),
-                                        enter = fadeIn() + expandVertically(expandFrom = Alignment.Top),
-                                        exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top),
-                                    ) {
-                                        Text(
-                                            text = questionContentPreview,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(top = 10.dp)
-                                                .testTag(QUESTION_DETAIL_PREVIEW_TAG),
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            maxLines = 3,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                    }
-                                }
+                                QuestionDetailSection(
+                                    questionId = question.questionId,
+                                    questionContent = questionContent,
+                                    questionContentPreview = questionContentPreview,
+                                    isExpanded = isQuestionDetailExpanded,
+                                    onToggleExpanded = { isQuestionDetailExpanded = !isQuestionDetailExpanded },
+                                )
                             }
-                        }
-                    }
-                    item(2) {
-                        FlowRow(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                            itemVerticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("排序：", style = MaterialTheme.typography.bodyMedium)
-                                Spacer(Modifier.width(8.dp))
-                                FilledTonalButton(
-                                    onClick = {
-                                        viewModel.updateSortOrder("default")
-                                        viewModel.refresh(paginationEnvironment)
-                                    },
-                                    modifier = Modifier
-                                        .testTag(QUESTION_SORT_DEFAULT_TAG)
-                                        .semantics { selected = viewModel.sortOrder == "default" },
-                                    colors = if (viewModel.sortOrder == "default") {
-                                        ButtonDefaults.filledTonalButtonColors(
-                                            containerColor = MaterialTheme.colorScheme.primary,
-                                            contentColor = MaterialTheme.colorScheme.onPrimary,
-                                        )
-                                    } else {
-                                        ButtonDefaults.filledTonalButtonColors()
-                                    },
-                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                                ) {
-                                    Text("默认")
-                                }
-                                Spacer(Modifier.width(8.dp))
-                                FilledTonalButton(
-                                    onClick = {
-                                        viewModel.updateSortOrder("updated")
-                                        viewModel.refresh(paginationEnvironment)
-                                    },
-                                    modifier = Modifier
-                                        .testTag(QUESTION_SORT_UPDATED_TAG)
-                                        .semantics { selected = viewModel.sortOrder == "updated" },
-                                    colors = if (viewModel.sortOrder == "updated") {
-                                        ButtonDefaults.filledTonalButtonColors(
-                                            containerColor = MaterialTheme.colorScheme.primary,
-                                            contentColor = MaterialTheme.colorScheme.onPrimary,
-                                        )
-                                    } else {
-                                        ButtonDefaults.filledTonalButtonColors()
-                                    },
-                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                                ) {
-                                    Text("最新")
-                                }
-                            }
-
-                            val scope = rememberCoroutineScope()
-                            Button(
-                                onClick = {
+                            QuestionPrimaryActions(
+                                isFollowing = isFollowing,
+                                onFollowClick = {
                                     scope.launch {
                                         val nextFollowing = !isFollowing
-                                        viewModel.followQuestion(
-                                            paginationEnvironment,
-                                            nextFollowing,
-                                        )
+                                        viewModel.followQuestion(paginationEnvironment, nextFollowing)
                                         isFollowing = nextFollowing
-                                        followerCount += if (isFollowing) 1 else -1
+                                        followerCount = (followerCount + if (isFollowing) 1 else -1).coerceAtLeast(0)
                                         userMessages.showShortMessage(if (isFollowing) "已关注问题" else "已取消关注问题")
                                     }
                                 },
-                                modifier = Modifier
-                                    .testTag(QUESTION_FOLLOW_BUTTON_TAG)
-                                    .semantics { selected = isFollowing },
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                                colors = if (isFollowing) {
-                                    ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                                    )
-                                } else {
-                                    ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    )
-                                },
-                            ) {
-                                Icon(Icons.Filled.Add, contentDescription = if (isFollowing) "取消关注" else "关注问题")
-                                Spacer(Modifier.width(8.dp))
-                                Text(if (isFollowing) "已关注" else "关注问题")
-                            }
-                        }
-                        FlowRow(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                            itemVerticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Button(
-                                onClick = {
-                                    try {
-                                        openZhihuWebUrl("https://www.zhihu.com/question/${question.questionId}/log")
-                                    } catch (e: Exception) {
-                                        userMessages.showShortMessage("打开日志失败: ${e.message}")
-                                    }
-                                },
-                                modifier = Modifier.testTag(QUESTION_VIEW_LOG_BUTTON_TAG),
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                            ) {
-                                Text("日志")
-                            }
-
-                            Button(
-                                onClick = {
-                                    if (shareText != null) {
-                                        handleShareAction(question, settings, shareRuntime) {
-                                            showShareDialog = true
-                                        }
-                                    }
-                                },
-                                modifier = Modifier.testTag(QUESTION_SHARE_BUTTON_TAG),
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                                ),
-                            ) {
-                                Icon(Icons.Filled.Share, contentDescription = "分享")
-                            }
-
-                            Button(
-                                onClick = {
+                                onWriteAnswerClick = {
                                     navigator.onNavigate(
                                         WriteAnswer(
                                             questionId = question.questionId,
@@ -428,46 +273,22 @@ fun QuestionScreen(
                                         ),
                                     )
                                 },
-                                modifier = Modifier.testTag(QUESTION_WRITE_ANSWER_BUTTON_TAG),
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                                ),
-                            ) {
-                                Icon(Icons.Filled.Edit, contentDescription = "写回答")
-                                Spacer(Modifier.width(8.dp))
-                                Text("写回答")
-                            }
-                            Button(
-                                onClick = { showComments = true },
-                                modifier = Modifier.testTag(QUESTION_COMMENTS_BUTTON_TAG),
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                                ),
-                            ) {
-                                Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(text = "$commentCount")
-                            }
+                            )
+                            QuestionSortBar(
+                                currentSort = viewModel.sortOrder,
+                                onSortChange = { sortOrder ->
+                                    viewModel.updateSortOrder(sortOrder)
+                                    viewModel.refresh(paginationEnvironment)
+                                },
+                            )
                         }
-                        Text(
-                            "$answerCount 个回答  $visitCount 次浏览  $commentCount 条评论  $followerCount 人关注",
-                            modifier = Modifier
-                                .padding(16.dp)
-                                .testTag(QUESTION_STATS_TAG),
-                        )
                     }
                 },
             ) { item ->
-                FeedCard(
-                    item = item,
-                    modifier = Modifier.testTag("question_feed_item_${item.stableKey}"),
-                ) {
+                FeedCard(item = item, modifier = Modifier.testTag("question_feed_item_${item.stableKey}")) {
                     val dest = navDestination
-                    answerSwitchState?.pendingNavigator = viewModel.createAnswerNavigatorFor(item, paginationEnvironment)
+                    answerSwitchState?.pendingNavigator =
+                        viewModel.createAnswerNavigatorFor(item, paginationEnvironment)
                     dest?.let { navigator.onNavigate(it) }
                 }
             }
@@ -486,6 +307,237 @@ fun QuestionScreen(
             shareText = shareText,
             showDialog = showShareDialog,
             onDismissRequest = { showShareDialog = false },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun QuestionTopBar(
+    onNavigateBack: () -> Unit,
+    onOpenLog: () -> Unit,
+    onShare: () -> Unit,
+    canShare: Boolean,
+) {
+    TopAppBar(
+        title = { Text("问题") },
+        navigationIcon = {
+            IconButton(onClick = onNavigateBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+            }
+        },
+        actions = {
+            IconButton(onClick = onOpenLog, modifier = Modifier.testTag(QUESTION_VIEW_LOG_BUTTON_TAG)) {
+                Icon(Icons.Filled.History, contentDescription = "日志")
+            }
+            IconButton(
+                onClick = onShare,
+                enabled = canShare,
+                modifier = Modifier.testTag(QUESTION_SHARE_BUTTON_TAG),
+            ) {
+                Icon(Icons.Filled.Share, contentDescription = "分享")
+            }
+        },
+    )
+}
+
+@Composable
+private fun QuestionHeaderSection(
+    title: String,
+    answerCount: Int,
+    visitCount: Int,
+    commentCount: Int,
+    followerCount: Int,
+    onShowComments: () -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        SelectionContainer(modifier = Modifier.questionSelectionWorkaround()) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.testTag(QUESTION_TITLE_TAG),
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            FlowRow(
+                modifier = Modifier.weight(1f).testTag(QUESTION_STATS_TAG),
+                horizontalArrangement = Arrangement.spacedBy(16.dp), // 水平间距
+                verticalArrangement = Arrangement.spacedBy(8.dp), // 垂直间距
+            ) {
+                StatItem(icon = Icons.Outlined.QuestionAnswer, text = "$answerCount 回答")
+                StatItem(icon = Icons.Outlined.Visibility, text = "$visitCount 浏览")
+                StatItem(icon = Icons.Outlined.ChatBubbleOutline, text = "$commentCount 评论")
+                StatItem(icon = Icons.Outlined.FavoriteBorder, text = "$followerCount 关注")
+            }
+            OutlinedButton(
+                onClick = onShowComments,
+                modifier = Modifier.testTag(QUESTION_COMMENTS_BUTTON_TAG),
+            ) {
+                Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "查看评论")
+                Spacer(Modifier.width(8.dp))
+                Text("查看评论")
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuestionDetailSection(
+    questionId: Long,
+    questionContent: String,
+    questionContentPreview: String,
+    isExpanded: Boolean,
+    onToggleExpanded: () -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "问题详情",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium,
+            )
+            TextButton(
+                onClick = onToggleExpanded,
+                modifier = Modifier.testTag(QUESTION_DETAIL_TOGGLE_TAG),
+            ) {
+                Icon(
+                    imageVector = if (isExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    contentDescription = null,
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(if (isExpanded) "收起详情" else "展开详情")
+            }
+        }
+        AnimatedVisibility(
+            visible = isExpanded,
+            enter = fadeIn() + expandVertically(expandFrom = Alignment.Top),
+            exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top),
+        ) {
+            Column(modifier = Modifier.testTag(QUESTION_DETAIL_CONTENT_TAG)) {
+                QuestionDetailContent(questionId = questionId, html = questionContent)
+            }
+        }
+        AnimatedVisibility(
+            visible = !isExpanded && questionContentPreview.isNotEmpty(),
+            enter = fadeIn() + expandVertically(expandFrom = Alignment.Top),
+            exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top),
+        ) {
+            Text(
+                text = questionContentPreview,
+                modifier = Modifier.fillMaxWidth().testTag(QUESTION_DETAIL_PREVIEW_TAG),
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun QuestionPrimaryActions(
+    isFollowing: Boolean,
+    onFollowClick: () -> Unit,
+    onWriteAnswerClick: () -> Unit,
+) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Button(
+            onClick = onWriteAnswerClick,
+            modifier = Modifier.weight(1f).testTag(QUESTION_WRITE_ANSWER_BUTTON_TAG),
+            colors =
+                ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                ),
+        ) {
+            Icon(Icons.Filled.Edit, contentDescription = "写回答")
+            Spacer(Modifier.width(8.dp))
+            Text("写回答")
+        }
+        FilledTonalButton(
+            onClick = onFollowClick,
+            modifier =
+                Modifier.weight(1f).testTag(QUESTION_FOLLOW_BUTTON_TAG).semantics {
+                    selected = isFollowing
+                },
+            colors =
+                if (isFollowing) {
+                    ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                    )
+                } else {
+                    ButtonDefaults.filledTonalButtonColors()
+                },
+        ) {
+            Icon(
+                imageVector = if (isFollowing) Icons.Filled.Check else Icons.Filled.Add,
+                contentDescription = if (isFollowing) "取消关注" else "关注问题",
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(if (isFollowing) "已关注" else "关注问题")
+        }
+    }
+}
+
+@Composable
+private fun QuestionSortBar(currentSort: String, onSortChange: (String) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "回答排序",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Medium,
+        )
+        Spacer(Modifier.weight(1f))
+        FilterChip(
+            selected = currentSort == "default",
+            onClick = { onSortChange("default") },
+            modifier =
+                Modifier.testTag(QUESTION_SORT_DEFAULT_TAG).semantics {
+                    selected = currentSort == "default"
+                },
+            label = { Text("默认") },
+        )
+        FilterChip(
+            selected = currentSort == "updated",
+            onClick = { onSortChange("updated") },
+            modifier =
+                Modifier.testTag(QUESTION_SORT_UPDATED_TAG).semantics {
+                    selected = currentSort == "updated"
+                },
+            label = { Text("最新") },
+        )
+    }
+}
+
+@Composable
+private fun StatItem(icon: ImageVector, text: String, modifier: Modifier = Modifier) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null, // 装饰性图标不需要无障碍描述
+            modifier = Modifier.size(16.dp), // 图标稍微小一点，匹配辅助文字
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.width(4.dp)) // 图标和文字的间距
+        Text(
+            text = text,
+            // 辅助信息通常使用更小一号的字重，比如 bodySmall 或 labelMedium
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
