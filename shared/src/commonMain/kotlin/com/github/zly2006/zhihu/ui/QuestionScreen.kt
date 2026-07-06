@@ -18,13 +18,15 @@
 package com.github.zly2006.zhihu.ui
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -81,16 +83,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.fleeksoft.ksoup.Ksoup
@@ -117,6 +123,7 @@ import com.github.zly2006.zhihu.viewmodel.addReadHistory
 import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 const val QUESTION_SCREEN_LIST_TAG = "question_screen_list"
 const val QUESTION_TITLE_TAG = "question_title"
@@ -131,6 +138,9 @@ const val QUESTION_SHARE_BUTTON_TAG = "question_share_button"
 const val QUESTION_WRITE_ANSWER_BUTTON_TAG = "question_write_answer_button"
 const val QUESTION_COMMENTS_BUTTON_TAG = "question_comments_button"
 private const val QUESTION_DETAIL_COLLAPSE_THRESHOLD = 100
+private val QUESTION_DETAIL_COLLAPSED_MAX_HEIGHT: Dp = 180.dp
+private val QUESTION_DETAIL_MASK_HEIGHT: Dp = 88.dp
+private val QUESTION_DETAIL_TOGGLE_ZONE_HEIGHT: Dp = 56.dp
 const val QUESTION_STATS_TAG = "question_stats"
 
 private suspend fun loadQuestion(
@@ -180,10 +190,8 @@ fun QuestionScreen(question: Question) {
     var showShareDialog by remember { mutableStateOf(false) }
     val userMessages = rememberUserMessageSink()
     var isQuestionDetailExpanded by rememberSaveable(question.questionId) { mutableStateOf(false) }
-    var questionDetailExpandedHeightPx by remember(question.questionId) { mutableIntStateOf(0) }
-    var questionDetailCollapsedHeightPx by remember(question.questionId) { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
-    val questionContentPreview =
+    val questionContentPlainText =
         remember(questionContent) { Ksoup.parse(questionContent).text().trim() }
     val shareText = getShareText(question, title)
     val topBarTitleThresholdPx = with(LocalDensity.current) { 160.dp.roundToPx() }
@@ -271,58 +279,38 @@ fun QuestionScreen(question: Question) {
                                 onShowComments = { showComments = true },
                             )
                             if (questionContent.isNotEmpty()) {
-                                QuestionDetailSection(
+                                QuestionAnimatedBodyHeader(
                                     questionId = question.questionId,
                                     questionContent = questionContent,
-                                    questionContentPreview = questionContentPreview,
+                                    questionContentPlainText = questionContentPlainText,
                                     isExpanded = isQuestionDetailExpanded,
-                                    onToggleExpanded = {
-                                        if (isQuestionDetailExpanded) {
-                                            val heightDeltaPx =
-                                                (questionDetailExpandedHeightPx - questionDetailCollapsedHeightPx)
-                                                    .coerceAtLeast(0)
-                                            isQuestionDetailExpanded = false
-                                            if (heightDeltaPx > 0) {
-                                                scope.launch {
-                                                    listState.scrollBy(-heightDeltaPx.toFloat())
-                                                }
-                                            }
-                                        } else {
-                                            isQuestionDetailExpanded = true
+                                    onToggleExpanded = { isQuestionDetailExpanded = !isQuestionDetailExpanded },
+                                    isFollowing = isFollowing,
+                                    onFollowClick = {
+                                        scope.launch {
+                                            val nextFollowing = !isFollowing
+                                            viewModel.followQuestion(paginationEnvironment, nextFollowing)
+                                            isFollowing = nextFollowing
+                                            followerCount = (followerCount + if (isFollowing) 1 else -1).coerceAtLeast(0)
+                                            userMessages.showShortMessage(if (isFollowing) "已关注问题" else "已取消关注问题")
                                         }
                                     },
-                                    onExpandedHeightChange = { questionDetailExpandedHeightPx = it },
-                                    onCollapsedHeightChange = { questionDetailCollapsedHeightPx = it },
+                                    onWriteAnswerClick = {
+                                        navigator.onNavigate(
+                                            WriteAnswer(
+                                                questionId = question.questionId,
+                                                questionTitle = title,
+                                                questionDetail = questionContent,
+                                            ),
+                                        )
+                                    },
+                                    currentSort = viewModel.sortOrder,
+                                    onSortChange = { sortOrder ->
+                                        viewModel.updateSortOrder(sortOrder)
+                                        viewModel.refresh(paginationEnvironment)
+                                    },
                                 )
                             }
-                            QuestionPrimaryActions(
-                                isFollowing = isFollowing,
-                                onFollowClick = {
-                                    scope.launch {
-                                        val nextFollowing = !isFollowing
-                                        viewModel.followQuestion(paginationEnvironment, nextFollowing)
-                                        isFollowing = nextFollowing
-                                        followerCount = (followerCount + if (isFollowing) 1 else -1).coerceAtLeast(0)
-                                        userMessages.showShortMessage(if (isFollowing) "已关注问题" else "已取消关注问题")
-                                    }
-                                },
-                                onWriteAnswerClick = {
-                                    navigator.onNavigate(
-                                        WriteAnswer(
-                                            questionId = question.questionId,
-                                            questionTitle = title,
-                                            questionDetail = questionContent,
-                                        ),
-                                    )
-                                },
-                            )
-                            QuestionSortBar(
-                                currentSort = viewModel.sortOrder,
-                                onSortChange = { sortOrder ->
-                                    viewModel.updateSortOrder(sortOrder)
-                                    viewModel.refresh(paginationEnvironment)
-                                },
-                            )
                         }
                     }
                 },
@@ -446,119 +434,259 @@ private fun QuestionHeaderSection(
 }
 
 @Composable
-private fun QuestionDetailSection(
+private fun QuestionAnimatedBodyHeader(
     questionId: Long,
     questionContent: String,
-    questionContentPreview: String,
+    questionContentPlainText: String,
     isExpanded: Boolean,
     onToggleExpanded: () -> Unit,
-    onExpandedHeightChange: (Int) -> Unit,
-    onCollapsedHeightChange: (Int) -> Unit,
+    isFollowing: Boolean,
+    onFollowClick: () -> Unit,
+    onWriteAnswerClick: () -> Unit,
+    currentSort: String,
+    onSortChange: (String) -> Unit,
 ) {
-    // 允许收起：字数>=阈值 或者 有图片
-    val allowDetailCollapse = questionContentPreview.length >= QUESTION_DETAIL_COLLAPSE_THRESHOLD || questionContent.contains("<img")
-    val showExpandedDetail = isExpanded || !allowDetailCollapse
-    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        if (showExpandedDetail) {
-            Column(
-                modifier =
-                    Modifier
-                        .testTag(QUESTION_DETAIL_CONTENT_TAG)
-                        .onSizeChanged { onExpandedHeightChange(it.height) },
-            ) {
-                QuestionDetailContent(questionId = questionId, html = questionContent)
-                if (allowDetailCollapse) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
-                    ) {
-                        TextButton(
-                            onClick = onToggleExpanded,
-                            modifier = Modifier.testTag(QUESTION_DETAIL_TOGGLE_TAG),
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.ExpandLess,
-                                contentDescription = null,
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text("收起详情")
-                        }
-                    }
-                }
-            }
+    val allowDetailCollapse =
+        questionContentPlainText.length >= QUESTION_DETAIL_COLLAPSE_THRESHOLD || questionContent.contains("<img")
+    val density = LocalDensity.current
+    val sectionSpacingPx = with(density) { 16.dp.roundToPx() }
+    val collapsedViewportHeightPx = with(density) { QUESTION_DETAIL_COLLAPSED_MAX_HEIGHT.roundToPx() }
+    var fullViewportHeightPx by remember(questionId) { mutableIntStateOf(0) }
+    var animationInitialized by remember(questionId) { mutableStateOf(false) }
+    val animatedViewportHeightPx = remember(questionId) { Animatable(collapsedViewportHeightPx.toFloat()) }
+    val animationSpec = remember { tween<Float>(durationMillis = 420, easing = FastOutSlowInEasing) }
+
+    LaunchedEffect(questionId) {
+        animationInitialized = false
+        animatedViewportHeightPx.snapTo(collapsedViewportHeightPx.toFloat())
+    }
+    LaunchedEffect(isExpanded, fullViewportHeightPx, collapsedViewportHeightPx) {
+        if (!allowDetailCollapse || fullViewportHeightPx <= 0) return@LaunchedEffect
+        val collapsedTarget = collapsedViewportHeightPx.coerceAtMost(fullViewportHeightPx).toFloat()
+        val targetHeight = if (isExpanded) fullViewportHeightPx.toFloat() else collapsedTarget
+        if (!animationInitialized) {
+            animationInitialized = true
+            animatedViewportHeightPx.snapTo(targetHeight)
+            return@LaunchedEffect
         }
-        if (!showExpandedDetail && questionContentPreview.isNotEmpty()) {
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .testTag(QUESTION_DETAIL_PREVIEW_TAG)
-                        .onSizeChanged { onCollapsedHeightChange(it.height) },
-            ) {
-                Text(
-                    text = questionContentPreview,
+        if ((animatedViewportHeightPx.value - targetHeight).let { if (it < 0f) -it else it } < 0.5f) {
+            return@LaunchedEffect
+        }
+        animatedViewportHeightPx.animateTo(targetValue = targetHeight, animationSpec = animationSpec)
+    }
+
+    val collapsedTargetPx = collapsedViewportHeightPx.coerceAtMost(fullViewportHeightPx).toFloat()
+    val expandedRangePx = (fullViewportHeightPx.toFloat() - collapsedTargetPx).coerceAtLeast(1f)
+    val expandProgress =
+        if (!allowDetailCollapse || fullViewportHeightPx <= 0) {
+            1f
+        } else {
+            ((animatedViewportHeightPx.value - collapsedTargetPx) / expandedRangePx).coerceIn(0f, 1f)
+        }
+    val viewportHeightPx =
+        if (allowDetailCollapse) {
+            animatedViewportHeightPx.value.roundToInt()
+        } else {
+            fullViewportHeightPx
+        }
+
+    SubcomposeLayout(modifier = Modifier.fillMaxWidth()) { constraints ->
+        val looseConstraints =
+            constraints.copy(
+                minWidth = 0,
+                minHeight = 0,
+                maxHeight = Constraints.Infinity,
+            )
+        val detailPlaceable =
+            subcompose("detail") {
+                if (allowDetailCollapse) {
+                    QuestionDetailAnimatedViewport(
+                        questionId = questionId,
+                        questionContent = questionContent,
+                        viewportHeightPx = viewportHeightPx,
+                        isExpanded = isExpanded,
+                        overlayAlpha = 1f - expandProgress,
+                        onToggleExpanded = onToggleExpanded,
+                        onMeasuredFullHeight = { fullViewportHeightPx = it },
+                    )
+                } else {
+                    QuestionDetailStaticContent(
+                        questionId = questionId,
+                        questionContent = questionContent,
+                        onMeasuredHeight = { fullViewportHeightPx = it },
+                    )
+                }
+            }.single().measure(looseConstraints)
+        val controlsPlaceable =
+            subcompose("controls") {
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 6,
-                    overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                QuestionDetailExpandOverlay(
-                    onExpand = onToggleExpanded,
-                    modifier = Modifier.align(Alignment.BottomCenter),
-                )
-            }
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    QuestionPrimaryActions(
+                        isFollowing = isFollowing,
+                        onFollowClick = onFollowClick,
+                        onWriteAnswerClick = onWriteAnswerClick,
+                    )
+                    QuestionSortBar(
+                        currentSort = currentSort,
+                        onSortChange = onSortChange,
+                    )
+                }
+            }.single().measure(looseConstraints)
+        val totalHeight = detailPlaceable.height + sectionSpacingPx + controlsPlaceable.height
+        layout(width = constraints.maxWidth, height = totalHeight) {
+            detailPlaceable.place(0, 0)
+            controlsPlaceable.place(0, detailPlaceable.height + sectionSpacingPx)
         }
     }
 }
 
 @Composable
-private fun QuestionDetailExpandOverlay(
-    onExpand: () -> Unit,
-    modifier: Modifier = Modifier,
+private fun QuestionDetailStaticContent(
+    questionId: Long,
+    questionContent: String,
+    onMeasuredHeight: (Int) -> Unit,
 ) {
+    SubcomposeLayout(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .testTag(QUESTION_DETAIL_CONTENT_TAG),
+    ) { constraints ->
+        val placeable =
+            subcompose("static_detail") {
+                QuestionDetailContent(questionId = questionId, html = questionContent)
+            }.single().measure(
+                constraints.copy(
+                    minWidth = 0,
+                    minHeight = 0,
+                    maxHeight = Constraints.Infinity,
+                ),
+            )
+        if (placeable.height > 0) {
+            onMeasuredHeight(placeable.height)
+        }
+        layout(width = constraints.maxWidth, height = placeable.height) {
+            placeable.place(0, 0)
+        }
+    }
+}
+
+@Composable
+private fun QuestionDetailAnimatedViewport(
+    questionId: Long,
+    questionContent: String,
+    viewportHeightPx: Int,
+    isExpanded: Boolean,
+    overlayAlpha: Float,
+    onToggleExpanded: () -> Unit,
+    onMeasuredFullHeight: (Int) -> Unit,
+) {
+    val maskHeightPx = with(LocalDensity.current) { QUESTION_DETAIL_MASK_HEIGHT.roundToPx() }
+    val buttonZoneHeightPx = with(LocalDensity.current) { QUESTION_DETAIL_TOGGLE_ZONE_HEIGHT.roundToPx() }
+    SubcomposeLayout(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clipToBounds()
+                .testTag(if (isExpanded) QUESTION_DETAIL_CONTENT_TAG else QUESTION_DETAIL_PREVIEW_TAG),
+    ) { constraints ->
+        val looseConstraints =
+            constraints.copy(
+                minWidth = 0,
+                minHeight = 0,
+                maxHeight = Constraints.Infinity,
+            )
+        val contentPlaceable =
+            subcompose("content") {
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = QUESTION_DETAIL_TOGGLE_ZONE_HEIGHT),
+                ) {
+                    QuestionDetailContent(questionId = questionId, html = questionContent)
+                }
+            }.single().measure(looseConstraints)
+        if (contentPlaceable.height > 0) {
+            onMeasuredFullHeight(contentPlaceable.height)
+        }
+        val layoutHeight = viewportHeightPx.coerceIn(0, contentPlaceable.height.coerceAtLeast(0))
+        val buttonPlaceable =
+            subcompose("button") {
+                QuestionDetailToggleButton(
+                    isExpanded = isExpanded,
+                    onClick = onToggleExpanded,
+                )
+            }.single().measure(looseConstraints)
+        val overlayPlaceable =
+            subcompose("overlay") {
+                QuestionDetailOverlayMask(
+                    alpha = overlayAlpha,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }.single().measure(
+                Constraints(
+                    minWidth = constraints.maxWidth,
+                    maxWidth = constraints.maxWidth,
+                    minHeight = 0,
+                    maxHeight = layoutHeight.coerceAtLeast(0),
+                ),
+            )
+        layout(width = constraints.maxWidth, height = layoutHeight) {
+            contentPlaceable.place(0, 0)
+            if (overlayAlpha > 0f) {
+                overlayPlaceable.place(0, (layoutHeight - minOf(maskHeightPx, overlayPlaceable.height)).coerceAtLeast(0))
+            }
+            val buttonY = (layoutHeight - buttonZoneHeightPx + (buttonZoneHeightPx - buttonPlaceable.height) / 2).coerceAtLeast(0)
+            val buttonX = (constraints.maxWidth - buttonPlaceable.width).coerceAtLeast(0)
+            buttonPlaceable.place(buttonX, buttonY)
+        }
+    }
+}
+
+@Composable
+private fun QuestionDetailOverlayMask(alpha: Float, modifier: Modifier = Modifier) {
     val surfaceColor = MaterialTheme.colorScheme.surface
     Box(
         modifier =
             modifier
-                .fillMaxWidth()
-                .height(88.dp)
-                .padding(top = 24.dp),
-    ) {
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .height(72.dp)
-                    .align(Alignment.BottomCenter)
-                    .blur(12.dp)
-                    .background(
-                        brush =
-                            Brush.verticalGradient(
-                                listOf(
-                                    Color.Transparent,
-                                    surfaceColor.copy(alpha = 0.7f),
-                                    surfaceColor,
-                                ),
+                .height(QUESTION_DETAIL_MASK_HEIGHT)
+                .graphicsLayer { this.alpha = alpha }
+                .blur(12.dp)
+                .background(
+                    brush =
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.Transparent,
+                                surfaceColor.copy(alpha = 0.7f),
+                                surfaceColor,
                             ),
-                    ),
+                        ),
+                ),
+    )
+}
+
+@Composable
+private fun QuestionDetailToggleButton(
+    isExpanded: Boolean,
+    onClick: () -> Unit,
+) {
+    TextButton(
+        onClick = onClick,
+        modifier =
+            Modifier
+                .offset(y = 4.dp)
+                .padding(end = 4.dp, bottom = 0.dp)
+                .testTag(QUESTION_DETAIL_TOGGLE_TAG),
+    ) {
+        Icon(
+            imageVector = if (isExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+            contentDescription = null,
         )
-        TextButton(
-            onClick = onExpand,
-            modifier =
-                Modifier
-                    .align(Alignment.BottomEnd)
-                    .offset(y = 4.dp)
-                    .padding(end = 4.dp, bottom = 0.dp)
-                    .testTag(QUESTION_DETAIL_TOGGLE_TAG),
-        ) {
-            Icon(
-                imageVector = Icons.Filled.ExpandMore,
-                contentDescription = null,
-            )
-            Spacer(Modifier.width(4.dp))
-            Text("展开详情")
-        }
+        Spacer(Modifier.width(4.dp))
+        Text(if (isExpanded) "收起详情" else "展开详情")
     }
 }
 
