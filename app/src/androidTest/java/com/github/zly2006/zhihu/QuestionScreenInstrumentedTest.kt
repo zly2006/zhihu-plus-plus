@@ -123,23 +123,29 @@ class QuestionScreenInstrumentedTest {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val webviewMonitor = instrumentation.addMonitor(WebviewActivity::class.java.name, null, false)
         try {
-            composeRule.waitUntilTextExists("12 个回答  345 次浏览  7 条评论  89 人关注")
+            composeRule.waitUntilTextExists("12 回答")
             composeRule.onNodeWithTag(QUESTION_TITLE_TAG).assertIsDisplayed()
             composeRule.onNodeWithText("离线问题标题").assertIsDisplayed()
             composeRule.onNodeWithTag(QUESTION_STATS_TAG).assertIsDisplayed()
-            composeRule.onNodeWithText("12 个回答  345 次浏览  7 条评论  89 人关注").assertIsDisplayed()
-            composeRule.onNodeWithTag(QUESTION_SCREEN_LIST_TAG).performScrollToNode(hasTestTag(QUESTION_DETAIL_CONTENT_TAG))
+            composeRule.onNodeWithText("12 回答").assertIsDisplayed()
+            composeRule.onNodeWithText("345 浏览").assertIsDisplayed()
+            composeRule.onNodeWithText("7 评论").assertIsDisplayed()
+            composeRule.onNodeWithText("89 关注").assertIsDisplayed()
+            composeRule
+                .onNodeWithTag(QUESTION_SCREEN_LIST_TAG)
+                .performScrollToNode(hasTestTag(QUESTION_DETAIL_TOGGLE_TAG))
+            composeRule.waitUntilTagIsDisplayed(QUESTION_DETAIL_TOGGLE_TAG)
+            composeRule.waitUntilTagIsDisplayed(QUESTION_DETAIL_PREVIEW_TAG)
+            composeRule.onNodeWithTag(QUESTION_DETAIL_PREVIEW_TAG).assertIsDisplayed()
+            composeRule.onNodeWithText("离线问题详情用于 QuestionScreen instrumented test。").assertIsDisplayed()
+
+            composeRule.onNodeWithTag(QUESTION_DETAIL_TOGGLE_TAG).performClick()
             composeRule.waitUntilTagIsDisplayed(QUESTION_DETAIL_CONTENT_TAG)
             composeRule.onNodeWithTag(QUESTION_DETAIL_CONTENT_TAG).assertIsDisplayed()
 
             composeRule.onNodeWithTag(QUESTION_DETAIL_TOGGLE_TAG).performClick()
             composeRule.waitUntilTagIsDisplayed(QUESTION_DETAIL_PREVIEW_TAG)
             composeRule.onNodeWithTag(QUESTION_DETAIL_PREVIEW_TAG).assertIsDisplayed()
-            composeRule.onNodeWithText("离线问题详情用于 QuestionScreen instrumented test。").assertIsDisplayed()
-            composeRule.onNodeWithTag(QUESTION_DETAIL_TOGGLE_TAG).performClick()
-            composeRule.onNodeWithTag(QUESTION_SCREEN_LIST_TAG).performScrollToNode(hasTestTag(QUESTION_DETAIL_CONTENT_TAG))
-            composeRule.waitUntilTagIsDisplayed(QUESTION_DETAIL_CONTENT_TAG)
-            composeRule.onNodeWithTag(QUESTION_DETAIL_CONTENT_TAG).assertIsDisplayed()
 
             composeRule.onNodeWithTag(QUESTION_SORT_UPDATED_TAG).performClick()
             composeRule.onNodeWithTag(QUESTION_SORT_DEFAULT_TAG).performClick()
@@ -335,7 +341,13 @@ class QuestionScreenInstrumentedTest {
         visitCount = 345,
         commentCount = 7,
         followerCount = 89,
-        detail = "<p>离线问题详情用于 QuestionScreen instrumented test。</p>",
+        detail =
+            """
+            <p>离线问题详情用于 QuestionScreen instrumented test。</p>
+            <p>为了覆盖收起/展开详情的交互与动画，这里需要一段更长的详情文本来触发可折叠逻辑。</p>
+            <p>这一段纯文字不包含图片或复杂结构，主要用于保证详情总长度超过阈值，从而让“展开详情/收起详情”按钮出现。</p>
+            <p>当详情足够长时，测试应能先收起到预览视图，再点击恢复到完整内容，且列表入口按钮仍可点击。</p>
+            """.trimIndent(),
         relationship = DataHolder.QuestionRelationship(isFollowing = false),
         topics = emptyList(),
         author = DataHolder.Author(
