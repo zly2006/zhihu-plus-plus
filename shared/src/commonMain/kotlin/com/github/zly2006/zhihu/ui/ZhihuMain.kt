@@ -22,7 +22,10 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
@@ -470,7 +473,32 @@ fun ZhihuMain(
                 composable<Account> {
                     AccountSettingScreen(innerPadding)
                 }
-                composable<Search> { navEntry ->
+                composable<Search>(
+                    enterTransition = {
+                        if (initialState.destination.hasRoute<Search>()) {
+                            EnterTransition.None
+                        } else {
+                            fadeIn(animationSpec = tween(durationMillis = 240)) +
+                                slideInVertically(animationSpec = tween(durationMillis = 280)) { it / 16 } +
+                                scaleIn(
+                                    animationSpec = tween(durationMillis = 280),
+                                    initialScale = 0.985f,
+                                )
+                        }
+                    },
+                    popExitTransition = {
+                        if (targetState.destination.hasRoute<Search>()) {
+                            ExitTransition.None
+                        } else {
+                            fadeOut(animationSpec = tween(durationMillis = 180)) +
+                                slideOutVertically(animationSpec = tween(durationMillis = 220)) { it / 20 } +
+                                scaleOut(
+                                    animationSpec = tween(durationMillis = 220),
+                                    targetScale = 0.985f,
+                                )
+                        }
+                    },
+                ) { navEntry ->
                     val search: Search = navEntry.toRoute()
                     SearchScreen(search)
                 }
