@@ -17,20 +17,35 @@
 
 package com.github.zly2006.zhihu.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FirstPage
+import androidx.compose.material.icons.filled.LastPage
+import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextRange
@@ -60,32 +75,66 @@ fun MarkdownShortcutToolbar(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    Surface(
+    var expanded by rememberSaveable { mutableStateOf(true) }
+    val opacityFraction = fabOpacityPercent.intValue / 100f
+    val containerColor = FloatingActionButtonDefaults.containerColor.copy(alpha = opacityFraction)
+    val contentColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = opacityFraction)
+    Row(
         modifier =
             modifier
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 10.dp)
                 .testTag("markdown_shortcut_toolbar"),
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        contentColor = MaterialTheme.colorScheme.onSurface,
+        horizontalArrangement = Arrangement.End,
     ) {
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 6.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        Surface(
+            shape = MaterialTheme.shapes.large,
+            color = containerColor,
+            contentColor = contentColor,
         ) {
-            MarkdownShortcut.entries.forEach { shortcut ->
-                ShortcutButton(
-                    label = shortcut.label,
-                    enabled = enabled,
-                    onClick = { onApplyShortcut(shortcut) },
-                )
+            Row(
+                modifier = Modifier.padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                AnimatedVisibility(
+                    visible = expanded,
+                    modifier = Modifier.weight(1f, fill = false),
+                    enter = expandHorizontally(expandFrom = Alignment.End) + fadeIn(),
+                    exit = shrinkHorizontally(shrinkTowards = Alignment.End) + fadeOut(),
+                ) {
+                    Row(
+                        modifier =
+                            Modifier
+                                .horizontalScroll(rememberScrollState())
+                                .padding(start = 6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        MarkdownShortcut.entries.forEach { shortcut ->
+                            ShortcutButton(
+                                label = shortcut.label,
+                                enabled = enabled,
+                                onClick = { onApplyShortcut(shortcut) },
+                            )
+                        }
+                    }
+                }
+                if (expanded) {
+                    VerticalDivider(
+                        modifier = Modifier.height(24.dp),
+                        color = contentColor.copy(alpha = 0.3f),
+                    )
+                }
+                IconButton(
+                    onClick = { expanded = !expanded },
+                    modifier = Modifier.size(40.dp),
+                ) {
+                    Icon(
+                        imageVector = if (expanded) Icons.Filled.LastPage else Icons.Filled.FirstPage,
+                        contentDescription = if (expanded) "收起工具栏" else "展开工具栏",
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
             }
-            Spacer(Modifier.width(2.dp))
         }
     }
 }
