@@ -27,12 +27,13 @@ import com.github.zly2006.zhihu.shared.data.ZhihuPaging
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import io.ktor.http.encodeURLParameter
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.jsonArray
 
 const val ZHIHU_HOT_SEARCH_URL = "https://www.zhihu.com/api/v4/search/hot_search"
 private const val SEARCH_VERTICAL_INFO = "0,0,0,0,0,0,0,0,0,0,0,0"
 
-class SearchViewModel(
+open class SearchViewModel(
     val searchQuery: String,
     val restrictedMemberHashId: String = "",
 ) : BaseFeedViewModel() {
@@ -79,8 +80,6 @@ class SearchViewModel(
         refresh(environment)
     }
 
-    private val filterPipeline = SearchFeedFilterPipeline()
-
     override suspend fun fetchFeeds(environment: PaginationEnvironment) {
         try {
             val url = lastPaging?.next ?: initialUrl
@@ -117,28 +116,16 @@ class SearchViewModel(
         data: List<Feed>,
         rawData: JsonArray,
     ) {
-        super.processResponse(environment, filterPipeline.filter(data, environment), rawData)
-    }
-}
-
-/**
- * 搜索结果使用更保守的过滤策略：只应用用户明确加入本地屏蔽列表的作者规则。
- *
- * 推荐流可以继续在内容详情、质量、广告、关键词和主题等阶段做更激进的筛选；搜索的目标是尽量完整展示
- * 命中内容，所以这里把搜索可复用的阶段收敛为“显式作者屏蔽”。后续如果要给搜索添加其它明确规则，
- * 应该作为新的阶段接到这个 pipeline，而不是复用推荐流的整套过滤。
- */
-private class SearchFeedFilterPipeline {
-    fun filter(
-        feeds: List<Feed>,
-        environment: PaginationEnvironment,
-    ): List<Feed> {
         val blockedUserIds = environment.blockedUserIds()
-        if (blockedUserIds.isEmpty()) return feeds
-
-        return feeds.filterNot { feed ->
-            feed.target?.author?.id in blockedUserIds
+        // 进行搜索filter逻辑。目前仅支持作者。
+        val filtered = if (blockedUserIds.isEmpty()) {
+            data
+        } else {
+            data.filterNot { feed ->
+                feed.target?.author?.id in blockedUserIds
+            }
         }
+        super.processResponse(environment, filtered, rawData)
     }
 }
 
