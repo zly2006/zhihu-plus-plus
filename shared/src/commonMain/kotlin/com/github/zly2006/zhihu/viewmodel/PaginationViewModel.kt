@@ -113,9 +113,11 @@ abstract class PaginationViewModel<T : Any>(
             val url = lastPaging?.next ?: initialUrl
 
             @Suppress("HttpUrlsUsage")
-            val json = environment.fetchJson(url.replace("http://", "https://"), include)!!
+            val json = environment.fetchJson(url.replace("http://", "https://"), include)
+                ?: throw RuntimeException("您可能已被风控，请重新登录。", Exception("cause: not json object."))
 
-            val jsonArray = json["data"]!!.jsonArray
+            val jsonArray = json["data"] as? JsonArray
+                ?: throw RuntimeException("您可能已被风控，请重新登录。", Exception("cause: no $.data"))
             processResponse(
                 environment,
                 jsonArray.mapNotNull {
