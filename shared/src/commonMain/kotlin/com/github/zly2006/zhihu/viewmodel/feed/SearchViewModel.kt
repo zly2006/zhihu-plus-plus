@@ -25,15 +25,17 @@ import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.SearchResult
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.ZhihuPaging
+import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.viewmodel.FeedDisplayEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import io.ktor.http.encodeURLParameter
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.jsonArray
 
 const val ZHIHU_HOT_SEARCH_URL = "https://www.zhihu.com/api/v4/search/hot_search"
 private const val SEARCH_VERTICAL_INFO = "0,0,0,0,0,0,0,0,0,0,0,0"
 
-class SearchViewModel(
+open class SearchViewModel(
     val searchQuery: String,
     val restrictedMemberHashId: String = "",
 ) : BaseFeedViewModel() {
@@ -112,6 +114,23 @@ class SearchViewModel(
         } finally {
             isLoading = false
         }
+    }
+
+    override fun processResponse(
+        environment: PaginationEnvironment,
+        data: List<Feed>,
+        rawData: JsonArray,
+    ) {
+        val blockedUserIds = environment.blockedUserIds()
+        // 进行搜索filter逻辑。目前仅支持作者。
+        val filtered = if (blockedUserIds.isEmpty()) {
+            data
+        } else {
+            data.filterNot { feed ->
+                feed.target?.author?.id in blockedUserIds
+            }
+        }
+        super.processResponse(environment, filtered, rawData)
     }
 }
 
