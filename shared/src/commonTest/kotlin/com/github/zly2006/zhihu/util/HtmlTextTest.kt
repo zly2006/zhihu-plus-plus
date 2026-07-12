@@ -33,4 +33,17 @@ class HtmlTextTest {
         assertEquals(4, span.end)
         assertEquals(Color.Red, span.item.color)
     }
+
+    @Test
+    fun parseEmphasizedHtmlTextKeepsAngleBracketText() {
+        listOf(
+            "为什么Deepseek在输入<think 后会匹配到疑似其他对话?",
+            "vector<bool>",
+        ).forEach { source ->
+            val text = parseEmphasizedHtmlText(source, Color.Red)
+
+            assertEquals(source, text.text)
+            assertEquals(0, text.spanStyles.size)
+        }
+    }
 }
