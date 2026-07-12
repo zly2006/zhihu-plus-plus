@@ -21,22 +21,18 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -49,7 +45,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -63,6 +58,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -162,20 +158,22 @@ private fun FollowScreenContent(
 ) {
     val viewModel = viewModel { FollowScreenData() }
     val titles = listOf("推荐", "动态")
-    val pagerState = rememberPagerState(
-        initialPage = viewModel.selectedTabIndex,
-        pageCount = { titles.size },
-    )
+    val pagerState = rememberPagerState(pageCount = { titles.size })
     val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(pagerState.currentPage) {
         viewModel.selectedTabIndex = pagerState.currentPage
     }
 
+    LaunchedEffect(viewModel.selectedTabIndex) {
+        if (pagerState.currentPage != viewModel.selectedTabIndex) {
+            pagerState.animateScrollToPage(viewModel.selectedTabIndex)
+        }
+    }
+
     Column(modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())) {
         FollowTabRow(
-            pagerState = pagerState,
-            selectedTabIndex = pagerState.currentPage,
+            selectedTabIndex = viewModel.selectedTabIndex,
             onTabSelected = { index ->
                 viewModel.selectedTabIndex = index
                 coroutineScope.launch {
@@ -214,57 +212,54 @@ private fun FollowScreenContent(
 }
 
 @Composable
+fun FollowTopLevelPage(
+    selectedTabIndex: Int,
+    onTabSelected: (Int) -> Unit,
+    scrollToTopTrigger: Int,
+    innerPadding: PaddingValues,
+    isActive: Boolean,
+) {
+    Column(
+        modifier = Modifier
+            .padding(bottom = innerPadding.calculateBottomPadding())
+            .then(if (isActive) Modifier else Modifier.clearAndSetSemantics {}),
+    ) {
+        FollowTabRow(
+            selectedTabIndex = selectedTabIndex,
+            onTabSelected = onTabSelected,
+            modifier = Modifier.padding(top = innerPadding.calculateTopPadding()),
+        )
+        when (selectedTabIndex) {
+            0 -> FollowRecommendScreen(
+                scrollToTopTrigger = scrollToTopTrigger,
+                isActive = isActive,
+            )
+            1 -> FollowDynamicScreen(
+                scrollToTopTrigger = scrollToTopTrigger,
+                isActive = isActive,
+            )
+        }
+    }
+}
+
+@Composable
 private fun FollowTabRow(
-    pagerState: PagerState? = null,
     selectedTabIndex: Int,
     onTabSelected: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val titles = listOf("推荐", "动态")
-    val tabs: @Composable () -> Unit = {
+    PrimaryTabRow(
+        selectedTabIndex = selectedTabIndex,
+        modifier = modifier.testTag(FOLLOW_SCREEN_TAB_ROW_TAG),
+    ) {
         titles.forEachIndexed { index, title ->
             Tab(
                 modifier = Modifier.testTag("follow_screen_tab_$index"),
                 selected = selectedTabIndex == index,
                 onClick = { onTabSelected(index) },
-                text = {
-                    Text(
-                        text = title,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center,
-                    )
-                },
+                text = { Text(text = title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
             )
-        }
-    }
-
-    if (pagerState != null) {
-        BoxWithConstraints(modifier) {
-            val tabWidth = maxWidth / titles.size
-            PrimaryTabRow(
-                selectedTabIndex = selectedTabIndex,
-                modifier = Modifier.testTag(FOLLOW_SCREEN_TAB_ROW_TAG),
-                indicator = {
-                    val page = (pagerState.currentPage + pagerState.currentPageOffsetFraction)
-                        .coerceIn(0f, (titles.size - 1).toFloat())
-                    TabRowDefaults.PrimaryIndicator(
-                        modifier = Modifier
-                            .offset(x = tabWidth * page)
-                            .width(tabWidth),
-                    )
-                },
-            ) {
-                tabs()
-            }
-        }
-    } else {
-        PrimaryTabRow(
-            selectedTabIndex = selectedTabIndex,
-            modifier = modifier.testTag(FOLLOW_SCREEN_TAB_ROW_TAG),
-        ) {
-            tabs()
         }
     }
 }
