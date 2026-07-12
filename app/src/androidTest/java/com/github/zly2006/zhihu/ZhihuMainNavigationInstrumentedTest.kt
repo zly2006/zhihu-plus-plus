@@ -23,6 +23,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -45,7 +46,6 @@ import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setZhihuMainContent
-import com.github.zly2006.zhihu.ui.FOLLOW_SCREEN_PAGER_TAG
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.START_DESTINATION_PREFERENCE_KEY
@@ -136,54 +136,59 @@ class ZhihuMainNavigationInstrumentedTest {
     }
 
     @Test
-    fun followInnerPager_swipesBetweenTabsWithoutLosingBottomTabSelection() {
-        // Follow is now a single main-tab page that owns its own inner pager. Swiping inside the
-        // follow pager must switch between "推荐" and "动态" while keeping the bottom-bar Follow
-        // item selected, and leaving Follow should still require switching the main tab itself.
+    fun flattenedMainPager_swipesThroughFollowPagesWithoutLosingBottomTabSelection() {
+        // Follow is represented by two adjacent main-pager pages but a single bottom-bar item.
+        // Swiping between "推荐" and "动态" must keep the Follow item selected; swiping past the
+        // second Follow page should move to the next configured bottom destination.
         composeRule.launchZhihuMain(startDestination = Home.name)
         composeRule.onNodeWithTag("nav_tab_follow").performClick()
 
         composeRule.waitUntilTabSelected("nav_tab_follow")
-        composeRule.waitUntilTabSelected("follow_screen_tab_0")
-        composeRule.onNodeWithTag("follow_screen_tab_0").assertIsSelected()
-        composeRule.onNodeWithTag("follow_screen_tab_1").assertIsNotSelected()
-        composeRule.onNodeWithText("推荐").assertExists().assertIsDisplayed()
-        composeRule.onNodeWithText("动态").assertExists().assertIsDisplayed()
+        composeRule
+            .onNodeWithText("推荐")
+            .assertExists()
+            .assertIsDisplayed()
+            .assertIsSelected()
+        composeRule
+            .onNodeWithText("动态")
+            .assertExists()
+            .assertIsDisplayed()
+            .assertIsNotSelected()
 
-        composeRule.onNodeWithTag(FOLLOW_SCREEN_PAGER_TAG).performTouchInput { swipeLeft() }
+        composeRule.onRoot().performTouchInput { swipeLeft() }
 
-        composeRule.waitUntilTabSelected("follow_screen_tab_1")
-        composeRule.onNodeWithTag("follow_screen_tab_1").assertIsSelected()
-        composeRule.onNodeWithTag("follow_screen_tab_0").assertIsNotSelected()
+        composeRule.waitUntilTextSelected("动态")
+        composeRule.onNodeWithText("动态").assertIsSelected()
+        composeRule.onNodeWithText("推荐").assertIsNotSelected()
         composeRule.onNodeWithTag("nav_tab_follow").assertIsSelected()
 
-        composeRule.onNodeWithTag("nav_tab_daily").performClick()
+        composeRule.onRoot().performTouchInput { swipeLeft() }
+
+        composeRule.waitUntilTabSelected("nav_tab_daily")
         composeRule.onNodeWithTag("nav_tab_daily").assertIsSelected()
         composeRule.onNodeWithTag("nav_tab_follow").assertIsNotSelected()
 
-        composeRule.onNodeWithTag("nav_tab_follow").performClick()
+        composeRule.onRoot().performTouchInput { swipeRight() }
 
-        composeRule.waitUntilTabSelected("nav_tab_follow")
-        composeRule.waitUntilTabSelected("follow_screen_tab_1")
-        composeRule.onNodeWithTag("follow_screen_tab_1").assertIsSelected()
-        composeRule.onNodeWithTag("follow_screen_tab_0").assertIsNotSelected()
+        composeRule.waitUntilTextSelected("动态")
+        composeRule.onNodeWithText("动态").assertIsSelected()
+        composeRule.onNodeWithText("推荐").assertIsNotSelected()
         composeRule.onNodeWithTag("nav_tab_follow").assertIsSelected()
 
-        composeRule.onNodeWithTag(FOLLOW_SCREEN_PAGER_TAG).performTouchInput { swipeRight() }
+        composeRule.onRoot().performTouchInput { swipeRight() }
 
-        composeRule.waitUntilTabSelected("follow_screen_tab_0")
-        composeRule.onNodeWithTag("follow_screen_tab_0").assertIsSelected()
-        composeRule.onNodeWithTag("follow_screen_tab_1").assertIsNotSelected()
+        composeRule.waitUntilTextSelected("推荐")
+        composeRule.onNodeWithText("推荐").assertIsSelected()
+        composeRule.onNodeWithText("动态").assertIsNotSelected()
         composeRule.onNodeWithTag("nav_tab_follow").assertIsSelected()
         composeRule.onNodeWithTag("nav_tab_home").assertIsNotSelected()
     }
 
     @Test
     fun startDestinationAndHiddenBottomTabsRemainCompatibleWithFlattenedPager() {
-        // The flattened main pager now treats Follow as a single main tab with an internal pager.
-        // Startup still opens the configured visible tab, hidden tabs stay hidden, and entering
-        // Follow from the main pager lands on the Follow page while its inner pager starts from
-        // the default recommendation tab.
+        // The main shell now stores all configured bottom tabs inside one pager. This keeps the
+        // preference contract intact: startup opens the configured visible tab, hidden tabs stay
+        // hidden, and legacy top-level NavDestination requests cannot navigate to missing routes.
         composeRule.launchZhihuMain(
             startDestination = Daily.name,
             bottomBarItems = linkedSetOf(Follow.name, Daily.name, Account.name),
@@ -199,16 +204,15 @@ class ZhihuMainNavigationInstrumentedTest {
 
         composeRule.onRoot().performTouchInput { swipeRight() }
 
-        composeRule.waitUntilTabSelected("follow_screen_tab_0")
+        composeRule.waitUntilTextSelected("动态")
         composeRule.onNodeWithTag("nav_tab_follow").assertIsSelected()
-        composeRule.onNodeWithTag("follow_screen_tab_0").assertIsSelected()
-        composeRule.onNodeWithTag("follow_screen_tab_1").assertIsNotSelected()
+        composeRule.onNodeWithText("动态").assertIsSelected()
 
-        composeRule.onNodeWithTag(FOLLOW_SCREEN_PAGER_TAG).performTouchInput { swipeLeft() }
+        composeRule.onRoot().performTouchInput { swipeRight() }
 
-        composeRule.waitUntilTabSelected("follow_screen_tab_1")
+        composeRule.waitUntilTextSelected("推荐")
         composeRule.onNodeWithTag("nav_tab_follow").assertIsSelected()
-        composeRule.onNodeWithTag("follow_screen_tab_1").assertIsSelected()
+        composeRule.onNodeWithText("推荐").assertIsSelected()
 
         composeRule.activity.runOnUiThread {
             composeRule.activity.navigate(MainTabs, popup = true)
@@ -224,7 +228,6 @@ class ZhihuMainNavigationInstrumentedTest {
 
         composeRule.waitUntilTabSelected("nav_tab_follow")
         composeRule.onNodeWithTag("nav_tab_follow").assertIsSelected()
-        composeRule.waitUntilTabSelected("follow_screen_tab_1")
     }
 
     @Test
@@ -261,6 +264,14 @@ class ZhihuMainNavigationInstrumentedTest {
     private fun MainActivityComposeRule.waitUntilTabSelected(tag: String) {
         waitUntil(timeoutMillis = 5_000) {
             onAllNodes(hasTestTag(tag).and(isSelectedMatcher()))
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+        }
+    }
+
+    private fun MainActivityComposeRule.waitUntilTextSelected(text: String) {
+        waitUntil(timeoutMillis = 5_000) {
+            onAllNodes(hasText(text).and(isSelectedMatcher()))
                 .fetchSemanticsNodes()
                 .isNotEmpty()
         }
