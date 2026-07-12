@@ -80,11 +80,13 @@ import com.github.zly2006.zhihu.shared.platform.SettingsStore
 import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
+import com.github.zly2006.zhihu.ui.components.rememberFeedBlockActions
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.SearchContentType
 import com.github.zly2006.zhihu.viewmodel.feed.SearchSortOption
@@ -139,6 +141,7 @@ fun SearchScreen(
     val userMessages = rememberUserMessageSink()
     val settings = rememberSettingsStore()
     val viewModel = viewModel { SearchViewModel(search.query, search.restrictedMemberHashId) }
+    val feedBlockActions = rememberFeedBlockActions()
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -159,6 +162,8 @@ fun SearchScreen(
     var hotSearchMoreMenuExpanded by remember { mutableStateOf(false) }
     var historyMoreMenuExpanded by remember { mutableStateOf(false) }
     var filterMenuExpanded by remember { mutableStateOf(false) }
+    var showBlockUserDialog by remember { mutableStateOf(false) }
+    var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) }
     val useTestHotSearchQueries = testHotSearchQueries != null
     val showSearchHistory = remember { mutableStateOf(!isMemberSearch && settings.getBoolean("showSearchHistory", true)) }
     val searchHistoryItems = remember {
@@ -560,7 +565,15 @@ fun SearchScreen(
                         },
                         footer = ProgressIndicatorFooter,
                     ) { item ->
-                        FeedCard(item)
+                        FeedCard(
+                            item = item,
+                            onBlockUser = { feedItem ->
+                                feedBlockActions.handleBlockUser(viewModel, feedItem) { authorInfo ->
+                                    userToBlock = authorInfo
+                                    showBlockUserDialog = true
+                                }
+                            },
+                        )
                     }
 
                     val showRefreshFab = remember { settings.getBoolean("showRefreshFab", true) }
@@ -581,6 +594,21 @@ fun SearchScreen(
             }
         }
     }
+
+    BlockUserConfirmDialog(
+        showDialog = showBlockUserDialog,
+        userToBlock = userToBlock,
+        displayItems = viewModel.displayItems,
+        onDismiss = {
+            showBlockUserDialog = false
+            userToBlock = null
+        },
+        onConfirm = {
+            viewModel.refresh(paginationEnvironment)
+            showBlockUserDialog = false
+            userToBlock = null
+        },
+    )
 }
 
 @Composable
