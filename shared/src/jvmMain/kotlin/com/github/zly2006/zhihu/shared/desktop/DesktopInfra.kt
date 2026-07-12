@@ -258,7 +258,7 @@ fun DesktopQrLoginScreen(
                     }
                 },
                 initialCookies = store.load().cookies,
-                qrReadyMessage = "请打开知乎 App 扫一扫",
+                qrReadyMessage = "请打开知乎++ App 扫一扫",
                 onQrReady = {
                     notifyUser("需要扫码登录 JVM 端")
                 },
