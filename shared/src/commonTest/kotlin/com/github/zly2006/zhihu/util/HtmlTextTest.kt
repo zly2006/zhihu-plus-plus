@@ -23,8 +23,8 @@ import kotlin.test.assertEquals
 
 class HtmlTextTest {
     @Test
-    fun parseHtmlTextKeepsEmphasisSpan() {
-        val text = parseHtmlText("普通<em>高亮</em>文本", Color.Red)
+    fun parseEmphasizedHtmlTextKeepsEmphasisSpan() {
+        val text = parseEmphasizedHtmlText("普通<em>高亮</em>文本", Color.Red)
 
         assertEquals("普通高亮文本", text.text)
         assertEquals(1, text.spanStyles.size)

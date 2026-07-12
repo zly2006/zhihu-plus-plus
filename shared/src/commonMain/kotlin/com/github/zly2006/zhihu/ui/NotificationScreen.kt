@@ -81,7 +81,6 @@ import com.github.zly2006.zhihu.shared.util.formatRelativeTime
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
-import com.github.zly2006.zhihu.util.parseHtmlTextWithTheme
 import com.github.zly2006.zhihu.viewmodel.MobileNotificationCategory
 import com.github.zly2006.zhihu.viewmodel.NotificationEnvironment
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
@@ -365,7 +364,7 @@ fun NotificationItemView(
                         modifier = Modifier.weight(1f),
                     ) {
                         Text(
-                            text = parseHtmlTextWithTheme(notification.displayTitle()),
+                            text = notification.displayTitle(),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 2,
@@ -374,7 +373,7 @@ fun NotificationItemView(
                         notification.displaySubtitle().takeIf { it.isNotBlank() }?.let { subtitle ->
                             Spacer(modifier = Modifier.height(3.dp))
                             Text(
-                                text = parseHtmlTextWithTheme(subtitle),
+                                text = subtitle,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
@@ -384,7 +383,7 @@ fun NotificationItemView(
                         notification.displayText().takeIf { it.isNotBlank() }?.let { content ->
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = parseHtmlTextWithTheme(content),
+                                text = content,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 3,
@@ -413,7 +412,7 @@ fun NotificationItemView(
                         modifier = Modifier.padding(12.dp),
                     ) {
                         Text(
-                            text = parseHtmlTextWithTheme(sourceText),
+                            text = sourceText,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 3,
