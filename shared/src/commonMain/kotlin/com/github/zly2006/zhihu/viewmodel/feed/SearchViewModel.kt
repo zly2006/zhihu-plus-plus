@@ -20,12 +20,9 @@ package com.github.zly2006.zhihu.viewmodel.feed
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.github.zly2006.zhihu.shared.data.Feed
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.SearchResult
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.ZhihuPaging
-import com.github.zly2006.zhihu.viewmodel.FeedDisplayEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import io.ktor.http.encodeURLParameter
 import kotlinx.serialization.json.jsonArray
@@ -79,9 +76,6 @@ class SearchViewModel(
         timeRange = range
         refresh(environment)
     }
-
-    override fun createDisplayItem(environment: FeedDisplayEnvironment, feed: Feed): FeedDisplayItem =
-        super.createDisplayItem(environment, feed).copy(titleIsHtml = true, summaryIsHtml = true)
 
     override suspend fun fetchFeeds(environment: PaginationEnvironment) {
         try {

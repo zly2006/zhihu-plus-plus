@@ -695,7 +695,6 @@ fun PeopleScreen(
                                     FeedDisplayItem(
                                         title = it.question.title,
                                         summary = it.excerpt,
-                                        summaryIsHtml = true,
                                         details = "回答 · ${it.voteupCount} 赞同 · ${it.commentCount} 评论",
                                         feed = null,
                                     ),
@@ -742,7 +741,6 @@ fun PeopleScreen(
                                     FeedDisplayItem(
                                         title = it.title,
                                         summary = it.excerpt,
-                                        summaryIsHtml = true,
                                         details = "文章 · ${it.voteupCount} 赞同 · ${it.commentCount} 评论",
                                         feed = null,
                                     ),

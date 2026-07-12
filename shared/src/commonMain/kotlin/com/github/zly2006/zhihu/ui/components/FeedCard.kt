@@ -69,7 +69,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -499,7 +498,7 @@ private fun FeedCardContent(
         if (!item.title.isEmpty()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = if (item.titleIsHtml) parseHtmlTextWithTheme(item.title) else AnnotatedString(item.title),
+                    text = parseHtmlTextWithTheme(item.title),
                     style = if (duo3CardLargeTitle) {
                         MaterialTheme.typography.titleLarge
                     } else {
@@ -516,7 +515,7 @@ private fun FeedCardContent(
         Column {
             Row {
                 Text(
-                    text = if (item.summaryIsHtml) parseHtmlTextWithTheme(item.summary ?: "") else AnnotatedString(item.summary ?: ""),
+                    text = parseHtmlTextWithTheme(item.summary ?: ""),
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontSize = 14.sp * fontSizePercent / 100,
                         lineHeight = 14.sp * fontSizePercent / 100 * lineHeightPercent / 100,
@@ -601,7 +600,7 @@ private fun FeedCardContent(
         if (!item.title.isEmpty() && !item.isFiltered) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = if (item.titleIsHtml) parseHtmlTextWithTheme(item.title) else AnnotatedString(item.title),
+                    text = parseHtmlTextWithTheme(item.title),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 2,
@@ -643,7 +642,7 @@ private fun FeedCardContent(
         Row {
             Column(modifier = Modifier.weight(2f)) {
                 Text(
-                    text = if (item.summaryIsHtml) parseHtmlTextWithTheme(item.summary ?: "") else AnnotatedString(item.summary ?: ""),
+                    text = parseHtmlTextWithTheme(item.summary ?: ""),
                     fontSize = 14.sp * fontSizePercent / 100,
                     lineHeight = 14.sp * fontSizePercent / 100 * lineHeightPercent / 100,
                     maxLines = 3,
