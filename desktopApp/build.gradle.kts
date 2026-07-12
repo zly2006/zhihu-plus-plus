@@ -47,6 +47,23 @@ configurations.configureEach {
 dependencies {
     implementation(projects.shared)
     implementation(compose.desktop.currentOs)
+    // JavaFX WebView 用于桌面端内嵌风控验证页面。
+    // JavaFX POM 使用 ${javafx.platform} classifier，Gradle 不会自动解析。
+    // 使用 resolutionStrategy 强制所有 JavaFX 模块使用平台 classifier。
+    val osName = System.getProperty("os.name").lowercase()
+    val osArch = System.getProperty("os.arch").lowercase()
+    val fxClassifier =
+        when {
+            osName.contains("mac") && (osArch == "aarch64" || osArch == "arm64") -> "mac-aarch64"
+            osName.contains("mac") -> "mac"
+            osName.contains("win") -> "win"
+            osName.contains("linux") && (osArch == "aarch64" || osArch == "arm64") -> "linux-aarch64"
+            else -> "linux"
+        }
+    val javafxModules = listOf("javafx-base", "javafx-controls", "javafx-graphics", "javafx-web", "javafx-swing", "javafx-media")
+    javafxModules.forEach { module ->
+        implementation("org.openjfx:$module:21.0.2:$fxClassifier")
+    }
 }
 
 fun currentDesktopNativeExcludes(): List<String> {

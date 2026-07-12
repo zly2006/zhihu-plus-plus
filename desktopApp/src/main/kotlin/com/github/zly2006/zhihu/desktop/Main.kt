@@ -22,12 +22,15 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import com.github.zly2006.zhihu.shared.desktop.DesktopQrLoginScreen
 
-fun main() = application {
-    Window(
-        onCloseRequest = ::exitApplication,
-        title = "Zhihu++",
-        icon = painterResource("desktop-icon.png"),
-    ) {
-        DesktopQrLoginScreen()
+fun main() {
+    System.setProperty("java.awt.im.style", "below-the-spot")
+    application {
+        Window(
+            onCloseRequest = ::exitApplication,
+            title = "Zhihu++",
+            icon = painterResource("desktop-icon.png"),
+        ) {
+            DesktopQrLoginScreen()
+        }
     }
 }
