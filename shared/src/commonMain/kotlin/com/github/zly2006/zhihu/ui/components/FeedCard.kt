@@ -87,7 +87,7 @@ import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
-import com.github.zly2006.zhihu.util.parseHtmlTextWithTheme
+import com.github.zly2006.zhihu.util.parseEmphasizedHtmlTextWithTheme
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.max
@@ -496,7 +496,7 @@ private fun FeedCardContent(
         if (!item.title.isEmpty()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = parseHtmlTextWithTheme(item.title),
+                    text = parseEmphasizedHtmlTextWithTheme(item.title),
                     style = if (duo3CardLargeTitle) {
                         MaterialTheme.typography.titleLarge
                     } else {
@@ -513,7 +513,7 @@ private fun FeedCardContent(
         Column {
             Row {
                 Text(
-                    text = parseHtmlTextWithTheme(item.summary ?: ""),
+                    text = parseEmphasizedHtmlTextWithTheme(item.summary ?: ""),
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontSize = 14.sp * fontSizePercent / 100,
                         lineHeight = 14.sp * fontSizePercent / 100 * lineHeightPercent / 100,
@@ -598,7 +598,7 @@ private fun FeedCardContent(
         if (!item.title.isEmpty() && !item.isFiltered) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = parseHtmlTextWithTheme(item.title),
+                    text = parseEmphasizedHtmlTextWithTheme(item.title),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 2,
@@ -640,7 +640,7 @@ private fun FeedCardContent(
         Row {
             Column(modifier = Modifier.weight(2f)) {
                 Text(
-                    text = parseHtmlTextWithTheme(item.summary ?: ""),
+                    text = parseEmphasizedHtmlTextWithTheme(item.summary ?: ""),
                     fontSize = 14.sp * fontSizePercent / 100,
                     lineHeight = 14.sp * fontSizePercent / 100 * lineHeightPercent / 100,
                     maxLines = 3,
@@ -682,7 +682,7 @@ private fun FeedCardContent(
 private fun FeedCardSourceLabel(sourceLabel: String?) {
     val label = sourceLabel?.takeIf { it.isNotBlank() } ?: return
     Text(
-        text = parseHtmlTextWithTheme(label),
+        text = label,
         style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.primary,
         maxLines = 1,
