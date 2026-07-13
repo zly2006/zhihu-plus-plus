@@ -353,12 +353,28 @@ fun resolveContent(url: Url): NavDestination? {
             } else if (segments.size == 2 && segments[0] == "pin") {
                 val pinId = segments[1].toLongOrNull() ?: return null
                 return Pin(id = pinId)
+            } else if (segments.size == 3 && segments[0] == "appview") {
+                val contentId = segments[2].toLongOrNull() ?: return null
+                return when (segments[1]) {
+                    "pin" -> Pin(id = contentId)
+                    "answer" -> Article(type = ArticleType.Answer, id = contentId)
+                    "p" -> Article(type = ArticleType.Article, id = contentId)
+                    else -> null
+                }
             } else if (segments.size == 1 &&
                 segments[0] == "search"
             ) {
                 val query = url.parameters["q"] ?: ""
                 return Search(query)
             }
+            /*
+             * 尚未支持的 destination，等待后续补充对应的 NavDestination：
+             * - https://www.zhihu.com/appview/roundtable -> https://www.zhihu.com/roundtable
+             * - https://www.zhihu.com/appview/special -> https://www.zhihu.com/special/all
+             * - https://www.zhihu.com/column/{columnToken}
+             * - https://daily.zhihu.com/story/{storyId}
+             * - https://www.zhihu.com/special/{specialId}
+             */
             Log.w("NavDestination", "Cannot resolve content from url: $url")
         } else if (url.host == "zhuanlan.zhihu.com") {
             if (segments.size == 2 &&
