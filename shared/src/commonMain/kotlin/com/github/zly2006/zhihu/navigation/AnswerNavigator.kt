@@ -17,11 +17,6 @@
 
 package com.github.zly2006.zhihu.navigation
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
@@ -30,6 +25,7 @@ import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.util.Log
+import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import com.github.zly2006.zhihu.viewmodel.CollectionItem
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
@@ -85,178 +81,79 @@ fun zhihuQuestionFeedsUrl(
     }
 
 /**
- * 回答导航器：封装回答切换的来源、历史记录和预取逻辑。
- *
- * @param sourceName 来源名称，用于 UI 标签，例如 "此问题"、"「收藏夹名称」"
+ * 回答导航器：基于 [AnswerSwitchSession] 的序列 + 游标，按扩展模式拉取邻居正文。
  */
 abstract class AnswerNavigator(
-    val sourceName: String,
+    val session: AnswerSwitchSession,
     protected val environment: ZhihuApiEnvironment,
 ) {
-    // ── 历史记录 ──────────────────────────────────────────────────────────────
+    val sourceName: String get() = session.sourceName
+    val queueRevision: Int get() = session.revision
+    val hasNextCandidate: Boolean get() = session.hasNextCandidate
+    val hasPreviousCandidate: Boolean get() = session.hasPreviousCandidate
+    val previousAnswer: CachedAnswerContent? get() = session.previousAnswer
+    val nextAnswer: CachedAnswerContent? get() = session.nextAnswer
 
-    val answerHistory = mutableStateListOf<CachedAnswerContent>()
-    var currentAnswerIndex by mutableIntStateOf(-1)
+    var neighborNextSlot: NeighborSlot?
+        get() = session.neighborId(+1)?.let { id -> slotFromEntry(id) }
+        private set(value) = Unit
 
-    /**
-     * 来源提供的上一个回答预览（history 为空时的 fallback）。
-     * 子类可覆盖，用于从来源（如收藏夹）向前导航。
-     */
-    open val previousAnswerPreview: CachedAnswerContent?
-        get() = null
+    var neighborPrevSlot: NeighborSlot?
+        get() = session.neighborId(-1)?.let { id -> slotFromEntry(id) }
+        private set(value) = Unit
 
-    val previousAnswer: CachedAnswerContent?
-        get() = if (currentAnswerIndex > 0) {
-            answerHistory[currentAnswerIndex - 1]
-        } else {
-            previousAnswerContent ?: previousAnswerPreview
+    private fun slotFromEntry(answerId: Long): NeighborSlot {
+        val entry = session.entryById[answerId]
+        val meta = entry?.listMeta ?: Article(id = answerId, type = ArticleType.Answer)
+        return when (entry?.phase) {
+            NeighborPhase.Ready -> entry.cached?.let(NeighborSlot::ready)
+                ?: NeighborSlot.previewFrom(meta, sourceName)
+            NeighborPhase.Loading -> NeighborSlot.loadingFrom(meta, sourceName)
+            NeighborPhase.Preview, NeighborPhase.None, null -> NeighborSlot.previewFrom(meta, sourceName)
         }
+    }
 
-    val nextAnswer: CachedAnswerContent?
-        get() = if (currentAnswerIndex in 0 until answerHistory.size - 1) {
-            answerHistory[currentAnswerIndex + 1]
-        } else {
-            nextAnswerContent
-        }
+    fun resolveNextForNavigation(): CachedAnswerContent? = session.resolveNextForNavigation()
 
-    /** 将当前回答推入历史，截断前向分支。 */
+    fun resolvePreviousForNavigation(): CachedAnswerContent? = session.resolvePreviousForNavigation()
+
+    suspend fun loadNextCached(): CachedAnswerContent? {
+        resolveNextForNavigation()?.let { return it }
+        return loadNextCachedFromExtension()
+    }
+
+    suspend fun loadPreviousCached(): CachedAnswerContent? {
+        resolvePreviousForNavigation()?.let { return it }
+        return loadPreviousCachedFromExtension()
+    }
+
     fun pushAnswer(cached: CachedAnswerContent) {
-        val articleId = cached.article.id
-        // 历史内导航后再次 loadArticle：只更新内容，不改变索引
-        if (currentAnswerIndex in answerHistory.indices &&
-            answerHistory[currentAnswerIndex].article == cached.article
-        ) {
-            answerHistory[currentAnswerIndex] = cached
-            return
-        }
-        // 新回答：截断前向历史
-        if (currentAnswerIndex >= 0 && currentAnswerIndex < answerHistory.size - 1) {
-            val removeRange = (currentAnswerIndex + 1) until answerHistory.size
-            removeRange.reversed().forEach { i -> answerHistory.removeAt(i) }
-        }
-        if (answerHistory.lastOrNull()?.article?.id != articleId) {
-            answerHistory.add(cached)
-        }
-        currentAnswerIndex = answerHistory.size - 1
+        session.putEntry(cached)
+        session.alignCursor(cached.article.id)
     }
 
-    fun goToPrevious(): CachedAnswerContent? {
-        if (currentAnswerIndex > 0) {
-            currentAnswerIndex--
-            return answerHistory[currentAnswerIndex]
+    suspend fun onPageSettled(
+        articleId: Long,
+        direction: ArticleAnswerTransitionDirection?,
+        paginationInfo: DataHolder.Answer.PaginationInfo?,
+        schedulePrefetch: suspend (Long) -> Unit,
+    ) {
+        session.alignCursor(articleId)
+        if (session.extensionMode == AnswerSwitchExtensionMode.PaginationOnly && paginationInfo != null) {
+            session.mergePagination(paginationInfo)
         }
-        return null
+        schedulePrefetch(articleId)
     }
 
-    fun goToNext(): CachedAnswerContent? {
-        if (currentAnswerIndex in 0 until answerHistory.size - 1) {
-            currentAnswerIndex++
-            return answerHistory[currentAnswerIndex]
-        }
-        return null
-    }
-
-    // ── 预取 ──────────────────────────────────────────────────────────────────
-
-    /** 预取的下一个回答内容，供预览卡片使用（Compose 状态，自动触发重组）。 */
-    var nextAnswerContent: CachedAnswerContent? by mutableStateOf(null)
-
-    /** 预取的上一个回答内容（来源队列中，非历史），供预览卡片使用。 */
-    var previousAnswerContent: CachedAnswerContent? by mutableStateOf(null)
-
-    /**
-     * 用户触发"下一个回答"时调用。返回导航目标 [Article]，
-     * 若已无更多回答则返回 null。
-     */
-    abstract suspend fun loadNext(): Article?
-
-    /**
-     * 在后台预取下一个回答的内容，填充 [nextAnswerContent]。
-     * [currentArticleId] 用于跳过当前已显示的回答。
-     */
     abstract suspend fun prefetchNext(currentArticleId: Long)
 
-    /**
-     * 在后台预取上一个回答的内容，填充 [previousAnswerContent]，供预览卡片显示完整信息。
-     * 默认不预取（问题导航器无上一个来源）。
-     */
     open suspend fun prefetchPrevious(currentArticleId: Long) = Unit
 
-    /**
-     * 从来源加载上一个回答（非历史），在 [currentAnswerIndex] == 0（即 [goToPrevious] 返回 null）时由
-     * navigateToPrevious 调用。
-     * 加载成功后将内容插入 history 开头（index 0），返回内容以供 pendingInitialContent。
-     * 默认实现返回 null（问题导航器无此能力）。
-     */
-    open suspend fun loadPrevious(): CachedAnswerContent? = null
+    protected abstract suspend fun loadNextCachedFromExtension(): CachedAnswerContent?
 
-    /**
-     * 将 [cached] 插入 history 开头并返回，供 [loadPrevious] 实现共用。
-     * insert at [0] 后 currentAnswerIndex 保持 0，恰好指向新插入条目。
-     */
-    protected fun insertPrevious(cached: CachedAnswerContent): CachedAnswerContent {
-        answerHistory.add(0, cached)
-        return cached
-    }
-}
+    protected open suspend fun loadPreviousCachedFromExtension(): CachedAnswerContent? = null
 
-/**
- * 从问题详情页当前回答序列中导航。
- *
- * 优先使用进入详情时已加载的前后回答队列；本地队列耗尽后，再按当前排序继续请求问题 feeds。
- */
-class QuestionAnswerNavigator(
-    val questionId: Long,
-    initialNextAnswers: List<Article> = emptyList(),
-    initialPreviousAnswers: List<Article> = emptyList(),
-    initialNextUrl: String = "",
-    private val order: String? = null,
-    private val getAlreadyOpenedAnswerIds: suspend (List<Long>) -> Set<Long> = { answerIds ->
-        ContentOpenEventSupport
-            .getAlreadyOpenedContentIds(
-                database = getContentFilterDatabase(),
-                content = answerIds.map { ContentType.ANSWER to it.toString() },
-            ).mapNotNull { key ->
-                key.substringAfter(':', "").toLongOrNull()
-            }.toSet()
-    },
-    environment: ZhihuApiEnvironment,
-) : AnswerNavigator("此问题", environment) {
-    private val pendingInitialNextAnswers = ArrayDeque<Article>().also { deque ->
-        initialNextAnswers
-            .filter { it.type == ArticleType.Answer }
-            .forEach { deque.addLast(it) }
-    }
-    private val hasInitialNextAnswers = pendingInitialNextAnswers.isNotEmpty()
-    private val destinations = ArrayDeque<Article>()
-    private val previousQueue = mutableStateListOf<Article>().also { list ->
-        list.addAll(initialPreviousAnswers.filter { it.type == ArticleType.Answer })
-    }
-    private var nextUrl: String = initialNextUrl
-    private val enqueuedNextIds = mutableSetOf<Long>()
-    private val enqueuedPrevIds = mutableSetOf<Long>().also { set ->
-        set.addAll(previousQueue.map { it.id })
-    }
-    private val knownOpenedIds = mutableSetOf<Long>()
-    private var initialNextAnswersProcessed = false
-
-    override val previousAnswerPreview: CachedAnswerContent?
-        get() {
-            val article = previousQueue.firstOrNull() ?: return null
-            return CachedAnswerContent(
-                article = article,
-                title = article.title,
-                authorName = article.authorName,
-                authorBio = article.authorBio,
-                authorAvatarUrl = article.avatarSrc ?: "",
-                content = "",
-                voteUpCount = 0,
-                commentCount = 0,
-                sourceLabel = sourceName,
-            )
-        }
-
-    private suspend fun fetchCached(article: Article): CachedAnswerContent? {
+    protected suspend fun fetchCached(article: Article): CachedAnswerContent? {
         val detail = environment.getOrFetchContentDetail(article) as? DataHolder.Answer ?: return null
         return CachedAnswerContent(
             article = article,
@@ -271,193 +168,196 @@ class QuestionAnswerNavigator(
             createdAt = detail.createdTime,
             updatedAt = detail.updatedTime,
             ipInfo = detail.ipInfo,
+            excerpt = detail.excerpt,
             endorsements = detail.endorsementItems,
             sourceLabel = sourceName,
         )
     }
 
-    private suspend fun ensureDestinations(currentArticleId: Long) {
-        if (destinations.isNotEmpty()) return
-        if (hasInitialNextAnswers && initialNextAnswersProcessed && nextUrl.isEmpty()) return
-        val historyIds = answerHistory.map { it.article.id }.toSet()
-        while (destinations.isEmpty()) {
-            val processingInitialNextAnswers = hasInitialNextAnswers && !initialNextAnswersProcessed
-            val candidates = if (processingInitialNextAnswers) {
-                initialNextAnswersProcessed = true
-                pendingInitialNextAnswers.toList()
-            } else {
-                val url = nextUrl.ifEmpty { zhihuQuestionFeedsUrl(questionId, limit = 6, order = order) }
-                val response = environment.fetchJson(url, "")
-                val page = response?.let {
-                    answerNavigatorPageFromJson(it) { data ->
-                        data.jsonArray.mapNotNull { item ->
-                            runCatching { ZhihuJson.decodeJson<Feed>(item) }.getOrNull()
-                        }
-                    }
-                } ?: AnswerNavigatorPage(emptyList(), "")
-                nextUrl = page.nextUrl
-                page.items.mapNotNull { feed -> feed.target?.navDestination as? Article }
-            }
-            val idsToLookup = candidates
-                .asSequence()
-                .filter { it.type == ArticleType.Answer }
-                .map { it.id }
-                .filter { id ->
-                    id != currentArticleId &&
-                        id !in historyIds &&
-                        id !in enqueuedPrevIds &&
-                        id !in enqueuedNextIds &&
-                        id !in knownOpenedIds
-                }.toList()
-            if (idsToLookup.isNotEmpty()) {
-                knownOpenedIds += getAlreadyOpenedAnswerIds(idsToLookup)
-            }
-            val partition = ContentOpenEventSupport.partitionQuestionAnswerCandidates(
-                candidates = candidates,
-                openedAnswerIds = knownOpenedIds,
-                currentArticleId = currentArticleId,
-                historyIds = historyIds,
-                previousIds = enqueuedPrevIds,
-                nextIds = enqueuedNextIds,
+    protected suspend fun fetchCached(answerId: Long): CachedAnswerContent? =
+        fetchCached(Article(id = answerId, type = ArticleType.Answer))
+
+    /** 测试与兼容：取序列中下一个 id。 */
+    suspend fun loadNext(): Article? {
+        if (session.cursor >= session.orderedIds.lastIndex) {
+            val anchorId = session.orderedIds.getOrNull(session.cursor) ?: 0L
+            ensureRightExtension(anchorId)
+        }
+        val id = session.moveToNext() ?: return null
+        return Article(id = id, type = ArticleType.Answer)
+    }
+
+    protected open suspend fun ensureRightExtension(currentArticleId: Long): Boolean = false
+}
+
+class QuestionAnswerNavigator(
+    val questionId: Long,
+    session: AnswerSwitchSession,
+    environment: ZhihuApiEnvironment,
+    private val getAlreadyOpenedAnswerIds: suspend (List<Long>) -> Set<Long> = { answerIds ->
+        ContentOpenEventSupport
+            .getAlreadyOpenedContentIds(
+                database = getContentFilterDatabase(),
+                content = answerIds.map { ContentType.ANSWER to it.toString() },
+            ).mapNotNull { key ->
+                key.substringAfter(':', "").toLongOrNull()
+            }.toSet()
+    },
+) : AnswerNavigator(session, environment) {
+    private val knownOpenedIds = mutableSetOf<Long>()
+
+    companion object {
+        fun fromQuestionList(
+            questionId: Long,
+            orderedArticles: List<Article>,
+            cursorIndex: Int,
+            feedsNextUrl: String,
+            order: String?,
+            environment: ZhihuApiEnvironment,
+            getAlreadyOpenedAnswerIds: suspend (List<Long>) -> Set<Long> = defaultOpenedIdsLookup(),
+        ): QuestionAnswerNavigator {
+            val ids = orderedArticles.map { it.id }
+            val session = AnswerSwitchSession(
+                sourceName = "此问题",
+                extensionMode = AnswerSwitchExtensionMode.QuestionFeeds,
+                initialOrderedIds = ids,
+                initialCursor = cursorIndex.coerceIn(0, maxOf(0, ids.size - 1)),
+                questionId = questionId,
+                feedsNextUrl = feedsNextUrl,
+                feedsOrder = order,
             )
-            partition.previousCandidates.forEach { article ->
-                if (enqueuedPrevIds.add(article.id)) {
-                    previousQueue.add(0, article)
-                }
-            }
-            partition.nextCandidates.forEach { article ->
-                if (enqueuedNextIds.add(article.id)) {
-                    destinations.addLast(article)
-                }
-            }
-            if (nextUrl.isEmpty() && (!processingInitialNextAnswers || hasInitialNextAnswers)) return
+            orderedArticles.forEach { session.registerListMeta(it) }
+            return QuestionAnswerNavigator(
+                questionId = questionId,
+                session = session,
+                environment = environment,
+                getAlreadyOpenedAnswerIds = getAlreadyOpenedAnswerIds,
+            )
+        }
+
+        fun defaultOpenedIdsLookup(): suspend (List<Long>) -> Set<Long> = { answerIds ->
+            ContentOpenEventSupport
+                .getAlreadyOpenedContentIds(
+                    database = getContentFilterDatabase(),
+                    content = answerIds.map { ContentType.ANSWER to it.toString() },
+                ).mapNotNull { key ->
+                    key.substringAfter(':', "").toLongOrNull()
+                }.toSet()
         }
     }
 
-    override suspend fun loadPrevious(): CachedAnswerContent? {
-        val prefetched = previousAnswerContent
-        if (prefetched != null) {
-            previousAnswerContent = null
-            previousQueue.removeFirstOrNull()
-            return insertPrevious(prefetched)
+    override suspend fun ensureRightExtension(currentArticleId: Long): Boolean {
+        val url = session.feedsNextUrl.ifEmpty {
+            zhihuQuestionFeedsUrl(questionId, limit = 6, order = session.feedsOrder)
         }
-        val article = previousQueue.removeFirstOrNull() ?: return null
-        val cached = try {
-            fetchCached(article)
+        val response = environment.fetchJson(url, "")
+        val page = response?.let {
+            answerNavigatorPageFromJson(it) { data ->
+                data.jsonArray.mapNotNull { item ->
+                    runCatching { ZhihuJson.decodeJson<Feed>(item) }.getOrNull()
+                }
+            }
+        } ?: AnswerNavigatorPage(emptyList(), "")
+        session.feedsNextUrl = page.nextUrl
+        val candidates = page.items
+            .mapNotNull { feed -> feed.target?.navDestination as? Article }
+            .filter { it.type == ArticleType.Answer }
+        if (candidates.isEmpty()) return false
+        val idsToLookup = candidates.map { it.id }.filter { id ->
+            id != currentArticleId && id !in session.orderedIds && id !in knownOpenedIds
+        }
+        if (idsToLookup.isNotEmpty()) {
+            knownOpenedIds += getAlreadyOpenedAnswerIds(idsToLookup)
+        }
+        val partition = ContentOpenEventSupport.partitionQuestionAnswerCandidates(
+            candidates = candidates,
+            openedAnswerIds = knownOpenedIds,
+            currentArticleId = currentArticleId,
+            historyIds = session.orderedIds.toSet(),
+            previousIds = emptySet(),
+            nextIds = session.orderedIds.toSet(),
+        )
+        val prevIds = partition.previousCandidates.map { it.id }
+        val nextIds = partition.nextCandidates.map { it.id }
+        partition.previousCandidates.forEach { session.registerListMeta(it) }
+        partition.nextCandidates.forEach { session.registerListMeta(it) }
+        session.mergeAtEnds(prevIds, nextIds)
+        return prevIds.isNotEmpty() || nextIds.isNotEmpty()
+    }
+
+    override suspend fun prefetchNext(currentArticleId: Long) {
+        if (session.neighborId(+1) == null) {
+            ensureRightExtension(currentArticleId)
+        }
+        val nextId = session.neighborId(+1) ?: return
+        val entry = session.entryById[nextId]
+        if (entry?.phase == NeighborPhase.Ready && entry.cached != null) return
+        session.markNeighborLoading(nextId, isNext = true)
+        try {
+            fetchCached(nextId)?.let { session.markNeighborReady(it) }
         } catch (e: Exception) {
-            Log.w("QuestionAnswerNavigator", "Failed to load previous answer content", e)
-            null
+            Log.w("QuestionAnswerNavigator", "Failed to pre-load next answer content", e)
         }
-        if (cached == null) {
-            previousQueue.add(0, article)
-            return null
-        }
-        return insertPrevious(cached)
-    }
-
-    override suspend fun loadNext(): Article? {
-        if (nextAnswerContent != null) {
-            val article = nextAnswerContent!!.article
-            nextAnswerContent = null
-            destinations.removeFirstOrNull()
-            return article
-        }
-        ensureDestinations(-1L)
-        return destinations.removeFirstOrNull()
     }
 
     override suspend fun prefetchPrevious(currentArticleId: Long) {
-        if (previousAnswerContent != null) return
-        val article = previousQueue.firstOrNull() ?: return
+        val prevId = session.neighborId(-1) ?: return
+        val entry = session.entryById[prevId]
+        if (entry?.phase == NeighborPhase.Ready && entry.cached != null) return
+        session.markNeighborLoading(prevId, isNext = false)
         try {
-            previousAnswerContent = fetchCached(article)
+            fetchCached(prevId)?.let { session.markNeighborReady(it) }
         } catch (e: Exception) {
             Log.w("QuestionAnswerNavigator", "Failed to pre-load previous answer content", e)
         }
     }
 
-    override suspend fun prefetchNext(currentArticleId: Long) {
-        if (nextAnswerContent != null) return
-        ensureDestinations(currentArticleId)
-        val nextDest = destinations.firstOrNull() ?: return
-        if (nextDest.type != ArticleType.Answer) return
-        try {
-            val detail = environment.getOrFetchContentDetail(nextDest) as? DataHolder.Answer ?: return
-            nextAnswerContent = CachedAnswerContent(
-                article = nextDest,
-                title = detail.question.title,
-                authorName = detail.author.name,
-                authorBio = detail.author.headline,
-                authorAvatarUrl = detail.author.avatarUrl,
-                authorBadge = detail.author.badgeV2.officialBadge(),
-                content = detail.content,
-                voteUpCount = detail.voteupCount,
-                commentCount = detail.commentCount,
-                createdAt = detail.createdTime,
-                updatedAt = detail.updatedTime,
-                ipInfo = detail.ipInfo,
-                endorsements = detail.endorsementItems,
-                sourceLabel = sourceName,
-            )
-        } catch (e: Exception) {
-            Log.w("QuestionAnswerNavigator", "Failed to pre-load next answer content", e)
+    override suspend fun loadNextCachedFromExtension(): CachedAnswerContent? {
+        if (session.neighborId(+1) == null) {
+            ensureRightExtension(session.orderedIds[session.cursor])
         }
+        val nextId = session.neighborId(+1) ?: return null
+        return fetchCached(nextId)?.also { session.markNeighborReady(it) }
+    }
+
+    override suspend fun loadPreviousCachedFromExtension(): CachedAnswerContent? {
+        val prevId = session.neighborId(-1) ?: return null
+        return fetchCached(prevId)?.also { session.markNeighborReady(it) }
     }
 }
 
-/**
- * 从收藏夹中导航回答。
- *
- * @param collectionId 收藏夹 ID
- * @param collectionTitle 收藏夹名称，用于 UI 标签
- * @param initialNextItems 从当前回答之后的条目，来自 CollectionContentViewModel.allData
- * @param initialPreviousItems 从当前回答之前的条目（逆序，最近的在前），用于向前导航
- */
 class CollectionAnswerNavigator(
     val collectionId: String,
-    collectionTitle: String,
-    initialNextItems: List<CollectionItem>,
-    initialPreviousItems: List<CollectionItem> = emptyList(),
+    session: AnswerSwitchSession,
     environment: ZhihuApiEnvironment,
-) : AnswerNavigator("「$collectionTitle」", environment) {
-    private val queue = ArrayDeque<Article>().also { deque ->
-        initialNextItems.forEach { item ->
-            val article = item.content.navDestination as? Article
-            if (article?.type == ArticleType.Answer) deque.add(article)
-        }
-    }
-
-    // 逆序存储：firstOrNull() 是离当前最近的上一个回答
-    private val previousQueue = mutableStateListOf<Article>().also { list ->
-        initialPreviousItems.forEach { item ->
-            val article = item.content.navDestination as? Article
-            if (article?.type == ArticleType.Answer) list.add(article)
-        }
-    }
-
-    private var nextPageUrl: String = "https://www.zhihu.com/api/v4/collections/$collectionId/items"
-    private var prefetchedArticle: Article? = null
-
-    override val previousAnswerPreview: CachedAnswerContent?
-        get() {
-            val article = previousQueue.firstOrNull() ?: return null
-            return CachedAnswerContent(
-                article = article,
-                title = article.title,
-                authorName = article.authorName,
-                authorBio = article.authorBio,
-                authorAvatarUrl = article.avatarSrc ?: "",
-                content = "",
-                voteUpCount = 0,
-                commentCount = 0,
-                sourceLabel = sourceName,
+) : AnswerNavigator(session, environment) {
+    companion object {
+        fun fromCollectionList(
+            collectionId: String,
+            collectionTitle: String,
+            orderedArticles: List<Article>,
+            cursorIndex: Int,
+            nextPageUrl: String,
+            environment: ZhihuApiEnvironment,
+        ): CollectionAnswerNavigator {
+            val ids = orderedArticles.map { it.id }
+            val session = AnswerSwitchSession(
+                sourceName = "「$collectionTitle」",
+                extensionMode = AnswerSwitchExtensionMode.QuestionFeeds,
+                initialOrderedIds = ids,
+                initialCursor = cursorIndex.coerceIn(0, maxOf(0, ids.size - 1)),
+                collectionId = collectionId,
+                collectionNextPageUrl = nextPageUrl,
             )
+            orderedArticles.forEach { session.registerListMeta(it) }
+            return CollectionAnswerNavigator(collectionId, session, environment)
         }
+    }
 
-    private suspend fun ensureQueue() {
-        if (queue.isNotEmpty() || prefetchedArticle != null) return
-        if (nextPageUrl.isEmpty()) return
-        val response = environment.fetchJson(nextPageUrl, "")
+    override suspend fun ensureRightExtension(currentArticleId: Long): Boolean {
+        val url = session.collectionNextPageUrl
+        if (url.isEmpty()) return false
+        val response = environment.fetchJson(url, "")
         val page = response?.let {
             answerNavigatorPageFromJson(it) { data ->
                 data.jsonArray.mapNotNull { item ->
@@ -465,270 +365,111 @@ class CollectionAnswerNavigator(
                 }
             }
         } ?: AnswerNavigatorPage(emptyList(), "")
-        nextPageUrl = page.nextUrl
-        page.items.forEach { item ->
-            val article = item.content.navDestination as? Article
-            if (article?.type == ArticleType.Answer) queue.add(article)
-        }
-    }
-
-    override suspend fun loadPrevious(): CachedAnswerContent? {
-        // 如果已预取，直接消费
-        val prefetched = previousAnswerContent
-        if (prefetched != null) {
-            previousAnswerContent = null
-            previousQueue.removeFirstOrNull() // 消费队头（prefetchPrevious 使用 firstOrNull 不弹出）
-            return insertPrevious(prefetched)
-        }
-        val article = previousQueue.removeFirstOrNull() ?: return null
-        val cached = try {
-            val detail = environment.getOrFetchContentDetail(article) as? DataHolder.Answer
-            if (detail != null) {
-                CachedAnswerContent(
-                    article = article,
-                    title = detail.question.title,
-                    authorName = detail.author.name,
-                    authorBio = detail.author.headline,
-                    authorAvatarUrl = detail.author.avatarUrl,
-                    authorBadge = detail.author.badgeV2.officialBadge(),
-                    content = detail.content,
-                    voteUpCount = detail.voteupCount,
-                    commentCount = detail.commentCount,
-                    createdAt = detail.createdTime,
-                    updatedAt = detail.updatedTime,
-                    ipInfo = detail.ipInfo,
-                    endorsements = detail.endorsementItems,
-                    sourceLabel = sourceName,
-                )
-            } else {
-                // 加载失败时退回 previousQueue
-                previousQueue.add(0, article)
-                return null
-            }
-        } catch (e: Exception) {
-            Log.w("CollectionAnswerNavigator", "Failed to load previous answer content", e)
-            previousQueue.add(0, article)
-            return null
-        }
-        // 插入到 history 开头：insert at [0] 后 currentAnswerIndex 自动指向新条目（同为 index 0）
-        // 无需调整 currentAnswerIndex
-        return insertPrevious(cached)
-    }
-
-    override suspend fun prefetchPrevious(currentArticleId: Long) {
-        if (previousAnswerContent != null) return
-        val article = previousQueue.firstOrNull() ?: return
-        try {
-            val detail = environment.getOrFetchContentDetail(article) as? DataHolder.Answer ?: return
-            previousAnswerContent = CachedAnswerContent(
-                article = article,
-                title = detail.question.title,
-                authorName = detail.author.name,
-                authorBio = detail.author.headline,
-                authorAvatarUrl = detail.author.avatarUrl,
-                authorBadge = detail.author.badgeV2.officialBadge(),
-                content = detail.content,
-                voteUpCount = detail.voteupCount,
-                commentCount = detail.commentCount,
-                createdAt = detail.createdTime,
-                updatedAt = detail.updatedTime,
-                ipInfo = detail.ipInfo,
-                endorsements = detail.endorsementItems,
-                sourceLabel = sourceName,
-            )
-        } catch (e: Exception) {
-            Log.w("CollectionAnswerNavigator", "Failed to pre-load previous answer content", e)
-        }
+        session.collectionNextPageUrl = page.nextUrl
+        val articles = page.items
+            .mapNotNull { item ->
+                item.content.navDestination as? Article
+            }.filter { it.type == ArticleType.Answer }
+        val newIds = articles.map { it.id }.filter { it !in session.orderedIds }
+        if (newIds.isEmpty()) return false
+        articles.forEach { session.registerListMeta(it) }
+        session.mergeAtEnds(emptyList(), newIds)
+        return true
     }
 
     override suspend fun prefetchNext(currentArticleId: Long) {
-        if (nextAnswerContent != null) return
-        ensureQueue()
-        val article = prefetchedArticle ?: queue.firstOrNull() ?: return
-        if (prefetchedArticle == null) {
-            prefetchedArticle = queue.removeFirstOrNull()
-        }
+        if (session.neighborId(+1) == null) ensureRightExtension(currentArticleId)
+        val nextId = session.neighborId(+1) ?: return
+        if (session.entryById[nextId]?.phase == NeighborPhase.Ready) return
+        session.markNeighborLoading(nextId, isNext = true)
         try {
-            val detail = environment.getOrFetchContentDetail(article) as? DataHolder.Answer ?: return
-            nextAnswerContent = CachedAnswerContent(
-                article = article,
-                title = detail.question.title,
-                authorName = detail.author.name,
-                authorBio = detail.author.headline,
-                authorAvatarUrl = detail.author.avatarUrl,
-                authorBadge = detail.author.badgeV2.officialBadge(),
-                content = detail.content,
-                voteUpCount = detail.voteupCount,
-                commentCount = detail.commentCount,
-                createdAt = detail.createdTime,
-                updatedAt = detail.updatedTime,
-                ipInfo = detail.ipInfo,
-                endorsements = detail.endorsementItems,
-                sourceLabel = sourceName,
-            )
+            fetchCached(nextId)?.let { session.markNeighborReady(it) }
         } catch (e: Exception) {
             Log.w("CollectionAnswerNavigator", "Failed to pre-load next answer content", e)
         }
     }
 
-    override suspend fun loadNext(): Article? {
-        val cached = nextAnswerContent
-        if (cached != null) {
-            nextAnswerContent = null
-            prefetchedArticle = null
-            return cached.article
+    override suspend fun prefetchPrevious(currentArticleId: Long) {
+        val prevId = session.neighborId(-1) ?: return
+        if (session.entryById[prevId]?.phase == NeighborPhase.Ready) return
+        session.markNeighborLoading(prevId, isNext = false)
+        try {
+            fetchCached(prevId)?.let { session.markNeighborReady(it) }
+        } catch (e: Exception) {
+            Log.w("CollectionAnswerNavigator", "Failed to pre-load previous answer content", e)
         }
-        val prefetched = prefetchedArticle
-        if (prefetched != null) {
-            prefetchedArticle = null
-            return prefetched
-        }
-        ensureQueue()
-        return queue.removeFirstOrNull()
+    }
+
+    override suspend fun loadNextCachedFromExtension(): CachedAnswerContent? {
+        if (session.neighborId(+1) == null) ensureRightExtension(session.orderedIds[session.cursor])
+        val nextId = session.neighborId(+1) ?: return null
+        return fetchCached(nextId)?.also { session.markNeighborReady(it) }
+    }
+
+    override suspend fun loadPreviousCachedFromExtension(): CachedAnswerContent? {
+        val prevId = session.neighborId(-1) ?: return null
+        return fetchCached(prevId)?.also { session.markNeighborReady(it) }
     }
 }
 
-/**
- * 基于回答详情中 [DataHolder.Answer.PaginationInfo] 导航。
- * 利用 nextAnswerIds 作为前进队列，prevAnswerIds 作为后退队列。
- *
- * @param questionId 问题 ID，用于保持问题上下文
- * @param initialPaginationInfo 当前回答的分页信息
- */
-class PaginationInfoNavigator(
-    val questionId: Long,
-    initialPaginationInfo: DataHolder.Answer.PaginationInfo,
+/** 直达回答详情：仅 paginationInfo 拓展，不使用问题 feeds。 */
+class PaginationAnswerNavigator(
+    session: AnswerSwitchSession,
     environment: ZhihuApiEnvironment,
-) : AnswerNavigator("此问题", environment) {
-    // 前进队列（有序，无重复）
-    private val nextQueue = ArrayDeque<Long>().also { it.addAll(initialPaginationInfo.nextAnswerIds) }
-
-    // 后退队列：firstOrNull() 为最近的上一个回答
-    private val prevQueue = ArrayDeque<Long>().also { it.addAll(initialPaginationInfo.prevAnswerIds) }
-
-    // 续链用：记录最后已知的 answerId，下次 nextQueue 耗尽时从此续链
-    private var lastKnownNextId: Long? = initialPaginationInfo.nextAnswerIds.lastOrNull()
-
-    // 仅用于 nextQueue 去重，与 prevQueue 无关
-    private val enqueuedNextIds = mutableSetOf<Long>().also { it.addAll(initialPaginationInfo.nextAnswerIds) }
-
-    // 用于 prevQueue 去重
-    private val enqueuedPrevIds = mutableSetOf<Long>().also { it.addAll(initialPaginationInfo.prevAnswerIds) }
-
-    // 仅有 id，无标题和作者信息；完整数据需 loadPrevious() 后从 answerHistory 取
-    override val previousAnswerPreview: CachedAnswerContent?
-        get() {
-            val id = prevQueue.firstOrNull() ?: return null
-            return CachedAnswerContent(
-                article = Article(id = id, type = ArticleType.Answer),
-                title = "加载中...",
-                authorName = "",
-                authorBio = "",
-                authorAvatarUrl = "",
-                content = "",
-                voteUpCount = 0,
-                commentCount = 0,
-                sourceLabel = sourceName,
+) : AnswerNavigator(session, environment) {
+    companion object {
+        fun forDirectEntry(
+            answerId: Long,
+            questionId: Long?,
+            environment: ZhihuApiEnvironment,
+        ): PaginationAnswerNavigator {
+            val session = AnswerSwitchSession(
+                sourceName = "此问题",
+                extensionMode = AnswerSwitchExtensionMode.PaginationOnly,
+                initialOrderedIds = listOf(answerId),
+                initialCursor = 0,
+                questionId = questionId,
             )
-        }
-
-    private suspend fun ensureNextQueue() {
-        val id = lastKnownNextId ?: return
-        if (nextQueue.isNotEmpty()) return
-        val dest = Article(id = id, type = ArticleType.Answer)
-        val detail = environment.getOrFetchContentDetail(dest) as? DataHolder.Answer ?: return
-        val pagination = detail.paginationInfo ?: return
-        pagination.nextAnswerIds.forEach { newId ->
-            if (enqueuedNextIds.add(newId)) nextQueue.addLast(newId)
-        }
-        lastKnownNextId = pagination.nextAnswerIds.lastOrNull() ?: lastKnownNextId
-        // 续链时同步填充 prevQueue
-        val historyIds = answerHistory.map { it.article.id }.toSet()
-        pagination.prevAnswerIds.asReversed().forEach { newId ->
-            if (enqueuedPrevIds.add(newId) && newId !in historyIds) {
-                prevQueue.addFirst(newId)
-            }
+            return PaginationAnswerNavigator(session, environment)
         }
     }
 
-    private suspend fun fetchCached(answerId: Long): CachedAnswerContent? {
-        val dest = Article(id = answerId, type = ArticleType.Answer)
-        val detail = environment.getOrFetchContentDetail(dest) as? DataHolder.Answer ?: return null
-        return CachedAnswerContent(
-            article = dest,
-            title = detail.question.title,
-            authorName = detail.author.name,
-            authorBio = detail.author.headline,
-            authorAvatarUrl = detail.author.avatarUrl,
-            authorBadge = detail.author.badgeV2.officialBadge(),
-            content = detail.content,
-            voteUpCount = detail.voteupCount,
-            commentCount = detail.commentCount,
-            createdAt = detail.createdTime,
-            updatedAt = detail.updatedTime,
-            ipInfo = detail.ipInfo,
-            endorsements = detail.endorsementItems,
-            sourceLabel = sourceName,
-        )
-    }
-
-    override suspend fun loadPrevious(): CachedAnswerContent? {
-        // 如果已预取，直接消费
-        val prefetched = previousAnswerContent
-        if (prefetched != null) {
-            previousAnswerContent = null
-            prevQueue.removeFirstOrNull() // 消费队头 id（prefetchPrevious 使用 firstOrNull 不弹出）
-            return insertPrevious(prefetched)
-        }
-        val id = prevQueue.removeFirstOrNull() ?: return null
-        val cached = try {
-            fetchCached(id)
-        } catch (e: Exception) {
-            Log.w("PaginationInfoNavigator", "Failed to load previous answer content", e)
-            null
-        }
-        if (cached == null) {
-            prevQueue.addFirst(id)
-            return null
-        }
-        return insertPrevious(cached)
-    }
-
-    override suspend fun loadNext(): Article? {
-        if (nextAnswerContent != null) {
-            val article = nextAnswerContent!!.article
-            nextAnswerContent = null
-            // prefetchNext 使用 firstOrNull() 不弹出队列，此处消费时统一弹出
-            val dequeued = nextQueue.removeFirstOrNull()
-            if (dequeued != null && dequeued != article.id) {
-                Log.w("PaginationInfoNavigator", "Queue head $dequeued != prefetched ${article.id}, possible state mismatch")
-            }
-            return article
-        }
-        ensureNextQueue()
-        val id = nextQueue.removeFirstOrNull() ?: return null
-        return Article(id = id, type = ArticleType.Answer)
-    }
-
-    // currentArticleId 未使用：队列来自 API，无需过滤当前回答
     override suspend fun prefetchNext(currentArticleId: Long) {
-        if (nextAnswerContent != null) return
-        ensureNextQueue()
-        val id = nextQueue.firstOrNull() ?: return
+        val nextId = session.neighborId(+1) ?: return
+        if (session.entryById[nextId]?.phase == NeighborPhase.Ready) return
+        session.markNeighborLoading(nextId, isNext = true)
         try {
-            nextAnswerContent = fetchCached(id)
+            fetchCached(nextId)?.let { session.markNeighborReady(it) }
         } catch (e: Exception) {
-            Log.w("PaginationInfoNavigator", "Failed to pre-load next answer content", e)
+            Log.w("PaginationAnswerNavigator", "Failed to pre-load next answer content", e)
         }
     }
 
     override suspend fun prefetchPrevious(currentArticleId: Long) {
-        if (previousAnswerContent != null) return
-        val id = prevQueue.firstOrNull() ?: return
+        val prevId = session.neighborId(-1) ?: return
+        if (session.entryById[prevId]?.phase == NeighborPhase.Ready) return
+        session.markNeighborLoading(prevId, isNext = false)
         try {
-            previousAnswerContent = fetchCached(id)
+            fetchCached(prevId)?.let { session.markNeighborReady(it) }
         } catch (e: Exception) {
-            Log.w("PaginationInfoNavigator", "Failed to pre-load previous answer content", e)
+            Log.w("PaginationAnswerNavigator", "Failed to pre-load previous answer content", e)
         }
     }
+
+    override suspend fun loadNextCachedFromExtension(): CachedAnswerContent? {
+        val nextId = session.neighborId(+1) ?: return null
+        return fetchCached(nextId)?.also { session.markNeighborReady(it) }
+    }
+
+    override suspend fun loadPreviousCachedFromExtension(): CachedAnswerContent? {
+        val prevId = session.neighborId(-1) ?: return null
+        return fetchCached(prevId)?.also { session.markNeighborReady(it) }
+    }
 }
+
+/** @deprecated 使用 [PaginationAnswerNavigator] */
+@Suppress("ktlint:standard:comment-wrapping")
+typealias PaginationInfoNavigator = PaginationAnswerNavigator
+
+val PaginationAnswerNavigator.questionId: Long?
+    get() = session.questionId

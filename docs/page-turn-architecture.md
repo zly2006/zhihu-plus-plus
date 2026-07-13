@@ -72,4 +72,3 @@ PageTurnScrollEffect(scrollState, pageTurnPercent, ...)
 
 - **`RenderMarkdown.kt`** — 增加 `onOpenSegmentComment` 回调，允许调用方将段评弹层提升到外层渲染。
 - **`ArticleScreen.kt`** — 使用该回调将段评 `CommentScreenComponent` 渲染在 `Scaffold` 外层，避免在滚动容器内渲染导致弹层和 FAB 失效。
-

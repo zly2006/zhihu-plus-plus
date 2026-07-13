@@ -28,10 +28,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.markdown.htmlToMdAst
 import com.github.zly2006.zhihu.markdown.toMarkdown
+import com.github.zly2006.zhihu.navigation.AnswerNavigator
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionAnswerNavigator
-import com.github.zly2006.zhihu.navigation.PaginationInfoNavigator
+import com.github.zly2006.zhihu.navigation.PaginationAnswerNavigator
 import com.github.zly2006.zhihu.navigation.QuestionAnswerNavigator
 import com.github.zly2006.zhihu.shared.aigc.AigcVoteFlagResponse
 import com.github.zly2006.zhihu.shared.aigc.AigcVoteFlagStatusResponse
@@ -56,6 +57,7 @@ import com.github.zly2006.zhihu.shared.util.mergeSummaryChunk
 import com.github.zly2006.zhihu.shared.util.parseZhidaSsePayload
 import com.github.zly2006.zhihu.shared.util.serializeZhidaSummaryRequest
 import com.github.zly2006.zhihu.shared.util.twoDigitString
+import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
 import com.github.zly2006.zhihu.ui.Collection
 import com.github.zly2006.zhihu.ui.CollectionResponse
 import com.github.zly2006.zhihu.ui.VoteUpState
@@ -99,8 +101,10 @@ class ArticleViewModel(
     val httpClient: HttpClient?,
     private val userMessages: UserMessageSink = UserMessageSink(showShortMessage = {}),
     registerOnPause: (((() -> Unit) -> Unit))? = null,
+    initialCachedContent: CachedAnswerContent? = null,
 ) : ViewModel() {
     var permissionRequestCount by mutableIntStateOf(0)
+    var answerSessionId: String? = article.answerSessionId
     var title by mutableStateOf("")
     var authorId by mutableStateOf("")
     var authorUrlToken by mutableStateOf("")
@@ -180,6 +184,11 @@ class ArticleViewModel(
     private val openedAtEpochSeconds = Clock.System.now().epochSeconds
     private var aiSummaryJob: Job? = null
     private var exportSourceContent: DataHolder.Content? = null
+    private var answerOpenRecordReady: Article? = null
+    private var answerOpenQuestionId: Long? = null
+    private var answerOpenRecorded = false
+    var answerOpenRecordRevision by mutableIntStateOf(0)
+        private set
 
     // scroll fix
     var rememberedScrollY by mutableIntStateOf(0)
@@ -201,6 +210,7 @@ class ArticleViewModel(
         val createdAt: Long = 0L,
         val updatedAt: Long = 0L,
         val ipInfo: String? = null,
+        val excerpt: String? = article.excerpt,
         val endorsements: List<DataHolder.AnswerEndorsementDisplay> = emptyList(),
         /** 来源标签，用于 UI 显示，例如 "此问题"、"「收藏夹名称」" */
         val sourceLabel: String = "此问题",
@@ -222,11 +232,15 @@ class ArticleViewModel(
         createdAt = createdAt,
         updatedAt = updatedAt,
         ipInfo = ipInfo,
+        excerpt = article.excerpt,
         endorsements = endorsements,
         sourceLabel = sourceLabel,
     )
 
     init {
+        initialCachedContent
+            ?.takeIf { cached -> cached.article.id == article.id && cached.article.type == article.type }
+            ?.let(::applyCachedContent)
         Log.i("zhihu-scroll", "me is $this")
         registerOnPause?.invoke {
             rememberedScrollYSync = false
@@ -239,8 +253,157 @@ class ArticleViewModel(
     // todo: replace this with sqlite
     open class ArticlesSharedData : ArticleAnswerSwitchData()
 
+    private fun applyCachedContent(cached: CachedAnswerContent) {
+        title = cached.title
+        authorName = cached.authorName
+        authorBio = cached.authorBio
+        authorAvatarSrc = cached.authorAvatarUrl
+        authorBadge = cached.authorBadge
+        content = cached.content
+        voteUpCount = cached.voteUpCount
+        commentCount = cached.commentCount
+        endorsements = cached.endorsements
+        createdAt = cached.createdAt
+        updatedAt = cached.updatedAt
+        ipInfo = cached.ipInfo
+        article.excerpt = cached.excerpt
+        if (cached.content.isNotBlank() && cached.article.type == ArticleType.Answer) {
+            markAnswerOpenRecordReady(
+                destination = Article(
+                    id = article.id,
+                    type = ArticleType.Answer,
+                    title = title,
+                    authorName = authorName,
+                    authorBio = authorBio,
+                    avatarSrc = authorAvatarSrc,
+                    excerpt = cached.excerpt,
+                ),
+                questionId = null,
+            )
+        }
+    }
+
+    private fun markAnswerOpenRecordReady(
+        destination: Article,
+        questionId: Long?,
+    ) {
+        answerOpenRecordReady = destination
+        answerOpenQuestionId = questionId?.takeIf { it > 0L }
+        answerOpenRecordRevision++
+    }
+
     @OptIn(ExperimentalStdlibApi::class)
-    fun loadArticle(environment: ArticleLoadEnvironment) {
+    fun tryRecordAnswerOpenIfReady(
+        environment: ArticleLoadEnvironment,
+        isActive: Boolean,
+    ) {
+        if (httpClient == null) {
+            return
+        }
+        if (article.type != ArticleType.Answer) {
+            return
+        }
+        if (!isActive) {
+            return
+        }
+        if (answerOpenRecorded) {
+            return
+        }
+        val destination = answerOpenRecordReady ?: run {
+            return
+        }
+        answerOpenRecorded = true
+        viewModelScope.launch {
+            withContext(Dispatchers.Default) {
+                try {
+                    val sharedData = environment.articleAnswerSwitchState()
+                    val resolvedQuestionId = answerOpenQuestionId
+                        ?: questionId.takeIf { it > 0L }
+                        ?: currentAnswerNavigator(sharedData)?.session?.questionId
+                    if (resolvedQuestionId != null && resolvedQuestionId > 0L) {
+                        questionId = resolvedQuestionId
+                    }
+                    environment.postHistoryDestination(destination)
+                    environment.recordOpenEvent(destination, resolvedQuestionId)
+                } catch (e: Exception) {
+                    answerOpenRecorded = false
+                    userMessages.showShortMessage("本地回答记录失败: ${e.message}")
+                    Log.e("ArticleViewModel", "Failed to record answer page open", e)
+                }
+            }
+        }
+    }
+
+    @OptIn(ExperimentalStdlibApi::class)
+    fun onCurrentPageReady(
+        environment: ArticleLoadEnvironment,
+        warmStart: Boolean,
+        alignNavigatorOnReady: Boolean = true,
+        onReady: () -> Unit = {},
+    ) {
+        if (httpClient == null) return
+        if (warmStart) {
+            viewModelScope.launch {
+                withContext(Dispatchers.Default) {
+                    try {
+                        if (article.type != ArticleType.Answer) return@withContext
+                        val sharedData = environment.articleAnswerSwitchState()
+                        val resolvedQuestionId = questionId.takeIf { it > 0L }
+                            ?: currentAnswerNavigator(sharedData)?.session?.questionId
+                            ?: 0L
+                        if (resolvedQuestionId > 0L) {
+                            questionId = resolvedQuestionId
+                        }
+                        markAnswerOpenRecordReady(
+                            destination = Article(
+                                id = article.id,
+                                type = ArticleType.Answer,
+                                title = title,
+                                authorName = authorName,
+                                authorBio = authorBio,
+                                avatarSrc = authorAvatarSrc,
+                                excerpt = article.excerpt,
+                            ),
+                            questionId = resolvedQuestionId,
+                        )
+                        if (alignNavigatorOnReady && currentAnswerNavigator(sharedData) !is CollectionAnswerNavigator) {
+                            ensureDirectEntryNavigator(
+                                sharedData = sharedData,
+                                answerId = article.id,
+                                questionId = resolvedQuestionId,
+                                environment = environment,
+                            )
+                        }
+                        val currentNavigator = currentAnswerNavigator(sharedData)
+                        val cachedContent = toCachedContent(sourceLabel = currentNavigator?.sourceName ?: "此问题")
+                        if (alignNavigatorOnReady) {
+                            currentNavigator?.pushAnswer(cachedContent)
+                        } else {
+                            currentNavigator?.session?.markNeighborReady(cachedContent)
+                        }
+                        loadAnswerRelationshipEndorsement(environment)
+                        loadMoreVoters(environment, reset = true)
+                    } catch (e: Exception) {
+                        Log.e("ArticleViewModel", "Failed to finish answer switch load", e)
+                    }
+                }
+                onReady()
+            }
+        } else {
+            loadArticle(
+                environment = environment,
+                alignNavigatorOnReady = alignNavigatorOnReady,
+                onReady = onReady,
+            )
+        }
+    }
+
+    @OptIn(ExperimentalStdlibApi::class)
+    fun loadArticle(
+        environment: ArticleLoadEnvironment,
+        alignNavigatorOnReady: Boolean = true,
+        onReady: () -> Unit = {},
+    ) {
         if (httpClient == null) return
         viewModelScope.launch {
             withContext(Dispatchers.Default) {
@@ -278,46 +441,40 @@ class ArticleViewModel(
                             updatedAt = answer.updatedTime
                             createdAt = answer.createdTime
                             ipInfo = answer.ipInfo
+                            article.excerpt = answer.excerpt
                             endorsements = answer.endorsementItems
 
-                            environment.postHistoryDestination(
-                                Article(
-                                    id = answer.id,
-                                    type = ArticleType.Answer,
-                                    title = answer.question.title,
-                                    authorName = answer.author.name,
-                                    authorBio = answer.author.headline,
-                                    avatarSrc = answer.author.avatarUrl,
-                                    excerpt = answer.excerpt,
-                                ),
+                            val historyDestination = Article(
+                                id = answer.id,
+                                type = ArticleType.Answer,
+                                title = answer.question.title,
+                                authorName = answer.author.name,
+                                authorBio = answer.author.headline,
+                                avatarSrc = answer.author.avatarUrl,
+                                excerpt = answer.excerpt,
                             )
-                            environment.recordOpenEvent(article, answer.question.id)
-                            // 设置问题回答导航器（如果当前不是收藏夹导航器）
-                            if (sharedData?.navigator !is CollectionAnswerNavigator) {
-                                val existingNav = sharedData?.navigator
-                                val isSameQuestion = when (existingNav) {
-                                    is QuestionAnswerNavigator -> existingNav.questionId == questionId
-                                    is PaginationInfoNavigator -> existingNav.questionId == questionId
-                                    else -> false
-                                }
-                                if (!isSameQuestion) {
-                                    sharedData?.navigator = QuestionAnswerNavigator(
-                                        questionId = questionId,
-                                        environment = environment,
-                                    )
-                                }
+                            markAnswerOpenRecordReady(
+                                destination = historyDestination,
+                                questionId = answer.question.id,
+                            )
+                            if (alignNavigatorOnReady && currentAnswerNavigator(sharedData) !is CollectionAnswerNavigator) {
+                                ensureDirectEntryNavigator(
+                                    sharedData = sharedData,
+                                    answerId = answer.id,
+                                    questionId = answer.question.id,
+                                    environment = environment,
+                                    paginationInfo = answer.paginationInfo,
+                                )
                             }
-                            sharedData?.navigator?.pushAnswer(toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"))
+                            val currentNavigator = currentAnswerNavigator(sharedData)
+                            val cachedContent = toCachedContent(sourceLabel = currentNavigator?.sourceName ?: "此问题")
+                            if (alignNavigatorOnReady) {
+                                currentNavigator?.pushAnswer(cachedContent)
+                            } else {
+                                currentNavigator?.session?.markNeighborReady(cachedContent)
+                            }
                             loadAnswerRelationshipEndorsement(environment)
                             loadMoreVoters(environment, reset = true)
-
-                            // 仅在无前向历史时预取下一个回答
-                            sharedData?.navigator?.let { nav ->
-                                if (nav.currentAnswerIndex >= nav.answerHistory.size - 1) {
-                                    nav.prefetchNext(article.id)
-                                }
-                                nav.prefetchPrevious(article.id)
-                            }
                         } else {
                             content = "<h1>你似乎来到了没有知识存在的荒原</h1>"
                             endorsements = emptyList()
@@ -376,6 +533,7 @@ class ArticleViewModel(
                     Log.e("ArticleViewModel", "Failed to load content", e)
                 }
             }
+            onReady()
         }
     }
 
@@ -1077,6 +1235,62 @@ class ArticleViewModel(
         environment.setPlainTextClipboard("Zhihu Article", markdown)
 
         userMessages.showShortMessage("文章已复制到剪贴板")
+    }
+
+    fun scheduleNeighborPrefetch(environment: ArticleLoadEnvironment, articleId: Long) {
+        if (httpClient == null) return
+        viewModelScope.launch(Dispatchers.Default) {
+            currentAnswerNavigator(environment.articleAnswerSwitchState())?.let { prefetchNeighborAnswers(it, articleId) }
+        }
+    }
+
+    fun currentAnswerPaginationInfo(): DataHolder.Answer.PaginationInfo? =
+        (exportSourceContent as? DataHolder.Answer)?.paginationInfo
+
+    private fun ensureDirectEntryNavigator(
+        sharedData: ArticleAnswerSwitchState?,
+        answerId: Long,
+        questionId: Long,
+        environment: ZhihuApiEnvironment,
+        paginationInfo: DataHolder.Answer.PaginationInfo? = null,
+    ) {
+        if (sharedData == null || currentAnswerNavigator(sharedData) is CollectionAnswerNavigator) return
+        val sessionId = answerSessionId
+        val existingNav = currentAnswerNavigator(sharedData)
+        val isSameQuestion = when (existingNav) {
+            is QuestionAnswerNavigator -> existingNav.questionId == questionId
+            is PaginationAnswerNavigator -> existingNav.session.questionId == questionId
+            else -> false
+        }
+        if (existingNav == null || !isSameQuestion) {
+            val newNav = PaginationAnswerNavigator.forDirectEntry(
+                answerId = answerId,
+                questionId = questionId,
+                environment = environment,
+            )
+            if (sessionId != null) {
+                sharedData.sessionRegistry.put(sessionId, newNav)
+            } else {
+                sharedData.navigator = newNav
+            }
+        }
+        paginationInfo?.let { pagination ->
+            currentAnswerNavigator(sharedData)?.session?.mergePagination(pagination)
+        }
+    }
+
+    private fun currentAnswerNavigator(sharedData: ArticleAnswerSwitchState?): AnswerNavigator? {
+        val sessionId = answerSessionId
+        return if (sessionId != null) {
+            sharedData?.sessionRegistry?.get(sessionId)
+        } else {
+            sharedData?.navigator
+        }
+    }
+
+    private suspend fun prefetchNeighborAnswers(nav: AnswerNavigator, articleId: Long) {
+        nav.prefetchNext(articleId)
+        nav.prefetchPrevious(articleId)
     }
 }
 

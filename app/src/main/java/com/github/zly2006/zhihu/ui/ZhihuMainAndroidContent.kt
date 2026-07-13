@@ -18,13 +18,13 @@
 package com.github.zly2006.zhihu.ui
 
 import androidx.activity.compose.LocalActivity
+import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
@@ -69,10 +69,9 @@ private fun androidZhihuMainPlatformAdapter(activity: MainActivity) = ZhihuMainP
                 slideInVertically(tween(300)) { it } + fadeIn(tween(300))
             ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
                 slideInVertically(tween(300)) { -it } + fadeIn(tween(300))
-            ArticleAnswerTransitionDirection.HORIZONTAL_NEXT ->
-                slideInHorizontally(tween(300)) { it } + fadeIn(tween(300))
-            ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
-                slideInHorizontally(tween(300)) { -it } + fadeIn(tween(300))
+            ArticleAnswerTransitionDirection.HORIZONTAL_NEXT,
+            ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS,
+            -> EnterTransition.None
             else -> slideInHorizontally(tween(300)) { it }
         }
     },
@@ -87,22 +86,30 @@ private fun androidZhihuMainPlatformAdapter(activity: MainActivity) = ZhihuMainP
                 slideOutVertically(tween(300)) { -it } + fadeOut(tween(300))
             ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
                 slideOutVertically(tween(300)) { it } + fadeOut(tween(300))
-            ArticleAnswerTransitionDirection.HORIZONTAL_NEXT ->
-                slideOutHorizontally(tween(300)) { -it } + fadeOut(tween(300))
-            ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
-                slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
+            ArticleAnswerTransitionDirection.HORIZONTAL_NEXT,
+            ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS,
+            -> ExitTransition.None
             else -> ExitTransition.None
         }
     },
     article = { article, navEntry ->
         val viewModel: ArticleViewModel = viewModel(navEntry) {
-            ArticleViewModel(article, activity.httpClient, androidUserMessageSink(activity)) { onPause ->
-                navEntry.lifecycle.addObserver(object : DefaultLifecycleObserver {
-                    override fun onPause(owner: LifecycleOwner) {
-                        onPause()
-                    }
-                })
-            }
+            val initialCachedContent = activity.articleAnswerSwitchState
+                .pendingInitialContent
+                ?.takeIf { cached -> cached.article.id == article.id && cached.article.type == article.type }
+            ArticleViewModel(
+                article,
+                activity.httpClient,
+                androidUserMessageSink(activity),
+                registerOnPause = { onPause ->
+                    navEntry.lifecycle.addObserver(object : DefaultLifecycleObserver {
+                        override fun onPause(owner: LifecycleOwner) {
+                            onPause()
+                        }
+                    })
+                },
+                initialCachedContent = initialCachedContent,
+            )
         }
         ArticleScreen(article, viewModel)
     },

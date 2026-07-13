@@ -45,6 +45,7 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
+import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
 import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
 import com.github.zly2006.zhihu.theme.Typography
 import com.github.zly2006.zhihu.ui.CommentScreen
@@ -94,6 +95,14 @@ fun CommentScreenComponent(
     }
 
     val childSheetVisible = showComments && activeChildComment != null && childTarget != null
+
+    PlatformBackHandler(enabled = showComments) {
+        if (childSheetVisible) {
+            activeChildComment = null
+        } else {
+            dismissRootComments()
+        }
+    }
 
     DisposableEffect(showComments) {
         if (showComments) pageTurnModalDepth.intValue++

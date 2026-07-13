@@ -32,6 +32,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.navigation.AnswerNavigator
+import com.github.zly2006.zhihu.navigation.AnswerSwitchExtensionMode
+import com.github.zly2006.zhihu.navigation.AnswerSwitchSession
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.shared.data.DataHolder
@@ -150,20 +152,17 @@ class ArticleScreenInstrumentedTest {
             commentCount = 3,
         )
         composeRule.activity.runOnUiThread {
-            composeRule.activity.articleAnswerSwitchState.pendingNavigator = object : AnswerNavigator(
+            val session = AnswerSwitchSession(
                 sourceName = "此问题",
-                environment = NO_OP_API_ENVIRONMENT,
-            ) {
-                init {
-                    nextAnswerContent = nextAnswer
-                }
-
-                override suspend fun loadNext(): Article? {
-                    nextAnswerContent = null
-                    return nextAnswer.article
-                }
-
+                extensionMode = AnswerSwitchExtensionMode.QuestionFeeds,
+                initialOrderedIds = listOf(ANSWER.id, NEXT_ANSWER.id),
+                initialCursor = 0,
+            )
+            session.markNeighborReady(nextAnswer)
+            composeRule.activity.articleAnswerSwitchState.pendingNavigator = object : AnswerNavigator(session, NO_OP_API_ENVIRONMENT) {
                 override suspend fun prefetchNext(currentArticleId: Long) = Unit
+
+                override suspend fun loadNextCachedFromExtension() = null
             }
         }
         val recordingNavigator = composeRule.setScreenContent {

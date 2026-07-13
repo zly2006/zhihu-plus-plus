@@ -41,8 +41,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -89,6 +87,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -113,24 +112,25 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.toRoute
 import coil3.compose.AsyncImage
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Element
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.markdown.RenderVideoBox
+import com.github.zly2006.zhihu.navigation.AnswerNavigator
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
+import com.github.zly2006.zhihu.navigation.newAnswerSessionId
 import com.github.zly2006.zhihu.shared.data.Person
 import com.github.zly2006.zhihu.shared.data.ZhihuPaging
 import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
@@ -139,8 +139,7 @@ import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.shared.util.formatCompactCount
 import com.github.zly2006.zhihu.theme.ThemeManager
-import com.github.zly2006.zhihu.ui.components.AnswerHorizontalOverscroll
-import com.github.zly2006.zhihu.ui.components.AnswerVerticalOverscroll
+import com.github.zly2006.zhihu.ui.components.AnswerContentSkeleton
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.CollectionDialogComponent
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
@@ -155,12 +154,12 @@ import com.github.zly2006.zhihu.ui.components.ZhihuTwoRowsTopAppBar
 import com.github.zly2006.zhihu.ui.components.pageTurnModalDepth
 import com.github.zly2006.zhihu.ui.components.rememberPreferCollapsedExitUntilCollapsedScrollBehavior
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
+import com.github.zly2006.zhihu.ui.components.verticalPagerScrollGate
 import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_PAGE_TURN_PERCENT
 import com.github.zly2006.zhihu.ui.subscreens.PREF_PAGE_TURN_PERCENT
 import com.github.zly2006.zhihu.ui.subscreens.PREF_SHOW_PAGE_TURN_GUIDE
 import com.github.zly2006.zhihu.util.smoothGradient
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
-import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import com.github.zly2006.zhihu.viewmodel.addReadHistory
 import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
@@ -754,6 +753,12 @@ fun ArticleActionsMenu(
 fun ArticleScreen(
     article: Article,
     viewModel: ArticleViewModel,
+    answerSwitchPagerEnabled: Boolean = true,
+    pagerNavigateToPrevious: (() -> Unit)? = null,
+    pagerNavigateToNext: (() -> Unit)? = null,
+    commentsHostedByPager: Boolean = false,
+    onRequestOpenComments: () -> Unit = {},
+    isPagerPageActive: Boolean = true,
 ) {
     val navigator = LocalNavigator.current
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
@@ -771,6 +776,8 @@ fun ArticleScreen(
     var answerSwitchMode by remember {
         mutableStateOf(articleSettings.answerSwitchMode)
     }
+    val pageOwnsHistory = !commentsHostedByPager &&
+        !(answerSwitchPagerEnabled && article.type == ArticleType.Answer && answerSwitchMode != "off")
     var answerSwitchSensitivity by remember {
         mutableFloatStateOf(articleSettings.answerSwitchSensitivity)
     }
@@ -805,6 +812,22 @@ fun ArticleScreen(
     val coroutineScope = rememberCoroutineScope()
     val hapticFeedback = LocalHapticFeedback.current
 
+    LaunchedEffect(isPagerPageActive) {
+        if (!isPagerPageActive) {
+            if (!commentsHostedByPager) {
+                showComments = false
+            }
+            showCollectionDialog = false
+            showActionsMenu = false
+            showSummaryDialog = false
+            showAigcFlagSheet = false
+            showExportDialog = false
+            showDoubleTapActionDialog = false
+            showVoters = false
+            viewModel.cancelAiSummary()
+        }
+    }
+
     val useDuo3ArticleActions = remember { articleSettings.useDuo3ArticleActions }
     var buttonSkipAnswer by remember { mutableStateOf(articleSettings.buttonSkipAnswer) }
     var autoHideSkipAnswerButton by remember { mutableStateOf(articleSettings.autoHideSkipAnswerButton) }
@@ -821,11 +844,13 @@ fun ArticleScreen(
     var previousScrollForBarOffset by remember { mutableIntStateOf(0) }
     var isBarSnapping by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        environment.addReadHistory(
-            contentToken = article.id.toString(),
-            contentTypeName = article.type.name.lowercase(),
-        )
+    LaunchedEffect(article.type, article.id, isPagerPageActive, pageOwnsHistory) {
+        if (isPagerPageActive && pageOwnsHistory) {
+            environment.addReadHistory(
+                contentToken = article.id.toString(),
+                contentTypeName = article.type.name.lowercase(),
+            )
+        }
     }
 
     val pageTurnChannel = LocalPageTurnChannel.current
@@ -877,6 +902,70 @@ fun ArticleScreen(
     } else {
         null
     }
+    val effectiveAnswerSessionId = if (article.type == ArticleType.Answer) {
+        remember(article.type, article.id, article.answerSessionId) {
+            article.answerSessionId ?: newAnswerSessionId(article.id)
+        }
+    } else {
+        null
+    }
+    if (article.type == ArticleType.Answer) {
+        viewModel.answerSessionId = effectiveAnswerSessionId
+    }
+
+    LaunchedEffect(article.id, isPagerPageActive, pageOwnsHistory, viewModel.answerOpenRecordRevision) {
+        if (pageOwnsHistory) {
+            viewModel.tryRecordAnswerOpenIfReady(
+                environment = environment,
+                isActive = isPagerPageActive,
+            )
+        }
+    }
+
+    fun currentAnswerNavigator(): AnswerNavigator? =
+        if (effectiveAnswerSessionId != null) {
+            sharedData?.sessionRegistry?.get(effectiveAnswerSessionId)
+        } else {
+            sharedData?.navigator
+        }
+
+    if (
+        answerSwitchPagerEnabled &&
+        article.type == ArticleType.Answer &&
+        answerSwitchMode != "off"
+    ) {
+        val nav = effectiveAnswerSessionId?.let { sessionId ->
+            sharedData?.sessionRegistry?.get(sessionId)
+        }
+        val sessionArticle = if (article.answerSessionId == effectiveAnswerSessionId) {
+            article
+        } else {
+            article.copy(answerSessionId = effectiveAnswerSessionId)
+        }
+        if (nav == null || nav.session.orderedIds.isEmpty()) {
+            ArticleScreen(
+                article = sessionArticle,
+                viewModel = viewModel,
+                answerSwitchPagerEnabled = false,
+                isPagerPageActive = true,
+            )
+        } else {
+            val orientation = when (answerSwitchMode) {
+                "horizontal" -> AnswerPagerOrientation.Horizontal
+                else -> AnswerPagerOrientation.Vertical
+            }
+            AnswerSwitchPagerScreen(
+                orientation = orientation,
+                initialArticle = sessionArticle,
+                initialViewModel = viewModel,
+                navigator = nav,
+                environment = environment,
+                userMessages = userMessages,
+                answerSwitchSensitivity = answerSwitchSensitivity,
+            )
+        }
+        return
+    }
 
     // 沉浸式阅读模式
     var isImmersiveMode by remember(sharedData) {
@@ -885,6 +974,14 @@ fun ArticleScreen(
 
     val toggleImmersive: () -> Unit = { isImmersiveMode = !isImmersiveMode }
 
+    fun openComments() {
+        if (commentsHostedByPager) {
+            onRequestOpenComments()
+        } else {
+            showComments = true
+        }
+    }
+
     fun performAnswerDoubleTapAction(action: AnswerDoubleTapAction) {
         when (action) {
             AnswerDoubleTapAction.None -> Unit
@@ -892,7 +989,7 @@ fun ArticleScreen(
             AnswerDoubleTapAction.VoteUp -> upVoteFromDoubleTap()
             AnswerDoubleTapAction.OpenComments -> {
                 hapticFeedback.performHapticFeedback(HapticFeedbackType.Confirm)
-                showComments = true
+                openComments()
             }
             AnswerDoubleTapAction.ToggleImmersive -> {
                 toggleImmersive()
@@ -1107,142 +1204,79 @@ fun ArticleScreen(
     }
     ArticleImmersiveModeEffect(isImmersiveMode)
 
-    LaunchedEffect(article.id) {
-        // Bug 2: 在主线程检查标志并重置（避免跨线程可见性问题）
-        if (sharedData != null) {
-            if (!sharedData.navigatingFromAnswerSwitch) {
-                sharedData.reset()
-            }
-            sharedData.navigatingFromAnswerSwitch = false
-            sharedData.answerTransitionDirection = ArticleAnswerTransitionDirection.DEFAULT
-
-            // 从 pendingInitialContent 预填充 viewModel，消除空白帧
-            val pending = sharedData.pendingInitialContent
-            if (pending != null) {
-                viewModel.title = pending.title
-                viewModel.authorName = pending.authorName
-                viewModel.authorBio = pending.authorBio
-                viewModel.authorAvatarSrc = pending.authorAvatarUrl
-                viewModel.content = pending.content
-                viewModel.voteUpCount = pending.voteUpCount
-                viewModel.commentCount = pending.commentCount
-                viewModel.endorsements = pending.endorsements
-                sharedData.pendingInitialContent = null
-            }
+    DisposableEffect(backStackEntry?.id, sharedData) {
+        onDispose {
+            // Navigator 按本次回答详情实例 id 归属，不再按返回栈 entry 迁移或复用。
         }
-        viewModel.loadArticle(environment)
+    }
+
+    LaunchedEffect(article.id) {
+        if (sharedData != null) {
+            if (answerSwitchPagerEnabled) {
+                currentAnswerNavigator()?.let { routeNavigator ->
+                    sharedData.navigator = routeNavigator
+                }
+                sharedData.clearSwitchUiState()
+            }
+
+            viewModel.onCurrentPageReady(
+                environment = environment,
+                warmStart = false,
+                alignNavigatorOnReady = !commentsHostedByPager,
+            ) {
+                if (!commentsHostedByPager) {
+                    coroutineScope.launch {
+                        delay(350)
+                        withContext(Dispatchers.Default) {
+                            if (isPagerPageActive) {
+                                val paginationInfo = viewModel.currentAnswerPaginationInfo()
+                                val pageNavigator = currentAnswerNavigator()
+                                pageNavigator?.onPageSettled(
+                                    article.id,
+                                    direction = null,
+                                    paginationInfo,
+                                ) { id ->
+                                    pageNavigator.prefetchPrevious(id)
+                                    pageNavigator.prefetchNext(id)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            viewModel.onCurrentPageReady(environment, warmStart = false)
+        }
         viewModel.loadCollections(environment)
         viewModel.loadAigcFlagStatus(environment)
     }
 
-    LaunchedEffect(article.type, article.id, viewModel.content) {
-        if (viewModel.content.isNotBlank()) {
+    LaunchedEffect(article.type, article.id, viewModel.content, isPagerPageActive) {
+        if (isPagerPageActive && viewModel.content.isNotBlank()) {
             viewModel.updateAigcReadProgress(scrollState.value, scrollState.maxValue)
             delay(15_000)
             viewModel.updateAigcReadProgress(scrollState.value, scrollState.maxValue)
             viewModel.syncAigcReadEventIfEligible(environment)
         }
     }
-    LaunchedEffect(scrollState.maxValue, viewModel.content) {
-        if (viewModel.content.isNotBlank()) {
+    LaunchedEffect(scrollState.maxValue, viewModel.content, isPagerPageActive) {
+        if (isPagerPageActive && viewModel.content.isNotBlank()) {
             viewModel.updateAigcReadProgress(scrollState.value, scrollState.maxValue)
         }
     }
 
-    val navigateToPrevious: () -> Unit = {
-        sharedData?.answerTransitionDirection = if (answerSwitchMode == "horizontal") {
-            ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS
-        } else {
-            ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS
-        }
-        sharedData?.navigatingFromAnswerSwitch = true
-        // 更新当前回答内容到历史
-        sharedData?.navigator?.pushAnswer(viewModel.toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"))
-        val prev = sharedData?.navigator?.goToPrevious()
-        if (prev != null) {
-            sharedData.pendingInitialContent = prev
-            sharedData.promoteForNavigation(sharedData.answerTransitionDirection)
-            val navController = articleHost?.articleNavController
-            if (navController != null) {
-                if (navController.currentBackStackEntry?.hasRoute(Article::class) == true &&
-                    navController.currentBackStackEntry
-                        ?.toRoute<Article>()
-                        ?.type == ArticleType.Answer
-                ) {
-                    navController.popBackStack()
-                }
-            }
-            navigator.onNavigate(prev.article)
-        } else {
-            // 无历史时尝试从来源（如收藏夹）向前加载
-            sharedData?.pendingInitialContent = sharedData.navigator?.previousAnswerPreview
-            sharedData?.promoteForNavigation(sharedData.answerTransitionDirection)
-            coroutineScope.launch {
-                val prevCached = sharedData?.navigator?.loadPrevious()
-                if (prevCached != null) {
-                    sharedData.pendingInitialContent = prevCached
-                    val navController = articleHost?.articleNavController
-                    if (navController != null) {
-                        if (navController.currentBackStackEntry?.hasRoute(Article::class) == true &&
-                            navController.currentBackStackEntry
-                                ?.toRoute<Article>()
-                                ?.type == ArticleType.Answer
-                        ) {
-                            navController.popBackStack()
-                        }
-                    }
-                    navigator.onNavigate(prevCached.article)
-                }
+    fun navigateToAdjacentAnswer(isNext: Boolean) {
+        if (!answerSwitchPagerEnabled && answerSwitchMode != "off") {
+            if (isNext) {
+                pagerNavigateToNext?.invoke()
+            } else {
+                pagerNavigateToPrevious?.invoke()
             }
         }
     }
 
     val navigateToNext: () -> Unit = {
-        sharedData?.answerTransitionDirection = if (answerSwitchMode == "horizontal") {
-            ArticleAnswerTransitionDirection.HORIZONTAL_NEXT
-        } else {
-            ArticleAnswerTransitionDirection.VERTICAL_NEXT
-        }
-        sharedData?.navigatingFromAnswerSwitch = true
-        // 更新当前回答内容到历史
-        sharedData?.navigator?.pushAnswer(viewModel.toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"))
-        // 优先使用前向历史
-        val historyNext = sharedData?.navigator?.goToNext()
-        if (historyNext != null) {
-            sharedData.pendingInitialContent = historyNext
-            sharedData.promoteForNavigation(sharedData.answerTransitionDirection)
-            val navController = articleHost?.articleNavController
-            if (navController != null) {
-                if (navController.currentBackStackEntry?.hasRoute(Article::class) == true &&
-                    navController.currentBackStackEntry
-                        ?.toRoute<Article>()
-                        ?.type == ArticleType.Answer
-                ) {
-                    navController.popBackStack()
-                }
-            }
-            navigator.onNavigate(historyNext.article)
-        } else {
-            // 没有前向历史，从导航器加载
-            sharedData?.pendingInitialContent = sharedData.navigator?.nextAnswer
-            sharedData?.promoteForNavigation(sharedData.answerTransitionDirection)
-            coroutineScope.launch {
-                val nextArticle = sharedData?.navigator?.loadNext()
-                if (nextArticle != null) {
-                    val navController = articleHost?.articleNavController
-                    if (navController != null) {
-                        if (navController.currentBackStackEntry?.hasRoute(Article::class) == true &&
-                            navController.currentBackStackEntry
-                                ?.toRoute<Article>()
-                                ?.type == ArticleType.Answer
-                        ) {
-                            navController.popBackStack()
-                        }
-                    }
-                    navigator.onNavigate(nextArticle)
-                }
-            }
-        }
+        navigateToAdjacentAnswer(isNext = true)
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -1522,7 +1556,7 @@ fun ArticleScreen(
                                         }
                                     }
                                     Button(
-                                        onClick = { showComments = true },
+                                        onClick = { openComments() },
                                         contentPadding = PaddingValues(start = 8.dp, end = 12.dp),
                                         colors = voteUpNeutralButtonColors(),
                                     ) {
@@ -1691,7 +1725,7 @@ fun ArticleScreen(
                                     }
 
                                     Button(
-                                        onClick = { showComments = true },
+                                        onClick = { openComments() },
                                         contentPadding = PaddingValues(start = 8.dp, end = 12.dp),
                                         colors = ButtonDefaults.buttonColors(
                                             containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -1725,10 +1759,15 @@ fun ArticleScreen(
             CompositionLocalProvider(LocalBringIntoViewSpec provides articleBringIntoViewSpec) {
                 Box(
                     modifier = Modifier
-                        .onSizeChanged { pageKeyViewportHeight = it.height },
+                        .fillMaxSize()
+                        .verticalPagerScrollGate(
+                            scrollState = scrollState,
+                            enabled = isPagerPageActive,
+                        ).onSizeChanged { pageKeyViewportHeight = it.height },
                 ) {
                     Column(
                         modifier = Modifier
+                            .fillMaxSize()
                             .padding(horizontal = 16.dp)
                             .verticalScroll(scrollState)
                             .padding(innerPadding)
@@ -1881,6 +1920,8 @@ fun ArticleScreen(
                                     onOpenSegmentComment = { segmentCommentTarget = it },
                                 )
                             }
+                        } else if (article.type == ArticleType.Answer && viewModel.title.isNotEmpty()) {
+                            AnswerContentSkeleton(modifier = Modifier.fillMaxWidth())
                         }
                     }
                     // 状态栏渐变遮罩，仅 duo3 路径需要；主视觉路径不绘制。
@@ -1897,56 +1938,15 @@ fun ArticleScreen(
                 }
             }
         }
-    } // answerSwitchContent 结束。
+    } // MainContent 结束。
 
-    val nav = sharedData?.navigator
-    if (article.type == ArticleType.Answer && answerSwitchMode == "horizontal") {
-        ArticlePreviewPreloadEffect(nav?.nextAnswer, isNext = true, viewModel.title) {
-            userMessages.showMessage("图片加载失败，请向开发者反馈")
-        }
-        ArticlePreviewPreloadEffect(nav?.previousAnswer, isNext = false, viewModel.title) {
-            userMessages.showMessage("图片加载失败，请向开发者反馈")
-        }
-    }
     val progressBarTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp
     val progressBarBottomPadding = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 96.dp
 
     Box(
         modifier = Modifier.fillMaxSize().then(answerDoubleTapModifier),
     ) {
-        // 根据模式渲染
-        if (article.type == ArticleType.Answer && answerSwitchMode == "vertical") {
-            AnswerVerticalOverscroll(
-                previousAnswer = nav?.previousAnswer,
-                nextAnswer = nav?.nextAnswer,
-                onNavigatePrevious = navigateToPrevious,
-                onNavigateNext = navigateToNext,
-                isAtTop = { scrollState.value == 0 },
-                isAtBottom = { scrollState.value >= scrollState.maxValue },
-                scrollState = scrollState,
-                answerSwitchSensitivity = answerSwitchSensitivity,
-            ) {
-                MainContent()
-            }
-        } else if (article.type == ArticleType.Answer && answerSwitchMode == "horizontal") {
-            AnswerHorizontalOverscroll(
-                canGoPrevious = nav?.previousAnswer != null,
-                canGoNext = nav?.nextAnswer != null,
-                onNavigatePrevious = navigateToPrevious,
-                onNavigateNext = navigateToNext,
-                previousContent = nav?.previousAnswer?.let { cached ->
-                    { CachedAnswerPreview(cached) { segmentCommentTarget = it } }
-                },
-                nextContent = nav?.nextAnswer?.let { cached ->
-                    { CachedAnswerPreview(cached) { segmentCommentTarget = it } }
-                },
-                answerSwitchSensitivity = answerSwitchSensitivity,
-            ) {
-                MainContent()
-            }
-        } else {
-            MainContent()
-        }
+        MainContent()
 
         VerticalReadingProgressBar(
             scrollState = scrollState,
@@ -2012,7 +2012,7 @@ fun ArticleScreen(
     ArticleActionsMenu(
         article = article,
         viewModel = viewModel,
-        showMenu = showActionsMenu,
+        showMenu = showActionsMenu && isPagerPageActive,
         onDismissRequest = { showActionsMenu = false },
         onSummaryRequest = {
             showSummaryDialog = true
@@ -2032,7 +2032,7 @@ fun ArticleScreen(
     )
 
     ArticleSummarySheet(
-        showDialog = showSummaryDialog,
+        showDialog = showSummaryDialog && isPagerPageActive,
         summaryText = viewModel.aiSummaryText,
         loading = viewModel.aiSummaryLoading,
         errorMessage = viewModel.aiSummaryError,
@@ -2050,12 +2050,12 @@ fun ArticleScreen(
         toggleImmersive()
     }
 
-    PlatformBackHandler(showActionsMenu) {
+    PlatformBackHandler(showActionsMenu && isPagerPageActive) {
         showActionsMenu = false
     }
 
     AigcFlagSheet(
-        showDialog = showAigcFlagSheet,
+        showDialog = showAigcFlagSheet && isPagerPageActive,
         viewModel = viewModel,
         onDismissRequest = { showAigcFlagSheet = false },
         onSubmitRequest = { viewModel.submitAigcFlag(environment) },
@@ -2063,7 +2063,7 @@ fun ArticleScreen(
 
     // 使用新的收藏夹对话框组件
     CollectionDialogComponent(
-        showDialog = showCollectionDialog,
+        showDialog = showCollectionDialog && isPagerPageActive,
         onDismiss = { showCollectionDialog = false },
         collections = viewModel.collections,
         onLoadCollections = { viewModel.loadCollections(environment) },
@@ -2075,20 +2075,22 @@ fun ArticleScreen(
         },
     )
 
-    CommentScreenComponent(
-        showComments = showComments,
-        onDismiss = { showComments = false },
-        content = article,
-    )
+    if (!commentsHostedByPager) {
+        CommentScreenComponent(
+            showComments = showComments && isPagerPageActive,
+            onDismiss = { showComments = false },
+            content = article,
+        )
+    }
     segmentCommentTarget?.let { target ->
         CommentScreenComponent(
-            showComments = true,
+            showComments = isPagerPageActive,
             onDismiss = { segmentCommentTarget = null },
             content = target,
         )
     }
     VotersSheet(
-        show = showVoters,
+        show = showVoters && isPagerPageActive,
         title = "${formatCompactCount(viewModel.votersTotal)} 人赞同了该回答",
         voters = viewModel.voters,
         isLoading = viewModel.votersLoading,
@@ -2102,7 +2104,7 @@ fun ArticleScreen(
             navigator.onNavigate(person)
         },
     )
-    if (showDoubleTapActionDialog) {
+    if (showDoubleTapActionDialog && isPagerPageActive) {
         MyModalBottomSheet(
             onDismissRequest = { showDoubleTapActionDialog = false },
         ) {
@@ -2147,7 +2149,7 @@ fun ArticleScreen(
                     onClick = {
                         showDoubleTapActionDialog = false
                         saveAnswerDoubleTapAction(AnswerDoubleTapAction.OpenComments)
-                        showComments = true
+                        openComments()
                         userMessages.showMessage("已将双击回答动作设为：${AnswerDoubleTapAction.OpenComments.label}")
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -2170,7 +2172,7 @@ fun ArticleScreen(
     }
     // 导出对话框
     ExportDialogComponent(
-        showDialog = showExportDialog,
+        showDialog = showExportDialog && isPagerPageActive,
         onDismiss = { showExportDialog = false },
         onExportHtml = { includeAppAttribution, onComplete ->
             viewModel.exportToHtml(environment, includeAppAttribution, onComplete)
@@ -2185,171 +2187,6 @@ fun ArticleScreen(
             viewModel.exportToImageWithComments(environment, commentCount, includeAppAttribution, onComplete)
         },
     )
-}
-
-/**
- * 渲染缓存的回答完整内容，用于水平滑动预览。
- *
- * 内容来自 [CachedAnswerContent]，包含标题、作者信息、投票/评论计数和 HTML 正文。正文使用 Compose Markdown，
- * 因此这里是轻量预览，不持有 WebView 或答案切换共享状态。
- */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun CachedAnswerPreview(
-    cached: CachedAnswerContent,
-    onOpenSegmentComment: (SegmentCommentHolder) -> Unit = {},
-) {
-    Scaffold(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp)
-            .background(
-                color = MaterialTheme.colorScheme.background,
-                shape = RectangleShape,
-            ),
-        topBar = {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.background),
-            ) {
-                Text(
-                    text = cached.title,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    lineHeight = 32.sp,
-                    modifier = Modifier.padding(bottom = 8.dp),
-                )
-            }
-        },
-        bottomBar = {
-            Column {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(36.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(50))
-                            .background(color = Color(0xFF40B6F6)),
-                        horizontalArrangement = Arrangement.Start,
-                    ) {
-                        Button(
-                            onClick = {},
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF40B6F6),
-                                contentColor = Color.Black,
-                            ),
-                            shape = RectangleShape,
-                            contentPadding = PaddingValues(horizontal = 0.dp),
-                        ) {
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Icon(painterResource(Res.drawable.ic_vote_up_24dp), "赞同")
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(text = cached.voteUpCount.toString())
-                        }
-                    }
-                    Button(
-                        onClick = {},
-                        contentPadding = PaddingValues(horizontal = 8.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        ),
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(text = "${cached.commentCount}")
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-        },
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(
-                    start = innerPadding.calculateStartPadding(LocalLayoutDirection.current),
-                    end = innerPadding.calculateEndPadding(LocalLayoutDirection.current),
-                ),
-        ) {
-            Spacer(modifier = Modifier.height(innerPadding.calculateTopPadding()))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                if (cached.authorAvatarUrl.isNotEmpty()) {
-                    AsyncImage(
-                        model = cached.authorAvatarUrl,
-                        contentDescription = "作者头像",
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape),
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(Color.LightGray),
-                    )
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = cached.authorName,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false),
-                        )
-                        if (cached.authorBadge != null) {
-                            Spacer(modifier = Modifier.width(4.dp))
-                            AuthorBadge(
-                                badge = cached.authorBadge,
-                            )
-                        }
-                    }
-                    if (cached.authorBio.isNotEmpty()) {
-                        Text(
-                            text = cached.authorBio,
-                            fontSize = 12.sp,
-                            color = Color.Gray,
-                        )
-                    }
-                }
-            }
-            if (cached.endorsements.isNotEmpty()) {
-                Spacer(Modifier.height(10.dp))
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    cached.endorsements.forEach { endorsement ->
-                        AnswerEndorsementChip(endorsement)
-                    }
-                }
-            }
-            if (cached.content.isNotEmpty()) {
-                Spacer(Modifier.height(10.dp))
-                RenderMarkdown(
-                    html = cached.content,
-                    modifier = Modifier,
-                    selectable = true,
-                    enableScroll = false,
-                    header = {},
-                    footer = {},
-                    onOpenSegmentComment = onOpenSegmentComment,
-                )
-            }
-            Spacer(modifier = Modifier.height((16 + 36).dp))
-        }
-    }
 }
 
 @Serializable

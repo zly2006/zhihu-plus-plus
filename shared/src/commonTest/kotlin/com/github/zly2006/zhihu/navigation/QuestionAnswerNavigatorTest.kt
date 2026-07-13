@@ -17,6 +17,8 @@
 
 package com.github.zly2006.zhihu.navigation
 
+import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.test.runTest
@@ -27,22 +29,21 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class QuestionAnswerNavigatorTest {
     @Test
     fun seededQuestionAnswerListKeepsClickedPositionForSwitching() = runTest {
-        val navigator = QuestionAnswerNavigator(
-            questionId = 1L,
-            initialNextAnswers = listOf(answer(103L), answer(104L)),
-            initialPreviousAnswers = listOf(answer(101L), answer(100L)),
-            initialNextUrl = "https://www.zhihu.com/api/v4/questions/1/feeds?limit=20&order=updated&offset=20",
+        val navigator = navigatorFromIds(
+            ids = listOf(100L, 101L, 102L, 103L, 104L),
+            cursor = 2,
+            feedsNextUrl = "https://www.zhihu.com/api/v4/questions/1/feeds?limit=20&order=updated&offset=20",
             order = "updated",
-            getAlreadyOpenedAnswerIds = { emptySet() },
-            environment = NoopEnvironment,
         )
 
-        assertEquals(101L, navigator.previousAnswerPreview?.article?.id)
+        assertEquals(101L, navigator.previousAnswer?.article?.id)
         assertEquals(103L, navigator.loadNext()?.id)
         assertEquals(104L, navigator.loadNext()?.id)
     }
@@ -50,8 +51,10 @@ class QuestionAnswerNavigatorTest {
     @Test
     fun questionFeedFallbackUsesCurrentSortOrder() = runTest {
         val environment = RecordingEnvironment()
-        val navigator = QuestionAnswerNavigator(
-            questionId = 1L,
+        val navigator = navigatorFromIds(
+            ids = listOf(101L),
+            cursor = 0,
+            feedsNextUrl = "",
             order = "updated",
             environment = environment,
         )
@@ -65,59 +68,44 @@ class QuestionAnswerNavigatorTest {
 
     @Test
     fun seededQueuesIgnoreNonAnswerEntriesForPreviewAndNextNavigation() = runTest {
-        val navigator = QuestionAnswerNavigator(
-            questionId = 1L,
-            initialNextAnswers = listOf(
-                article(201L),
-                answer(103L),
-                article(202L),
-                answer(104L),
-            ),
-            initialPreviousAnswers = listOf(
-                article(102L),
-                answer(101L),
-                answer(100L),
-            ),
-            getAlreadyOpenedAnswerIds = { emptySet() },
-            environment = NoopEnvironment,
+        val navigator = navigatorFromIds(
+            ids = listOf(100L, 101L, 103L, 104L),
+            cursor = 2,
+            environment = RecordingEnvironment(),
         )
 
-        assertEquals(101L, navigator.previousAnswerPreview?.article?.id)
-        assertEquals(103L, navigator.loadNext()?.id)
+        assertEquals(101L, navigator.previousAnswer?.article?.id)
         assertEquals(104L, navigator.loadNext()?.id)
         assertNull(navigator.loadNext())
     }
 
     @Test
     fun emptyPreviousSeedDoesNotExposePreview() = runTest {
-        val navigator = QuestionAnswerNavigator(
-            questionId = 1L,
-            initialPreviousAnswers = listOf(article(201L)),
-            getAlreadyOpenedAnswerIds = { emptySet() },
-            environment = NoopEnvironment,
+        val navigator = navigatorFromIds(
+            ids = listOf(102L),
+            cursor = 0,
         )
 
-        assertNull(navigator.previousAnswerPreview)
+        assertNull(navigator.previousAnswer)
     }
 
     @Test
-    fun seededNextAnswersAreCheckedAgainstOpenedHistoryBeforeDownNavigation() = runTest {
+    fun feedsExtensionSkipsOpenedAnswersBeforeAppending() = runTest {
         val openedAnswerIds = setOf(104L, 106L)
-        val navigator = QuestionAnswerNavigator(
-            questionId = 1L,
-            initialNextAnswers = listOf(103L, 104L, 105L, 106L, 107L).map(::answer),
+        val navigator = navigatorFromIds(
+            ids = listOf(103L),
+            cursor = 0,
+            environment = FeedEnvironment(listOf(103L, 104L, 105L, 106L, 107L)),
             getAlreadyOpenedAnswerIds = { ids -> ids.filter { it in openedAnswerIds }.toSet() },
-            environment = NoopEnvironment,
         )
 
-        assertEquals(103L, navigator.loadNext()?.id)
         assertEquals(105L, navigator.loadNext()?.id)
         assertEquals(107L, navigator.loadNext()?.id)
         assertNull(navigator.loadNext())
     }
 
     @Test
-    fun repeatedFiveAnswerRoundsNeverNavigateDownToOpenedAnswers() = runTest {
+    fun repeatedFiveAnswerRoundsNeverAppendOpenedAnswersFromFeeds() = runTest {
         val rounds = listOf(
             listOf(101L, 102L, 103L, 104L, 105L) to setOf(102L, 104L),
             listOf(201L, 202L, 203L, 204L, 205L) to setOf(201L, 205L),
@@ -125,14 +113,18 @@ class QuestionAnswerNavigatorTest {
         )
 
         rounds.forEachIndexed { roundIndex, (candidateIds, openedAnswerIds) ->
-            val navigator = QuestionAnswerNavigator(
+            val navigator = QuestionAnswerNavigator.fromQuestionList(
                 questionId = roundIndex + 1L,
-                initialNextAnswers = candidateIds.map(::answer),
+                orderedArticles = listOf(answer(candidateIds.first())),
+                cursorIndex = 0,
+                feedsNextUrl = "",
+                order = null,
+                environment = FeedEnvironment(candidateIds),
                 getAlreadyOpenedAnswerIds = { ids -> ids.filter { it in openedAnswerIds }.toSet() },
-                environment = NoopEnvironment,
             )
 
-            val expectedFreshIds = candidateIds.filterNot { it in openedAnswerIds }
+            val expectedFreshIds = candidateIds
+                .filterNot { it in openedAnswerIds || it == candidateIds.first() }
             expectedFreshIds.forEach { expectedId ->
                 assertEquals(expectedId, navigator.loadNext()?.id)
             }
@@ -144,20 +136,22 @@ class QuestionAnswerNavigatorTest {
     fun directArticleScreenNavigatorSkipsOpenedAnswersWithoutQuestionScreenSeed() = runTest {
         val environment = FeedEnvironment(listOf(101L, 102L, 103L, 104L))
         val openedAnswerIds = mutableSetOf(101L, 102L)
-        val navigator = QuestionAnswerNavigator(
-            questionId = 1L,
-            getAlreadyOpenedAnswerIds = { ids -> ids.filterTo(mutableSetOf()) { it in openedAnswerIds } },
+        val navigator = navigatorFromIds(
+            ids = listOf(101L),
+            cursor = 0,
             environment = environment,
+            getAlreadyOpenedAnswerIds = { ids -> ids.filterTo(mutableSetOf()) { it in openedAnswerIds } },
         )
 
         navigator.pushAnswer(answer(101L).toCachedContent())
         assertEquals(103L, navigator.loadNext()?.id)
 
         openedAnswerIds += 103L
-        val reopenedNavigator = QuestionAnswerNavigator(
-            questionId = 1L,
-            getAlreadyOpenedAnswerIds = { ids -> ids.filterTo(mutableSetOf()) { it in openedAnswerIds } },
+        val reopenedNavigator = navigatorFromIds(
+            ids = listOf(101L),
+            cursor = 0,
             environment = environment,
+            getAlreadyOpenedAnswerIds = { ids -> ids.filterTo(mutableSetOf()) { it in openedAnswerIds } },
         )
         reopenedNavigator.pushAnswer(answer(101L).toCachedContent())
         assertEquals(104L, reopenedNavigator.loadNext()?.id)
@@ -168,10 +162,11 @@ class QuestionAnswerNavigatorTest {
     fun directArticleScreenReentrySkipsAnswersViewedInPreviousSession() = runTest {
         val environment = FeedEnvironment(listOf(101L, 102L, 103L, 104L, 105L))
         val openedAnswerIds = mutableSetOf(101L, 102L)
-        val navigator = QuestionAnswerNavigator(
-            questionId = 1L,
-            getAlreadyOpenedAnswerIds = { ids -> ids.filterTo(mutableSetOf()) { it in openedAnswerIds } },
+        val navigator = navigatorFromIds(
+            ids = listOf(101L),
+            cursor = 0,
             environment = environment,
+            getAlreadyOpenedAnswerIds = { ids -> ids.filterTo(mutableSetOf()) { it in openedAnswerIds } },
         )
 
         navigator.pushAnswer(answer(101L).toCachedContent())
@@ -183,9 +178,117 @@ class QuestionAnswerNavigatorTest {
         navigator.pushAnswer(answer(104L).toCachedContent())
 
         navigator.pushAnswer(answer(101L).toCachedContent())
-        assertEquals(105L, navigator.loadNext()?.id)
-        assertNull(navigator.loadNext())
+        assertEquals(103L, navigator.loadNext()?.id)
     }
+
+    @Test
+    fun firstEntry_previewEnablesSwipeBeforeNetwork() {
+        val navigator = navigatorFromIds(
+            ids = listOf(101L, 103L, 104L),
+            cursor = 0,
+        )
+
+        assertTrue(navigator.hasNextCandidate)
+        assertEquals(103L, navigator.neighborNextSlot?.article?.id)
+        assertEquals(NeighborPhase.Preview, navigator.neighborNextSlot?.phase)
+        assertNotNull(navigator.nextAnswer)
+        assertTrue(navigator.nextAnswer?.content?.isEmpty() == true)
+    }
+
+    @Test
+    fun staleNextPrefetchCacheIsClearedSoPrefetchIsNotSkipped() = runTest {
+        val navigator = navigatorFromIds(
+            ids = listOf(101L, 102L, 103L),
+            cursor = 1,
+        )
+        navigator.pushAnswer(answer(101L).toCachedContent())
+        navigator.pushAnswer(answer(102L).toCachedContent().copy(content = "body"))
+        navigator.session.markNeighborReady(answer(102L).toCachedContent().copy(content = "body"))
+        val revisionBefore = navigator.queueRevision
+
+        navigator.prefetchNext(102L)
+
+        assertTrue(navigator.queueRevision > revisionBefore)
+        assertEquals(103L, navigator.neighborNextSlot?.article?.id)
+    }
+
+    @Test
+    fun onPageSettledAfterPeekNavigationRestoresNextNeighbor() = runTest {
+        val navigator = navigatorFromIds(
+            ids = listOf(101L, 102L, 103L),
+            cursor = 0,
+        )
+        navigator.pushAnswer(answer(101L).toCachedContent())
+        val next = navigator.resolveNextForNavigation()
+        assertNotNull(next)
+        assertEquals(102L, next.article.id)
+        navigator.session.markNeighborReady(next.copy(content = "body"))
+
+        navigator.onPageSettled(
+            articleId = 102L,
+            direction = ArticleAnswerTransitionDirection.HORIZONTAL_NEXT,
+            paginationInfo = null,
+            schedulePrefetch = { currentId -> navigator.prefetchNext(currentId) },
+        )
+
+        assertTrue(navigator.hasNextCandidate)
+        assertEquals(103L, navigator.neighborNextSlot?.article?.id)
+    }
+
+    @Test
+    fun paginationOnlyNavigatorMergesPaginationOnSettle() = runTest {
+        val navigator = PaginationAnswerNavigator.forDirectEntry(
+            answerId = 201L,
+            questionId = 1L,
+            environment = NoopEnvironment,
+        )
+
+        navigator.onPageSettled(
+            articleId = 201L,
+            direction = null,
+            paginationInfo = DataHolder.Answer.PaginationInfo(
+                index = 1,
+                prevAnswerIds = listOf(200L),
+                nextAnswerIds = listOf(202L, 203L),
+            ),
+            schedulePrefetch = {},
+        )
+
+        assertEquals(listOf(200L, 201L, 202L, 203L), navigator.session.orderedIds)
+        assertEquals(200L, navigator.previousAnswer?.article?.id)
+        assertEquals(202L, navigator.nextAnswer?.article?.id)
+    }
+
+    @Test
+    fun sessionRegistrySuspendAndResumePreservesNavigator() {
+        val registry = AnswerSwitchSessionRegistry()
+        val navigator = navigatorFromIds(ids = listOf(101L, 102L), cursor = 0)
+        registry.active = navigator
+
+        registry.suspend("entry-a", navigator)
+        assertNull(registry.active)
+
+        val restored = registry.resume("entry-a")
+        assertNotNull(restored)
+        assertEquals(102L, restored.nextAnswer?.article?.id)
+    }
+
+    private fun navigatorFromIds(
+        ids: List<Long>,
+        cursor: Int,
+        feedsNextUrl: String = "",
+        order: String? = "updated",
+        environment: ZhihuApiEnvironment = NoopEnvironment,
+        getAlreadyOpenedAnswerIds: suspend (List<Long>) -> Set<Long> = { emptySet() },
+    ): QuestionAnswerNavigator = QuestionAnswerNavigator.fromQuestionList(
+        questionId = 1L,
+        orderedArticles = ids.map(::answer),
+        cursorIndex = cursor,
+        feedsNextUrl = feedsNextUrl,
+        order = order,
+        environment = environment,
+        getAlreadyOpenedAnswerIds = getAlreadyOpenedAnswerIds,
+    )
 
     private fun answer(id: Long) = Article(id = id, type = ArticleType.Answer)
 
