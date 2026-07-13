@@ -46,4 +46,30 @@ class NavDestinationTest {
         assertEquals(ArticleType.Answer, article.type)
         assertEquals(42L, article.id)
     }
+
+    @Test
+    fun resolvesZhihuAppViewPinUrlFromCommonCode() {
+        val destination = resolveContent("https://www.zhihu.com/appview/pin/2059710318939301395")
+
+        val pin = assertIs<Pin>(destination)
+        assertEquals(2059710318939301395L, pin.id)
+    }
+
+    @Test
+    fun resolvesZhihuAppViewAnswerUrlFromCommonCode() {
+        val destination = resolveContent("https://www.zhihu.com/appview/answer/2040633177593619876")
+
+        val article = assertIs<Article>(destination)
+        assertEquals(ArticleType.Answer, article.type)
+        assertEquals(2040633177593619876L, article.id)
+    }
+
+    @Test
+    fun resolvesZhihuAppViewArticleUrlFromCommonCode() {
+        val destination = resolveContent("https://www.zhihu.com/appview/p/1981671287999981270")
+
+        val article = assertIs<Article>(destination)
+        assertEquals(ArticleType.Article, article.type)
+        assertEquals(1981671287999981270L, article.id)
+    }
 }

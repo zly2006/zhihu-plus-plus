@@ -23,74 +23,48 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import com.fleeksoft.ksoup.Ksoup
-import com.fleeksoft.ksoup.nodes.Element
-import com.fleeksoft.ksoup.nodes.Node
-import com.fleeksoft.ksoup.nodes.TextNode
 
-/**
- * Parse HTML text and convert it to AnnotatedString with styling.
- * Currently supports <em> tags which are styled with the provided emphasis color.
- *
- * @param html The HTML string to parse
- * @param emphasisColor The color to use for emphasized text (content within <em> tags)
- * @return AnnotatedString with styled text
- */
-fun parseHtmlText(
+fun parseEmphasizedHtmlText(
     html: String,
     emphasisColor: Color,
 ): AnnotatedString {
-    // Parse HTML fragment using Ksoup (more efficient than full document parsing)
-    val document = Ksoup.parseBodyFragment(html)
-    val body = document.body()
-
+    // Assume that the input contains only text and valid, non-nested <em> tags.
     return buildAnnotatedString {
-        processNode(this, body, emphasisColor)
-    }
-}
-
-/**
- * Recursively process nodes and append text with styling
- */
-private fun processNode(
-    builder: AnnotatedString.Builder,
-    node: Node,
-    emphasisColor: Color,
-) {
-    when (node) {
-        is TextNode -> {
-            // Append plain text
-            builder.append(node.text())
-        }
-        is Element -> {
-            when (node.tagName().lowercase()) {
-                "em" -> {
-                    // Push emphasis style
-                    val startIndex = builder.length
-                    node.childNodes().forEach { childNode ->
-                        processNode(builder, childNode, emphasisColor)
-                    }
-                    val endIndex = builder.length
-                    // Apply emphasis color to the text within <em> tags
-                    if (startIndex < endIndex) {
-                        builder.addStyle(
-                            style = SpanStyle(color = emphasisColor),
-                            start = startIndex,
-                            end = endIndex,
-                        )
-                    }
+        var cursor = 0
+        var emphasisStart: Int? = null
+        while (cursor < html.length) {
+            when {
+                html.startsWith("<em>", cursor) -> {
+                    emphasisStart = length
+                    cursor += 4
                 }
-                "body" -> {
-                    // Process body children without adding any styling
-                    node.childNodes().forEach { childNode ->
-                        processNode(builder, childNode, emphasisColor)
+                html.startsWith("</em>", cursor) -> {
+                    emphasisStart?.let { start ->
+                        if (start < length) {
+                            addStyle(SpanStyle(color = emphasisColor), start, length)
+                        }
                     }
+                    emphasisStart = null
+                    cursor += 5
+                }
+                html[cursor] == '&' -> {
+                    val entityEnd = html.indexOf(';', cursor + 1)
+                    val entity = entityEnd.takeIf { it != -1 }?.let { html.substring(cursor + 1, it) }
+                    val decoded =
+                        when (entity) {
+                            "lt" -> '<'
+                            "gt" -> '>'
+                            "quot" -> '"'
+                            "#39" -> '\''
+                            "amp" -> '&'
+                            else -> null
+                        }
+                    append(decoded ?: '&')
+                    cursor = if (decoded == null) cursor + 1 else entityEnd + 1
                 }
                 else -> {
-                    // For other tags, just process children (ignore the tag itself)
-                    node.childNodes().forEach { childNode ->
-                        processNode(builder, childNode, emphasisColor)
-                    }
+                    append(html[cursor])
+                    cursor++
                 }
             }
         }
@@ -105,7 +79,7 @@ private fun processNode(
  * @return AnnotatedString with styled text using theme colors
  */
 @Composable
-fun parseHtmlTextWithTheme(html: String): AnnotatedString {
+fun parseEmphasizedHtmlTextWithTheme(html: String): AnnotatedString {
     val emphasisColor = MaterialTheme.colorScheme.primary
-    return parseHtmlText(html, emphasisColor)
+    return parseEmphasizedHtmlText(html, emphasisColor)
 }
