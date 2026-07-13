@@ -31,7 +31,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -107,7 +106,6 @@ import kotlin.math.min
 fun FeedCard(
     item: FeedDisplayItem,
     modifier: Modifier = Modifier,
-    maxHeight: Dp = 240.dp,
     thumbnailUrl: String? = null,
     horizontalPadding: Dp = 16.dp,
     onLike: ((FeedDisplayItem) -> Unit)? = null,
@@ -126,8 +124,6 @@ fun FeedCard(
     val uriHandler = LocalUriHandler.current
     val userMessages = rememberUserMessageSink()
     val settings = rememberSettingsStore()
-    val fontSizePercent = remember { settings.getInt(PREF_FONT_SIZE, 100) }
-    val scaledMaxHeight = maxHeight * fontSizePercent / 100
     val isLiteVariant = rememberIsLiteVariant()
     var offsetX by remember { mutableFloatStateOf(0f) }
     var currentY by remember { mutableFloatStateOf(0f) } // 当前手指Y位置
@@ -189,8 +185,7 @@ fun FeedCard(
     if (feedCardStyle == "divider") {
         Column(
             modifier = modifier
-                .fillMaxWidth()
-                .heightIn(max = scaledMaxHeight),
+                .fillMaxWidth(),
         ) {
             Column(
                 modifier = Modifier
@@ -218,7 +213,6 @@ fun FeedCard(
         Box(
             modifier = modifier
                 .fillMaxWidth()
-                .heightIn(max = scaledMaxHeight)
                 .padding(horizontal = horizontalPadding, vertical = 8.dp),
         ) {
             Card(
@@ -672,7 +666,7 @@ private fun FeedCardContent(
                     contentDescription = "Thumbnail",
                     modifier = Modifier
                         .weight(1f)
-                        .sizeIn(maxWidth = 60.dp)
+                        .sizeIn(maxHeight = 200.dp, maxWidth = 60.dp)
                         .clip(RoundedCornerShape(8.dp)),
                 )
             }
