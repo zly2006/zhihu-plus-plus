@@ -491,6 +491,7 @@ fun DailyStoryCard(
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 16.sp * fontSizePercent / 100,
+                        lineHeight = 22.sp * fontSizePercent / 100,
                     ),
                     maxLines = 4,
                     overflow = TextOverflow.Ellipsis,
