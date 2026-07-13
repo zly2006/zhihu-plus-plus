@@ -494,9 +494,13 @@ private fun FeedCardContent(
                 Text(
                     text = parseEmphasizedHtmlTextWithTheme(item.title),
                     style = if (duo3CardLargeTitle) {
-                        MaterialTheme.typography.titleLarge
+                        MaterialTheme.typography.titleLarge.copy(
+                            fontSize = 22.sp * fontSizePercent / 100,
+                        )
                     } else {
-                        MaterialTheme.typography.titleMedium
+                        MaterialTheme.typography.titleMedium.copy(
+                            fontSize = 16.sp * fontSizePercent / 100,
+                        )
                     },
                     maxLines = 2,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -595,7 +599,7 @@ private fun FeedCardContent(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = parseEmphasizedHtmlTextWithTheme(item.title),
-                    fontSize = 16.sp,
+                    fontSize = 16.sp * fontSizePercent / 100,
                     fontWeight = FontWeight.Bold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,

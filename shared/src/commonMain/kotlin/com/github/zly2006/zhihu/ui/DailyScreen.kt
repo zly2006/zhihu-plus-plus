@@ -93,6 +93,7 @@ import com.github.zly2006.zhihu.ui.components.PageTurnGuideOverlay
 import com.github.zly2006.zhihu.ui.components.PageTurnGuideState
 import com.github.zly2006.zhihu.ui.components.PageTurnLazyListEffect
 import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_PAGE_TURN_PERCENT
+import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_PAGE_TURN_PERCENT
 import com.github.zly2006.zhihu.ui.subscreens.PREF_SHOW_PAGE_TURN_GUIDE
 import io.ktor.client.HttpClient
@@ -135,6 +136,7 @@ fun DailyScreen(
     val dailySettings = rememberSettingsStore()
     val showPageTurnGuide = remember { dailySettings.getBoolean(PREF_SHOW_PAGE_TURN_GUIDE, false) }
     val pageTurnPercent = remember { dailySettings.getInt(PREF_PAGE_TURN_PERCENT, DEFAULT_PAGE_TURN_PERCENT) }
+    val fontSizePercent = remember { dailySettings.getInt(PREF_FONT_SIZE, 100) }
     val guideState = remember { PageTurnGuideState() }
     PageTurnLazyListEffect(listState, pageTurnPercent, guideState)
 
@@ -347,6 +349,7 @@ fun DailyScreen(
                             item(key = "header_${section.date}") {
                                 DateHeader(
                                     date = formatDailyDate(section.date),
+                                    fontSizePercent = fontSizePercent,
                                     modifier = Modifier.testTag("daily_screen_section_${section.date}"),
                                 )
                             }
@@ -354,6 +357,7 @@ fun DailyScreen(
                             items(section.stories, key = { "story_${it.id}" }) { story ->
                                 DailyStoryCard(
                                     story = story,
+                                    fontSizePercent = fontSizePercent,
                                     modifier = Modifier.testTag("daily_screen_story_${story.id}"),
                                     onClick = {
                                         scope.launch {
@@ -403,6 +407,7 @@ fun DailyScreen(
 @Composable
 fun DateHeader(
     date: String,
+    fontSizePercent: Int = 100,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -424,6 +429,7 @@ fun DateHeader(
                 text = date,
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp * fontSizePercent / 100,
                     color = MaterialTheme.colorScheme.primary,
                 ),
                 modifier = Modifier.padding(horizontal = 16.dp),
@@ -441,6 +447,7 @@ fun DateHeader(
 @Composable
 fun DailyStoryCard(
     story: DailyStory,
+    fontSizePercent: Int = 100,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
@@ -483,7 +490,7 @@ fun DailyStoryCard(
                     text = story.title,
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.SemiBold,
-                        fontSize = 16.sp,
+                        fontSize = 16.sp * fontSizePercent / 100,
                     ),
                     maxLines = 4,
                     overflow = TextOverflow.Ellipsis,
