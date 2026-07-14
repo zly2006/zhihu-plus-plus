@@ -48,6 +48,9 @@ import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
 import com.github.zly2006.zhihu.theme.Typography
 import com.github.zly2006.zhihu.ui.CommentScreen
 
+/**
+ * 最好不要在 if 或者其他条件语句中使用，这会导致本组件内部状态丢失。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommentScreenComponent(
@@ -57,6 +60,9 @@ fun CommentScreenComponent(
 ) {
     var activeChildComment by remember { mutableStateOf<CommentItem?>(null) }
     val contentStateKey = commentContentStateKey(content)
+    var commentDrafts by rememberSaveable(contentStateKey) {
+        mutableStateOf<Map<String, String>>(emptyMap())
+    }
     var rootListResetToken by rememberSaveable(contentStateKey) { mutableIntStateOf(0) }
     val rootListState = rememberSaveable(
         contentStateKey,
@@ -68,6 +74,7 @@ fun CommentScreenComponent(
     val rootSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val childSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val childTarget = activeChildComment?.clickTarget
+    val childDraftKey = childTarget?.let(::commentContentStateKey)
 
     @Composable
     fun DragHandleTitle(text: String) {
@@ -92,6 +99,14 @@ fun CommentScreenComponent(
         onDismiss()
     }
 
+    fun updateCommentDraft(key: String, value: String) {
+        commentDrafts = if (value.isEmpty()) {
+            commentDrafts - key
+        } else {
+            commentDrafts + (key to value)
+        }
+    }
+
     if (showComments) {
         MyModalBottomSheet(
             onDismissRequest = { dismissRootComments() },
@@ -107,12 +122,14 @@ fun CommentScreenComponent(
             CommentScreen(
                 content = { content },
                 onChildCommentClick = { activeChildComment = it },
+                commentInput = commentDrafts[contentStateKey].orEmpty(),
+                onCommentInputChange = { updateCommentDraft(contentStateKey, it) },
                 listState = rootListState,
             )
         }
     }
 
-    if (showComments && activeChildComment != null && childTarget != null) {
+    if (showComments && activeChildComment != null && childTarget != null && childDraftKey != null) {
         MyModalBottomSheet(
             onDismissRequest = { activeChildComment = null },
             sheetState = childSheetState,
@@ -128,6 +145,8 @@ fun CommentScreenComponent(
                 content = { childTarget },
                 activeCommentItem = activeChildComment,
                 onChildCommentClick = { },
+                commentInput = commentDrafts[childDraftKey].orEmpty(),
+                onCommentInputChange = { updateCommentDraft(childDraftKey, it) },
             )
         }
     }

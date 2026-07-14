@@ -313,7 +313,9 @@ private fun RenderMarkdownDocument(
     var segmentCommentTarget by remember { mutableStateOf<SegmentCommentHolder?>(null) }
     var segmentActionSheetState by remember { mutableStateOf<SegmentActionSheetState?>(null) }
     CompositionLocalProvider(
-        LocalSegmentCommentHost provides { target -> segmentCommentTarget = target },
+        LocalSegmentCommentHost provides { target ->
+            segmentCommentTarget = target
+        },
         LocalSegmentActionSheetHost provides { state -> segmentActionSheetState = state },
     ) {
         Box(modifier = modifier) {
@@ -341,13 +343,11 @@ private fun RenderMarkdownDocument(
             }
         }
     }
-    segmentCommentTarget?.let { target ->
-        CommentScreenComponent(
-            showComments = true,
-            onDismiss = { segmentCommentTarget = null },
-            content = target,
-        )
-    }
+    CommentScreenComponent(
+        showComments = segmentCommentTarget != null,
+        onDismiss = { segmentCommentTarget = null },
+        content = segmentCommentTarget ?: SegmentCommentHolder("dummy", "dummy", "dummy"),
+    )
     segmentActionSheetState?.let { state ->
         SegmentActionSheet(state)
     }

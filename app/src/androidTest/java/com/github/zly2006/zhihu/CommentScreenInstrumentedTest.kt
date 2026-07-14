@@ -17,6 +17,8 @@
 
 package com.github.zly2006.zhihu
 
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
@@ -440,10 +442,13 @@ class CommentScreenInstrumentedTest {
         onChildCommentClick: (CommentItem) -> Unit = {},
         testOverrides: CommentScreenTestOverrides? = null,
     ): RecordingNavigator = composeRule.setScreenContent {
+        val commentInput = remember { mutableStateOf("") }
         CommentScreen(
             content = { content },
             activeCommentItem = activeCommentItem,
             onChildCommentClick = onChildCommentClick,
+            commentInput = commentInput.value,
+            onCommentInputChange = { commentInput.value = it },
             testOverrides = testOverrides,
         )
     }
