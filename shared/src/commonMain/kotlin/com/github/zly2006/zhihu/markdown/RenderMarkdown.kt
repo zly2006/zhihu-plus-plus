@@ -311,12 +311,10 @@ private fun RenderMarkdownDocument(
         mathFont = runtime.mathFont ?: defaultTheme.mathFont,
     )
     var segmentCommentTarget by remember { mutableStateOf<SegmentCommentHolder?>(null) }
-    var segmentCommentContent by remember { mutableStateOf<SegmentCommentHolder?>(null) }
     var segmentActionSheetState by remember { mutableStateOf<SegmentActionSheetState?>(null) }
     CompositionLocalProvider(
         LocalSegmentCommentHost provides { target ->
             segmentCommentTarget = target
-            segmentCommentContent = target
         },
         LocalSegmentActionSheetHost provides { state -> segmentActionSheetState = state },
     ) {
@@ -345,13 +343,11 @@ private fun RenderMarkdownDocument(
             }
         }
     }
-    segmentCommentContent?.let { target ->
-        CommentScreenComponent(
-            showComments = segmentCommentTarget != null,
-            onDismiss = { segmentCommentTarget = null },
-            content = target,
-        )
-    }
+    CommentScreenComponent(
+        showComments = segmentCommentTarget != null,
+        onDismiss = { segmentCommentTarget = null },
+        content = segmentCommentTarget ?: SegmentCommentHolder("dummy", "dummy", "dummy"),
+    )
     segmentActionSheetState?.let { state ->
         SegmentActionSheet(state)
     }

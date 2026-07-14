@@ -48,6 +48,9 @@ import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
 import com.github.zly2006.zhihu.theme.Typography
 import com.github.zly2006.zhihu.ui.CommentScreen
 
+/**
+ * 最好不要在 if 或者其他条件语句中使用，这会导致本组件内部状态丢失。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommentScreenComponent(
