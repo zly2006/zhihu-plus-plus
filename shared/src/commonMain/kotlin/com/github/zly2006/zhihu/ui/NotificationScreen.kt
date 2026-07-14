@@ -66,6 +66,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.fleeksoft.ksoup.Ksoup
@@ -382,7 +383,7 @@ fun NotificationItemView(
                             )
                         }
                         val displayText =
-                            if (notification.content?.subText == "喜欢了你的评论")
+                            if (notification.content?.subTitle == "喜欢了你的评论")
                                 // 对评论特殊处理
                                 Ksoup.parse(notification.content.subText).text()
                             else
@@ -391,7 +392,7 @@ fun NotificationItemView(
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = displayText,
-                                style = MaterialTheme.typography.bodyMedium,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 3,
                                 overflow = TextOverflow.Ellipsis,
