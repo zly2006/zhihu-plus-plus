@@ -383,11 +383,12 @@ fun NotificationItemView(
                             )
                         }
                         val displayText =
-                            if (notification.content?.subTitle == "喜欢了你的评论")
+                            if (notification.content?.subTitle == "喜欢了你的评论") {
                                 // 对评论特殊处理
                                 Ksoup.parse(notification.content.subText).text()
-                            else
+                            } else {
                                 Ksoup.parse(notification.content?.text ?: "").text()
+                            }
                         if (displayText != "") {
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
