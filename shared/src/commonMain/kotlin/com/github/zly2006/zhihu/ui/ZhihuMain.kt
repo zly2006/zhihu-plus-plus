@@ -114,6 +114,7 @@ import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.navigation.WriteAnswer
 import com.github.zly2006.zhihu.navigation.WritePin
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
+import com.github.zly2006.zhihu.ui.components.NoOpPagerNestedScrollConnection
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.BlockedFeedHistoryScreen
 import com.github.zly2006.zhihu.ui.subscreens.ColorSchemeScreen
@@ -448,6 +449,7 @@ fun ZhihuMain(
                     FollowScreen(
                         scrollToTopTrigger = scrollToTopTrigger,
                         innerPadding = innerPadding,
+                        parentPagerState = mainPagerState,
                     )
                 }
                 composable<Daily> {
@@ -566,6 +568,7 @@ private fun MainTabsPager(
     HorizontalPager(
         state = pagerState,
         modifier = Modifier.fillMaxSize(),
+        pageNestedScrollConnection = NoOpPagerNestedScrollConnection,
     ) { pageIndex ->
         val page = pages.getOrNull(pageIndex) ?: return@HorizontalPager
         when (page) {
@@ -576,6 +579,7 @@ private fun MainTabsPager(
             MainTabPage.FollowPage -> FollowScreen(
                 scrollToTopTrigger = scrollToTopTrigger,
                 innerPadding = innerPadding,
+                parentPagerState = pagerState,
             )
             MainTabPage.HotListPage -> HotListScreen(
                 innerPadding = innerPadding,

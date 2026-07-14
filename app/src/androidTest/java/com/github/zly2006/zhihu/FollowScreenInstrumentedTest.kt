@@ -18,7 +18,18 @@
 package com.github.zly2006.zhihu
 
 import android.content.Context
+import android.os.SystemClock
+import android.view.InputDevice
+import android.view.MotionEvent
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
@@ -28,6 +39,7 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
@@ -36,6 +48,7 @@ import androidx.compose.ui.test.swipeRight
 import androidx.core.content.edit
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
@@ -63,6 +76,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.util.concurrent.atomic.AtomicReference
 
 @RunWith(AndroidJUnit4::class)
 class FollowScreenInstrumentedTest {
@@ -135,6 +149,92 @@ class FollowScreenInstrumentedTest {
         composeRule.onNodeWithTag("follow_dynamic_item_dynamic-item-1").assertIsDisplayed()
         assertTrue(navigator.destinations.isEmpty())
         assertEquals(0, navigator.backCount)
+    }
+
+    @Test
+    fun boundaryReverseGesture_settlesParentToWholePage() {
+        val outerPagerState = AtomicReference<PagerState>()
+        composeRule.setScreenContent {
+            val state = rememberPagerState(initialPage = 1, pageCount = { 3 })
+            SideEffect { outerPagerState.set(state) }
+            HorizontalPager(
+                state = state,
+                modifier = Modifier.fillMaxSize(),
+                pageNestedScrollConnection = object : NestedScrollConnection {},
+            ) { page ->
+                if (page == 1) {
+                    FollowScreen(
+                        scrollToTopTrigger = 0,
+                        innerPadding = PaddingValues(),
+                        parentPagerState = state,
+                    )
+                } else {
+                    Box(Modifier.fillMaxSize())
+                }
+            }
+        }
+
+        repeat(10) { iteration ->
+            composeRule.onNodeWithTag("follow_screen_tab_1").performClick()
+            composeRule.waitUntilTagSelected("follow_screen_tab_1")
+
+            injectReverseBoundaryGesture()
+            SystemClock.sleep(800)
+            composeRule.mainClock.advanceTimeBy(200)
+            composeRule.waitForIdle()
+
+            InstrumentationRegistry.getInstrumentation().runOnMainSync {
+                val state = outerPagerState.get()
+                val failureContext = "iteration=$iteration isScrollInProgress=${state.isScrollInProgress}"
+                assertEquals(failureContext, 1, state.currentPage)
+                assertEquals(
+                    failureContext,
+                    0f,
+                    state.currentPageOffsetFraction,
+                    0.001f,
+                )
+            }
+        }
+
+        composeRule.onRoot().performTouchInput { swipeLeft() }
+        composeRule.waitForIdle()
+
+        composeRule.runOnIdle {
+            assertEquals(2, outerPagerState.get().currentPage)
+            assertEquals(0f, outerPagerState.get().currentPageOffsetFraction, 0.001f)
+        }
+    }
+
+    private fun injectReverseBoundaryGesture() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val automation = instrumentation.uiAutomation
+        val displayMetrics = instrumentation.targetContext.resources.displayMetrics
+        val startX = displayMetrics.widthPixels * 0.72f
+        val y = displayMetrics.heightPixels * 0.55f
+        val downTime = SystemClock.uptimeMillis()
+
+        fun inject(action: Int, x: Float) {
+            val event = MotionEvent.obtain(
+                downTime,
+                SystemClock.uptimeMillis(),
+                action,
+                x,
+                y,
+                0,
+            )
+            event.source = InputDevice.SOURCE_TOUCHSCREEN
+            automation.injectInputEvent(event, true)
+            event.recycle()
+            SystemClock.sleep(55)
+        }
+
+        inject(MotionEvent.ACTION_DOWN, startX)
+        inject(MotionEvent.ACTION_MOVE, displayMetrics.widthPixels * 0.58f)
+        inject(MotionEvent.ACTION_MOVE, displayMetrics.widthPixels * 0.40f)
+        inject(MotionEvent.ACTION_MOVE, displayMetrics.widthPixels * 0.22f)
+        inject(MotionEvent.ACTION_MOVE, displayMetrics.widthPixels * 0.42f)
+        inject(MotionEvent.ACTION_MOVE, displayMetrics.widthPixels * 0.62f)
+        inject(MotionEvent.ACTION_UP, displayMetrics.widthPixels * 0.67f)
     }
 
     @Test
@@ -258,8 +358,10 @@ class FollowScreenInstrumentedTest {
             recentUsers = recentUsers,
         )
         return composeRule.setScreenContent {
+            val parentPagerState = rememberPagerState(pageCount = { 1 })
             FollowScreen(
                 innerPadding = PaddingValues(),
+                parentPagerState = parentPagerState,
                 onTestRecommendRefreshClick = onTestRecommendRefreshClick,
                 onTestRecommendLoadMore = onTestRecommendLoadMore,
                 onTestDynamicRefreshClick = onTestDynamicRefreshClick,
