@@ -77,6 +77,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.math.absoluteValue
 
 @RunWith(AndroidJUnit4::class)
 class FollowScreenInstrumentedTest {
@@ -178,7 +179,15 @@ class FollowScreenInstrumentedTest {
             composeRule.onNodeWithTag("follow_screen_tab_1").performClick()
             composeRule.waitUntilTagSelected("follow_screen_tab_1")
 
-            injectReverseBoundaryGesture()
+            injectReverseBoundaryGesture {
+                InstrumentationRegistry.getInstrumentation().runOnMainSync {
+                    val state = outerPagerState.get()
+                    assertTrue(
+                        "iteration=$iteration parent did not take over boundary drag",
+                        state.currentPageOffsetFraction.absoluteValue >= 0.05f,
+                    )
+                }
+            }
             SystemClock.sleep(800)
             composeRule.mainClock.advanceTimeBy(200)
             composeRule.waitForIdle()
@@ -205,7 +214,7 @@ class FollowScreenInstrumentedTest {
         }
     }
 
-    private fun injectReverseBoundaryGesture() {
+    private fun injectReverseBoundaryGesture(onParentDragged: () -> Unit) {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val automation = instrumentation.uiAutomation
         val displayMetrics = instrumentation.targetContext.resources.displayMetrics
@@ -232,6 +241,7 @@ class FollowScreenInstrumentedTest {
         inject(MotionEvent.ACTION_MOVE, displayMetrics.widthPixels * 0.58f)
         inject(MotionEvent.ACTION_MOVE, displayMetrics.widthPixels * 0.40f)
         inject(MotionEvent.ACTION_MOVE, displayMetrics.widthPixels * 0.22f)
+        onParentDragged()
         inject(MotionEvent.ACTION_MOVE, displayMetrics.widthPixels * 0.42f)
         inject(MotionEvent.ACTION_MOVE, displayMetrics.widthPixels * 0.62f)
         inject(MotionEvent.ACTION_UP, displayMetrics.widthPixels * 0.67f)

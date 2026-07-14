@@ -11,16 +11,12 @@ package com.github.zly2006.zhihu.ui.components
 
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.unit.Velocity
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
 import kotlin.math.absoluteValue
 
 internal object NoOpPagerNestedScrollConnection : NestedScrollConnection
@@ -29,8 +25,8 @@ internal object NoOpPagerNestedScrollConnection : NestedScrollConnection
  * Hands same-axis boundary drags from a child pager to its direct parent.
  *
  * Adapted from the Apache-2.0 implementation at
- * https://github.com/CodeIdeal/nested-horizontal-pager. Compose Pager's default nested-scroll
- * connection can consume the boundary fling and leave the parent between pages.
+ * https://github.com/CodeIdeal/nested-horizontal-pager. Parent and child pagers disable their
+ * default same-axis nested-scroll connections so this connection exclusively owns the hand-off.
  */
 @Composable
 internal fun rememberNestedHorizontalPagerConnection(
@@ -38,27 +34,6 @@ internal fun rememberNestedHorizontalPagerConnection(
     childState: PagerState,
 ): NestedScrollConnection {
     val minimumFlingVelocity = LocalViewConfiguration.current.minimumFlingVelocity
-
-    LaunchedEffect(parentState, childState) {
-        snapshotFlow {
-            Triple(
-                parentState.isScrollInProgress,
-                childState.isScrollInProgress,
-                parentState.currentPageOffsetFraction,
-            )
-        }.collectLatest { (parentIsScrolling, childIsScrolling, offset) ->
-            if (!parentIsScrolling && !childIsScrolling && offset.absoluteValue >= 0.001f) {
-                delay(100)
-                if (
-                    !parentState.isScrollInProgress &&
-                    !childState.isScrollInProgress &&
-                    parentState.isBetweenPages()
-                ) {
-                    parentState.animateScrollToPage(parentState.currentPage)
-                }
-            }
-        }
-    }
 
     return remember(parentState, childState, minimumFlingVelocity) {
         object : NestedScrollConnection {
@@ -130,12 +105,11 @@ internal fun rememberNestedHorizontalPagerConnection(
 
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
                 val shouldSettle = parentDragActive || parentState.isBetweenPages()
-                val shouldHandleFling = available.x != 0f && shouldParentHandleFling(available.x)
-                if (!shouldSettle && !shouldHandleFling) {
+                if (available.x == 0f || !(shouldSettle || shouldParentHandleFling(available.x))) {
                     return Velocity.Zero
                 }
                 settleParent(available.x)
-                return if (available.x == 0f) Velocity.Zero else available.copy(y = 0f)
+                return available.copy(y = 0f)
             }
         }
     }
