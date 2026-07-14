@@ -205,16 +205,6 @@ class NotificationViewModel :
             environment.postSigned(url)
         }
         unreadCount = 0
-        categoryUnreadCounts = MobileNotificationCategory.entries.associateWith { 0 }
-        MobileNotificationCategory.entries.forEach { category ->
-            val cachedData = categoryData.getValue(category)
-            cachedData.indices.forEach { index ->
-                cachedData[index] = cachedData[index].copy(isRead = true)
-            }
-        }
-        allData.indices.forEach { index ->
-            allData[index] = allData[index].copy(isRead = true)
-        }
     }
 
     private suspend fun updateUnreadCounts(environment: PaginationEnvironment) {
