@@ -21,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import com.github.zly2006.zhihu.shared.data.MobileNotificationMessageOverview
 import com.github.zly2006.zhihu.shared.data.MobileNotificationTimelineItem
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
@@ -76,10 +77,13 @@ class NotificationViewModel :
     var selectedCategory: MobileNotificationCategory by mutableStateOf(MobileNotificationCategory.Comment)
         private set
 
-    var categoryUnreadCounts: Map<MobileNotificationCategory, Int> by mutableStateOf(
-        MobileNotificationCategory.entries.associateWith { 0 },
-    )
-        private set
+    val categoryUnreadCounts = SnapshotStateMap<MobileNotificationCategory, Int>()
+
+    init {
+        MobileNotificationCategory.entries.forEach {
+            categoryUnreadCounts[it] = 0
+        }
+    }
 
     // 未读消息数量
     var unreadCount: Int by mutableIntStateOf(0)
@@ -220,7 +224,12 @@ class NotificationViewModel :
                     .firstOrNull { it.detailTitle == category.detailTitle }
                     ?.unreadCount ?: 0
             }
-            categoryUnreadCounts = nextCounts
+            for ((key, ov) in categoryUnreadCounts) {
+                if ((nextCounts[key] ?: 0) > ov) {
+                    categoryUnreadCounts
+                    categoryUnreadCounts[key] = nextCounts[key] ?: 0
+                }
+            }
             unreadCount = nextCounts.values.sum()
         } catch (e: Exception) {
             if (e is CancellationException) throw e
