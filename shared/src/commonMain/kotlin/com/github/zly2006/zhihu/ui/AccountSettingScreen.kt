@@ -73,7 +73,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -88,7 +87,6 @@ import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberSystemUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
-import com.github.zly2006.zhihu.ui.components.PageTurnScrollEffect
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
@@ -174,16 +172,12 @@ fun AccountSettingScreen(
         modifier = Modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
     ) { padding ->
-        val scrollState = rememberScrollState()
-        var viewportHeight by remember { mutableIntStateOf(0) }
-        PageTurnScrollEffect(scrollState, viewportHeight)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(innerPadding)
                 .testTag(ACCOUNT_SETTINGS_SCROLL_TAG)
-                .onSizeChanged { viewportHeight = it.height }
-                .verticalScroll(scrollState)
+                .verticalScroll(rememberScrollState())
                 .padding(padding),
         ) {
             LaunchedEffect(data.login, refreshAccountProfileOnEnter) {

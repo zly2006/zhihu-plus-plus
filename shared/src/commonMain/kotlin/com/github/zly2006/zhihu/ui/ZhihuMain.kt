@@ -114,7 +114,6 @@ import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.navigation.WriteAnswer
 import com.github.zly2006.zhihu.navigation.WritePin
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
-import com.github.zly2006.zhihu.ui.components.LocalPageTurnChannel
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.BlockedFeedHistoryScreen
 import com.github.zly2006.zhihu.ui.subscreens.ColorSchemeScreen
@@ -207,7 +206,7 @@ fun ZhihuMain(
     }
 
     var scrollToTopTrigger by remember { mutableIntStateOf(0) }
-    // 滚动时自动隐藏底部导航栏（触屏滑动 + 翻页键/FAB）
+    // 滚动时自动隐藏底部导航栏
     var isBottomBarVisible by remember { mutableStateOf(true) }
     val bottomBarScrollConnection = remember {
         object : NestedScrollConnection {
@@ -217,16 +216,6 @@ fun ZhihuMain(
                     available.y > 3f -> isBottomBarVisible = true
                 }
                 return Offset.Zero
-            }
-        }
-    }
-    // 程序化 scrollBy 不经过 NestedScrollConnection，需要单独监听翻页事件
-    val pageTurnChannel = LocalPageTurnChannel.current
-    LaunchedEffect(pageTurnChannel) {
-        pageTurnChannel.collect { direction ->
-            when {
-                direction > 0 || direction == Int.MAX_VALUE -> isBottomBarVisible = false
-                direction < 0 || direction == Int.MIN_VALUE -> isBottomBarVisible = true
             }
         }
     }
@@ -596,12 +585,10 @@ private fun MainTabsPager(
             MainTabPage.DailyPage -> DailyScreen(
                 scrollToTopTrigger = scrollToTopTrigger,
                 isActive = pagerState.currentPage == pageIndex,
-                outerBottomPadding = innerPadding.calculateBottomPadding(),
             )
             MainTabPage.OnlineHistoryPage -> OnlineHistoryScreen(
                 scrollToTopTrigger = scrollToTopTrigger,
                 isActive = pagerState.currentPage == pageIndex,
-                outerBottomPadding = innerPadding.calculateBottomPadding(),
             )
             MainTabPage.MyCollectionsPage -> MyCollectionsTopLevelPage()
             MainTabPage.AccountPage -> AccountSettingScreen(innerPadding)

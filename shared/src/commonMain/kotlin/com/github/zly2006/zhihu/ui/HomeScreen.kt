@@ -121,8 +121,9 @@ import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
-import com.github.zly2006.zhihu.ui.components.fabOpacityPercent
 import com.github.zly2006.zhihu.ui.components.rememberFeedBlockActions
+import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_FAB_OPACITY
+import com.github.zly2006.zhihu.ui.subscreens.PREF_FAB_OPACITY
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
@@ -781,7 +782,9 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                 }
             }
-            val createFabOpacity = fabOpacityPercent.intValue / 100f
+            val createFabOpacity = remember(settings) {
+                settings.getInt(PREF_FAB_OPACITY, DEFAULT_FAB_OPACITY).coerceIn(10, 100) / 100f
+            }
             FloatingActionButton(
                 modifier = Modifier.testTag(HOME_CREATE_FAB_TAG),
                 onClick = { showCreateMenu = !showCreateMenu },

@@ -43,6 +43,8 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_FAB_OPACITY
+import com.github.zly2006.zhihu.ui.subscreens.PREF_FAB_OPACITY
 import kotlin.math.roundToInt
 
 /**
@@ -89,7 +91,9 @@ fun DraggableRefreshButton(
     )
     val hapticFeedback = LocalHapticFeedback.current
 
-    val opacityFraction = fabOpacityPercent.intValue / 100f
+    val opacityFraction = remember(settings) {
+        settings.getInt(PREF_FAB_OPACITY, DEFAULT_FAB_OPACITY).coerceIn(10, 100) / 100f
+    }
     FloatingActionButton(
         onClick = onClick,
         shape = CircleShape,
