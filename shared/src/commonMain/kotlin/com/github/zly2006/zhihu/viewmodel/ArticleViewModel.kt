@@ -1064,7 +1064,7 @@ class ArticleViewModel(
         }
 
         sb.append("---\n\n")
-        sb.append(htmlToMdAst(content, noNativeBlock = true).toMarkdown())
+        sb.append(htmlToMdAst(content, enableInteractiveBlocks = false).toMarkdown())
 
         return sb.toString()
     }

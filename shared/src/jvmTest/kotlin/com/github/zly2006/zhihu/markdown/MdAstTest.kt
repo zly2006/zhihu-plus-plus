@@ -17,25 +17,28 @@
 
 package com.github.zly2006.zhihu.markdown
 
+import com.github.zly2006.zhihu.shared.util.SegmentTextParagraph
 import com.hrm.markdown.parser.ast.ContainerNode
+import com.hrm.markdown.parser.ast.DirectiveBlock
 import com.hrm.markdown.parser.ast.Figure
 import com.hrm.markdown.parser.ast.InlineMath
 import com.hrm.markdown.parser.ast.MathBlock
-import com.hrm.markdown.parser.ast.NativeBlock
 import com.hrm.markdown.parser.ast.Node
 import com.hrm.markdown.parser.ast.Paragraph
 import com.hrm.markdown.parser.ast.StrongEmphasis
 import com.hrm.markdown.parser.ast.Text
+import kotlinx.serialization.decodeFromString
 import org.jsoup.Jsoup
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class MdAstTest {
     @Test
-    fun video_box_anchor_should_convert_to_native_block() {
+    fun video_box_anchor_should_convert_to_video_directive() {
         val document = htmlToMdAst(
             """
             <a class="video-box" href="https://link.zhihu.com/?target=https%3A//www.zhihu.com/video/2029631316597973958" data-lens-id="2029631316597973958">
@@ -45,26 +48,29 @@ class MdAstTest {
         )
 
         assertEquals(1, document.children.size)
-        assertTrue(document.children.single() is NativeBlock)
+        val directive = assertIs<DirectiveBlock>(document.children.single())
+        assertEquals(ZHIHU_VIDEO_DIRECTIVE, directive.tagName)
+        assertEquals("2029631316597973958", directive.args[DIRECTIVE_VIDEO_ID_ARG])
+        assertEquals("https://example.com/cover.jpg", directive.args[DIRECTIVE_THUMBNAIL_URL_ARG])
     }
 
     @Test
-    fun video_box_anchor_should_convert_to_link_when_native_blocks_disabled() {
+    fun video_box_anchor_should_convert_to_link_when_interactive_blocks_disabled() {
         val document = htmlToMdAst(
             """
             <a class="video-box" href="https://link.zhihu.com/?target=https%3A//www.zhihu.com/video/2029631316597973958" data-lens-id="2029631316597973958">
               <img src="https://example.com/cover.jpg" />
             </a>
             """.trimIndent(),
-            noNativeBlock = true,
+            enableInteractiveBlocks = false,
         )
 
-        assertFalse(document.allNodes().any { it is NativeBlock })
+        assertFalse(document.allNodes().any { it is DirectiveBlock && it.tagName == ZHIHU_VIDEO_DIRECTIVE })
         assertEquals("[视频](https://www.zhihu.com/video/2029631316597973958)", document.toMarkdown())
     }
 
     @Test
-    fun highlighted_paragraph_should_skip_segmented_native_block_when_native_blocks_disabled() {
+    fun highlighted_paragraph_should_convert_to_segmented_text_directive() {
         val document = htmlToMdAst(
             """
             <p data-pid="seg-1"><span class="highlight-wrap other has-comments"
@@ -80,10 +86,47 @@ class MdAstTest {
                 data-highlight-start-offset="0"
                 data-highlight-end-offset="7">第一句需要划线</span>，第二句保持原样。</p>
             """.trimIndent(),
-            noNativeBlock = true,
         )
 
-        assertFalse(document.allNodes().any { it is NativeBlock })
+        val directive = assertIs<DirectiveBlock>(document.children.single())
+        assertEquals(ZHIHU_SEGMENTED_TEXT_DIRECTIVE, directive.tagName)
+        assertEquals("第一句需要划线，第二句保持原样。", directive.args[DIRECTIVE_TEXT_ARG])
+        val paragraph = zhihuMarkdownDirectiveJson.decodeFromString<SegmentTextParagraph>(
+            directive.args.getValue(DIRECTIVE_PAYLOAD_ARG),
+        )
+        assertEquals("seg-1", paragraph.pid)
+        assertEquals(listOf("第一句需要划线", "，第二句保持原样。"), paragraph.parts.map { it.text })
+        assertEquals(
+            listOf("abc"),
+            paragraph.parts
+                .first()
+                .highlight
+                ?.meta
+                ?.segIds,
+        )
+    }
+
+    @Test
+    fun highlighted_paragraph_should_degrade_to_text_when_interactive_blocks_disabled() {
+        val document = htmlToMdAst(
+            """
+            <p data-pid="seg-1"><span class="highlight-wrap other has-comments"
+                data-highlight-id="abc"
+                data-highlight-like-count="5"
+                data-highlight-comment-count="1"
+                data-highlight-my-comment-count="0"
+                data-highlight-is-like="true"
+                data-highlight-is-span="false"
+                data-highlight-content-id="42"
+                data-highlight-content-type="answer"
+                data-highlight-pid="seg-1"
+                data-highlight-start-offset="0"
+                data-highlight-end-offset="7">第一句需要划线</span>，第二句保持原样。</p>
+            """.trimIndent(),
+            enableInteractiveBlocks = false,
+        )
+
+        assertFalse(document.allNodes().any { it is DirectiveBlock && it.tagName == ZHIHU_SEGMENTED_TEXT_DIRECTIVE })
         assertEquals("第一句需要划线，第二句保持原样。", document.toMarkdown())
     }
 

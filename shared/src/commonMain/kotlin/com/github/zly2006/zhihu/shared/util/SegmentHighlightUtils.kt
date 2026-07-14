@@ -25,7 +25,9 @@ import com.github.zly2006.zhihu.shared.data.SegmentInfoMark
 import com.github.zly2006.zhihu.shared.data.SegmentInfoMeta
 import com.github.zly2006.zhihu.shared.data.SegmentInfoParagraph
 import com.github.zly2006.zhihu.shared.data.effectiveSegInfo
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class SegmentHighlightSpan(
     val text: String,
     val meta: SegmentInfoMeta,
@@ -37,11 +39,13 @@ data class SegmentHighlightSpan(
     val endOffset: Int? = null,
 )
 
+@Serializable
 data class SegmentTextPart(
     val text: String,
     val highlight: SegmentHighlightSpan? = null,
 )
 
+@Serializable
 data class SegmentTextParagraph(
     val pid: String?,
     val text: String,

@@ -343,6 +343,7 @@ private fun RenderMarkdownDocument(
                     header = header,
                     footer = footer,
                     theme = theme,
+                    directivePlugins = zhihuMarkdownDirectivePlugins,
                 )
             }
         }

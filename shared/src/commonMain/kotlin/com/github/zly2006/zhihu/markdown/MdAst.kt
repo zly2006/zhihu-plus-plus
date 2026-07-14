@@ -24,12 +24,11 @@ import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.util.extractImageUrl
 import com.github.zly2006.zhihu.shared.util.parseSegmentTextParagraph
-import com.github.zly2006.zhihu.ui.components.SegmentedText
-import com.github.zly2006.zhihu.ui.components.segmentedTextStyle
 import com.hrm.markdown.parser.LineRange
 import com.hrm.markdown.parser.MarkdownParser
 import com.hrm.markdown.parser.ast.BlockQuote
 import com.hrm.markdown.parser.ast.ContainerNode
+import com.hrm.markdown.parser.ast.DirectiveBlock
 import com.hrm.markdown.parser.ast.Document
 import com.hrm.markdown.parser.ast.Emphasis
 import com.hrm.markdown.parser.ast.FencedCodeBlock
@@ -47,7 +46,6 @@ import com.hrm.markdown.parser.ast.Link
 import com.hrm.markdown.parser.ast.ListBlock
 import com.hrm.markdown.parser.ast.ListItem
 import com.hrm.markdown.parser.ast.MathBlock
-import com.hrm.markdown.parser.ast.NativeBlock
 import com.hrm.markdown.parser.ast.Paragraph
 import com.hrm.markdown.parser.ast.Strikethrough
 import com.hrm.markdown.parser.ast.StrongEmphasis
@@ -61,6 +59,7 @@ import com.hrm.markdown.parser.ast.TableRow
 import com.hrm.markdown.parser.ast.Text
 import com.hrm.markdown.parser.ast.ThematicBreak
 import io.ktor.http.Url
+import kotlinx.serialization.encodeToString
 import com.fleeksoft.ksoup.nodes.Node as HtmlNode
 import com.hrm.markdown.parser.ast.Node as MarkdownNode
 
@@ -69,7 +68,7 @@ private const val ZHIHU_EQUATION_URL_PREFIX = "https://www.zhihu.com/equation?te
 
 fun htmlToMdAst(
     html: String,
-    noNativeBlock: Boolean = false,
+    enableInteractiveBlocks: Boolean = true,
 ): Document {
     val document = Document()
     parsingDocument = document
@@ -77,7 +76,7 @@ fun htmlToMdAst(
         .parseBodyFragment(html)
         .body()
         .childNodes()
-        .convertNodesToBlocks(noNativeBlock)
+        .convertNodesToBlocks(enableInteractiveBlocks)
         .forEach(document::appendChild)
     document.footnoteDefinitions.forEach { (_, definition) ->
         document.appendChild(definition)
@@ -112,7 +111,7 @@ private fun MarkdownNode.collectPreviewImageUrls(): List<String> = when (this) {
     else -> emptyList()
 }
 
-private fun List<HtmlNode>.convertNodesToBlocks(noNativeBlock: Boolean): List<MarkdownNode> {
+private fun List<HtmlNode>.convertNodesToBlocks(enableInteractiveBlocks: Boolean): List<MarkdownNode> {
     val blocks = mutableListOf<MarkdownNode>()
     var currentParagraph: Paragraph? = null
 
@@ -143,7 +142,7 @@ private fun List<HtmlNode>.convertNodesToBlocks(noNativeBlock: Boolean): List<Ma
                     }
                 }
 
-                val blockNode = convertElementToBlock(node, noNativeBlock)
+                val blockNode = convertElementToBlock(node, enableInteractiveBlocks)
                 if (blockNode.isNotEmpty()) {
                     blocks.addAll(blockNode)
                     currentParagraph = null
@@ -217,7 +216,7 @@ private fun Element.isBlockBoundary(): Boolean = when (tagName().lowercase()) {
 
 private fun convertElementToBlock(
     element: Element,
-    noNativeBlock: Boolean,
+    enableInteractiveBlocks: Boolean,
 ): List<MarkdownNode> = when (element.tagName().lowercase()) {
     "h1", "h2", "h3", "h4", "h5", "h6" -> listOf(
         Heading(level = element.tagName()[1].digitToInt()).apply {
@@ -242,17 +241,18 @@ private fun convertElementToBlock(
                 ?.let { formula -> listOf(MathBlock(formula)) }
                 ?: listOfNotNull(createBlockImage(image))
         } else {
-            if (!noNativeBlock && element.selectFirst("span.highlight-wrap") != null) {
+            if (enableInteractiveBlocks && element.selectFirst("span.highlight-wrap") != null) {
                 // 含有知乎的划线高亮结构，需要单独处理
                 // TODO: 暂不考虑其他可能的结构，直接尝试解析整个段落为SegmentedTextParagraph
                 parseSegmentTextParagraph(element)?.let { paragraph ->
                     return listOf(
-                        NativeBlock {
-                            SegmentedText(
-                                parts = paragraph.parts,
-                                style = segmentedTextStyle(),
-                            )
-                        },
+                        DirectiveBlock(
+                            tagName = ZHIHU_SEGMENTED_TEXT_DIRECTIVE,
+                            args = mapOf(
+                                DIRECTIVE_PAYLOAD_ARG to zhihuMarkdownDirectiveJson.encodeToString(paragraph),
+                                DIRECTIVE_TEXT_ARG to paragraph.text,
+                            ),
+                        ),
                     )
                 }
             }
@@ -273,15 +273,27 @@ private fun convertElementToBlock(
 
     "blockquote" -> listOf(
         BlockQuote().apply {
-            element.childNodes().convertNodesToBlocks(noNativeBlock).forEach(::appendChild)
+            element.childNodes().convertNodesToBlocks(enableInteractiveBlocks).forEach(::appendChild)
         },
     )
 
     "pre" -> listOf(createCodeBlock(element))
 
-    "ul" -> listOf(createListBlock(element, ordered = false, noNativeBlock = noNativeBlock))
+    "ul" -> listOf(
+        createListBlock(
+            element,
+            ordered = false,
+            enableInteractiveBlocks = enableInteractiveBlocks,
+        ),
+    )
 
-    "ol" -> listOf(createListBlock(element, ordered = true, noNativeBlock = noNativeBlock))
+    "ol" -> listOf(
+        createListBlock(
+            element,
+            ordered = true,
+            enableInteractiveBlocks = enableInteractiveBlocks,
+        ),
+    )
 
     "hr" -> listOf(ThematicBreak())
 
@@ -292,15 +304,15 @@ private fun convertElementToBlock(
     "table" -> listOf(createTableBlock(element))
 
     "div" -> {
-        element.childNodes().convertNodesToBlocks(noNativeBlock)
+        element.childNodes().convertNodesToBlocks(enableInteractiveBlocks)
     }
 
     "a" -> {
         if (element.attr("class").contains("video-box")) {
-            if (noNativeBlock) {
+            if (!enableInteractiveBlocks) {
                 listOfNotNull(createVideoBoxLinkBlock(element))
             } else {
-                listOfNotNull(createVideoBoxBlock(element))
+                listOfNotNull(createVideoBoxDirective(element))
             }
         } else {
             emptyList()
@@ -333,7 +345,7 @@ private fun parseLanguageFromClassName(classNames: Set<String>): String? {
 private fun createListBlock(
     element: Element,
     ordered: Boolean,
-    noNativeBlock: Boolean,
+    enableInteractiveBlocks: Boolean,
 ): ListBlock = ListBlock(
     ordered = ordered,
     startNumber = element.attr("start").toIntOrNull() ?: 1,
@@ -341,7 +353,7 @@ private fun createListBlock(
     element.select("> li").forEach { listItemElement ->
         appendChild(
             ListItem().apply {
-                val children = listItemElement.childNodes().convertNodesToBlocks(noNativeBlock)
+                val children = listItemElement.childNodes().convertNodesToBlocks(enableInteractiveBlocks)
                 if (children.isEmpty()) {
                     appendChild(
                         Paragraph().apply {
@@ -393,7 +405,7 @@ private fun createFigureBlock(element: Element): MarkdownNode? {
     }
 }
 
-private fun createVideoBoxBlock(element: Element): MarkdownNode? {
+private fun createVideoBoxDirective(element: Element): MarkdownNode? {
     val href = element.attr("href")
     val videoId = href.takeIf { it.isNotBlank() }?.let { destination ->
         val resolved = resolveContent(destination)
@@ -403,12 +415,13 @@ private fun createVideoBoxBlock(element: Element): MarkdownNode? {
         extractImageUrl(image::attr)
     }
 
-    return NativeBlock {
-        RenderVideoBox(
-            videoId = videoId,
-            thumbnailUrl = thumbnailUrl,
-        )
-    }
+    return DirectiveBlock(
+        tagName = ZHIHU_VIDEO_DIRECTIVE,
+        args = buildMap {
+            put(DIRECTIVE_VIDEO_ID_ARG, videoId.toString())
+            thumbnailUrl?.let { put(DIRECTIVE_THUMBNAIL_URL_ARG, it) }
+        },
+    )
 }
 
 private fun createVideoBoxLinkBlock(element: Element): MarkdownNode? {
@@ -659,7 +672,8 @@ private fun ContainerNode.appendChildren(children: List<MarkdownNode>) {
  * - MdAst -> Markdown：复用 [Document.toMarkdown]，按项目约定输出可读性优先的 Markdown
  *
  */
-fun zhihuHtmlToMarkdown(html: String): String = htmlToMdAst(html).toMarkdown().trim()
+fun zhihuHtmlToMarkdown(html: String): String =
+    htmlToMdAst(html, enableInteractiveBlocks = false).toMarkdown().trim()
 
 /**
  * 将 [Document] 序列化为 Markdown 文本。

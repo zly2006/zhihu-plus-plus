@@ -39,10 +39,11 @@ Optional:
 ## Guardrails
 
 - Prefer preserving existing published coordinates. Do not switch the app to Android-only coordinates unless publishing KMP root coordinates is impossible.
+- When an upstream merge changes the renderer architecture and creates a conflict with a fork-only extension, the main agent must trace the real production path and evaluate the architectural options itself. Do not delegate the core decision unless the user explicitly asks for delegation. For example, if an old extension point still compiles but the new public entry now passes through an intermediate model pipeline, verify where the extension is dropped and compare minimal adaptation, formal protocol integration, and deferring the upgrade before choosing a release path.
 - Fork-specific behavior should be reduced to the minimum approved delta. Current approved deltas:
-  - `NativeBlock` support
   - `mathFont: MathFont` field in `MarkdownTheme` (font CDN support)
   - Switched latex dependency from `io.github.huarangmeng` to `io.github.zly2006`
+- Keep application-specific rich blocks in Zhihu and integrate them through upstream's public Directive API. Do not restore `NativeBlock` or another fork-only renderer bypass.
 - Never use destructive git commands on a dirty tree.
 - For Zhihu after dependency changes, run:
   1. `./gradlew assembleLiteDebug`
@@ -98,7 +99,8 @@ The intended final diff should be limited to:
 - Version bump
 - A `gradle.properties` comment recording the upstream `huarangmeng/Markdown`
   version the fork release is based on
-- `NativeBlock` parser/renderer support and its tests
+- `mathFont: MathFont` support in `MarkdownTheme` and both math render paths
+- LaTeX dependency coordinates switched to `io.github.zly2006`
 
 ### 3. Publish to Maven Central
 
