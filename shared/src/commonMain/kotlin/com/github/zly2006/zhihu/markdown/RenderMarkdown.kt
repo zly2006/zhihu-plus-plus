@@ -246,7 +246,6 @@ fun RenderMarkdown(
     enableScroll: Boolean = true,
     header: (@Composable () -> Unit)? = null,
     footer: (@Composable () -> Unit)? = null,
-    onOpenSegmentComment: ((SegmentCommentHolder) -> Unit)? = null,
 ) {
     val document = remember(html) { htmlToMdAst(html) }
     RenderMarkdownDocument(
@@ -257,7 +256,6 @@ fun RenderMarkdown(
         enableScroll = enableScroll,
         header = header,
         footer = footer,
-        onOpenSegmentComment = onOpenSegmentComment,
     )
 }
 
@@ -292,7 +290,6 @@ private fun RenderMarkdownDocument(
     enableScroll: Boolean,
     header: (@Composable () -> Unit)?,
     footer: (@Composable () -> Unit)?,
-    onOpenSegmentComment: ((SegmentCommentHolder) -> Unit)? = null,
 ) {
     val imageUrls = remember(document) { document.previewImageUrls() }
     val navigator = LocalNavigator.current
@@ -315,11 +312,8 @@ private fun RenderMarkdownDocument(
     )
     var segmentCommentTarget by remember { mutableStateOf<SegmentCommentHolder?>(null) }
     var segmentActionSheetState by remember { mutableStateOf<SegmentActionSheetState?>(null) }
-    val segmentCommentCallback = onOpenSegmentComment ?: { target: SegmentCommentHolder ->
-        segmentCommentTarget = target
-    }
     CompositionLocalProvider(
-        LocalSegmentCommentHost provides segmentCommentCallback,
+        LocalSegmentCommentHost provides { target -> segmentCommentTarget = target },
         LocalSegmentActionSheetHost provides { state -> segmentActionSheetState = state },
     ) {
         Box(modifier = modifier) {
@@ -347,14 +341,12 @@ private fun RenderMarkdownDocument(
             }
         }
     }
-    if (onOpenSegmentComment == null) {
-        segmentCommentTarget?.let { target ->
-            CommentScreenComponent(
-                showComments = true,
-                onDismiss = { segmentCommentTarget = null },
-                content = target,
-            )
-        }
+    segmentCommentTarget?.let { target ->
+        CommentScreenComponent(
+            showComments = true,
+            onDismiss = { segmentCommentTarget = null },
+            content = target,
+        )
     }
     segmentActionSheetState?.let { state ->
         SegmentActionSheet(state)

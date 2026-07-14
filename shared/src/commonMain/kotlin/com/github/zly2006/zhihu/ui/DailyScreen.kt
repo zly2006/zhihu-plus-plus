@@ -72,7 +72,6 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -83,18 +82,11 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.data.DailySection
 import com.github.zly2006.zhihu.shared.data.DailyStory
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.ui.TopLevelReselectAction
 import com.github.zly2006.zhihu.shared.ui.topLevelReselectAction
 import com.github.zly2006.zhihu.shared.util.formatDailyDate
 import com.github.zly2006.zhihu.shared.util.twoDigitString
 import com.github.zly2006.zhihu.shared.viewmodel.DailyViewModel
-import com.github.zly2006.zhihu.ui.components.PageTurnGuideOverlay
-import com.github.zly2006.zhihu.ui.components.PageTurnGuideState
-import com.github.zly2006.zhihu.ui.components.PageTurnLazyListEffect
-import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_PAGE_TURN_PERCENT
-import com.github.zly2006.zhihu.ui.subscreens.PREF_PAGE_TURN_PERCENT
-import com.github.zly2006.zhihu.ui.subscreens.PREF_SHOW_PAGE_TURN_GUIDE
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -120,7 +112,6 @@ import kotlin.time.Instant
 fun DailyScreen(
     scrollToTopTrigger: Int = 0,
     isActive: Boolean = true,
-    outerBottomPadding: Dp = 0.dp,
 ) {
     val navigator = LocalNavigator.current
     val httpClient = rememberZhihuHttpClient()
@@ -132,16 +123,6 @@ fun DailyScreen(
     var pendingDateSelection by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
-    val dailySettings = rememberSettingsStore()
-    val showPageTurnGuide = remember { dailySettings.getBoolean(PREF_SHOW_PAGE_TURN_GUIDE, false) }
-    val pageTurnPercent = remember { dailySettings.getInt(PREF_PAGE_TURN_PERCENT, DEFAULT_PAGE_TURN_PERCENT) }
-    val guideState = remember { PageTurnGuideState() }
-    PageTurnLazyListEffect(listState, pageTurnPercent, guideState)
-
-    if (showPageTurnGuide && guideState.lastDirection != 0 && listState.isScrollInProgress && !guideState.isScrolling) {
-        guideState.lastDirection = 0
-    }
-
     var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
     LaunchedEffect(listState, viewModel.sections) {
         currentViewingDate = resolveViewingDate(
@@ -337,10 +318,7 @@ fun DailyScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .testTag(DAILY_SCREEN_LIST_TAG),
-                        contentPadding = PaddingValues(
-                            top = 8.dp,
-                            bottom = 8.dp + outerBottomPadding,
-                        ),
+                        contentPadding = PaddingValues(vertical = 8.dp),
                     ) {
                         viewModel.sections.forEach { section ->
                             // 日期分组标题。
@@ -386,15 +364,6 @@ fun DailyScreen(
                         }
                     }
                 }
-            }
-
-            if (showPageTurnGuide) {
-                PageTurnGuideOverlay(
-                    pageTurnPercent,
-                    topInsetPx = listState.layoutInfo.beforeContentPadding.toFloat(),
-                    bottomInsetPx = listState.layoutInfo.afterContentPadding.toFloat(),
-                    lastDirection = guideState.lastDirection,
-                )
             }
         }
     }
