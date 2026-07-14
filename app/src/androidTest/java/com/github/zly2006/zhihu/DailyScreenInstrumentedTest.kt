@@ -71,6 +71,7 @@ class DailyScreenInstrumentedTest {
         // 3. Swipe cycles keep the loaded list, toolbar, and stable row tags intact.
         mockLatest(date = "20260418", storyIds = 1..12)
         mockBefore(apiDate = "20260418", responseDate = "20260417", storyIds = 13..24)
+        mockBefore(apiDate = "20260417", responseDate = "20260416", storyIds = 25..36)
 
         composeRule.setScreenContent {
             DailyScreen()
