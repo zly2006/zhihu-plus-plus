@@ -66,8 +66,10 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
+import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Notification
@@ -380,11 +382,18 @@ fun NotificationItemView(
                                 overflow = TextOverflow.Ellipsis,
                             )
                         }
-                        notification.displayText().takeIf { it.isNotBlank() }?.let { content ->
+                        val displayText =
+                            if (notification.content?.subTitle == "喜欢了你的评论") {
+                                // 对评论特殊处理
+                                Ksoup.parse(notification.content.subText).text()
+                            } else {
+                                Ksoup.parse(notification.content?.text ?: "").text()
+                            }
+                        if (displayText != "") {
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = content,
-                                style = MaterialTheme.typography.bodyMedium,
+                                text = displayText,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 3,
                                 overflow = TextOverflow.Ellipsis,
@@ -440,26 +449,29 @@ private fun MobileNotificationTimelineItem.displayTitle(): String =
         ?: target?.name?.takeIf { it.isNotBlank() }
         ?: "通知"
 
-private fun MobileNotificationTimelineItem.displaySubtitle(): String =
-    content
+/**
+ * 数据字段中的 `sub_title`，主要是行为的动作
+ */
+private fun MobileNotificationTimelineItem.displaySubtitle(): String {
+    val subtitle = content
         ?.subTitle
         ?.takeIf { it.isNotBlank() }
         ?: ""
-
-private fun MobileNotificationTimelineItem.displayText(): String =
-    content
-        ?.text
-        ?.takeIf { it.isNotBlank() }
-        ?: content?.abstractText?.takeIf { it.isNotBlank() }
-        ?: content?.subText?.takeIf { it.isNotBlank() }
-        ?: ""
+    if (!subtitle.endsWith("：") && subtitle.startsWith("评论了") || subtitle.startsWith("赞同了") || subtitle.startsWith("喜欢了")) {
+        return "$subtitle："
+    }
+    return subtitle
+}
 
 private fun MobileNotificationTimelineItem.sourceText(): String =
-    targetSource
-        ?.text
-        ?.takeIf { it.isNotBlank() }
-        ?: targetSource?.fullText?.takeIf { it.isNotBlank() }
-        ?: ""
+    listOfNotNull(
+        targetSource
+            ?.text
+            ?.takeIf { it.isNotBlank() },
+        targetSource
+            ?.subText
+            ?.takeIf { it.isNotBlank() },
+    ).joinToString("\n")
 
 private fun MobileNotificationTimelineItem.avatarUrl(): String =
     head
