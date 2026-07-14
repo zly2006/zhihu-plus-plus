@@ -415,14 +415,15 @@ fun CommentScreen(
     content: () -> NavDestination,
     activeCommentItem: CommentModel? = null,
     onChildCommentClick: (CommentModel) -> Unit,
+    commentInput: String,
+    onCommentInputChange: (String) -> Unit,
     listState: LazyListState = rememberLazyListState(),
     testOverrides: CommentScreenTestOverrides? = null,
 ) {
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
-    var commentInput by remember { mutableStateOf("") }
+    val resolvedContent = content()
     var isSending by remember { mutableStateOf(false) }
     var replyToComment by remember { mutableStateOf<CommentModel?>(null) }
-    val resolvedContent = content()
     val viewModelKey = commentViewModelKey(resolvedContent)
 
     // 根据内容类型选择合适的ViewModel
@@ -485,7 +486,7 @@ fun CommentScreen(
             environment = paginationEnvironment,
             replyToCommentId = replyToComment?.item?.id,
         ) {
-            commentInput = ""
+            onCommentInputChange("")
             replyToComment = null
             isSending = false
             coroutineScope.launch {
@@ -860,7 +861,7 @@ fun CommentScreen(
                         ) {
                             BasicTextField(
                                 value = commentInput,
-                                onValueChange = { commentInput = it },
+                                onValueChange = onCommentInputChange,
                                 modifier = Modifier
                                     .weight(1f)
                                     .testTag(COMMENT_INPUT_TAG),

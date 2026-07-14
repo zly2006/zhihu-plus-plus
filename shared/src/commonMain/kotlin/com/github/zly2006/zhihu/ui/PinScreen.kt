@@ -375,13 +375,11 @@ fun PinScreen(
                         },
                     )
 
-                    if (showComments) {
-                        CommentScreenComponent(
-                            showComments = showComments,
-                            onDismiss = { showComments = false },
-                            content = pin,
-                        )
-                    }
+                    CommentScreenComponent(
+                        showComments = showComments,
+                        onDismiss = { showComments = false },
+                        content = pin,
+                    )
 
                     val shareText = getShareText(pin)
                     if (shareText != null) {

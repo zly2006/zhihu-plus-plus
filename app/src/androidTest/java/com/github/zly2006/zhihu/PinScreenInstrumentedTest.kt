@@ -18,12 +18,16 @@
 package com.github.zly2006.zhihu
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
@@ -38,6 +42,7 @@ import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
+import com.github.zly2006.zhihu.ui.COMMENT_INPUT_TAG
 import com.github.zly2006.zhihu.ui.COMMENT_SCREEN_LIST_TAG
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_AUTHOR_TAG
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_BACK_BUTTON_TAG
@@ -201,6 +206,34 @@ class PinScreenInstrumentedTest {
             ),
             navigator.destinations,
         )
+    }
+
+    @Test
+    fun commentDraftSurvivesSheetDismissAndReopen() {
+        /*
+         * Expected behavior:
+         * 1. A long draft typed in the comment sheet may still dismiss through the normal swipe gesture.
+         * 2. Reopening the same content's comments must restore the entire unsent draft.
+         */
+        mockPinDetail(content = seededPinContent())
+        mockRootComments("https://www.zhihu.com/api/v4/comment_v5/pins/101/root_comment")
+        composeRule.setScreenContent {
+            PinScreen(pin = Pin(101))
+        }
+        val draft = "这是一段尚未发送的长评论，用来验证关闭评论区后重新打开仍然保留全部内容。".repeat(8)
+
+        composeRule.waitUntilTagExists(PIN_SCREEN_COMMENT_BUTTON_TAG)
+        composeRule.onNodeWithTag(PIN_SCREEN_COMMENT_BUTTON_TAG).performClick()
+        composeRule.waitUntilTagExists(COMMENT_INPUT_TAG)
+        composeRule.onNodeWithTag(COMMENT_INPUT_TAG).performTextInput(draft)
+        composeRule.onNodeWithTag(COMMENT_INPUT_TAG).performTouchInput { swipeDown() }
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(COMMENT_SCREEN_LIST_TAG).fetchSemanticsNodes().isEmpty()
+        }
+
+        composeRule.onNodeWithTag(PIN_SCREEN_COMMENT_BUTTON_TAG).performClick()
+        composeRule.waitUntilTagExists(COMMENT_INPUT_TAG)
+        composeRule.onNodeWithTag(COMMENT_INPUT_TAG).assertTextEquals(draft)
     }
 
     private fun mockPinPollVote(pollId: String = "poll-101") {
