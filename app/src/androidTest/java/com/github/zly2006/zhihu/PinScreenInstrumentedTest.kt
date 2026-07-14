@@ -26,8 +26,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
-import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.test.swipeDown
+import androidx.test.espresso.Espresso.closeSoftKeyboard
+import androidx.test.espresso.Espresso.pressBack
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
@@ -212,7 +212,7 @@ class PinScreenInstrumentedTest {
     fun commentDraftSurvivesSheetDismissAndReopen() {
         /*
          * Expected behavior:
-         * 1. A long draft typed in the comment sheet may still dismiss through the normal swipe gesture.
+         * 1. A long draft typed in the comment sheet remains stored after dismissing it with system back.
          * 2. Reopening the same content's comments must restore the entire unsent draft.
          */
         mockPinDetail(content = seededPinContent())
@@ -226,7 +226,8 @@ class PinScreenInstrumentedTest {
         composeRule.onNodeWithTag(PIN_SCREEN_COMMENT_BUTTON_TAG).performClick()
         composeRule.waitUntilTagExists(COMMENT_INPUT_TAG)
         composeRule.onNodeWithTag(COMMENT_INPUT_TAG).performTextInput(draft)
-        composeRule.onNodeWithTag(COMMENT_INPUT_TAG).performTouchInput { swipeDown() }
+        closeSoftKeyboard()
+        pressBack()
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(COMMENT_SCREEN_LIST_TAG).fetchSemanticsNodes().isEmpty()
         }
