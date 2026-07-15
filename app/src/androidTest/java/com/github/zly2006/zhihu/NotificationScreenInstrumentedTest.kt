@@ -153,10 +153,7 @@ class NotificationScreenInstrumentedTest {
             viewModel.allData.clear()
             viewModel.allData += notificationFixture()
             if (unreadCounts.isNotEmpty()) {
-                NotificationViewModel::class.java
-                    .getDeclaredMethod("setCategoryUnreadCounts", Map::class.java)
-                    .apply { isAccessible = true }
-                    .invoke(viewModel, unreadCounts)
+                viewModel.categoryUnreadCounts.putAll(unreadCounts)
             }
         }
         waitForIdle()
