@@ -25,7 +25,6 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.github.zly2006.zhihu.data.HistoryStorage
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
@@ -36,7 +35,6 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.io.File
 
 @RunWith(AndroidJUnit4::class)
 class HistoryScreenInstrumentedTest {
@@ -104,11 +102,9 @@ class HistoryScreenInstrumentedTest {
     }
 
     private fun MainActivityComposeRule.replaceHistoryWithEmptyState() {
-        val historyFile = File(activity.filesDir, "history.json")
-
-        activity.runOnUiThread {
-            historyFile.delete()
-            activity.history = HistoryStorage(activity)
+        waitForIdle()
+        runOnIdle {
+            activity.history.clearAndSave()
         }
         waitForIdle()
         runOnIdle {
