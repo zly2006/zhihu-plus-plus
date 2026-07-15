@@ -62,6 +62,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -81,9 +82,11 @@ import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
+import com.github.zly2006.zhihu.ui.components.NoOpPagerNestedScrollConnection
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.components.rememberFeedBlockActions
+import com.github.zly2006.zhihu.ui.components.rememberNestedHorizontalPagerConnection
 import com.github.zly2006.zhihu.viewmodel.feed.FollowRecommendViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.FollowViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.RecentMomentsViewModel
@@ -113,9 +116,11 @@ const val FOLLOW_DYNAMIC_REFRESH_BUTTON_TAG = "follow_dynamic_refresh_button"
 fun FollowScreen(
     scrollToTopTrigger: Int,
     innerPadding: PaddingValues,
+    parentPagerState: PagerState,
 ): Unit = FollowScreenContent(
     scrollToTopTrigger = scrollToTopTrigger,
     innerPadding = innerPadding,
+    parentPagerState = parentPagerState,
     onTestRecommendRefreshClick = null,
     onTestRecommendLoadMore = null,
     onTestDynamicRefreshClick = null,
@@ -131,6 +136,7 @@ fun FollowScreen(
 fun FollowScreen(
     scrollToTopTrigger: Int = 0,
     innerPadding: PaddingValues,
+    parentPagerState: PagerState,
     onTestRecommendRefreshClick: (() -> Unit)?,
     onTestRecommendLoadMore: (() -> Unit)?,
     onTestDynamicRefreshClick: (() -> Unit)?,
@@ -138,6 +144,7 @@ fun FollowScreen(
 ): Unit = FollowScreenContent(
     scrollToTopTrigger = scrollToTopTrigger,
     innerPadding = innerPadding,
+    parentPagerState = parentPagerState,
     onTestRecommendRefreshClick = onTestRecommendRefreshClick,
     onTestRecommendLoadMore = onTestRecommendLoadMore,
     onTestDynamicRefreshClick = onTestDynamicRefreshClick,
@@ -155,6 +162,7 @@ fun FollowScreen(
 private fun FollowScreenContent(
     scrollToTopTrigger: Int = 0,
     innerPadding: PaddingValues = PaddingValues(0.dp),
+    parentPagerState: PagerState,
     onTestRecommendRefreshClick: (() -> Unit)? = null,
     onTestRecommendLoadMore: (() -> Unit)? = null,
     onTestDynamicRefreshClick: (() -> Unit)? = null,
@@ -192,7 +200,13 @@ private fun FollowScreenContent(
             state = pagerState,
             modifier = Modifier
                 .fillMaxSize()
-                .testTag(FOLLOW_SCREEN_PAGER_TAG),
+                .nestedScroll(
+                    rememberNestedHorizontalPagerConnection(
+                        parentState = parentPagerState,
+                        childState = pagerState,
+                    ),
+                ).testTag(FOLLOW_SCREEN_PAGER_TAG),
+            pageNestedScrollConnection = NoOpPagerNestedScrollConnection,
         ) { page ->
             when (page) {
                 0 -> FollowRecommendScreen(

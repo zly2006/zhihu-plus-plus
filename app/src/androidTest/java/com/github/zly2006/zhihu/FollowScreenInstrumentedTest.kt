@@ -19,6 +19,7 @@ package com.github.zly2006.zhihu
 
 import android.content.Context
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
@@ -258,8 +259,10 @@ class FollowScreenInstrumentedTest {
             recentUsers = recentUsers,
         )
         return composeRule.setScreenContent {
+            val parentPagerState = rememberPagerState(pageCount = { 1 })
             FollowScreen(
                 innerPadding = PaddingValues(),
+                parentPagerState = parentPagerState,
                 onTestRecommendRefreshClick = onTestRecommendRefreshClick,
                 onTestRecommendLoadMore = onTestRecommendLoadMore,
                 onTestDynamicRefreshClick = onTestDynamicRefreshClick,
