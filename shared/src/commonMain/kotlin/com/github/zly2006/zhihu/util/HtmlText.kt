@@ -52,14 +52,39 @@ fun parseEmphasizedHtmlText(
                     val entity = entityEnd.takeIf { it != -1 }?.let { html.substring(cursor + 1, it) }
                     val decoded =
                         when (entity) {
-                            "lt" -> '<'
-                            "gt" -> '>'
-                            "quot" -> '"'
-                            "#39" -> '\''
-                            "amp" -> '&'
-                            else -> null
+                            "lt" -> "<"
+                            "gt" -> ">"
+                            "quot" -> "\""
+                            "amp" -> "&"
+                            else -> {
+                                val radix =
+                                    when {
+                                        entity?.startsWith("#x", ignoreCase = true) == true -> 16
+                                        entity?.startsWith('#') == true -> 10
+                                        else -> null
+                                    }
+                                val codePoint =
+                                    radix?.let {
+                                        entity
+                                            ?.substring(if (it == 16) 2 else 1)
+                                            ?.toIntOrNull(it)
+                                    }
+                                when {
+                                    codePoint == null || codePoint !in 0..0x10FFFF || codePoint in 0xD800..0xDFFF -> null
+                                    codePoint <= 0xFFFF -> codePoint.toChar().toString()
+                                    else -> {
+                                        val offset = codePoint - 0x10000
+                                        String(
+                                            charArrayOf(
+                                                ((offset shr 10) + 0xD800).toChar(),
+                                                ((offset and 0x3FF) + 0xDC00).toChar(),
+                                            ),
+                                        )
+                                    }
+                                }
+                            }
                         }
-                    append(decoded ?: '&')
+                    append(decoded ?: "&")
                     cursor = if (decoded == null) cursor + 1 else entityEnd + 1
                 }
                 else -> {

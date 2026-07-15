@@ -46,4 +46,18 @@ class HtmlTextTest {
             assertEquals(0, text.spanStyles.size)
         }
     }
+
+    @Test
+    fun parseEmphasizedHtmlTextDecodesNumericCharacterReferences() {
+        val text = parseEmphasizedHtmlText("&#37; &#x4E2D; &#X1F600;", Color.Red)
+
+        assertEquals("% 中 😀", text.text)
+    }
+
+    @Test
+    fun parseEmphasizedHtmlTextKeepsInvalidNumericCharacterReferences() {
+        val text = parseEmphasizedHtmlText("&#; &#x; &#x110000; &#xD800;", Color.Red)
+
+        assertEquals("&#; &#x; &#x110000; &#xD800;", text.text)
+    }
 }
