@@ -16,8 +16,10 @@
  */
 
 package com.github.zly2006.zhihu.shared.platform
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import com.github.zly2006.zhihu.ui.noopSettingsStore
 import com.github.zly2006.zhihu.ui.openIosUrl
 
@@ -79,6 +81,8 @@ actual fun PlatformPredictiveBackHandler(
 
 @Composable
 actual fun rememberSettingsStore(): SettingsStore = noopSettingsStore() // TODO: iOS 设置存储
+
+actual fun Modifier.exportTestTagsForUiAutomation(): Modifier = this
 
 @Composable
 actual fun rememberIsLiteVariant(): Boolean = false // TODO: iOS 变体判断

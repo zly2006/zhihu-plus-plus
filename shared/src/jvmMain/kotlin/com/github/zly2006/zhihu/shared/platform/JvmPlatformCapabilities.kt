@@ -16,9 +16,11 @@
  */
 
 package com.github.zly2006.zhihu.shared.platform
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Modifier
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopPropertiesFile
 import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
@@ -28,6 +30,8 @@ import kotlinx.coroutines.launch
 
 @Composable
 actual fun rememberSettingsStore(): SettingsStore = remember { desktopSettingsStore() }
+
+actual fun Modifier.exportTestTagsForUiAutomation(): Modifier = this
 
 fun desktopSettingsStore(): SettingsStore {
     val propertiesFile = DesktopPropertiesFile("settings.properties", "Zhihu++ desktop settings")

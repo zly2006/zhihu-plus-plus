@@ -40,6 +40,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.ArrowOutward
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
@@ -82,6 +83,7 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
 import com.github.zly2006.zhihu.shared.platform.rememberPlainTextClipboard
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberSystemUrlOpener
@@ -110,6 +112,7 @@ const val ACCOUNT_SETTINGS_SHORTCUT_SUBSCRIPTIONS_TAG = "accountSettings.shortcu
 const val ACCOUNT_SETTINGS_SHORTCUT_NOTIFICATION_TAG = "accountSettings.shortcutNotification"
 const val ACCOUNT_SETTINGS_SHORTCUT_HISTORY_TAG = "accountSettings.shortcutHistory"
 const val ACCOUNT_SETTINGS_APPEARANCE_TAG = "accountSettings.appearance"
+const val ACCOUNT_SETTINGS_READING_TAG = "accountSettings.reading"
 const val ACCOUNT_SETTINGS_RECOMMEND_TAG = "accountSettings.recommend"
 const val ACCOUNT_SETTINGS_SYSTEM_TAG = "accountSettings.system"
 const val ACCOUNT_SETTINGS_DEVELOPER_TAG = "accountSettings.developer"
@@ -147,6 +150,7 @@ fun AccountSettingScreen(
     val userMessages = rememberUserMessageSink()
     val updateRuntime = rememberSystemUpdateRuntime()
     val versionInfo = rememberAppVersionInfo()
+    val readingPlayerSupported = rememberReadingPlayerController().isSupported
 
     val useDuo3HomeAccount = remember { settings.getBoolean("duo3_home_account", false) }
     val selectedBottomBarItemKeys = remember {
@@ -430,6 +434,16 @@ fun AccountSettingScreen(
                     modifier = Modifier.testTag(ACCOUNT_SETTINGS_APPEARANCE_TAG),
                     onClick = { navigator.onNavigate(Account.AppearanceSettings()) },
                 )
+
+                if (readingPlayerSupported) {
+                    SettingItem(
+                        title = { Text("朗读与播放") },
+                        description = { Text("朗读内容、播放队列与条目过渡") },
+                        icon = { Icon(Icons.AutoMirrored.Filled.VolumeUp, null) },
+                        modifier = Modifier.testTag(ACCOUNT_SETTINGS_READING_TAG),
+                        onClick = { navigator.onNavigate(Account.ReadingSettings) },
+                    )
+                }
 
                 SettingItem(
                     title = { Text("推荐系统与内容过滤") },

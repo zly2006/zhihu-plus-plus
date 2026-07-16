@@ -48,6 +48,7 @@ import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.material.icons.filled.PersonAddAlt1
 import androidx.compose.material.icons.filled.Whatshot
+import androidx.compose.material3.FabPosition
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -67,6 +68,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -75,6 +77,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
@@ -113,14 +117,20 @@ import com.github.zly2006.zhihu.navigation.SentenceSimilarityTest
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.navigation.WriteAnswer
 import com.github.zly2006.zhihu.navigation.WritePin
+import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
+import com.github.zly2006.zhihu.reading.saveReadingPlaybackSpeed
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.components.NoOpPagerNestedScrollConnection
+import com.github.zly2006.zhihu.ui.components.ReadingPlayerBar
+import com.github.zly2006.zhihu.ui.components.ReadingQueueSheet
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.BlockedFeedHistoryScreen
 import com.github.zly2006.zhihu.ui.subscreens.ColorSchemeScreen
 import com.github.zly2006.zhihu.ui.subscreens.ContentFilterSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.DeveloperSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.OpenSourceLicensesScreen
+import com.github.zly2006.zhihu.ui.subscreens.ReadingSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.SystemAndUpdateSettingsScreen
 import kotlinx.coroutines.launch
 import kotlin.reflect.KClass
@@ -146,6 +156,8 @@ private sealed class MainTabPage(
 
     data object AccountPage : MainTabPage(Account, "account")
 }
+
+internal val LocalReadingPlayerOverlayPadding = staticCompositionLocalOf { 0.dp }
 
 /**
  * 共享主壳使用的平台适配层。
@@ -193,8 +205,24 @@ fun ZhihuMain(
     val selectedBottomBarItemKeys = preferenceState.selectedBottomBarItemKeys
     val startDestination = preferenceState.startDestination
     val reloadBottomBarPreferences = preferenceState::reload
+    val readingPlayer = rememberReadingPlayerController()
+    val readingPlayerState by readingPlayer.state
+    val settings = rememberSettingsStore()
+    var showReadingQueue by remember { mutableStateOf(false) }
+    var readingPlayerHeightPx by remember { mutableIntStateOf(0) }
+    val density = LocalDensity.current
+    val readingPlayerOverlayPadding = when {
+        !readingPlayerState.hasSession -> 0.dp
+        readingPlayerHeightPx > 0 -> with(density) { readingPlayerHeightPx.toDp() } + 16.dp
+        else -> 16.dp
+    }
 
     val navEntry by navController.currentBackStackEntryAsState()
+    val showMainNavigation = navEntry?.hasRoute(MainTabs::class) == true
+
+    LaunchedEffect(readingPlayerState.hasSession) {
+        if (!readingPlayerState.hasSession) showReadingQueue = false
+    }
 
     // 离开文章页时恢复系统状态栏（只在实际切换时触发）
     val isOnArticle = navEntry?.destination?.hasRoute<Article>() == true
@@ -310,6 +338,28 @@ fun ZhihuMain(
     Scaffold(
         modifier = modifier
             .nestedScroll(bottomBarScrollConnection),
+        floatingActionButton = {
+            if (readingPlayerState.hasSession) {
+                ReadingPlayerBar(
+                    state = readingPlayerState,
+                    onPrevious = readingPlayer::playPrevious,
+                    onTogglePlayPause = readingPlayer::togglePlayPause,
+                    onNext = readingPlayer::playNext,
+                    onOpenSettings = {
+                        if (navEntry?.destination?.hasRoute<Account.ReadingSettings>() != true) {
+                            navigationState.navigate(Account.ReadingSettings)
+                        }
+                    },
+                    onOpenQueue = { showReadingQueue = true },
+                    onPlaybackSpeedChange = { speed ->
+                        saveReadingPlaybackSpeed(settings, speed)
+                        readingPlayer.setPlaybackSpeed(speed)
+                    },
+                    modifier = Modifier.onSizeChanged { readingPlayerHeightPx = it.height },
+                )
+            }
+        },
+        floatingActionButtonPosition = FabPosition.Center,
         bottomBar = {
             if (navEntry != null) {
                 // 页面切换时重置底部导航栏可见状态
@@ -317,8 +367,9 @@ fun ZhihuMain(
                 val currentBottomDestination = mainTabPages
                     .getOrNull(mainPagerState.targetPage)
                     ?.bottomDestination
+                val isMainNavigationVisible = showMainNavigation && (!autoHideBottomBar || isBottomBarVisible)
                 AnimatedVisibility(
-                    visible = (!autoHideBottomBar || isBottomBarVisible) && navEntry.hasRoute(MainTabs::class),
+                    visible = isMainNavigationVisible,
                     enter = slideInVertically(tween(200)) { it },
                     exit = slideOutVertically(tween(200)) { it },
                 ) {
@@ -397,6 +448,7 @@ fun ZhihuMain(
                 },
                 onNavigateBack = navController::popBackStack,
             ),
+            LocalReadingPlayerOverlayPadding provides readingPlayerOverlayPadding,
         ) {
             NavHost(
                 navController,
@@ -538,6 +590,9 @@ fun ZhihuMain(
                 composable<Account.SystemAndUpdateSettings> {
                     SystemAndUpdateSettingsScreen()
                 }
+                composable<Account.ReadingSettings> {
+                    ReadingSettingsScreen()
+                }
                 composable<Account.OpenSourceLicenses> {
                     OpenSourceLicensesScreen()
                 }
@@ -549,6 +604,40 @@ fun ZhihuMain(
                 }
             }
         }
+    }
+
+    if (showReadingQueue && readingPlayerState.hasSession) {
+        ReadingQueueSheet(
+            state = readingPlayerState,
+            onDismissRequest = { showReadingQueue = false },
+            onItemClick = { index, item ->
+                readingPlayer.playAt(index)
+                showReadingQueue = false
+                val destination = item.toDestination(readingPlayerState.sourceId)
+                val currentDestination = when {
+                    navEntry?.destination?.hasRoute<Article>() == true -> runCatching {
+                        navEntry?.toRoute<Article>()
+                    }.getOrNull()
+                    navEntry?.destination?.hasRoute<Pin>() == true -> runCatching {
+                        navEntry?.toRoute<Pin>()
+                    }.getOrNull()
+                    navEntry?.destination?.hasRoute<Question>() == true -> runCatching {
+                        navEntry?.toRoute<Question>()
+                    }.getOrNull()
+                    else -> null
+                }
+                if (currentDestination != destination) {
+                    if (currentDestination != null) {
+                        navController.popBackStack()
+                    }
+                    navigationState.navigate(destination)
+                }
+            },
+            onStop = {
+                showReadingQueue = false
+                readingPlayer.stop()
+            },
+        )
     }
 }
 
