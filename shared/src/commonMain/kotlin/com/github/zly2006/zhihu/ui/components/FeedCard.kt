@@ -77,7 +77,9 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Navigator
+import com.github.zly2006.zhihu.navigation.withReadingQueueSource
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.officialBadge
@@ -107,6 +109,7 @@ import kotlin.math.min
 fun FeedCard(
     item: FeedDisplayItem,
     modifier: Modifier = Modifier,
+    readingQueueSourceId: String? = null,
     maxHeight: Dp = 240.dp,
     thumbnailUrl: String? = null,
     horizontalPadding: Dp = 16.dp,
@@ -119,7 +122,7 @@ fun FeedCard(
     /**
      * 默认点击行为：优先跳转到信息流条目的详情页；如果只能识别为外链则打开外链，否则提示暂不支持。
      */
-    onClick: (FeedDisplayItem.() -> Unit)? = null,
+    onClick: ((item: FeedDisplayItem, destination: NavDestination?) -> Unit)? = null,
 ) {
     val density = LocalDensity.current
     val navigator = LocalNavigator.current
@@ -147,18 +150,20 @@ fun FeedCard(
     val duo3CardAppearance = remember { settings.getBoolean("duo3_card_appearance", false) }
     val duo3CardLayout = remember { settings.getBoolean("duo3_card_layout", false) }
     val duo3CardLargeTitle = remember { settings.getBoolean("duo3_card_large_title", true) }
-    val onClick = onClick ?: {
-        this.navDestination?.let {
-            navigator.onNavigate(it)
-        } ?: run {
-            if (this.content?.startsWith("http") == true) {
-                uriHandler.openUri(this@run.content)
-            } else {
-                userMessages.showMessage("暂不支持打开该内容", UserMessageDuration.Short)
+    val performClick: (FeedDisplayItem) -> Unit = { clickedItem ->
+        val destination = clickedItem.navDestination?.withReadingQueueSource(readingQueueSourceId)
+        if (onClick != null) {
+            onClick(clickedItem, destination)
+        } else {
+            destination?.let(navigator.onNavigate) ?: run {
+                if (clickedItem.content?.startsWith("http") == true) {
+                    uriHandler.openUri(clickedItem.content)
+                } else {
+                    userMessages.showMessage("暂不支持打开该内容", UserMessageDuration.Short)
+                }
             }
         }
     }
-
     // 动画偏移量
     val animatedOffsetX by animateFloatAsState(
         targetValue = if (isDragging) offsetX else 0f,
@@ -193,7 +198,7 @@ fun FeedCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onClick(item) }
+                    .clickable { performClick(item) }
                     .padding(horizontal = horizontalPadding, vertical = 12.dp),
             ) {
                 FeedCardContent(
@@ -235,7 +240,7 @@ fun FeedCard(
                     .let { if (duo3CardAppearance) it.clip(RoundedCornerShape(24.dp)) else it }
                     .clickable {
                         if (!isDragging && abs(animatedOffsetX) < 10f) {
-                            onClick(item)
+                            performClick(item)
                         }
                     }.let {
                         if (enableSwipeReaction) {

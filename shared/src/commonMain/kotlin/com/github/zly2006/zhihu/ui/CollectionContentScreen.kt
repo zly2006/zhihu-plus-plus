@@ -58,7 +58,7 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionAnswerNavigator
 import com.github.zly2006.zhihu.navigation.LocalNavigator
-import com.github.zly2006.zhihu.shared.data.navDestination
+import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
 import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.PaginatedList
@@ -76,6 +76,11 @@ fun CollectionContentScreen(
 ) {
     val navigator = LocalNavigator.current
     val screenViewModel = viewModel { CollectionContentViewModel(collectionId) }
+    val readingQueueSourceId = "collection:$collectionId:contents"
+    RegisterReadingQueueSource(
+        sourceId = readingQueueSourceId,
+        items = screenViewModel.displayItems,
+    )
     val collectionEnvironment = rememberPaginationEnvironment(allowGuestAccess = false) as CollectionContentEnvironment
     val listState = rememberLazyListState()
     var showActionsMenu by remember { mutableStateOf(false) }
@@ -188,13 +193,13 @@ fun CollectionContentScreen(
         ) { item ->
             FeedCard(
                 item = item,
+                readingQueueSourceId = readingQueueSourceId,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp)
                     .testTag("collection_content_item_${item.stableKey}"),
-            ) {
-                val dest = navDestination
-                if (dest is Article && dest.type == ArticleType.Answer && sharedData != null) {
+            ) { _, destination ->
+                if (destination is Article && destination.type == ArticleType.Answer && sharedData != null) {
                     val idx = screenViewModel.displayItems.indexOf(item)
                     val nextItems = if (idx >= 0) screenViewModel.allData.drop(idx + 1) else emptyList()
                     val prevItems = if (idx > 0) screenViewModel.allData.take(idx).reversed() else emptyList()
@@ -206,7 +211,7 @@ fun CollectionContentScreen(
                         environment = collectionEnvironment,
                     )
                 }
-                dest?.let { navigator.onNavigate(it) }
+                destination?.let(navigator.onNavigate)
             }
         }
     }

@@ -99,6 +99,7 @@ class CollectionContentViewModel(
         details = item.content.detailsText,
         navDestinationJson = item.content.navDestination?.toFeedDisplayItemNavDestinationJson(),
         feed = null,
+        authorName = item.content.author?.name,
         avatarSrc = when (item.content) {
             is Feed.AnswerTarget -> item.content.author?.avatarUrl
             is Feed.ArticleTarget -> item.content.author.avatarUrl

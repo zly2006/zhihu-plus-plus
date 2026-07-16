@@ -40,6 +40,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
@@ -57,6 +58,7 @@ import kotlin.math.roundToInt
 fun DraggableRefreshButton(
     modifier: Modifier = Modifier,
     preferenceName: String = "fabRefresh",
+    bottomAvoidance: Dp = 0.dp,
     onClick: () -> Unit,
     content: @Composable () -> Unit = {
         Icon(Icons.Default.Refresh, contentDescription = "刷新")
@@ -69,15 +71,22 @@ fun DraggableRefreshButton(
     var offsetX by remember { mutableFloatStateOf(settings.getFloat("$preferenceName-x", Float.MAX_VALUE)) }
     var offsetY by remember { mutableFloatStateOf(settings.getFloat("$preferenceName-y", Float.MAX_VALUE)) }
     var pressing by remember { mutableStateOf(false) }
+    val maxStoredOffsetY = with(density) {
+        (screenSize.height - 250.dp.toPx()).coerceAtLeast(0f)
+    }
+    val maxVisibleOffsetY = with(density) {
+        (maxStoredOffsetY - bottomAvoidance.toPx()).coerceAtLeast(0f)
+    }
 
     fun adjustFabPosition() {
         with(density) {
             offsetX = offsetX.coerceIn(0f, screenSize.width - 56.dp.toPx())
-            offsetY = offsetY.coerceIn(0f, screenSize.height - 250.dp.toPx())
+            offsetY = offsetY.coerceIn(0f, maxStoredOffsetY)
         }
     }
 
     adjustFabPosition()
+    val visibleOffsetY = offsetY.coerceAtMost(maxVisibleOffsetY)
 
     val animatedOffsetX by animateFloatAsState(
         targetValue = offsetX,
@@ -85,7 +94,7 @@ fun DraggableRefreshButton(
         label = "offsetX",
     )
     val animatedOffsetY by animateFloatAsState(
-        targetValue = offsetY,
+        targetValue = visibleOffsetY,
         animationSpec = tween(if (pressing) 1 else 300),
         label = "offsetY",
     )
@@ -109,6 +118,7 @@ fun DraggableRefreshButton(
             .pointerInput(Unit) {
                 detectDragGestures(
                     onDragStart = {
+                        offsetY = visibleOffsetY
                         pressing = true
                         hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                     },
