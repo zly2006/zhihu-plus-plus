@@ -32,7 +32,6 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -51,6 +50,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -147,6 +147,7 @@ import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
 import com.github.zly2006.zhihu.ui.components.VotersSheet
 import com.github.zly2006.zhihu.ui.components.ZhihuTwoRowsTopAppBar
+import com.github.zly2006.zhihu.ui.components.calculateLazyReadingProgress
 import com.github.zly2006.zhihu.ui.components.rememberPreferCollapsedExitUntilCollapsedScrollBehavior
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.util.smoothGradient
@@ -754,6 +755,10 @@ fun ArticleScreen(
 
     val scrollState = rememberScrollState()
     val articleSettings = rememberArticleScreenSettingsState()
+    val markdownListState = rememberLazyListState(
+        initialFirstVisibleItemIndex = viewModel.rememberedMarkdownItemIndex,
+        initialFirstVisibleItemScrollOffset = viewModel.rememberedMarkdownItemOffset,
+    )
 
     var isTitleAutoHide by remember { mutableStateOf(articleSettings.isTitleAutoHide) }
     var autoHideArticleBottomBar by remember {
@@ -799,6 +804,8 @@ fun ArticleScreen(
     var topBarHeightPx by remember { mutableFloatStateOf(0f) }
     var bottomBarHeightPx by remember { mutableFloatStateOf(0f) }
     var previousScrollForBarOffset by remember { mutableIntStateOf(0) }
+    var previousMarkdownItemIndex by remember { mutableIntStateOf(markdownListState.firstVisibleItemIndex) }
+    var previousMarkdownItemOffset by remember { mutableIntStateOf(markdownListState.firstVisibleItemScrollOffset) }
     var isBarSnapping by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -899,7 +906,8 @@ fun ArticleScreen(
         if (!autoHideArticleBottomBar) bottomBarOffset.snapTo(0f)
     }
 
-    LaunchedEffect(scrollState.value) {
+    LaunchedEffect(articleSettings.useWebView, scrollState.value) {
+        if (!articleSettings.useWebView) return@LaunchedEffect
         val currentScroll = scrollState.value
         val scrollDeltaAbs = abs(currentScroll - previousScrollValue)
         if (scrollDeltaAbs > scrollDeltaThreshold) {
@@ -956,9 +964,81 @@ fun ArticleScreen(
         }
     }
 
+    LaunchedEffect(
+        articleSettings.useWebView,
+        markdownListState.firstVisibleItemIndex,
+        markdownListState.firstVisibleItemScrollOffset,
+        markdownListState.layoutInfo.totalItemsCount,
+    ) {
+        if (articleSettings.useWebView) return@LaunchedEffect
+        val currentItemIndex = markdownListState.firstVisibleItemIndex
+        val currentItemOffset = markdownListState.firstVisibleItemScrollOffset
+        val averageVisibleItemSize = markdownListState.layoutInfo.visibleItemsInfo
+            .map { it.size }
+            .average()
+            .takeIf { !it.isNaN() }
+            ?.toInt()
+            ?: scrollDeltaThreshold.toInt()
+        val delta = if (currentItemIndex == previousMarkdownItemIndex) {
+            currentItemOffset - previousMarkdownItemOffset
+        } else {
+            val magnitude = maxOf(averageVisibleItemSize, scrollDeltaThreshold.toInt() + 1)
+            if (currentItemIndex > previousMarkdownItemIndex) magnitude else -magnitude
+        }
+        if (abs(delta) > scrollDeltaThreshold) {
+            isScrollingUp = delta < 0
+        }
+
+        val atTop = !markdownListState.canScrollBackward
+        val atBottom = !markdownListState.canScrollForward
+        if (!isBarSnapping) {
+            if (atTop || atBottom) {
+                topBarOffset.snapTo(0f)
+                bottomBarOffset.snapTo(0f)
+            } else {
+                if (isTitleAutoHide && topBarHeightPx > 0f) {
+                    topBarOffset.snapTo((topBarOffset.value - delta).coerceIn(-topBarHeightPx, 0f))
+                }
+                if (autoHideArticleBottomBar && bottomBarHeightPx > 0f) {
+                    bottomBarOffset.snapTo((bottomBarOffset.value + delta).coerceIn(0f, bottomBarHeightPx))
+                }
+            }
+        }
+        previousMarkdownItemIndex = currentItemIndex
+        previousMarkdownItemOffset = currentItemOffset
+        viewModel.rememberedMarkdownItemIndex = currentItemIndex
+        viewModel.rememberedMarkdownItemOffset = currentItemOffset
+
+        val totalItems = markdownListState.layoutInfo.totalItemsCount
+        val currentItemSize = markdownListState.layoutInfo.visibleItemsInfo
+            .firstOrNull { it.index == currentItemIndex }
+            ?.size
+            ?.coerceAtLeast(1)
+            ?: 1
+        val progress = if (!markdownListState.canScrollBackward && !markdownListState.canScrollForward) {
+            10_000
+        } else {
+            (
+                calculateLazyReadingProgress(
+                    firstVisibleItemIndex = currentItemIndex,
+                    firstVisibleItemScrollOffset = currentItemOffset,
+                    firstVisibleItemSize = currentItemSize,
+                    totalItemsCount = totalItems,
+                ) * 10_000
+            ).toInt()
+        }
+        viewModel.updateAigcReadProgress(progress, 10_000)
+        viewModel.syncAigcReadEventIfEligible(environment)
+    }
+
     // 滚动停止时把栏位吸附到完全显示或完全隐藏，并让内容滚动跟随顶栏吸附。
-    LaunchedEffect(scrollState.isScrollInProgress) {
-        if (!scrollState.isScrollInProgress) {
+    LaunchedEffect(articleSettings.useWebView, scrollState.isScrollInProgress, markdownListState.isScrollInProgress) {
+        val isScrollInProgress = if (articleSettings.useWebView) {
+            scrollState.isScrollInProgress
+        } else {
+            markdownListState.isScrollInProgress
+        }
+        if (!isScrollInProgress) {
             val topTarget = if (isTitleAutoHide && topBarHeightPx > 0f) {
                 if (abs(topBarOffset.value) > topBarHeightPx / 2) -topBarHeightPx else 0f
             } else {
@@ -972,7 +1052,11 @@ fun ArticleScreen(
             }
 
             // 仅在靠近顶部时补偿顶栏吸附导致的内容位移；底栏交给距离触发的露出逻辑处理。
-            val topInNaturalArea = scrollState.value <= topBarHeightPx
+            val topInNaturalArea = if (articleSettings.useWebView) {
+                scrollState.value <= topBarHeightPx
+            } else {
+                !markdownListState.canScrollBackward
+            }
             val topDelta = if (topInNaturalArea) topBarOffset.value - topTarget else 0f
 
             if (topTarget != topBarOffset.value || bottomTarget != bottomBarOffset.value) {
@@ -981,7 +1065,7 @@ fun ArticleScreen(
                     kotlinx.coroutines.coroutineScope {
                         launch { topBarOffset.animateTo(topTarget, tween(150)) }
                         launch { bottomBarOffset.animateTo(bottomTarget, tween(150)) }
-                        if (topDelta != 0f) {
+                        if (topDelta != 0f && articleSettings.useWebView) {
                             launch { scrollState.animateScrollBy(topDelta, tween(150)) }
                         }
                     }
@@ -995,8 +1079,16 @@ fun ArticleScreen(
     // 主视觉风格的栏位显隐：按滚动方向控制，用于非跟手偏移路径。
     val showTopBar by remember {
         derivedStateOf {
-            val canScroll = scrollState.maxValue > topBarHeight
-            val isNearTop = scrollState.value < topBarHeight
+            val canScroll = if (articleSettings.useWebView) {
+                scrollState.maxValue > topBarHeight
+            } else {
+                markdownListState.canScrollBackward || markdownListState.canScrollForward
+            }
+            val isNearTop = if (articleSettings.useWebView) {
+                scrollState.value < topBarHeight
+            } else {
+                !markdownListState.canScrollBackward
+            }
             when {
                 !isTitleAutoHide -> true
                 !canScroll -> true
@@ -1008,8 +1100,16 @@ fun ArticleScreen(
     }
     val showBottomBar by remember {
         derivedStateOf {
-            val canScroll = scrollState.maxValue > 0
-            val isNearTop = scrollState.value == 0
+            val canScroll = if (articleSettings.useWebView) {
+                scrollState.maxValue > 0
+            } else {
+                markdownListState.canScrollBackward || markdownListState.canScrollForward
+            }
+            val isNearTop = if (articleSettings.useWebView) {
+                scrollState.value == 0
+            } else {
+                !markdownListState.canScrollBackward
+            }
             when {
                 !autoHideArticleBottomBar -> true
                 !canScroll -> true
@@ -1080,14 +1180,18 @@ fun ArticleScreen(
 
     LaunchedEffect(article.type, article.id, viewModel.content) {
         if (viewModel.content.isNotBlank()) {
-            viewModel.updateAigcReadProgress(scrollState.value, scrollState.maxValue)
+            if (articleSettings.useWebView) {
+                viewModel.updateAigcReadProgress(scrollState.value, scrollState.maxValue)
+            }
             delay(15_000)
-            viewModel.updateAigcReadProgress(scrollState.value, scrollState.maxValue)
+            if (articleSettings.useWebView) {
+                viewModel.updateAigcReadProgress(scrollState.value, scrollState.maxValue)
+            }
             viewModel.syncAigcReadEventIfEligible(environment)
         }
     }
-    LaunchedEffect(scrollState.maxValue, viewModel.content) {
-        if (viewModel.content.isNotBlank()) {
+    LaunchedEffect(articleSettings.useWebView, scrollState.maxValue, viewModel.content) {
+        if (articleSettings.useWebView && viewModel.content.isNotBlank()) {
             viewModel.updateAigcReadProgress(scrollState.value, scrollState.maxValue)
         }
     }
@@ -1194,9 +1298,18 @@ fun ArticleScreen(
         val scrollBehavior = rememberPreferCollapsedExitUntilCollapsedScrollBehavior()
         // 记录历史最大滚动范围，避免顶栏展开/收起时 maxValue 短暂变化导致 scrollBehavior 抖动。
         var scrollStateMaxValue by remember { mutableIntStateOf(0) }
-        LaunchedEffect(scrollState.maxValue) {
-            if (scrollState.maxValue != Int.MAX_VALUE) {
-                scrollStateMaxValue = max(scrollState.maxValue, scrollStateMaxValue)
+        LaunchedEffect(
+            articleSettings.useWebView,
+            scrollState.maxValue,
+            markdownListState.layoutInfo.totalItemsCount,
+        ) {
+            val currentMaxValue = if (articleSettings.useWebView) {
+                scrollState.maxValue.takeUnless { it == Int.MAX_VALUE } ?: 0
+            } else {
+                if (markdownListState.layoutInfo.totalItemsCount > 1) 1 else 0
+            }
+            if (currentMaxValue > 0) {
+                scrollStateMaxValue = max(currentMaxValue, scrollStateMaxValue)
             }
         }
         Scaffold(
@@ -1654,16 +1767,9 @@ fun ArticleScreen(
         ) { innerPadding ->
             CompositionLocalProvider(LocalBringIntoViewSpec provides articleBringIntoViewSpec) {
                 Box {
-                    Column(
-                        modifier = Modifier
-                            .padding(horizontal = 16.dp)
-                            .verticalScroll(scrollState)
-                            .padding(innerPadding)
-                            .padding(top = 8.dp),
-                    ) {
-                        @Suppress("UnusedReceiverParameter") // 确保竖式布局
-                        @Composable
-                        fun ColumnScope.DateTexts() {
+                    @Composable
+                    fun DateTexts() {
+                        Column {
                             Text(
                                 "发布于 " + formatArticleDateTime(viewModel.createdAt),
                                 color = Color.Gray,
@@ -1677,80 +1783,114 @@ fun ArticleScreen(
                                 )
                             }
                         }
+                    }
 
-                        @Composable
-                        fun ColumnScope.ArticleVotersSocialCredit() {
-                            val contentLabel = when (article.type) {
-                                ArticleType.Answer -> "回答"
-                                ArticleType.Article -> "文章"
+                    @Composable
+                    fun ArticleVotersSocialCredit() {
+                        val contentLabel = when (article.type) {
+                            ArticleType.Answer -> "回答"
+                            ArticleType.Article -> "文章"
+                        }
+                        val hasVotersSocialCredit = viewModel.votersTotal > 0
+                        if (!hasVotersSocialCredit && viewModel.aigcSupportVoterCount <= 0) return
+                        Spacer(modifier = Modifier.height(8.dp))
+                        if (hasVotersSocialCredit) {
+                            val text = viewModel.votersSocialText.ifBlank {
+                                "${formatCompactCount(viewModel.votersTotal)} 人赞同了该$contentLabel"
                             }
-                            val hasVotersSocialCredit = viewModel.votersTotal > 0
-                            if (!hasVotersSocialCredit && viewModel.aigcSupportVoterCount <= 0) return
-                            Spacer(modifier = Modifier.height(8.dp))
-                            if (hasVotersSocialCredit) {
-                                val text = viewModel.votersSocialText.ifBlank {
-                                    "${formatCompactCount(viewModel.votersTotal)} 人赞同了该$contentLabel"
+                            val votersTextModifier = if (article.type == ArticleType.Answer) {
+                                Modifier.clickable {
+                                    showVoters = true
+                                    if (viewModel.voters.isEmpty()) {
+                                        viewModel.loadMoreVoters(environment, reset = true)
+                                    }
                                 }
-                                val votersTextModifier = if (article.type == ArticleType.Answer) {
-                                    Modifier.clickable {
-                                        showVoters = true
-                                        if (viewModel.voters.isEmpty()) {
-                                            viewModel.loadMoreVoters(environment, reset = true)
+                            } else {
+                                Modifier
+                            }
+                            Text(
+                                text = text,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = votersTextModifier,
+                            )
+                        }
+                        if (viewModel.aigcSupportVoterCount > 0) {
+                            if (hasVotersSocialCredit) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                            }
+                            Text(
+                                text = "有 ${formatCompactCount(viewModel.aigcSupportVoterCount)} 人认为此${contentLabel}包含AIGC内容",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    }
+
+                    @Composable
+                    fun ArticleMetadata() {
+                        val hasPinnedDate = pinAnswerDate
+                        val hasSocialCredit = viewModel.votersTotal > 0 || viewModel.aigcSupportVoterCount > 0
+                        val endorsements = viewModel.endorsements
+                        val hasEndorsements = endorsements.isNotEmpty()
+                        if (hasPinnedDate || hasSocialCredit || hasEndorsements) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                horizontalAlignment = Alignment.Start,
+                            ) {
+                                if (hasPinnedDate) {
+                                    DateTexts()
+                                }
+                                ArticleVotersSocialCredit()
+                                if (hasEndorsements) {
+                                    if (hasPinnedDate || hasSocialCredit) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                    }
+                                    FlowRow(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        endorsements.forEach { endorsement ->
+                                            AnswerEndorsementChip(endorsement)
                                         }
                                     }
-                                } else {
-                                    Modifier
                                 }
-                                Text(
-                                    text = text,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = votersTextModifier,
-                                )
                             }
-                            if (viewModel.aigcSupportVoterCount > 0) {
-                                if (hasVotersSocialCredit) {
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                }
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+                    }
+
+                    @Composable
+                    fun ArticleFooter() {
+                        ArticleVideoAttachmentContent(viewModel.attachment)
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.End,
+                        ) {
+                            if (!pinAnswerDate) {
+                                DateTexts()
+                            }
+                            if (viewModel.ipInfo != null) {
                                 Text(
-                                    text = "有 ${formatCompactCount(viewModel.aigcSupportVoterCount)} 人认为此${contentLabel}包含AIGC内容",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.error,
+                                    "IP属地：${viewModel.ipInfo}",
+                                    color = Color.Gray,
+                                    fontSize = 11.sp,
                                 )
                             }
                         }
+                        Spacer(modifier = Modifier.height((16 + 36).dp))
+                    }
 
-                        if (viewModel.content.isNotEmpty() || viewModel.attachment != null) {
-                            val hasPinnedDate = pinAnswerDate
-                            val hasSocialCredit = viewModel.votersTotal > 0 || viewModel.aigcSupportVoterCount > 0
-                            val endorsements = viewModel.endorsements
-                            val hasEndorsements = endorsements.isNotEmpty()
-                            if (hasPinnedDate || hasSocialCredit || hasEndorsements) {
-                                Column(
-                                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                                    horizontalAlignment = Alignment.Start,
-                                ) {
-                                    if (hasPinnedDate) {
-                                        DateTexts()
-                                    }
-                                    ArticleVotersSocialCredit()
-                                    if (hasEndorsements) {
-                                        if (hasPinnedDate || hasSocialCredit) {
-                                            Spacer(modifier = Modifier.height(8.dp))
-                                        }
-                                        FlowRow(
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                                        ) {
-                                            endorsements.forEach { endorsement ->
-                                                AnswerEndorsementChip(endorsement)
-                                            }
-                                        }
-                                    }
-                                }
-                                Spacer(modifier = Modifier.height(16.dp))
-                            }
-                            if (articleSettings.useWebView) {
+                    if (viewModel.content.isNotEmpty() || viewModel.attachment != null) {
+                        if (articleSettings.useWebView) {
+                            Column(
+                                modifier = Modifier
+                                    .padding(horizontal = 16.dp)
+                                    .verticalScroll(scrollState)
+                                    .padding(innerPadding)
+                                    .padding(top = 8.dp),
+                            ) {
+                                ArticleMetadata()
                                 // WebView 正文渲染已经废弃，只保留为紧急回退路径；正文外 UI 不再为它单独分支。
                                 ArticleWebViewContent(
                                     article = article,
@@ -1763,50 +1903,23 @@ fun ArticleScreen(
                                     onImageLoadFailed = { userMessages.showMessage("图片加载失败，请向开发者反馈") },
                                     onDoubleTap = ::handleAnswerDoubleTap,
                                 )
-                                Column(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalAlignment = Alignment.End,
-                                ) {
-                                    if (!pinAnswerDate) {
-                                        DateTexts()
-                                    }
-                                    if (viewModel.ipInfo != null) {
-                                        Text(
-                                            "IP属地：${viewModel.ipInfo}",
-                                            color = Color.Gray,
-                                            fontSize = 11.sp,
-                                        )
-                                    }
-                                }
-                                Spacer(modifier = Modifier.height((16 + 36).dp))
-                            } else {
-                                RenderMarkdown(
-                                    html = viewModel.content,
-                                    modifier = Modifier.articleMarkdownSelectionWorkaround(),
-                                    selectable = true,
-                                    enableScroll = false,
-                                    header = {},
-                                    footer = {
-                                        ArticleVideoAttachmentContent(viewModel.attachment)
-                                        Column(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalAlignment = Alignment.End,
-                                        ) {
-                                            if (!pinAnswerDate) {
-                                                DateTexts()
-                                            }
-                                            if (viewModel.ipInfo != null) {
-                                                Text(
-                                                    "IP属地：${viewModel.ipInfo}",
-                                                    color = Color.Gray,
-                                                    fontSize = 11.sp,
-                                                )
-                                            }
-                                        }
-                                        Spacer(modifier = Modifier.height((16 + 36).dp))
-                                    },
-                                )
+                                ArticleFooter()
                             }
+                        } else {
+                            RenderMarkdown(
+                                html = viewModel.content,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(innerPadding)
+                                    .padding(horizontal = 16.dp)
+                                    .padding(top = 8.dp)
+                                    .articleMarkdownSelectionWorkaround(),
+                                lazyListState = markdownListState,
+                                selectable = true,
+                                enableScroll = true,
+                                header = { ArticleMetadata() },
+                                footer = { ArticleFooter() },
+                            )
                         }
                     }
                     // 状态栏渐变遮罩，仅 duo3 路径需要；主视觉路径不绘制。
@@ -1847,9 +1960,22 @@ fun ArticleScreen(
                 nextAnswer = nav?.nextAnswer,
                 onNavigatePrevious = navigateToPrevious,
                 onNavigateNext = navigateToNext,
-                isAtTop = { scrollState.value == 0 },
-                isAtBottom = { scrollState.value >= scrollState.maxValue },
+                isAtTop = {
+                    if (articleSettings.useWebView) scrollState.value == 0 else !markdownListState.canScrollBackward
+                },
+                isAtBottom = {
+                    if (articleSettings.useWebView) {
+                        scrollState.value >= scrollState.maxValue
+                    } else {
+                        !markdownListState.canScrollForward
+                    }
+                },
                 scrollState = scrollState,
+                isContentNonScrollable = if (articleSettings.useWebView) {
+                    scrollState.maxValue == 0
+                } else {
+                    !markdownListState.canScrollBackward && !markdownListState.canScrollForward
+                },
                 answerSwitchSensitivity = answerSwitchSensitivity,
             ) {
                 MainContent()
@@ -1874,20 +2000,33 @@ fun ArticleScreen(
             MainContent()
         }
 
-        VerticalReadingProgressBar(
-            scrollState = scrollState,
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(
-                    top = progressBarTopPadding,
-                    bottom = progressBarBottomPadding,
-                    end = 2.dp,
-                ).then(if (isImmersiveMode) Modifier.graphicsLayer { alpha = 0f } else Modifier),
-        )
+        val progressBarModifier = Modifier
+            .align(Alignment.CenterEnd)
+            .padding(
+                top = progressBarTopPadding,
+                bottom = progressBarBottomPadding,
+                end = 2.dp,
+            ).then(if (isImmersiveMode) Modifier.graphicsLayer { alpha = 0f } else Modifier)
+        if (articleSettings.useWebView) {
+            VerticalReadingProgressBar(
+                scrollState = scrollState,
+                modifier = progressBarModifier,
+            )
+        } else {
+            VerticalReadingProgressBar(
+                lazyListState = markdownListState,
+                modifier = progressBarModifier,
+            )
+        }
 
         // 跳转按钮需要压在问题区和回答区之上。
         if (article.type == ArticleType.Answer && buttonSkipAnswer && !isImmersiveMode) {
-            val showSkipButton = !autoHideSkipAnswerButton || isScrollingUp || scrollState.value == 0
+            val isAtTop = if (articleSettings.useWebView) {
+                scrollState.value == 0
+            } else {
+                !markdownListState.canScrollBackward
+            }
+            val showSkipButton = !autoHideSkipAnswerButton || isScrollingUp || isAtTop
             val skipButtonAlpha by animateFloatAsState(
                 targetValue = if (showSkipButton) 1f else 0f,
                 animationSpec = tween(200),

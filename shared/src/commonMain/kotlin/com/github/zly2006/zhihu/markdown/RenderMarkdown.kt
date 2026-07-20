@@ -26,6 +26,8 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -242,6 +244,7 @@ fun RenderMarkdown(
     html: String,
     modifier: Modifier = Modifier,
     scrollState: ScrollState = rememberScrollState(),
+    lazyListState: LazyListState = rememberLazyListState(),
     selectable: Boolean = true,
     enableScroll: Boolean = true,
     header: (@Composable () -> Unit)? = null,
@@ -252,6 +255,7 @@ fun RenderMarkdown(
         document = document,
         modifier = modifier,
         scrollState = scrollState,
+        lazyListState = lazyListState,
         selectable = selectable,
         enableScroll = enableScroll,
         header = header,
@@ -264,6 +268,7 @@ fun RenderMarkdownText(
     markdown: String,
     modifier: Modifier = Modifier,
     scrollState: ScrollState = rememberScrollState(),
+    lazyListState: LazyListState = rememberLazyListState(),
     selectable: Boolean = true,
     enableScroll: Boolean = true,
     header: (@Composable () -> Unit)? = null,
@@ -274,6 +279,7 @@ fun RenderMarkdownText(
         document = document,
         modifier = modifier,
         scrollState = scrollState,
+        lazyListState = lazyListState,
         selectable = selectable,
         enableScroll = enableScroll,
         header = header,
@@ -286,6 +292,7 @@ private fun RenderMarkdownDocument(
     document: Document,
     modifier: Modifier,
     scrollState: ScrollState,
+    lazyListState: LazyListState,
     selectable: Boolean,
     enableScroll: Boolean,
     header: (@Composable () -> Unit)?,
@@ -330,6 +337,7 @@ private fun RenderMarkdownDocument(
                         )
                     },
                     scrollState = scrollState,
+                    lazyListState = lazyListState,
                     enableScroll = enableScroll,
                     enableSelection = selectable,
                     onLinkClick = { url ->

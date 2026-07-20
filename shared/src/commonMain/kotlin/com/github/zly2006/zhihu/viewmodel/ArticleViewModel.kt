@@ -184,6 +184,8 @@ class ArticleViewModel(
     // scroll fix
     var rememberedScrollY by mutableIntStateOf(0)
     var rememberedScrollYSync = true
+    var rememberedMarkdownItemIndex by mutableIntStateOf(0)
+    var rememberedMarkdownItemOffset by mutableIntStateOf(0)
 
     /**
      * 缓存的回答完整内容，用于水平滑动预览。

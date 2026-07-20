@@ -24,11 +24,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.MutableState
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.navigation.AnswerNavigator
@@ -97,8 +100,9 @@ class ArticleScreenInstrumentedTest {
         setArticleScreen()
         composeRule.onNodeWithText("离线 Article 标题").assertIsDisplayed()
         composeRule.onNodeWithText("离线作者").assertIsDisplayed()
-        composeRule.onNodeWithText("IP属地：上海").assertExists()
         composeRule.onNodeWithText("第 1 段离线正文", substring = true).assertIsDisplayed()
+        composeRule.onNode(hasScrollAction()).performScrollToNode(hasText("IP属地：上海"))
+        composeRule.onNodeWithText("IP属地：上海").assertIsDisplayed()
     }
 
     @Test
