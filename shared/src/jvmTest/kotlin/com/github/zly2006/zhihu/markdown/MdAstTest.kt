@@ -20,6 +20,8 @@ package com.github.zly2006.zhihu.markdown
 import com.hrm.markdown.parser.ast.ContainerNode
 import com.hrm.markdown.parser.ast.Figure
 import com.hrm.markdown.parser.ast.InlineMath
+import com.hrm.markdown.parser.ast.ListBlock
+import com.hrm.markdown.parser.ast.ListItem
 import com.hrm.markdown.parser.ast.MathBlock
 import com.hrm.markdown.parser.ast.NativeBlock
 import com.hrm.markdown.parser.ast.Node
@@ -142,6 +144,54 @@ class MdAstTest {
             document.plainText(),
         )
         assertEquals(4, document.allNodes().count { it is StrongEmphasis })
+    }
+
+    @Test
+    fun sibling_ordered_lists_should_nest_under_the_preceding_list_item() {
+        val document = htmlToMdAst(
+            """
+            <ol>
+              <li>继续跳票。</li>
+              <li>在较短时间内推出，但是</li>
+              <ol>
+                <li>分词器和灰测表现不一致</li>
+                <ol>
+                  <li>正式版性能约等于 Fable。</li>
+                  <li>正式版性能远不及 Fable。</li>
+                </ol>
+                <li>分词器和灰测表现一致</li>
+                <ol>
+                  <li>正式版的性能接近 Fable。</li>
+                  <li>正式版的表现远不及 Fable。</li>
+                </ol>
+              </ol>
+            </ol>
+            """.trimIndent(),
+        )
+
+        val outerList = document.children.single() as ListBlock
+        val outerItems = outerList.children.filterIsInstance<ListItem>()
+        val secondLevelList = outerItems[1].children.filterIsInstance<ListBlock>().single()
+        val secondLevelItems = secondLevelList.children.filterIsInstance<ListItem>()
+
+        assertEquals(2, outerItems.size)
+        assertEquals(2, secondLevelItems.size)
+        assertEquals(
+            2,
+            secondLevelItems[0]
+                .children
+                .filterIsInstance<ListBlock>()
+                .single()
+                .children.size,
+        )
+        assertEquals(
+            2,
+            secondLevelItems[1]
+                .children
+                .filterIsInstance<ListBlock>()
+                .single()
+                .children.size,
+        )
     }
 
     @Test
