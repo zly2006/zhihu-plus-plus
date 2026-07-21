@@ -70,7 +70,14 @@ internal fun rememberMarkdownNavigationHandlers(
                             withFrameNanos { }
                         }
 
-                        if (!footnoteNavigationState.bringDefinitionIntoView(label)) {
+                        if (!footnoteNavigationState.hasDefinition(label)) {
+                            footnoteNavigationState.requestDefinition(label)
+                            withFrameNanos { }
+                        }
+
+                        val broughtIntoView = footnoteNavigationState.bringDefinitionIntoView(label)
+                        footnoteNavigationState.clearDefinitionRequest(label)
+                        if (!broughtIntoView) {
                             currentOnLinkClick.value?.invoke("#fn-$label")
                         }
                     }
@@ -91,10 +98,17 @@ internal fun rememberMarkdownNavigationHandlers(
                         is FootnoteReturnPosition.LazyList ->
                             currentLazyListState.value.animateScrollToItem(returnPosition.index, returnPosition.offset)
                     }
+                    withFrameNanos { }
+                    footnoteNavigationState.bringReferenceIntoView(label)
                     return@launch
                 }
 
-                footnoteNavigationState.bringReferenceIntoView(label)
+                if (!footnoteNavigationState.bringReferenceIntoView(label)) {
+                    footnoteNavigationState.requestReference(label)
+                    withFrameNanos { }
+                    footnoteNavigationState.bringReferenceIntoView(label)
+                    footnoteNavigationState.clearReferenceRequest(label)
+                }
             }
             Unit
         }

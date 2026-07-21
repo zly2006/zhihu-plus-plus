@@ -172,7 +172,6 @@ import kotlin.math.abs
 import kotlin.math.max
 
 private const val SCROLL_THRESHOLD = 10 // 滑动阈值，单位为dp
-private const val ARTICLE_INITIAL_MARKDOWN_BLOCK_COUNT = 3
 private val ScrollThresholdDp = SCROLL_THRESHOLD.dp
 
 /**
@@ -1786,9 +1785,7 @@ fun ArticleScreen(
                                     modifier = Modifier.articleMarkdownSelectionWorkaround(),
                                     scrollState = scrollState,
                                     selectable = true,
-                                    enablePagination = true,
                                     enableScroll = false,
-                                    initialBlockCount = ARTICLE_INITIAL_MARKDOWN_BLOCK_COUNT,
                                     header = {},
                                     footer = {
                                         ArticleVideoAttachmentContent(viewModel.attachment)

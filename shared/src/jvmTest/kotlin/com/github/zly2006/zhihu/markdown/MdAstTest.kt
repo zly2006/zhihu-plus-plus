@@ -32,7 +32,6 @@ import com.hrm.markdown.parser.ast.StrongEmphasis
 import com.hrm.markdown.parser.ast.Text
 import org.jsoup.Jsoup
 import java.io.File
-import kotlin.system.measureTimeMillis
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -219,95 +218,14 @@ class MdAstTest {
     }
 
     @Test
-    fun issue_495_fixture_should_split_before_parsing_the_first_viewport() {
+    fun issue_495_fixture_should_build_complete_ast_before_viewport_layout() {
         val html = File("../app/src/androidTest/assets/issue-495-answer.html").readText()
-        val blocks = splitTopLevelHtmlBlocks(html)
-        var firstViewportDocumentCount = 0
+        val document = htmlToMdAst(html)
+        val nodes = document.allNodes()
 
-        val firstViewportParseMillis = measureTimeMillis {
-            firstViewportDocumentCount = blocks.take(3).map(::htmlToMdAst).size
-        }
-        val imageScanMillis = measureTimeMillis {
-            assertTrue(htmlPreviewImageUrls(html).isNotEmpty())
-        }
-
-        println(
-            "issue495 blocks=${blocks.size} firstViewportParseMs=$firstViewportParseMillis " +
-                "imageScanMs=$imageScanMillis",
-        )
-        assertTrue(blocks.size > 100)
-        assertEquals(3, firstViewportDocumentCount)
-        assertTrue(firstViewportParseMillis < 1_000)
-    }
-
-    @Test
-    fun issue_495_incremental_documents_should_match_the_full_ast() {
-        val html = File("../app/src/androidTest/assets/issue-495-answer.html").readText()
-        val fullDocument = htmlToMdAst(html)
-        val incrementalDocument = combineMdAstDocuments(
-            splitTopLevelHtmlBlocks(html).map(::htmlToMdAst),
-        )
-
-        assertEquals(fullDocument.toMarkdown(), incrementalDocument.toMarkdown())
-        assertEquals(fullDocument.previewImageUrls(), incrementalDocument.previewImageUrls())
-    }
-
-    @Test
-    fun top_level_html_split_should_keep_nested_and_quoted_tags_together() {
-        val blocks = splitTopLevelHtmlBlocks(
-            """<p data-note="1 > 0">first <strong>nested</strong><br>line</p><hr><p>last</p>""",
-        )
-
-        assertEquals(
-            listOf(
-                """<p data-note="1 > 0">first <strong>nested</strong><br>line</p>""",
-                "<hr>",
-                "<p>last</p>",
-            ),
-            blocks,
-        )
-    }
-
-    @Test
-    fun raw_html_image_scan_should_use_real_source_order_and_filter_non_preview_images() {
-        val imageUrls = htmlPreviewImageUrls(
-            """
-            <img alt="1 > 0" src="https://pic1.zhimg.com/thumb.jpg" data-original="https://pic1.zhimg.com/original.jpg">
-            <img data-original="https://pic1.zhimg.com/original.jpg">
-            <img src="https://www.zhihu.com/equation?tex=E%3Dmc%5E2">
-            <img src="data:image/png;base64,abc">
-            <img data-original-token="v2-token">
-            """.trimIndent(),
-        )
-
-        assertEquals(
-            listOf(
-                "https://pic1.zhimg.com/original.jpg",
-                "https://pic1.zhimg.com/v2-token",
-            ),
-            imageUrls,
-        )
-    }
-
-    @Test
-    fun combined_incremental_documents_should_keep_footnotes_at_the_document_end() {
-        val combined = combineMdAstDocuments(
-            listOf(
-                htmlToMdAst(
-                    """<p>first<sup data-draft-type="reference" data-numero="1" data-text="note one"></sup></p>""",
-                ),
-                htmlToMdAst(
-                    """<p>second<sup data-draft-type="reference" data-numero="2" data-text="note two"></sup></p>""",
-                ),
-            ),
-        )
-
-        assertEquals(listOf("1", "2"), combined.footnoteDefinitions.keys.toList())
-        assertEquals(2, combined.allNodes().count { it is FootnoteReference })
-        assertEquals(
-            listOf("1", "2"),
-            combined.children.takeLast(2).map { (it as FootnoteDefinition).label },
-        )
+        assertTrue(document.children.size > 100)
+        assertEquals(406, nodes.size)
+        assertEquals(148, nodes.count { it is MathBlock || it is InlineMath })
     }
 
     @Test

@@ -40,14 +40,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -84,9 +80,6 @@ import com.hrm.markdown.parser.ast.Document
 import com.hrm.markdown.renderer.Markdown
 import com.hrm.markdown.renderer.MarkdownImageData
 import com.hrm.markdown.renderer.MarkdownTheme
-
-private const val HTML_PAGINATION_BLOCK_INCREMENT = 10
-private const val HTML_PAGINATION_MINIMUM_BLOCK_COUNT = 40
 
 @Composable
 fun RenderImage(
@@ -250,69 +243,21 @@ fun RenderMarkdown(
     modifier: Modifier = Modifier,
     scrollState: ScrollState = rememberScrollState(),
     selectable: Boolean = true,
-    enablePagination: Boolean = false,
     enableScroll: Boolean = true,
-    initialBlockCount: Int = 100,
+    deferOffscreenBlocks: Boolean = true,
     header: (@Composable () -> Unit)? = null,
     footer: (@Composable () -> Unit)? = null,
 ) {
-    val htmlBlocks = remember(html, enablePagination) {
-        if (enablePagination) splitTopLevelHtmlBlocks(html) else listOf(html)
-    }
-    val effectivePagination = enablePagination && htmlBlocks.size >= HTML_PAGINATION_MINIMUM_BLOCK_COUNT
-    var visibleHtmlBlockCount by remember(html, enablePagination, initialBlockCount) {
-        mutableIntStateOf(
-            if (effectivePagination) {
-                initialBlockCount.coerceAtLeast(0).coerceAtMost(htmlBlocks.size)
-            } else {
-                htmlBlocks.size
-            },
-        )
-    }
-    val parsedDocuments = remember(html) { mutableListOf<Document>() }
-    val document = remember(htmlBlocks, visibleHtmlBlockCount) {
-        while (parsedDocuments.size < visibleHtmlBlockCount) {
-            parsedDocuments += htmlToMdAst(htmlBlocks[parsedDocuments.size])
-        }
-        combineMdAstDocuments(parsedDocuments.take(visibleHtmlBlockCount))
-    }
-    val hasMoreHtmlBlocks = visibleHtmlBlockCount < htmlBlocks.size
-    val imageUrls = remember(html, effectivePagination) {
-        if (effectivePagination) htmlPreviewImageUrls(html) else null
-    }
-
-    LaunchedEffect(scrollState, effectivePagination, htmlBlocks.size) {
-        if (!effectivePagination) return@LaunchedEffect
-        snapshotFlow { scrollState.value to scrollState.maxValue }
-            .collect { (value, maximum) ->
-                if (maximum > 0 &&
-                    visibleHtmlBlockCount < htmlBlocks.size &&
-                    value.toFloat() / maximum.toFloat() > 0.8f
-                ) {
-                    visibleHtmlBlockCount =
-                        (visibleHtmlBlockCount + HTML_PAGINATION_BLOCK_INCREMENT).coerceAtMost(htmlBlocks.size)
-                }
-            }
-    }
-    LaunchedEffect(scrollState, effectivePagination, visibleHtmlBlockCount, htmlBlocks.size) {
-        if (!effectivePagination || !hasMoreHtmlBlocks) return@LaunchedEffect
-        withFrameNanos { }
-        // 顶部块太短时逐帧补足到可滚动，避免永远等不到滚动触发后续加载。
-        if (scrollState.maxValue == 0) {
-            visibleHtmlBlockCount =
-                (visibleHtmlBlockCount + HTML_PAGINATION_BLOCK_INCREMENT).coerceAtMost(htmlBlocks.size)
-        }
-    }
-
+    val document = remember(html) { htmlToMdAst(html) }
     RenderMarkdownDocument(
         document = document,
-        imageUrls = imageUrls,
         modifier = modifier,
         scrollState = scrollState,
         selectable = selectable,
         enableScroll = enableScroll,
+        deferOffscreenBlocks = deferOffscreenBlocks,
         header = header,
-        footer = footer.takeUnless { hasMoreHtmlBlocks },
+        footer = footer,
     )
 }
 
@@ -323,17 +268,18 @@ fun RenderMarkdownText(
     scrollState: ScrollState = rememberScrollState(),
     selectable: Boolean = true,
     enableScroll: Boolean = true,
+    deferOffscreenBlocks: Boolean = true,
     header: (@Composable () -> Unit)? = null,
     footer: (@Composable () -> Unit)? = null,
 ) {
     val document = remember(markdown) { markdownToMdAst(markdown) }
     RenderMarkdownDocument(
         document = document,
-        imageUrls = null,
         modifier = modifier,
         scrollState = scrollState,
         selectable = selectable,
         enableScroll = enableScroll,
+        deferOffscreenBlocks = deferOffscreenBlocks,
         header = header,
         footer = footer,
     )
@@ -342,16 +288,15 @@ fun RenderMarkdownText(
 @Composable
 private fun RenderMarkdownDocument(
     document: Document,
-    imageUrls: List<String>?,
     modifier: Modifier,
     scrollState: ScrollState,
     selectable: Boolean,
     enableScroll: Boolean,
+    deferOffscreenBlocks: Boolean,
     header: (@Composable () -> Unit)?,
     footer: (@Composable () -> Unit)?,
 ) {
-    val documentImageUrls = remember(document) { document.previewImageUrls() }
-    val previewImageUrls = imageUrls ?: documentImageUrls
+    val previewImageUrls = remember(document) { document.previewImageUrls() }
     val navigator = LocalNavigator.current
     val runtime = rememberMarkdownRuntime()
     val openExternalUrl = rememberExternalUrlOpener()
@@ -392,6 +337,7 @@ private fun RenderMarkdownDocument(
                     scrollState = scrollState,
                     enableScroll = enableScroll,
                     enableSelection = selectable,
+                    deferOffscreenBlocks = deferOffscreenBlocks,
                     onLinkClick = { url ->
                         resolveContent(url)?.let { navigator.onNavigate(it) }
                             ?: openExternalUrl(url)

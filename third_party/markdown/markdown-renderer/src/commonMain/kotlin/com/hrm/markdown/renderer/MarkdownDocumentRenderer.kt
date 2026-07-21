@@ -22,6 +22,7 @@ internal fun MarkdownDocumentRenderer(
     enablePagination: Boolean = false,
     enableScroll: Boolean = true,
     enableSelection: Boolean = true,
+    deferOffscreenBlocks: Boolean = true,
     initialBlockCount: Int = 100,
     header: (@Composable () -> Unit)? = null,
     footer: (@Composable () -> Unit)? = null,
@@ -79,6 +80,7 @@ internal fun MarkdownDocumentRenderer(
                 enableScroll = enableScroll,
                 scrollState = scrollState,
                 lazyListState = lazyListState,
+                deferOffscreenBlocks = deferOffscreenBlocks,
                 header = header,
                 footer = footer,
             )

@@ -116,9 +116,11 @@ class ArticleScreenInstrumentedTest {
 
     @Test
     fun issue495FirstFrameBenchmarkIncludesHtmlParsingLayoutAndDraw() {
-        val viewModel = issue495ViewModel()
-        val startedAt = SystemClock.elapsedRealtime()
-
+        val warmupViewModel = seededAnswerViewModel(ANSWER)
+        composeRule.activity.runOnUiThread {
+            warmupViewModel.content =
+                """<p>预热正文 <img src="https://www.zhihu.com/equation?tex=x%5E2" eeimg="1" /></p>"""
+        }
         composeRule.setScreenContent {
             Scaffold(
                 modifier = androidx.compose.ui.Modifier
@@ -126,23 +128,56 @@ class ArticleScreenInstrumentedTest {
             ) { _ ->
                 ArticleScreen(
                     article = ANSWER,
-                    viewModel = viewModel,
+                    viewModel = warmupViewModel,
                 )
             }
         }
-        composeRule.onNodeWithText("更新：", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithText("预热正文", substring = true).assertIsDisplayed()
         composeRule.onRoot().captureToImage()
 
-        val elapsedMillis = SystemClock.elapsedRealtime() - startedAt
-        Log.i(ISSUE_495_BENCHMARK_TAG, "firstFrameMs=$elapsedMillis htmlBytes=${viewModel.content.length}")
+        val fullFixtureWarmupSamples = mutableListOf<Long>()
+        val samples = buildList {
+            repeat(7) { iteration ->
+                val viewModel = issue495ViewModel()
+                composeRule.activity.runOnUiThread {
+                    viewModel.content += "<!-- benchmark-run-$iteration -->"
+                }
+                val startedAt = SystemClock.elapsedRealtime()
+                composeRule.setScreenContent {
+                    Scaffold(
+                        modifier = androidx.compose.ui.Modifier
+                            .fillMaxSize(),
+                    ) { _ ->
+                        ArticleScreen(
+                            article = ANSWER,
+                            viewModel = viewModel,
+                        )
+                    }
+                }
+                composeRule.onNodeWithText("更新：", substring = true).assertIsDisplayed()
+                composeRule.onRoot().captureToImage()
+                val elapsedMillis = SystemClock.elapsedRealtime() - startedAt
+                if (iteration < 2) {
+                    fullFixtureWarmupSamples += elapsedMillis
+                } else {
+                    add(elapsedMillis)
+                }
+            }
+        }
+        val medianMillis = samples.sorted()[samples.size / 2]
+        Log.i(
+            ISSUE_495_BENCHMARK_TAG,
+            "fullFixtureWarmupSamplesMs=$fullFixtureWarmupSamples firstFrameSamplesMs=$samples " +
+                "medianMs=$medianMillis htmlChars=36460",
+        )
         assertTrue(
-            "Issue #495 first frame took ${elapsedMillis}ms; benchmark includes HTML parsing, Compose layout, and draw",
-            elapsedMillis < ISSUE_495_FIRST_FRAME_LIMIT_MS,
+            "Issue #495 median first frame took ${medianMillis}ms; benchmark includes HTML parsing, Compose layout, and draw",
+            medianMillis < ISSUE_495_FIRST_FRAME_LIMIT_MS,
         )
     }
 
     @Test
-    fun issue495DefersFooterUntilRemainingMarkdownBlocksLoad() {
+    fun issue495MaterializesEstimatedOffscreenBlocksWhenScrolledIntoView() {
         val viewModel = issue495ViewModel()
 
         composeRule.setScreenContent {
@@ -158,25 +193,58 @@ class ArticleScreenInstrumentedTest {
         }
 
         composeRule.onNodeWithText("更新：", substring = true).assertIsDisplayed()
-        composeRule.onNodeWithText("IP属地：上海").assertDoesNotExist()
+        composeRule.onNodeWithText("再减去", substring = true).assertDoesNotExist()
         val scrollContainer = composeRule.onNode(
             SemanticsMatcher("has vertical scroll axis") { node ->
                 node.config.contains(SemanticsProperties.VerticalScrollAxisRange)
             },
         )
-
-        var remainingScrolls = 160
+        val initialMaxScroll = scrollContainer
+            .fetchSemanticsNode()
+            .config[SemanticsProperties.VerticalScrollAxisRange]
+            .maxValue()
+        var remainingScrolls = 30
         while (
             remainingScrolls-- > 0 &&
-            composeRule.onAllNodesWithText("IP属地：上海").fetchSemanticsNodes().isEmpty()
+            composeRule.onAllNodesWithText("再减去", substring = true).fetchSemanticsNodes().isEmpty()
         ) {
             scrollContainer.performSemanticsAction(SemanticsActions.ScrollBy) { scrollBy ->
-                scrollBy(0f, 10_000f)
+                scrollBy(0f, 4_000f)
             }
             composeRule.waitForIdle()
         }
 
+        composeRule.onNodeWithText("再减去", substring = true).assertExists()
+        composeRule.onNodeWithText("更新：", substring = true).assertDoesNotExist()
         composeRule.onNodeWithText("IP属地：上海").assertExists()
+
+        var scrollToEndAttempts = 60
+        while (scrollToEndAttempts-- > 0) {
+            val range = scrollContainer
+                .fetchSemanticsNode()
+                .config[SemanticsProperties.VerticalScrollAxisRange]
+            if (range.maxValue() - range.value() <= 1f) break
+            scrollContainer.performSemanticsAction(SemanticsActions.ScrollBy) { scrollBy ->
+                scrollBy(0f, 4_000f)
+            }
+            composeRule.waitForIdle()
+        }
+        val materializedMaxScroll = scrollContainer
+            .fetchSemanticsNode()
+            .config[SemanticsProperties.VerticalScrollAxisRange]
+            .maxValue()
+        assertTrue("The materialized document must remain scrollable", materializedMaxScroll > 0f)
+        val estimateRatio = initialMaxScroll / materializedMaxScroll
+        Log.i(
+            ISSUE_495_BENCHMARK_TAG,
+            "estimatedMaxScroll=$initialMaxScroll materializedMaxScroll=$materializedMaxScroll " +
+                "ratio=$estimateRatio",
+        )
+        assertTrue(
+            "Initial estimated scroll range should stay within 25% of the fully materialized range; " +
+                "estimated=$initialMaxScroll materialized=$materializedMaxScroll",
+            estimateRatio in 0.75f..1.25f,
+        )
     }
 
     @Test

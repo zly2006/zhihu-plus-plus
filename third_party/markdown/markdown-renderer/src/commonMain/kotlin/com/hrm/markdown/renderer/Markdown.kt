@@ -48,6 +48,7 @@ import com.hrm.markdown.runtime.MarkdownDirectivePipeline
  * @param enablePagination 是否启用分页加载，适合超长文档（> 500 段落）
  * @param enableScroll 是否启用 Markdown 内部滚动容器
  * @param enableSelection 是否启用文本选择。关闭后会在非流式场景自动切换为 LazyColumn 渲染长文档
+ * @param deferOffscreenBlocks 是否只为视口外块保留预估高度，进入视口附近后再执行真实布局
  * @param initialBlockCount 分页模式下初始渲染的块数量
  * @param header Markdown 内容前方插槽，会和正文处于同一滚动容器中
  * @param footer Markdown 内容后方插槽，会和正文处于同一滚动容器中
@@ -67,6 +68,7 @@ fun Markdown(
     enablePagination: Boolean = false,
     enableScroll: Boolean = true,
     enableSelection: Boolean = true,
+    deferOffscreenBlocks: Boolean = true,
     initialBlockCount: Int = 100,
     header: (@Composable () -> Unit)? = null,
     footer: (@Composable () -> Unit)? = null,
@@ -99,6 +101,7 @@ fun Markdown(
             enablePagination = enablePagination,
             enableScroll = enableScroll,
             enableSelection = enableSelection,
+            deferOffscreenBlocks = deferOffscreenBlocks,
             initialBlockCount = initialBlockCount,
             header = header,
             footer = footer,
@@ -120,6 +123,7 @@ fun Markdown(
  * @param enablePagination 是否启用分页加载，适合超长文档（> 500 段落）
  * @param enableScroll 是否启用 Markdown 内部滚动容器
  * @param enableSelection 是否启用文本选择。关闭后会在非流式场景自动切换为 LazyColumn 渲染长文档
+ * @param deferOffscreenBlocks 是否只为视口外块保留预估高度，进入视口附近后再执行真实布局
  * @param initialBlockCount 分页模式下初始渲染的块数量
  * @param header Markdown 内容前方插槽，会和正文处于同一滚动容器中
  * @param footer Markdown 内容后方插槽，会和正文处于同一滚动容器中
@@ -139,6 +143,7 @@ fun Markdown(
     enablePagination: Boolean = false,
     enableScroll: Boolean = true,
     enableSelection: Boolean = true,
+    deferOffscreenBlocks: Boolean = true,
     initialBlockCount: Int = 100,
     header: (@Composable () -> Unit)? = null,
     footer: (@Composable () -> Unit)? = null,
@@ -158,6 +163,7 @@ fun Markdown(
         enablePagination = enablePagination,
         enableScroll = enableScroll,
         enableSelection = enableSelection,
+        deferOffscreenBlocks = deferOffscreenBlocks,
         initialBlockCount = initialBlockCount,
         header = header,
         footer = footer,
