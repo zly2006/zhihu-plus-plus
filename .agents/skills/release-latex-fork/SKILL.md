@@ -30,9 +30,12 @@ Required:
 
 - Fork checkout: `/Users/zhaoliyan/IdeaProjects/latex`
 - Zhihu checkout: `/Users/zhaoliyan/IdeaProjects/Zhihu`
-- Target version derived from the latest upstream tag. If the plain `-zly`
-  version already exists for the same upstream tag, increment the fork suffix,
-  for example `1.4.7-zly2`.
+- Target version on the fork-owned `0.0.1-alphaN` release line. Always keep
+  `0.0.1` and increment only `N`, for example `0.0.1-alpha1` then
+  `0.0.1-alpha2`; never adopt the upstream version as the published fork version.
+- The latest upstream version recorded in a comment immediately above `VERSION`
+  in `gradle.properties`, for example:
+  `# Upstream huarangmeng/latex version: 1.4.7`.
 
 Optional proxy for Sonatype and repo1 access:
 
@@ -43,7 +46,7 @@ Optional proxy for Sonatype and repo1 access:
 
 - Publish under `io.github.zly2006`, never `io.github.huarangmeng`.
 - `Original version` means the upstream `huarangmeng/latex` tag. `Fork version`
-  means the version published by zly2006.
+  means the `0.0.1-alphaN` version published by zly2006.
 - Never use destructive git commands on a dirty tree.
 - Published modules are `latex-base`, `latex-parser`, and `latex-renderer` only.
 - Preserve these approved fork deltas:
@@ -84,6 +87,13 @@ approved fork commits; skip changes already present upstream.
 ```bash
 cd /Users/zhaoliyan/IdeaProjects/latex
 git switch -c release-<fork-version> <latest-upstream-tag>
+```
+
+After carrying changes forward, keep this shape in `gradle.properties`:
+
+```properties
+# Upstream huarangmeng/latex version: <upstream-version>
+VERSION=0.0.1-alpha<N>
 ```
 
 Fresh worktrees must copy `local.properties` from the main LaTeX checkout before
@@ -173,7 +183,7 @@ publish Markdown artifacts; the vendored modules build as part of Zhihu.
 ## Final report checklist
 
 - [ ] Latest upstream tag and Original version recorded
-- [ ] Fork version is new on Maven Central
+- [ ] Fork version follows `0.0.1-alphaN` and is new on Maven Central
 - [ ] Diff contains only approved fork deltas
 - [ ] Focused compatibility tests pass
 - [ ] `:latex-renderer:jvmTest` passes
