@@ -1,6 +1,6 @@
 ---
 name: release-latex-fork
-description: Release the local LaTeX fork used by Zhihu++. Use when you need to merge upstream huarangmeng/latex into the zly2006 fork, preserve only approved fork deltas (font removal), publish a new Maven Central release, update Markdown's latex dependency, and verify the build. Applies specifically to /Users/zhaoliyan/IdeaProjects/latex as the fork checkout.
+description: Release the LaTeX fork used by Zhihu++. Use when merging the latest huarangmeng/latex release into zly2006/latex, preserving approved fork deltas, publishing Maven Central artifacts, updating Zhihu's vendored third_party/markdown and direct LaTeX dependencies, and verifying the app.
 ---
 
 # Release LaTeX Fork
@@ -11,109 +11,108 @@ Use this skill for the Zhihu-local LaTeX fork release workflow.
 
 ```
 huarangmeng/latex (upstream)
-    → zly2006/latex (fork, this repo)
-        → zly2006/Markdown (markdown fork, depends on latex)
-            → Zhihu app
+    -> zly2006/latex (published fork)
+        -> Zhihu/third_party/markdown (vendored hard fork)
+        -> Zhihu app and shared modules
 ```
 
-**CRITICAL**: LaTeX must be published BEFORE Markdown. When bumping both, follow this order:
-1. Publish LaTeX fork (this skill)
-2. Update Markdown fork's latex version and publish (release-markdown-fork skill)
-3. Update Zhihu app
+The old standalone `zly2006/Markdown` Maven release line is retired. Do not clone,
+update, or publish a separate Markdown fork. The required order is:
+
+1. Publish the LaTeX fork.
+2. Update every `io.github.zly2006:latex-*` dependency in the Zhihu checkout,
+   including `third_party/markdown`.
+3. Build and format Zhihu.
 
 ## Inputs
 
 Required:
 
-- Target version, e.g. `1.4.5-zly` (check upstream tags and bump the zly suffix)
 - Fork checkout: `/Users/zhaoliyan/IdeaProjects/latex`
-- Markdown fork checkout: `/Users/zhaoliyan/IdeaProjects/Zhihu/.tmp/Markdown-zly2006`
+- Zhihu checkout: `/Users/zhaoliyan/IdeaProjects/Zhihu`
+- Target version derived from the latest upstream tag. If the plain `-zly`
+  version already exists for the same upstream tag, increment the fork suffix,
+  for example `1.4.7-zly2`.
 
-Optional:
+Optional proxy for Sonatype and repo1 access:
 
-- Proxy for Sonatype and repo1 access:
-  - `https_proxy=http://127.0.0.1:7890`
-  - `http_proxy=http://127.0.0.1:7890`
+- `https_proxy=http://127.0.0.1:7890`
+- `http_proxy=http://127.0.0.1:7890`
 
 ## Guardrails
 
-- The fork publishes under `io.github.zly2006` coordinates (NOT `io.github.huarangmeng`).
-- In any commit message, release note, or final report, `Original version` means the
-  upstream `huarangmeng/latex` version/tag this release is based on. It does NOT
-  mean the previous `zly2006` fork version. Use `Fork version` for the zly-published
-  version, for example `1.4.7-zly`.
-- Fork-specific approved deltas:
-  - **Font removal**: 21 font files removed from latex-renderer's Compose Resources
-  - **System fallback**: `defaultLatexFontFamilies()` returns `FontFamily.Default`
-  - **No OTF loading**: `rememberDefaultOtf()` skips bundled OTF, returns `MathFont.KaTeXTTF`
+- Publish under `io.github.zly2006`, never `io.github.huarangmeng`.
+- `Original version` means the upstream `huarangmeng/latex` tag. `Fork version`
+  means the version published by zly2006.
 - Never use destructive git commands on a dirty tree.
-- Published modules: `latex-base`, `latex-parser`, `latex-renderer` (not `latex-preview` or `androidapp`/`composeApp`).
+- Published modules are `latex-base`, `latex-parser`, and `latex-renderer` only.
+- Preserve these approved fork deltas:
+  - removal of 21 bundled renderer font files;
+  - system font fallback in `defaultLatexFontFamilies()`;
+  - no bundled OTF loading in `rememberDefaultOtf()`;
+  - publishing metadata for `io.github.zly2006`;
+  - parser compatibility fixes explicitly requested for Zhihu content, with
+    focused parser/visitor/renderer tests and documentation.
+- Do not change vendored Markdown behavior while bumping LaTeX. Dependency lines
+  are the only expected `third_party/markdown` changes in a routine release.
 
 ## Workflow
 
-### 1. Check if release is needed
-
-Before publishing Markdown, always check whether LaTeX needs a new release:
-
-```bash
-# Compare the latex version in Markdown's catalog with what's on Maven Central
-grep 'latex =' .tmp/Markdown-zly2006/gradle/libs.versions.toml
-curl -s https://repo1.maven.org/maven2/io/github/zly2006/latex-renderer/maven-metadata.xml | grep latest
-```
-
-If the version in Markdown's catalog is NOT published to Maven Central, publish it first.
-
-Also check: are there upstream changes that should be merged? New upstream tags?
-
-### 2. Confirm branch state
-
-In the fork checkout:
+### 1. Inspect current versions and upstream
 
 ```bash
 cd /Users/zhaoliyan/IdeaProjects/latex
 git fetch origin --tags --prune
 git fetch me --prune
-```
-
-- `origin` = huarangmeng/latex (upstream)
-- `me` = zly2006/latex (fork)
-
-Check what's new upstream:
-```bash
 git tag -l 'release-*' --sort=-v:refname | head -10
+
+cd /Users/zhaoliyan/IdeaProjects/Zhihu
+rg -n 'io.github.zly2006:latex-(base|parser|renderer)' \
+  app shared third_party/markdown
+
+curl -s https://repo1.maven.org/maven2/io/github/zly2006/latex-renderer/maven-metadata.xml
 ```
 
-Create a release branch from the latest upstream tag (e.g. `release-1.4.3`):
+Record the latest upstream tag, current public fork version, and every consumer
+that needs a bump.
+
+### 2. Prepare the release branch
+
+Create the release branch from the latest upstream tag. Carry forward only the
+approved fork commits; skip changes already present upstream.
+
 ```bash
-git checkout -b release-<version>-zly <latest-upstream-tag>
+cd /Users/zhaoliyan/IdeaProjects/latex
+git switch -c release-<fork-version> <latest-upstream-tag>
 ```
 
-If there are fork commits on a previous release branch that need to be carried forward, cherry-pick or merge them. If upstream already includes equivalent changes, skip.
+Fresh worktrees must copy `local.properties` from the main LaTeX checkout before
+Gradle publication.
 
-### 3. Apply approved fork deltas
+### 3. Verify the fork diff
 
-Verify the diff against upstream is limited to:
-
-- Font files deleted from `latex-renderer/src/commonMain/composeResources/font/`
-- `LatexFontFamily.kt`: system font fallback, no Res.font imports
-- `RememberResolvedMathFont.kt`: no Res.font.latinmodern_math import, `rememberDefaultOtf()` skips OTF
-- Publishing metadata: `io.github.zly2006` coordinates in latex-base, latex-parser, latex-renderer
-- Version bump in `gradle.properties`
-
-Check with:
 ```bash
-git diff --name-status origin/master...HEAD
+git diff --name-status <latest-upstream-tag>...HEAD
+git diff --stat <latest-upstream-tag>...HEAD
 ```
 
-### 4. Verify build and tests
+Review every non-font, non-publishing change as an explicit compatibility delta.
+Reject unrelated feature work or changes copied from another development tree.
+
+### 4. Test
+
+Run focused parser tests for compatibility changes, then the release gate:
 
 ```bash
+./gradlew --no-daemon :latex-parser:jvmTest --tests '*RelevantTest*'
 ./gradlew --no-daemon :latex-renderer:jvmTest
 ```
 
+For visible renderer changes, also run the appropriate preview or desktop demo.
+
 ### 5. Publish to Maven Central
 
-Modules in dependency order:
+Publish in dependency order:
 
 ```bash
 export https_proxy=http://127.0.0.1:7890 http_proxy=http://127.0.0.1:7890
@@ -123,73 +122,63 @@ export https_proxy=http://127.0.0.1:7890 http_proxy=http://127.0.0.1:7890
 ./gradlew --no-daemon --stacktrace :latex-renderer:publishAndReleaseToMavenCentral
 ```
 
-If Sonatype communication is flaky, export the proxy first.
+If Gradle fails while stopping `maven-central-build-service` after upload, query
+the Sonatype deployment and treat `PUBLISHED` or `PUBLISHING` as authoritative.
+Retry transient SSL failures with the proxy; do not re-version a deployment that
+already exists.
 
-### 6. Verify public availability
+### 6. Verify public artifacts
 
-Check repo1 metadata:
+Check metadata for all three root modules and require HTTP 200 for the Android
+renderer POM:
 
 ```bash
 curl -s https://repo1.maven.org/maven2/io/github/zly2006/latex-base/maven-metadata.xml
 curl -s https://repo1.maven.org/maven2/io/github/zly2006/latex-parser/maven-metadata.xml
 curl -s https://repo1.maven.org/maven2/io/github/zly2006/latex-renderer/maven-metadata.xml
-```
-
-Also check Android artifacts exist:
-```bash
 curl -sI https://repo1.maven.org/maven2/io/github/zly2006/latex-renderer-android/<version>/latex-renderer-android-<version>.pom | head -1
 ```
 
-### 7. Push fork master
+### 7. Push the LaTeX fork
 
-Fast-forward the fork's master branch and push:
+After the required code review and approval, commit the release, fast-forward the
+fork master, and push:
 
 ```bash
-git checkout master
-git merge --ff-only release-<version>-zly
+git switch master
+git merge --ff-only release-<fork-version>
 git push me master
 ```
 
-### 8. Update Markdown fork's latex version
+### 8. Update vendored Markdown and Zhihu
 
-In the Markdown fork:
+In `/Users/zhaoliyan/IdeaProjects/Zhihu`, update every matching dependency to the
+new fork version. The expected current consumers include:
+
+- `third_party/markdown/markdown-renderer/build.gradle.kts`
+- `app/build.gradle.kts`
+- `shared/build.gradle.kts`
+
+Re-run `rg` after editing so no old zly LaTeX version remains. Then follow the
+project-required order:
 
 ```bash
-cd /Users/zhaoliyan/IdeaProjects/Zhihu/.tmp/Markdown-zly2006
+./gradlew assembleLiteDebug
+./gradlew ktlintFormat
 ```
 
-Edit `gradle/libs.versions.toml`:
-```toml
-latex = '<new-version>'
-```
-
-Then publish Markdown following the `release-markdown-fork` skill.
-
-## Failure handling
-
-### Sonatype upload hangs
-
-- Retry with the proxy exported.
-- If a module uploads successfully but Gradle fails while stopping `maven-central-build-service`, treat the deployment status as the source of truth.
-
-### Gradle fails with `maven-central-build-service`
-
-- Query deployment status directly via Sonatype API.
-- If `PUBLISHED` or `PUBLISHING`, do not re-version.
-
-### SSL errors during publish
-
-- Retry. The Sonatype endpoint occasionally drops connections.
-- Successive retries usually succeed (seen with latex-renderer specifically).
+Review the complete Zhihu diff and wait for approval before committing. Do not
+publish Markdown artifacts; the vendored modules build as part of Zhihu.
 
 ## Final report checklist
 
-- [ ] Upstream base tag confirmed
-- [ ] `Original version` reported as the upstream `huarangmeng/latex` version/tag
-- [ ] Fork deltas match approved list (font removal only)
-- [ ] `jvmTest` passes
-- [ ] latex-base published and verified on Maven Central
-- [ ] latex-parser published and verified on Maven Central
-- [ ] latex-renderer published and verified on Maven Central (both root and Android artifact)
-- [ ] Fork master pushed to `me` remote
-- [ ] Markdown fork's latex version updated
+- [ ] Latest upstream tag and Original version recorded
+- [ ] Fork version is new on Maven Central
+- [ ] Diff contains only approved fork deltas
+- [ ] Focused compatibility tests pass
+- [ ] `:latex-renderer:jvmTest` passes
+- [ ] All three root modules and renderer Android artifact are public
+- [ ] LaTeX fork master is pushed to `me`
+- [ ] All Zhihu and `third_party/markdown` consumers use the new version
+- [ ] `assembleLiteDebug` passes before `ktlintFormat`
+- [ ] Zhihu diff is reviewed before commit
