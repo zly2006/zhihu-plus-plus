@@ -142,7 +142,7 @@ fun FeedCard(
         settings.getBoolean("showFeedThumbnail", true)
     }
     val feedCardStyle = remember {
-        settings.getString("feedCardStyle", "card")
+        settings.getString("feedCardStyle", "divider")
     }
     val duo3CardAppearance = remember { settings.getBoolean("duo3_card_appearance", false) }
     val duo3CardLayout = remember { settings.getBoolean("duo3_card_layout", false) }

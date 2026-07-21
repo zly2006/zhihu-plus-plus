@@ -645,7 +645,7 @@ fun AppearanceSettingsScreen(
 
                 var feedCardStyleExpanded by remember { mutableStateOf(false) }
                 val feedCardStyle = remember {
-                    mutableStateOf(settings.getString("feedCardStyle", "card"))
+                    mutableStateOf(settings.getString("feedCardStyle", "divider"))
                 }
                 val feedCardStyleOptions = listOf(
                     "card" to "卡片样式",
@@ -701,7 +701,7 @@ fun AppearanceSettingsScreen(
                 SettingItemWithSwitch(
                     modifier = Modifier.testTag(APPEARANCE_SETTINGS_USE_WEBVIEW_TAG),
                     title = { Text("使用 WebView 显示文章") },
-                    description = { Text("关闭后使用 Compose 渲染，支持代码高亮等高级功能。") },
+                    description = { Text("关闭后使用 Compose 渲染，支持代码高亮等高级功能。警告：这个渲染模式不再推荐，非专业人士请不要开启！") },
                     checked = articleUseWebview.value,
                     onCheckedChange = {
                         articleUseWebview.value = it
