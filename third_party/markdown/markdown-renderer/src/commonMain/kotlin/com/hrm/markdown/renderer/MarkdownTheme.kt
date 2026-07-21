@@ -17,10 +17,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.hrm.diagram.core.theme.DiagramTheme
-import com.hrm.diagram.render.theme.material3
 import com.hrm.latex.renderer.font.MathFont
-import com.hrm.latex.renderer.model.LatexTheme
 
 /**
  * Markdown 渲染的完整主题配置。
@@ -95,8 +92,8 @@ data class MarkdownTheme(
     val mathFontSize: Float = 16f,
     /** 数学公式块背景色 */
     val mathBlockBackground: Color = Color(0xFFF6F8FA),
-    /** LaTeX 渲染主题 */
-    val latexTheme: LatexTheme = defaultLightLatexTheme(),
+    /** 数学公式文字颜色 */
+    val mathColor: Color = Color(0xFF1F2328),
     /** 数学公式字体配置。设置为 MathFont.Default 使用系统字体降级（需通过 CDN 下载字体） */
     val mathFont: MathFont = MathFont.Default,
     /** Admonition 样式映射 */
@@ -131,8 +128,6 @@ data class MarkdownTheme(
     ),
     /** 剧透文本遮挡色（文字颜色和背景色相同，点击后显示） */
     val spoilerColor: Color = Color(0xFF3A3A3A),
-    /** Diagram 块渲染主题 */
-    val diagramTheme: DiagramTheme = DiagramTheme.Default,
 ) {
     companion object {
         /**
@@ -165,12 +160,11 @@ data class MarkdownTheme(
             taskCheckedColor = Color(0xFF3FB950),
             taskUncheckedColor = Color(0xFF3D444D),
             mathBlockBackground = Color(0xFF161B22),
-            latexTheme = defaultDarkLatexTheme(),
+            mathColor = Color(0xFFE6EDF3),
             admonitionStyles = darkAdmonitionStyles(),
             kbdBackground = Color(0xFF343942),
             codeBlockTitleBackground = Color(0xFF21262D),
             spoilerColor = Color(0xFF3D444D),
-            diagramTheme = DiagramTheme.Dark,
         )
 
         /**
@@ -199,11 +193,6 @@ data class MarkdownTheme(
          */
         fun material3(colorScheme: ColorScheme): MarkdownTheme {
             val baseTheme = if (colorScheme.surface.luminance() < 0.5f) dark() else light()
-            val baseDiagramTheme = if (colorScheme.surface.luminance() < 0.5f) {
-                DiagramTheme.Dark
-            } else {
-                DiagramTheme.Default
-            }
             val contentColor = colorScheme.onSurface
             val subduedContentColor = colorScheme.onSurfaceVariant
             val codeContainerColor = colorScheme.surfaceVariant
@@ -227,14 +216,13 @@ data class MarkdownTheme(
                 taskCheckedColor = colorScheme.primary,
                 taskUncheckedColor = colorScheme.outline,
                 mathBlockBackground = codeContainerColor,
-                latexTheme = LatexTheme.material3(colorScheme),
+                mathColor = contentColor,
                 admonitionStyles = material3AdmonitionStyles(colorScheme),
                 footnoteStyle = baseTheme.footnoteStyle.copy(color = subduedContentColor),
                 kbdBackground = codeContainerColor,
                 codeBlockTitleBackground = codeTitleContainerColor,
                 codeBlockTitleStyle = baseTheme.codeBlockTitleStyle.copy(color = subduedContentColor),
                 spoilerColor = subduedContentColor,
-                diagramTheme = DiagramTheme.material3(colorScheme, base = baseDiagramTheme),
             )
         }
 
@@ -248,16 +236,6 @@ data class MarkdownTheme(
         fun material3(): MarkdownTheme = material3(MaterialTheme.colorScheme)
     }
 }
-
-internal fun defaultLightLatexTheme(): LatexTheme = LatexTheme.light(
-    color = Color(0xFF1F2328),
-    backgroundColor = Color.Transparent,
-)
-
-internal fun defaultDarkLatexTheme(): LatexTheme = LatexTheme.dark(
-    color = Color(0xFFE6EDF3),
-    backgroundColor = Color.Transparent,
-)
 
 @Immutable
 data class AdmonitionStyle(

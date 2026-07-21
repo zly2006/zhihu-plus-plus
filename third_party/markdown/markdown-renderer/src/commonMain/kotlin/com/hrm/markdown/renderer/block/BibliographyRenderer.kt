@@ -14,9 +14,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.hrm.markdown.parser.ast.BibliographyDefinition
 import com.hrm.markdown.renderer.LocalMarkdownTheme
-import com.hrm.markdown.renderer.internal.core.model.BibliographyDefinitionBlockModel
-import com.hrm.markdown.renderer.internal.core.model.BibliographyEntryBlockModel
-import com.hrm.markdown.renderer.internal.layout.model.LayoutBibliographyBlockModel
 
 /**
  * 参考文献定义渲染器。
@@ -26,29 +23,9 @@ internal fun BibliographyDefinitionRenderer(
     node: BibliographyDefinition,
     modifier: Modifier = Modifier,
 ) {
-    RenderBibliographyBlockModel(
-        model = BibliographyDefinitionBlockModel(
-            identity = com.hrm.markdown.renderer.internal.core.identity.RenderIdentity(
-                stableId = node.stableKey.toLong(),
-                contentRevision = node.contentHash,
-                layoutRevision = node.contentHash,
-                paintRevision = 0L,
-            ),
-            entries = node.entries.values.map { entry ->
-                BibliographyEntryBlockModel(entry.key, entry.content)
-            },
-        ),
-        modifier = modifier,
-    )
-}
-
-@Composable
-internal fun RenderBibliographyBlockModel(
-    model: BibliographyDefinitionBlockModel,
-    modifier: Modifier = Modifier,
-) {
     val theme = LocalMarkdownTheme.current
-    if (model.entries.isEmpty()) return
+    if (node.entries.isEmpty()) return
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -64,14 +41,14 @@ internal fun RenderBibliographyBlockModel(
             modifier = Modifier.padding(bottom = 8.dp),
         )
 
-        model.entries.forEach { entry ->
+        node.entries.entries.forEachIndexed { index, (key, entry) ->
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 2.dp),
             ) {
                 Text(
-                    text = "[${entry.key}] ",
+                    text = "[${key}] ",
                     style = theme.bodyStyle.copy(
                         fontWeight = FontWeight.SemiBold,
                         color = theme.linkColor,
@@ -84,15 +61,4 @@ internal fun RenderBibliographyBlockModel(
             }
         }
     }
-}
-
-@Composable
-internal fun RenderBibliographyLayoutBlockModel(
-    model: LayoutBibliographyBlockModel,
-    modifier: Modifier = Modifier,
-) {
-    RenderBibliographyBlockModel(
-        model = model.block,
-        modifier = modifier,
-    )
 }

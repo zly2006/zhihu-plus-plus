@@ -1734,8 +1734,8 @@ private class InlineParserInstance(
             scanner.advance()
         }
 
-        // 未找到匹配的 !<，将起始 > 作为普通文本消费，避免死循环
-        scanner.pos = pos + 1
-        appendLL(Text(">"))
+        // 未找到匹配的 !<，回退
+        scanner.pos = pos
+        appendText()
     }
 }

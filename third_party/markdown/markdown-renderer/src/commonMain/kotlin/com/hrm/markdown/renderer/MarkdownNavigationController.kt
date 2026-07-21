@@ -6,91 +6,100 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.withFrameNanos
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 @Stable
-internal class MarkdownNavigationController(
-    private val coroutineScope: CoroutineScope,
-) {
-    val footnoteNavigationState = FootnoteNavigationState()
-    var renderMode: MarkdownRenderMode = MarkdownRenderMode.StaticColumn
-    var enableScroll: Boolean = true
-    var scrollState: ScrollState? = null
-    var lazyListState: LazyListState? = null
-    var footnoteDefinitionItemIndexes: Map<String, Int> = emptyMap()
-    var onLinkClick: ((String) -> Unit)? = null
-
-    val linkClickDelegate: (String) -> Unit = { target: String ->
-        onLinkClick?.invoke(target)
-    }
-
-    val onFootnoteClick: (String) -> Unit = { label: String ->
-        coroutineScope.launch {
-            when (renderMode) {
-                MarkdownRenderMode.LazyColumn -> {
-                    val lazyState = lazyListState ?: return@launch
-                    footnoteNavigationState.rememberLazyListPosition(
-                        label = label,
-                        index = lazyState.firstVisibleItemIndex,
-                        offset = lazyState.firstVisibleItemScrollOffset,
-                    )
-                    val targetIndex = footnoteDefinitionItemIndexes[label]
-                    if (enableScroll && targetIndex != null) {
-                        lazyState.animateScrollToItem(targetIndex)
-                        withFrameNanos { }
-                    }
-                    if (!footnoteNavigationState.bringDefinitionIntoView(label)) {
-                        onLinkClick?.invoke("#fn-$label")
-                    }
-                }
-
-                else -> {
-                    val currentScrollState = scrollState ?: return@launch
-                    footnoteNavigationState.rememberReturnPosition(label, currentScrollState.value)
-
-                    if (!footnoteNavigationState.bringDefinitionIntoView(label)) {
-                        onLinkClick?.invoke("#fn-$label")
-                    }
-                }
-            }
-        }
-    }
-
-    val onFootnoteBackClick: (String) -> Unit = { label: String ->
-        coroutineScope.launch {
-            val returnPosition = footnoteNavigationState.getReturnPosition(label)
-            if (returnPosition != null && enableScroll) {
-                when (returnPosition) {
-                    is FootnoteReturnPosition.Scroll ->
-                        scrollState?.animateScrollTo(returnPosition.value)
-
-                    is FootnoteReturnPosition.LazyList ->
-                        lazyListState?.animateScrollToItem(
-                            returnPosition.index,
-                            returnPosition.offset
-                        )
-                }
-            }
-        }
-    }
-}
+internal data class MarkdownNavigationHandlers(
+    val footnoteNavigationState: FootnoteNavigationState,
+    val onFootnoteClick: (String) -> Unit,
+    val onFootnoteBackClick: (String) -> Unit,
+)
 
 @Composable
-internal fun rememberMarkdownNavigationController(
+internal fun rememberMarkdownNavigationHandlers(
     renderMode: MarkdownRenderMode,
     enableScroll: Boolean,
     scrollState: ScrollState,
     lazyListState: LazyListState,
+    renderState: MarkdownBlockRenderState,
     onLinkClick: ((String) -> Unit)?,
-): MarkdownNavigationController {
+): MarkdownNavigationHandlers {
+    val footnoteNavigationState = remember { FootnoteNavigationState() }
     val coroutineScope = rememberCoroutineScope()
-    val controller = remember(coroutineScope) { MarkdownNavigationController(coroutineScope) }
-    controller.renderMode = renderMode
-    controller.enableScroll = enableScroll
-    controller.scrollState = scrollState
-    controller.lazyListState = lazyListState
-    controller.onLinkClick = onLinkClick
-    return controller
+    val currentOnLinkClick = rememberUpdatedState(onLinkClick)
+    val currentScrollState = rememberUpdatedState(scrollState)
+    val currentLazyListState = rememberUpdatedState(lazyListState)
+    val currentRenderState = rememberUpdatedState(renderState)
+
+    val onFootnoteClick = remember(
+        footnoteNavigationState,
+        renderMode,
+        enableScroll,
+        scrollState,
+        lazyListState,
+        renderState.effectivePagination,
+        renderState.footnoteDefinitionItemIndexes,
+    ) {
+        { label: String ->
+            coroutineScope.launch {
+                when (renderMode) {
+                    MarkdownRenderMode.LazyColumn -> {
+                        val lazyState = currentLazyListState.value
+                        footnoteNavigationState.rememberLazyListPosition(
+                            label = label,
+                            index = lazyState.firstVisibleItemIndex,
+                            offset = lazyState.firstVisibleItemScrollOffset,
+                        )
+                        val targetIndex = currentRenderState.value.footnoteDefinitionItemIndexes[label]
+                        if (enableScroll && targetIndex != null) {
+                            lazyState.animateScrollToItem(targetIndex)
+                            withFrameNanos { }
+                        }
+                        if (!footnoteNavigationState.bringDefinitionIntoView(label)) {
+                            currentOnLinkClick.value?.invoke("#fn-$label")
+                        }
+                    }
+
+                    else -> {
+                        footnoteNavigationState.rememberReturnPosition(label, currentScrollState.value.value)
+
+                        if (currentRenderState.value.effectivePagination && !footnoteNavigationState.hasDefinition(label)) {
+                            currentRenderState.value.expandAllBlocks()
+                            withFrameNanos { }
+                        }
+
+                        if (!footnoteNavigationState.bringDefinitionIntoView(label)) {
+                            currentOnLinkClick.value?.invoke("#fn-$label")
+                        }
+                    }
+                }
+            }
+            Unit
+        }
+    }
+    val onFootnoteBackClick = remember(footnoteNavigationState, enableScroll, renderMode, scrollState, lazyListState) {
+        { label: String ->
+            coroutineScope.launch {
+                val returnPosition = footnoteNavigationState.getReturnPosition(label)
+                if (returnPosition != null && enableScroll) {
+                    when (returnPosition) {
+                        is FootnoteReturnPosition.Scroll ->
+                            currentScrollState.value.animateScrollTo(returnPosition.value)
+
+                        is FootnoteReturnPosition.LazyList ->
+                            currentLazyListState.value.animateScrollToItem(returnPosition.index, returnPosition.offset)
+                    }
+                }
+            }
+            Unit
+        }
+    }
+
+    return MarkdownNavigationHandlers(
+        footnoteNavigationState = footnoteNavigationState,
+        onFootnoteClick = onFootnoteClick,
+        onFootnoteBackClick = onFootnoteBackClick,
+    )
 }

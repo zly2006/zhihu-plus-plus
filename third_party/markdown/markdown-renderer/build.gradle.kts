@@ -8,10 +8,6 @@ plugins {
 }
 
 kotlin {
-    compilerOptions {
-        freeCompilerArgs.add("-Xexpect-actual-classes")
-    }
-
     androidLibrary {
         namespace = "com.hrm.markdown.renderer"
         compileSdk = 37
@@ -51,12 +47,11 @@ kotlin {
             implementation("org.jetbrains.compose.ui:ui:1.11.1")
             implementation("org.jetbrains.compose.components:components-resources:1.11.1")
 
-            implementation("io.github.zly2006:latex-base:1.4.7-zly")
-            implementation("io.github.zly2006:latex-parser:1.4.7-zly")
-            implementation("io.github.zly2006:latex-renderer:1.4.7-zly")
-            implementation("io.github.huarangmeng:codehighlight-parser:1.1.2")
-            implementation("io.github.huarangmeng:codehighlight-render:1.1.2")
-            implementation("io.github.huarangmeng:diagram-render:1.0.4")
+            implementation("io.github.zly2006:latex-base:1.4.6-zly")
+            implementation("io.github.zly2006:latex-parser:1.4.6-zly")
+            implementation("io.github.zly2006:latex-renderer:1.4.6-zly")
+            implementation("io.github.huarangmeng:codehighlight-parser:1.1.1")
+            implementation("io.github.huarangmeng:codehighlight-render:1.1.1")
 
             implementation("io.coil-kt.coil3:coil-compose:3.5.0")
             implementation("io.coil-kt.coil3:coil-network-ktor3:3.5.0")

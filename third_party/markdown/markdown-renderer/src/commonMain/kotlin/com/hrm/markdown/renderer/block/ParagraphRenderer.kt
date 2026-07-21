@@ -2,24 +2,29 @@ package com.hrm.markdown.renderer.block
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.rememberTextMeasurer
+import com.hrm.codehigh.theme.LocalCodeTheme
+import com.hrm.markdown.parser.ast.Image
+import com.hrm.markdown.parser.ast.Node
 import com.hrm.markdown.parser.ast.Paragraph
+import com.hrm.markdown.parser.ast.Text
 import com.hrm.markdown.renderer.DefaultMarkdownImage
+import com.hrm.markdown.renderer.LocalCodeHighlightTheme
 import com.hrm.markdown.renderer.LocalImageRenderer
+import com.hrm.markdown.renderer.LocalMarkdownDirectiveRegistry
 import com.hrm.markdown.renderer.LocalMarkdownTheme
+import com.hrm.markdown.renderer.LocalOnFootnoteClick
+import com.hrm.markdown.renderer.LocalOnLinkClick
 import com.hrm.markdown.renderer.MarkdownImageData
-import com.hrm.markdown.renderer.inline.InlineLayoutBlockText
-import com.hrm.markdown.renderer.inline.inlineNodesRevision
-import com.hrm.markdown.renderer.inline.rememberInlineModel
-import com.hrm.markdown.renderer.internal.core.identity.RenderIdentity
-import com.hrm.markdown.renderer.internal.core.identity.renderIdentityMix
-import com.hrm.markdown.renderer.internal.core.identity.renderIdentitySeed
-import com.hrm.markdown.renderer.internal.core.model.ImageWidgetModel
-import com.hrm.markdown.renderer.internal.core.model.InlineAtom
-import com.hrm.markdown.renderer.internal.core.model.InlineModel
-import com.hrm.markdown.renderer.internal.core.model.WidgetAtom
+import com.hrm.latex.renderer.measure.rememberLatexMeasurer
+import com.hrm.markdown.renderer.inline.buildInlineAnnotatedString
+import com.hrm.markdown.renderer.inline.InlineFlowText
+import com.hrm.markdown.renderer.inline.InlineContentEntry
+import com.hrm.markdown.renderer.inline.rememberInlineContent
 
 /**
  * 段落渲染器。
@@ -34,52 +39,37 @@ internal fun ParagraphRenderer(
     node: Paragraph,
     modifier: Modifier = Modifier,
 ) {
-    val inlineRevision = remember(node.contentHash, node.lineRange.startLine, node.lineRange.endLine, node.childCount()) {
-        inlineNodesRevision(node.children)
-    }
-    val inlineModel = rememberInlineModel(
-        nodes = node.children,
-        inlineRevision = inlineRevision,
-    )
-    val hasImage = remember(inlineModel.identity.contentRevision) {
-        inlineModel.atoms.any { atom ->
-            atom is WidgetAtom && atom.widget is ImageWidgetModel
-        }
+    val hasImage = remember(node, node.contentHash, node.lineRange.endLine, node.childCount()) {
+        node.children.any { it is Image }
     }
 
-    RenderParagraphInlineModel(
-        inlineModel = inlineModel,
-        hasImage = hasImage,
-        modifier = modifier,
-    )
+    if (!hasImage) {
+        // 无图片的段落：保持原有的简单渲染路径
+        SimpleParagraphRenderer(node, modifier)
+    } else {
+        // 包含图片的段落：拆分为文本段和图片段
+        MixedParagraphRenderer(node, modifier)
+    }
 }
 
 /**
  * 简单段落渲染（不含图片）。
  */
 @Composable
-internal fun RenderParagraphInlineModel(
-    inlineModel: InlineModel,
-    hasImage: Boolean = inlineModel.atoms.any { atom ->
-        atom is WidgetAtom && atom.widget is ImageWidgetModel
-    },
-    modifier: Modifier = Modifier,
-) {
-    if (hasImage) {
-        RenderMixedParagraphBlockModel(inlineModel, modifier)
-    } else {
-        RenderParagraphBlockModel(inlineModel, modifier)
-    }
-}
-
-@Composable
-internal fun RenderParagraphBlockModel(
-    inlineModel: InlineModel,
+private fun SimpleParagraphRenderer(
+    node: Paragraph,
     modifier: Modifier = Modifier,
 ) {
     val theme = LocalMarkdownTheme.current
-    InlineLayoutBlockText(
-        model = inlineModel,
+    val onLinkClick = LocalOnLinkClick.current
+    val inlineResult = rememberInlineContent(
+        parent = node,
+        onLinkClick = onLinkClick,
+        hostTextStyle = theme.bodyStyle,
+    )
+    InlineFlowText(
+        annotated = inlineResult.annotated,
+        inlineContents = inlineResult.inlineContents,
         modifier = modifier.fillMaxWidth(),
         style = theme.bodyStyle,
     )
@@ -89,13 +79,11 @@ internal fun RenderParagraphBlockModel(
  * 段落内容片段：文本或图片。
  */
 private sealed class ParagraphSegment {
-    /** 一段连续的非图片行内模型 */
-    data class TextRun(
-        val model: InlineModel,
-    ) : ParagraphSegment()
+    /** 一段连续的非图片行内节点 */
+    data class TextRun(val nodes: List<Node>) : ParagraphSegment()
 
-    /** 图片 widget */
-    data class ImageItem(val image: ImageWidgetModel) : ParagraphSegment()
+    /** 图片节点 */
+    data class ImageItem(val image: Image) : ParagraphSegment()
 }
 
 /**
@@ -103,24 +91,54 @@ private sealed class ParagraphSegment {
  * 将段落的子节点拆分为文本段和图片段，分别渲染。
  */
 @Composable
-internal fun RenderMixedParagraphBlockModel(
-    inlineModel: InlineModel,
+private fun MixedParagraphRenderer(
+    node: Paragraph,
     modifier: Modifier = Modifier,
 ) {
     val theme = LocalMarkdownTheme.current
+    val onLinkClick = LocalOnLinkClick.current
+    val onFootnoteClick = LocalOnFootnoteClick.current
     val customRenderer = LocalImageRenderer.current
+    val directiveRegistry = LocalMarkdownDirectiveRegistry.current
+    val latexMeasurer = rememberLatexMeasurer()
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val textMeasurer = rememberTextMeasurer()
+    val codeTheme = LocalCodeHighlightTheme.current ?: LocalCodeTheme.current
 
-    val segments = remember(inlineModel.identity.contentRevision) {
-        splitParagraphSegments(inlineModel)
+    // 将段落子节点拆分为文本段和图片段
+    val segments = remember(node, node.contentHash, node.lineRange.endLine, node.childCount()) {
+        splitParagraphSegments(node.children)
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
         for (segment in segments) {
             when (segment) {
                 is ParagraphSegment.TextRun -> {
-                    if (segment.model.atoms.isNotEmpty()) {
-                        InlineLayoutBlockText(
-                            model = segment.model,
+                    val built = remember(
+                        segment, theme, onLinkClick, onFootnoteClick, directiveRegistry,
+                        latexMeasurer, density, textMeasurer, codeTheme,
+                    ) {
+                        val inlineContents = mutableMapOf<String, InlineContentEntry>()
+                        val annotated = buildInlineAnnotatedString(
+                            nodes = segment.nodes,
+                            theme = theme,
+                            hostTextStyle = theme.bodyStyle,
+                            inlineContents = inlineContents,
+                            directiveRegistry = directiveRegistry,
+                            onLinkClick = onLinkClick,
+                            onFootnoteClick = onFootnoteClick,
+                            latexMeasurer = latexMeasurer,
+                            density = density,
+                            textMeasurer = textMeasurer,
+                            codeTheme = codeTheme,
+                        )
+                        annotated to inlineContents
+                    }
+                    val (annotated, inlineContents) = built
+                    if (annotated.isNotEmpty()) {
+                        InlineFlowText(
+                            annotated = annotated,
+                            inlineContents = inlineContents,
                             modifier = Modifier.fillMaxWidth(),
                             style = theme.bodyStyle,
                         )
@@ -129,12 +147,14 @@ internal fun RenderMixedParagraphBlockModel(
 
                 is ParagraphSegment.ImageItem -> {
                     val img = segment.image
+                    val altText = img.children.filterIsInstance<Text>()
+                        .joinToString("") { it.literal }
                     val imageData = MarkdownImageData(
-                        url = img.url,
-                        altText = img.altText,
+                        url = img.destination,
+                        altText = altText,
                         title = img.title,
-                        width = img.width,
-                        height = img.height,
+                        width = img.imageWidth,
+                        height = img.imageHeight,
                         attributes = img.attributes,
                     )
                     if (customRenderer != null) {
@@ -149,50 +169,30 @@ internal fun RenderMixedParagraphBlockModel(
 }
 
 /**
- * 将段落的 inline model 按图片 widget 边界拆分为多个 Segment。
- * 连续的非图片 atom 合并为一个 TextRun，图片 widget 独立为 ImageItem。
+ * 将段落的子节点列表按图片边界拆分为多个 Segment。
+ * 连续的非图片节点合并为一个 TextRun，图片节点独立为 ImageItem。
  */
-private fun splitParagraphSegments(model: InlineModel): List<ParagraphSegment> {
+private fun splitParagraphSegments(children: List<Node>): List<ParagraphSegment> {
     val segments = mutableListOf<ParagraphSegment>()
-    val currentAtoms = mutableListOf<InlineAtom>()
+    val currentTextNodes = mutableListOf<Node>()
 
-    for (atom in model.atoms) {
-        val imageWidget = (atom as? WidgetAtom)?.widget as? ImageWidgetModel
-        if (imageWidget != null) {
-            if (currentAtoms.isNotEmpty()) {
-                segments.add(ParagraphSegment.TextRun(currentAtoms.toInlineModelSegment()))
-                currentAtoms.clear()
+    for (child in children) {
+        if (child is Image) {
+            // 遇到图片前，先把积累的文本节点收集为一个 TextRun
+            if (currentTextNodes.isNotEmpty()) {
+                segments.add(ParagraphSegment.TextRun(currentTextNodes.toList()))
+                currentTextNodes.clear()
             }
-            segments.add(ParagraphSegment.ImageItem(imageWidget))
+            segments.add(ParagraphSegment.ImageItem(child))
         } else {
-            currentAtoms.add(atom)
+            currentTextNodes.add(child)
         }
     }
 
-    if (currentAtoms.isNotEmpty()) {
-        segments.add(ParagraphSegment.TextRun(currentAtoms.toInlineModelSegment()))
+    // 收集尾部的文本节点
+    if (currentTextNodes.isNotEmpty()) {
+        segments.add(ParagraphSegment.TextRun(currentTextNodes.toList()))
     }
 
     return segments
-}
-
-private fun List<InlineAtom>.toInlineModelSegment(): InlineModel {
-    val atoms = toList()
-    return InlineModel(
-        identity = RenderIdentity(
-            stableId = fold(renderIdentitySeed()) { acc, atom ->
-                renderIdentityMix(acc, atom.identity.stableId)
-            },
-            contentRevision = fold(renderIdentitySeed()) { acc, atom ->
-                renderIdentityMix(acc, atom.identity.contentRevision)
-            },
-            layoutRevision = fold(renderIdentitySeed()) { acc, atom ->
-                renderIdentityMix(acc, atom.identity.layoutRevision)
-            },
-            paintRevision = fold(renderIdentitySeed()) { acc, atom ->
-                renderIdentityMix(acc, atom.identity.paintRevision)
-            },
-        ),
-        atoms = atoms,
-    )
 }

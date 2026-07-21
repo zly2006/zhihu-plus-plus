@@ -10,7 +10,6 @@ import androidx.compose.ui.geometry.Offset
 import com.hrm.markdown.parser.ast.BlockQuote
 import com.hrm.markdown.renderer.LocalMarkdownTheme
 import com.hrm.markdown.renderer.MarkdownBlockChildren
-import com.hrm.markdown.renderer.internal.core.model.BlockQuoteBlockModel
 
 /**
  * 块引用渲染器 (> ...)
@@ -20,25 +19,6 @@ import com.hrm.markdown.renderer.internal.core.model.BlockQuoteBlockModel
 internal fun BlockQuoteRenderer(
     node: BlockQuote,
     modifier: Modifier = Modifier,
-) {
-    RenderBlockQuoteContainer(modifier = modifier) {
-        MarkdownBlockChildren(node)
-    }
-}
-
-@Composable
-internal fun RenderBlockQuoteBlockModel(
-    model: BlockQuoteBlockModel,
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
-) {
-    RenderBlockQuoteContainer(modifier = modifier, content = content)
-}
-
-@Composable
-private fun RenderBlockQuoteContainer(
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
 ) {
     val theme = LocalMarkdownTheme.current
     val borderColor = theme.blockQuoteBorderColor
@@ -58,6 +38,6 @@ private fun RenderBlockQuoteContainer(
             }
             .padding(start = theme.blockQuotePadding + theme.blockQuoteBorderWidth),
     ) {
-        content()
+        MarkdownBlockChildren(node)
     }
 }

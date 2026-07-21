@@ -18,22 +18,28 @@
 package com.github.zly2006.zhihu
 
 import android.content.Context
+import android.os.SystemClock
+import android.util.Log
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.MutableState
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.hasScrollAction
-import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import com.github.zly2006.zhihu.navigation.AnswerNavigator
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
@@ -100,9 +106,73 @@ class ArticleScreenInstrumentedTest {
         setArticleScreen()
         composeRule.onNodeWithText("离线 Article 标题").assertIsDisplayed()
         composeRule.onNodeWithText("离线作者").assertIsDisplayed()
+        composeRule.onNodeWithText("IP属地：上海").assertExists()
         composeRule.onNodeWithText("第 1 段离线正文", substring = true).assertIsDisplayed()
-        composeRule.onNode(hasScrollAction()).performScrollToNode(hasText("IP属地：上海"))
-        composeRule.onNodeWithText("IP属地：上海").assertIsDisplayed()
+    }
+
+    @Test
+    fun issue495FirstFrameBenchmarkIncludesHtmlParsingLayoutAndDraw() {
+        val viewModel = issue495ViewModel()
+        val startedAt = SystemClock.elapsedRealtime()
+
+        composeRule.setScreenContent {
+            Scaffold(
+                modifier = androidx.compose.ui.Modifier
+                    .fillMaxSize(),
+            ) { _ ->
+                ArticleScreen(
+                    article = ANSWER,
+                    viewModel = viewModel,
+                )
+            }
+        }
+        composeRule.onNodeWithText("更新：", substring = true).assertIsDisplayed()
+        composeRule.onRoot().captureToImage()
+
+        val elapsedMillis = SystemClock.elapsedRealtime() - startedAt
+        Log.i(ISSUE_495_BENCHMARK_TAG, "firstFrameMs=$elapsedMillis htmlBytes=${viewModel.content.length}")
+        assertTrue(
+            "Issue #495 first frame took ${elapsedMillis}ms; benchmark includes HTML parsing, Compose layout, and draw",
+            elapsedMillis < ISSUE_495_FIRST_FRAME_LIMIT_MS,
+        )
+    }
+
+    @Test
+    fun issue495DefersFooterUntilRemainingMarkdownBlocksLoad() {
+        val viewModel = issue495ViewModel()
+
+        composeRule.setScreenContent {
+            Scaffold(
+                modifier = androidx.compose.ui.Modifier
+                    .fillMaxSize(),
+            ) { _ ->
+                ArticleScreen(
+                    article = ANSWER,
+                    viewModel = viewModel,
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("更新：", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithText("IP属地：上海").assertDoesNotExist()
+        val scrollContainer = composeRule.onNode(
+            SemanticsMatcher("has vertical scroll axis") { node ->
+                node.config.contains(SemanticsProperties.VerticalScrollAxisRange)
+            },
+        )
+
+        var remainingScrolls = 160
+        while (
+            remainingScrolls-- > 0 &&
+            composeRule.onAllNodesWithText("IP属地：上海").fetchSemanticsNodes().isEmpty()
+        ) {
+            scrollContainer.performSemanticsAction(SemanticsActions.ScrollBy) { scrollBy ->
+                scrollBy(0f, 10_000f)
+            }
+            composeRule.waitForIdle()
+        }
+
+        composeRule.onNodeWithText("IP属地：上海").assertExists()
     }
 
     @Test
@@ -269,6 +339,21 @@ class ArticleScreenInstrumentedTest {
         composeRule.waitForIdle()
     }
 
+    private fun issue495ViewModel(): ArticleViewModel {
+        val viewModel = seededAnswerViewModel(ANSWER)
+        val html = InstrumentationRegistry
+            .getInstrumentation()
+            .context
+            .assets
+            .open("issue-495-answer.html")
+            .bufferedReader()
+            .use { it.readText() }
+        composeRule.activity.runOnUiThread {
+            viewModel.content = html
+        }
+        return viewModel
+    }
+
     private fun seededAnswerViewModel(article: Article): ArticleViewModel {
         val viewModel = ArticleViewModel(
             article = article,
@@ -319,6 +404,9 @@ class ArticleScreenInstrumentedTest {
     }
 
     private companion object {
+        const val ISSUE_495_BENCHMARK_TAG = "Issue495Benchmark"
+        const val ISSUE_495_FIRST_FRAME_LIMIT_MS = 5_000L
+
         val ARTICLE = Article(
             type = ArticleType.Article,
             id = 777L,

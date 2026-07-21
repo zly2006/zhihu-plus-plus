@@ -1,11 +1,8 @@
 package com.hrm.markdown.renderer
 
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.Stable
 import androidx.compose.runtime.compositionLocalOf
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import com.hrm.codehigh.theme.CodeTheme
@@ -42,59 +39,6 @@ internal val LocalFootnoteNavigationState = compositionLocalOf<FootnoteNavigatio
 internal val LocalCodeHighlightTheme = compositionLocalOf<CodeTheme?> { null }
 internal val LocalIsStreaming = compositionLocalOf { false }
 internal val LocalMarkdownDirectiveRegistry = compositionLocalOf { MarkdownDirectiveRegistry.Empty }
-internal val LocalDiagramHostRegistry = compositionLocalOf { DiagramHostRegistry() }
-
-internal enum class DiagramHostRoute {
-    Pending,
-    Diagram,
-    Fallback,
-}
-
-@Stable
-internal class DiagramHostRegistry {
-    private val minHeightsPx = mutableStateMapOf<Long, Float>()
-    private val routeStates = mutableStateMapOf<Long, DiagramHostRoute>()
-
-    fun cachedHeightPx(hostKey: Long): Float? = minHeightsPx[hostKey]
-
-    fun minHeightPx(hostKey: Long, isStreaming: Boolean): Float {
-        return if (isStreaming) minHeightsPx[hostKey] ?: 0f else 0f
-    }
-
-    fun observeHeight(hostKey: Long, heightPx: Float) {
-        val previous = minHeightsPx[hostKey] ?: 0f
-        if (heightPx > previous) {
-            minHeightsPx[hostKey] = heightPx
-        }
-    }
-
-    fun route(
-        hostKey: Long,
-        detectedDiagram: Boolean,
-        hasCode: Boolean,
-        isStreaming: Boolean,
-    ): DiagramHostRoute {
-        if (!hasCode) {
-            return if (isStreaming) DiagramHostRoute.Pending else DiagramHostRoute.Fallback
-        }
-        if (!isStreaming) {
-            return if (detectedDiagram) DiagramHostRoute.Diagram else DiagramHostRoute.Fallback
-        }
-        val current = routeStates[hostKey]
-        if (current == DiagramHostRoute.Diagram) {
-            return DiagramHostRoute.Diagram
-        }
-        if (detectedDiagram) {
-            routeStates[hostKey] = DiagramHostRoute.Diagram
-            return DiagramHostRoute.Diagram
-        }
-        return current ?: DiagramHostRoute.Pending
-    }
-
-    fun reset() {
-        routeStates.clear()
-    }
-}
 
 @Composable
 internal fun ProvideRendererContext(
@@ -108,7 +52,6 @@ internal fun ProvideRendererContext(
     codeTheme: CodeTheme? = null,
     isStreaming: Boolean = false,
     directiveRegistry: MarkdownDirectiveRegistry = MarkdownDirectiveRegistry.Empty,
-    diagramHostRegistry: DiagramHostRegistry = remember { DiagramHostRegistry() },
     content: @Composable () -> Unit,
 ) {
     // 用 rememberUpdatedState 包装 onLinkClick：
@@ -128,11 +71,6 @@ internal fun ProvideRendererContext(
     val stableOnFootnoteBackClick: (String) -> Unit = remember {
         { label: String -> currentOnFootnoteBackClick.value?.invoke(label) }
     }
-    LaunchedEffect(isStreaming) {
-        if (!isStreaming) {
-            diagramHostRegistry.reset()
-        }
-    }
 
     CompositionLocalProvider(
         LocalOnLinkClick provides stableOnLinkClick,
@@ -145,7 +83,6 @@ internal fun ProvideRendererContext(
         LocalCodeHighlightTheme provides codeTheme,
         LocalIsStreaming provides isStreaming,
         LocalMarkdownDirectiveRegistry provides directiveRegistry,
-        LocalDiagramHostRegistry provides diagramHostRegistry,
     ) {
         content()
     }

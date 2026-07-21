@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
@@ -15,7 +16,6 @@ import com.hrm.markdown.renderer.MarkdownBlockChildren
 import com.hrm.markdown.renderer.LocalMarkdownDirectiveRegistry
 import com.hrm.markdown.renderer.LocalMarkdownTheme
 import com.hrm.markdown.renderer.LocalRendererDocument
-import com.hrm.markdown.renderer.internal.adapter.createDirectiveBlockRenderScope
 import com.hrm.markdown.runtime.DirectiveBlockRenderScope
 
 private fun List<IntRange>.flattenLineNumbers(): Set<Int> = buildSet {
@@ -31,6 +31,7 @@ private fun List<IntRange>.flattenLineNumbers(): Set<Int> = buildSet {
 @Composable
 internal fun BlockRenderer(
     node: Node,
+    renderRevision: Long = 0L,
     modifier: Modifier = Modifier,
 ) {
     val directiveRegistry = LocalMarkdownDirectiveRegistry.current
@@ -41,76 +42,73 @@ internal fun BlockRenderer(
         )
         return
     }
-    if (node is DiagramBlock) {
-        // DiagramView 内部维护 streaming session；这里不能随着 renderRevision 频繁重建，
-        // 否则每次增量更新都会丢失 append 累积状态，表现为空白占位或迟迟不出图。
-        DiagramBlockRenderer(node, modifier)
-        return
-    }
 
-    when (node) {
-        is Heading -> HeadingRenderer(node, modifier)
-        is SetextHeading -> SetextHeadingRenderer(node, modifier)
-        is Paragraph -> ParagraphRenderer(node, modifier)
-        is ThematicBreak -> ThematicBreakRenderer(modifier)
-        is FencedCodeBlock -> {
-            FencedCodeBlockRenderer(
-                text = node.literal,
-                language = node.language,
-                title = node.attributes.pairs["title"],
-                showLineNumbers = node.showLineNumbers,
-                startLine = node.startLineNumber,
-                highlightedLines = node.highlightLines.flattenLineNumbers(),
-                modifier = modifier,
-            )
-        }
-        is IndentedCodeBlock -> {
-            IndentedCodeBlockRenderer(
-                text = node.literal,
-                modifier = modifier,
-            )
-        }
-        is BlockQuote -> BlockQuoteRenderer(node, modifier)
-        is ListBlock -> ListBlockRenderer(node, modifier)
-        is HtmlBlock -> HtmlBlockRenderer(node, modifier)
-        is Table -> TableRenderer(node, modifier)
-        is Admonition -> AdmonitionRenderer(node, modifier)
-        is CustomContainer -> CustomContainerRenderer(node, modifier)
-        is ColumnsLayout -> ColumnsLayoutRenderer(node, modifier)
-        is DefinitionList -> DefinitionListRenderer(node, modifier)
-        is FootnoteDefinition -> FootnoteDefinitionRenderer(node, modifier)
-        is TocPlaceholder -> TocPlaceholderRenderer(node, modifier)
-        is PageBreak -> PageBreakRenderer(modifier)
-        is DirectiveBlock -> {
-            val renderer = directiveRegistry.findBlockDirectiveRenderer(node.tagName)
-            if (renderer != null) {
-                renderer(
-                    createDirectiveBlockRenderScope(
-                        tagName = node.tagName,
-                        args = node.args,
-                        content = if (node.children.isNotEmpty()) {
-                            { MarkdownBlockChildren(parent = node) }
-                        } else null,
-                    )
+    key(renderRevision) {
+        when (node) {
+            is Heading -> HeadingRenderer(node, modifier)
+            is SetextHeading -> SetextHeadingRenderer(node, modifier)
+            is Paragraph -> ParagraphRenderer(node, modifier)
+            is ThematicBreak -> ThematicBreakRenderer(modifier)
+            is FencedCodeBlock -> {
+                FencedCodeBlockRenderer(
+                    text = node.literal,
+                    language = node.language,
+                    title = node.attributes.pairs["title"],
+                    showLineNumbers = node.showLineNumbers,
+                    startLine = node.startLineNumber,
+                    highlightedLines = node.highlightLines.flattenLineNumbers(),
+                    modifier = modifier,
                 )
-            } else {
-                DirectiveBlockRenderer(node, modifier)
             }
-        }
-        is TabBlock -> TabBlockRenderer(node, modifier)
-        is BibliographyDefinition -> BibliographyDefinitionRenderer(node, modifier)
-        is Figure -> FigureRenderer(node, modifier)
-        is NativeBlock -> node.content()
-        is FrontMatter -> { /* FrontMatter 通常不渲染 */ }
-        is LinkReferenceDefinition -> { /* 引用定义不直接渲染 */ }
-        is AbbreviationDefinition -> { /* 缩写定义不直接渲染 */ }
-        is BlankLine -> { /* 空行不渲染 */ }
-        else -> {
-            // 块实例只依赖 stableKey 保持稳定；内容变化通过常规重组下沉到各 renderer，
-            // 避免 renderRevision 驱动整棵 subtree remount，破坏内部增量状态。
-            if (node is ContainerNode) {
-                for (child in node.children) {
-                    BlockRenderer(child)
+            is IndentedCodeBlock -> {
+                IndentedCodeBlockRenderer(
+                    text = node.literal,
+                    modifier = modifier,
+                )
+            }
+            is BlockQuote -> BlockQuoteRenderer(node, modifier)
+            is ListBlock -> ListBlockRenderer(node, modifier)
+            is HtmlBlock -> HtmlBlockRenderer(node, modifier)
+            is Table -> TableRenderer(node, modifier)
+            is Admonition -> AdmonitionRenderer(node, modifier)
+            is CustomContainer -> CustomContainerRenderer(node, modifier)
+            is DiagramBlock -> DiagramBlockRenderer(node, modifier)
+            is ColumnsLayout -> ColumnsLayoutRenderer(node, modifier)
+            is DefinitionList -> DefinitionListRenderer(node, modifier)
+            is FootnoteDefinition -> FootnoteDefinitionRenderer(node, modifier)
+            is TocPlaceholder -> TocPlaceholderRenderer(node, modifier)
+            is PageBreak -> PageBreakRenderer(modifier)
+            is DirectiveBlock -> {
+                val renderer = directiveRegistry.findBlockDirectiveRenderer(node.tagName)
+                if (renderer != null) {
+                    renderer(
+                        DirectiveBlockRenderScope(
+                            tagName = node.tagName,
+                            args = node.args,
+                            node = node,
+                            content = if (node.children.isNotEmpty()) {
+                                { MarkdownBlockChildren(parent = node) }
+                            } else null,
+                        )
+                    )
+                } else {
+                    DirectiveBlockRenderer(node, modifier)
+                }
+            }
+            is TabBlock -> TabBlockRenderer(node, modifier)
+            is BibliographyDefinition -> BibliographyDefinitionRenderer(node, modifier)
+            is Figure -> FigureRenderer(node, modifier)
+            is NativeBlock -> node.content()
+            is FrontMatter -> { /* FrontMatter 通常不渲染 */ }
+            is LinkReferenceDefinition -> { /* 引用定义不直接渲染 */ }
+            is AbbreviationDefinition -> { /* 缩写定义不直接渲染 */ }
+            is BlankLine -> { /* 空行不渲染 */ }
+            else -> {
+                // 未知块级节点，尝试渲染子节点
+                if (node is ContainerNode) {
+                    for (child in node.children) {
+                        BlockRenderer(child)
+                    }
                 }
             }
         }

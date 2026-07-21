@@ -2,11 +2,7 @@ package com.hrm.markdown.renderer
 
 import com.hrm.markdown.parser.MarkdownParser
 import com.hrm.markdown.parser.ast.Document
-import com.hrm.markdown.parser.html.HtmlDirectiveBlockSnapshot
-import com.hrm.markdown.parser.html.HtmlDirectiveInlineSnapshot
 import com.hrm.markdown.parser.html.HtmlRenderer
-import com.hrm.markdown.runtime.DirectiveBlockSnapshot
-import com.hrm.markdown.runtime.DirectiveInlineSnapshot
 import com.hrm.markdown.runtime.MarkdownDirectivePlugin
 import com.hrm.markdown.runtime.MarkdownDirectiveRegistry
 import com.hrm.markdown.runtime.MarkdownDirectivePipeline
@@ -55,23 +51,11 @@ object MarkdownHtml {
             softBreak = softBreak,
             escapeHtml = escapeHtml,
             xhtml = xhtml,
-            directiveBlockFallback = { snapshot: HtmlDirectiveBlockSnapshot ->
-                registry.findHtmlDirectiveFallback(snapshot.tagName)?.render(
-                    DirectiveBlockSnapshot(
-                        tagName = snapshot.tagName,
-                        args = snapshot.args,
-                        hasContent = snapshot.hasContent,
-                    )
-                )
+            directiveBlockFallback = { node ->
+                registry.findHtmlDirectiveFallback(node.tagName)?.render(node)
             },
-            directiveInlineFallback = { snapshot: HtmlDirectiveInlineSnapshot ->
-                registry.findHtmlInlineDirectiveFallback(snapshot.tagName)?.render(
-                    DirectiveInlineSnapshot(
-                        tagName = snapshot.tagName,
-                        args = snapshot.args,
-                        alternateText = snapshot.alternateText,
-                    )
-                )
+            directiveInlineFallback = { node ->
+                registry.findHtmlInlineDirectiveFallback(node.tagName)?.render(node)
             }
         )
         return renderer.render(document)

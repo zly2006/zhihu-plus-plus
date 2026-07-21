@@ -95,6 +95,8 @@ internal fun DefaultMarkdownImage(
     data: MarkdownImageData,
     modifier: Modifier = Modifier,
 ) {
+    val theme = LocalMarkdownTheme.current
+
     Box(
         modifier = modifier
             .applyImageSize(data.width, data.height)

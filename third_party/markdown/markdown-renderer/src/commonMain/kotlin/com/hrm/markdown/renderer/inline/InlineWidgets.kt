@@ -19,83 +19,87 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Density
 import com.hrm.codehigh.theme.CodeTheme
 import com.hrm.latex.renderer.measure.LatexMeasurerState
+import com.hrm.markdown.parser.ast.Spoiler
 import com.hrm.markdown.renderer.MarkdownTheme
-import com.hrm.markdown.renderer.internal.core.model.InlineModel
-import com.hrm.markdown.renderer.internal.layout.inline.InlineLayoutRuntime
-import com.hrm.markdown.renderer.internal.layout.inline.inlineLayoutEpoch
 import com.hrm.markdown.runtime.MarkdownDirectiveRegistry
 
 @Composable
 internal fun SpoilerContent(
-    model: InlineModel,
+    node: Spoiler,
     theme: MarkdownTheme,
     hostTextStyle: TextStyle,
+    inlineContents: MutableMap<String, InlineContentEntry>,
     directiveRegistry: MarkdownDirectiveRegistry,
     onLinkClick: ((String) -> Unit)?,
     onFootnoteClick: ((String) -> Unit)?,
-    latexMeasurer: LatexMeasurerState,
-    density: Density,
-    textMeasurer: TextMeasurer,
+    latexMeasurer: LatexMeasurerState?,
+    density: Density?,
+    textMeasurer: TextMeasurer?,
     inlineCodeTheme: CodeTheme?,
 ) {
-    var revealed by remember(model.identity.stableId) { mutableStateOf(false) }
+    var revealed by remember(node) { mutableStateOf(false) }
     val currentOnLinkClick = rememberUpdatedState(onLinkClick)
     val currentOnFootnoteClick = rememberUpdatedState(onFootnoteClick)
-    val stableOnLinkClick: (String) -> Unit = remember {
+    val stableOnLinkClick: ((String) -> Unit)? = remember {
         { url: String ->
             currentOnLinkClick.value?.invoke(url)
+            Unit
         }
     }
-    val stableOnFootnoteClick: (String) -> Unit = remember {
+    val stableOnFootnoteClick: ((String) -> Unit)? = remember {
         { label: String ->
             currentOnFootnoteClick.value?.invoke(label)
+            Unit
         }
     }
-    val inlineLayoutRuntime = remember { InlineLayoutRuntime() }
-    val inlineLayoutEpoch = inlineLayoutEpoch(
-        theme = theme,
-        codeTheme = inlineCodeTheme,
-        directiveRegistry = directiveRegistry,
-        config = null,
-        onLinkClick = stableOnLinkClick,
-        onFootnoteClick = stableOnFootnoteClick,
-        density = density,
-        textMeasurer = textMeasurer,
-        latexMeasurer = latexMeasurer,
-    )
-    val content = inlineLayoutRuntime.renderResult(
-        model = model,
-        style = hostTextStyle,
-        epoch = inlineLayoutEpoch,
-        theme = theme,
-        directiveRegistry = directiveRegistry,
-        onLinkClick = stableOnLinkClick,
-        onFootnoteClick = stableOnFootnoteClick,
-        latexMeasurer = latexMeasurer,
-        density = density,
-        textMeasurer = textMeasurer,
-        codeTheme = inlineCodeTheme,
-    ).annotated
     val annotated = remember(
-        content,
+        node,
         theme,
         revealed,
+        hostTextStyle,
+        directiveRegistry,
+        latexMeasurer,
+        density,
+        textMeasurer,
+        inlineCodeTheme,
     ) {
-        if (revealed) {
-            buildAnnotatedString {
+        buildAnnotatedString {
+            if (revealed) {
                 withStyle(SpanStyle(background = theme.spoilerColor)) {
-                    append(content)
+                    renderInlineChildren(
+                        node.children,
+                        theme,
+                        hostTextStyle,
+                        inlineContents,
+                        directiveRegistry,
+                        stableOnLinkClick,
+                        stableOnFootnoteClick,
+                        latexMeasurer,
+                        density,
+                        textMeasurer,
+                        inlineCodeTheme,
+                    )
                 }
-            }
-        } else {
-            buildAnnotatedString {
+            } else {
                 withStyle(
                     SpanStyle(
                         background = theme.spoilerColor,
                         color = theme.spoilerColor,
                     )
                 ) {
-                    append(content)
+                    renderInlineChildren(
+                        node.children,
+                        theme,
+                        hostTextStyle,
+                        inlineContents,
+                        directiveRegistry,
+                        stableOnLinkClick,
+                        stableOnFootnoteClick,
+                        latexMeasurer,
+                        density,
+                        textMeasurer,
+                        inlineCodeTheme,
+                    )
                 }
             }
         }

@@ -66,6 +66,7 @@ import com.hrm.markdown.parser.ast.Node as MarkdownNode
 
 private var parsingDocument: Document? = null
 private const val ZHIHU_EQUATION_URL_PREFIX = "https://www.zhihu.com/equation?tex="
+private val HTML_ATTRIBUTE_REGEX = Regex("""([:\w-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')""")
 
 fun htmlToMdAst(
     html: String,
@@ -88,6 +89,147 @@ fun htmlToMdAst(
 }
 
 fun markdownToMdAst(markdown: String): Document = MarkdownParser().parse(markdown)
+
+internal fun splitTopLevelHtmlBlocks(html: String): List<String> {
+    if (html.isBlank()) return emptyList()
+
+    val blocks = mutableListOf<String>()
+    var blockStart = 0
+    var depth = 0
+    var index = 0
+    while (index < html.length) {
+        if (html[index] != '<') {
+            index++
+            continue
+        }
+        if (html.startsWith("<!--", index)) {
+            val commentEnd = html.indexOf("-->", index + 4)
+            index = if (commentEnd >= 0) commentEnd + 3 else html.length
+            continue
+        }
+
+        val tagEnd = htmlTagEnd(html, index + 1)
+        if (tagEnd < 0) break
+        val tagBody = html.substring(index + 1, tagEnd).trim()
+        if (tagBody.isEmpty() || tagBody.startsWith('!') || tagBody.startsWith('?')) {
+            index = tagEnd + 1
+            continue
+        }
+
+        val isClosingTag = tagBody.startsWith('/')
+        val tagName = tagBody
+            .removePrefix("/")
+            .takeWhile { it.isLetterOrDigit() || it == ':' || it == '-' }
+            .lowercase()
+        if (tagName.isEmpty()) {
+            index = tagEnd + 1
+            continue
+        }
+
+        if (isClosingTag) {
+            depth = (depth - 1).coerceAtLeast(0)
+            if (depth == 0) {
+                html
+                    .substring(blockStart, tagEnd + 1)
+                    .takeIf { it.isNotBlank() }
+                    ?.let(blocks::add)
+                blockStart = tagEnd + 1
+            }
+        } else if (tagBody.endsWith('/') || tagName in HTML_VOID_TAGS) {
+            if (depth == 0) {
+                html
+                    .substring(blockStart, tagEnd + 1)
+                    .takeIf { it.isNotBlank() }
+                    ?.let(blocks::add)
+                blockStart = tagEnd + 1
+            }
+        } else {
+            depth++
+        }
+        index = tagEnd + 1
+    }
+
+    html
+        .substring(blockStart)
+        .takeIf { it.isNotBlank() }
+        ?.let(blocks::add)
+    return blocks
+}
+
+internal fun combineMdAstDocuments(documents: List<Document>): Document {
+    val combined = Document()
+    documents.forEach { document ->
+        document.children
+            .filterNot { it is FootnoteDefinition }
+            .forEach(combined::appendChild)
+        combined.linkDefinitions.putAll(document.linkDefinitions)
+        combined.footnoteDefinitions.putAll(document.footnoteDefinitions)
+        combined.abbreviationDefinitions.putAll(document.abbreviationDefinitions)
+    }
+    combined.footnoteDefinitions.values.forEach(combined::appendChild)
+    combined.assignStableLineRanges()
+    return combined
+}
+
+internal fun htmlPreviewImageUrls(html: String): List<String> {
+    val imageUrls = mutableListOf<String>()
+    var index = 0
+    while (index < html.length) {
+        val tagStart = html.indexOf('<', index)
+        if (tagStart < 0) break
+        val tagEnd = htmlTagEnd(html, tagStart + 1)
+        if (tagEnd < 0) break
+        val tagBody = html.substring(tagStart + 1, tagEnd).trim()
+        val tagName = tagBody
+            .takeWhile { it.isLetterOrDigit() || it == ':' || it == '-' }
+            .lowercase()
+        if (tagName == "img") {
+            val attributes = HTML_ATTRIBUTE_REGEX
+                .findAll(tagBody)
+                .associate { attribute ->
+                    attribute.groupValues[1].lowercase() to
+                        (attribute.groupValues[2].ifEmpty { attribute.groupValues[3] })
+                }
+            extractImageUrl { name -> attributes[name].orEmpty() }?.let(imageUrls::add)
+        }
+        index = tagEnd + 1
+    }
+    return imageUrls
+        .filterNot { it.startsWith(ZHIHU_EQUATION_URL_PREFIX) || it.startsWith("data") }
+        .distinct()
+}
+
+private fun htmlTagEnd(html: String, contentStart: Int): Int {
+    var quote: Char? = null
+    for (index in contentStart until html.length) {
+        val character = html[index]
+        if (quote != null) {
+            if (character == quote) quote = null
+        } else if (character == '"' || character == '\'') {
+            quote = character
+        } else if (character == '>') {
+            return index
+        }
+    }
+    return -1
+}
+
+private val HTML_VOID_TAGS = setOf(
+    "area",
+    "base",
+    "br",
+    "col",
+    "embed",
+    "hr",
+    "img",
+    "input",
+    "link",
+    "meta",
+    "param",
+    "source",
+    "track",
+    "wbr",
+)
 
 private fun MarkdownNode.assignStableLineRanges(startLine: Int = 0): Int {
     lineRange = LineRange(startLine, startLine)

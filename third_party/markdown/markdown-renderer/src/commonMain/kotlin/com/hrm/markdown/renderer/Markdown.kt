@@ -3,8 +3,6 @@ package com.hrm.markdown.renderer
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
@@ -47,8 +45,10 @@ import com.hrm.markdown.runtime.MarkdownDirectivePipeline
  * @param theme 可选的自定义主题，默认跟随系统日夜间模式
  * @param config 解析配置，控制 Markdown 方言（Flavour）和解析行为，默认使用 [MarkdownConfig.Default]（ExtendedFlavour 全功能）
  * @param scrollState 滚动状态，外部可控制滚动位置
+ * @param enablePagination 是否启用分页加载，适合超长文档（> 500 段落）
  * @param enableScroll 是否启用 Markdown 内部滚动容器
- * @param enableSelection 是否启用文本选择（自研选区层 overlay，支持跨 block 连续选中并复用系统复制菜单；与渲染模式正交，长文档仍走虚拟化渲染）
+ * @param enableSelection 是否启用文本选择。关闭后会在非流式场景自动切换为 LazyColumn 渲染长文档
+ * @param initialBlockCount 分页模式下初始渲染的块数量
  * @param header Markdown 内容前方插槽，会和正文处于同一滚动容器中
  * @param footer Markdown 内容后方插槽，会和正文处于同一滚动容器中
  * @param imageContent 自定义图片渲染组件，null 则使用默认占位渲染
@@ -63,10 +63,11 @@ fun Markdown(
     codeTheme: CodeTheme? = null,
     config: MarkdownConfig = MarkdownConfig.Default,
     scrollState: ScrollState = rememberScrollState(),
-    lazyListState: LazyListState = rememberLazyListState(),
     isStreaming: Boolean = false,
+    enablePagination: Boolean = false,
     enableScroll: Boolean = true,
     enableSelection: Boolean = true,
+    initialBlockCount: Int = 100,
     header: (@Composable () -> Unit)? = null,
     footer: (@Composable () -> Unit)? = null,
     imageContent: MarkdownImageRenderer? = null,
@@ -94,10 +95,11 @@ fun Markdown(
             codeTheme = codeTheme,
             config = config,
             scrollState = scrollState,
-            lazyListState = lazyListState,
             isStreaming = effectiveStreaming,
+            enablePagination = enablePagination,
             enableScroll = enableScroll,
             enableSelection = enableSelection,
+            initialBlockCount = initialBlockCount,
             header = header,
             footer = footer,
             imageContent = imageContent,
@@ -115,8 +117,10 @@ fun Markdown(
  * @param theme 可选的自定义主题，默认跟随系统日夜间模式
  * @param config 解析配置，控制 Markdown 方言（Flavour）和解析行为，默认使用 [MarkdownConfig.Default]（ExtendedFlavour 全功能）
  * @param scrollState 滚动状态，外部可控制滚动位置
+ * @param enablePagination 是否启用分页加载，适合超长文档（> 500 段落）
  * @param enableScroll 是否启用 Markdown 内部滚动容器
- * @param enableSelection 是否启用文本选择（自研选区层 overlay，支持跨 block 连续选中并复用系统复制菜单；与渲染模式正交，长文档仍走虚拟化渲染）
+ * @param enableSelection 是否启用文本选择。关闭后会在非流式场景自动切换为 LazyColumn 渲染长文档
+ * @param initialBlockCount 分页模式下初始渲染的块数量
  * @param header Markdown 内容前方插槽，会和正文处于同一滚动容器中
  * @param footer Markdown 内容后方插槽，会和正文处于同一滚动容器中
  * @param imageContent 自定义图片渲染组件，null 则使用默认占位渲染
@@ -131,10 +135,11 @@ fun Markdown(
     codeTheme: CodeTheme? = null,
     config: MarkdownConfig = MarkdownConfig.Default,
     scrollState: ScrollState = rememberScrollState(),
-    lazyListState: LazyListState = rememberLazyListState(),
     isStreaming: Boolean = false,
+    enablePagination: Boolean = false,
     enableScroll: Boolean = true,
     enableSelection: Boolean = true,
+    initialBlockCount: Int = 100,
     header: (@Composable () -> Unit)? = null,
     footer: (@Composable () -> Unit)? = null,
     imageContent: MarkdownImageRenderer? = null,
@@ -149,10 +154,11 @@ fun Markdown(
         codeTheme = codeTheme,
         config = config,
         scrollState = scrollState,
-        lazyListState = lazyListState,
         isStreaming = isStreaming,
+        enablePagination = enablePagination,
         enableScroll = enableScroll,
         enableSelection = enableSelection,
+        initialBlockCount = initialBlockCount,
         header = header,
         footer = footer,
         imageContent = imageContent,

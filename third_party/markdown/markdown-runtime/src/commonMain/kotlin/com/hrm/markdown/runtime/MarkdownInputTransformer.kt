@@ -8,5 +8,11 @@ package com.hrm.markdown.runtime
 interface MarkdownInputTransformer {
     val id: String
 
+    /**
+     * 预留给未来的增量转换能力。
+     * 当前实现中，只要存在任何 transformer，渲染器就会禁用 streaming fast path。
+     */
+    val supportsStreaming: Boolean get() = false
+
     fun transform(input: String): MarkdownTransformResult
 }

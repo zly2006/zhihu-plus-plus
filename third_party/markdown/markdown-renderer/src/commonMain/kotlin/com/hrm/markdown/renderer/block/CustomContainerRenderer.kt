@@ -18,7 +18,6 @@ import androidx.compose.ui.unit.dp
 import com.hrm.markdown.parser.ast.CustomContainer
 import com.hrm.markdown.renderer.LocalMarkdownTheme
 import com.hrm.markdown.renderer.MarkdownBlockChildren
-import com.hrm.markdown.renderer.internal.core.model.CustomContainerBlockModel
 
 /**
  * 自定义容器渲染器 (::: type ... :::)。
@@ -31,45 +30,10 @@ internal fun CustomContainerRenderer(
     node: CustomContainer,
     modifier: Modifier = Modifier,
 ) {
-    RenderCustomContainerContainer(
-        type = node.type,
-        title = node.title,
-        modifier = modifier,
-    ) {
-        if (node.children.isNotEmpty()) {
-            MarkdownBlockChildren(
-                parent = node,
-                modifier = Modifier.padding(top = if (node.title.isNotEmpty() || node.type.isNotEmpty()) 8.dp else 0.dp),
-            )
-        }
-    }
-}
-
-@Composable
-internal fun RenderCustomContainerBlockModel(
-    model: CustomContainerBlockModel,
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
-) {
-    RenderCustomContainerContainer(
-        type = model.type,
-        title = model.title,
-        modifier = modifier,
-        content = content,
-    )
-}
-
-@Composable
-private fun RenderCustomContainerContainer(
-    type: String,
-    title: String,
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
-) {
     val theme = LocalMarkdownTheme.current
 
     // 尝试匹配 Admonition 样式
-    val admonitionStyle = theme.admonitionStyles[type.uppercase()]
+    val admonitionStyle = theme.admonitionStyles[node.type.uppercase()]
 
     val borderColor = admonitionStyle?.borderColor ?: Color(0xFF8B949E)
     val backgroundColor = admonitionStyle?.backgroundColor ?: Color(0xFFF6F8FA)
@@ -92,8 +56,8 @@ private fun RenderCustomContainerContainer(
             .padding(start = 16.dp, top = 12.dp, end = 12.dp, bottom = 12.dp),
     ) {
         // 标题行（如果有类型名或标题）
-        val displayTitle = title.ifEmpty {
-            type.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+        val displayTitle = node.title.ifEmpty {
+            node.type.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
         }
         if (displayTitle.isNotEmpty()) {
             Row {
@@ -112,6 +76,11 @@ private fun RenderCustomContainerContainer(
         }
 
         // 内容
-        content()
+        if (node.children.isNotEmpty()) {
+            MarkdownBlockChildren(
+                parent = node,
+                modifier = Modifier.padding(top = if (displayTitle.isNotEmpty()) 8.dp else 0.dp),
+            )
+        }
     }
 }

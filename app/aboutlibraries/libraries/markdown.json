@@ -1,9 +1,9 @@
 {
   "uniqueId": "vendored:markdown",
-  "artifactVersion": "0.0.1-alpha.14+issue495",
+  "artifactVersion": "1.2.9",
   "name": "Markdown",
-  "description": "Vendored Kotlin Multiplatform Markdown parser, runtime, and Compose renderer used by Zhihu++.",
-  "website": "https://github.com/zly2006/Markdown",
+  "description": "Vendored huarangmeng/Markdown 1.2.9 parser, runtime, and Compose renderer. Zhihu++ implements issue #495 incremental loading in its integration layer.",
+  "website": "https://github.com/huarangmeng/Markdown",
   "developers": [
     {
       "name": "huarangmeng",
@@ -15,9 +15,9 @@
     }
   ],
   "scm": {
-    "connection": "scm:git:https://github.com/zly2006/Markdown.git",
-    "developerConnection": "scm:git:ssh://git@github.com/zly2006/Markdown.git",
-    "url": "https://github.com/zly2006/Markdown"
+    "connection": "scm:git:https://github.com/huarangmeng/Markdown.git",
+    "developerConnection": "scm:git:ssh://git@github.com/huarangmeng/Markdown.git",
+    "url": "https://github.com/huarangmeng/Markdown"
   },
   "licenses": [
     "Markdown-MIT"
