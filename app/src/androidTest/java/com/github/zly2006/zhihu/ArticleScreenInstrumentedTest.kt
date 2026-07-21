@@ -20,7 +20,10 @@ package com.github.zly2006.zhihu
 import android.content.Context
 import android.os.SystemClock
 import android.util.Log
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.MutableState
@@ -40,6 +43,7 @@ import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.github.zly2006.zhihu.markdown.RenderMarkdownText
 import com.github.zly2006.zhihu.navigation.AnswerNavigator
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
@@ -173,6 +177,42 @@ class ArticleScreenInstrumentedTest {
         }
 
         composeRule.onNodeWithText("IP属地：上海").assertExists()
+    }
+
+    @Test
+    fun footnoteReferenceAndBackLinkNavigateInsideOuterArticleScroll() {
+        val markdown = buildString {
+            appendLine("正文开头脚注[^note]")
+            appendLine()
+            repeat(60) { index ->
+                appendLine("填充段落 $index：用于确保脚注定义位于当前屏幕之外。")
+                appendLine()
+            }
+            appendLine("[^note]: 脚注内容")
+        }
+
+        composeRule.setScreenContent {
+            val scrollState = rememberScrollState()
+            Column(
+                modifier = androidx.compose.ui.Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scrollState),
+            ) {
+                RenderMarkdownText(
+                    markdown = markdown,
+                    scrollState = scrollState,
+                    enableScroll = false,
+                )
+            }
+        }
+
+        composeRule
+            .onAllNodesWithText("[1]", useUnmergedTree = true)[0]
+            .assertIsDisplayed()
+            .performClick()
+        composeRule.onNodeWithText("脚注内容").assertIsDisplayed()
+        composeRule.onNodeWithText("↩").assertIsDisplayed().performClick()
+        composeRule.onNodeWithText("正文开头脚注", substring = true).assertIsDisplayed()
     }
 
     @Test

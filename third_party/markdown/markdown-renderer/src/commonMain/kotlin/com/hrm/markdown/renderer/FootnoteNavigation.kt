@@ -12,6 +12,7 @@ internal sealed interface FootnoteReturnPosition {
 @Stable
 internal class FootnoteNavigationState {
     private val definitionRequesters = mutableMapOf<String, BringIntoViewRequester>()
+    private val referenceRequesters = mutableMapOf<String, MutableList<BringIntoViewRequester>>()
     private val returnPositions = mutableStateMapOf<String, FootnoteReturnPosition>()
 
     fun registerDefinition(label: String, requester: BringIntoViewRequester) {
@@ -25,6 +26,18 @@ internal class FootnoteNavigationState {
     }
 
     fun hasDefinition(label: String): Boolean = definitionRequesters.containsKey(label)
+
+    fun registerReference(label: String, requester: BringIntoViewRequester) {
+        referenceRequesters.getOrPut(label) { mutableListOf() }.add(requester)
+    }
+
+    fun unregisterReference(label: String, requester: BringIntoViewRequester) {
+        val requesters = referenceRequesters[label] ?: return
+        requesters.removeAll { it === requester }
+        if (requesters.isEmpty()) {
+            referenceRequesters.remove(label)
+        }
+    }
 
     fun rememberReturnPosition(label: String, scrollValue: Int) {
         returnPositions[label] = FootnoteReturnPosition.Scroll(scrollValue)
@@ -40,6 +53,12 @@ internal class FootnoteNavigationState {
 
     suspend fun bringDefinitionIntoView(label: String): Boolean {
         val requester = definitionRequesters[label] ?: return false
+        requester.bringIntoView()
+        return true
+    }
+
+    suspend fun bringReferenceIntoView(label: String): Boolean {
+        val requester = referenceRequesters[label]?.firstOrNull() ?: return false
         requester.bringIntoView()
         return true
     }

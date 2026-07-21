@@ -17,7 +17,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -130,7 +129,6 @@ internal fun FootnoteDefinitionRenderer(
         ) {
             Text(
                 text = "[${node.index}]",
-                modifier = Modifier.alignByBaseline(),
                 style = theme.bodyStyle.copy(
                     fontWeight = FontWeight.SemiBold,
                     fontSize = theme.footnoteStyle.fontSize,
@@ -139,7 +137,6 @@ internal fun FootnoteDefinitionRenderer(
             Text(
                 text = "↩",
                 modifier = Modifier
-                    .alignByBaseline()
                     .then(
                         if (onFootnoteBackClick != null) {
                             Modifier.clickable { onFootnoteBackClick(node.label) }
@@ -152,21 +149,12 @@ internal fun FootnoteDefinitionRenderer(
                     fontSize = theme.footnoteStyle.fontSize,
                 ),
             )
-            if (firstBlock != null) {
-                key(firstBlock::class, firstBlock.stableKey) {
-                    FootnoteContentBlock(
-                        node = firstBlock,
-                        modifier = Modifier
-                            .weight(1f)
-                            .alignBy(FirstBaseline),
-                    )
+            Box(modifier = Modifier.weight(1f)) {
+                if (firstBlock != null) {
+                    key(firstBlock::class, firstBlock.stableKey) {
+                        FootnoteContentBlock(firstBlock)
+                    }
                 }
-            } else {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .alignBy(FirstBaseline)
-                )
             }
         }
         if (remainingBlocks.isNotEmpty()) {
@@ -185,16 +173,13 @@ internal fun FootnoteDefinitionRenderer(
 }
 
 @Composable
-private fun FootnoteContentBlock(
-    node: Node,
-    modifier: Modifier = Modifier,
-) {
+private fun FootnoteContentBlock(node: Node) {
     when (node) {
-        is Paragraph -> ParagraphRenderer(node, modifier.fillMaxWidth())
+        is Paragraph -> ParagraphRenderer(node, Modifier.fillMaxWidth())
         else -> BlockRenderer(
             node = node,
             renderRevision = blockRenderRevision(node),
-            modifier = modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }

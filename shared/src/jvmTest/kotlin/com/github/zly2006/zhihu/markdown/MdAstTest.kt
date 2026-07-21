@@ -311,6 +311,22 @@ class MdAstTest {
     }
 
     @Test
+    fun markdown_footnote_definition_should_keep_its_content_as_blocks() {
+        val document = markdownToMdAst(
+            """
+            [^note]: Footnote content.
+
+            Text with [^note].
+            """.trimIndent(),
+        )
+        val footnote = document.children.filterIsInstance<FootnoteDefinition>().single()
+        val paragraph = footnote.children.single() as Paragraph
+
+        assertEquals("Footnote content.", (paragraph.children.single() as Text).literal)
+        assertEquals(1, document.allNodes().count { it is FootnoteReference })
+    }
+
+    @Test
     fun extracted_answer_content_should_keep_equation_as_math_not_figure() {
         val htmlFile = File(
             requireNotNull(javaClass.classLoader?.getResource("zhihu_answer_2035661632110585441_content.html")).toURI(),

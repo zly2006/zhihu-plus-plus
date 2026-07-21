@@ -91,7 +91,10 @@ internal fun rememberMarkdownNavigationHandlers(
                         is FootnoteReturnPosition.LazyList ->
                             currentLazyListState.value.animateScrollToItem(returnPosition.index, returnPosition.offset)
                     }
+                    return@launch
                 }
+
+                footnoteNavigationState.bringReferenceIntoView(label)
             }
             Unit
         }

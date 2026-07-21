@@ -1,7 +1,14 @@
 package com.hrm.markdown.renderer.inline
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
@@ -10,6 +17,8 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
@@ -56,6 +65,7 @@ import com.hrm.markdown.parser.ast.Superscript
 import com.hrm.markdown.parser.ast.Text
 import com.hrm.markdown.parser.ast.WikiLink
 import com.hrm.markdown.renderer.LocalCodeHighlightTheme
+import com.hrm.markdown.renderer.LocalFootnoteNavigationState
 import com.hrm.markdown.renderer.LocalMarkdownDirectiveRegistry
 import com.hrm.markdown.renderer.LocalMarkdownTheme
 import com.hrm.markdown.renderer.LocalOnFootnoteClick
@@ -336,21 +346,52 @@ internal fun AnnotatedString.Builder.renderInlineNode(
 
         is FootnoteReference -> {
             val referenceText = "[${node.index}]"
-            val linkAnnotation = LinkAnnotation.Clickable(
-                tag = "footnote",
-                styles = TextLinkStyles(
-                    style = SpanStyle(
-                        color = theme.linkColor,
-                        fontSize = theme.footnoteStyle.fontSize,
-                        baselineShift = BaselineShift.Superscript,
+            if (density != null && textMeasurer != null) {
+                val referenceStyle = hostTextStyle.copy(
+                    color = theme.linkColor,
+                    fontSize = theme.footnoteStyle.fontSize,
+                )
+                val size = textMeasurer.measure(referenceText, style = referenceStyle).size
+                val id = "footnote_ref_${node.hashCode()}"
+                appendInlinePlaceholder(id)
+                val inlineTextContent = InlineTextContent(
+                    placeholder = Placeholder(
+                        // PR #15 在 Android AVD 上会因像素到 sp 的舍入误差裁掉脚注末尾；仅补 1px。
+                        // https://github.com/huarangmeng/Markdown/pull/15#issuecomment-4251156556
+                        width = with(density) { (size.width + 1).toSp() },
+                        height = hostTextStyle.lineHeight,
+                        placeholderVerticalAlign = PlaceholderVerticalAlign.TextTop,
                     ),
-                ),
-                linkInteractionListener = {
-                    onFootnoteClick?.invoke(node.label)
-                },
-            )
-            withLink(linkAnnotation) {
-                append(referenceText)
+                ) {
+                    FootnoteReferenceContent(
+                        label = node.label,
+                        text = referenceText,
+                        hostTextStyle = hostTextStyle,
+                        theme = theme,
+                        onFootnoteClick = onFootnoteClick,
+                    )
+                }
+                inlineContents[id] = InlineContentEntry(
+                    alternateText = referenceText,
+                    inlineTextContent = inlineTextContent,
+                )
+            } else {
+                val linkAnnotation = LinkAnnotation.Clickable(
+                    tag = "footnote",
+                    styles = TextLinkStyles(
+                        style = SpanStyle(
+                            color = theme.linkColor,
+                            fontSize = theme.footnoteStyle.fontSize,
+                            baselineShift = BaselineShift.Superscript,
+                        ),
+                    ),
+                    linkInteractionListener = {
+                        onFootnoteClick?.invoke(node.label)
+                    },
+                )
+                withLink(linkAnnotation) {
+                    append(referenceText)
+                }
             }
         }
 
@@ -594,4 +635,41 @@ internal fun AnnotatedString.Builder.renderInlineNode(
             }
         }
     }
+}
+
+@Composable
+private fun FootnoteReferenceContent(
+    label: String,
+    text: String,
+    hostTextStyle: TextStyle,
+    theme: MarkdownTheme,
+    onFootnoteClick: ((String) -> Unit)?,
+) {
+    val footnoteNavigationState = LocalFootnoteNavigationState.current
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+
+    DisposableEffect(footnoteNavigationState, label, bringIntoViewRequester) {
+        footnoteNavigationState?.registerReference(label, bringIntoViewRequester)
+        onDispose {
+            footnoteNavigationState?.unregisterReference(label, bringIntoViewRequester)
+        }
+    }
+
+    BasicText(
+        text = buildAnnotatedString {
+            withStyle(
+                SpanStyle(
+                    color = theme.linkColor,
+                    fontSize = theme.footnoteStyle.fontSize,
+                    baselineShift = BaselineShift.Superscript,
+                ),
+            ) {
+                append(text)
+            }
+        },
+        modifier = Modifier
+            .bringIntoViewRequester(bringIntoViewRequester)
+            .clickable { onFootnoteClick?.invoke(label) },
+        style = hostTextStyle,
+    )
 }
