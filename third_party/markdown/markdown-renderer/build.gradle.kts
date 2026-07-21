@@ -47,9 +47,9 @@ kotlin {
             implementation("org.jetbrains.compose.ui:ui:1.11.1")
             implementation("org.jetbrains.compose.components:components-resources:1.11.1")
 
-            implementation("io.github.zly2006:latex-base:1.4.6-zly")
-            implementation("io.github.zly2006:latex-parser:1.4.6-zly")
-            implementation("io.github.zly2006:latex-renderer:1.4.6-zly")
+            implementation("io.github.zly2006:latex-base:0.0.1-alpha1")
+            implementation("io.github.zly2006:latex-parser:0.0.1-alpha1")
+            implementation("io.github.zly2006:latex-renderer:0.0.1-alpha1")
             implementation("io.github.huarangmeng:codehighlight-parser:1.1.1")
             implementation("io.github.huarangmeng:codehighlight-render:1.1.1")
 
