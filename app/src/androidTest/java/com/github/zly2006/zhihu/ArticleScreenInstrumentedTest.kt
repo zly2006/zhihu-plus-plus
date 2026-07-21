@@ -18,19 +18,32 @@
 package com.github.zly2006.zhihu
 
 import android.content.Context
+import android.os.SystemClock
+import android.util.Log
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.MutableState
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import com.github.zly2006.zhihu.markdown.RenderMarkdownText
 import com.github.zly2006.zhihu.navigation.AnswerNavigator
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
@@ -99,6 +112,175 @@ class ArticleScreenInstrumentedTest {
         composeRule.onNodeWithText("离线作者").assertIsDisplayed()
         composeRule.onNodeWithText("IP属地：上海").assertExists()
         composeRule.onNodeWithText("第 1 段离线正文", substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun issue495FirstFrameBenchmarkIncludesHtmlParsingLayoutAndDraw() {
+        val warmupViewModel = seededAnswerViewModel(ANSWER)
+        composeRule.activity.runOnUiThread {
+            warmupViewModel.content =
+                """<p>预热正文 <img src="https://www.zhihu.com/equation?tex=x%5E2" eeimg="1" /></p>"""
+        }
+        composeRule.setScreenContent {
+            Scaffold(
+                modifier = androidx.compose.ui.Modifier
+                    .fillMaxSize(),
+            ) { _ ->
+                ArticleScreen(
+                    article = ANSWER,
+                    viewModel = warmupViewModel,
+                )
+            }
+        }
+        composeRule.onNodeWithText("预热正文", substring = true).assertIsDisplayed()
+        composeRule.onRoot().captureToImage()
+
+        val fullFixtureWarmupSamples = mutableListOf<Long>()
+        val samples = buildList {
+            repeat(7) { iteration ->
+                val viewModel = issue495ViewModel()
+                composeRule.activity.runOnUiThread {
+                    viewModel.content += "<!-- benchmark-run-$iteration -->"
+                }
+                val startedAt = SystemClock.elapsedRealtime()
+                composeRule.setScreenContent {
+                    Scaffold(
+                        modifier = androidx.compose.ui.Modifier
+                            .fillMaxSize(),
+                    ) { _ ->
+                        ArticleScreen(
+                            article = ANSWER,
+                            viewModel = viewModel,
+                        )
+                    }
+                }
+                composeRule.onNodeWithText("更新：", substring = true).assertIsDisplayed()
+                composeRule.onRoot().captureToImage()
+                val elapsedMillis = SystemClock.elapsedRealtime() - startedAt
+                if (iteration < 2) {
+                    fullFixtureWarmupSamples += elapsedMillis
+                } else {
+                    add(elapsedMillis)
+                }
+            }
+        }
+        val medianMillis = samples.sorted()[samples.size / 2]
+        Log.i(
+            ISSUE_495_BENCHMARK_TAG,
+            "fullFixtureWarmupSamplesMs=$fullFixtureWarmupSamples firstFrameSamplesMs=$samples " +
+                "medianMs=$medianMillis htmlChars=36460",
+        )
+        assertTrue(
+            "Issue #495 median first frame took ${medianMillis}ms; benchmark includes HTML parsing, Compose layout, and draw",
+            medianMillis < ISSUE_495_FIRST_FRAME_LIMIT_MS,
+        )
+    }
+
+    @Test
+    fun issue495MaterializesEstimatedOffscreenBlocksWhenScrolledIntoView() {
+        val viewModel = issue495ViewModel()
+
+        composeRule.setScreenContent {
+            Scaffold(
+                modifier = androidx.compose.ui.Modifier
+                    .fillMaxSize(),
+            ) { _ ->
+                ArticleScreen(
+                    article = ANSWER,
+                    viewModel = viewModel,
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("更新：", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithText("再减去", substring = true).assertDoesNotExist()
+        val scrollContainer = composeRule.onNode(
+            SemanticsMatcher("has vertical scroll axis") { node ->
+                node.config.contains(SemanticsProperties.VerticalScrollAxisRange)
+            },
+        )
+        val initialMaxScroll = scrollContainer
+            .fetchSemanticsNode()
+            .config[SemanticsProperties.VerticalScrollAxisRange]
+            .maxValue()
+        var remainingScrolls = 30
+        while (
+            remainingScrolls-- > 0 &&
+            composeRule.onAllNodesWithText("再减去", substring = true).fetchSemanticsNodes().isEmpty()
+        ) {
+            scrollContainer.performSemanticsAction(SemanticsActions.ScrollBy) { scrollBy ->
+                scrollBy(0f, 4_000f)
+            }
+            composeRule.waitForIdle()
+        }
+
+        composeRule.onNodeWithText("再减去", substring = true).assertExists()
+        composeRule.onNodeWithText("更新：", substring = true).assertDoesNotExist()
+        composeRule.onNodeWithText("IP属地：上海").assertExists()
+
+        var scrollToEndAttempts = 60
+        while (scrollToEndAttempts-- > 0) {
+            val range = scrollContainer
+                .fetchSemanticsNode()
+                .config[SemanticsProperties.VerticalScrollAxisRange]
+            if (range.maxValue() - range.value() <= 1f) break
+            scrollContainer.performSemanticsAction(SemanticsActions.ScrollBy) { scrollBy ->
+                scrollBy(0f, 4_000f)
+            }
+            composeRule.waitForIdle()
+        }
+        val materializedMaxScroll = scrollContainer
+            .fetchSemanticsNode()
+            .config[SemanticsProperties.VerticalScrollAxisRange]
+            .maxValue()
+        assertTrue("The materialized document must remain scrollable", materializedMaxScroll > 0f)
+        val estimateRatio = initialMaxScroll / materializedMaxScroll
+        Log.i(
+            ISSUE_495_BENCHMARK_TAG,
+            "estimatedMaxScroll=$initialMaxScroll materializedMaxScroll=$materializedMaxScroll " +
+                "ratio=$estimateRatio",
+        )
+        assertTrue(
+            "Initial estimated scroll range should stay within 25% of the fully materialized range; " +
+                "estimated=$initialMaxScroll materialized=$materializedMaxScroll",
+            estimateRatio in 0.75f..1.25f,
+        )
+    }
+
+    @Test
+    fun footnoteReferenceAndBackLinkNavigateInsideOuterArticleScroll() {
+        val markdown = buildString {
+            appendLine("正文开头脚注[^note]")
+            appendLine()
+            repeat(60) { index ->
+                appendLine("填充段落 $index：用于确保脚注定义位于当前屏幕之外。")
+                appendLine()
+            }
+            appendLine("[^note]: 脚注内容")
+        }
+
+        composeRule.setScreenContent {
+            val scrollState = rememberScrollState()
+            Column(
+                modifier = androidx.compose.ui.Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scrollState),
+            ) {
+                RenderMarkdownText(
+                    markdown = markdown,
+                    scrollState = scrollState,
+                    enableScroll = false,
+                )
+            }
+        }
+
+        composeRule
+            .onAllNodesWithText("[1]", useUnmergedTree = true)[0]
+            .assertIsDisplayed()
+            .performClick()
+        composeRule.onNodeWithText("脚注内容").assertIsDisplayed()
+        composeRule.onNodeWithText("↩").assertIsDisplayed().performClick()
+        composeRule.onNodeWithText("正文开头脚注", substring = true).assertIsDisplayed()
     }
 
     @Test
@@ -265,6 +447,21 @@ class ArticleScreenInstrumentedTest {
         composeRule.waitForIdle()
     }
 
+    private fun issue495ViewModel(): ArticleViewModel {
+        val viewModel = seededAnswerViewModel(ANSWER)
+        val html = InstrumentationRegistry
+            .getInstrumentation()
+            .context
+            .assets
+            .open("issue-495-answer.html")
+            .bufferedReader()
+            .use { it.readText() }
+        composeRule.activity.runOnUiThread {
+            viewModel.content = html
+        }
+        return viewModel
+    }
+
     private fun seededAnswerViewModel(article: Article): ArticleViewModel {
         val viewModel = ArticleViewModel(
             article = article,
@@ -315,6 +512,9 @@ class ArticleScreenInstrumentedTest {
     }
 
     private companion object {
+        const val ISSUE_495_BENCHMARK_TAG = "Issue495Benchmark"
+        const val ISSUE_495_FIRST_FRAME_LIMIT_MS = 5_000L
+
         val ARTICLE = Article(
             type = ArticleType.Article,
             id = 777L,

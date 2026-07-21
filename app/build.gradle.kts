@@ -25,6 +25,12 @@ ktlint {
     }
 }
 
+aboutLibraries {
+    collect {
+        configPath = file("aboutlibraries")
+    }
+}
+
 android {
     namespace = "com.github.zly2006.zhihu"
     compileSdk = 37
@@ -182,8 +188,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.8.0")
     implementation("androidx.browser:browser:1.10.0")
 
-    implementation("io.github.zly2006:markdown-parser-android:0.0.1-alpha.11")
-    implementation("io.github.zly2006:markdown-renderer-android:0.0.1-alpha.11")
+    implementation(project(":markdown-parser"))
+    implementation(project(":markdown-renderer"))
     implementation("io.github.zly2006:latex-renderer-android:1.4.6-zly")
 
     implementation("io.coil-kt.coil3:coil-compose:$coil")

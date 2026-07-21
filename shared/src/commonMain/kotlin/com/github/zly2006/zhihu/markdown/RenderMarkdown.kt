@@ -244,6 +244,7 @@ fun RenderMarkdown(
     scrollState: ScrollState = rememberScrollState(),
     selectable: Boolean = true,
     enableScroll: Boolean = true,
+    deferOffscreenBlocks: Boolean = true,
     header: (@Composable () -> Unit)? = null,
     footer: (@Composable () -> Unit)? = null,
 ) {
@@ -254,6 +255,7 @@ fun RenderMarkdown(
         scrollState = scrollState,
         selectable = selectable,
         enableScroll = enableScroll,
+        deferOffscreenBlocks = deferOffscreenBlocks,
         header = header,
         footer = footer,
     )
@@ -266,6 +268,7 @@ fun RenderMarkdownText(
     scrollState: ScrollState = rememberScrollState(),
     selectable: Boolean = true,
     enableScroll: Boolean = true,
+    deferOffscreenBlocks: Boolean = true,
     header: (@Composable () -> Unit)? = null,
     footer: (@Composable () -> Unit)? = null,
 ) {
@@ -276,6 +279,7 @@ fun RenderMarkdownText(
         scrollState = scrollState,
         selectable = selectable,
         enableScroll = enableScroll,
+        deferOffscreenBlocks = deferOffscreenBlocks,
         header = header,
         footer = footer,
     )
@@ -288,10 +292,11 @@ private fun RenderMarkdownDocument(
     scrollState: ScrollState,
     selectable: Boolean,
     enableScroll: Boolean,
+    deferOffscreenBlocks: Boolean,
     header: (@Composable () -> Unit)?,
     footer: (@Composable () -> Unit)?,
 ) {
-    val imageUrls = remember(document) { document.previewImageUrls() }
+    val previewImageUrls = remember(document) { document.previewImageUrls() }
     val navigator = LocalNavigator.current
     val runtime = rememberMarkdownRuntime()
     val openExternalUrl = rememberExternalUrlOpener()
@@ -326,12 +331,13 @@ private fun RenderMarkdownDocument(
                         RenderImage(
                             data = data,
                             modifier = imageModifier,
-                            imageUrls = imageUrls,
+                            imageUrls = previewImageUrls,
                         )
                     },
                     scrollState = scrollState,
                     enableScroll = enableScroll,
                     enableSelection = selectable,
+                    deferOffscreenBlocks = deferOffscreenBlocks,
                     onLinkClick = { url ->
                         resolveContent(url)?.let { navigator.onNavigate(it) }
                             ?: openExternalUrl(url)

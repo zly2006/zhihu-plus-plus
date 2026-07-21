@@ -1,0 +1,25 @@
+{
+  "uniqueId": "vendored:markdown",
+  "artifactVersion": "1.2.9",
+  "name": "Markdown",
+  "description": "Vendored huarangmeng/Markdown 1.2.9 parser, runtime, and Compose renderer. Zhihu++ implements issue #495 incremental loading in its integration layer.",
+  "website": "https://github.com/huarangmeng/Markdown",
+  "developers": [
+    {
+      "name": "huarangmeng",
+      "organisationUrl": "https://github.com/huarangmeng"
+    },
+    {
+      "name": "zly2006",
+      "organisationUrl": "https://github.com/zly2006"
+    }
+  ],
+  "scm": {
+    "connection": "scm:git:https://github.com/huarangmeng/Markdown.git",
+    "developerConnection": "scm:git:ssh://git@github.com/huarangmeng/Markdown.git",
+    "url": "https://github.com/huarangmeng/Markdown"
+  },
+  "licenses": [
+    "Markdown-MIT"
+  ]
+}

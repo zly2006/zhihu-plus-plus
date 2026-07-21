@@ -19,6 +19,8 @@ package com.github.zly2006.zhihu.markdown
 
 import com.hrm.markdown.parser.ast.ContainerNode
 import com.hrm.markdown.parser.ast.Figure
+import com.hrm.markdown.parser.ast.FootnoteDefinition
+import com.hrm.markdown.parser.ast.FootnoteReference
 import com.hrm.markdown.parser.ast.InlineMath
 import com.hrm.markdown.parser.ast.ListBlock
 import com.hrm.markdown.parser.ast.ListItem
@@ -213,6 +215,33 @@ class MdAstTest {
             ),
             document.previewImageUrls(),
         )
+    }
+
+    @Test
+    fun issue_495_fixture_should_build_complete_ast_before_viewport_layout() {
+        val html = File("../app/src/androidTest/assets/issue-495-answer.html").readText()
+        val document = htmlToMdAst(html)
+        val nodes = document.allNodes()
+
+        assertTrue(document.children.size > 100)
+        assertEquals(406, nodes.size)
+        assertEquals(148, nodes.count { it is MathBlock || it is InlineMath })
+    }
+
+    @Test
+    fun markdown_footnote_definition_should_keep_its_content_as_blocks() {
+        val document = markdownToMdAst(
+            """
+            [^note]: Footnote content.
+
+            Text with [^note].
+            """.trimIndent(),
+        )
+        val footnote = document.children.filterIsInstance<FootnoteDefinition>().single()
+        val paragraph = footnote.children.single() as Paragraph
+
+        assertEquals("Footnote content.", (paragraph.children.single() as Text).literal)
+        assertEquals(1, document.allNodes().count { it is FootnoteReference })
     }
 
     @Test
