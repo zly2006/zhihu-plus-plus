@@ -536,12 +536,6 @@ fun FollowDynamicScreen(
                     item = item,
                     modifier = Modifier.testTag("follow_dynamic_item_${item.stableKey}"),
                     showSourceLabel = true,
-                    onLike = {
-                        userMessages.showShortMessage("收到喜欢，功能正在优化")
-                    },
-                    onDislike = {
-                        userMessages.showShortMessage("收到反馈，功能正在优化")
-                    },
                     onBlockUser = { feedItem ->
                         feedBlockActions.handleBlockUser(viewModel, feedItem) { authorInfo ->
                             userToBlock = authorInfo

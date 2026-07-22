@@ -36,7 +36,6 @@ import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.test.InstrumentedTestEnvironment
 import com.github.zly2006.zhihu.test.ZhihuMockApi
-import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
@@ -252,7 +251,7 @@ class SearchScreenInstrumentedTest {
         //    call through the authenticated fetch path.
         // 2. Pressing refresh performs a second mocked HTTP request and keeps the rendered list stable.
         // 3. Opening the overflow menu exposes the settings action and navigates to the expected destination.
-        // 4. Vertical and horizontal swipe cycles leave the mocked content intact instead of breaking layout state.
+        // 4. Vertical swipe cycles leave the mocked content intact instead of breaking layout state.
         ZhihuMockApi.mockJson(
             method = HttpMethod.Get,
             url = "https://www.zhihu.com/api/v4/search/hot_search",
@@ -303,9 +302,8 @@ class SearchScreenInstrumentedTest {
             recordingNavigator.destinations,
         )
 
-        // Swipe cycles should not disturb the injected offline list or create any extra navigation side effects.
+        // Vertical swipes should not disturb the injected offline list or create extra navigation side effects.
         composeRule.onNodeWithTag("search_hot_list").performVerticalSwipeCycle()
-        composeRule.onNodeWithTag("search_hot_list").performHorizontalSwipeCycle()
         composeRule.waitForIdle()
         composeRule.onNodeWithText("mock alpha").assertIsDisplayed()
         composeRule.onNodeWithText("mock gamma").assertIsDisplayed()

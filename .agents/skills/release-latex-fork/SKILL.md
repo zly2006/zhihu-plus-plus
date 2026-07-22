@@ -45,6 +45,13 @@ Optional proxy for Sonatype and repo1 access:
 ## Guardrails
 
 - Publish under `io.github.zly2006`, never `io.github.huarangmeng`.
+- Do not delegate passive Maven Central publication waits unless the available
+  subagent interface can explicitly select the user-approved low-cost model and
+  reasoning level. If model selection is unavailable, state that limitation and
+  keep polling in the primary agent; never assume the inherited/default model is
+  cheap. This still applies when the user previously asked to delegate waiting:
+  disclose the unavailable cost control before spawning instead of silently
+  accepting an unknown-cost worker.
 - `Original version` means the upstream `huarangmeng/latex` tag. `Fork version`
   means the `0.0.1-alphaN` version published by zly2006.
 - Never use destructive git commands on a dirty tree.

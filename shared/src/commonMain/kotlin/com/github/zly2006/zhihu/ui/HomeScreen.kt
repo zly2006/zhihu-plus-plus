@@ -616,22 +616,6 @@ fun HomeScreen(
                             is Feed.AnswerTarget -> target.thumbnail
                             else -> null
                         },
-                        onLike = {
-                            if (localHomeViewModel != null && it.localContentId != null) {
-                                localHomeViewModel.onLocalItemFeedback(it, 1.0)
-                                userMessages.showShortMessage("已记录喜欢，本地推荐会逐步学习")
-                            } else {
-                                userMessages.showShortMessage("收到喜欢，功能正在优化")
-                            }
-                        },
-                        onDislike = {
-                            if (localHomeViewModel != null && it.localContentId != null) {
-                                localHomeViewModel.onLocalItemFeedback(it, -1.0)
-                                userMessages.showShortMessage("已降低这类本地推荐的优先级")
-                            } else {
-                                userMessages.showShortMessage("收到反馈，功能正在优化")
-                            }
-                        },
                         onBlockUser = { feedItem ->
                             feedBlockActions.handleBlockUser(viewModel, feedItem) { authorInfo ->
                                 userToBlock = authorInfo

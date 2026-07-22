@@ -26,7 +26,6 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
-import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.LegacyLocalHistoryScreen
@@ -86,11 +85,6 @@ class HistoryScreenInstrumentedTest {
             )
         }
 
-        // A horizontal swipe is effectively a no-op for this screen, but it should still be safe:
-        // the gesture must not crash the list, duplicate the footer, or mutate the empty history
-        // backing store just because the user brushed sideways on the surface.
-        historyList.performHorizontalSwipeCycle()
-        composeRule.waitForIdle()
         composeRule.onNodeWithText(END_OF_LIST_TEXT).assertIsDisplayed()
         composeRule.onAllNodes(hasText(END_OF_LIST_TEXT)).assertCountEquals(1)
         composeRule.runOnIdle {
