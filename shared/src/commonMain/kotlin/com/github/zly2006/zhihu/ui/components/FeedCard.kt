@@ -194,7 +194,10 @@ fun FeedCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { onClick(item) }
-                    .padding(horizontal = horizontalPadding, vertical = 12.dp),
+                    .pointerInput(Unit) {
+                        // Divider rows have no swipe action, but must not turn horizontal drags into clicks.
+                        detectHorizontalDragGestures { _, _ -> }
+                    }.padding(horizontal = horizontalPadding, vertical = 12.dp),
             ) {
                 FeedCardContent(
                     item = item,
