@@ -84,7 +84,7 @@ class LatexEscapedCharactersInstrumentedTest {
                         style = MaterialTheme.typography.headlineSmall,
                     )
                     Text(
-                        text = "io.github.zly2006 · 0.0.1-alpha1",
+                        text = "io.github.zly2006 · 0.0.1-alpha2",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodyMedium,
                     )
@@ -116,8 +116,74 @@ class LatexEscapedCharactersInstrumentedTest {
             }
         }
 
+        captureScreenshot(
+            tag = "latex_compatibility_screenshot",
+            filename = "latex-escaped-characters.png",
+        )
+    }
+
+    @Test
+    fun rendersAdjacentUnbracedScriptsAsSeparateTerms() {
+        val latex = "a_ib_jx^{i+j}"
+
+        composeRule.setScreenContent {
+            Surface(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .testTag("latex_unbraced_scripts_screenshot"),
+                color = MaterialTheme.colorScheme.background,
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(28.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp),
+                ) {
+                    Text(
+                        text = "无花括号上下标回归验证",
+                        style = MaterialTheme.typography.headlineSmall,
+                    )
+                    Text(
+                        text = "io.github.zly2006 · 0.0.1-alpha2",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text(text = "输入", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        text = latex,
+                        fontFamily = FontFamily.Monospace,
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Text(
+                        text = "a、b、x 应为三个独立底数",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                            .padding(horizontal = 24.dp, vertical = 32.dp),
+                    ) {
+                        Latex(
+                            latex = latex,
+                            modifier = Modifier.fillMaxWidth(),
+                            config = LatexConfig(fontSize = 40.sp),
+                        )
+                    }
+                }
+            }
+        }
+
+        captureScreenshot(
+            tag = "latex_unbraced_scripts_screenshot",
+            filename = "latex-unbraced-scripts.png",
+        )
+    }
+
+    private fun captureScreenshot(tag: String, filename: String) {
         val screenshotNode = composeRule
-            .onNodeWithTag("latex_compatibility_screenshot")
+            .onNodeWithTag(tag)
             .assertIsDisplayed()
         composeRule.waitForIdle()
 
@@ -125,7 +191,7 @@ class LatexEscapedCharactersInstrumentedTest {
             .getInstrumentation()
             .targetContext
             .getExternalFilesDir(null)
-        val screenshot = File(outputDir, "latex-escaped-characters.png")
+        val screenshot = File(outputDir, filename)
         val bitmap = screenshotNode.captureToImage().asAndroidBitmap()
         FileOutputStream(screenshot).use { stream ->
             bitmap.compress(

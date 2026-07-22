@@ -190,7 +190,7 @@ dependencies {
 
     implementation(project(":markdown-parser"))
     implementation(project(":markdown-renderer"))
-    implementation("io.github.zly2006:latex-renderer-android:0.0.1-alpha1")
+    implementation("io.github.zly2006:latex-renderer-android:0.0.1-alpha2")
 
     implementation("io.coil-kt.coil3:coil-compose:$coil")
     implementation("io.coil-kt.coil3:coil-network-ktor3-android:$coil")
