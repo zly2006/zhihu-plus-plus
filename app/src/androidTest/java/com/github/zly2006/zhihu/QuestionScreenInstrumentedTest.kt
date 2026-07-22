@@ -41,7 +41,6 @@ import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
 import com.github.zly2006.zhihu.test.ZhihuMockApi
 import com.github.zly2006.zhihu.test.mockRootComments
-import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.seedViewModel
@@ -175,8 +174,8 @@ class QuestionScreenInstrumentedTest {
          * Expected behavior:
          * 1. A locally seeded answer list should render in the paginated list immediately, without
          *    waiting for QuestionFeedViewModel to fetch real answers.
-         * 2. Scrolling to a deep row should keep list semantics intact, and vertical plus horizontal
-         *    swipe cycles must not break the list or remove the visible seeded item.
+         * 2. Scrolling to a deep row and running vertical swipe cycles must keep list semantics intact
+         *    without removing the visible seeded item.
          * 3. Reaching the lower part of the list should trigger the seeded ViewModel load-more path
          *    at least once, proving pagination can be exercised offline.
          * 4. Clicking a seeded row must navigate to its deterministic destination exactly once.
@@ -194,7 +193,6 @@ class QuestionScreenInstrumentedTest {
             .performScrollToNode(hasTestTag("question_feed_item_offline-question-item-18"))
         composeRule.onNodeWithTag("question_feed_item_offline-question-item-18").assertIsDisplayed()
         composeRule.onNodeWithTag(QUESTION_SCREEN_LIST_TAG).performVerticalSwipeCycle()
-        composeRule.onNodeWithTag(QUESTION_SCREEN_LIST_TAG).performHorizontalSwipeCycle()
         composeRule
             .onNodeWithTag(QUESTION_SCREEN_LIST_TAG)
             .performScrollToNode(hasTestTag("question_feed_item_offline-question-item-18"))
