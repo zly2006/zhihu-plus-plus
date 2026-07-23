@@ -30,6 +30,7 @@ import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlin.time.Clock
 import kotlin.time.Instant
 
 const val READING_PREFERENCES_KEY = "continuousReadingPreferences"
@@ -76,6 +77,23 @@ enum class ReadingCommentOrder(
 }
 
 @Serializable
+enum class ReadingPublishedTimeMode(
+    val displayName: String,
+) {
+    Absolute("绝对时间"),
+    Relative("相对时间"),
+}
+
+@Serializable
+enum class ReadingRelativeTimePrecision(
+    val displayName: String,
+) {
+    Second("秒"),
+    Hour("时"),
+    Day("天"),
+}
+
+@Serializable
 data class ReadingPreferences(
     val fieldOrder: List<ReadingTemplateField> = ReadingTemplateField.entries,
     val enabledFields: Set<ReadingTemplateField> = setOf(
@@ -84,8 +102,11 @@ data class ReadingPreferences(
         ReadingTemplateField.Author,
         ReadingTemplateField.Body,
     ),
+    val publishedTimeMode: ReadingPublishedTimeMode = ReadingPublishedTimeMode.Absolute,
+    val relativeTimePrecision: ReadingRelativeTimePrecision = ReadingRelativeTimePrecision.Second,
     val commentCount: Int = 3,
     val commentOrder: ReadingCommentOrder = ReadingCommentOrder.Score,
+    val readCommentAuthor: Boolean = true,
     val queueLimit: Int = 5,
     val transitionText: String = "本条内容朗读完毕，接下来朗读第 {index} 条，共 {total} 条：{contentType}。",
 ) {
@@ -186,6 +207,7 @@ data class ResolvedReadingContent(
     val publishedAt: Long,
     val voteUpCount: Int,
     val comments: List<ReadingComment>,
+    val updatedAt: Long = 0L,
 )
 
 enum class ReadingPlaybackStatus {
@@ -301,6 +323,7 @@ fun saveReadingPlaybackSpeed(
 fun buildReadingSpeechText(
     content: ResolvedReadingContent,
     preferences: ReadingPreferences,
+    nowEpochSeconds: Long = Clock.System.now().epochSeconds,
 ): String {
     val normalized = preferences.normalized()
     return normalized.fieldOrder
@@ -326,9 +349,18 @@ fun buildReadingSpeechText(
                         ?.let { "作者：$it。" }
                 ReadingTemplateField.Body -> content.body.takeIf(String::isNotBlank)
                 ReadingTemplateField.PublishedAt ->
-                    content.publishedAt
-                        .takeIf { it > 0 }
-                        ?.let { "发布时间：${formatReadingDateTime(it)}。" }
+                    when (normalized.publishedTimeMode) {
+                        ReadingPublishedTimeMode.Absolute ->
+                            content.publishedAt
+                                .takeIf { it > 0 }
+                                ?.let { "发布时间：${formatReadingDateTime(it)}。" }
+                        ReadingPublishedTimeMode.Relative ->
+                            content.updatedAt
+                                .takeIf { it > 0 }
+                                ?.let {
+                                    "最后编辑于${formatReadingRelativeTime(it, nowEpochSeconds, normalized.relativeTimePrecision)}。"
+                                }
+                    }
                 ReadingTemplateField.VoteUpCount ->
                     content.voteUpCount
                         .takeIf { it >= 0 }
@@ -341,7 +373,7 @@ fun buildReadingSpeechText(
                                 append("第")
                                 append(index + 1)
                                 append("条评论。")
-                                if (comment.author.isNotBlank()) {
+                                if (normalized.readCommentAuthor && comment.author.isNotBlank()) {
                                     append("评论作者：")
                                     append(comment.author)
                                     append("。")
@@ -349,6 +381,42 @@ fun buildReadingSpeechText(
                                 append(comment.body)
                             }
                         }?.joinToString("\n")
+            }
+        }.joinToString("\n")
+        .trim()
+}
+
+fun buildReadingTemplatePreview(preferences: ReadingPreferences): String {
+    val normalized = preferences.normalized()
+    return normalized.fieldOrder
+        .asSequence()
+        .filter { it in normalized.enabledFields }
+        .mapNotNull { field ->
+            when (field) {
+                ReadingTemplateField.ContentType -> "{内容类型}"
+                ReadingTemplateField.Title -> "标题：{标题}。"
+                ReadingTemplateField.Author -> "作者：{作者}。"
+                ReadingTemplateField.Body -> "{正文}"
+                ReadingTemplateField.PublishedAt -> when (normalized.publishedTimeMode) {
+                    ReadingPublishedTimeMode.Absolute -> "发布时间：{绝对时间}。"
+                    ReadingPublishedTimeMode.Relative ->
+                        "最后编辑于{距最后编辑时间，精确到${normalized.relativeTimePrecision.displayName}}。"
+                }
+                ReadingTemplateField.VoteUpCount -> "点赞数：{点赞数}。"
+                ReadingTemplateField.Comments ->
+                    normalized.commentCount
+                        .takeIf { it > 0 }
+                        ?.let { count ->
+                            buildString {
+                                append("第{评论序号（1-")
+                                append(count)
+                                append("）}条评论。")
+                                if (normalized.readCommentAuthor) {
+                                    append("评论作者：{评论作者}。")
+                                }
+                                append("{评论正文}")
+                            }
+                        }
             }
         }.joinToString("\n")
         .trim()
@@ -388,7 +456,10 @@ fun ReadingQueueItem.hasReadableFields(preferences: ReadingPreferences): Boolean
             ReadingTemplateField.Title -> title.cleanReadingMetadata().isNotBlank()
             ReadingTemplateField.Author -> author.cleanReadingMetadata().isNotBlank()
             ReadingTemplateField.Body -> !bodyHtml.isNullOrBlank()
-            ReadingTemplateField.PublishedAt -> publishedAt > 0
+            ReadingTemplateField.PublishedAt -> when (normalized.publishedTimeMode) {
+                ReadingPublishedTimeMode.Absolute -> publishedAt > 0
+                ReadingPublishedTimeMode.Relative -> updatedAt > 0
+            }
             ReadingTemplateField.VoteUpCount -> voteUpCount >= 0
             ReadingTemplateField.Comments -> normalized.shouldLoadComments
         }
@@ -596,6 +667,7 @@ private fun Feed.Target.toReadingQueueItem(): ReadingQueueItem? = when (this) {
         questionId = question.id,
         bodyHtml = content.takeIf(String::isNotBlank),
         publishedAt = createdTime,
+        updatedAt = updatedTime,
         voteUpCount = voteupCount,
         commentCount = commentCount,
     )
@@ -606,6 +678,7 @@ private fun Feed.Target.toReadingQueueItem(): ReadingQueueItem? = when (this) {
         author = author.name,
         bodyHtml = content.takeIf(String::isNotBlank),
         publishedAt = created,
+        updatedAt = updated,
         voteUpCount = voteupCount,
         commentCount = commentCount,
     )
@@ -615,6 +688,7 @@ private fun Feed.Target.toReadingQueueItem(): ReadingQueueItem? = when (this) {
         author = author.name,
         bodyHtml = contentHtml.takeIf(String::isNotBlank),
         publishedAt = created,
+        updatedAt = updated,
         voteUpCount = likeCount,
         commentCount = commentCount,
     )
@@ -624,6 +698,7 @@ private fun Feed.Target.toReadingQueueItem(): ReadingQueueItem? = when (this) {
         title = title,
         bodyHtml = detail.takeIf(String::isNotBlank),
         publishedAt = created,
+        updatedAt = updatedTime,
         commentCount = commentCount,
     )
     else -> null
@@ -638,6 +713,7 @@ fun DataHolder.Content.toReadingQueueItem(destination: NavDestination): ReadingQ
         questionId = question.id,
         bodyHtml = content,
         publishedAt = createdTime,
+        updatedAt = updatedTime,
         voteUpCount = voteupCount,
         commentCount = commentCount,
     )
@@ -648,6 +724,7 @@ fun DataHolder.Content.toReadingQueueItem(destination: NavDestination): ReadingQ
         author = author.name,
         bodyHtml = content,
         publishedAt = created,
+        updatedAt = updated,
         voteUpCount = voteupCount,
         commentCount = commentCount,
     )
@@ -661,6 +738,7 @@ fun DataHolder.Content.toReadingQueueItem(destination: NavDestination): ReadingQ
                 .joinToString("\n") { item -> item.content }
         },
         publishedAt = created,
+        updatedAt = updated,
         voteUpCount = likeCount,
         commentCount = commentCount,
     )
@@ -671,6 +749,7 @@ fun DataHolder.Content.toReadingQueueItem(destination: NavDestination): ReadingQ
         author = author.name,
         bodyHtml = detail,
         publishedAt = created,
+        updatedAt = updatedTime,
         voteUpCount = voteupCount,
         commentCount = commentCount,
     )
@@ -680,6 +759,39 @@ fun DataHolder.Content.toReadingQueueItem(destination: NavDestination): ReadingQ
 private fun formatReadingDateTime(seconds: Long): String {
     val dateTime = Instant.fromEpochSeconds(seconds).toLocalDateTime(TimeZone.currentSystemDefault())
     return "${dateTime.year}年${dateTime.month.number}月${dateTime.day}日 ${dateTime.hour}点${dateTime.minute}分"
+}
+
+private fun formatReadingRelativeTime(
+    updatedAt: Long,
+    nowEpochSeconds: Long,
+    precision: ReadingRelativeTimePrecision,
+): String {
+    val difference = (nowEpochSeconds - updatedAt).coerceAtLeast(0L)
+    if (difference == 0L) return "刚刚"
+
+    var remaining = difference
+    val days = remaining / 86_400
+    remaining %= 86_400
+    val hours = remaining / 3_600
+    remaining %= 3_600
+    val minutes = remaining / 60
+    val seconds = remaining % 60
+    val parts = buildList {
+        if (days > 0) add("${days}天")
+        if (precision != ReadingRelativeTimePrecision.Day && hours > 0) add("${hours}小时")
+        if (precision == ReadingRelativeTimePrecision.Second) {
+            if (minutes > 0) add("${minutes}分")
+            if (seconds > 0) add("${seconds}秒")
+        }
+    }
+    if (parts.isEmpty()) {
+        return when (precision) {
+            ReadingRelativeTimePrecision.Second -> "刚刚"
+            ReadingRelativeTimePrecision.Hour -> "不到1小时前"
+            ReadingRelativeTimePrecision.Day -> "不到1天前"
+        }
+    }
+    return parts.joinToString("") + "前"
 }
 
 private fun String?.cleanReadingMetadata(): String {

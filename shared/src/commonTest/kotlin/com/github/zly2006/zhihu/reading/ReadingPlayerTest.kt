@@ -60,6 +60,135 @@ class ReadingPlayerTest {
     }
 
     @Test
+    fun relativePublishedTimeUsesLastEditAndSelectedPrecision() {
+        val content = ResolvedReadingContent(
+            contentType = ReadingContentType.Article,
+            title = "测试文章",
+            author = "测试作者",
+            body = "正文",
+            publishedAt = 183_944L,
+            voteUpCount = 0,
+            comments = emptyList(),
+            updatedAt = 100L,
+        )
+        val basePreferences = ReadingPreferences(
+            fieldOrder = listOf(ReadingTemplateField.PublishedAt),
+            enabledFields = setOf(ReadingTemplateField.PublishedAt),
+            publishedTimeMode = ReadingPublishedTimeMode.Relative,
+        )
+        val nowEpochSeconds = 183_945L
+
+        assertEquals(
+            "最后编辑于2天3小时4分5秒前。",
+            buildReadingSpeechText(content, basePreferences, nowEpochSeconds),
+        )
+        assertEquals(
+            "最后编辑于2天3小时前。",
+            buildReadingSpeechText(
+                content,
+                basePreferences.copy(relativeTimePrecision = ReadingRelativeTimePrecision.Hour),
+                nowEpochSeconds,
+            ),
+        )
+        assertEquals(
+            "最后编辑于2天前。",
+            buildReadingSpeechText(
+                content,
+                basePreferences.copy(relativeTimePrecision = ReadingRelativeTimePrecision.Day),
+                nowEpochSeconds,
+            ),
+        )
+    }
+
+    @Test
+    fun absolutePublishedTimeKeepsUsingOriginalPublishTimestamp() {
+        val text = buildReadingSpeechText(
+            content = ResolvedReadingContent(
+                contentType = ReadingContentType.Answer,
+                title = "",
+                author = "",
+                body = "",
+                publishedAt = 1_710_000_000L,
+                voteUpCount = -1,
+                comments = emptyList(),
+                updatedAt = 1L,
+            ),
+            preferences = ReadingPreferences(
+                fieldOrder = listOf(ReadingTemplateField.PublishedAt),
+                enabledFields = setOf(ReadingTemplateField.PublishedAt),
+                publishedTimeMode = ReadingPublishedTimeMode.Absolute,
+            ),
+            nowEpochSeconds = 1_710_100_000L,
+        )
+
+        assertTrue(text.startsWith("发布时间："))
+        assertFalse(text.contains("最后编辑"))
+    }
+
+    @Test
+    fun commentAuthorIsOnlyReadWhenEnabled() {
+        val content = ResolvedReadingContent(
+            contentType = ReadingContentType.Answer,
+            title = "",
+            author = "",
+            body = "",
+            publishedAt = 0L,
+            voteUpCount = -1,
+            comments = listOf(
+                ReadingComment(
+                    author = "评论作者",
+                    body = "评论正文。",
+                ),
+            ),
+        )
+        val preferences = ReadingPreferences(
+            fieldOrder = listOf(ReadingTemplateField.Comments),
+            enabledFields = setOf(ReadingTemplateField.Comments),
+            commentCount = 1,
+        )
+
+        assertEquals(
+            "第1条评论。评论作者：评论作者。评论正文。",
+            buildReadingSpeechText(content, preferences),
+        )
+        assertEquals(
+            "第1条评论。评论正文。",
+            buildReadingSpeechText(content, preferences.copy(readCommentAuthor = false)),
+        )
+    }
+
+    @Test
+    fun templatePreviewFollowsOrderAndNestedOptionsWithoutTransitionText() {
+        val preferences = ReadingPreferences(
+            fieldOrder = listOf(
+                ReadingTemplateField.Body,
+                ReadingTemplateField.PublishedAt,
+                ReadingTemplateField.Comments,
+                ReadingTemplateField.Title,
+            ),
+            enabledFields = setOf(
+                ReadingTemplateField.Body,
+                ReadingTemplateField.PublishedAt,
+                ReadingTemplateField.Comments,
+            ),
+            publishedTimeMode = ReadingPublishedTimeMode.Relative,
+            relativeTimePrecision = ReadingRelativeTimePrecision.Hour,
+            commentCount = 2,
+            readCommentAuthor = false,
+            transitionText = "不应出现在模板预览中",
+        )
+
+        assertEquals(
+            """
+            {正文}
+            最后编辑于{距最后编辑时间，精确到时}。
+            第{评论序号（1-2）}条评论。{评论正文}
+            """.trimIndent(),
+            buildReadingTemplatePreview(preferences),
+        )
+    }
+
+    @Test
     fun commentsAreOnlyRequestedWhenEnabledWithPositiveCount() {
         assertFalse(ReadingPreferences(commentCount = 3).shouldLoadComments)
         assertFalse(
@@ -350,13 +479,34 @@ class ReadingPlayerTest {
         val settings = settingsStore(values)
         saveReadingPreferences(
             settings,
-            ReadingPreferences(queueLimit = 500, commentCount = -2),
+            ReadingPreferences(
+                publishedTimeMode = ReadingPublishedTimeMode.Relative,
+                relativeTimePrecision = ReadingRelativeTimePrecision.Day,
+                commentCount = -2,
+                readCommentAuthor = false,
+                queueLimit = 500,
+            ),
         )
 
         val loaded = loadReadingPreferences(settings)
 
         assertEquals(100, loaded.queueLimit)
         assertEquals(0, loaded.commentCount)
+        assertEquals(ReadingPublishedTimeMode.Relative, loaded.publishedTimeMode)
+        assertEquals(ReadingRelativeTimePrecision.Day, loaded.relativeTimePrecision)
+        assertFalse(loaded.readCommentAuthor)
+    }
+
+    @Test
+    fun oldPreferencesUseBackwardCompatibleTimeAndCommentDefaults() {
+        val settings = settingsStore(mutableMapOf())
+        settings.putString(READING_PREFERENCES_KEY, "{\"commentCount\":4}")
+
+        val loaded = loadReadingPreferences(settings)
+
+        assertEquals(ReadingPublishedTimeMode.Absolute, loaded.publishedTimeMode)
+        assertEquals(ReadingRelativeTimePrecision.Second, loaded.relativeTimePrecision)
+        assertTrue(loaded.readCommentAuthor)
     }
 
     @Test

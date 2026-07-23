@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -35,6 +36,7 @@ import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -50,23 +52,31 @@ import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.reading.ReadingCommentOrder
 import com.github.zly2006.zhihu.reading.ReadingPreferences
+import com.github.zly2006.zhihu.reading.ReadingPublishedTimeMode
+import com.github.zly2006.zhihu.reading.ReadingRelativeTimePrecision
 import com.github.zly2006.zhihu.reading.ReadingTemplateField
+import com.github.zly2006.zhihu.reading.buildReadingTemplatePreview
 import com.github.zly2006.zhihu.reading.loadReadingPreferences
 import com.github.zly2006.zhihu.reading.saveReadingPreferences
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
+import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
 import com.github.zly2006.zhihu.ui.components.SwitchWithIcon
 
 const val READING_SETTINGS_SCROLL_TAG = "readingSettings.scroll"
 const val READING_SETTINGS_FIELD_TAG_PREFIX = "readingSettings.field."
 const val READING_SETTINGS_FIELD_MOVE_UP_TAG_PREFIX = "readingSettings.field.moveUp."
 const val READING_SETTINGS_FIELD_MOVE_DOWN_TAG_PREFIX = "readingSettings.field.moveDown."
+const val READING_SETTINGS_PUBLISHED_TIME_MODE_TAG_PREFIX = "readingSettings.publishedTimeMode."
+const val READING_SETTINGS_RELATIVE_TIME_PRECISION_TAG_PREFIX = "readingSettings.relativeTimePrecision."
 const val READING_SETTINGS_COMMENT_COUNT_TAG = "readingSettings.commentCount"
 const val READING_SETTINGS_COMMENT_ORDER_TAG_PREFIX = "readingSettings.commentOrder."
+const val READING_SETTINGS_COMMENT_AUTHOR_TAG = "readingSettings.commentAuthor"
 const val READING_SETTINGS_QUEUE_LIMIT_TAG_PREFIX = "readingSettings.queueLimit."
 const val READING_SETTINGS_CUSTOM_QUEUE_LIMIT_TAG = "readingSettings.queueLimit.custom"
 const val READING_SETTINGS_TRANSITION_TEXT_TAG = "readingSettings.transitionText"
+const val READING_SETTINGS_TEMPLATE_PREVIEW_TAG = "readingSettings.templatePreview"
 
 private val queueLimitPresets = listOf(5, 10, 20)
 
@@ -201,6 +211,65 @@ fun ReadingSettingsScreen() {
                 }
             }
 
+            val publishedTimeEnabled = ReadingTemplateField.PublishedAt in preferences.enabledFields
+            SettingItemGroup(
+                title = "发布时间朗读",
+            ) {
+                SettingItem(
+                    title = { Text("时间形式") },
+                    description = {
+                        Text("绝对时间沿用当前发布时间；相对时间朗读当前时间到最后编辑时间的间隔。")
+                    },
+                    enabled = publishedTimeEnabled,
+                    bottomAction = {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            ReadingPublishedTimeMode.entries.forEach { mode ->
+                                FilterChip(
+                                    selected = preferences.publishedTimeMode == mode,
+                                    onClick = { persist(preferences.copy(publishedTimeMode = mode)) },
+                                    label = { Text(mode.displayName) },
+                                    enabled = publishedTimeEnabled,
+                                    modifier = Modifier.testTag(
+                                        READING_SETTINGS_PUBLISHED_TIME_MODE_TAG_PREFIX + mode.name,
+                                    ),
+                                )
+                            }
+                        }
+                    },
+                )
+
+                SettingItem(
+                    title = { Text("相对时间精度") },
+                    description = { Text("保留到所选的最小时间单位，更细的部分会省略。") },
+                    enabled = publishedTimeEnabled &&
+                        preferences.publishedTimeMode == ReadingPublishedTimeMode.Relative,
+                    bottomAction = {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            ReadingRelativeTimePrecision.entries.forEach { precision ->
+                                FilterChip(
+                                    selected = preferences.relativeTimePrecision == precision,
+                                    onClick = {
+                                        persist(preferences.copy(relativeTimePrecision = precision))
+                                    },
+                                    label = { Text(precision.displayName) },
+                                    enabled = publishedTimeEnabled &&
+                                        preferences.publishedTimeMode == ReadingPublishedTimeMode.Relative,
+                                    modifier = Modifier.testTag(
+                                        READING_SETTINGS_RELATIVE_TIME_PRECISION_TAG_PREFIX + precision.name,
+                                    ),
+                                )
+                            }
+                        }
+                    },
+                )
+            }
+
             val commentsEnabled = ReadingTemplateField.Comments in preferences.enabledFields
             SettingItemGroup(
                 title = "评论朗读",
@@ -234,6 +303,17 @@ fun ReadingSettingsScreen() {
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         )
                     },
+                )
+
+                SettingItemWithSwitch(
+                    title = { Text("朗读评论作者") },
+                    description = { Text("关闭后，每条评论只朗读序号和正文。") },
+                    checked = preferences.readCommentAuthor,
+                    onCheckedChange = {
+                        persist(preferences.copy(readCommentAuthor = it))
+                    },
+                    enabled = commentsEnabled && preferences.commentCount > 0,
+                    modifier = Modifier.testTag(READING_SETTINGS_COMMENT_AUTHOR_TAG),
                 )
 
                 SettingItem(
@@ -329,6 +409,32 @@ fun ReadingSettingsScreen() {
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
+                        }
+                    },
+                )
+            }
+
+            SettingItemGroup(
+                title = "朗读模板预览",
+            ) {
+                SettingItem(
+                    title = { Text("当前朗读模板") },
+                    description = { Text("随上方设置实时更新；大括号表示朗读时替换的动态内容，不包含条目过渡文本。") },
+                    bottomAction = {
+                        SelectionContainer {
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 12.dp)
+                                    .testTag(READING_SETTINGS_TEMPLATE_PREVIEW_TAG),
+                                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            ) {
+                                Text(
+                                    text = buildReadingTemplatePreview(preferences),
+                                    modifier = Modifier.padding(16.dp),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                            }
                         }
                     },
                 )

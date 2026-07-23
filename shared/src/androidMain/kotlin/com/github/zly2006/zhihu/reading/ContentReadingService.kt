@@ -406,6 +406,7 @@ class ContentReadingService : Service() {
             publishedAt = resolvedItem.publishedAt,
             voteUpCount = resolvedItem.voteUpCount,
             comments = comments,
+            updatedAt = resolvedItem.updatedAt,
         )
     }
 
