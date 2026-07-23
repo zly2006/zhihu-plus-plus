@@ -19,7 +19,11 @@ package com.github.zly2006.zhihu.markdown
 
 import com.hrm.markdown.parser.ast.ContainerNode
 import com.hrm.markdown.parser.ast.Figure
+import com.hrm.markdown.parser.ast.FootnoteDefinition
+import com.hrm.markdown.parser.ast.FootnoteReference
 import com.hrm.markdown.parser.ast.InlineMath
+import com.hrm.markdown.parser.ast.ListBlock
+import com.hrm.markdown.parser.ast.ListItem
 import com.hrm.markdown.parser.ast.MathBlock
 import com.hrm.markdown.parser.ast.NativeBlock
 import com.hrm.markdown.parser.ast.Node
@@ -145,6 +149,78 @@ class MdAstTest {
     }
 
     @Test
+    fun sibling_ordered_lists_should_nest_under_the_preceding_list_item() {
+        val document = htmlToMdAst(
+            """
+            <ol>
+              <li>继续跳票。</li>
+              <li>在较短时间内推出，但是</li>
+              <ol>
+                <li>分词器和灰测表现不一致</li>
+                <ol>
+                  <li>正式版性能约等于 Fable。</li>
+                  <li>正式版性能远不及 Fable。</li>
+                </ol>
+                <li>分词器和灰测表现一致</li>
+                <ol>
+                  <li>正式版的性能接近 Fable。</li>
+                  <li>正式版的表现远不及 Fable。</li>
+                </ol>
+              </ol>
+            </ol>
+            """.trimIndent(),
+        )
+
+        val outerList = document.children.single() as ListBlock
+        val outerItems = outerList.children.filterIsInstance<ListItem>()
+        val secondLevelList = outerItems[1].children.filterIsInstance<ListBlock>().single()
+        val secondLevelItems = secondLevelList.children.filterIsInstance<ListItem>()
+
+        assertEquals(2, outerItems.size)
+        assertEquals(2, secondLevelItems.size)
+        assertEquals(
+            2,
+            secondLevelItems[0]
+                .children
+                .filterIsInstance<ListBlock>()
+                .single()
+                .children.size,
+        )
+        assertEquals(
+            2,
+            secondLevelItems[1]
+                .children
+                .filterIsInstance<ListBlock>()
+                .single()
+                .children.size,
+        )
+    }
+
+    @Test
+    fun nested_list_without_preceding_item_should_keep_its_items() {
+        val document = htmlToMdAst(
+            """
+            <h3>1.2 国际带宽分配</h3>
+            <ul><ul>
+              <li>电信的国际带宽总量最大，约为7.7T</li>
+              <li>带宽分配较为均衡，各省都有一定的国际带宽</li>
+            </ul></ul>
+            """.trimIndent(),
+        )
+        val list = document.children.filterIsInstance<ListBlock>().single()
+        val items = list.children.filterIsInstance<ListItem>()
+
+        assertEquals(2, items.size)
+        assertEquals(
+            listOf(
+                "电信的国际带宽总量最大，约为7.7T",
+                "带宽分配较为均衡，各省都有一定的国际带宽",
+            ),
+            items.map { it.plainText() },
+        )
+    }
+
+    @Test
     fun preview_image_urls_should_keep_document_order_and_drop_duplicates() {
         val document = htmlToMdAst(
             """
@@ -163,6 +239,33 @@ class MdAstTest {
             ),
             document.previewImageUrls(),
         )
+    }
+
+    @Test
+    fun issue_495_fixture_should_build_complete_ast_before_viewport_layout() {
+        val html = File("../app/src/androidTest/assets/issue-495-answer.html").readText()
+        val document = htmlToMdAst(html)
+        val nodes = document.allNodes()
+
+        assertTrue(document.children.size > 100)
+        assertEquals(406, nodes.size)
+        assertEquals(148, nodes.count { it is MathBlock || it is InlineMath })
+    }
+
+    @Test
+    fun markdown_footnote_definition_should_keep_its_content_as_blocks() {
+        val document = markdownToMdAst(
+            """
+            [^note]: Footnote content.
+
+            Text with [^note].
+            """.trimIndent(),
+        )
+        val footnote = document.children.filterIsInstance<FootnoteDefinition>().single()
+        val paragraph = footnote.children.single() as Paragraph
+
+        assertEquals("Footnote content.", (paragraph.children.single() as Text).literal)
+        assertEquals(1, document.allNodes().count { it is FootnoteReference })
     }
 
     @Test

@@ -32,7 +32,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
-import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
@@ -93,7 +92,6 @@ class HotListScreenInstrumentedTest {
         composeRule.onNodeWithText(seedTitle(9)).assertIsDisplayed()
 
         composeRule.onNodeWithTag(HOT_LIST_LIST_TAG).performVerticalSwipeCycle()
-        composeRule.onNodeWithTag(HOT_LIST_LIST_TAG).performHorizontalSwipeCycle()
         composeRule.onNodeWithText(seedTitle(9)).assertIsDisplayed()
 
         composeRule.runOnIdle {

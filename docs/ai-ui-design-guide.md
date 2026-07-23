@@ -120,7 +120,6 @@ URL 解析集中在 `resolveContent()`。支持知乎问题、回答、文章、
 | `allowTelemetry` | 遥测统计 | 匿名使用统计 | 不影响核心功能 |
 | `continuousUsageReminderIntervalMinutes` | 防沉迷提醒 | 连续使用提醒间隔 | 0 表示关闭 |
 | `developer` | 开发者模式 | 账号页显示开发者选项 | 账号页点击版本 5 次开启 |
-| `enableSwipeReaction` | 开发者选项: 滑动反馈 | Feed 卡片左右滑动触发喜欢/不喜欢 | 由 `FeedCard` 读取，需要调用方提供喜欢/不喜欢回调 |
 | `enableScrollEndHaptic` | 开发者选项: 滚动到底震动 | 滚动边界反馈行为开关 | 改前查具体 overScroll 使用点 |
 | `showDebugOverlay` | 开发者选项: 调试悬浮窗 | 调试 Feed 详情显示 | 如果 `rg` 只命中设置页，先补运行时读取点 |
 | `zse96_key` | 开发者签名请求 | 调试签名相关请求 | 只在开发者页处理 |
@@ -151,7 +150,7 @@ URL 解析集中在 `resolveContent()`。支持知乎问题、回答、文章、
 3. 新设置项: 记录 preference key、默认值、读取点、是否实时生效、是否需要重启、对应 test tag 和从账号页跳转高亮的 `settingKey`。
 4. 新按钮: 优先复用 Material 3 组件和现有图标库，补稳定 test tag，描述点击后影响的状态或导航目标。
 5. 新正文/卡片渲染逻辑: 同时确认 Compose Markdown、WebView、共享组件、平台 adapter、lite/full variant 差异。
-6. 新手势: 明确方向、阈值、和现有回答切换/底栏自动隐藏/图片查看/Feed 滑动反馈的冲突关系。
+6. 新手势: 明确方向、阈值，以及和现有回答切换、底栏自动隐藏、图片查看的冲突关系。
 
 ## 验证入口
 

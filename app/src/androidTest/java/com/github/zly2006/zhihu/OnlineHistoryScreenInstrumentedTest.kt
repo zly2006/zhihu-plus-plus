@@ -29,7 +29,6 @@ import com.github.zly2006.zhihu.navigation.History
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
-import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.pressSystemBack
 import com.github.zly2006.zhihu.test.resetAppPreferences
@@ -134,9 +133,8 @@ class OnlineHistoryScreenInstrumentedTest {
 
         composeRule.onNodeWithTag(LIST_TAG).assertExists()
         composeRule.onNodeWithTag(LIST_TAG).performVerticalSwipeCycle()
-        composeRule.onNodeWithTag(LIST_TAG).performHorizontalSwipeCycle()
 
-        // After both gesture cycles, the toolbar should remain interactive, the overflow menu
+        // After the gesture cycle, the toolbar should remain interactive, the overflow menu
         // should still open normally, and dismissing the confirmation dialog with system back
         // should restore the untouched list state instead of navigating away or corrupting UI.
         composeRule.onNodeWithText("历史记录").assertIsDisplayed()

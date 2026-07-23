@@ -135,7 +135,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
 
 const val PREFERENCE_NAME = "com.github.zly2006.zhihu_preferences"
-const val ARTICLE_USE_WEBVIEW_PREFERENCE_KEY = "webviewRender"
+const val ARTICLE_USE_WEBVIEW_PREFERENCE_KEY = "webviewRenderLegacy"
 const val QQ_GROUP_DISMISSED_PREFERENCE_KEY = "dismissQQGroup3"
 const val AIGC_MARKING_ANNOUNCEMENT_DISMISSED_PREFERENCE_KEY = "dismissAigcMarkingAnnouncement"
 const val HOME_TOP_ACTIONS_TAG = "home_top_actions"
@@ -622,22 +622,6 @@ fun HomeScreen(
                         thumbnailUrl = when (val target = item.feed?.target) {
                             is Feed.AnswerTarget -> target.thumbnail
                             else -> null
-                        },
-                        onLike = {
-                            if (localHomeViewModel != null && it.localContentId != null) {
-                                localHomeViewModel.onLocalItemFeedback(it, 1.0)
-                                userMessages.showShortMessage("已记录喜欢，本地推荐会逐步学习")
-                            } else {
-                                userMessages.showShortMessage("收到喜欢，功能正在优化")
-                            }
-                        },
-                        onDislike = {
-                            if (localHomeViewModel != null && it.localContentId != null) {
-                                localHomeViewModel.onLocalItemFeedback(it, -1.0)
-                                userMessages.showShortMessage("已降低这类本地推荐的优先级")
-                            } else {
-                                userMessages.showShortMessage("收到反馈，功能正在优化")
-                            }
                         },
                         onBlockUser = { feedItem ->
                             feedBlockActions.handleBlockUser(viewModel, feedItem) { authorInfo ->

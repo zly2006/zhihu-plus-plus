@@ -28,7 +28,6 @@ import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class LocalHomeFeedViewModel :
     BaseFeedViewModel(),
@@ -76,27 +75,6 @@ class LocalHomeFeedViewModel :
         }
     }
 
-    fun onLocalItemFeedback(item: FeedDisplayItem, feedback: Double) {
-        val contentId = item.localContentId ?: return
-        val reason = item.localReason?.let { runCatching { CrawlingReason.valueOf(it) }.getOrNull() } ?: return
-        if (!::recommendationEngine.isInitialized) {
-            return
-        }
-        viewModelScope.launch(Dispatchers.Default) {
-            recommendationEngine.recordRecommendationFeedback(
-                feedId = item.localFeedId,
-                contentId = contentId,
-                reason = reason,
-                feedback = feedback,
-            )
-            if (feedback < 0) {
-                withContext(Dispatchers.Main) {
-                    displayItems.remove(item)
-                }
-            }
-        }
-    }
-
     private suspend fun ensureEngine(environment: LocalRecommendationEnvironment): LocalRecommendationEngine {
         if (!::recommendationEngine.isInitialized) {
             recommendationEngine = environment.localRecommendationEngine()
@@ -110,14 +88,14 @@ class LocalHomeFeedViewModel :
         val fallbackItems = listOf(
             FeedDisplayItem(
                 title = "本地推荐正在建立候选池",
-                summary = "系统会先抓取关注动态、热门内容和相关话题，再根据你的点击与反馈逐步调整排序。",
+                summary = "系统会先抓取关注动态、热门内容和相关话题，再根据你的点击逐步调整排序。",
                 details = "本地推荐 · 冷启动",
                 feed = null,
                 isFiltered = false,
             ),
             FeedDisplayItem(
                 title = "你的行为只在本地学习",
-                summary = "点开、喜欢、不喜欢都会影响后续排序，但这些学习信号不会作为推荐特征上传到服务器。",
+                summary = "点开内容会影响后续排序，但这些学习信号不会作为推荐特征上传到服务器。",
                 details = "本地推荐 · 隐私优先",
                 feed = null,
                 isFiltered = false,
