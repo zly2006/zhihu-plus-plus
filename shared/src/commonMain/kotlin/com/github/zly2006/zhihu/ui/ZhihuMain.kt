@@ -123,7 +123,6 @@ import com.github.zly2006.zhihu.navigation.SentenceSimilarityTest
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.navigation.WriteAnswer
 import com.github.zly2006.zhihu.navigation.WritePin
-import com.github.zly2006.zhihu.reading.ReadingQueueItem
 import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
 import com.github.zly2006.zhihu.reading.saveReadingPlaybackSpeed
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
@@ -229,33 +228,6 @@ fun ZhihuMain(
         navEntry?.hasRoute(Question::class) == true ||
         navEntry?.hasRoute(Pin::class) == true
 
-    fun navigateToReadingItem(
-        item: ReadingQueueItem,
-        requireCurrentDetail: Boolean,
-    ) {
-        val currentDestination = when {
-            navEntry?.destination?.hasRoute<Article>() == true -> runCatching {
-                navEntry?.toRoute<Article>()
-            }.getOrNull()
-            navEntry?.destination?.hasRoute<Pin>() == true -> runCatching {
-                navEntry?.toRoute<Pin>()
-            }.getOrNull()
-            navEntry?.destination?.hasRoute<Question>() == true -> runCatching {
-                navEntry?.toRoute<Question>()
-            }.getOrNull()
-            else -> null
-        }
-        if (requireCurrentDetail && currentDestination == null) return
-
-        val destination = item.toDestination(readingPlayerState.sourceId)
-        if (currentDestination != destination) {
-            if (currentDestination != null) {
-                navController.popBackStack()
-            }
-            navigationState.navigate(destination)
-        }
-    }
-
     val isReadingPlayerExpanded = readingPlayerState.hasSession &&
         (isOnReadingDetail || isReadingPlayerExpandedByUser)
     val shouldCompactPlayerOnBackgroundInteraction by rememberUpdatedState(
@@ -273,16 +245,6 @@ fun ZhihuMain(
             showReadingQueue = false
             isReadingPlayerExpandedByUser = false
             readingPlayerOverlayOffsetState.resetOffset()
-        }
-    }
-    var previousReadingItemKey by remember { mutableStateOf(readingPlayerState.currentItem?.key) }
-    LaunchedEffect(readingPlayerState.currentItem?.key) {
-        val currentItem = readingPlayerState.currentItem
-        val currentItemKey = currentItem?.key
-        val itemChanged = previousReadingItemKey != null && previousReadingItemKey != currentItemKey
-        previousReadingItemKey = currentItemKey
-        if (itemChanged && currentItem != null) {
-            navigateToReadingItem(currentItem, requireCurrentDetail = true)
         }
     }
     val isOnArticle = navEntry?.destination?.hasRoute<Article>() == true
@@ -727,7 +689,25 @@ fun ZhihuMain(
             onItemClick = { index, item ->
                 readingPlayer.playAt(index)
                 showReadingQueue = false
-                navigateToReadingItem(item, requireCurrentDetail = false)
+                val destination = item.toDestination(readingPlayerState.sourceId)
+                val currentDestination = when {
+                    navEntry?.destination?.hasRoute<Article>() == true -> runCatching {
+                        navEntry?.toRoute<Article>()
+                    }.getOrNull()
+                    navEntry?.destination?.hasRoute<Pin>() == true -> runCatching {
+                        navEntry?.toRoute<Pin>()
+                    }.getOrNull()
+                    navEntry?.destination?.hasRoute<Question>() == true -> runCatching {
+                        navEntry?.toRoute<Question>()
+                    }.getOrNull()
+                    else -> null
+                }
+                if (currentDestination != destination) {
+                    if (currentDestination != null) {
+                        navController.popBackStack()
+                    }
+                    navigationState.navigate(destination)
+                }
             },
             onOpenSettings = {
                 showReadingQueue = false

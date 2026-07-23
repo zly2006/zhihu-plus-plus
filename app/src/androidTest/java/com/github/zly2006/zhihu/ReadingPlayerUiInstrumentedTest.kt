@@ -24,6 +24,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -32,6 +33,7 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipe
 import androidx.core.content.edit
 import androidx.navigation.NavHostController
+import androidx.navigation.toRoute
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Article
@@ -158,25 +160,26 @@ class ReadingPlayerUiInstrumentedTest {
     }
 
     @Test
-    fun changingThePlayingItemReplacesTheVisibleReadingDetail() {
+    fun changingThePlayingItemKeepsTheVisibleReadingDetail() {
         lateinit var navController: NavHostController
         composeRule.setZhihuMainContent { navController = it }
+        val visibleDetail = Article(type = ArticleType.Answer, id = PLAYER_STATE.queue.first().id)
         composeRule.runOnIdle {
-            navController.navigate(Article(type = ArticleType.Answer, id = PLAYER_STATE.queue.first().id))
+            navController.navigate(visibleDetail)
         }
         composeRule.waitForTag(READING_PLAYER_BAR_TAG)
 
         AndroidReadingPlayerBridge.publish(PLAYER_STATE.copy(currentIndex = 1))
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
-            composeRule.activity.history.history
-                .firstOrNull() == Article(type = ArticleType.Answer, id = PLAYER_STATE.queue[1].id)
+            composeRule
+                .onAllNodesWithText(PLAYER_STATE.queue[1].displayTitle)
+                .fetchSemanticsNodes()
+                .isNotEmpty()
         }
-        assertEquals(
-            Article(type = ArticleType.Answer, id = PLAYER_STATE.queue[1].id),
-            composeRule.activity.history.history
-                .first(),
-        )
+        composeRule.runOnIdle {
+            assertEquals(visibleDetail, navController.currentBackStackEntry?.toRoute<Article>())
+        }
     }
 
     @Test
