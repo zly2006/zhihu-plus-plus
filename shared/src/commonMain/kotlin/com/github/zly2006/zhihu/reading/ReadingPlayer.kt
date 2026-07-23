@@ -395,25 +395,76 @@ fun ReadingQueueItem.hasReadableFields(preferences: ReadingPreferences): Boolean
     }
 }
 
+/**
+ * Android TextToSpeech.stop() cannot resume inside an utterance, so these chunks also serve as
+ * pause/resume checkpoints. Sentence boundaries minimize replay while [maxLength] bounds text without punctuation.
+ *
+ * https://developer.android.com/reference/android/speech/tts/TextToSpeech#stop()
+ */
 fun splitReadingSpeechIntoChunks(
     text: String,
-    maxLength: Int = 180,
+    maxLength: Int = 120,
 ): List<String> {
     if (text.isBlank()) return emptyList()
     require(maxLength > 0)
 
-    val sentenceEnds = setOf('。', '！', '？', '.', '!', '?', '；', ';', '\n')
+    val sentenceEnds = setOf('。', '！', '？', '!', '?', '…', '\n')
+    val clauseEnds = setOf('，', ',', '；', ';', '：', ':')
+    val sentenceClosings = setOf('”', '’', '"', '\'', '）', ')', '】', ']', '》', '〉', '」', '』')
     val chunks = mutableListOf<String>()
     var start = 0
     while (start < text.length) {
         while (start < text.length && text[start].isWhitespace()) start++
         if (start >= text.length) break
 
-        var end = minOf(start + maxLength, text.length)
-        if (end < text.length) {
-            val preferredStart = start + maxLength / 2
-            val sentenceEnd = (end - 1 downTo preferredStart).firstOrNull { text[it] in sentenceEnds }
-            if (sentenceEnd != null) end = sentenceEnd + 1
+        var hardEnd = start
+        var length = 0
+        while (hardEnd < text.length && length < maxLength) {
+            val current = text[hardEnd++]
+            if (
+                current in '\uD800'..'\uDBFF' &&
+                hardEnd < text.length &&
+                text[hardEnd] in '\uDC00'..'\uDFFF'
+            ) {
+                hardEnd++
+            }
+            length++
+        }
+
+        var sentenceEnd: Int? = null
+        var cursor = start
+        while (cursor < hardEnd) {
+            val current = text[cursor]
+            val isAsciiPeriod = current == '.' &&
+                (
+                    cursor + 1 >= text.length ||
+                        text[cursor + 1].isWhitespace() ||
+                        text[cursor + 1] in sentenceClosings
+                )
+            if (current in sentenceEnds || isAsciiPeriod) {
+                sentenceEnd = cursor + 1
+                while (
+                    sentenceEnd < hardEnd &&
+                    (
+                        text[sentenceEnd] in sentenceEnds ||
+                            text[sentenceEnd] == '.' ||
+                            text[sentenceEnd] in sentenceClosings
+                    )
+                ) {
+                    sentenceEnd++
+                }
+                break
+            }
+            cursor++
+        }
+
+        val end = sentenceEnd ?: if (hardEnd < text.length) {
+            (hardEnd - 1 downTo start)
+                .firstOrNull { text[it] in clauseEnds }
+                ?.plus(1)
+                ?: hardEnd
+        } else {
+            hardEnd
         }
         text
             .substring(start, end)

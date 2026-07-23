@@ -88,6 +88,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -839,6 +840,7 @@ fun ArticleScreen(
 ) {
     val navigator = LocalNavigator.current
     val readingPlayerOverlayPadding = LocalReadingPlayerOverlayPadding.current
+    val readingPlayerOverlayOffsetState = LocalReadingPlayerOverlayOffsetState.current
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
     val articleHost = rememberArticleHost()
     val backStackEntry by articleHost?.articleNavController?.currentBackStackEntryAsState()
@@ -903,6 +905,25 @@ fun ArticleScreen(
     var bottomBarHeightPx by remember { mutableFloatStateOf(0f) }
     var previousScrollForBarOffset by remember { mutableIntStateOf(0) }
     var isBarSnapping by remember { mutableStateOf(false) }
+
+    val readingPlayerOverlayOwner = remember(article.type, article.id) { Any() }
+    val usesVerticalAnswerSwitch = article.type == ArticleType.Answer && answerSwitchMode == "vertical"
+    DisposableEffect(readingPlayerOverlayOffsetState, readingPlayerOverlayOwner, usesVerticalAnswerSwitch) {
+        if (usesVerticalAnswerSwitch) {
+            readingPlayerOverlayOffsetState?.activate(readingPlayerOverlayOwner)
+        }
+        onDispose {
+            if (usesVerticalAnswerSwitch) {
+                readingPlayerOverlayOffsetState?.deactivate(readingPlayerOverlayOwner)
+            }
+        }
+    }
+    val updateReadingPlayerOverlayOffset = remember(readingPlayerOverlayOffsetState, readingPlayerOverlayOwner) {
+        { offsetPx: Float ->
+            readingPlayerOverlayOffsetState?.update(readingPlayerOverlayOwner, offsetPx)
+            Unit
+        }
+    }
 
     LaunchedEffect(Unit) {
         environment.addReadHistory(
@@ -1932,6 +1953,7 @@ fun ArticleScreen(
                 isAtBottom = { scrollState.value >= effectiveScrollMaxValue },
                 scrollState = scrollState,
                 answerSwitchSensitivity = answerSwitchSensitivity,
+                onOverscrollOffsetChange = updateReadingPlayerOverlayOffset,
             ) {
                 MainContent()
             }

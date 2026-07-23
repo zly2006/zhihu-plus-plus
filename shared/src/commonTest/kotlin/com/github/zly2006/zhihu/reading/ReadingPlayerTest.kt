@@ -303,14 +303,45 @@ class ReadingPlayerTest {
     }
 
     @Test
-    fun chunkingKeepsAllTextAndUsesSentenceBoundaries() {
+    fun chunkingUsesEachSentenceAsAResumeBoundary() {
         val chunks = splitReadingSpeechIntoChunks(
             text = "第一句话。第二句话很长很长。第三句话。",
-            maxLength = 12,
         )
 
-        assertTrue(chunks.size >= 2)
-        assertEquals("第一句话。第二句话很长很长。第三句话。", chunks.joinToString(""))
+        assertEquals(
+            listOf("第一句话。", "第二句话很长很长。", "第三句话。"),
+            chunks,
+        )
+    }
+
+    @Test
+    fun longSentenceUsesAClauseBoundaryBeforeTheLimit() {
+        val text = "甲".repeat(70) + "，" + "乙".repeat(70)
+
+        val chunks = splitReadingSpeechIntoChunks(text)
+
+        assertEquals(listOf("甲".repeat(70) + "，", "乙".repeat(70)), chunks)
+    }
+
+    @Test
+    fun unpunctuatedTextIsLimitedTo120Characters() {
+        val text = "字".repeat(241)
+
+        val chunks = splitReadingSpeechIntoChunks(text)
+
+        assertEquals(listOf(120, 120, 1), chunks.map(String::length))
+        assertEquals(text, chunks.joinToString(""))
+    }
+
+    @Test
+    fun hardLimitDoesNotSplitASurrogatePair() {
+        val text = "字".repeat(119) + "😀" + "尾"
+
+        val chunks = splitReadingSpeechIntoChunks(text)
+
+        assertEquals(2, chunks.size)
+        assertTrue(chunks.first().endsWith("😀"))
+        assertEquals(text, chunks.joinToString(""))
     }
 
     @Test

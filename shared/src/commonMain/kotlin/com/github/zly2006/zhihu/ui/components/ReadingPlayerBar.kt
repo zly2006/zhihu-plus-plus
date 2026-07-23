@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PauseCircle
 import androidx.compose.material.icons.filled.PlayArrow
@@ -74,15 +75,16 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 const val READING_PLAYER_BAR_TAG = "reading_player_bar"
+const val READING_PLAYER_COMPACT_TAG = "reading_player_compact"
 const val READING_PLAYER_PREVIOUS_TAG = "reading_player_previous"
 const val READING_PLAYER_TOGGLE_TAG = "reading_player_toggle"
 const val READING_PLAYER_NEXT_TAG = "reading_player_next"
-const val READING_PLAYER_SETTINGS_TAG = "reading_player_settings"
+const val READING_PLAYER_STOP_TAG = "reading_player_stop"
 const val READING_PLAYER_QUEUE_TAG = "reading_player_queue"
 const val READING_PLAYER_SPEED_TAG = "reading_player_speed"
 const val READING_PLAYER_SPEED_MENU_TAG = "reading_player_speed_menu"
 const val READING_QUEUE_SHEET_TAG = "reading_queue_sheet"
-const val READING_QUEUE_STOP_TAG = "reading_queue_stop"
+const val READING_QUEUE_SETTINGS_TAG = "reading_queue_settings"
 
 fun readingQueueItemTag(index: Int): String = "reading_queue_item_$index"
 
@@ -107,9 +109,10 @@ fun ReadingPlayerBar(
     onPrevious: () -> Unit,
     onTogglePlayPause: () -> Unit,
     onNext: () -> Unit,
-    onOpenSettings: () -> Unit,
+    onStop: () -> Unit,
     onOpenQueue: () -> Unit,
     onPlaybackSpeedChange: (Float) -> Unit,
+    onBackgroundInteraction: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val item = state.currentItem ?: return
@@ -165,6 +168,7 @@ fun ReadingPlayerBar(
                     ReadingPlaybackSpeedMenu(
                         speed = state.playbackSpeed,
                         onSpeedChange = onPlaybackSpeedChange,
+                        onDismissRequest = onBackgroundInteraction,
                     )
                 }
                 Row(
@@ -208,10 +212,10 @@ fun ReadingPlayerBar(
                         Icon(Icons.Default.SkipNext, contentDescription = "下一条")
                     }
                     IconButton(
-                        onClick = onOpenSettings,
-                        modifier = Modifier.testTag(READING_PLAYER_SETTINGS_TAG),
+                        onClick = onStop,
+                        modifier = Modifier.testTag(READING_PLAYER_STOP_TAG),
                     ) {
-                        Icon(Icons.Default.Settings, contentDescription = "朗读设置")
+                        Icon(Icons.Default.Stop, contentDescription = "停止朗读")
                     }
                     IconButton(
                         onClick = onOpenQueue,
@@ -226,9 +230,44 @@ fun ReadingPlayerBar(
 }
 
 @Composable
+fun CompactReadingPlayerButton(
+    state: ReadingPlayerState,
+    onExpand: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (!state.hasSession) return
+    val progress = "${state.currentIndex + 1}/${state.queue.size}"
+    DraggableRefreshButton(
+        modifier = modifier
+            .testTag(READING_PLAYER_COMPACT_TAG)
+            .semantics {
+                contentDescription = "展开朗读播放器，当前进度 $progress"
+            },
+        preferenceName = "readingPlayerCompact",
+        initiallyOnLeft = true,
+        onClick = onExpand,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                Icons.Default.Headphones,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+            )
+            Text(
+                text = progress,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+@Composable
 private fun ReadingPlaybackSpeedMenu(
     speed: Float,
     onSpeedChange: (Float) -> Unit,
+    onDismissRequest: () -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     val currentLabel = playbackSpeedLabel(speed)
@@ -264,7 +303,10 @@ private fun ReadingPlaybackSpeedMenu(
         }
         DropdownMenu(
             expanded = expanded,
-            onDismissRequest = { expanded = false },
+            onDismissRequest = {
+                expanded = false
+                onDismissRequest()
+            },
             offset = DpOffset(x = (-16).dp, y = 0.dp),
             modifier = Modifier
                 .testTag(READING_PLAYER_SPEED_MENU_TAG)
@@ -306,7 +348,7 @@ fun ReadingQueueSheet(
     state: ReadingPlayerState,
     onDismissRequest: () -> Unit,
     onItemClick: (index: Int, item: ReadingQueueItem) -> Unit,
-    onStop: () -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     if (!state.hasSession) return
     MyModalBottomSheet(
@@ -334,11 +376,11 @@ fun ReadingQueueSheet(
                 )
             }
             Button(
-                onClick = onStop,
-                modifier = Modifier.testTag(READING_QUEUE_STOP_TAG),
+                onClick = onOpenSettings,
+                modifier = Modifier.testTag(READING_QUEUE_SETTINGS_TAG),
             ) {
-                Icon(Icons.Default.Stop, contentDescription = null)
-                Text("停止朗读")
+                Icon(Icons.Default.Settings, contentDescription = null)
+                Text("朗读设置")
             }
         }
         LazyColumn(
