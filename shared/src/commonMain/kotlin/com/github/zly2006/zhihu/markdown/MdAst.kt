@@ -358,13 +358,20 @@ private fun createListBlock(
                 precedingListItem = listItem
             }
 
-            "ul", "ol" -> precedingListItem?.appendChild(
-                createListBlock(
+            "ul", "ol" -> {
+                val nestedList = createListBlock(
                     childElement,
                     ordered = childElement.tagName().equals("ol", ignoreCase = true),
                     noNativeBlock = noNativeBlock,
-                ),
-            )
+                )
+                if (precedingListItem != null) {
+                    precedingListItem.appendChild(nestedList)
+                } else {
+                    val nestedItems = nestedList.children.toList()
+                    nestedList.clearChildren()
+                    appendChildren(nestedItems)
+                }
+            }
         }
     }
 }
