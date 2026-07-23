@@ -197,6 +197,30 @@ class MdAstTest {
     }
 
     @Test
+    fun nested_list_without_preceding_item_should_keep_its_items() {
+        val document = htmlToMdAst(
+            """
+            <h3>1.2 国际带宽分配</h3>
+            <ul><ul>
+              <li>电信的国际带宽总量最大，约为7.7T</li>
+              <li>带宽分配较为均衡，各省都有一定的国际带宽</li>
+            </ul></ul>
+            """.trimIndent(),
+        )
+        val list = document.children.filterIsInstance<ListBlock>().single()
+        val items = list.children.filterIsInstance<ListItem>()
+
+        assertEquals(2, items.size)
+        assertEquals(
+            listOf(
+                "电信的国际带宽总量最大，约为7.7T",
+                "带宽分配较为均衡，各省都有一定的国际带宽",
+            ),
+            items.map { it.plainText() },
+        )
+    }
+
+    @Test
     fun preview_image_urls_should_keep_document_order_and_drop_duplicates() {
         val document = htmlToMdAst(
             """
