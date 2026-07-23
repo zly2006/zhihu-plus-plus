@@ -1,0 +1,418 @@
+{
+  "schema_version": 1,
+  "collected_at": "2026-07-23T03:30:40.459317+00:00",
+  "collection_method": "public Zhihu content API via zhurl --web",
+  "selection": {
+    "source": "curated formula-heavy public answers and articles",
+    "ranking": "formula occurrences in top-voted answers and articles",
+    "required_authors": [
+      "赵泠",
+      "酱紫君",
+      "卢健龙"
+    ],
+    "author_count": 10,
+    "items_per_author": 3
+  },
+  "authors": [
+    {
+      "name": "赵泠",
+      "url_token": "MarryMea",
+      "content_count": 1,
+      "formula_occurrences": 2
+    },
+    {
+      "name": "酱紫君",
+      "url_token": "GalAster",
+      "content_count": 3,
+      "formula_occurrences": 356
+    },
+    {
+      "name": "卢健龙",
+      "url_token": "LuJianlong",
+      "content_count": 3,
+      "formula_occurrences": 186
+    },
+    {
+      "name": "爱丽丝旅行中",
+      "url_token": "wo-bei-56",
+      "content_count": 3,
+      "formula_occurrences": 2178
+    },
+    {
+      "name": "ACRL",
+      "url_token": "acrl",
+      "content_count": 3,
+      "formula_occurrences": 606
+    },
+    {
+      "name": "杂然赋流形丶",
+      "url_token": "za-ran-zhu-fu-liu-xing",
+      "content_count": 3,
+      "formula_occurrences": 351
+    },
+    {
+      "name": "东瓜瓜瓜瓜",
+      "url_token": "dong-gua-gua-gua-gua-40",
+      "content_count": 3,
+      "formula_occurrences": 932
+    },
+    {
+      "name": "王源",
+      "url_token": "wen-yu-zhi-37",
+      "content_count": 3,
+      "formula_occurrences": 258
+    },
+    {
+      "name": "奶牛小雪球",
+      "url_token": "MilkySnowball",
+      "content_count": 3,
+      "formula_occurrences": 245
+    },
+    {
+      "name": "DBinary",
+      "url_token": "DBinary",
+      "content_count": 3,
+      "formula_occurrences": 484
+    }
+  ],
+  "contents": [
+    {
+      "type": "answer",
+      "id": "1988794022882473928",
+      "author_name": "卢健龙",
+      "author_url_token": "LuJianlong",
+      "title": "假如地球上悄然出现了一个“十倍重力异常区”，它会被各国列为最高机密，还是成为改写物理学定律的圣地？",
+      "url": "https://www.zhihu.com/question/1987635540217075144/answer/1988794022882473928",
+      "raw_path": "raw/answer-1988794022882473928.json",
+      "raw_sha256": "6b8ad1986e8e51c16fa369169ac1e3227e22964f40c84df7bfbf6c535789e13a",
+      "content_sha256": "dc3eb1e9a35c91c081d29c5217709d24d798476abc19ea6eb7a838fe593c8bdd",
+      "formula_count": 72
+    },
+    {
+      "type": "answer",
+      "id": "1970228220935775418",
+      "author_name": "卢健龙",
+      "author_url_token": "LuJianlong",
+      "title": "如果我得到了一杯质子，假设它不逸出，也不与其他物质反应，它看起来应该是什么颜色？",
+      "url": "https://www.zhihu.com/question/4343544619/answer/1970228220935775418",
+      "raw_path": "raw/answer-1970228220935775418.json",
+      "raw_sha256": "3644e6389440261bf9f17e09127ddd3c40d507fab01d605dd5f3f6b10e8aeb95",
+      "content_sha256": "7b2870b708da6f0772ad00b661a72807702d5130bd229bf467d03d8c16b44dc5",
+      "formula_count": 60
+    },
+    {
+      "type": "article",
+      "id": "25602004",
+      "author_name": "卢健龙",
+      "author_url_token": "LuJianlong",
+      "title": "光滑流形上的度规和联络",
+      "url": "https://zhuanlan.zhihu.com/p/25602004",
+      "raw_path": "raw/article-25602004.json",
+      "raw_sha256": "b4da47bf2c5a1a5d9db4ade3e2601c0f4fe6748612fa91ee05cb3336cb356fed",
+      "content_sha256": "e00149da9d964e123880498f22bf904ba45978adeab83c56e525f7afe4c52c7d",
+      "formula_count": 54
+    },
+    {
+      "type": "article",
+      "id": "290760759",
+      "author_name": "赵泠",
+      "author_url_token": "MarryMea",
+      "title": "你就是你的大脑",
+      "url": "https://zhuanlan.zhihu.com/p/290760759",
+      "raw_path": "raw/article-290760759.json",
+      "raw_sha256": "c95019195d3fb5904e4a35a8c1aeee8122e56a28606a0966bab0fb210d80aebc",
+      "content_sha256": "6e03a68c6726c199b2b1377560f0c149e2fea378b6ffd173d103c54de80ffafa",
+      "formula_count": 2
+    },
+    {
+      "type": "answer",
+      "id": "1928827087810192602",
+      "author_name": "酱紫君",
+      "author_url_token": "GalAster",
+      "title": "现代数学和理论物理已经发展到怎样一个令人震惊的水平了？",
+      "url": "https://www.zhihu.com/question/304611853/answer/1928827087810192602",
+      "raw_path": "raw/answer-1928827087810192602.json",
+      "raw_sha256": "817a404ed9d9ed87d605b93816c5c321c0defe31b4607cf887b214c8e3df890b",
+      "content_sha256": "2ebe2488c0ada3288eff268101d769ca1fece7777a6d7617ef8cc6fbf80acccd",
+      "formula_count": 181
+    },
+    {
+      "type": "answer",
+      "id": "1923314360878629688",
+      "author_name": "酱紫君",
+      "author_url_token": "GalAster",
+      "title": "为什么伽罗瓦 19 岁就发明的群论，绝大多数那个专业的研究生终其一生都学不会？",
+      "url": "https://www.zhihu.com/question/473033315/answer/1923314360878629688",
+      "raw_path": "raw/answer-1923314360878629688.json",
+      "raw_sha256": "f2086a24fab221b99480e2ac2750238d1430a247e8adcdca9845749d2e30d1ec",
+      "content_sha256": "76f8c0fb5486b83bc722b2f8a6620731915743e5c84d21fa31a6588958ef2fcb",
+      "formula_count": 120
+    },
+    {
+      "type": "article",
+      "id": "36297534",
+      "author_name": "酱紫君",
+      "author_url_token": "GalAster",
+      "title": "x = cos x 的解析形式",
+      "url": "https://zhuanlan.zhihu.com/p/36297534",
+      "raw_path": "raw/article-36297534.json",
+      "raw_sha256": "3856c562b8593927cb2cc1bfc95d9891b6ade101552d1715b1c42404fc97cc43",
+      "content_sha256": "7703e6a9d4018bf5b935687ff904d6bd254562dcd8d3d3e65464773cf3a45cea",
+      "formula_count": 55
+    },
+    {
+      "type": "article",
+      "id": "346100453",
+      "author_name": "爱丽丝旅行中",
+      "author_url_token": "wo-bei-56",
+      "title": "N=2超对称SU(2)Yang-Mills理论中的对偶：对Seiberg和Witten工作的通俗介绍",
+      "url": "https://zhuanlan.zhihu.com/p/346100453",
+      "raw_path": "raw/article-346100453.json",
+      "raw_sha256": "74f1ef3d86792ebd392305fa791bdbd1cef0129e0a4708c0f8fd4db4f13615de",
+      "content_sha256": "9e361ae3672500e9b45be845884f06a13c0238bfa969dac5e20a21093da8c3b0",
+      "formula_count": 1040
+    },
+    {
+      "type": "article",
+      "id": "370767252",
+      "author_name": "爱丽丝旅行中",
+      "author_url_token": "wo-bei-56",
+      "title": "拓扑场论和二维量子引力",
+      "url": "https://zhuanlan.zhihu.com/p/370767252",
+      "raw_path": "raw/article-370767252.json",
+      "raw_sha256": "4c606360dc74b0b94dc6eab9ddc4b8df346b924467a9e32923fbf3479cb3a35b",
+      "content_sha256": "db568461c8b86ac8b762560ab9f56f7d4b4e2d7939cf7edbd47a1f7347d3d970",
+      "formula_count": 884
+    },
+    {
+      "type": "article",
+      "id": "362774447",
+      "author_name": "爱丽丝旅行中",
+      "author_url_token": "wo-bei-56",
+      "title": "什么是几何量子化？",
+      "url": "https://zhuanlan.zhihu.com/p/362774447",
+      "raw_path": "raw/article-362774447.json",
+      "raw_sha256": "cef92c111d69e961240317530f6671528536a0eefc243bd8bd0fe3474b45f72c",
+      "content_sha256": "248080af79c786a712b1ebdd69af316d1ae4f167cf0fbbb26d6fc42c13c5d61b",
+      "formula_count": 254
+    },
+    {
+      "type": "article",
+      "id": "665405974",
+      "author_name": "ACRL",
+      "author_url_token": "acrl",
+      "title": "2D 游戏物理引擎 - 关节约束",
+      "url": "https://zhuanlan.zhihu.com/p/665405974",
+      "raw_path": "raw/article-665405974.json",
+      "raw_sha256": "527a3e3437d38bab1b57f43281c11213e547df8aee3a5e9d1cb67817ce4cb9c7",
+      "content_sha256": "67fb0132d63d4082449f5051087c7a1ec4064b4b5143c562e5b4a43698104f95",
+      "formula_count": 276
+    },
+    {
+      "type": "article",
+      "id": "663932403",
+      "author_name": "ACRL",
+      "author_url_token": "acrl",
+      "title": "Box2D 中线性互补问题的块求解器（Block Solver）",
+      "url": "https://zhuanlan.zhihu.com/p/663932403",
+      "raw_path": "raw/article-663932403.json",
+      "raw_sha256": "5f4f939df7fb1df30b84fd78b90d9f9c65689d63433e6d882067a63f8172ddcf",
+      "content_sha256": "f17a403a7da93549b8cfc7b4780b755c6387ce152c6c06987b50c7e7badb6aa5",
+      "formula_count": 169
+    },
+    {
+      "type": "answer",
+      "id": "3328739914",
+      "author_name": "ACRL",
+      "author_url_token": "acrl",
+      "title": "物理引擎如何正确的求解多个刚体间的约束?",
+      "url": "https://www.zhihu.com/question/40135989/answer/3328739914",
+      "raw_path": "raw/answer-3328739914.json",
+      "raw_sha256": "2fe19c56a0fd2883fe907e3f188540be6ea86cfc7c0a07582320e5cb81e67f8d",
+      "content_sha256": "f01d47a4ab1a3411a502c533eab926eaee8c34a1e1bb419be2010a80612ae2fb",
+      "formula_count": 161
+    },
+    {
+      "type": "article",
+      "id": "5783560734",
+      "author_name": "杂然赋流形丶",
+      "author_url_token": "za-ran-zhu-fu-liu-xing",
+      "title": "【AKLT 模型】Haldane 猜想的第一缕曙光",
+      "url": "https://zhuanlan.zhihu.com/p/5783560734",
+      "raw_path": "raw/article-5783560734.json",
+      "raw_sha256": "d3483a781be5f71661352257e74b8aafcc71e7b601f759da50eee7e0b624ec62",
+      "content_sha256": "a00d00f268cc636e9ca55b6f34af99a7d1256c19e6399746c993a757a1e7a3ca",
+      "formula_count": 137
+    },
+    {
+      "type": "article",
+      "id": "410633814",
+      "author_name": "杂然赋流形丶",
+      "author_url_token": "za-ran-zhu-fu-liu-xing",
+      "title": "四类边界条件下静电场唯一性定理的讨论",
+      "url": "https://zhuanlan.zhihu.com/p/410633814",
+      "raw_path": "raw/article-410633814.json",
+      "raw_sha256": "6e4142e3aa24af0efe6f8ce29885bc565fef286f40212d0b3916ece69498169e",
+      "content_sha256": "d1679109c37c63bc24b7ea8a69a697cb0fdc2272af31a4cd63303d557690aa3c",
+      "formula_count": 126
+    },
+    {
+      "type": "answer",
+      "id": "2291235867",
+      "author_name": "杂然赋流形丶",
+      "author_url_token": "za-ran-zhu-fu-liu-xing",
+      "title": "数列 2，4，6，7，8…… 后面的数字是什么？",
+      "url": "https://www.zhihu.com/question/509018326/answer/2291235867",
+      "raw_path": "raw/answer-2291235867.json",
+      "raw_sha256": "2c7b5592776ea2df65a4bc14f14efdfa09e9f659c3a0d6d578a8d9aca7462d08",
+      "content_sha256": "e497f9f17bccf4584abec63e1143f389ed5f4d2231a782fe095d29eac0a27cde",
+      "formula_count": 88
+    },
+    {
+      "type": "article",
+      "id": "1908637887618062208",
+      "author_name": "东瓜瓜瓜瓜",
+      "author_url_token": "dong-gua-gua-gua-gua-40",
+      "title": "时间序列分析入门（约三万字）",
+      "url": "https://zhuanlan.zhihu.com/p/1908637887618062208",
+      "raw_path": "raw/article-1908637887618062208.json",
+      "raw_sha256": "9c2ca0647b2549921f09614324406207bc4a46c808524a953fa72a0a04218382",
+      "content_sha256": "d7a93b115941eb36d5ba4678eaec54e0dffdeb957aae0b19f04729c66ec3b6f2",
+      "formula_count": 815
+    },
+    {
+      "type": "answer",
+      "id": "3525146568",
+      "author_name": "东瓜瓜瓜瓜",
+      "author_url_token": "dong-gua-gua-gua-gua-40",
+      "title": "如何称量一个鱼塘的液体重量？",
+      "url": "https://www.zhihu.com/question/562775394/answer/3525146568",
+      "raw_path": "raw/answer-3525146568.json",
+      "raw_sha256": "f80c2ed0a13501d7797968bd7cafa40fd1de521566236eeb4d76d3c931272ca9",
+      "content_sha256": "18d465f0c9a029f90746d3feacebce1a2bfd6f83dc11ac8bce1f31aa2e2426f4",
+      "formula_count": 62
+    },
+    {
+      "type": "article",
+      "id": "633477169",
+      "author_name": "东瓜瓜瓜瓜",
+      "author_url_token": "dong-gua-gua-gua-gua-40",
+      "title": "正项级数敛散性判别之雅姆判别法",
+      "url": "https://zhuanlan.zhihu.com/p/633477169",
+      "raw_path": "raw/article-633477169.json",
+      "raw_sha256": "ada1a1fdd023afab289b429ba909763f4c5d73f07c9353d8ac44a9f0518b1883",
+      "content_sha256": "6977bd0b8c746a8cdc727efcb5a24abdd329f656be1af7c96789803bea4153ab",
+      "formula_count": 55
+    },
+    {
+      "type": "article",
+      "id": "259811173",
+      "author_name": "王源",
+      "author_url_token": "wen-yu-zhi-37",
+      "title": "【强化学习与最优控制】笔记（一）确定性问题的动态规划",
+      "url": "https://zhuanlan.zhihu.com/p/259811173",
+      "raw_path": "raw/article-259811173.json",
+      "raw_sha256": "a99875d93ae98e6e8277a5a1aefce8a0d593734f503a7dbf895e0a75dd810364",
+      "content_sha256": "c06f912ccc5e49bf8bcf79c6effc373416693720a05b09246757d924342ed480",
+      "formula_count": 109
+    },
+    {
+      "type": "article",
+      "id": "361766549",
+      "author_name": "王源",
+      "author_url_token": "wen-yu-zhi-37",
+      "title": "优化模型线性化方法总结",
+      "url": "https://zhuanlan.zhihu.com/p/361766549",
+      "raw_path": "raw/article-361766549.json",
+      "raw_sha256": "d220cce9cec81d28291ee97260be1b67eaca2cd426231672c38b40f92978b2e5",
+      "content_sha256": "2dc8eb059b471576d517499cb27dc11b358afa5b303bac2b69b58f95d6c62180",
+      "formula_count": 77
+    },
+    {
+      "type": "article",
+      "id": "534485974",
+      "author_name": "王源",
+      "author_url_token": "wen-yu-zhi-37",
+      "title": "【最优化(一)】最优化问题概述和分类",
+      "url": "https://zhuanlan.zhihu.com/p/534485974",
+      "raw_path": "raw/article-534485974.json",
+      "raw_sha256": "e2c84e8bf8c2cab24657d2ad0cf9de4e7f8486b0af22ff809cd4345375726388",
+      "content_sha256": "cf5ccc03c7a3e679d5e480cc8c24d47df5745ecbb294c35a26aa92320ab29831",
+      "formula_count": 72
+    },
+    {
+      "type": "article",
+      "id": "618879570",
+      "author_name": "奶牛小雪球",
+      "author_url_token": "MilkySnowball",
+      "title": "拂晓的安魂曲：一个从极坐标系开始的故事（1）",
+      "url": "https://zhuanlan.zhihu.com/p/618879570",
+      "raw_path": "raw/article-618879570.json",
+      "raw_sha256": "260de638718ec55d4e4991074ae51fd05d7e8a18f1c36bfe96fabc1a783ccc89",
+      "content_sha256": "407f5f33eac5b5107e8b7361b0f5921eed97fb5951ec39cd99d472504e3d0542",
+      "formula_count": 99
+    },
+    {
+      "type": "answer",
+      "id": "881720670",
+      "author_name": "奶牛小雪球",
+      "author_url_token": "MilkySnowball",
+      "title": "为什么晶体只有 230 种空间结构？",
+      "url": "https://www.zhihu.com/question/353453805/answer/881720670",
+      "raw_path": "raw/answer-881720670.json",
+      "raw_sha256": "77b31b067a26296798cdfbf03f85578e7d1481415b0a373dbd5c1c06fa3d136c",
+      "content_sha256": "7f981256fd41fa8c69f686c7683124857e9fc8bef6941c2d40e970718cbcb851",
+      "formula_count": 81
+    },
+    {
+      "type": "article",
+      "id": "112975310",
+      "author_name": "奶牛小雪球",
+      "author_url_token": "MilkySnowball",
+      "title": "《物理竞赛专题精编》专题19题4解法讨论",
+      "url": "https://zhuanlan.zhihu.com/p/112975310",
+      "raw_path": "raw/article-112975310.json",
+      "raw_sha256": "d8b2ea85e1260a4e8108b6b94090d241970f99a9d5c1656e334db0af7bb87bf6",
+      "content_sha256": "27cf4e225aadc353573ded207b5c1602a9bdafba9aaaddb2df7587c664fd4b56",
+      "formula_count": 65
+    },
+    {
+      "type": "article",
+      "id": "72644228",
+      "author_name": "DBinary",
+      "author_url_token": "DBinary",
+      "title": "从三角函数到离散傅里叶变换到语音识别再到图像频域鲁棒性水印",
+      "url": "https://zhuanlan.zhihu.com/p/72644228",
+      "raw_path": "raw/article-72644228.json",
+      "raw_sha256": "9eb524ba0a0c7525a28d45563c24cf5177fca19ab3066d9158f5a34035c78992",
+      "content_sha256": "a27194b36a36a2089a2fd376a3d5cd96ee2a44e2a5e0346fcd862af4ecf4f59f",
+      "formula_count": 303
+    },
+    {
+      "type": "article",
+      "id": "77345128",
+      "author_name": "DBinary",
+      "author_url_token": "DBinary",
+      "title": "傅里叶变换推导详解",
+      "url": "https://zhuanlan.zhihu.com/p/77345128",
+      "raw_path": "raw/article-77345128.json",
+      "raw_sha256": "cb5fdba33f7f7e21b33d40ba613f146b3cbd31bc1c960ac93a0bf42066354cc8",
+      "content_sha256": "90290cbc94c8074ea4c57d0b14cb56fd556f6f93b84f3bb2d255377f3f3213e2",
+      "formula_count": 93
+    },
+    {
+      "type": "article",
+      "id": "93011093",
+      "author_name": "DBinary",
+      "author_url_token": "DBinary",
+      "title": "''说人话\"系列之卡尔曼滤波",
+      "url": "https://zhuanlan.zhihu.com/p/93011093",
+      "raw_path": "raw/article-93011093.json",
+      "raw_sha256": "b5447582ccd9d59e7c1cba9b6cc0d1a7545a1259781d0ece6f7faa60c710593f",
+      "content_sha256": "55e39c16be58df9374a8fa03a22e8b1c21745c74d70e5d3a2392c7cf26149e9a",
+      "formula_count": 88
+    }
+  ],
+  "formula_occurrences": 5598,
+  "unique_formula_count": 3703
+}

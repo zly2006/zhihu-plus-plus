@@ -286,12 +286,12 @@ class MdAstTest {
         assertFalse(nodes.any { it is Figure && it.imageUrl.contains("/equation?tex=") })
     }
 
-    private fun Node.allNodes(): List<Node> =
-        listOf(this) + if (this is ContainerNode) children.flatMap { it.allNodes() } else emptyList()
-
     private fun Node.plainText(): String = when (this) {
         is Text -> literal
         is ContainerNode -> children.joinToString(separator = "") { it.plainText() }
         else -> ""
     }
 }
+
+internal fun Node.allNodes(): List<Node> =
+    listOf(this) + if (this is ContainerNode) children.flatMap { it.allNodes() } else emptyList()

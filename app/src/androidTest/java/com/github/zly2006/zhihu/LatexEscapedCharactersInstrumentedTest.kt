@@ -84,7 +84,7 @@ class LatexEscapedCharactersInstrumentedTest {
                         style = MaterialTheme.typography.headlineSmall,
                     )
                     Text(
-                        text = "io.github.zly2006 · 0.0.1-alpha2",
+                        text = "io.github.zly2006 · 0.0.1-alpha3",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodyMedium,
                     )
@@ -144,7 +144,7 @@ class LatexEscapedCharactersInstrumentedTest {
                         style = MaterialTheme.typography.headlineSmall,
                     )
                     Text(
-                        text = "io.github.zly2006 · 0.0.1-alpha2",
+                        text = "io.github.zly2006 · 0.0.1-alpha3",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodyMedium,
                     )
