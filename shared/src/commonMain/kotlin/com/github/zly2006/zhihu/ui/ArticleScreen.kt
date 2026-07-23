@@ -68,7 +68,6 @@ import androidx.compose.material.icons.filled.FilterCenterFocus
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.GetApp
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.outlined.DesktopWindows
@@ -133,7 +132,6 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.withReadingQueueSource
 import com.github.zly2006.zhihu.reading.ReadingContentType
-import com.github.zly2006.zhihu.reading.ReadingPlaybackStatus
 import com.github.zly2006.zhihu.reading.ReadingQueueItem
 import com.github.zly2006.zhihu.reading.ReadingQueueSourceRegistry
 import com.github.zly2006.zhihu.reading.ReadingStartRequest
@@ -147,6 +145,7 @@ import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
+import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.shared.util.formatCompactCount
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.components.AnswerHorizontalOverscroll
@@ -169,6 +168,7 @@ import com.github.zly2006.zhihu.viewmodel.addReadHistory
 import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import com.materialkolor.ktx.harmonize
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -511,6 +511,7 @@ fun ArticleVideoAttachmentContent(attachment: JsonElement?) {
 fun ArticleActionsMenu(
     article: Article,
     viewModel: ArticleViewModel,
+    answerQueueFallbackProvider: (suspend (limit: Int) -> List<Article>)? = null,
     showMenu: Boolean,
     onDismissRequest: () -> Unit,
     onSummaryRequest: () -> Unit,
@@ -537,12 +538,13 @@ fun ArticleActionsMenu(
         questionId = viewModel.questionId.takeIf { it > 0 },
         bodyHtml = viewModel.content.takeIf(String::isNotBlank),
         publishedAt = viewModel.createdAt,
+        updatedAt = viewModel.updatedAt,
         voteUpCount = viewModel.voteUpCount,
         commentCount = viewModel.commentCount,
     )
     val readingPreferences = loadReadingPreferences(readingSettings)
     val readingPlaybackSpeed = loadReadingPlaybackSpeed(readingSettings)
-    val isCurrentReadingItem = readingPlayerState.currentItem?.key == readingItem.key
+    val hasReadingSession = readingPlayerState.hasSession
 
     @Composable
     fun MenuActionButton(
@@ -608,22 +610,14 @@ fun ArticleActionsMenu(
     fun Content() {
         MenuActionButton(
             icon = {
-                when {
-                    readingPlayer.isSupported &&
-                        isCurrentReadingItem &&
-                        readingPlayerState.status in setOf(
-                            ReadingPlaybackStatus.Initializing,
-                            ReadingPlaybackStatus.Loading,
-                        ) -> CircularProgressIndicator(
-                        modifier = Modifier.height(24.dp),
-                        strokeWidth = 2.dp,
-                    )
-                    readingPlayer.isSupported && isCurrentReadingItem && readingPlayerState.isActivelyPlaying -> Icon(
-                        Icons.Default.Pause,
+                if (readingPlayer.isSupported && hasReadingSession) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.VolumeOff,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    else -> Icon(
+                } else {
+                    Icon(
                         if (!readingPlayer.isSupported && ttsState.isSpeaking) {
                             Icons.AutoMirrored.Filled.VolumeOff
                         } else {
@@ -635,40 +629,82 @@ fun ArticleActionsMenu(
                 }
             },
             text = if (readingPlayer.isSupported) {
-                when {
-                    !isCurrentReadingItem -> "开始连续朗读"
-                    readingPlayerState.isActivelyPlaying -> "暂停朗读"
-                    readingPlayerState.status == ReadingPlaybackStatus.Paused -> "继续朗读"
-                    else -> "重新朗读"
-                }
+                if (hasReadingSession) "停止朗读" else "开始连续朗读"
             } else if (ttsState.isSpeaking) {
                 "停止朗读"
             } else {
                 "开始朗读"
             },
             enabled = if (readingPlayer.isSupported) {
-                readingItem.hasReadableFields(readingPreferences)
+                hasReadingSession || readingItem.hasReadableFields(readingPreferences)
             } else {
                 ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)
             },
             onClick = {
                 onDismissRequest()
                 if (readingPlayer.isSupported) {
-                    if (isCurrentReadingItem) {
-                        readingPlayer.togglePlayPause()
+                    if (hasReadingSession) {
+                        readingPlayer.stop()
                     } else {
-                        readingPlayer.start(
-                            ReadingStartRequest(
-                                queue = ReadingQueueSourceRegistry.queueStartingAt(
+                        coroutineScope.launch {
+                            val originQueue = ReadingQueueSourceRegistry.queueStartingAt(
+                                current = readingItem,
+                                sourceId = article.readingQueueSourceId,
+                                limit = readingPreferences.queueLimit,
+                            )
+                            val queue = if (
+                                article.type == ArticleType.Answer &&
+                                originQueue.size < readingPreferences.queueLimit &&
+                                readingPreferences.queueLimit > 1
+                            ) {
+                                val fallbackAfterCurrent = try {
+                                    val fallbackArticles = answerQueueFallbackProvider
+                                        ?.invoke(readingPreferences.queueLimit - 1)
+                                        ?: viewModel.answerNextIds.map { answerId ->
+                                            Article(
+                                                type = ArticleType.Answer,
+                                                id = answerId,
+                                                title = viewModel.title,
+                                            )
+                                        }
+                                    fallbackArticles.map { fallback ->
+                                        ReadingQueueItem(
+                                            contentType = ReadingContentType.Answer,
+                                            id = fallback.id,
+                                            title = fallback.title
+                                                .takeUnless { it == "loading..." }
+                                                .orEmpty()
+                                                .ifBlank { viewModel.title },
+                                            author = fallback.authorName
+                                                .takeUnless { it == "loading..." }
+                                                .orEmpty(),
+                                            questionId = viewModel.questionId.takeIf { it > 0 },
+                                        )
+                                    }
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    Log.w("ArticleActionsMenu", "Failed to load the remaining reading queue", e)
+                                    emptyList()
+                                }
+                                ReadingQueueSourceRegistry.queueStartingAt(
                                     current = readingItem,
                                     sourceId = article.readingQueueSourceId,
                                     limit = readingPreferences.queueLimit,
+                                    fallbackAfterCurrent = fallbackAfterCurrent,
+                                )
+                            } else {
+                                originQueue
+                            }
+                            readingPlayer.start(
+                                ReadingStartRequest(
+                                    queue = queue,
+                                    preferences = readingPreferences,
+                                    sourceId = article.readingQueueSourceId,
+                                    playbackSpeed = readingPlaybackSpeed,
                                 ),
-                                preferences = readingPreferences,
-                                sourceId = article.readingQueueSourceId,
-                                playbackSpeed = readingPlaybackSpeed,
-                            ),
-                        )
+                            )
+                        }
                     }
                 } else {
                     toggleSpeech(viewModel.title, viewModel.content)
@@ -1974,6 +2010,9 @@ fun ArticleScreen(
     ArticleActionsMenu(
         article = article,
         viewModel = viewModel,
+        answerQueueFallbackProvider = sharedData?.navigator?.let { answerNavigator ->
+            { limit -> answerNavigator.remainingAnswersSnapshot(article.id, limit) }
+        },
         showMenu = showActionsMenu,
         onDismissRequest = { showActionsMenu = false },
         onSummaryRequest = {

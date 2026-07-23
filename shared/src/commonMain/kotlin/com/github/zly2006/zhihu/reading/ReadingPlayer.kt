@@ -126,6 +126,7 @@ data class ReadingQueueItem(
     val questionId: Long? = null,
     val bodyHtml: String? = null,
     val publishedAt: Long = 0L,
+    val updatedAt: Long = 0L,
     val voteUpCount: Int = -1,
     val commentCount: Int = -1,
 ) {
@@ -452,16 +453,37 @@ object ReadingQueueSourceRegistry {
         current: ReadingQueueItem,
         sourceId: String?,
         limit: Int,
+        fallbackAfterCurrent: List<ReadingQueueItem> = emptyList(),
     ): List<ReadingQueueItem> {
         val safeLimit = limit.coerceIn(1, MAX_READING_QUEUE_SIZE)
         val source = sourceId?.let(sources::get)
         val currentIndex = source?.indexOfFirst { it.key == current.key } ?: -1
-        if (source == null || currentIndex < 0) return listOf(current).take(safeLimit)
+        if (source == null || currentIndex < 0) {
+            return (listOf(current) + fallbackAfterCurrent)
+                .distinctBy(ReadingQueueItem::key)
+                .take(safeLimit)
+        }
 
-        return source
+        val sourceQueue = source
             .drop(currentIndex)
             .take(safeLimit)
             .map { item -> if (item.key == current.key) current else item }
+        if (fallbackAfterCurrent.isEmpty()) return sourceQueue
+
+        val sourceContinuationKeys = sourceQueue.drop(1).map(ReadingQueueItem::key)
+        val fallbackKeys = fallbackAfterCurrent
+            .distinctBy(ReadingQueueItem::key)
+            .map(ReadingQueueItem::key)
+        if (
+            sourceContinuationKeys.isNotEmpty() &&
+            fallbackKeys.take(sourceContinuationKeys.size) != sourceContinuationKeys
+        ) {
+            return sourceQueue
+        }
+
+        return (sourceQueue + fallbackAfterCurrent)
+            .distinctBy(ReadingQueueItem::key)
+            .take(safeLimit)
     }
 
     internal fun clearForTesting() {

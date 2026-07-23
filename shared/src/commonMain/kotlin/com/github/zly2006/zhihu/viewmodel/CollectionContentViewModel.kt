@@ -88,6 +88,9 @@ class CollectionContentViewModel(
     override val initialUrl: String
         get() = "https://www.zhihu.com/api/v4/collections/$collectionId/items"
 
+    val nextPageUrl: String
+        get() = lastPaging?.next.orEmpty()
+
     override fun processResponse(environment: PaginationEnvironment, data: List<CollectionItem>, rawData: JsonArray) {
         super.processResponse(environment, data, rawData)
         displayItems.addAll(data.map { createDisplayItem(it) }) // 展示用的已flatten数据

@@ -208,6 +208,7 @@ fun CollectionContentScreen(
                         collectionTitle = screenViewModel.title,
                         initialNextItems = nextItems,
                         initialPreviousItems = prevItems,
+                        initialNextUrl = screenViewModel.nextPageUrl,
                         environment = collectionEnvironment,
                     )
                 }

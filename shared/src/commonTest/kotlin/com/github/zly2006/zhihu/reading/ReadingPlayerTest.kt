@@ -164,6 +164,122 @@ class ReadingPlayerTest {
     }
 
     @Test
+    fun answerSwitchedBeyondItsOriginFallsBackToQuestionOrder() {
+        ReadingQueueSourceRegistry.register(
+            "home:feed",
+            listOf(
+                ReadingQueueItem(ReadingContentType.Answer, id = 1),
+                ReadingQueueItem(ReadingContentType.Article, id = 2),
+            ),
+        )
+        val current = ReadingQueueItem(
+            contentType = ReadingContentType.Answer,
+            id = 10,
+            questionId = 100,
+            bodyHtml = "<p>当前回答</p>",
+        )
+
+        val queue = ReadingQueueSourceRegistry.queueStartingAt(
+            current = current,
+            sourceId = "home:feed",
+            limit = 3,
+            fallbackAfterCurrent = listOf(
+                ReadingQueueItem(ReadingContentType.Answer, id = 11, questionId = 100),
+                ReadingQueueItem(ReadingContentType.Answer, id = 12, questionId = 100),
+                ReadingQueueItem(ReadingContentType.Answer, id = 13, questionId = 100),
+            ),
+        )
+
+        assertEquals(listOf(10L, 11L, 12L), queue.map(ReadingQueueItem::id))
+        assertEquals("<p>当前回答</p>", queue.first().bodyHtml)
+    }
+
+    @Test
+    fun matchingOriginStillWinsOverQuestionFallback() {
+        val current = ReadingQueueItem(ReadingContentType.Answer, id = 1)
+        ReadingQueueSourceRegistry.register(
+            "home:feed",
+            listOf(current, ReadingQueueItem(ReadingContentType.Article, id = 2)),
+        )
+
+        val queue = ReadingQueueSourceRegistry.queueStartingAt(
+            current = current,
+            sourceId = "home:feed",
+            limit = 3,
+            fallbackAfterCurrent = listOf(
+                ReadingQueueItem(ReadingContentType.Answer, id = 11),
+            ),
+        )
+
+        assertEquals(listOf(1L, 2L), queue.map(ReadingQueueItem::id))
+    }
+
+    @Test
+    fun exhaustedMatchingOriginFallsBackToQuestionOrder() {
+        val current = ReadingQueueItem(ReadingContentType.Answer, id = 1)
+        ReadingQueueSourceRegistry.register("question:1:answers:default", listOf(current))
+
+        val queue = ReadingQueueSourceRegistry.queueStartingAt(
+            current = current,
+            sourceId = "question:1:answers:default",
+            limit = 3,
+            fallbackAfterCurrent = listOf(
+                ReadingQueueItem(ReadingContentType.Answer, id = 11),
+                ReadingQueueItem(ReadingContentType.Answer, id = 12),
+            ),
+        )
+
+        assertEquals(listOf(1L, 11L, 12L), queue.map(ReadingQueueItem::id))
+    }
+
+    @Test
+    fun matchingQuestionOriginExtendsAfterItsLoadedItems() {
+        val current = ReadingQueueItem(ReadingContentType.Answer, id = 1)
+        val loadedNext = ReadingQueueItem(ReadingContentType.Answer, id = 11)
+        ReadingQueueSourceRegistry.register(
+            "question:1:answers:default",
+            listOf(current, loadedNext),
+        )
+
+        val queue = ReadingQueueSourceRegistry.queueStartingAt(
+            current = current,
+            sourceId = "question:1:answers:default",
+            limit = 4,
+            fallbackAfterCurrent = listOf(
+                loadedNext,
+                ReadingQueueItem(ReadingContentType.Answer, id = 12),
+                ReadingQueueItem(ReadingContentType.Answer, id = 13),
+            ),
+        )
+
+        assertEquals(listOf(1L, 11L, 12L, 13L), queue.map(ReadingQueueItem::id))
+    }
+
+    @Test
+    fun partiallyMatchingFallbackDoesNotMixDivergingOrderIntoOrigin() {
+        val current = ReadingQueueItem(ReadingContentType.Answer, id = 1)
+        val firstLoaded = ReadingQueueItem(ReadingContentType.Answer, id = 11)
+        val secondLoaded = ReadingQueueItem(ReadingContentType.Answer, id = 12)
+        ReadingQueueSourceRegistry.register(
+            "question:1:answers:default",
+            listOf(current, firstLoaded, secondLoaded),
+        )
+
+        val queue = ReadingQueueSourceRegistry.queueStartingAt(
+            current = current,
+            sourceId = "question:1:answers:default",
+            limit = 5,
+            fallbackAfterCurrent = listOf(
+                firstLoaded,
+                ReadingQueueItem(ReadingContentType.Answer, id = 99),
+                ReadingQueueItem(ReadingContentType.Answer, id = 13),
+            ),
+        )
+
+        assertEquals(listOf(1L, 11L, 12L), queue.map(ReadingQueueItem::id))
+    }
+
+    @Test
     fun queueSourceExcludesFilteredFeedItems() {
         fun item(
             id: Long,
