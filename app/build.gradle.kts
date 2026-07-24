@@ -18,8 +18,7 @@ plugins {
 
 // CI may inject ZHPLUS_* build identity (see .github/workflows/auto-release.yml).
 // Local builds fall back to gradle.properties + git.
-private fun envOrNull(name: String): String? =
-    System.getenv(name)?.trim()?.takeIf { it.isNotEmpty() }
+private fun envOrNull(name: String): String? = System.getenv(name)?.trim()?.takeIf { it.isNotEmpty() }
 
 private fun resolveVersionName(): String =
     envOrNull("ZHPLUS_VERSION_NAME")
