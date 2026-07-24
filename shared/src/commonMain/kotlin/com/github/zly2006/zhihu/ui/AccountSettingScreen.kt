@@ -116,6 +116,7 @@ const val ACCOUNT_SETTINGS_APPEARANCE_TAG = "accountSettings.appearance"
 const val ACCOUNT_SETTINGS_RECOMMEND_TAG = "accountSettings.recommend"
 const val ACCOUNT_SETTINGS_SYSTEM_TAG = "accountSettings.system"
 const val ACCOUNT_SETTINGS_DEVELOPER_TAG = "accountSettings.developer"
+
 /** 账号页「开源说明与鸣谢」入口；reopen 走 [com.github.zly2006.zhihu.onboarding.OssNoticeReopenBus]。 */
 const val ACCOUNT_SETTINGS_OSS_NOTICE_TAG = "accountSettings.ossNotice"
 const val ACCOUNT_SETTINGS_LICENSES_TAG = "accountSettings.licenses"
@@ -549,7 +550,7 @@ fun AccountSettingScreen(
                     },
                 )
                 SettingItem(
-                    title = { Text(OssNoticeCopy.reopenLabel) },
+                    title = { Text(OssNoticeCopy.REOPEN_LABEL) },
                     description = { Text("官方仓库、永久免费与第三方鸣谢") },
                     icon = { Icon(painterResource(Res.drawable.ic_license_24dp), null) },
                     modifier = Modifier.testTag(ACCOUNT_SETTINGS_OSS_NOTICE_TAG),

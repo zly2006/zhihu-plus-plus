@@ -23,23 +23,23 @@ data class OssCredit(
 )
 
 object OssNoticeCopy {
-    const val title = "开源说明"
-    const val intro =
+    const val TITLE = "开源说明"
+    const val INTRO =
         "使用 Zhihu++ 前请先阅读本说明。内容包括官方开源地址、永久免费与防骗提示、本项目开源协议，以及第三方依赖鸣谢。"
-    const val repoTitle = "官方开源仓库"
-    const val repoBody =
+    const val REPO_TITLE = "官方开源仓库"
+    const val REPO_BODY =
         "请仅从官方 GitHub 仓库获取 Zhihu++。这是我们维护的唯一来源。第三方「破解 / VIP / 付费分发」渠道均不受信任。"
-    const val openRepo = "打开官方仓库"
-    const val freeTitle = "永久免费，谨防上当受骗"
-    const val freeBody =
+    const val OPEN_REPO = "打开官方仓库"
+    const val FREE_TITLE = "永久免费，谨防上当受骗"
+    const val FREE_BODY =
         "Zhihu++ 永久免费且开源。请勿购买付费、破解或所谓「VIP」二次分发版本。任何以此收费的行为都可能是诈骗。"
-    const val projectLicenseTitle = "本项目开源协议"
-    const val projectLicenseBody =
+    const val PROJECT_LICENSE_TITLE = "本项目开源协议"
+    const val PROJECT_LICENSE_BODY =
         "本项目以 $ZHPLUS_PROJECT_LICENSE 发布。你可以在该协议允许范围内使用、学习、分享和改进本项目。源码与协议详情见官方仓库。"
-    const val creditsTitle = "第三方依赖鸣谢"
-    const val creditsBody = "Zhihu++ 基于以下开源项目与库构建。若有主页，点击条目可打开。"
-    const val continueLabel = "继续"
-    const val reopenLabel = "开源说明与鸣谢"
+    const val CREDITS_TITLE = "第三方依赖鸣谢"
+    const val CREDITS_BODY = "Zhihu++ 基于以下开源项目与库构建。若有主页，点击条目可打开。"
+    const val CONTINUE_LABEL = "继续"
+    const val REOPEN_LABEL = "开源说明与鸣谢"
 }
 
 val curatedOssCredits: List<OssCredit> =

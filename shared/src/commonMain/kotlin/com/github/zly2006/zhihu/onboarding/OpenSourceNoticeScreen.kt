@@ -109,14 +109,14 @@ fun OpenSourceNoticeScreen(
             }
             item {
                 Text(
-                    text = OssNoticeCopy.title,
+                    text = OssNoticeCopy.TITLE,
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = OssNoticeCopy.intro,
+                    text = OssNoticeCopy.INTRO,
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -124,8 +124,8 @@ fun OpenSourceNoticeScreen(
             item {
                 NoticeSectionCard(
                     icon = Icons.Outlined.Link,
-                    title = OssNoticeCopy.repoTitle,
-                    body = OssNoticeCopy.repoBody,
+                    title = OssNoticeCopy.REPO_TITLE,
+                    body = OssNoticeCopy.REPO_BODY,
                     actionLabel = ZHPLUS_REPO_URL,
                     onActionClick = { openUrl(ZHPLUS_REPO_URL) },
                 )
@@ -133,15 +133,15 @@ fun OpenSourceNoticeScreen(
             item {
                 NoticeSectionCard(
                     icon = Icons.Outlined.Security,
-                    title = OssNoticeCopy.freeTitle,
-                    body = OssNoticeCopy.freeBody,
+                    title = OssNoticeCopy.FREE_TITLE,
+                    body = OssNoticeCopy.FREE_BODY,
                 )
             }
             item {
                 NoticeSectionCard(
                     icon = Icons.Outlined.Description,
-                    title = OssNoticeCopy.projectLicenseTitle,
-                    body = OssNoticeCopy.projectLicenseBody,
+                    title = OssNoticeCopy.PROJECT_LICENSE_TITLE,
+                    body = OssNoticeCopy.PROJECT_LICENSE_BODY,
                     actionLabel = ZHPLUS_PROJECT_LICENSE,
                     onActionClick = { openUrl(ZHPLUS_LICENSE_URL) },
                 )
@@ -158,14 +158,14 @@ fun OpenSourceNoticeScreen(
                         tint = MaterialTheme.colorScheme.primary,
                     )
                     Text(
-                        text = OssNoticeCopy.creditsTitle,
+                        text = OssNoticeCopy.CREDITS_TITLE,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onBackground,
                     )
                 }
                 Text(
-                    text = OssNoticeCopy.creditsBody,
+                    text = OssNoticeCopy.CREDITS_BODY,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
@@ -205,7 +205,7 @@ fun OpenSourceNoticeScreen(
                     .padding(horizontal = 20.dp, vertical = 16.dp)
                     .testTag(OSS_NOTICE_CONTINUE_TAG),
         ) {
-            Text(OssNoticeCopy.continueLabel)
+            Text(OssNoticeCopy.CONTINUE_LABEL)
         }
     }
 }
