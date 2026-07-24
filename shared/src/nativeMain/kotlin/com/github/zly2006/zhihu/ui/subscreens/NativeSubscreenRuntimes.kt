@@ -22,6 +22,16 @@ import com.mikepenz.aboutlibraries.Libs
 import kotlinx.coroutines.flow.MutableStateFlow
 
 @Composable
+actual fun rememberClashPartnerSettingsRuntime(): ClashPartnerSettingsRuntime = remember {
+    ClashPartnerSettingsRuntime(
+        supported = false,
+        isAutoAdaptEnabled = false,
+        setAutoAdaptEnabled = {},
+        statusLabel = "仅 Android 支持",
+    )
+}
+
+@Composable
 actual fun rememberSystemUpdateRuntime(): SystemUpdateRuntime = remember {
     SystemUpdateRuntime(
         state = MutableStateFlow(SystemUpdateState.NoUpdate),

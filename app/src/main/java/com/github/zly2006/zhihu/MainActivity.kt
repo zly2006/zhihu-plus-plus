@@ -50,6 +50,7 @@ import coil3.memory.MemoryCache
 import coil3.request.crossfade
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.HistoryStorage
+import com.github.zly2006.zhihu.shared.network.ClashPartnerCompat
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionContent
@@ -192,6 +193,7 @@ class MainActivity :
         super.onCreate(savedInstanceState)
         clearShareImageCache(this)
         enableEdgeToEdgeCompat()
+        ClashPartnerCompat.start(this)
         continuousUsageReminderManager = ContinuousUsageReminderManager(this)
         history = HistoryStorage(this)
         AccountData.loadData(this)

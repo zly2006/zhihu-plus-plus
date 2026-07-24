@@ -32,14 +32,18 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.asApiEnvironment
+import com.github.zly2006.zhihu.shared.network.ClashPartnerCompat
 import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberIsLiteVariant
 import com.github.zly2006.zhihu.updater.UpdateManager
@@ -165,6 +169,39 @@ actual fun WebViewCustomFontSettings(
             }
         }
     }
+}
+
+@Composable
+actual fun rememberClashPartnerSettingsRuntime(): ClashPartnerSettingsRuntime {
+    val context = LocalContext.current
+    var autoAdapt by remember {
+        mutableStateOf(ClashPartnerCompat.isAutoAdaptEnabled(context))
+    }
+    var statusLabel by remember {
+        mutableStateOf(ClashPartnerCompat.statusLabel(context))
+    }
+    DisposableEffect(context) {
+        ClashPartnerCompat.start(context)
+        val listener: (ClashPartnerCompat.Status) -> Unit = {
+            statusLabel = ClashPartnerCompat.statusLabel(context)
+        }
+        ClashPartnerCompat.addListener(listener)
+        onDispose { ClashPartnerCompat.removeListener(listener) }
+    }
+    return ClashPartnerSettingsRuntime(
+        supported = true,
+        isAutoAdaptEnabled = autoAdapt,
+        setAutoAdaptEnabled = { enabled ->
+            autoAdapt = enabled
+            ClashPartnerCompat.setAutoAdaptEnabled(context, enabled)
+            statusLabel = ClashPartnerCompat.statusLabel(context)
+        },
+        statusLabel = statusLabel,
+        refresh = {
+            ClashPartnerCompat.refresh(context)
+            statusLabel = ClashPartnerCompat.statusLabel(context)
+        },
+    )
 }
 
 @Composable

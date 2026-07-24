@@ -64,6 +64,17 @@ expect fun WebViewCustomFontSettings(
     onCustomFontNameChange: (String?) -> Unit,
 )
 
+data class ClashPartnerSettingsRuntime(
+    val supported: Boolean,
+    val isAutoAdaptEnabled: Boolean,
+    val setAutoAdaptEnabled: (Boolean) -> Unit,
+    val statusLabel: String,
+    val refresh: () -> Unit = {},
+)
+
+@Composable
+expect fun rememberClashPartnerSettingsRuntime(): ClashPartnerSettingsRuntime
+
 data class SystemUpdateRuntime(
     val state: StateFlow<SystemUpdateState>,
     val autoCheckEnabled: () -> Boolean,

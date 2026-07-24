@@ -38,6 +38,16 @@ import java.util.Properties
 internal val desktopSystemUpdateState = MutableStateFlow<SystemUpdateState>(SystemUpdateState.NoUpdate)
 
 @Composable
+actual fun rememberClashPartnerSettingsRuntime(): ClashPartnerSettingsRuntime = remember {
+    ClashPartnerSettingsRuntime(
+        supported = false,
+        isAutoAdaptEnabled = false,
+        setAutoAdaptEnabled = {},
+        statusLabel = "仅 Android 支持",
+    )
+}
+
+@Composable
 actual fun rememberSystemUpdateRuntime(): SystemUpdateRuntime {
     val settings = rememberSettingsStore()
     val accountStore = remember { DesktopAccountStore() }

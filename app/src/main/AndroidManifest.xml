@@ -111,6 +111,9 @@
     </application>
 
     <queries>
+        <package android:name="com.github.metacubex.clash" />
+        <package android:name="com.github.metacubex.clash.meta" />
+        <package android:name="com.github.metacubex.clash.alpha" />
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE" />
         </intent>

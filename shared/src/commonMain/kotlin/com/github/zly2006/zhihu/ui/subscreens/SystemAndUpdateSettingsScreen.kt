@@ -381,6 +381,20 @@ fun SystemAndUpdateSettingsScreen() {
                     },
                     settingKey = AIGC_MARKING_ENABLED_PREFERENCE_KEY,
                 )
+
+                val clashPartner = rememberClashPartnerSettingsRuntime()
+                if (clashPartner.supported) {
+                    SettingItemWithSwitch(
+                        title = { Text("Clash VPN 自动适配") },
+                        description = {
+                            Text(
+                                "Clash Meta 开启 VPN 时流量自动经其处理，无需手填代理。\n${clashPartner.statusLabel}",
+                            )
+                        },
+                        checked = clashPartner.isAutoAdaptEnabled,
+                        onCheckedChange = clashPartner.setAutoAdaptEnabled,
+                    )
+                }
             }
 
             AnimatedVisibility(visible = !showUpdateBanner) {
