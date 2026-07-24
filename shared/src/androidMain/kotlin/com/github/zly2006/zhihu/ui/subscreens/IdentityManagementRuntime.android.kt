@@ -20,6 +20,7 @@ package com.github.zly2006.zhihu.ui.subscreens
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -141,7 +142,15 @@ actual fun rememberIdentityManagementRuntime(): IdentityManagementRuntime {
                 }
             },
             reloadApplication = {
-                context.findActivity()?.recreate()
+                context.findActivity()?.let { activity ->
+                    // Activity.recreate() restores a fitted decor view and leaves a gray status bar.
+                    // A fresh task also guarantees that no screen or cache from the previous identity survives.
+                    val launchIntent = activity.packageManager
+                        .getLaunchIntentForPackage(activity.packageName)
+                        ?: error("无法获取应用启动入口")
+                    launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                    activity.startActivity(launchIntent)
+                }
             },
         )
     }
