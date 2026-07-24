@@ -57,6 +57,10 @@ class ZhihuAccountRepositoryTest {
                 put("id", "123")
                 put("name", "alice")
             },
+            mobileAccessToken = "mobile-access",
+            mobileRefreshToken = "mobile-refresh",
+            mobileTokenType = "bearer",
+            mobileTokenExpiresAt = 123456789L,
         )
 
         repository.save(session)
