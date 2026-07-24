@@ -73,7 +73,7 @@ private data class OnboardingPageContent(
  */
 @Composable
 fun ProductOnboardingScreen(onComplete: () -> Unit) {
-    val pages = remember { productOnboardingPages() }
+    val pages: List<OnboardingPageContent> = remember { productOnboardingPages() }
     val pagerState = rememberPagerState(pageCount = { pages.size })
     val scope = rememberCoroutineScope()
     val isLastPage = pagerState.currentPage == pages.lastIndex
