@@ -42,6 +42,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,6 +64,7 @@ private data class OnboardingPageContent(
     val icon: ImageVector,
     val title: String,
     val body: String,
+    val bullets: List<String> = emptyList(),
     val showIllustration: Boolean = false,
 )
 
@@ -71,36 +73,7 @@ private data class OnboardingPageContent(
  */
 @Composable
 fun ProductOnboardingScreen(onComplete: () -> Unit) {
-    val pages =
-        listOf(
-            OnboardingPageContent(
-                icon = Icons.Outlined.WavingHand,
-                title = "欢迎使用 Zhihu++",
-                body = "隐私增强的知乎客户端：本地推荐、广告屏蔽与内容过滤。非官方客户端，源码在 GitHub 公开维护。",
-                showIllustration = true,
-            ),
-            OnboardingPageContent(
-                icon = Icons.Outlined.GppMaybe,
-                title = "非官方客户端边界",
-                body = "使用第三方客户端存在账号与合规风险。请遵守知乎用户协议与当地法律；勿用于滥用接口或批量抓取。",
-            ),
-            OnboardingPageContent(
-                icon = Icons.Outlined.VerifiedUser,
-                title = "只信任官方更新来源",
-                body = "Zhihu++ 永久免费。请仅从 $ZHPLUS_REPO_URL 的 Release / Nightly 安装，任何收费「VIP / 破解」分发都可能是诈骗。",
-            ),
-            OnboardingPageContent(
-                icon = Icons.Outlined.Cloud,
-                title = "本地数据与遥测",
-                body = "浏览与过滤数据默认保存在本机。可在系统与更新设置中关闭自动检查更新或遥测；开发者选项默认关闭。",
-            ),
-            OnboardingPageContent(
-                icon = Icons.Outlined.Info,
-                title = "准备就绪",
-                body = "账号页可重开「开源说明与鸣谢」；完整许可证见「开源许可」。每次新构建可能展示「本次更新说明」。",
-            ),
-        )
-
+    val pages = remember { productOnboardingPages() }
     val pagerState = rememberPagerState(pageCount = { pages.size })
     val scope = rememberCoroutineScope()
     val isLastPage = pagerState.currentPage == pages.lastIndex
@@ -130,7 +103,7 @@ fun ProductOnboardingScreen(onComplete: () -> Unit) {
                     Text("跳过")
                 }
             } else {
-                Spacer(Modifier.height(48.dp))
+                Spacer(modifier.height(48.dp))
             }
         }
 
@@ -189,7 +162,7 @@ fun ProductOnboardingScreen(onComplete: () -> Unit) {
                     Text("上一步")
                 }
             } else {
-                Spacer(Modifier.size(1.dp))
+                Spacer(modifier.size(1.dp))
             }
 
             if (isLastPage) {
@@ -258,5 +231,83 @@ private fun OnboardingPageBody(content: OnboardingPageContent) {
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        if (content.bullets.isNotEmpty()) {
+            Spacer(Modifier.height(20.dp))
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                content.bullets.forEach { bullet ->
+                    Text(
+                        text = "•  $bullet",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Start,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(24.dp))
     }
 }
+
+private fun productOnboardingPages(): List<OnboardingPageContent> =
+    listOf(
+        OnboardingPageContent(
+            icon = Icons.Outlined.WavingHand,
+            title = "欢迎使用 Zhihu++",
+            body = "隐私增强的知乎客户端：本地推荐、广告屏蔽与内容过滤，把阅读体验还给你。",
+            bullets =
+                listOf(
+                    "非官方客户端，源码在 GitHub 公开维护。",
+                    "核心能力可在设置中随时调整。",
+                    "继续前请阅读后续用户须知。",
+                ),
+            showIllustration = true,
+        ),
+        OnboardingPageContent(
+            icon = Icons.Outlined.GppMaybe,
+            title = "非官方客户端边界",
+            body = "使用第三方客户端存在账号与合规风险，请自行评估。",
+            bullets =
+                listOf(
+                    "请遵守知乎用户协议与当地法律法规。",
+                    "请勿用于批量抓取、滥用接口或其他破坏服务的行为。",
+                    "因使用本客户端导致的账号限制，需由用户自行承担。",
+                ),
+        ),
+        OnboardingPageContent(
+            icon = Icons.Outlined.VerifiedUser,
+            title = "只信任官方更新来源",
+            body = "Zhihu++ 永久免费。请勿购买所谓破解、VIP 或第三方收费包。",
+            bullets =
+                listOf(
+                    "唯一源码与发行渠道：$ZHPLUS_REPO_URL",
+                    "请通过仓库 Release / Nightly 安装，避免未知重打包。",
+                    "任何收费分发都可能是诈骗。",
+                ),
+        ),
+        OnboardingPageContent(
+            icon = Icons.Outlined.Cloud,
+            title = "本地数据与遥测",
+            body = "浏览与过滤数据默认保存在本机；可选遥测用于改进体验。",
+            bullets =
+                listOf(
+                    "账号凭证仅保存在本机存储。",
+                    "可在系统与更新设置中关闭自动检查更新或遥测。",
+                    "开发者选项默认关闭，连点版本号可开启。",
+                ),
+        ),
+        OnboardingPageContent(
+            icon = Icons.Outlined.Info,
+            title = "准备就绪",
+            body = "你已了解必须知道的事项。开始阅读吧。",
+            bullets =
+                listOf(
+                    "账号页可随时重开「开源说明与鸣谢」。",
+                    "完整第三方许可证见「开源许可」。",
+                    "每次新构建可能展示「本次更新说明」。",
+                ),
+        ),
+    )
