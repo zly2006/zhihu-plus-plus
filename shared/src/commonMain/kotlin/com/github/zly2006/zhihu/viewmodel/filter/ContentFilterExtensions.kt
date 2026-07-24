@@ -29,7 +29,6 @@ import com.github.zly2006.zhihu.shared.data.questionAuthor
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.platform.SettingsStore
-import com.github.zly2006.zhihu.viewmodel.feed.resolveFeedQuestionAuthorInfo
 import kotlinx.serialization.json.Json
 
 class ForegroundReadFilterPipeline(
@@ -246,20 +245,7 @@ class FeedDisplayFilterPipeline(
                 onDetailFetchFailed(item)
             }
 
-            val filterable = item.toFilterableContent(identity, rawContent)
-            val questionAuthorInfo = if (filterable.questionAuthorId == null) {
-                resolveFeedQuestionAuthorInfo(item, contentDetailProvider)
-            } else {
-                null
-            }
-            itemToFilterableMap[item] = if (questionAuthorInfo != null) {
-                filterable.copy(
-                    questionAuthorId = questionAuthorInfo.first,
-                    questionAuthorName = questionAuthorInfo.second,
-                )
-            } else {
-                filterable
-            }
+            itemToFilterableMap[item] = item.toFilterableContent(identity, rawContent)
         }
 
         val filterableContents = itemToFilterableMap.values.toList()

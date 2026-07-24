@@ -72,41 +72,29 @@ suspend fun resolveFeedQuestionAuthorInfo(
         return Pair(author.id, author.name)
     }
 
-    when (val raw = feedItem.raw) {
+    val questionDestination = when (val raw = feedItem.raw) {
         is DataHolder.Question -> return raw.author.let { Pair(it.id, it.name) }
-        is DataHolder.Answer -> {
-            val questionDetail = runCatching {
-                contentDetailProvider?.get(Question(questionId = raw.question.id, title = raw.question.title))
-            }.getOrElse { error ->
-                if (error is CancellationException) throw error
-                Log.e("HomeFeedViewModel", "Failed to resolve feed question author from raw answer detail", error)
-                null
-            } as? DataHolder.Question
-            if (questionDetail != null) {
-                return questionDetail.author.let { Pair(it.id, it.name) }
-            }
+        is DataHolder.Answer -> Question(questionId = raw.question.id, title = raw.question.title)
+        else -> when (val target = feedItem.feed?.target) {
+            is Feed.AnswerTarget -> Question(questionId = target.question.id, title = target.question.title)
+            is Feed.QuestionTarget -> Question(questionId = target.id, title = target.title)
+            else -> null
         }
-        else -> Unit
-    }
+    } ?: return null
 
-    val questionDestination = when (val target = feedItem.feed?.target) {
-        is Feed.AnswerTarget -> Question(questionId = target.question.id, title = target.question.title)
-        is Feed.QuestionTarget -> Question(questionId = target.id, title = target.title)
-        else -> null
+    val questionDetail = try {
+        contentDetailProvider?.get(questionDestination) as? DataHolder.Question
+    } catch (error: CancellationException) {
+        throw error
+    } catch (error: Exception) {
+        Log.e("HomeFeedViewModel", "Failed to resolve feed question author from question detail", error)
+        null
     }
-
-    val questionDetail = questionDestination
-        ?.let { destination ->
-            runCatching {
-                contentDetailProvider?.get(destination)
-            }.getOrElse { error ->
-                if (error is CancellationException) throw error
-                Log.e("HomeFeedViewModel", "Failed to resolve feed question author from feed target detail", error)
-                null
-            }
-        } as? DataHolder.Question
-        ?: return null
-    return questionDetail.author.let { Pair(it.id, it.name) }
+    return questionDetail
+        ?.author
+        ?.let { author ->
+            Pair(author.id, author.name)
+        }
 }
 
 suspend fun resolveFeedKeywordBlockingContent(

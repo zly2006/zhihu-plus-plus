@@ -27,6 +27,7 @@ import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.Person
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
+import com.github.zly2006.zhihu.viewmodel.feed.resolveFeedQuestionAuthorInfo
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.buildJsonObject
@@ -205,58 +206,28 @@ class FeedDisplayFilterPipelineTest {
     }
 
     @Test
-    fun filtersAnswerItemsByBlockedQuestionAuthorViaQuestionDetailFallback() = runTest {
+    fun filtersAnswerItemsByBlockedQuestionAuthorSnapshot() = runTest {
         val fixture = fixture()
         fixture.database.blockedQuestionAuthorDao().insertUser(
             BlockedQuestionAuthor(userId = "blocked-asker", userName = "Blocked Asker"),
         )
-        val requestedQuestionIds = mutableListOf<Long>()
-        val item = FeedDisplayItem(
-            title = "answer item",
-            summary = null,
-            details = "",
-            feed = CommonFeed(
-                target = Feed.AnswerTarget(
-                    id = 10,
-                    url = "https://api.zhihu.com/answers/10",
-                    author = person(isFollowing = false),
-                    createdTime = 1,
-                    updatedTime = 1,
-                    voteupCount = 0,
-                    thanksCount = 0,
-                    commentCount = 0,
-                    isCopyable = true,
-                    question = Feed.QuestionTarget(
-                        id = 20,
-                        url = "https://api.zhihu.com/questions/20",
-                        type = "question",
-                        questionType = "normal",
-                        created = 1,
-                        answerCount = 1,
-                        commentCount = 0,
-                        followerCount = 0,
-                        detail = "",
-                        excerpt = "",
-                        author = null,
-                    ),
-                    excerpt = "excerpt",
-                ),
-            ),
-        )
-
-        val result = fixture.pipeline(
-            detailProvider = ContentDetailProvider { destination ->
-                when (destination) {
-                    is Article -> answer(id = destination.id, questionId = 20, questionTitle = "loading...")
-                    is Question -> {
-                        requestedQuestionIds += destination.questionId
-                        question(id = destination.questionId, title = destination.title)
+        val result = fixture
+            .pipeline(
+                detailProvider = ContentDetailProvider { destination ->
+                    when (destination) {
+                        is Article -> answer(id = destination.id, questionId = 20, questionTitle = "loading...")
+                        else -> null
                     }
-                    else -> null
-                }
-            },
-        )
-            .filter(listOf(item))
+                },
+            ).filter(
+                listOf(
+                    answerItem(
+                        questionId = 20,
+                        questionTitle = "loading...",
+                        questionAuthor = person(id = "blocked-asker", name = "Blocked Asker"),
+                    ),
+                ),
+            )
 
         assertEquals(emptyList(), result)
         assertEquals(
@@ -267,7 +238,6 @@ class FeedDisplayFilterPipelineTest {
                 .first()
                 .map { it.blockedReason },
         )
-        assertEquals(listOf(20L), requestedQuestionIds)
         fixture.database.close()
     }
 
@@ -279,13 +249,19 @@ class FeedDisplayFilterPipelineTest {
         )
         var fetchCount = 0
 
-        val result = fixture.pipeline(
-            detailProvider = ContentDetailProvider {
-                fetchCount++
-                question(id = 20, title = "loading...", authorId = "blocked-asker", authorName = "Blocked Asker")
-            },
-        )
-            .filter(
+        val result = fixture
+            .pipeline(
+                detailProvider = ContentDetailProvider { destination ->
+                    when (destination) {
+                        is Article -> answer(id = destination.id, questionId = 20, questionTitle = "loading...")
+                        is Question -> {
+                            fetchCount++
+                            question(id = 20, title = "loading...", authorId = "blocked-asker", authorName = "Blocked Asker")
+                        }
+                        else -> null
+                    }
+                },
+            ).filter(
                 listOf(
                     answerItem(
                         questionId = 20,
@@ -308,18 +284,29 @@ class FeedDisplayFilterPipelineTest {
     }
 
     @Test
-    fun keepsAnswerItemsWhenQuestionAuthorFallbackReturnsNull() = runTest {
+    fun doesNotFetchQuestionDetailsDuringAutomaticFiltering() = runTest {
         val fixture = fixture()
         fixture.database.blockedQuestionAuthorDao().insertUser(
             BlockedQuestionAuthor(userId = "blocked-asker", userName = "Blocked Asker"),
         )
+        var questionFetchCount = 0
 
-        val result = fixture.pipeline(
-            detailProvider = ContentDetailProvider { null },
-        )
-            .filter(listOf(answerItem(questionId = 20, questionTitle = "loading...")))
+        val result = fixture
+            .pipeline(
+                detailProvider = ContentDetailProvider { destination ->
+                    when (destination) {
+                        is Article -> answer(id = destination.id, questionId = 20, questionTitle = "loading...")
+                        is Question -> {
+                            questionFetchCount++
+                            null
+                        }
+                        else -> null
+                    }
+                },
+            ).filter(listOf(answerItem(questionId = 20, questionTitle = "loading...")))
 
         assertEquals(listOf("answer item"), result.map { it.title })
+        assertEquals(0, questionFetchCount)
         assertEquals(
             emptyList(),
             fixture.database
@@ -331,26 +318,26 @@ class FeedDisplayFilterPipelineTest {
     }
 
     @Test
-    fun keepsAnswerItemsWhenQuestionAuthorFallbackThrows() = runTest {
-        val fixture = fixture()
-        fixture.database.blockedQuestionAuthorDao().insertUser(
-            BlockedQuestionAuthor(userId = "blocked-asker", userName = "Blocked Asker"),
+    fun resolvesMissingQuestionAuthorForExplicitBlockAction() = runTest {
+        val requestedQuestionIds = mutableListOf<Long>()
+
+        val authorInfo = resolveFeedQuestionAuthorInfo(
+            answerItem(questionId = 20, questionTitle = "loading..."),
+            ContentDetailProvider { destination ->
+                (destination as? Question)?.let { questionDestination ->
+                    requestedQuestionIds += questionDestination.questionId
+                    question(
+                        id = questionDestination.questionId,
+                        title = questionDestination.title,
+                        authorId = "asker",
+                        authorName = "Asker",
+                    )
+                }
+            },
         )
 
-        val result = fixture.pipeline(
-            detailProvider = ContentDetailProvider { error("boom") },
-        )
-            .filter(listOf(answerItem(questionId = 20, questionTitle = "loading...")))
-
-        assertEquals(listOf("answer item"), result.map { it.title })
-        assertEquals(
-            emptyList(),
-            fixture.database
-                .blockedFeedRecordDao()
-                .observeAll()
-                .first(),
-        )
-        fixture.database.close()
+        assertEquals("asker" to "Asker", authorInfo)
+        assertEquals(listOf(20L), requestedQuestionIds)
     }
 
     private fun fixture(settings: FeedFilterSettings = FeedFilterSettings()): Fixture {
