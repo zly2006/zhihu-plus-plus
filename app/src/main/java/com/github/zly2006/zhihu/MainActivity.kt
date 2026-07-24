@@ -189,9 +189,9 @@ class MainActivity :
             startActivity(intent)
             finish()
         }
+        enableEdgeToEdgeCompat()
         super.onCreate(savedInstanceState)
         clearShareImageCache(this)
-        enableEdgeToEdgeCompat()
         continuousUsageReminderManager = ContinuousUsageReminderManager(this)
         history = HistoryStorage(this)
         AccountData.loadData(this)
