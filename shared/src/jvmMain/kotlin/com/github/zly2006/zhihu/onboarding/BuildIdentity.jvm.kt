@@ -15,35 +15,26 @@ import androidx.compose.runtime.remember
 @Composable
 actual fun rememberBuildIdentity(): BuildIdentity =
     remember {
-        val commit =
-            System.getenv("ZHPLUS_COMMIT_HASH")
-                ?.trim()
-                ?.takeIf { it.isNotEmpty() }
-                ?: System.getProperty("zhplus.commitHash")
-                    ?.trim()
-                    ?.takeIf { it.isNotEmpty() }
-                ?: "unknown"
-        val short =
-            System.getenv("ZHPLUS_SHORT_HASH")
-                ?.trim()
-                ?.takeIf { it.isNotEmpty() }
-                ?: when {
-                    commit != "unknown" && commit.length >= 8 -> commit.take(8)
-                    commit != "unknown" && commit.length >= 7 -> commit.take(7)
-                    else -> "unknown"
-                }
-        val buildTime =
-            System.getenv("ZHPLUS_BUILD_TIME_UTC_MILLIS")?.toLongOrNull()
-                ?: System.getProperty("zhplus.buildTimeUtcMillis")?.toLongOrNull()
-                ?: 0L
-        val version =
-            System.getenv("ZHPLUS_VERSION_NAME")
-                ?.trim()
-                ?.takeIf { it.isNotEmpty() }
-                ?: System.getProperty("zhplus.versionName")
-                    ?.trim()
-                    ?.takeIf { it.isNotEmpty() }
-                ?: "desktop"
+        val commitFromEnv = System.getenv("ZHPLUS_COMMIT_HASH")?.trim()?.takeIf { it.isNotEmpty() }
+        val commitFromProp = System.getProperty("zhplus.commitHash")?.trim()?.takeIf { it.isNotEmpty() }
+        val commit = commitFromEnv ?: commitFromProp ?: "unknown"
+
+        val shortFromEnv = System.getenv("ZHPLUS_SHORT_HASH")?.trim()?.takeIf { it.isNotEmpty() }
+        val short = when {
+            shortFromEnv != null -> shortFromEnv
+            commit != "unknown" && commit.length >= 8 -> commit.take(8)
+            commit != "unknown" && commit.length >= 7 -> commit.take(7)
+            else -> "unknown"
+        }
+
+        val buildTimeFromEnv = System.getenv("ZHPLUS_BUILD_TIME_UTC_MILLIS")?.toLongOrNull()
+        val buildTimeFromProp = System.getProperty("zhplus.buildTimeUtcMillis")?.toLongOrNull()
+        val buildTime = buildTimeFromEnv ?: buildTimeFromProp ?: 0L
+
+        val versionFromEnv = System.getenv("ZHPLUS_VERSION_NAME")?.trim()?.takeIf { it.isNotEmpty() }
+        val versionFromProp = System.getProperty("zhplus.versionName")?.trim()?.takeIf { it.isNotEmpty() }
+        val version = versionFromEnv ?: versionFromProp ?: "desktop"
+
         BuildIdentity(
             commitHash = commit,
             shortHash = short,
