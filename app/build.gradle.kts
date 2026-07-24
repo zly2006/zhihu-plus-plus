@@ -18,27 +18,23 @@ plugins {
 
 // CI may inject ZHPLUS_* build identity (see .github/workflows/auto-release.yml).
 // Local builds fall back to gradle.properties + git.
-// Use block bodies so ktlint does not flip-flop between "same line" and "newline before body".
-private fun envOrNull(name: String): String? {
-    return System.getenv(name)?.trim()?.takeIf { it.isNotEmpty() }
-}
+// ktlint: single-line expression bodies stay on the signature line;
+// multi-line expression bodies put a newline after '='.
+private fun envOrNull(name: String): String? = System.getenv(name)?.trim()?.takeIf { it.isNotEmpty() }
 
-private fun resolveVersionName(): String {
-    return envOrNull("ZHPLUS_VERSION_NAME")
+private fun resolveVersionName(): String =
+    envOrNull("ZHPLUS_VERSION_NAME")
         ?: property("app.versionName").toString()
-}
 
-private fun resolveVersionCode(): Int {
-    return envOrNull("ZHPLUS_VERSION_CODE")?.toIntOrNull()
+private fun resolveVersionCode(): Int =
+    envOrNull("ZHPLUS_VERSION_CODE")?.toIntOrNull()
         ?: property("app.versionCode").toString().toIntOrNull()
         ?: 1
-}
 
-private fun resolveCommitHash(projectRoot: java.io.File): String {
-    return envOrNull("ZHPLUS_COMMIT_HASH")
+private fun resolveCommitHash(projectRoot: java.io.File): String =
+    envOrNull("ZHPLUS_COMMIT_HASH")
         ?: envOrNull("GITHUB_SHA")
         ?: gitFullHash(projectRoot)
-}
 
 private fun resolveShortHash(
     projectRoot: java.io.File,
@@ -52,10 +48,9 @@ private fun resolveShortHash(
     return if (local != "unknown") local else commitHash.take(7).ifEmpty { "unknown" }
 }
 
-private fun resolveBuildTimeUtcMillis(): Long {
-    return envOrNull("ZHPLUS_BUILD_TIME_UTC_MILLIS")?.toLongOrNull()
+private fun resolveBuildTimeUtcMillis(): Long =
+    envOrNull("ZHPLUS_BUILD_TIME_UTC_MILLIS")?.toLongOrNull()
         ?: System.currentTimeMillis()
-}
 
 ktlint {
     android.set(true)
