@@ -92,8 +92,11 @@ object ClashPartnerCompat {
             !s.clashInstalled -> "未检测到 Clash Meta"
             s.clashVpnRunning || s.vpnActive -> {
                 val profile = s.profileName
-                if (!profile.isNullOrBlank()) "VPN 已连接 · $profile"
-                else "VPN 已连接 · 流量自动经 Clash"
+                if (!profile.isNullOrBlank()) {
+                    "VPN 已连接 · $profile"
+                } else {
+                    "VPN 已连接 · 流量自动经 Clash"
+                }
             }
             else -> "已安装 Clash · 等待开启 VPN"
         }
@@ -151,19 +154,24 @@ object ClashPartnerCompat {
     private fun startNetworkWatch(context: Context) {
         if (networkCallback != null) return
         val cm = context.getSystemService<ConnectivityManager>() ?: return
-        val callback = object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: Network) = onNetworkMaybeChanged()
-            override fun onLost(network: Network) = onNetworkMaybeChanged()
-            override fun onCapabilitiesChanged(
-                network: Network,
-                networkCapabilities: NetworkCapabilities,
-            ) = onNetworkMaybeChanged()
-        }
+        val callback =
+            object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: Network) = onNetworkMaybeChanged()
+
+                override fun onLost(network: Network) = onNetworkMaybeChanged()
+
+                override fun onCapabilitiesChanged(
+                    network: Network,
+                    networkCapabilities: NetworkCapabilities,
+                ) = onNetworkMaybeChanged()
+            }
         networkCallback = callback
-        val request = NetworkRequest.Builder()
-            .addTransportType(NetworkCapabilities.TRANSPORT_VPN)
-            .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
-            .build()
+        val request =
+            NetworkRequest
+                .Builder()
+                .addTransportType(NetworkCapabilities.TRANSPORT_VPN)
+                .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
+                .build()
         runCatching { cm.registerNetworkCallback(request, callback) }
             .onFailure {
                 runCatching {
@@ -206,7 +214,12 @@ object ClashPartnerCompat {
     private fun queryPartnerStatus(context: Context): Map<String, Any?>? {
         val resolver = context.contentResolver
         for (pkg in clashPackages) {
-            val uri = Uri.Builder().scheme("content").authority("$pkg.status").build()
+            val uri =
+                Uri
+                    .Builder()
+                    .scheme("content")
+                    .authority("$pkg.status")
+                    .build()
             val bundle = runCatching {
                 resolver.call(uri, METHOD_PARTNER_STATUS, null, null)
             }.getOrNull() ?: continue
