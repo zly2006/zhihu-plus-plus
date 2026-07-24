@@ -78,8 +78,10 @@ import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.ui.TopLevelReselectAction
 import com.github.zly2006.zhihu.shared.ui.topLevelReselectAction
-import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
+import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockConfirmDialog
+import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockRequest
+import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockType
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.NoOpPagerNestedScrollConnection
@@ -404,9 +406,7 @@ fun FollowRecommendScreen(
         }
     }
 
-    // 屏蔽用户确认对话框
-    var showBlockUserDialog by remember { mutableStateOf(false) }
-    var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var feedAuthorBlockRequest by remember { mutableStateOf<FeedAuthorBlockRequest?>(null) }
 
     Column {
         FeedPullToRefresh(viewModel, environment) {
@@ -427,8 +427,20 @@ fun FollowRecommendScreen(
                     modifier = Modifier.testTag("follow_recommend_item_${item.stableKey}"),
                     onBlockUser = { feedItem ->
                         feedBlockActions.handleBlockUser(viewModel, feedItem) { authorInfo ->
-                            userToBlock = authorInfo
-                            showBlockUserDialog = true
+                            feedAuthorBlockRequest = FeedAuthorBlockRequest(
+                                FeedAuthorBlockType.CONTENT_AUTHOR,
+                                authorInfo.first,
+                                authorInfo.second,
+                            )
+                        }
+                    },
+                    onBlockQuestionAuthor = { feedItem ->
+                        feedBlockActions.handleBlockQuestionAuthor(viewModel, feedItem) { authorInfo ->
+                            feedAuthorBlockRequest = FeedAuthorBlockRequest(
+                                FeedAuthorBlockType.QUESTION_AUTHOR,
+                                authorInfo.first,
+                                authorInfo.second,
+                            )
                         }
                     },
                     onBlockTopic = { topicId, topicName ->
@@ -453,19 +465,13 @@ fun FollowRecommendScreen(
             }
         }
 
-        // 屏蔽用户确认对话框
-        BlockUserConfirmDialog(
-            showDialog = showBlockUserDialog,
-            userToBlock = userToBlock,
+        FeedAuthorBlockConfirmDialog(
+            request = feedAuthorBlockRequest,
             displayItems = viewModel.displayItems,
-            onDismiss = {
-                showBlockUserDialog = false
-                userToBlock = null
-            },
+            onDismiss = { feedAuthorBlockRequest = null },
             onConfirm = {
                 viewModel.refresh(environment)
-                showBlockUserDialog = false
-                userToBlock = null
+                feedAuthorBlockRequest = null
             },
         )
     }
@@ -514,9 +520,7 @@ fun FollowDynamicScreen(
         }
     }
 
-    // 屏蔽用户确认对话框
-    var showBlockUserDialog by remember { mutableStateOf(false) }
-    var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var feedAuthorBlockRequest by remember { mutableStateOf<FeedAuthorBlockRequest?>(null) }
 
     Column {
         FeedPullToRefresh(viewModel, environment) {
@@ -538,8 +542,20 @@ fun FollowDynamicScreen(
                     showSourceLabel = true,
                     onBlockUser = { feedItem ->
                         feedBlockActions.handleBlockUser(viewModel, feedItem) { authorInfo ->
-                            userToBlock = authorInfo
-                            showBlockUserDialog = true
+                            feedAuthorBlockRequest = FeedAuthorBlockRequest(
+                                FeedAuthorBlockType.CONTENT_AUTHOR,
+                                authorInfo.first,
+                                authorInfo.second,
+                            )
+                        }
+                    },
+                    onBlockQuestionAuthor = { feedItem ->
+                        feedBlockActions.handleBlockQuestionAuthor(viewModel, feedItem) { authorInfo ->
+                            feedAuthorBlockRequest = FeedAuthorBlockRequest(
+                                FeedAuthorBlockType.QUESTION_AUTHOR,
+                                authorInfo.first,
+                                authorInfo.second,
+                            )
                         }
                     },
                     onBlockTopic = { topicId, topicName ->
@@ -564,19 +580,13 @@ fun FollowDynamicScreen(
             }
         }
 
-        // 屏蔽用户确认对话框
-        BlockUserConfirmDialog(
-            showDialog = showBlockUserDialog,
-            userToBlock = userToBlock,
+        FeedAuthorBlockConfirmDialog(
+            request = feedAuthorBlockRequest,
             displayItems = viewModel.displayItems,
-            onDismiss = {
-                showBlockUserDialog = false
-                userToBlock = null
-            },
+            onDismiss = { feedAuthorBlockRequest = null },
             onConfirm = {
                 viewModel.refresh(environment)
-                showBlockUserDialog = false
-                userToBlock = null
+                feedAuthorBlockRequest = null
             },
         )
     }

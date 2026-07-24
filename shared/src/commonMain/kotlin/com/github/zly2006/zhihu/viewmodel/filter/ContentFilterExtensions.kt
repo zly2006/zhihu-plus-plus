@@ -25,6 +25,7 @@ import com.github.zly2006.zhihu.shared.data.AdvertisementFeed
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.navDestination
+import com.github.zly2006.zhihu.shared.data.questionAuthor
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.platform.SettingsStore
@@ -88,6 +89,7 @@ class FeedContentFilterPipeline(
     private val settings: FeedFilterSettings,
     private val blockedKeywordDao: BlockedKeywordDao,
     private val blockedUserDao: BlockedUserDao,
+    private val blockedQuestionAuthorDao: BlockedQuestionAuthorDao,
     private val blockedTopicDao: BlockedTopicDao,
     private val blockedKeywordService: BlockedKeywordService,
     private val htmlToText: (String) -> String = { html -> Ksoup.parse(html).text() },
@@ -98,10 +100,18 @@ class FeedContentFilterPipeline(
         var filteredContents = contents
 
         if (settings.enableUserBlocking) {
-            val (kept, removed) = filteredContents.partition { content ->
-                content.authorId.isNullOrBlank() || !blockedUserDao.isUserBlocked(content.authorId)
+            val blockedUserIds = blockedUserDao.getAllUsers().mapTo(hashSetOf()) { it.userId }
+            val blockedQuestionAuthorIds = blockedQuestionAuthorDao.getAllUsers().mapTo(hashSetOf()) { it.userId }
+            val kept = ArrayList<FilterableContent>(filteredContents.size)
+            filteredContents.forEach { content ->
+                when {
+                    content.authorId in blockedUserIds ->
+                        blocked.add(content to "屏蔽作者：${content.authorName ?: content.authorId}")
+                    content.questionAuthorId in blockedQuestionAuthorIds ->
+                        blocked.add(content to "屏蔽提问者：${content.questionAuthorName ?: content.questionAuthorId}")
+                    else -> kept.add(content)
+                }
             }
-            removed.forEach { blocked.add(it to "屏蔽作者：${it.authorName ?: it.authorId}") }
             filteredContents = kept
         }
 
@@ -355,6 +365,8 @@ data class FilterableContent(
     val url: String? = null,
     val feedJson: String? = null,
     val navDestinationJson: String? = null,
+    val questionAuthorName: String? = null,
+    val questionAuthorId: String? = null,
 )
 
 data class FeedContentIdentity(
@@ -390,6 +402,16 @@ fun FeedDisplayItem.toFilterableContent(
     raw = rawContent,
     isFollowing = rawContent.author?.isFollowing ?: false,
     questionId = (rawContent as? DataHolder.Answer)?.question?.id,
+    questionAuthorName = feed?.target?.questionAuthor?.name ?: when (rawContent) {
+        is DataHolder.Answer -> rawContent.question.author?.name
+        is DataHolder.Question -> rawContent.author.name
+        else -> null
+    },
+    questionAuthorId = feed?.target?.questionAuthor?.id ?: when (rawContent) {
+        is DataHolder.Answer -> rawContent.question.author?.id
+        is DataHolder.Question -> rawContent.author.id
+        else -> null
+    },
     url = feed?.target?.url,
     feedJson = feed?.let { runCatching { feedFilterRecordJson.encodeToString(it) }.getOrNull() },
     navDestinationJson = navDestination?.let { runCatching { feedFilterRecordJson.encodeToString(it) }.getOrNull() },

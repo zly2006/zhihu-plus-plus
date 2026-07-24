@@ -31,7 +31,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -44,7 +43,6 @@ import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.ui.TopLevelReselectAction
 import com.github.zly2006.zhihu.shared.ui.topLevelReselectAction
-import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
@@ -105,10 +103,6 @@ fun HotListScreen(
         }
     }
 
-    // 屏蔽用户确认弹窗。
-    var showBlockUserDialog by remember { mutableStateOf(false) }
-    var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) }
-
     Column {
         FeedPullToRefresh(viewModel, environment) {
             PaginatedList(
@@ -143,21 +137,5 @@ fun HotListScreen(
                 }
             }
         }
-
-        // 屏蔽用户确认弹窗。
-        BlockUserConfirmDialog(
-            showDialog = showBlockUserDialog,
-            userToBlock = userToBlock,
-            displayItems = viewModel.displayItems,
-            onDismiss = {
-                showBlockUserDialog = false
-                userToBlock = null
-            },
-            onConfirm = {
-                viewModel.refresh(environment)
-                showBlockUserDialog = false
-                userToBlock = null
-            },
-        )
     }
 }

@@ -342,6 +342,7 @@ class PersonViewModel(
     var isFollowing by mutableStateOf(false)
     var isBlocking by mutableStateOf(false)
     var isBlockedInRecommendations by mutableStateOf(false)
+    var isBlockedAsQuestionAuthor by mutableStateOf(false)
     var memberHashId by mutableStateOf(person.id)
 
     // 只实现已有数据类型的 ViewModel
@@ -409,6 +410,21 @@ class PersonViewModel(
         }
     }
 
+    suspend fun toggleQuestionAuthorBlock(environment: ContentBlocklistEnvironment) {
+        if (isBlockedAsQuestionAuthor) {
+            environment.removeBlockedQuestionAuthor(person.id)
+            isBlockedAsQuestionAuthor = false
+        } else {
+            environment.addBlockedQuestionAuthor(
+                userId = person.id,
+                userName = name,
+                urlToken = person.urlToken,
+                avatarUrl = avatar,
+            )
+            isBlockedAsQuestionAuthor = true
+        }
+    }
+
     suspend fun load(environment: ProfileLoadEnvironment) {
         environment.addReadHistory(person.id, "profile")
 
@@ -438,6 +454,7 @@ class PersonViewModel(
         this.isFollowing = loadedPerson.isFollowing
         this.isBlocking = loadedPerson.isBlocking
         this.isBlockedInRecommendations = environment.isUserBlocked(loadedPerson.id)
+        this.isBlockedAsQuestionAuthor = environment.isQuestionAuthorBlocked(loadedPerson.id)
         this.memberHashId = loadedPerson.id
         this.person.id = loadedPerson.id
         if (urlToken != null) {
@@ -489,6 +506,7 @@ const val PEOPLE_SCREEN_FOLLOWING_COUNT_TAG = "people_screen_stat_following"
 const val PEOPLE_SCREEN_FOLLOW_BUTTON_TAG = "people_screen_follow_button"
 const val PEOPLE_SCREEN_BLOCK_BUTTON_TAG = "people_screen_block_button"
 const val PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG = "people_screen_recommendation_block_button"
+const val PEOPLE_SCREEN_QUESTION_AUTHOR_BLOCK_BUTTON_TAG = "people_screen_question_author_block_button"
 const val PEOPLE_SCREEN_SEARCH_BUTTON_TAG = "people_screen_search_button"
 const val PEOPLE_SCREEN_ANSWER_SORT_HOT_TAG = "people_screen_answer_sort_voteups"
 const val PEOPLE_SCREEN_ANSWER_SORT_TIME_TAG = "people_screen_answer_sort_created"
@@ -603,13 +621,23 @@ fun PeopleScreen(
                                     }
                                 }
                             },
+                            onQuestionAuthorBlockToggle = {
+                                coroutineScope.launch {
+                                    try {
+                                        viewModel.toggleQuestionAuthorBlock(paginationEnvironment)
+                                        userMessages.showShortMessage(if (viewModel.isBlockedAsQuestionAuthor) "已屏蔽其提问" else "已取消屏蔽其提问")
+                                    } catch (e: Exception) {
+                                        userMessages.showShortMessage("操作失败: ${e.message}")
+                                    }
+                                }
+                            },
                         )
                     },
                     colors = TopAppBarDefaults.topAppBarColors().copy(
                         scrolledContainerColor = MaterialTheme.colorScheme.surface,
                     ),
                     scrollBehavior = scrollBehavior,
-                    expandedHeight = 200.dp,
+                    expandedHeight = 240.dp,
                 )
                 if (viewModel.memberHashId.isNotBlank() && viewModel.memberHashId != Person.EMPTY_ID) {
                     IconButton(
@@ -1403,7 +1431,7 @@ private fun SortBar(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
 private fun UserInfoHeader(
     viewModel: PersonViewModel,
@@ -1412,6 +1440,7 @@ private fun UserInfoHeader(
     onFollowToggle: () -> Unit,
     onBlockToggle: () -> Unit,
     onRecommendationBlockToggle: () -> Unit,
+    onQuestionAuthorBlockToggle: () -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val openImagePreview = rememberImagePreviewOpener()
@@ -1492,11 +1521,12 @@ private fun UserInfoHeader(
                 }
             }, tag = PEOPLE_SCREEN_FOLLOWING_COUNT_TAG)
         }
-        Row(
+        FlowRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             OutlinedButton(
                 onClick = onFollowToggle,
@@ -1515,6 +1545,12 @@ private fun UserInfoHeader(
                 modifier = Modifier.testTag(PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG),
             ) {
                 Text(if (viewModel.isBlockedInRecommendations) "取消屏蔽推荐" else "屏蔽推荐")
+            }
+            OutlinedButton(
+                onClick = onQuestionAuthorBlockToggle,
+                modifier = Modifier.testTag(PEOPLE_SCREEN_QUESTION_AUTHOR_BLOCK_BUTTON_TAG),
+            ) {
+                Text(if (viewModel.isBlockedAsQuestionAuthor) "取消屏蔽其提问" else "屏蔽其提问")
             }
         }
     }

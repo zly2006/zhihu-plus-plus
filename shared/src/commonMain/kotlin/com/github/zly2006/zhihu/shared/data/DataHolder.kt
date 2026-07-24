@@ -179,6 +179,7 @@ object DataHolder {
         val updatedTime: Long,
         val url: String,
         val topics: List<Topic> = emptyList(),
+        val author: Author? = null,
     )
 
     @Serializable

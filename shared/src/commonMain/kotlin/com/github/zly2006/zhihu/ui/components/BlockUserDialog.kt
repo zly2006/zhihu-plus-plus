@@ -27,73 +27,124 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.questionAuthor
 import com.github.zly2006.zhihu.shared.data.target
+import kotlin.math.roundToInt
+
+enum class FeedAuthorBlockType {
+    CONTENT_AUTHOR,
+    QUESTION_AUTHOR,
+}
+
+data class FeedAuthorBlockRequest(
+    val type: FeedAuthorBlockType,
+    val userId: String,
+    val userName: String,
+)
+
+data class QuestionAuthorActivityStats(
+    val questionCount: Int,
+    val answerCount: Int,
+)
 
 /**
- * 屏蔽用户确认弹窗。
+ * 信息流作者屏蔽确认弹窗。
  *
- * 弹窗向用户确认即将屏蔽的作者，并在确认时从当前信息流条目中提取完整作者信息。它只处理确认 UI，
- * 真正写入屏蔽列表由 [onConfirmBlock] 完成。
+ * 普通作者和提问者共享确认交互，但保留不同文案和作者元数据来源；真正写入哪一类黑名单由 [onConfirmBlock] 决定。
  */
 @Composable
-fun BlockUserConfirmDialogContent(
-    showDialog: Boolean,
-    userToBlock: Pair<String, String>?, // userId 和 userName
+fun FeedAuthorBlockConfirmDialogContent(
+    request: FeedAuthorBlockRequest?,
     displayItems: List<FeedDisplayItem>,
+    questionAuthorStats: QuestionAuthorActivityStats? = null,
+    isQuestionAuthorStatsLoading: Boolean = false,
     onDismiss: () -> Unit,
     onConfirmBlock: (BlockedFeedAuthor) -> Unit,
 ) {
-    if (showDialog && userToBlock != null) {
-        AlertDialog(
-            onDismissRequest = onDismiss,
-            title = { Text("屏蔽用户") },
-            text = {
-                Column {
-                    Text("确定要屏蔽用户 \"${userToBlock.second}\" 吗？")
+    if (request == null) return
+
+    val isQuestionAuthor = request.type == FeedAuthorBlockType.QUESTION_AUTHOR
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (isQuestionAuthor) "屏蔽提问者" else "屏蔽用户") },
+        text = {
+            Column {
+                Text("确定要屏蔽${if (isQuestionAuthor) "提问者" else "用户"} \"${request.userName}\" 吗？")
+                if (isQuestionAuthor) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "屏蔽后，该用户的内容将不会在推荐流中显示。",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = when {
+                            isQuestionAuthorStatsLoading -> "正在加载问题与回答数据…"
+                            questionAuthorStats != null ->
+                                "问题 ${questionAuthorStats.questionCount} · " +
+                                    "回答 ${questionAuthorStats.answerCount} · " +
+                                    "问题/回答比 ${questionAnswerRatioText(questionAuthorStats)}"
+                            else -> "问题与回答数据暂时不可用"
+                        },
+                        modifier = Modifier.testTag("feed_question_author_activity_stats"),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
                     )
                 }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        userToBlock.let { (userId, userName) ->
-                            val author = displayItems
-                                .find { item ->
-                                    item.feed
-                                        ?.target
-                                        ?.author
-                                        ?.id == userId
-                                }?.feed
-                                ?.target
-                                ?.author
-                            onConfirmBlock(
-                                BlockedFeedAuthor(
-                                    id = author?.id ?: userId,
-                                    name = author?.name ?: userName,
-                                    urlToken = author?.urlToken,
-                                    avatarUrl = author?.avatarUrl,
-                                ),
-                            )
-                        }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    if (isQuestionAuthor) {
+                        "屏蔽后，该用户提出的问题将不会在推荐流中显示；该用户回答别人问题的内容不受影响。"
+                    } else {
+                        "屏蔽后，该用户的内容将不会在推荐流中显示。"
                     },
-                ) {
-                    Text("确定屏蔽")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = onDismiss) {
-                    Text("取消")
-                }
-            },
-        )
-    }
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val author = if (isQuestionAuthor) {
+                        displayItems
+                            .asSequence()
+                            .mapNotNull { it.feed?.target?.questionAuthor }
+                            .firstOrNull { it.id == request.userId }
+                    } else {
+                        displayItems
+                            .asSequence()
+                            .mapNotNull { it.feed?.target?.author }
+                            .firstOrNull { it.id == request.userId }
+                    }
+                    onConfirmBlock(
+                        BlockedFeedAuthor(
+                            id = author?.id ?: request.userId,
+                            name = author?.name ?: request.userName,
+                            urlToken = author?.urlToken,
+                            avatarUrl = author?.avatarUrl,
+                        ),
+                    )
+                },
+            ) {
+                Text("确定屏蔽")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        },
+    )
+}
+
+internal fun questionAnswerRatioText(stats: QuestionAuthorActivityStats): String {
+    val questionCount = stats.questionCount.coerceAtLeast(0)
+    val answerCount = stats.answerCount.coerceAtLeast(0)
+    if (answerCount == 0) return if (questionCount == 0) "—" else "∞"
+
+    val tenthsOfPercent = (questionCount.toDouble() * 1_000 / answerCount).roundToInt()
+    val whole = tenthsOfPercent / 10
+    val decimal = tenthsOfPercent % 10
+    return if (decimal == 0) "$whole%" else "$whole.$decimal%"
 }
 
 data class BlockedFeedAuthor(
