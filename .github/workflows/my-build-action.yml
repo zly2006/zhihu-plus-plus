@@ -281,7 +281,13 @@ jobs:
               });
               core.info(`Deleted tag ${tagName}`);
             } catch (error) {
-              if (error.status === 404) {
+              // GitHub may return 404 or 422 ("Reference does not exist")
+              // when the tag was never created or already removed.
+              const missing =
+                error.status === 404 ||
+                error.status === 422 ||
+                /does not exist/i.test(error.message || '');
+              if (missing) {
                 core.info(`Tag ${tagName} does not exist`);
               } else {
                 throw error;
