@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.viewmodel.filter
 
+import com.github.zly2006.zhihu.data.zhihuContentDetailInclude
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.Question
@@ -33,6 +34,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.buildJsonObject
 import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
+import kotlin.test.assertContains
 import kotlin.test.assertEquals
 
 class FeedDisplayFilterPipelineTest {
@@ -239,6 +241,46 @@ class FeedDisplayFilterPipelineTest {
                 .map { it.blockedReason },
         )
         fixture.database.close()
+    }
+
+    @Test
+    fun filtersAnswerItemsByQuestionAuthorFromFetchedAnswerDetail() = runTest {
+        val fixture = fixture()
+        fixture.database.blockedQuestionAuthorDao().insertUser(
+            BlockedQuestionAuthor(userId = "blocked-asker", userName = "Blocked Asker"),
+        )
+        var questionFetchCount = 0
+
+        val result = fixture
+            .pipeline(
+                detailProvider = ContentDetailProvider { destination ->
+                    when (destination) {
+                        is Article -> answer(
+                            id = destination.id,
+                            questionId = 20,
+                            questionTitle = "loading...",
+                            questionAuthor = author(id = "blocked-asker", name = "Blocked Asker"),
+                        )
+                        is Question -> {
+                            questionFetchCount++
+                            null
+                        }
+                        else -> null
+                    }
+                },
+            ).filter(listOf(answerItem(questionId = 20, questionTitle = "loading...")))
+
+        assertEquals(emptyList(), result)
+        assertEquals(0, questionFetchCount)
+        fixture.database.close()
+    }
+
+    @Test
+    fun answerDetailIncludeRequestsQuestionAuthor() {
+        assertContains(
+            zhihuContentDetailInclude(Article(type = ArticleType.Answer, id = 1)),
+            "question.author",
+        )
     }
 
     @Test
@@ -454,6 +496,7 @@ class FeedDisplayFilterPipelineTest {
         id: Long,
         questionId: Long,
         questionTitle: String,
+        questionAuthor: DataHolder.Author? = null,
     ): DataHolder.Answer = DataHolder.Answer(
         answerType = "answer",
         author = author(),
@@ -470,6 +513,7 @@ class FeedDisplayFilterPipelineTest {
             type = "question",
             updatedTime = 1L,
             url = "https://www.zhihu.com/question/$questionId",
+            author = questionAuthor,
         ),
         thanksCount = 0,
         type = "answer",

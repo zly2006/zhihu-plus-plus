@@ -114,9 +114,10 @@ import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.ui.components.AnnouncementCard
 import com.github.zly2006.zhihu.ui.components.AnnouncementCardDefaults
 import com.github.zly2006.zhihu.ui.components.BlockByKeywordsDialog
-import com.github.zly2006.zhihu.ui.components.BlockQuestionAuthorConfirmDialog
-import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
+import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockConfirmDialog
+import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockRequest
+import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockType
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
@@ -298,11 +299,7 @@ fun HomeScreen(
         }
     }
 
-    // 屏蔽用户确认对话框
-    var showBlockUserDialog by remember { mutableStateOf(false) }
-    var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) } // 二元组内容为 userId 和 userName。
-    var showBlockQuestionAuthorDialog by remember { mutableStateOf(false) }
-    var questionAuthorToBlock by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var feedAuthorBlockRequest by remember { mutableStateOf<FeedAuthorBlockRequest?>(null) }
 
     // 按关键词屏蔽对话框
     var showBlockByKeywordsDialog by remember { mutableStateOf(false) }
@@ -621,14 +618,20 @@ fun HomeScreen(
                         },
                         onBlockUser = { feedItem ->
                             feedBlockActions.handleBlockUser(viewModel, feedItem) { authorInfo ->
-                                userToBlock = authorInfo
-                                showBlockUserDialog = true
+                                feedAuthorBlockRequest = FeedAuthorBlockRequest(
+                                    type = FeedAuthorBlockType.CONTENT_AUTHOR,
+                                    userId = authorInfo.first,
+                                    userName = authorInfo.second,
+                                )
                             }
                         },
                         onBlockQuestionAuthor = { feedItem ->
                             feedBlockActions.handleBlockQuestionAuthor(viewModel, feedItem) { authorInfo ->
-                                questionAuthorToBlock = authorInfo
-                                showBlockQuestionAuthorDialog = true
+                                feedAuthorBlockRequest = FeedAuthorBlockRequest(
+                                    type = FeedAuthorBlockType.QUESTION_AUTHOR,
+                                    userId = authorInfo.first,
+                                    userName = authorInfo.second,
+                                )
                             }
                         },
                         onBlockByKeywords = { feedItem ->
@@ -795,34 +798,13 @@ fun HomeScreen(
         }
     }
 
-    // 屏蔽用户确认对话框
-    BlockUserConfirmDialog(
-        showDialog = showBlockUserDialog,
-        userToBlock = userToBlock,
+    FeedAuthorBlockConfirmDialog(
+        request = feedAuthorBlockRequest,
         displayItems = viewModel.displayItems,
-        onDismiss = {
-            showBlockUserDialog = false
-            userToBlock = null
-        },
+        onDismiss = { feedAuthorBlockRequest = null },
         onConfirm = {
             viewModel.refresh(paginationEnvironment)
-            showBlockUserDialog = false
-            userToBlock = null
-        },
-    )
-
-    BlockQuestionAuthorConfirmDialog(
-        showDialog = showBlockQuestionAuthorDialog,
-        userToBlock = questionAuthorToBlock,
-        displayItems = viewModel.displayItems,
-        onDismiss = {
-            showBlockQuestionAuthorDialog = false
-            questionAuthorToBlock = null
-        },
-        onConfirm = {
-            viewModel.refresh(paginationEnvironment)
-            showBlockQuestionAuthorDialog = false
-            questionAuthorToBlock = null
+            feedAuthorBlockRequest = null
         },
     )
 

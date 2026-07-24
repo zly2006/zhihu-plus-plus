@@ -100,18 +100,18 @@ class FeedContentFilterPipeline(
         var filteredContents = contents
 
         if (settings.enableUserBlocking) {
-            val (kept, removed) = filteredContents.partition { content ->
-                content.authorId.isNullOrBlank() || !blockedUserDao.isUserBlocked(content.authorId)
+            val blockedUserIds = blockedUserDao.getAllUsers().mapTo(hashSetOf()) { it.userId }
+            val blockedQuestionAuthorIds = blockedQuestionAuthorDao.getAllUsers().mapTo(hashSetOf()) { it.userId }
+            val kept = ArrayList<FilterableContent>(filteredContents.size)
+            filteredContents.forEach { content ->
+                when {
+                    content.authorId in blockedUserIds ->
+                        blocked.add(content to "屏蔽作者：${content.authorName ?: content.authorId}")
+                    content.questionAuthorId in blockedQuestionAuthorIds ->
+                        blocked.add(content to "屏蔽提问者：${content.questionAuthorName ?: content.questionAuthorId}")
+                    else -> kept.add(content)
+                }
             }
-            removed.forEach { blocked.add(it to "屏蔽作者：${it.authorName ?: it.authorId}") }
-            filteredContents = kept
-        }
-
-        if (settings.enableUserBlocking) {
-            val (kept, removed) = filteredContents.partition { content ->
-                content.questionAuthorId.isNullOrBlank() || !blockedQuestionAuthorDao.isUserBlocked(content.questionAuthorId)
-            }
-            removed.forEach { blocked.add(it to "屏蔽提问者：${it.questionAuthorName ?: it.questionAuthorId}") }
             filteredContents = kept
         }
 
@@ -402,8 +402,16 @@ fun FeedDisplayItem.toFilterableContent(
     raw = rawContent,
     isFollowing = rawContent.author?.isFollowing ?: false,
     questionId = (rawContent as? DataHolder.Answer)?.question?.id,
-    questionAuthorName = feed?.target?.questionAuthor?.name ?: (rawContent as? DataHolder.Question)?.author?.name,
-    questionAuthorId = feed?.target?.questionAuthor?.id ?: (rawContent as? DataHolder.Question)?.author?.id,
+    questionAuthorName = feed?.target?.questionAuthor?.name ?: when (rawContent) {
+        is DataHolder.Answer -> rawContent.question.author?.name
+        is DataHolder.Question -> rawContent.author.name
+        else -> null
+    },
+    questionAuthorId = feed?.target?.questionAuthor?.id ?: when (rawContent) {
+        is DataHolder.Answer -> rawContent.question.author?.id
+        is DataHolder.Question -> rawContent.author.id
+        else -> null
+    },
     url = feed?.target?.url,
     feedJson = feed?.let { runCatching { feedFilterRecordJson.encodeToString(it) }.getOrNull() },
     navDestinationJson = navDestination?.let { runCatching { feedFilterRecordJson.encodeToString(it) }.getOrNull() },

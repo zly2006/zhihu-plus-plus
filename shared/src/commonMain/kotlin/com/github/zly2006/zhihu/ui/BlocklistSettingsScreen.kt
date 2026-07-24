@@ -413,9 +413,14 @@ fun BlocklistSettingsScreen(
                         Text("AI features are not available on this platform.")
                     }
                 }
-                2 -> BlockedUsersList(
+                2 -> BlockedPeopleList(
                     users = blockedUsers,
-                    onDeleteUser = { user ->
+                    category = "users",
+                    emptyText = "暂无屏蔽用户",
+                    userId = { it.userId },
+                    userName = { it.userName },
+                    avatarUrl = { it.avatarUrl },
+                    onDelete = { user ->
                         val onDeleteUser = testConfig?.onDeleteUser
                         if (onDeleteUser != null) {
                             onDeleteUser(user)
@@ -449,7 +454,7 @@ fun BlocklistSettingsScreen(
                             }
                         }
                     },
-                    onNavigateToUser = { user ->
+                    onNavigate = { user ->
                         navigator.onNavigate(
                             Person(
                                 id = user.userId,
@@ -459,9 +464,14 @@ fun BlocklistSettingsScreen(
                         )
                     },
                 )
-                3 -> BlockedQuestionAuthorsList(
+                3 -> BlockedPeopleList(
                     users = blockedQuestionAuthors,
-                    onDeleteUser = { user ->
+                    category = "questionAuthors",
+                    emptyText = "暂无屏蔽提问者",
+                    userId = { it.userId },
+                    userName = { it.userName },
+                    avatarUrl = { it.avatarUrl },
+                    onDelete = { user ->
                         val onDeleteUser = testConfig?.onDeleteQuestionAuthor
                         if (onDeleteUser != null) {
                             onDeleteUser(user)
@@ -495,7 +505,7 @@ fun BlocklistSettingsScreen(
                             }
                         }
                     },
-                    onNavigateToUser = { user ->
+                    onNavigate = { user ->
                         navigator.onNavigate(
                             Person(
                                 id = user.userId,
@@ -746,11 +756,16 @@ fun BlockedKeywordsList(
 }
 
 @Composable
-fun BlockedUsersList(
-    users: List<BlockedUser>,
-    onDeleteUser: (BlockedUser) -> Unit,
+private fun <T> BlockedPeopleList(
+    users: List<T>,
+    category: String,
+    emptyText: String,
+    userId: (T) -> String,
+    userName: (T) -> String,
+    avatarUrl: (T) -> String?,
+    onDelete: (T) -> Unit,
     onClearAll: () -> Unit,
-    onNavigateToUser: (BlockedUser) -> Unit,
+    onNavigate: (T) -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -763,7 +778,7 @@ fun BlockedUsersList(
                 horizontalArrangement = Arrangement.End,
             ) {
                 Button(
-                    modifier = Modifier.testTag(BlocklistSettingsTestTags.USER_CLEAR_BUTTON),
+                    modifier = Modifier.testTag("blocklistSettings:$category:clear"),
                     onClick = onClearAll,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error,
@@ -782,7 +797,7 @@ fun BlockedUsersList(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    "暂无屏蔽用户",
+                    emptyText,
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -795,18 +810,19 @@ fun BlockedUsersList(
             }
         } else {
             LazyColumn(
-                modifier = Modifier.testTag(BlocklistSettingsTestTags.USER_LIST),
+                modifier = Modifier.testTag("blocklistSettings:$category:list"),
             ) {
-                items(users, key = { it.userId }) { user ->
+                items(users, key = userId) { user ->
+                    val id = userId(user)
                     ListItem(
                         modifier = Modifier
-                            .testTag("blocklistSettings:users:item:${user.userId}")
-                            .clickable { onNavigateToUser(user) },
-                        headlineContent = { Text(user.userName) },
-                        supportingContent = { Text("ID: ${user.userId}") },
+                            .testTag("blocklistSettings:$category:item:$id")
+                            .clickable { onNavigate(user) },
+                        headlineContent = { Text(userName(user)) },
+                        supportingContent = { Text("ID: $id") },
                         leadingContent = {
                             AsyncImage(
-                                model = user.avatarUrl,
+                                model = avatarUrl(user),
                                 contentDescription = "头像",
                                 modifier = Modifier
                                     .size(40.dp)
@@ -815,95 +831,8 @@ fun BlockedUsersList(
                         },
                         trailingContent = {
                             IconButton(
-                                modifier = Modifier.testTag("blocklistSettings:users:delete:${user.userId}"),
-                                onClick = { onDeleteUser(user) },
-                            ) {
-                                Icon(
-                                    Icons.Default.Delete,
-                                    contentDescription = "删除",
-                                    tint = MaterialTheme.colorScheme.error,
-                                )
-                            }
-                        },
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun BlockedQuestionAuthorsList(
-    users: List<BlockedQuestionAuthor>,
-    onDeleteUser: (BlockedQuestionAuthor) -> Unit,
-    onClearAll: () -> Unit,
-    onNavigateToUser: (BlockedQuestionAuthor) -> Unit,
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        if (users.isNotEmpty()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                Button(
-                    modifier = Modifier.testTag(BlocklistSettingsTestTags.QUESTION_AUTHOR_CLEAR_BUTTON),
-                    onClick = onClearAll,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error,
-                    ),
-                ) {
-                    Text("清空全部")
-                }
-            }
-        }
-
-        if (users.isEmpty()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(
-                    "暂无屏蔽提问者",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    "点击右下角的 + 按钮添加",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.testTag(BlocklistSettingsTestTags.QUESTION_AUTHOR_LIST),
-            ) {
-                items(users, key = { it.userId }) { user ->
-                    ListItem(
-                        modifier = Modifier
-                            .testTag("blocklistSettings:questionAuthors:item:${user.userId}")
-                            .clickable { onNavigateToUser(user) },
-                        headlineContent = { Text(user.userName) },
-                        supportingContent = { Text("ID: ${user.userId}") },
-                        leadingContent = {
-                            AsyncImage(
-                                model = user.avatarUrl,
-                                contentDescription = "头像",
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(CircleShape),
-                            )
-                        },
-                        trailingContent = {
-                            IconButton(
-                                modifier = Modifier.testTag("blocklistSettings:questionAuthors:delete:${user.userId}"),
-                                onClick = { onDeleteUser(user) },
+                                modifier = Modifier.testTag("blocklistSettings:$category:delete:$id"),
+                                onClick = { onDelete(user) },
                             ) {
                                 Icon(
                                     Icons.Default.Delete,

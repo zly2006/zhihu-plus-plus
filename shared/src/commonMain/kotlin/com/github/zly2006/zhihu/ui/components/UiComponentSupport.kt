@@ -95,9 +95,8 @@ data class BlockByKeywordsRuntime(
 expect fun rememberBlockByKeywordsRuntime(): BlockByKeywordsRuntime
 
 @Composable
-fun BlockQuestionAuthorConfirmDialog(
-    showDialog: Boolean,
-    userToBlock: Pair<String, String>?,
+fun FeedAuthorBlockConfirmDialog(
+    request: FeedAuthorBlockRequest?,
     displayItems: List<FeedDisplayItem>,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
@@ -105,65 +104,38 @@ fun BlockQuestionAuthorConfirmDialog(
     val coroutineScope = rememberCoroutineScope()
     val userMessages = rememberUserMessageSink()
     val database = remember { getContentFilterDatabase() }
-    BlockQuestionAuthorConfirmDialogContent(
-        showDialog = showDialog,
-        userToBlock = userToBlock,
+    FeedAuthorBlockConfirmDialogContent(
+        request = request,
         displayItems = displayItems,
         onDismiss = onDismiss,
         onConfirmBlock = { author ->
             coroutineScope.launch {
                 try {
-                    database.blockedQuestionAuthorDao().insertUser(
-                        BlockedQuestionAuthor(
-                            userId = author.id,
-                            userName = author.name,
-                            urlToken = author.urlToken,
-                            avatarUrl = author.avatarUrl,
-                        ),
-                    )
+                    when (request?.type) {
+                        FeedAuthorBlockType.CONTENT_AUTHOR -> database.blockedUserDao().insertUser(
+                            BlockedUser(
+                                userId = author.id,
+                                userName = author.name,
+                                urlToken = author.urlToken,
+                                avatarUrl = author.avatarUrl,
+                            ),
+                        )
+                        FeedAuthorBlockType.QUESTION_AUTHOR -> database.blockedQuestionAuthorDao().insertUser(
+                            BlockedQuestionAuthor(
+                                userId = author.id,
+                                userName = author.name,
+                                urlToken = author.urlToken,
+                                avatarUrl = author.avatarUrl,
+                            ),
+                        )
+                        null -> return@launch
+                    }
                     onConfirm()
-                    userMessages.showShortMessage("已屏蔽提问者：${author.name}")
+                    val targetName = if (request.type == FeedAuthorBlockType.QUESTION_AUTHOR) "提问者" else "用户"
+                    userMessages.showShortMessage("已屏蔽$targetName：${author.name}")
                 } catch (e: Exception) {
-                    Log.e("FeedBlockActions", "Failed to block question author", e)
-                    userMessages.showShortMessage("屏蔽提问者失败: ${e.message}")
-                }
-            }
-        },
-    )
-}
-
-@Composable
-fun BlockUserConfirmDialog(
-    showDialog: Boolean,
-    userToBlock: Pair<String, String>?,
-    displayItems: List<FeedDisplayItem>,
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit,
-) {
-    val coroutineScope = rememberCoroutineScope()
-    val userMessages = rememberUserMessageSink()
-    val database = remember { getContentFilterDatabase() }
-    BlockUserConfirmDialogContent(
-        showDialog = showDialog,
-        userToBlock = userToBlock,
-        displayItems = displayItems,
-        onDismiss = onDismiss,
-        onConfirmBlock = { author ->
-            coroutineScope.launch {
-                try {
-                    database.blockedUserDao().insertUser(
-                        BlockedUser(
-                            userId = author.id,
-                            userName = author.name,
-                            urlToken = author.urlToken,
-                            avatarUrl = author.avatarUrl,
-                        ),
-                    )
-                    onConfirm()
-                    userMessages.showShortMessage("已屏蔽用户：${author.name}")
-                } catch (e: Exception) {
-                    Log.e("FeedBlockActions", "Failed to block user", e)
-                    userMessages.showShortMessage("屏蔽用户失败: ${e.message}")
+                    Log.e("FeedBlockActions", "Failed to block feed author", e)
+                    userMessages.showShortMessage("屏蔽失败: ${e.message}")
                 }
             }
         },

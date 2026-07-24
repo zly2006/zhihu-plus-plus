@@ -74,7 +74,10 @@ suspend fun resolveFeedQuestionAuthorInfo(
 
     val questionDestination = when (val raw = feedItem.raw) {
         is DataHolder.Question -> return raw.author.let { Pair(it.id, it.name) }
-        is DataHolder.Answer -> Question(questionId = raw.question.id, title = raw.question.title)
+        is DataHolder.Answer -> {
+            raw.question.author?.let { return Pair(it.id, it.name) }
+            Question(questionId = raw.question.id, title = raw.question.title)
+        }
         else -> when (val target = feedItem.feed?.target) {
             is Feed.AnswerTarget -> Question(questionId = target.question.id, title = target.question.title)
             is Feed.QuestionTarget -> Question(questionId = target.id, title = target.title)
