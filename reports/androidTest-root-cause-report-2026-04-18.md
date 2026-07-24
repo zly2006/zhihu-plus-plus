@@ -13,13 +13,13 @@ Date: 2026-04-18
 The original AVD environment bug you pointed out was real:
 
 - Connected tests were previously starting on an emulator with no `account.json`.
-- `MainActivity` loads account state at startup from [AccountData.kt:91](/Users/zhaoliyan/IdeaProjects/Zhihu/app/src/main/java/com/github/zly2006/zhihu/data/AccountData.kt:91).
+- `MainActivity` loads account state at startup from [AccountData.kt:91](/Users/zhaoliyan/IdeaProjects/Zhihu/app/src/main/java/com/chloemlla/zhplus/data/AccountData.kt:91).
 - That polluted the initial UI state before page tests tried to override content.
 
 This specific issue is now isolated by the custom runner:
 
 - [app/build.gradle.kts:47](/Users/zhaoliyan/IdeaProjects/Zhihu/app/build.gradle.kts:47)
-- [ZhihuInstrumentedTestRunner.kt](/Users/zhaoliyan/IdeaProjects/Zhihu/app/src/androidTest/java/com/github/zly2006/zhihu/ZhihuInstrumentedTestRunner.kt)
+- [ZhihuInstrumentedTestRunner.kt](/Users/zhaoliyan/IdeaProjects/Zhihu/app/src/androidTest/java/com/chloemlla/zhplus/ZhihuInstrumentedTestRunner.kt)
 
 Evidence:
 
@@ -32,9 +32,9 @@ Evidence:
 
 Representative files:
 
-- [ComposeScreenTestHost.kt:43](/Users/zhaoliyan/IdeaProjects/Zhihu/app/src/androidTest/java/com/github/zly2006/zhihu/test/ComposeScreenTestHost.kt:43)
-- [MainActivity.kt:170](/Users/zhaoliyan/IdeaProjects/Zhihu/app/src/main/java/com/github/zly2006/zhihu/MainActivity.kt:170)
-- [MainActivity.kt:224](/Users/zhaoliyan/IdeaProjects/Zhihu/app/src/main/java/com/github/zly2006/zhihu/MainActivity.kt:224)
+- [ComposeScreenTestHost.kt:43](/Users/zhaoliyan/IdeaProjects/Zhihu/app/src/androidTest/java/com/chloemlla/zhplus/test/ComposeScreenTestHost.kt:43)
+- [MainActivity.kt:170](/Users/zhaoliyan/IdeaProjects/Zhihu/app/src/main/java/com/chloemlla/zhplus/MainActivity.kt:170)
+- [MainActivity.kt:224](/Users/zhaoliyan/IdeaProjects/Zhihu/app/src/main/java/com/chloemlla/zhplus/MainActivity.kt:224)
 
 Why this matters:
 
@@ -52,12 +52,12 @@ Impact:
 
 Representative test mutations:
 
-- [AccountSettingScreenInstrumentedTest.kt:74](/Users/zhaoliyan/IdeaProjects/Zhihu/app/src/androidTest/java/com/github/zly2006/zhihu/AccountSettingScreenInstrumentedTest.kt:74)
-- [HomeScreenInstrumentedTest.kt:69](/Users/zhaoliyan/IdeaProjects/Zhihu/app/src/androidTest/java/com/github/zly2006/zhihu/HomeScreenInstrumentedTest.kt:69)
-- [SystemAndUpdateSettingsScreenInstrumentedTest.kt:72](/Users/zhaoliyan/IdeaProjects/Zhihu/app/src/androidTest/java/com/github/zly2006/zhihu/SystemAndUpdateSettingsScreenInstrumentedTest.kt:72)
-- [HotListScreenInstrumentedTest.kt:59](/Users/zhaoliyan/IdeaProjects/Zhihu/app/src/androidTest/java/com/github/zly2006/zhihu/HotListScreenInstrumentedTest.kt:59)
-- [NotificationScreenInstrumentedTest.kt:137](/Users/zhaoliyan/IdeaProjects/Zhihu/app/src/androidTest/java/com/github/zly2006/zhihu/NotificationScreenInstrumentedTest.kt:137)
-- [CollectionContentScreenInstrumentedTest.kt:240](/Users/zhaoliyan/IdeaProjects/Zhihu/app/src/androidTest/java/com/github/zly2006/zhihu/CollectionContentScreenInstrumentedTest.kt:240)
+- [AccountSettingScreenInstrumentedTest.kt:74](/Users/zhaoliyan/IdeaProjects/Zhihu/app/src/androidTest/java/com/chloemlla/zhplus/AccountSettingScreenInstrumentedTest.kt:74)
+- [HomeScreenInstrumentedTest.kt:69](/Users/zhaoliyan/IdeaProjects/Zhihu/app/src/androidTest/java/com/chloemlla/zhplus/HomeScreenInstrumentedTest.kt:69)
+- [SystemAndUpdateSettingsScreenInstrumentedTest.kt:72](/Users/zhaoliyan/IdeaProjects/Zhihu/app/src/androidTest/java/com/chloemlla/zhplus/SystemAndUpdateSettingsScreenInstrumentedTest.kt:72)
+- [HotListScreenInstrumentedTest.kt:59](/Users/zhaoliyan/IdeaProjects/Zhihu/app/src/androidTest/java/com/chloemlla/zhplus/HotListScreenInstrumentedTest.kt:59)
+- [NotificationScreenInstrumentedTest.kt:137](/Users/zhaoliyan/IdeaProjects/Zhihu/app/src/androidTest/java/com/chloemlla/zhplus/NotificationScreenInstrumentedTest.kt:137)
+- [CollectionContentScreenInstrumentedTest.kt:240](/Users/zhaoliyan/IdeaProjects/Zhihu/app/src/androidTest/java/com/chloemlla/zhplus/CollectionContentScreenInstrumentedTest.kt:240)
 
 Leaking state includes:
 
@@ -81,12 +81,12 @@ Representative isolated failure:
 
 Representative full-suite failures:
 
-- [AccountSettingScreenInstrumentedTest.html](/Users/zhaoliyan/IdeaProjects/Zhihu/app/build/reports/androidTests/connected/debug/flavors/lite/com.github.zly2006.zhihu.AccountSettingScreenInstrumentedTest.html)
-- [AppearanceSettingsScreenInstrumentedTest.html](/Users/zhaoliyan/IdeaProjects/Zhihu/app/build/reports/androidTests/connected/debug/flavors/lite/com.github.zly2006.zhihu.AppearanceSettingsScreenInstrumentedTest.html)
-- [CollectionContentScreenInstrumentedTest.html](/Users/zhaoliyan/IdeaProjects/Zhihu/app/build/reports/androidTests/connected/debug/flavors/lite/com.github.zly2006.zhihu.CollectionContentScreenInstrumentedTest.html)
-- [DailyScreenInstrumentedTest.html](/Users/zhaoliyan/IdeaProjects/Zhihu/app/build/reports/androidTests/connected/debug/flavors/lite/com.github.zly2006.zhihu.DailyScreenInstrumentedTest.html)
-- [PinScreenInstrumentedTest.html](/Users/zhaoliyan/IdeaProjects/Zhihu/app/build/reports/androidTests/connected/debug/flavors/lite/com.github.zly2006.zhihu.PinScreenInstrumentedTest.html)
-- [QuestionScreenInstrumentedTest.html](/Users/zhaoliyan/IdeaProjects/Zhihu/app/build/reports/androidTests/connected/debug/flavors/lite/com.github.zly2006.zhihu.QuestionScreenInstrumentedTest.html)
+- [AccountSettingScreenInstrumentedTest.html](/Users/zhaoliyan/IdeaProjects/Zhihu/app/build/reports/androidTests/connected/debug/flavors/lite/com.chloemlla.zhplus.AccountSettingScreenInstrumentedTest.html)
+- [AppearanceSettingsScreenInstrumentedTest.html](/Users/zhaoliyan/IdeaProjects/Zhihu/app/build/reports/androidTests/connected/debug/flavors/lite/com.chloemlla.zhplus.AppearanceSettingsScreenInstrumentedTest.html)
+- [CollectionContentScreenInstrumentedTest.html](/Users/zhaoliyan/IdeaProjects/Zhihu/app/build/reports/androidTests/connected/debug/flavors/lite/com.chloemlla.zhplus.CollectionContentScreenInstrumentedTest.html)
+- [DailyScreenInstrumentedTest.html](/Users/zhaoliyan/IdeaProjects/Zhihu/app/build/reports/androidTests/connected/debug/flavors/lite/com.chloemlla.zhplus.DailyScreenInstrumentedTest.html)
+- [PinScreenInstrumentedTest.html](/Users/zhaoliyan/IdeaProjects/Zhihu/app/build/reports/androidTests/connected/debug/flavors/lite/com.chloemlla.zhplus.PinScreenInstrumentedTest.html)
+- [QuestionScreenInstrumentedTest.html](/Users/zhaoliyan/IdeaProjects/Zhihu/app/build/reports/androidTests/connected/debug/flavors/lite/com.chloemlla.zhplus.QuestionScreenInstrumentedTest.html)
 
 Observed failure pattern:
 
@@ -100,10 +100,10 @@ This means many tests currently validate an imagined contract, not the actual ru
 
 Representative partially-seamed files:
 
-- [PeopleScreen.kt](/Users/zhaoliyan/IdeaProjects/Zhihu/app/src/main/java/com/github/zly2006/zhihu/ui/PeopleScreen.kt)
-- [FollowScreen.kt](/Users/zhaoliyan/IdeaProjects/Zhihu/app/src/main/java/com/github/zly2006/zhihu/ui/FollowScreen.kt)
-- [QuestionScreen.kt](/Users/zhaoliyan/IdeaProjects/Zhihu/app/src/main/java/com/github/zly2006/zhihu/ui/QuestionScreen.kt)
-- [PinScreen.kt](/Users/zhaoliyan/IdeaProjects/Zhihu/app/src/main/java/com/github/zly2006/zhihu/ui/PinScreen.kt)
+- [PeopleScreen.kt](/Users/zhaoliyan/IdeaProjects/Zhihu/app/src/main/java/com/chloemlla/zhplus/ui/PeopleScreen.kt)
+- [FollowScreen.kt](/Users/zhaoliyan/IdeaProjects/Zhihu/app/src/main/java/com/chloemlla/zhplus/ui/FollowScreen.kt)
+- [QuestionScreen.kt](/Users/zhaoliyan/IdeaProjects/Zhihu/app/src/main/java/com/chloemlla/zhplus/ui/QuestionScreen.kt)
+- [PinScreen.kt](/Users/zhaoliyan/IdeaProjects/Zhihu/app/src/main/java/com/chloemlla/zhplus/ui/PinScreen.kt)
 
 Why this matters:
 
@@ -116,7 +116,7 @@ Why this matters:
 
 Command:
 
-- `./gradlew connectedLiteDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.github.zly2006.zhihu.AccountSettingScreenInstrumentedTest`
+- `./gradlew connectedLiteDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.chloemlla.zhplus.AccountSettingScreenInstrumentedTest`
 
 Result:
 
@@ -130,7 +130,7 @@ Implication:
 
 Command:
 
-- `./gradlew connectedLiteDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.github.zly2006.zhihu.PinScreenInstrumentedTest`
+- `./gradlew connectedLiteDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.chloemlla.zhplus.PinScreenInstrumentedTest`
 
 Result:
 

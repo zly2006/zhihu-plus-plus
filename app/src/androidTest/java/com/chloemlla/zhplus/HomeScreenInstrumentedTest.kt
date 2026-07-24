@@ -1,0 +1,384 @@
+/*
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
+ * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation (version 3 only).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package com.chloemlla.zhplus
+
+import android.content.Context
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
+import androidx.core.content.edit
+import androidx.lifecycle.ViewModelProvider
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.chloemlla.zhplus.data.AccountData
+import com.chloemlla.zhplus.navigation.Notification
+import com.chloemlla.zhplus.navigation.Pin
+import com.chloemlla.zhplus.navigation.Search
+import com.chloemlla.zhplus.navigation.WritePin
+import com.chloemlla.zhplus.shared.data.DataHolder
+import com.chloemlla.zhplus.shared.data.FeedDisplayItem
+import com.chloemlla.zhplus.shared.data.RecommendationMode
+import com.chloemlla.zhplus.shared.data.ZhihuJson
+import com.chloemlla.zhplus.shared.data.toFeedDisplayItemNavDestinationJson
+import com.chloemlla.zhplus.test.MainActivityComposeRule
+import com.chloemlla.zhplus.test.RecordingNavigator
+import com.chloemlla.zhplus.test.ZhihuMockApi
+import com.chloemlla.zhplus.test.performVerticalSwipeCycle
+import com.chloemlla.zhplus.test.resetAppPreferences
+import com.chloemlla.zhplus.test.setScreenContent
+import com.chloemlla.zhplus.ui.HOME_ACCOUNT_BUTTON_TAG
+import com.chloemlla.zhplus.ui.HOME_CREATE_FAB_TAG
+import com.chloemlla.zhplus.ui.HOME_CREATE_MENU_TAG
+import com.chloemlla.zhplus.ui.HOME_FEED_LIST_TAG
+import com.chloemlla.zhplus.ui.HOME_NOTIFICATION_BUTTON_TAG
+import com.chloemlla.zhplus.ui.HOME_REFRESH_BUTTON_TAG
+import com.chloemlla.zhplus.ui.HOME_SEARCH_BUTTON_TAG
+import com.chloemlla.zhplus.ui.HOME_TOP_ACTIONS_TAG
+import com.chloemlla.zhplus.ui.HomeScreen
+import com.chloemlla.zhplus.ui.PREFERENCE_NAME
+import com.chloemlla.zhplus.ui.QQ_GROUP_DISMISSED_PREFERENCE_KEY
+import com.chloemlla.zhplus.ui.ZHIHU_PLUS_AUTHOR_PINS_URL
+import com.chloemlla.zhplus.ui.homeAuthorPollAnnouncementTag
+import com.chloemlla.zhplus.updater.UpdateManager
+import com.chloemlla.zhplus.viewmodel.feed.HomeFeedViewModel
+import io.ktor.http.HttpMethod
+import kotlinx.serialization.encodeToString
+import org.junit.Assert.assertEquals
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+
+@RunWith(AndroidJUnit4::class)
+class HomeScreenInstrumentedTest {
+    @get:Rule
+    val composeRule: MainActivityComposeRule = createAndroidComposeRule<MainActivity>()
+
+    @Before
+    fun setUp() {
+        composeRule.setScreenContent {}
+        composeRule.resetAppPreferences()
+        composeRule.activity.runOnUiThread {
+            UpdateManager.updateState.value = UpdateManager.UpdateState.NoUpdate
+            clearHomeFeedViewModel()
+        }
+        composeRule.waitForIdle()
+    }
+
+    @Test
+    fun classicTopButtons_showSearchAndNotification_andHideAccount() {
+        /*
+         * Expected behavior:
+         * 1. With duo3 account mode disabled, the classic toolbar should show the search surface and
+         *    the notification action, but it must not render the duo3-only account button.
+         * 2. Clicking search should navigate to an empty Search destination without relying on live data.
+         * 3. Clicking notification should append exactly one Notification destination and must not emit
+         *    any back navigation event.
+         */
+        val recordingNavigator = composeRule.launchHomeScreen(
+            duo3HomeAccount = false,
+            showRefreshFab = false,
+            displayItems = homeFeedFixtureItems(),
+        )
+
+        composeRule.onNodeWithTag(HOME_TOP_ACTIONS_TAG).assertIsDisplayed()
+        composeRule.onNodeWithTag(HOME_SEARCH_BUTTON_TAG).assertIsDisplayed().assertHasClickAction()
+        composeRule.onNodeWithTag(HOME_NOTIFICATION_BUTTON_TAG).assertIsDisplayed().assertHasClickAction()
+        composeRule.onNodeWithTag(HOME_ACCOUNT_BUTTON_TAG).assertDoesNotExist()
+
+        composeRule.onNodeWithTag(HOME_SEARCH_BUTTON_TAG).performClick()
+        composeRule.onNodeWithTag(HOME_NOTIFICATION_BUTTON_TAG).performClick()
+
+        assertEquals(listOf(Search(query = ""), Notification), recordingNavigator.destinations)
+        assertEquals(0, recordingNavigator.backCount)
+    }
+
+    @Test
+    fun duo3TopButtons_showSearchAndAccountSheet_andHideNotification() {
+        /*
+         * Expected behavior:
+         * 1. With duo3 account mode enabled, the top action area should switch to the account-entry layout,
+         *    so the account button is visible and the classic notification icon is absent.
+         * 2. The search affordance should still navigate to Search(query = "") exactly once.
+         * 3. Clicking the account button in a forced logged-out state should open the offline account sheet,
+         *    which is verified by the stable "登录知乎" entry instead of any network-backed profile UI.
+         */
+        val recordingNavigator = composeRule.launchHomeScreen(
+            duo3HomeAccount = true,
+            showRefreshFab = false,
+            displayItems = homeFeedFixtureItems(),
+        )
+
+        composeRule.onNodeWithTag(HOME_TOP_ACTIONS_TAG).assertIsDisplayed()
+        composeRule.onNodeWithTag(HOME_SEARCH_BUTTON_TAG).assertIsDisplayed().assertHasClickAction()
+        composeRule.onNodeWithTag(HOME_ACCOUNT_BUTTON_TAG).assertIsDisplayed().assertHasClickAction()
+        composeRule.onNodeWithTag(HOME_NOTIFICATION_BUTTON_TAG).assertDoesNotExist()
+
+        composeRule.onNodeWithTag(HOME_SEARCH_BUTTON_TAG).performClick()
+        composeRule.onNodeWithTag(HOME_ACCOUNT_BUTTON_TAG).performClick()
+
+        composeRule.onNodeWithText("登录知乎").assertIsDisplayed()
+        assertEquals(listOf(Search(query = "")), recordingNavigator.destinations)
+        assertEquals(0, recordingNavigator.backCount)
+    }
+
+    @Test
+    fun refreshButton_staysPresentAfterClick_inSeededOfflineState() {
+        /*
+         * Expected behavior:
+         * 1. Enabling the floating refresh action through SharedPreferences must render a dedicated refresh FAB.
+         * 2. The test seeds non-empty feed items first so HomeScreen skips its initial auto-refresh path.
+         * 3. Tapping the refresh FAB should remain stable from the test perspective: the button stays present
+         *    and the interaction does not create any navigation side effects.
+         */
+        val recordingNavigator = composeRule.launchHomeScreen(
+            duo3HomeAccount = false,
+            showRefreshFab = true,
+            displayItems = homeFeedFixtureItems(),
+        )
+
+        composeRule.onNodeWithTag(HOME_REFRESH_BUTTON_TAG).assertIsDisplayed().assertHasClickAction()
+
+        composeRule.onNodeWithTag(HOME_REFRESH_BUTTON_TAG).performClick()
+
+        composeRule.onNodeWithTag(HOME_REFRESH_BUTTON_TAG).assertExists()
+        assertEquals(0, recordingNavigator.destinations.size)
+        assertEquals(0, recordingNavigator.backCount)
+    }
+
+    @Test
+    fun createFab_opensActionMenu_andRoutesPinOnly() {
+        /*
+         * Expected behavior:
+         * 1. HomeScreen exposes a bottom FAB for creation instead of a top-bar-only write-pin action.
+         * 2. Tapping the FAB opens the creation menu with question, answer, and pin entries.
+         * 3. Question and answer are placeholders that only show the construction toast; pin navigates to WritePin.
+         */
+        val recordingNavigator = composeRule.launchHomeScreen(
+            duo3HomeAccount = false,
+            showRefreshFab = false,
+            displayItems = homeFeedFixtureItems(),
+        )
+
+        composeRule.onNodeWithTag(HOME_CREATE_FAB_TAG).assertIsDisplayed().assertHasClickAction()
+
+        composeRule.onNodeWithTag(HOME_CREATE_FAB_TAG).performClick()
+        composeRule.onNodeWithTag(HOME_CREATE_MENU_TAG).assertIsDisplayed()
+        composeRule.onNodeWithText("提问题").assertIsDisplayed()
+        composeRule.onNodeWithText("写回答").assertIsDisplayed()
+        composeRule.onNodeWithText("发想法").assertIsDisplayed()
+
+        composeRule.onNodeWithText("提问题").performClick()
+        composeRule.onNodeWithText("提问题").assertDoesNotExist()
+        assertEquals(emptyList<Any>(), recordingNavigator.destinations)
+
+        composeRule.onNodeWithTag(HOME_CREATE_FAB_TAG).performClick()
+        composeRule.onNodeWithText("写回答").performClick()
+        composeRule.onNodeWithText("写回答").assertDoesNotExist()
+        assertEquals(emptyList<Any>(), recordingNavigator.destinations)
+
+        composeRule.onNodeWithTag(HOME_CREATE_FAB_TAG).performClick()
+        composeRule.onNodeWithText("发想法").performClick()
+
+        assertEquals(listOf(WritePin), recordingNavigator.destinations)
+        assertEquals(0, recordingNavigator.backCount)
+    }
+
+    @Test
+    fun authorPollAnnouncement_navigatesToSeededPinOffline() {
+        /*
+         * Expected behavior:
+         * 1. HomeScreen should be able to render poll announcements discovered at startup without
+         *    waiting for live feeds or a real account.
+         * 2. The card should invite feedback and show the poll title plus compact statistics.
+         * 3. The accept action must navigate to the exact pin that owns the poll.
+         */
+        mockAuthorPollAnnouncement()
+        val recordingNavigator = composeRule.launchHomeScreen(
+            duo3HomeAccount = false,
+            showRefreshFab = false,
+            useSeededAccountForNetwork = true,
+            displayItems = homeFeedFixtureItems(),
+        )
+
+        val announcementTag = homeAuthorPollAnnouncementTag(2051253530787370452L)
+        composeRule.waitUntilRequestCount(HttpMethod.Get, ZHIHU_PLUS_AUTHOR_PINS_URL, 1)
+        composeRule.waitUntilHomeFeedTagExists(announcementTag)
+        composeRule.onNodeWithTag(announcementTag).assertExists()
+        composeRule.onNodeWithText("请给未来的知乎++提出建议").assertIsDisplayed()
+        composeRule.onNodeWithText("知乎++好用吗\n5 个选项").assertIsDisplayed()
+        composeRule.onNodeWithText("去投票").assertIsDisplayed().performClick()
+
+        assertEquals(listOf(Pin(2051253530787370452L)), recordingNavigator.destinations)
+    }
+
+    @Test
+    fun seededOfflineList_scrollsToFarItemsAndBack_stably() {
+        /*
+         * Expected behavior:
+         * 1. A fixed list of locally seeded display items should render immediately without waiting for feeds.
+         * 2. The LazyColumn must scroll to a far-away injected item by text matcher, proving the list stays
+         *    addressable even when HomeScreen wraps it with pull-to-refresh and announcement content.
+         * 3. A swipe cycle and a return scroll back to the first injected item should keep the deterministic
+         *    offline content intact instead of dropping or corrupting the seeded rows.
+         */
+        composeRule.launchHomeScreen(
+            duo3HomeAccount = false,
+            showRefreshFab = false,
+            displayItems = homeFeedFixtureItems(count = 30),
+        )
+
+        composeRule.onNodeWithTag(HOME_FEED_LIST_TAG).assertIsDisplayed()
+        composeRule.onNodeWithText("离线条目 00").assertIsDisplayed()
+
+        composeRule.onNodeWithTag(HOME_FEED_LIST_TAG).performScrollToNode(hasText("离线条目 24"))
+        composeRule.onNodeWithText("离线条目 24").assertIsDisplayed()
+
+        composeRule.onNodeWithTag(HOME_FEED_LIST_TAG).performVerticalSwipeCycle()
+        composeRule.onNodeWithTag(HOME_FEED_LIST_TAG).performScrollToNode(hasText("离线条目 00"))
+        composeRule.onNodeWithText("离线条目 00").assertIsDisplayed()
+    }
+
+    private fun MainActivityComposeRule.launchHomeScreen(
+        duo3HomeAccount: Boolean,
+        showRefreshFab: Boolean,
+        useSeededAccountForNetwork: Boolean = false,
+        displayItems: List<FeedDisplayItem>,
+    ): RecordingNavigator {
+        setScreenContent {}
+        activity.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE).edit(commit = true) {
+            putBoolean("duo3_home_account", duo3HomeAccount)
+            putBoolean("showRefreshFab", showRefreshFab)
+            putBoolean("loginForRecommendation", useSeededAccountForNetwork)
+            putBoolean("filterExplainDialogShown", true)
+            putBoolean(QQ_GROUP_DISMISSED_PREFERENCE_KEY, true)
+            putBoolean("survey_feedback_done", true)
+            putBoolean("autoCheckUpdates", false)
+            putString("recommendationMode", RecommendationMode.WEB.key)
+        }
+        activity.runOnUiThread {
+            if (!useSeededAccountForNetwork) {
+                AccountData.delete(activity)
+            }
+            UpdateManager.updateState.value = UpdateManager.UpdateState.NoUpdate
+            clearHomeFeedViewModel()
+            seedHomeFeedViewModel(displayItems)
+        }
+        waitForIdle()
+
+        val recordingNavigator = setScreenContent {
+            HomeScreen(
+                scrollToTopTrigger = 0,
+                innerPadding = PaddingValues(),
+            )
+        }
+        activity.runOnUiThread {
+            UpdateManager.updateState.value = UpdateManager.UpdateState.NoUpdate
+        }
+        waitForIdle()
+        return recordingNavigator
+    }
+
+    private fun clearHomeFeedViewModel() {
+        val viewModel = ViewModelProvider(composeRule.activity)[HomeFeedViewModel::class.java]
+        viewModel.allData.clear()
+        viewModel.debugData.clear()
+        viewModel.displayItems.clear()
+    }
+
+    private fun seedHomeFeedViewModel(items: List<FeedDisplayItem>) {
+        val viewModel = ViewModelProvider(composeRule.activity)[HomeFeedViewModel::class.java]
+        viewModel.addDisplayItems(items)
+    }
+
+    private fun MainActivityComposeRule.waitUntilHomeFeedTagExists(tag: String) {
+        waitUntil("Expected tag $tag in home feed", timeoutMillis = 5_000) {
+            runCatching {
+                onNodeWithTag(HOME_FEED_LIST_TAG).performScrollToNode(hasTestTag(tag))
+                true
+            }.getOrDefault(false)
+        }
+    }
+
+    private fun MainActivityComposeRule.waitUntilRequestCount(
+        method: HttpMethod,
+        urlSubstring: String,
+        count: Int,
+    ) {
+        waitUntil("Expected $count $method requests containing $urlSubstring", timeoutMillis = 5_000) {
+            ZhihuMockApi.requestCount(method, urlSubstring) == count
+        }
+    }
+
+    private fun homeFeedFixtureItems(count: Int = 8): List<FeedDisplayItem> = List(count) { index ->
+        FeedDisplayItem(
+            title = "离线条目 ${index.toString().padStart(2, '0')}",
+            summary = "这是第 ${index + 1} 条用于 HomeScreen instrumented test 的离线摘要。",
+            details = "离线验证 · 固定假数据",
+            feed = null,
+            navDestinationJson = Search(query = "fixture-$index").toFeedDisplayItemNavDestinationJson(),
+        )
+    }
+
+    private fun mockAuthorPollAnnouncement() {
+        val pin = DataHolder.Pin(
+            id = "2051253530787370452",
+            url = "https://www.zhihu.com/pin/2051253530787370452",
+            author = DataHolder.Author(
+                avatarUrl = "",
+                gender = 0,
+                headline = "",
+                id = "zhihu-plus-author",
+                isAdvertiser = false,
+                isOrg = false,
+                name = "知乎++作者",
+                type = "people",
+                url = "https://www.zhihu.com/people/scanmenge",
+                urlToken = "scanmenge",
+                userType = "people",
+            ),
+            bottomPoll = DataHolder.Pin.BottomPoll(
+                voting = DataHolder.Pin.Poll(
+                    id = "2051253919255360130",
+                    title = "知乎++好用吗",
+                    maxSelections = 1,
+                    type = "single",
+                    endAt = -1,
+                    options = listOf(
+                        DataHolder.Pin.PollOption(id = "a", title = "非常好用"),
+                        DataHolder.Pin.PollOption(id = "b", title = "还可以"),
+                        DataHolder.Pin.PollOption(id = "c", title = "一般"),
+                        DataHolder.Pin.PollOption(id = "d", title = "不好用"),
+                        DataHolder.Pin.PollOption(id = "e", title = "没用过"),
+                    ),
+                ),
+            ),
+        )
+        ZhihuMockApi.mockJson(
+            method = HttpMethod.Get,
+            url = ZHIHU_PLUS_AUTHOR_PINS_URL,
+            body = """{"data":[${ZhihuJson.json.encodeToString(pin)}]}""",
+        )
+    }
+}

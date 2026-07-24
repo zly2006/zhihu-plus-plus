@@ -4,13 +4,13 @@
 
 ## 先读顺序
 
-1. `shared/src/commonMain/kotlin/com/github/zly2006/zhihu/navigation/NavDestination.kt`
-2. `shared/src/commonMain/kotlin/com/github/zly2006/zhihu/ui/ZhihuMain.kt`
-3. Android: `app/src/main/java/com/github/zly2006/zhihu/MainActivity.kt` 和 `app/src/main/java/com/github/zly2006/zhihu/ui/ZhihuMainAndroidState.kt`
-4. Desktop: `shared/src/jvmMain/kotlin/com/github/zly2006/zhihu/ui/DesktopZhihuMain.kt`
-5. 设置页: `shared/src/commonMain/kotlin/com/github/zly2006/zhihu/ui/subscreens/*SettingsScreen.kt`
-6. 复用组件: `shared/src/commonMain/kotlin/com/github/zly2006/zhihu/ui/components/SettingItem.kt`、`FeedCard.kt`、`DraggableRefreshButton.kt`
-7. 首装/更新门控: `shared/src/commonMain/kotlin/com/github/zly2006/zhihu/onboarding/AppGateHost.kt`（OSS 声明 > 用户须知 > 本次更新说明）；账号页「开源说明与鸣谢」经 `OssNoticeReopenBus` 重开。
+1. `shared/src/commonMain/kotlin/com/chloemlla/zhplus/navigation/NavDestination.kt`
+2. `shared/src/commonMain/kotlin/com/chloemlla/zhplus/ui/ZhihuMain.kt`
+3. Android: `app/src/main/java/com/chloemlla/zhplus/MainActivity.kt` 和 `app/src/main/java/com/chloemlla/zhplus/ui/ZhihuMainAndroidState.kt`
+4. Desktop: `shared/src/jvmMain/kotlin/com/chloemlla/zhplus/ui/DesktopZhihuMain.kt`
+5. 设置页: `shared/src/commonMain/kotlin/com/chloemlla/zhplus/ui/subscreens/*SettingsScreen.kt`
+6. 复用组件: `shared/src/commonMain/kotlin/com/chloemlla/zhplus/ui/components/SettingItem.kt`、`FeedCard.kt`、`DraggableRefreshButton.kt`
+7. 首装/更新门控: `shared/src/commonMain/kotlin/com/chloemlla/zhplus/onboarding/AppGateHost.kt`（OSS 声明 > 用户须知 > 本次更新说明）；账号页「开源说明与鸣谢」经 `OssNoticeReopenBus` 重开。
 
 UI 改动不要只看目标页面。至少用 `rg "<preferenceKey>" shared app` 查设置项的读取点，用 `rg "<NavDestinationName>" shared app` 查导航入口和测试。
 

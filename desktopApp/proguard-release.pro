@@ -20,27 +20,27 @@
     *;
 }
 
--keep interface com.github.zly2006.zhihu.viewmodel.PaginationEnvironment {
+-keep interface com.chloemlla.zhplus.viewmodel.PaginationEnvironment {
     *;
 }
 
--keep interface com.github.zly2006.zhihu.viewmodel.CollectionContentEnvironment {
+-keep interface com.chloemlla.zhplus.viewmodel.CollectionContentEnvironment {
     *;
 }
 
--keep interface com.github.zly2006.zhihu.viewmodel.NotificationPaginationEnvironment {
+-keep interface com.chloemlla.zhplus.viewmodel.NotificationPaginationEnvironment {
     *;
 }
 
--keep class * implements com.github.zly2006.zhihu.viewmodel.PaginationEnvironment {
+-keep class * implements com.chloemlla.zhplus.viewmodel.PaginationEnvironment {
     *;
 }
 
--keep class com.github.zly2006.zhihu.viewmodel.filter.*_Impl {
+-keep class com.chloemlla.zhplus.viewmodel.filter.*_Impl {
     *;
 }
 
--keep class com.github.zly2006.zhihu.viewmodel.local.*_Impl {
+-keep class com.chloemlla.zhplus.viewmodel.local.*_Impl {
     *;
 }
 

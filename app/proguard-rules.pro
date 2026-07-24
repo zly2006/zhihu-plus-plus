@@ -61,7 +61,7 @@
     private ** descriptor;
 }
 
--keepnames class ** implements com.github.zly2006.zhihu.data.Feed$Target
+-keepnames class ** implements com.chloemlla.zhplus.data.Feed$Target
 # Keep all enums
 -keep enum ** {
     <fields>;

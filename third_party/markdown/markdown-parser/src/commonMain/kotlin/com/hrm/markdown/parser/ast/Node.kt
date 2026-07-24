@@ -1,7 +1,7 @@
 package com.hrm.markdown.parser.ast
 
-import com.hrm.markdown.parser.SourceRange
 import com.hrm.markdown.parser.LineRange
+import com.hrm.markdown.parser.SourceRange
 
 /**
  * 所有 AST 节点的基类。

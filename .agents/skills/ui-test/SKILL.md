@@ -235,8 +235,8 @@ adb devices
 emulator -avd Medium_Phone_2
 
 # 2. 启动应用
-adb shell am force-stop com.github.zly2006.zhplus.lite
-adb shell monkey -p com.github.zly2006.zhplus.lite -c android.intent.category.LAUNCHER 1
+adb shell am force-stop com.chloemlla.zhplus.lite
+adb shell monkey -p com.chloemlla.zhplus.lite -c android.intent.category.LAUNCHER 1
 sleep 10
 
 # 3. 确认界面元素

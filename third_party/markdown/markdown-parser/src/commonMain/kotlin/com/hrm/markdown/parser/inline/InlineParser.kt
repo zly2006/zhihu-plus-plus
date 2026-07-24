@@ -1,9 +1,9 @@
 package com.hrm.markdown.parser.inline
 
 import com.hrm.markdown.parser.ast.*
+import com.hrm.markdown.parser.block.BlockParser
 import com.hrm.markdown.parser.core.CharacterUtils
 import com.hrm.markdown.parser.core.HtmlEntities
-import com.hrm.markdown.parser.block.BlockParser
 
 /**
  * 高性能行内解析器，实现 CommonMark 分隔符算法。

@@ -3,9 +3,9 @@ package com.hrm.markdown.renderer
 import com.hrm.markdown.parser.MarkdownParser
 import com.hrm.markdown.parser.ast.Document
 import com.hrm.markdown.parser.html.HtmlRenderer
+import com.hrm.markdown.runtime.MarkdownDirectivePipeline
 import com.hrm.markdown.runtime.MarkdownDirectivePlugin
 import com.hrm.markdown.runtime.MarkdownDirectiveRegistry
-import com.hrm.markdown.runtime.MarkdownDirectivePipeline
 
 /**
  * 高层 HTML 导出入口：统一走 runtime transform pipeline，避免绕过插件导致输出不一致。

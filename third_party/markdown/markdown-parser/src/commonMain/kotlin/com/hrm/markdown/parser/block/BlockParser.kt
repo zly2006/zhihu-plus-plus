@@ -1,8 +1,8 @@
 package com.hrm.markdown.parser.block
 
+import com.hrm.markdown.parser.LineRange
 import com.hrm.markdown.parser.SourcePosition
 import com.hrm.markdown.parser.SourceRange
-import com.hrm.markdown.parser.LineRange
 import com.hrm.markdown.parser.ast.*
 import com.hrm.markdown.parser.block.starters.BlockStarterRegistry
 import com.hrm.markdown.parser.block.starters.HeadingStarter

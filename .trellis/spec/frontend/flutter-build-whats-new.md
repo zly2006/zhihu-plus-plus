@@ -11,7 +11,7 @@ Every user-facing feature/fix commit must update immersive 「本次更新说明
 
 ## Content source
 
-- Edit `shared/src/commonMain/kotlin/com/github/zly2006/zhihu/onboarding/WhatsNewCatalog.kt`.
+- Edit `shared/src/commonMain/kotlin/com/chloemlla/zhplus/onboarding/WhatsNewCatalog.kt`.
 - Prefer matching by commit hash prefix; optional `buildTimeUtcMillis` for disambiguation.
 - Keep welcome / identity bullets dynamic via getters — never hard-code the live hash/time in static copy.
 - Branch-long fork deltas → first-install `ProductOnboarding` pages.

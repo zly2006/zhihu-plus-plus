@@ -29,8 +29,8 @@ import time
 import xml.etree.ElementTree as ET
 from typing import Optional
 
-PACKAGE_LITE = "com.github.zly2006.zhplus.lite"
-PACKAGE_FULL = "com.github.zly2006.zhplus"
+PACKAGE_LITE = "com.chloemlla.zhplus.lite"
+PACKAGE_FULL = "com.chloemlla.zhplus"
 UI_DUMP_DEVICE = "/sdcard/ui_dump.xml"
 UI_DUMP_LOCAL = "/tmp/zhihu_ui_dump.xml"
 

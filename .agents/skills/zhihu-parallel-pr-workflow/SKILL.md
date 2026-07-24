@@ -111,7 +111,7 @@ Minimum UI validation for each UI worker:
    `./gradlew --no-daemon -Dkotlin.compiler.execution.strategy=in-process assembleLiteDebug`
 2. Start a short-lived remote AVD session on `off` using the environment from `$off-android-avd-ci-debug`.
 3. Install `app/build/outputs/apk/lite/debug/app-lite-debug.apk`.
-4. Launch `com.github.zly2006.zhplus.lite`.
+4. Launch `com.chloemlla.zhplus.lite`.
 5. Wait for content; if login/disclaimer blocks the path, restore account JSON using the project launch-on-device instructions or state the blocker precisely.
 6. Use `.agents/skills/ui-test/llm_test_helper.py dump` before taps when practical.
 7. Capture a screenshot from the actual AVD and place it in the worker worktree, for example `artifacts/issue-<n>-final.png`.

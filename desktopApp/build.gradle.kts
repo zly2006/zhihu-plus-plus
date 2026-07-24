@@ -115,7 +115,7 @@ tasks.withType<Jar>().configureEach {
 
 compose.desktop {
     application {
-        mainClass = "com.github.zly2006.zhihu.desktop.MainKt"
+        mainClass = "com.chloemlla.zhplus.desktop.MainKt"
 
         buildTypes.release.proguard {
             isEnabled.set(true)
@@ -125,7 +125,7 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "com.github.zly2006.zhihu"
+            packageName = "com.chloemlla.zhplus"
             packageVersion = desktopPackageVersion
             linux {
                 iconFile.set(project.file("src/main/resources/desktop-icon.png"))

@@ -11,9 +11,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.hrm.codehigh.theme.CodeTheme
 import com.hrm.markdown.parser.ast.Document
+import com.hrm.markdown.runtime.MarkdownDirectivePipeline
 import com.hrm.markdown.runtime.MarkdownDirectivePlugin
 import com.hrm.markdown.runtime.MarkdownDirectiveRegistry
-import com.hrm.markdown.runtime.MarkdownDirectivePipeline
 
 /**
  * Markdown 渲染器的顶层 Composable 入口。

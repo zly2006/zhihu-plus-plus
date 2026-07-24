@@ -29,13 +29,13 @@ This script will:
 
 # Install and launch
 adb install -r ./app/build/outputs/apk/lite/debug/app-lite-debug.apk
-adb shell am start -n com.github.zly2006.zhplus.lite/com.github.zly2006.zhihu.MainActivity
+adb shell am start -n com.chloemlla.zhplus.lite/com.chloemlla.zhplus.MainActivity
 ```
 
 ## Common Issues
 
 - **No device found**: Check USB connection and enable USB debugging
-- **Installation failed**: Run `adb uninstall com.github.zly2006.zhplus.lite` first
+- **Installation failed**: Run `adb uninstall com.chloemlla.zhplus.lite` first
 - **App crashes**: Check logs with `adb logcat`
 
 See SKILL.md for comprehensive troubleshooting guide.

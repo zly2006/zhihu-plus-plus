@@ -145,8 +145,8 @@ WebView 正文渲染不再接受任何功能更新，只作为废弃路径保留
 - **Module**: `sentence_embeddings`（Rust tokenizer，仅 full variant）
 
 ### Build Variants
-- **lite**: 轻量版 (~4MB)，无 ML 功能，包名 `com.github.zly2006.zhplus.lite`
-- **full**: 完整版，含 HanLP NLP，包名 `com.github.zly2006.zhplus`
+- **lite**: 轻量版 (~4MB)，无 ML 功能，包名 `com.chloemlla.zhplus.lite`
+- **full**: 完整版，含 HanLP NLP，包名 `com.chloemlla.zhplus`
 
 ## 关键约定
 
@@ -208,7 +208,7 @@ WebView 正文渲染不再接受任何功能更新，只作为废弃路径保留
 ```bash
 # 检查包名（必须先做）
 grep "applicationId" app/build.gradle.kts
-# lite variant: com.github.zly2006.zhplus.lite
+# lite variant: com.chloemlla.zhplus.lite
 ```
 
 远端优先路径：
@@ -240,8 +240,8 @@ emulator -avd Medium_Phone_2
 ./gradlew assembleLiteDebug
 adb install -r app/build/outputs/apk/lite/debug/app-lite-debug.apk
 
-adb shell am force-stop com.github.zly2006.zhplus.lite
-adb shell monkey -p com.github.zly2006.zhplus.lite -c android.intent.category.LAUNCHER 1
+adb shell am force-stop com.chloemlla.zhplus.lite
+adb shell monkey -p com.chloemlla.zhplus.lite -c android.intent.category.LAUNCHER 1
 ```
 
 ### UI 调试强制清单

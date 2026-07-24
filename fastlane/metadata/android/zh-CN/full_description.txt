@@ -4,4 +4,4 @@ Zhihu++ 是一个第三方知乎 Android 客户端。
 
 支持关键词和正则屏蔽、屏蔽用户与话题、阅读回答和文章、评论与通知、历史记录与收藏等功能。
 
-更多信息请查看GitHub: https://github.com/zly2006/zhihu-plus-plus
+更多信息请查看GitHub: https://github.com/Chloemlla/zhihu-plus-plus

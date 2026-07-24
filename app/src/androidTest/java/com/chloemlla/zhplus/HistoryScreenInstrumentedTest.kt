@@ -1,0 +1,112 @@
+/*
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
+ * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation (version 3 only).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package com.chloemlla.zhplus
+
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithText
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.chloemlla.zhplus.test.MainActivityComposeRule
+import com.chloemlla.zhplus.test.performVerticalSwipeCycle
+import com.chloemlla.zhplus.test.setScreenContent
+import com.chloemlla.zhplus.ui.LegacyLocalHistoryScreen
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+
+@RunWith(AndroidJUnit4::class)
+class HistoryScreenInstrumentedTest {
+    @get:Rule
+    val composeRule: MainActivityComposeRule = createAndroidComposeRule<MainActivity>()
+
+    @Before
+    fun setUp() {
+        composeRule.replaceHistoryWithEmptyState()
+    }
+
+    @Test
+    fun historyScreen_emptyHistoryRendersDeterministicallyAndKeepsSwipeGesturesStable() {
+        // Replace the activity content with HistoryScreen after clearing the persisted history file.
+        // The expected behavior is a deterministic empty/default render that depends only on local
+        // in-memory state, not on whatever history items a previous developer session may have left.
+        composeRule.setScreenContent {
+            LegacyLocalHistoryScreen(innerPadding = PaddingValues())
+        }
+
+        // Wait for the initial LaunchedEffect-driven refresh to finish, then verify the empty
+        // history footer is rendered exactly once and remains visible as the only deterministic
+        // piece of content available with default data.
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodes(hasText(END_OF_LIST_TEXT)).fetchSemanticsNodes().size == 1
+        }
+        val historyList = composeRule.onNode(hasScrollToIndexAction())
+        historyList.assertExists()
+        composeRule.onNodeWithText(END_OF_LIST_TEXT).assertIsDisplayed()
+        composeRule.onAllNodes(hasText(END_OF_LIST_TEXT)).assertCountEquals(1)
+        composeRule.runOnIdle {
+            assertTrue(
+                composeRule.activity.history.history
+                    .isEmpty(),
+            )
+        }
+
+        // A vertical swipe cycle is the only meaningful gesture in the empty state because the list
+        // can overscroll for pull-to-refresh even without feed cards. The footer must stay visible
+        // and the local history source must remain empty after the gesture-triggered refresh path.
+        historyList.performVerticalSwipeCycle()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText(END_OF_LIST_TEXT).assertIsDisplayed()
+        composeRule.onAllNodes(hasText(END_OF_LIST_TEXT)).assertCountEquals(1)
+        composeRule.runOnIdle {
+            assertTrue(
+                composeRule.activity.history.history
+                    .isEmpty(),
+            )
+        }
+
+        composeRule.onNodeWithText(END_OF_LIST_TEXT).assertIsDisplayed()
+        composeRule.onAllNodes(hasText(END_OF_LIST_TEXT)).assertCountEquals(1)
+        composeRule.runOnIdle {
+            assertTrue(
+                composeRule.activity.history.history
+                    .isEmpty(),
+            )
+        }
+    }
+
+    private fun MainActivityComposeRule.replaceHistoryWithEmptyState() {
+        waitForIdle()
+        runOnIdle {
+            activity.history.clearAndSave()
+        }
+        waitForIdle()
+        runOnIdle {
+            assertTrue(activity.history.history.isEmpty())
+        }
+    }
+
+    private companion object {
+        const val END_OF_LIST_TEXT = "已经到底啦"
+    }
+}

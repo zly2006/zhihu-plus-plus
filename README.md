@@ -1,6 +1,6 @@
 # Zhihu++：注重隐私、互联网个人权利和无广告的知乎客户端
 
-[![GitHub release](https://img.shields.io/github/v/release/zly2006/zhihu-plus-plus)](https://github.com/zly2006/zhihu-plus-plus/releases)
+[![GitHub release](https://img.shields.io/github/v/release/Chloemlla/zhihu-plus-plus)](https://github.com/Chloemlla/zhihu-plus-plus/releases)
 
 本项目还不够完善，欢迎PR。
 
@@ -24,9 +24,9 @@ Zhihu++独创本地推荐算法，把内容推荐完全放在本地进行，为�
 
 告别知乎 110MB+ 的 Android 客户端，Lite APK 只要不到 4 MB！
 
-[点我下载](https://github.com/zly2006/zhihu-plus-plus/releases)
+[点我下载](https://github.com/Chloemlla/zhihu-plus-plus/releases)
 
-[下载最新开发版本](https://github.com/zly2006/zhihu-plus-plus/releases/tag/nightly)
+[下载最新开发版本](https://github.com/Chloemlla/zhihu-plus-plus/releases/tag/nightly)
 
 Release 页面还提供实验性桌面版 jar（macOS arm64 / Linux x64 / Windows x64），需要本机安装 Java 17 或更高版本。
 
@@ -125,4 +125,4 @@ Release 页面还提供实验性桌面版 jar（macOS arm64 / Linux x64 / Window
 
 感谢所有为 Zhihu++ 做出贡献的开发者与用户，正是你们让这个项目持续变得更好。
 
-[![Contributors](https://ghcontrib.pages.dev/image?repo=zly2006/zhihu-plus-plus)](https://github.com/zly2006/zhihu-plus-plus/graphs/contributors)
+[![Contributors](https://ghcontrib.pages.dev/image?repo=Chloemlla/zhihu-plus-plus)](https://github.com/Chloemlla/zhihu-plus-plus/graphs/contributors)

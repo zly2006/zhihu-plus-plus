@@ -8,6 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.rememberTextMeasurer
 import com.hrm.codehigh.theme.LocalCodeTheme
+import com.hrm.latex.renderer.measure.rememberLatexMeasurer
 import com.hrm.markdown.parser.ast.Image
 import com.hrm.markdown.parser.ast.Node
 import com.hrm.markdown.parser.ast.Paragraph
@@ -20,10 +21,9 @@ import com.hrm.markdown.renderer.LocalMarkdownTheme
 import com.hrm.markdown.renderer.LocalOnFootnoteClick
 import com.hrm.markdown.renderer.LocalOnLinkClick
 import com.hrm.markdown.renderer.MarkdownImageData
-import com.hrm.latex.renderer.measure.rememberLatexMeasurer
-import com.hrm.markdown.renderer.inline.buildInlineAnnotatedString
-import com.hrm.markdown.renderer.inline.InlineFlowText
 import com.hrm.markdown.renderer.inline.InlineContentEntry
+import com.hrm.markdown.renderer.inline.InlineFlowText
+import com.hrm.markdown.renderer.inline.buildInlineAnnotatedString
 import com.hrm.markdown.renderer.inline.rememberInlineContent
 
 /**

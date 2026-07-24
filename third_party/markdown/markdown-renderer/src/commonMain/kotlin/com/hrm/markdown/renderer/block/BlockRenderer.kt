@@ -12,10 +12,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import com.hrm.markdown.parser.ast.*
-import com.hrm.markdown.renderer.MarkdownBlockChildren
 import com.hrm.markdown.renderer.LocalMarkdownDirectiveRegistry
 import com.hrm.markdown.renderer.LocalMarkdownTheme
 import com.hrm.markdown.renderer.LocalRendererDocument
+import com.hrm.markdown.renderer.MarkdownBlockChildren
 import com.hrm.markdown.runtime.DirectiveBlockRenderScope
 
 private fun List<IntRange>.flattenLineNumbers(): Set<Int> = buildSet {
