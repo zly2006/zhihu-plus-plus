@@ -42,6 +42,10 @@ data class ZhihuAccountSession(
     val userAgent: String = DEFAULT_ZHIHU_USER_AGENT,
     val profile: ZhihuAccountProfileSnapshot? = null,
     val self: JsonElement? = null,
+    val mobileAccessToken: String? = null,
+    val mobileRefreshToken: String? = null,
+    val mobileTokenType: String? = null,
+    val mobileTokenExpiresAt: Long? = null,
 )
 
 interface ZhihuAccountSessionStore {

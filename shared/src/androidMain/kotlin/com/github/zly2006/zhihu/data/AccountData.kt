@@ -30,6 +30,7 @@ import com.github.zly2006.zhihu.shared.account.ZhihuAccountProfileSnapshot
 import com.github.zly2006.zhihu.shared.account.ZhihuAccountRepository
 import com.github.zly2006.zhihu.shared.account.ZhihuAccountSession
 import com.github.zly2006.zhihu.shared.account.ZhihuAccountSessionStore
+import com.github.zly2006.zhihu.shared.account.ZhihuIdentityClient
 import com.github.zly2006.zhihu.shared.data.Person
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.installZhihuCommonClientConfig
@@ -66,6 +67,10 @@ object AccountData {
         val cookies: MutableMap<String, String> = mutableMapOf(),
         val userAgent: String = DEFAULT_ZHIHU_USER_AGENT,
         val self: Person? = null,
+        val mobileAccessToken: String? = null,
+        val mobileRefreshToken: String? = null,
+        val mobileTokenType: String? = null,
+        val mobileTokenExpiresAt: Long? = null,
     )
 
     fun loadData(context: Context): Data {
@@ -158,6 +163,16 @@ object AccountData {
         accountClient(context).clear()
     }
 
+    internal fun identityClient(context: Context): ZhihuIdentityClient {
+        val client = accountClient(context)
+        return ZhihuIdentityClient(
+            currentClient = client::httpClient,
+            temporaryClient = client::temporaryHttpClient,
+            currentSession = client::load,
+            saveSession = client::save,
+        )
+    }
+
     private fun accountClient(context: Context): ZhihuAccountClient {
         accountClient?.let { return it }
         val appContext = context.applicationContext
@@ -196,6 +211,10 @@ object AccountData {
             )
         },
         self = self?.let { json.encodeToJsonElement(it) },
+        mobileAccessToken = mobileAccessToken,
+        mobileRefreshToken = mobileRefreshToken,
+        mobileTokenType = mobileTokenType,
+        mobileTokenExpiresAt = mobileTokenExpiresAt,
     )
 
     private fun ZhihuAccountSession.toAndroidData(): Data = Data(
@@ -208,6 +227,10 @@ object AccountData {
                 json.decodeFromJsonElement<Person>(it)
             }.getOrNull()
         },
+        mobileAccessToken = mobileAccessToken,
+        mobileRefreshToken = mobileRefreshToken,
+        mobileTokenType = mobileTokenType,
+        mobileTokenExpiresAt = mobileTokenExpiresAt,
     )
 
     private class AndroidAccountSessionStore(
