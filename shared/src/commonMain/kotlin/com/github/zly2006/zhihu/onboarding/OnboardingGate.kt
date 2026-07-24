@@ -10,6 +10,8 @@
 package com.github.zly2006.zhihu.onboarding
 
 import com.github.zly2006.zhihu.shared.platform.SettingsStore
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
 const val KEY_OSS_NOTICE_COMPLETED_AT = "oss_notice_completed_at"
 const val KEY_ONBOARDING_COMPLETED_AT = "onboarding_completed_at"
@@ -35,9 +37,13 @@ data class AppGateState(
 )
 
 /**
- * 纯门控状态机：OSS 声明 > 产品用户须知 > 本次更新说明 > 主界面。
+ * 门控状态机：OSS 声明 > 产品用户须知 > 本次更新说明 > 主界面。
  *
  * 老用户升级（已有本地偏好、但从未写过新 flag）会静默 mark OSS/onboarding 完成，避免强制弹窗。
+ * 无 catalog 条目时静默 mark whats-new 已见，避免空弹。
+ *
+ * 注意：此函数可能写入 SettingsStore（迁移 / 静默 mark），应在 [remember] / 用户回调中调用，
+ * 不要在无 key 的每次 recompose 中直接调用。
  */
 fun SettingsStore.resolveAppGate(
     identity: BuildIdentity,
@@ -106,7 +112,10 @@ private fun SettingsStore.settleExistingUserIfNeeded(nowMillis: Long = currentEp
 }
 
 private fun SettingsStore.looksLikeExistingInstall(): Boolean {
-    // 这些 key 只会被真实使用过的用户写入，默认安装不会出现。
+    // 这些 key 只会被真实使用过的用户写入；默认全新安装不应命中。
+    // lastUpdateCheck / skippedVersion：老用户启动后自动检查更新常见痕迹。
+    if (getLong("lastUpdateCheck", 0L) > 0L) return true
+    if (getStringOrNull("skippedVersion") != null) return true
     if (getStringOrNull("recommendationMode") != null) return true
     if (getStringOrNull("themeMode") != null) return true
     if (getStringOrNull("bottom_bar_items") != null) return true
@@ -117,4 +126,5 @@ private fun SettingsStore.looksLikeExistingInstall(): Boolean {
     return false
 }
 
-internal expect fun currentEpochMillis(): Long
+@OptIn(ExperimentalTime::class)
+internal fun currentEpochMillis(): Long = Clock.System.now().toEpochMilliseconds()

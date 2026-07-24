@@ -13,8 +13,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 
 /** iOS 尚未注入构建身份；identity 使用 unknown/0 占位。 */
-internal actual fun currentEpochMillis(): Long = 0L
-
 @Composable
 actual fun rememberBuildIdentity(): BuildIdentity =
     remember {

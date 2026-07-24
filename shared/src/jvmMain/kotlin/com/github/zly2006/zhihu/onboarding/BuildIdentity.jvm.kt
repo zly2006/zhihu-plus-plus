@@ -12,8 +12,6 @@ package com.github.zly2006.zhihu.onboarding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 
-internal actual fun currentEpochMillis(): Long = System.currentTimeMillis()
-
 @Composable
 actual fun rememberBuildIdentity(): BuildIdentity =
     remember {

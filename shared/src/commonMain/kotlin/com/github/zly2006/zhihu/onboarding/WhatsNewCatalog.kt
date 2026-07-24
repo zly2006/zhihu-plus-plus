@@ -60,14 +60,8 @@ object WhatsNewCatalog {
                     .filter { it.commitHashPrefix.isNotBlank() }
                     .filter { commit.startsWith(it.commitHashPrefix, ignoreCase = true) }
                     .maxByOrNull { it.commitHashPrefix.length }
-            if (matched != null) return matched.withIdentityBullets(identity)
+            if (matched != null) return matched
         }
-        val generic = pages.firstOrNull { it.showGenericWhenNoMatch }
-        return generic?.withIdentityBullets(identity)
-    }
-
-    private fun WhatsNewEntry.withIdentityBullets(identity: BuildIdentity): WhatsNewEntry {
-        val identityBullet = "构建身份：${identity.displayLabel}"
-        return copy(highlights = listOf(identityBullet) + highlights)
+        return pages.firstOrNull { it.showGenericWhenNoMatch }
     }
 }

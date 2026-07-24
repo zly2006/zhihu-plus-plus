@@ -16,8 +16,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 
-internal actual fun currentEpochMillis(): Long = System.currentTimeMillis()
-
 @Composable
 actual fun rememberBuildIdentity(): BuildIdentity {
     val context = LocalContext.current.applicationContext
