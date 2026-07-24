@@ -28,7 +28,10 @@ import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import com.github.zly2006.zhihu.data.AccountData
@@ -114,6 +117,8 @@ actual fun rememberSettingsStore(): SettingsStore {
     val context = LocalContext.current.applicationContext
     return remember(context) { androidSettingsStore(context) }
 }
+
+actual fun Modifier.exportTestTagsForUiAutomation(): Modifier = semantics { testTagsAsResourceId = true }
 
 fun androidSettingsStore(context: Context): SettingsStore {
     val preferences = context.applicationContext.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)

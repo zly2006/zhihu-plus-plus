@@ -153,7 +153,7 @@ val Feed.Target.navDestination: NavDestination?
             excerpt = excerpt,
         )
 
-        is Feed.PinTarget -> Pin(id)
+        is Feed.PinTarget -> Pin(id = id, authorName = author.name)
 
         is Feed.QuestionTarget -> Question(
             questionId = id,

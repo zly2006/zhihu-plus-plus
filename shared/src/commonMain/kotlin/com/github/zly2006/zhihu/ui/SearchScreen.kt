@@ -75,6 +75,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Search
+import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.platform.SettingsStore
 import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
@@ -141,6 +142,22 @@ fun SearchScreen(
     val userMessages = rememberUserMessageSink()
     val settings = rememberSettingsStore()
     val viewModel = viewModel { SearchViewModel(search.query, search.restrictedMemberHashId) }
+    val readingQueueSourceId = buildString {
+        append("search:")
+        append(search.restrictedMemberHashId)
+        append(':')
+        append(viewModel.sortOption.name)
+        append(':')
+        append(viewModel.contentType.name)
+        append(':')
+        append(viewModel.timeRange.name)
+        append(':')
+        append(search.query)
+    }
+    RegisterReadingQueueSource(
+        sourceId = readingQueueSourceId,
+        items = viewModel.displayItems,
+    )
     val feedBlockActions = rememberFeedBlockActions()
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val focusManager = LocalFocusManager.current
@@ -567,6 +584,7 @@ fun SearchScreen(
                     ) { item ->
                         FeedCard(
                             item = item,
+                            readingQueueSourceId = readingQueueSourceId,
                             onBlockUser = { feedItem ->
                                 feedBlockActions.handleBlockUser(viewModel, feedItem) { authorInfo ->
                                     userToBlock = authorInfo

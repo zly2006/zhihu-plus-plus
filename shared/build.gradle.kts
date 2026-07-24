@@ -136,6 +136,7 @@ kotlin {
             implementation("androidx.browser:browser:1.10.0")
             implementation("androidx.core:core-ktx:1.19.0")
             implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.11.0")
+            implementation("androidx.media:media:1.7.1")
             implementation("androidx.webkit:webkit:1.16.0")
             implementation("com.journeyapps:zxing-android-embedded:4.3.0")
             implementation("com.google.zxing:core:3.5.4")

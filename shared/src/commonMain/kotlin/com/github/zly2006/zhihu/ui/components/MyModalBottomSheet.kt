@@ -86,6 +86,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import com.github.zly2006.zhihu.shared.platform.PlatformPredictiveBackHandler
+import com.github.zly2006.zhihu.shared.platform.exportTestTagsForUiAutomation
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.max
@@ -132,7 +133,14 @@ fun MyModalBottomSheet(
 
     @Composable
     fun SheetContent() {
-        Box(modifier = Modifier.fillMaxSize().imePadding().semantics { isTraversalGroup = true }) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .imePadding()
+                .semantics {
+                    isTraversalGroup = true
+                }.exportTestTagsForUiAutomation(),
+        ) {
             MyBottomSheetScrim(
                 color = scrimColor,
                 onDismissRequest = animateToDismiss,

@@ -16,7 +16,9 @@
  */
 
 package com.github.zly2006.zhihu.shared.platform
+
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 
 enum class UserMessageDuration {
     Short,
@@ -61,6 +63,8 @@ data class SettingsStore(
 
 @Composable
 expect fun rememberSettingsStore(): SettingsStore
+
+expect fun Modifier.exportTestTagsForUiAutomation(): Modifier
 
 @Composable
 expect fun rememberExternalUrlOpener(): (String) -> Unit

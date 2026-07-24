@@ -88,6 +88,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -96,11 +97,13 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -117,7 +120,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewModelScope
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.toRoute
 import coil3.compose.AsyncImage
@@ -129,11 +131,22 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.navigation.withReadingQueueSource
+import com.github.zly2006.zhihu.reading.ReadingContentType
+import com.github.zly2006.zhihu.reading.ReadingQueueItem
+import com.github.zly2006.zhihu.reading.ReadingQueueSourceRegistry
+import com.github.zly2006.zhihu.reading.ReadingStartRequest
+import com.github.zly2006.zhihu.reading.hasReadableFields
+import com.github.zly2006.zhihu.reading.loadReadingPlaybackSpeed
+import com.github.zly2006.zhihu.reading.loadReadingPreferences
+import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
 import com.github.zly2006.zhihu.shared.data.Person
 import com.github.zly2006.zhihu.shared.data.ZhihuPaging
 import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
+import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.shared.util.formatCompactCount
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.components.AnswerHorizontalOverscroll
@@ -156,10 +169,9 @@ import com.github.zly2006.zhihu.viewmodel.addReadHistory
 import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import com.materialkolor.ktx.harmonize
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonObject
@@ -500,6 +512,7 @@ fun ArticleVideoAttachmentContent(attachment: JsonElement?) {
 fun ArticleActionsMenu(
     article: Article,
     viewModel: ArticleViewModel,
+    answerQueueFallbackProvider: (suspend (limit: Int) -> List<Article>)? = null,
     showMenu: Boolean,
     onDismissRequest: () -> Unit,
     onSummaryRequest: () -> Unit,
@@ -509,9 +522,30 @@ fun ArticleActionsMenu(
 ) {
     val ttsState = rememberArticleTtsState()
     val toggleSpeech = rememberArticleSpeechToggler()
+    val readingPlayer = rememberReadingPlayerController()
+    val readingPlayerState by readingPlayer.state
+    val readingSettings = rememberSettingsStore()
     val openArticleInBrowser = rememberArticleBrowserOpener()
     val shareRuntime = rememberShareDialogRuntime()
     val coroutineScope = rememberCoroutineScope()
+    val readingItem = ReadingQueueItem(
+        contentType = when (article.type) {
+            ArticleType.Answer -> ReadingContentType.Answer
+            ArticleType.Article -> ReadingContentType.Article
+        },
+        id = article.id,
+        title = viewModel.title,
+        author = viewModel.authorName,
+        questionId = viewModel.questionId.takeIf { it > 0 },
+        bodyHtml = viewModel.content.takeIf(String::isNotBlank),
+        publishedAt = viewModel.createdAt,
+        updatedAt = viewModel.updatedAt,
+        voteUpCount = viewModel.voteUpCount,
+        commentCount = viewModel.commentCount,
+    )
+    val readingPreferences = loadReadingPreferences(readingSettings)
+    val readingPlaybackSpeed = loadReadingPlaybackSpeed(readingSettings)
+    val hasReadingSession = readingPlayerState.hasSession
 
     @Composable
     fun MenuActionButton(
@@ -577,46 +611,104 @@ fun ArticleActionsMenu(
     fun Content() {
         MenuActionButton(
             icon = {
-                when (ttsState) {
-                    TtsState.Initializing, TtsState.Uninitialized -> CircularProgressIndicator(
-                        modifier = Modifier.height(24.dp),
-                        strokeWidth = 2.dp,
+                if (readingPlayer.isSupported && hasReadingSession) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.VolumeOff,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-
-                    else -> Icon(
-                        if (ttsState.isSpeaking) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                } else {
+                    Icon(
+                        if (!readingPlayer.isSupported && ttsState.isSpeaking) {
+                            Icons.AutoMirrored.Filled.VolumeOff
+                        } else {
+                            Icons.AutoMirrored.Filled.VolumeUp
+                        },
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             },
-            text = if (ttsState.isSpeaking) "停止朗读" else "开始朗读",
-            enabled = ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing),
+            text = if (readingPlayer.isSupported) {
+                if (hasReadingSession) "停止朗读" else "开始连续朗读"
+            } else if (ttsState.isSpeaking) {
+                "停止朗读"
+            } else {
+                "开始朗读"
+            },
+            enabled = if (readingPlayer.isSupported) {
+                hasReadingSession || readingItem.hasReadableFields(readingPreferences)
+            } else {
+                ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)
+            },
             onClick = {
                 onDismissRequest()
-                if (ttsState.isSpeaking) {
-                    toggleSpeech(viewModel.title, viewModel.content)
-                } else if (ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)) {
-                    // 使用协程在后台处理文本提取，避免UI阻塞
-                    viewModel.viewModelScope.launch {
-                        try {
-                            // 在IO线程中处理文本提取
-                            withContext(Dispatchers.Default) {
-                                val textToRead = articleSpeechText(viewModel.title, viewModel.content)
-
-                                // 回到主线程执行TTS
-                                withContext(Dispatchers.Main) {
-                                    if (textToRead.isNotBlank()) {
-                                        toggleSpeech(viewModel.title, viewModel.content)
+                if (readingPlayer.isSupported) {
+                    if (hasReadingSession) {
+                        readingPlayer.stop()
+                    } else {
+                        coroutineScope.launch {
+                            val originQueue = ReadingQueueSourceRegistry.queueStartingAt(
+                                current = readingItem,
+                                sourceId = article.readingQueueSourceId,
+                                limit = readingPreferences.queueLimit,
+                            )
+                            val queue = if (
+                                article.type == ArticleType.Answer &&
+                                originQueue.size < readingPreferences.queueLimit &&
+                                readingPreferences.queueLimit > 1
+                            ) {
+                                val fallbackAfterCurrent = try {
+                                    val fallbackArticles = answerQueueFallbackProvider
+                                        ?.invoke(readingPreferences.queueLimit - 1)
+                                        ?: viewModel.answerNextIds.map { answerId ->
+                                            Article(
+                                                type = ArticleType.Answer,
+                                                id = answerId,
+                                                title = viewModel.title,
+                                            )
+                                        }
+                                    fallbackArticles.map { fallback ->
+                                        ReadingQueueItem(
+                                            contentType = ReadingContentType.Answer,
+                                            id = fallback.id,
+                                            title = fallback.title
+                                                .takeUnless { it == "loading..." }
+                                                .orEmpty()
+                                                .ifBlank { viewModel.title },
+                                            author = fallback.authorName
+                                                .takeUnless { it == "loading..." }
+                                                .orEmpty(),
+                                            questionId = viewModel.questionId.takeIf { it > 0 },
+                                        )
                                     }
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    Log.w("ArticleActionsMenu", "Failed to load the remaining reading queue", e)
+                                    emptyList()
                                 }
+                                ReadingQueueSourceRegistry.queueStartingAt(
+                                    current = readingItem,
+                                    sourceId = article.readingQueueSourceId,
+                                    limit = readingPreferences.queueLimit,
+                                    fallbackAfterCurrent = fallbackAfterCurrent,
+                                )
+                            } else {
+                                originQueue
                             }
-                        } catch (e: Exception) {
-                            withContext(Dispatchers.Main) {
-                                Unit
-                            }
+                            readingPlayer.start(
+                                ReadingStartRequest(
+                                    queue = queue,
+                                    preferences = readingPreferences,
+                                    sourceId = article.readingQueueSourceId,
+                                    playbackSpeed = readingPlaybackSpeed,
+                                ),
+                            )
                         }
                     }
+                } else {
+                    toggleSpeech(viewModel.title, viewModel.content)
                 }
             },
         )
@@ -747,6 +839,8 @@ fun ArticleScreen(
     viewModel: ArticleViewModel,
 ) {
     val navigator = LocalNavigator.current
+    val readingPlayerOverlayPadding = LocalReadingPlayerOverlayPadding.current
+    val readingPlayerOverlayOffsetState = LocalReadingPlayerOverlayOffsetState.current
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
     val articleHost = rememberArticleHost()
     val backStackEntry by articleHost?.articleNavController?.currentBackStackEntryAsState()
@@ -772,6 +866,17 @@ fun ArticleScreen(
     var isScrollingUp by remember { mutableStateOf(false) }
     var navigatingToNextAnswer by remember { mutableStateOf(false) }
     val density = LocalDensity.current
+    val readingPlayerOverlayPaddingPx = with(density) { readingPlayerOverlayPadding.roundToPx() }
+    val effectiveScrollMaxValue by remember(readingPlayerOverlayPaddingPx) {
+        derivedStateOf {
+            if (scrollState.maxValue == Int.MAX_VALUE) {
+                Int.MAX_VALUE
+            } else {
+                (scrollState.maxValue - readingPlayerOverlayPaddingPx).coerceAtLeast(0)
+            }
+        }
+    }
+    val latestEffectiveScrollMaxValue by rememberUpdatedState(effectiveScrollMaxValue)
     val scrollDeltaThreshold = with(density) { ScrollThresholdDp.toPx() }
     var topBarHeight by remember { mutableIntStateOf(0) }
     var showComments by rememberSaveable(article.type, article.id) { mutableStateOf(false) }
@@ -800,6 +905,25 @@ fun ArticleScreen(
     var bottomBarHeightPx by remember { mutableFloatStateOf(0f) }
     var previousScrollForBarOffset by remember { mutableIntStateOf(0) }
     var isBarSnapping by remember { mutableStateOf(false) }
+
+    val readingPlayerOverlayOwner = remember(article.type, article.id) { Any() }
+    val usesVerticalAnswerSwitch = article.type == ArticleType.Answer && answerSwitchMode == "vertical"
+    DisposableEffect(readingPlayerOverlayOffsetState, readingPlayerOverlayOwner, usesVerticalAnswerSwitch) {
+        if (usesVerticalAnswerSwitch) {
+            readingPlayerOverlayOffsetState?.activate(readingPlayerOverlayOwner)
+        }
+        onDispose {
+            if (usesVerticalAnswerSwitch) {
+                readingPlayerOverlayOffsetState?.deactivate(readingPlayerOverlayOwner)
+            }
+        }
+    }
+    val updateReadingPlayerOverlayOffset = remember(readingPlayerOverlayOffsetState, readingPlayerOverlayOwner) {
+        { offsetPx: Float ->
+            readingPlayerOverlayOffsetState?.update(readingPlayerOverlayOwner, offsetPx)
+            Unit
+        }
+    }
 
     LaunchedEffect(Unit) {
         environment.addReadHistory(
@@ -911,14 +1035,14 @@ fun ArticleScreen(
         if (!isBarSnapping) {
             val delta = currentScroll - previousScrollForBarOffset
             val atTop = currentScroll == 0
-            val atBottom = currentScroll >= scrollState.maxValue
+            val atBottom = currentScroll >= effectiveScrollMaxValue
 
             // 顶栏：顶部强制显示，接近底部时按内容距离逐步露出。
             if (atTop) {
                 topBarOffset.snapTo(0f)
             } else if (isTitleAutoHide && topBarHeightPx > 0f) {
                 val deltaBasedOffset = (topBarOffset.value - delta).coerceIn(-topBarHeightPx, 0f)
-                val distanceFromBottom = (scrollState.maxValue - currentScroll).coerceAtLeast(0)
+                val distanceFromBottom = (effectiveScrollMaxValue - currentScroll).coerceAtLeast(0)
                 if (distanceFromBottom < topBarHeightPx.toInt()) {
                     // 底部区域取露出更多栏位的偏移，也就是更接近 0 的值。
                     val distanceBasedOffset = (-distanceFromBottom.toFloat()).coerceIn(-topBarHeightPx, 0f)
@@ -933,7 +1057,7 @@ fun ArticleScreen(
                 bottomBarOffset.snapTo(0f)
             } else if (autoHideArticleBottomBar && bottomBarHeightPx > 0f) {
                 val deltaBasedOffset = (bottomBarOffset.value + delta).coerceIn(0f, bottomBarHeightPx)
-                val distanceFromBottom = (scrollState.maxValue - currentScroll).coerceAtLeast(0)
+                val distanceFromBottom = (effectiveScrollMaxValue - currentScroll).coerceAtLeast(0)
                 if (distanceFromBottom < bottomBarHeightPx.toInt()) {
                     // 底部区域取露出更多栏位的偏移。
                     val distanceBasedOffset = distanceFromBottom.toFloat().coerceIn(0f, bottomBarHeightPx)
@@ -945,7 +1069,7 @@ fun ArticleScreen(
         }
         previousScrollForBarOffset = currentScroll
 
-        viewModel.updateAigcReadProgress(currentScroll, scrollState.maxValue)
+        viewModel.updateAigcReadProgress(currentScroll, effectiveScrollMaxValue)
         viewModel.syncAigcReadEventIfEligible(environment)
 
         if (viewModel.rememberedScrollYSync) {
@@ -993,9 +1117,9 @@ fun ArticleScreen(
     }
 
     // 主视觉风格的栏位显隐：按滚动方向控制，用于非跟手偏移路径。
-    val showTopBar by remember {
+    val showTopBar by remember(effectiveScrollMaxValue) {
         derivedStateOf {
-            val canScroll = scrollState.maxValue > topBarHeight
+            val canScroll = effectiveScrollMaxValue > topBarHeight
             val isNearTop = scrollState.value < topBarHeight
             when {
                 !isTitleAutoHide -> true
@@ -1006,9 +1130,9 @@ fun ArticleScreen(
             }
         }
     }
-    val showBottomBar by remember {
+    val showBottomBar by remember(effectiveScrollMaxValue) {
         derivedStateOf {
-            val canScroll = scrollState.maxValue > 0
+            val canScroll = effectiveScrollMaxValue > 0
             val isNearTop = scrollState.value == 0
             when {
                 !autoHideArticleBottomBar -> true
@@ -1027,6 +1151,7 @@ fun ArticleScreen(
         showBottomBar,
         bottomBarHeightPx,
         bottomBarOffset.value,
+        readingPlayerOverlayPaddingPx,
     ) {
         derivedStateOf {
             val navBar = density.run {
@@ -1041,7 +1166,7 @@ fun ArticleScreen(
             } else {
                 0f
             }
-            navBar + bottonBar
+            navBar + bottonBar + readingPlayerOverlayPaddingPx
         }
     }
     val articleBringIntoViewSpec = rememberBottomBarAvoidingBringIntoViewSpec(bottomBarObscuredHeightPx)
@@ -1080,15 +1205,15 @@ fun ArticleScreen(
 
     LaunchedEffect(article.type, article.id, viewModel.content) {
         if (viewModel.content.isNotBlank()) {
-            viewModel.updateAigcReadProgress(scrollState.value, scrollState.maxValue)
+            viewModel.updateAigcReadProgress(scrollState.value, latestEffectiveScrollMaxValue)
             delay(15_000)
-            viewModel.updateAigcReadProgress(scrollState.value, scrollState.maxValue)
+            viewModel.updateAigcReadProgress(scrollState.value, latestEffectiveScrollMaxValue)
             viewModel.syncAigcReadEventIfEligible(environment)
         }
     }
-    LaunchedEffect(scrollState.maxValue, viewModel.content) {
+    LaunchedEffect(effectiveScrollMaxValue, viewModel.content) {
         if (viewModel.content.isNotBlank()) {
-            viewModel.updateAigcReadProgress(scrollState.value, scrollState.maxValue)
+            viewModel.updateAigcReadProgress(scrollState.value, effectiveScrollMaxValue)
         }
     }
 
@@ -1115,7 +1240,7 @@ fun ArticleScreen(
                     navController.popBackStack()
                 }
             }
-            navigator.onNavigate(prev.article)
+            navigator.onNavigate(prev.article.withReadingQueueSource(article.readingQueueSourceId))
         } else {
             // 无历史时尝试从来源（如收藏夹）向前加载
             sharedData?.pendingInitialContent = sharedData.navigator?.previousAnswerPreview
@@ -1134,7 +1259,7 @@ fun ArticleScreen(
                             navController.popBackStack()
                         }
                     }
-                    navigator.onNavigate(prevCached.article)
+                    navigator.onNavigate(prevCached.article.withReadingQueueSource(article.readingQueueSourceId))
                 }
             }
         }
@@ -1164,7 +1289,7 @@ fun ArticleScreen(
                     navController.popBackStack()
                 }
             }
-            navigator.onNavigate(historyNext.article)
+            navigator.onNavigate(historyNext.article.withReadingQueueSource(article.readingQueueSourceId))
         } else {
             // 没有前向历史，从导航器加载
             sharedData?.pendingInitialContent = sharedData.navigator?.nextAnswer
@@ -1182,7 +1307,7 @@ fun ArticleScreen(
                             navController.popBackStack()
                         }
                     }
-                    navigator.onNavigate(nextArticle)
+                    navigator.onNavigate(nextArticle.withReadingQueueSource(article.readingQueueSourceId))
                 }
             }
         }
@@ -1440,17 +1565,6 @@ fun ArticleScreen(
                                     ) {
                                         Icon(if (viewModel.isFavorited) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder, contentDescription = "收藏")
                                     }
-                                    val ttsState = articleHost?.articleTtsState
-                                    if (ttsState?.isSpeaking == true) {
-                                        IconButton(
-                                            onClick = {
-                                                articleHost.stopArticleSpeaking()
-                                                userMessages.showMessage("已停止朗读")
-                                            },
-                                        ) {
-                                            Icon(Icons.AutoMirrored.Filled.VolumeOff, contentDescription = "停止朗读")
-                                        }
-                                    }
                                     Button(
                                         onClick = { showComments = true },
                                         contentPadding = PaddingValues(start = 8.dp, end = 12.dp),
@@ -1603,23 +1717,6 @@ fun ArticleScreen(
                                         )
                                     }
 
-                                    val ttsState = articleHost?.articleTtsState
-                                    AnimatedVisibility(visible = ttsState?.isSpeaking == true) {
-                                        IconButton(
-                                            onClick = {
-                                                articleHost?.stopArticleSpeaking()
-                                                userMessages.showMessage("已停止朗读")
-                                            },
-                                            enabled = ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing, null),
-                                            colors = IconButtonDefaults.iconButtonColors(
-                                                containerColor = Color(0xFF4CAF50).harmonize(MaterialTheme.colorScheme.primary),
-                                                contentColor = Color.White,
-                                            ),
-                                        ) {
-                                            Icon(Icons.AutoMirrored.Filled.VolumeOff, contentDescription = "停止朗读")
-                                        }
-                                    }
-
                                     Button(
                                         onClick = { showComments = true },
                                         contentPadding = PaddingValues(start = 8.dp, end = 12.dp),
@@ -1637,17 +1734,22 @@ fun ArticleScreen(
                         }
                     }
 
-                    if (showBottomBarCondition) {
-                        Box(
-                            modifier = Modifier
-                                .onSizeChanged { bottomBarHeightPx = it.height.toFloat() }
-                                .graphicsLayer {
-                                    translationY = bottomBarOffset.value
-                                    alpha = if (bottomBarHeightPx > 0f) 1f - (bottomBarOffset.value / bottomBarHeightPx) else 1f
-                                },
-                        ) {
-                            ActionBarContent()
+                    Column {
+                        if (showBottomBarCondition) {
+                            Box(modifier = Modifier.clipToBounds()) {
+                                Box(
+                                    modifier = Modifier
+                                        .onSizeChanged { bottomBarHeightPx = it.height.toFloat() }
+                                        .graphicsLayer {
+                                            translationY = bottomBarOffset.value
+                                            alpha = if (bottomBarHeightPx > 0f) 1f - (bottomBarOffset.value / bottomBarHeightPx) else 1f
+                                        },
+                                ) {
+                                    ActionBarContent()
+                                }
+                            }
                         }
+                        Spacer(modifier = Modifier.height(readingPlayerOverlayPadding))
                     }
                 }
             },
@@ -1849,9 +1951,10 @@ fun ArticleScreen(
                 onNavigatePrevious = navigateToPrevious,
                 onNavigateNext = navigateToNext,
                 isAtTop = { scrollState.value == 0 },
-                isAtBottom = { scrollState.value >= scrollState.maxValue },
+                isAtBottom = { scrollState.value >= effectiveScrollMaxValue },
                 scrollState = scrollState,
                 answerSwitchSensitivity = answerSwitchSensitivity,
+                onOverscrollOffsetChange = updateReadingPlayerOverlayOffset,
             ) {
                 MainContent()
             }
@@ -1877,6 +1980,8 @@ fun ArticleScreen(
 
         VerticalReadingProgressBar(
             scrollState = scrollState,
+            scrollValue = scrollState.value.coerceAtMost(effectiveScrollMaxValue),
+            maxScrollValue = effectiveScrollMaxValue,
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .padding(
@@ -1928,6 +2033,9 @@ fun ArticleScreen(
     ArticleActionsMenu(
         article = article,
         viewModel = viewModel,
+        answerQueueFallbackProvider = sharedData?.navigator?.let { answerNavigator ->
+            { limit -> answerNavigator.remainingAnswersSnapshot(article.id, limit) }
+        },
         showMenu = showActionsMenu,
         onDismissRequest = { showActionsMenu = false },
         onSummaryRequest = {

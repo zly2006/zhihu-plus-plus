@@ -31,6 +31,8 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -48,6 +50,7 @@ import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.material.icons.filled.PersonAddAlt1
 import androidx.compose.material.icons.filled.Whatshot
+import androidx.compose.material3.FabPosition
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -66,15 +69,22 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
@@ -113,8 +123,14 @@ import com.github.zly2006.zhihu.navigation.SentenceSimilarityTest
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.navigation.WriteAnswer
 import com.github.zly2006.zhihu.navigation.WritePin
+import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
+import com.github.zly2006.zhihu.reading.saveReadingPlaybackSpeed
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.ui.components.CompactReadingPlayerButton
 import com.github.zly2006.zhihu.ui.components.NoOpPagerNestedScrollConnection
+import com.github.zly2006.zhihu.ui.components.ReadingPlayerBar
+import com.github.zly2006.zhihu.ui.components.ReadingQueueSheet
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.BlockedFeedHistoryScreen
 import com.github.zly2006.zhihu.ui.subscreens.ColorSchemeScreen
@@ -122,7 +138,9 @@ import com.github.zly2006.zhihu.ui.subscreens.ContentFilterSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.DeveloperSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.IdentityManagementScreen
 import com.github.zly2006.zhihu.ui.subscreens.OpenSourceLicensesScreen
+import com.github.zly2006.zhihu.ui.subscreens.ReadingSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.SystemAndUpdateSettingsScreen
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.reflect.KClass
 import kotlin.reflect.typeOf
@@ -147,6 +165,8 @@ private sealed class MainTabPage(
 
     data object AccountPage : MainTabPage(Account, "account")
 }
+
+internal val LocalReadingPlayerOverlayPadding = staticCompositionLocalOf { 0.dp }
 
 /**
  * 共享主壳使用的平台适配层。
@@ -194,11 +214,47 @@ fun ZhihuMain(
     val selectedBottomBarItemKeys = preferenceState.selectedBottomBarItemKeys
     val startDestination = preferenceState.startDestination
     val reloadBottomBarPreferences = preferenceState::reload
+    val readingPlayer = rememberReadingPlayerController()
+    val readingPlayerState by readingPlayer.state
+    val settings = rememberSettingsStore()
+    var showReadingQueue by remember { mutableStateOf(false) }
+    var isReadingPlayerExpandedByUser by remember { mutableStateOf(false) }
+    var readingPlayerHeightPx by remember { mutableIntStateOf(0) }
+    val readingPlayerOverlayOffsetState = remember { ReadingPlayerOverlayOffsetState() }
+    val density = LocalDensity.current
 
     val navEntry by navController.currentBackStackEntryAsState()
+    val showMainNavigation = navEntry?.hasRoute(MainTabs::class) == true
+    val isOnReadingDetail = navEntry?.hasRoute(Article::class) == true ||
+        navEntry?.hasRoute(Question::class) == true ||
+        navEntry?.hasRoute(Pin::class) == true
+
+    val isReadingPlayerExpanded = readingPlayerState.hasSession &&
+        (isOnReadingDetail || isReadingPlayerExpandedByUser)
+    val shouldCompactPlayerOnBackgroundInteraction by rememberUpdatedState(
+        isReadingPlayerExpandedByUser && !isOnReadingDetail,
+    )
+    val readingPlayerOverlayPadding = when {
+        !readingPlayerState.hasSession -> 0.dp
+        !isReadingPlayerExpanded -> 0.dp
+        readingPlayerHeightPx > 0 -> with(density) { readingPlayerHeightPx.toDp() } + 16.dp
+        else -> 16.dp
+    }
+
+    LaunchedEffect(readingPlayerState.hasSession) {
+        if (!readingPlayerState.hasSession) {
+            showReadingQueue = false
+            isReadingPlayerExpandedByUser = false
+            readingPlayerOverlayOffsetState.resetOffset()
+        }
+    }
+    val isOnArticle = navEntry?.destination?.hasRoute<Article>() == true
+    LaunchedEffect(navEntry) {
+        isReadingPlayerExpandedByUser = false
+        if (!isOnArticle) readingPlayerOverlayOffsetState.revokeOwner()
+    }
 
     // 离开文章页时恢复系统状态栏（只在实际切换时触发）
-    val isOnArticle = navEntry?.destination?.hasRoute<Article>() == true
     var wasOnArticle by remember { mutableStateOf(false) }
     if (!isOnArticle && wasOnArticle) {
         LeaveImmersiveModeCleanup()
@@ -308,251 +364,363 @@ fun ZhihuMain(
         }
     }
 
-    Scaffold(
-        modifier = modifier
-            .nestedScroll(bottomBarScrollConnection),
-        bottomBar = {
-            if (navEntry != null) {
-                // 页面切换时重置底部导航栏可见状态
-                LaunchedEffect(navEntry) { isBottomBarVisible = true }
-                val currentBottomDestination = mainTabPages
-                    .getOrNull(mainPagerState.targetPage)
-                    ?.bottomDestination
+    Box(modifier = modifier.fillMaxSize()) {
+        Scaffold(
+            modifier = Modifier
+                .fillMaxSize()
+                .nestedScroll(bottomBarScrollConnection),
+            floatingActionButton = {
                 AnimatedVisibility(
-                    visible = (!autoHideBottomBar || isBottomBarVisible) && navEntry.hasRoute(MainTabs::class),
-                    enter = slideInVertically(tween(200)) { it },
-                    exit = slideOutVertically(tween(200)) { it },
+                    visible = isReadingPlayerExpanded,
+                    enter = fadeIn(tween(220)) + scaleIn(tween(220), initialScale = 0.92f),
+                    exit = fadeOut(tween(160)) + scaleOut(tween(160), targetScale = 0.92f),
                 ) {
-                    NavigationBar(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        modifier = Modifier.height(
-                            (if (duo3NavStyle) 64.dp else 56.dp) + bottomPadding,
-                        ),
+                    ReadingPlayerBar(
+                        state = readingPlayerState,
+                        onPrevious = readingPlayer::playPrevious,
+                        onTogglePlayPause = readingPlayer::togglePlayPause,
+                        onNext = readingPlayer::playNext,
+                        onStop = readingPlayer::stop,
+                        onOpenQueue = { showReadingQueue = true },
+                        onPlaybackSpeedChange = { speed ->
+                            saveReadingPlaybackSpeed(settings, speed)
+                            readingPlayer.setPlaybackSpeed(speed)
+                        },
+                        onBackgroundInteraction = {
+                            if (!isOnReadingDetail) isReadingPlayerExpandedByUser = false
+                        },
+                        modifier = Modifier
+                            .onSizeChanged { readingPlayerHeightPx = it.height }
+                            .graphicsLayer {
+                                translationY = readingPlayerOverlayOffsetState.verticalOffsetPx
+                            },
+                    )
+                }
+            },
+            floatingActionButtonPosition = FabPosition.Center,
+            bottomBar = {
+                if (navEntry != null) {
+                    // 页面切换时重置底部导航栏可见状态
+                    LaunchedEffect(navEntry) { isBottomBarVisible = true }
+                    val currentBottomDestination = mainTabPages
+                        .getOrNull(mainPagerState.targetPage)
+                        ?.bottomDestination
+                    val isMainNavigationVisible = showMainNavigation && (!autoHideBottomBar || isBottomBarVisible)
+                    AnimatedVisibility(
+                        visible = isMainNavigationVisible,
+                        enter = slideInVertically(tween(200)) { it },
+                        exit = slideOutVertically(tween(200)) { it },
                     ) {
-                        @Composable
-                        fun Item(
-                            destination: TopLevelDestination,
-                            label: String,
-                            icon: ImageVector,
+                        NavigationBar(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            modifier = Modifier.height(
+                                (if (duo3NavStyle) 64.dp else 56.dp) + bottomPadding,
+                            ),
                         ) {
-                            val tag = "nav_tab_${destination.name.lowercase()}"
-                            NavigationBarItem(
-                                currentBottomDestination?.let { it::class == destination::class } == true,
-                                onClick = {
-                                    if (currentBottomDestination?.let { it::class == destination::class } != true) {
-                                        navigateTopLevel(destination)
-                                    } else if (tapToScrollToTopEnabled) {
-                                        scrollToTopTrigger++
-                                    }
-                                },
-                                label = {
-                                    if (duo3NavStyle) {
-                                        Text(label)
+                            @Composable
+                            fun Item(
+                                destination: TopLevelDestination,
+                                label: String,
+                                icon: ImageVector,
+                            ) {
+                                val tag = "nav_tab_${destination.name.lowercase()}"
+                                NavigationBarItem(
+                                    currentBottomDestination?.let { it::class == destination::class } == true,
+                                    onClick = {
+                                        isReadingPlayerExpandedByUser = false
+                                        if (currentBottomDestination?.let { it::class == destination::class } != true) {
+                                            navigateTopLevel(destination)
+                                        } else if (tapToScrollToTopEnabled) {
+                                            scrollToTopTrigger++
+                                        }
+                                    },
+                                    label = {
+                                        if (duo3NavStyle) {
+                                            Text(label)
+                                        } else {
+                                            Text(
+                                                label,
+                                                style = TextStyle(
+                                                    fontSize = 9.sp,
+                                                    color = LocalContentColor.current.copy(alpha = 0.6f),
+                                                ),
+                                            )
+                                        }
+                                    },
+                                    alwaysShowLabel = duo3NavStyle,
+                                    colors = if (duo3NavStyle) {
+                                        if (!isDarkTheme) {
+                                            NavigationBarItemDefaults.colors().copy(
+                                                selectedIndicatorColor =
+                                                    MaterialTheme.colorScheme.secondaryContainer
+                                                        .copy(alpha = 0.92f)
+                                                        .compositeOver(MaterialTheme.colorScheme.secondary),
+                                            )
+                                        } else {
+                                            NavigationBarItemDefaults.colors()
+                                        }
                                     } else {
-                                        Text(
-                                            label,
-                                            style = TextStyle(
-                                                fontSize = 9.sp,
-                                                color = LocalContentColor.current.copy(alpha = 0.6f),
-                                            ),
+                                        NavigationBarItemDefaults.colors(
+                                            selectedIconColor = Color(0xff66ccff),
+                                            indicatorColor = Color.Transparent,
                                         )
-                                    }
-                                },
-                                alwaysShowLabel = duo3NavStyle,
-                                colors = if (duo3NavStyle) {
-                                    if (!isDarkTheme) {
-                                        NavigationBarItemDefaults.colors().copy(
-                                            selectedIndicatorColor =
-                                                MaterialTheme.colorScheme.secondaryContainer
-                                                    .copy(alpha = 0.92f)
-                                                    .compositeOver(MaterialTheme.colorScheme.secondary),
-                                        )
-                                    } else {
-                                        NavigationBarItemDefaults.colors()
-                                    }
-                                } else {
-                                    NavigationBarItemDefaults.colors(
-                                        selectedIconColor = Color(0xff66ccff),
-                                        indicatorColor = Color.Transparent,
-                                    )
-                                },
-                                icon = {
-                                    Icon(icon, contentDescription = label)
-                                },
-                                modifier = (if (duo3NavStyle) Modifier.padding(top = 4.dp) else Modifier).testTag(tag),
-                            )
-                        }
+                                    },
+                                    icon = {
+                                        Icon(icon, contentDescription = label)
+                                    },
+                                    modifier = (if (duo3NavStyle) Modifier.padding(top = 4.dp) else Modifier).testTag(tag),
+                                )
+                            }
 
-                        bottomBarItems.forEach { item ->
-                            Item(item.first, item.second, item.third)
+                            bottomBarItems.forEach { item ->
+                                Item(item.first, item.second, item.third)
+                            }
                         }
                     }
                 }
-            }
-        },
-    ) { innerPadding ->
-        CompositionLocalProvider(
-            LocalNavigator provides Navigator(
-                onNavigate = { destination ->
-                    navigationState.navigate(destination)
-                },
-                onNavigateBack = navController::popBackStack,
-            ),
-        ) {
-            NavHost(
-                navController,
-                modifier = Modifier,
-                startDestination = MainTabs,
-                enterTransition = {
-                    slideInHorizontally(tween(300)) { it }
-                },
-                exitTransition = {
-                    ExitTransition.None
-                },
-                popEnterTransition = {
-                    EnterTransition.None
-                },
-                popExitTransition = {
-                    slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
-                },
+            },
+        ) { innerPadding ->
+            CompositionLocalProvider(
+                LocalNavigator provides Navigator(
+                    onNavigate = { destination ->
+                        navigationState.navigate(destination)
+                    },
+                    onNavigateBack = navController::popBackStack,
+                ),
+                LocalReadingPlayerOverlayPadding provides readingPlayerOverlayPadding,
+                LocalReadingPlayerOverlayOffsetState provides readingPlayerOverlayOffsetState,
             ) {
-                composable<MainTabs> {
-                    MainTabsPager(
-                        pagerState = mainPagerState,
-                        pages = mainTabPages,
-                        scrollToTopTrigger = scrollToTopTrigger,
-                        innerPadding = innerPadding,
-                    )
-                }
-                composable<Question> { navEntry ->
-                    val question: Question = navEntry.toRoute()
-                    QuestionScreen(question)
-                }
-                composable<WriteAnswer> { navEntry ->
-                    val args: WriteAnswer = navEntry.toRoute()
-                    WriteAnswerScreen(args)
-                }
-                composable<WritePin> {
-                    WritePinScreen()
-                }
-                composable<Article>(
-                    typeMap = mapOf(typeOf<ArticleType>() to ArticleTypeNavType),
-                    enterTransition = platformAdapter.articleEnterTransition,
-                    exitTransition = platformAdapter.articleExitTransition,
-                ) { navEntry ->
-                    val article: Article = navEntry.toRoute()
-                    platformAdapter.article(article, navEntry)
-                }
-                composable<HotList> {
-                    HotListScreen(innerPadding)
-                }
-                composable<Follow> {
-                    FollowScreen(
-                        scrollToTopTrigger = scrollToTopTrigger,
-                        innerPadding = innerPadding,
-                        parentPagerState = mainPagerState,
-                    )
-                }
-                composable<Daily> {
-                    DailyScreen()
-                }
-                composable<History> {
-                    LegacyLocalHistoryScreen(innerPadding)
-                }
-                composable<OnlineHistory> {
-                    OnlineHistoryScreen()
-                }
-                composable<Account> {
-                    AccountSettingScreen(innerPadding)
-                }
-                composable<Search>(
-                    enterTransition = {
-                        if (initialState.destination.hasRoute<Search>()) {
-                            EnterTransition.None
-                        } else {
-                            fadeIn(animationSpec = tween(durationMillis = 240)) +
-                                slideInVertically(animationSpec = tween(durationMillis = 280)) { it / 16 } +
-                                scaleIn(
-                                    animationSpec = tween(durationMillis = 280),
-                                    initialScale = 0.985f,
+                NavHost(
+                    navController,
+                    modifier = Modifier.pointerInput(Unit) {
+                        while (true) {
+                            awaitPointerEventScope {
+                                awaitFirstDown(
+                                    requireUnconsumed = false,
+                                    pass = PointerEventPass.Initial,
                                 )
+                                while (
+                                    awaitPointerEvent(PointerEventPass.Final)
+                                        .changes
+                                        .any { it.pressed }
+                                ) {
+                                    // 等手势完成后再重组，避免取消同一次背景点击或滚动。
+                                }
+                            }
+                            if (shouldCompactPlayerOnBackgroundInteraction) {
+                                delay(100)
+                                isReadingPlayerExpandedByUser = false
+                            }
                         }
+                    },
+                    startDestination = MainTabs,
+                    enterTransition = {
+                        slideInHorizontally(tween(300)) { it }
+                    },
+                    exitTransition = {
+                        ExitTransition.None
+                    },
+                    popEnterTransition = {
+                        EnterTransition.None
                     },
                     popExitTransition = {
-                        if (targetState.destination.hasRoute<Search>()) {
-                            ExitTransition.None
-                        } else {
-                            fadeOut(animationSpec = tween(durationMillis = 180)) +
-                                slideOutVertically(animationSpec = tween(durationMillis = 220)) { it / 20 } +
-                                scaleOut(
-                                    animationSpec = tween(durationMillis = 220),
-                                    targetScale = 0.985f,
-                                )
-                        }
+                        slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
                     },
-                ) { navEntry ->
-                    val search: Search = navEntry.toRoute()
-                    SearchScreen(search)
-                }
-                composable<Collections> { navEntry ->
-                    val data: Collections = navEntry.toRoute()
-                    CollectionScreen(data.userToken)
-                }
-                composable<CollectionContent> { navEntry ->
-                    val content: CollectionContent = navEntry.toRoute()
-                    CollectionContentScreen(content.collectionId)
-                }
-                composable<Person> { navEntry ->
-                    val person: Person = navEntry.toRoute()
-                    PeopleScreen(person)
-                }
-                composable<Pin> { navEntry ->
-                    val pin: Pin = navEntry.toRoute()
-                    PinScreen(pin)
-                }
-                composable<Account.RecommendSettings.Blocklist> {
-                    BlocklistSettingsScreen(platformAdapter.blocklistSettingsNlpContent)
-                }
-                composable<Account.RecommendSettings.BlockedFeedHistory> {
-                    BlockedFeedHistoryScreen()
-                }
-                composable<Notification> {
-                    NotificationScreen()
-                }
-                composable<Notification.NotificationSettings> {
-                    NotificationSettingsScreen()
-                }
-                composable<SentenceSimilarityTest> {
-                    platformAdapter.sentenceSimilarityTest()
-                }
-                composable<Account.AppearanceSettings> { navEntry ->
-                    val args = navEntry.toRoute<Account.AppearanceSettings>()
-                    AppearanceSettingsScreen(
-                        setting = args.setting,
-                        onExit = reloadBottomBarPreferences,
-                    )
-                }
-                composable<Account.RecommendSettings> { navEntry ->
-                    val args = navEntry.toRoute<Account.RecommendSettings>()
-                    ContentFilterSettingsScreen(args.setting)
-                }
-                composable<Account.IdentityManagement> {
-                    IdentityManagementScreen()
-                }
-                composable<Account.SystemAndUpdateSettings> {
-                    SystemAndUpdateSettingsScreen()
-                }
-                composable<Account.OpenSourceLicenses> {
-                    OpenSourceLicensesScreen()
-                }
-                composable<Account.DeveloperSettings> {
-                    DeveloperSettingsScreen()
-                }
-                composable<Account.DeveloperSettings.ColorScheme> {
-                    ColorSchemeScreen()
+                ) {
+                    composable<MainTabs> {
+                        MainTabsPager(
+                            pagerState = mainPagerState,
+                            pages = mainTabPages,
+                            scrollToTopTrigger = scrollToTopTrigger,
+                            innerPadding = innerPadding,
+                        )
+                    }
+                    composable<Question> { navEntry ->
+                        val question: Question = navEntry.toRoute()
+                        QuestionScreen(question)
+                    }
+                    composable<WriteAnswer> { navEntry ->
+                        val args: WriteAnswer = navEntry.toRoute()
+                        WriteAnswerScreen(args)
+                    }
+                    composable<WritePin> {
+                        WritePinScreen()
+                    }
+                    composable<Article>(
+                        typeMap = mapOf(typeOf<ArticleType>() to ArticleTypeNavType),
+                        enterTransition = platformAdapter.articleEnterTransition,
+                        exitTransition = platformAdapter.articleExitTransition,
+                    ) { navEntry ->
+                        val article: Article = navEntry.toRoute()
+                        platformAdapter.article(article, navEntry)
+                    }
+                    composable<HotList> {
+                        HotListScreen(innerPadding)
+                    }
+                    composable<Follow> {
+                        FollowScreen(
+                            scrollToTopTrigger = scrollToTopTrigger,
+                            innerPadding = innerPadding,
+                            parentPagerState = mainPagerState,
+                        )
+                    }
+                    composable<Daily> {
+                        DailyScreen()
+                    }
+                    composable<History> {
+                        LegacyLocalHistoryScreen(innerPadding)
+                    }
+                    composable<OnlineHistory> {
+                        OnlineHistoryScreen()
+                    }
+                    composable<Account> {
+                        AccountSettingScreen(innerPadding)
+                    }
+                    composable<Search>(
+                        enterTransition = {
+                            if (initialState.destination.hasRoute<Search>()) {
+                                EnterTransition.None
+                            } else {
+                                fadeIn(animationSpec = tween(durationMillis = 240)) +
+                                    slideInVertically(animationSpec = tween(durationMillis = 280)) { it / 16 } +
+                                    scaleIn(
+                                        animationSpec = tween(durationMillis = 280),
+                                        initialScale = 0.985f,
+                                    )
+                            }
+                        },
+                        popExitTransition = {
+                            if (targetState.destination.hasRoute<Search>()) {
+                                ExitTransition.None
+                            } else {
+                                fadeOut(animationSpec = tween(durationMillis = 180)) +
+                                    slideOutVertically(animationSpec = tween(durationMillis = 220)) { it / 20 } +
+                                    scaleOut(
+                                        animationSpec = tween(durationMillis = 220),
+                                        targetScale = 0.985f,
+                                    )
+                            }
+                        },
+                    ) { navEntry ->
+                        val search: Search = navEntry.toRoute()
+                        SearchScreen(search)
+                    }
+                    composable<Collections> { navEntry ->
+                        val data: Collections = navEntry.toRoute()
+                        CollectionScreen(data.userToken)
+                    }
+                    composable<CollectionContent> { navEntry ->
+                        val content: CollectionContent = navEntry.toRoute()
+                        CollectionContentScreen(content.collectionId)
+                    }
+                    composable<Person> { navEntry ->
+                        val person: Person = navEntry.toRoute()
+                        PeopleScreen(person)
+                    }
+                    composable<Pin> { navEntry ->
+                        val pin: Pin = navEntry.toRoute()
+                        PinScreen(pin)
+                    }
+                    composable<Account.RecommendSettings.Blocklist> {
+                        BlocklistSettingsScreen(platformAdapter.blocklistSettingsNlpContent)
+                    }
+                    composable<Account.RecommendSettings.BlockedFeedHistory> {
+                        BlockedFeedHistoryScreen()
+                    }
+                    composable<Notification> {
+                        NotificationScreen()
+                    }
+                    composable<Notification.NotificationSettings> {
+                        NotificationSettingsScreen()
+                    }
+                    composable<SentenceSimilarityTest> {
+                        platformAdapter.sentenceSimilarityTest()
+                    }
+                    composable<Account.AppearanceSettings> { navEntry ->
+                        val args = navEntry.toRoute<Account.AppearanceSettings>()
+                        AppearanceSettingsScreen(
+                            setting = args.setting,
+                            onExit = reloadBottomBarPreferences,
+                        )
+                    }
+                    composable<Account.RecommendSettings> { navEntry ->
+                        val args = navEntry.toRoute<Account.RecommendSettings>()
+                        ContentFilterSettingsScreen(args.setting)
+                    }
+                    composable<Account.IdentityManagement> {
+                        IdentityManagementScreen()
+                    }
+                    composable<Account.SystemAndUpdateSettings> {
+                        SystemAndUpdateSettingsScreen()
+                    }
+                    composable<Account.ReadingSettings> {
+                        ReadingSettingsScreen()
+                    }
+                    composable<Account.OpenSourceLicenses> {
+                        OpenSourceLicensesScreen()
+                    }
+                    composable<Account.DeveloperSettings> {
+                        DeveloperSettingsScreen()
+                    }
+                    composable<Account.DeveloperSettings.ColorScheme> {
+                        ColorSchemeScreen()
+                    }
                 }
             }
         }
+
+        AnimatedVisibility(
+            visible = readingPlayerState.hasSession && !isReadingPlayerExpanded,
+            enter = fadeIn(tween(220)),
+            exit = fadeOut(tween(160)),
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                CompactReadingPlayerButton(
+                    state = readingPlayerState,
+                    onExpand = { isReadingPlayerExpandedByUser = true },
+                )
+            }
+        }
+    }
+
+    if (showReadingQueue && readingPlayerState.hasSession) {
+        ReadingQueueSheet(
+            state = readingPlayerState,
+            onDismissRequest = {
+                showReadingQueue = false
+                if (!isOnReadingDetail) isReadingPlayerExpandedByUser = false
+            },
+            onItemClick = { index, item ->
+                readingPlayer.playAt(index)
+                showReadingQueue = false
+                val destination = item.toDestination(readingPlayerState.sourceId)
+                val currentDestination = when {
+                    navEntry?.destination?.hasRoute<Article>() == true -> runCatching {
+                        navEntry?.toRoute<Article>()
+                    }.getOrNull()
+                    navEntry?.destination?.hasRoute<Pin>() == true -> runCatching {
+                        navEntry?.toRoute<Pin>()
+                    }.getOrNull()
+                    navEntry?.destination?.hasRoute<Question>() == true -> runCatching {
+                        navEntry?.toRoute<Question>()
+                    }.getOrNull()
+                    else -> null
+                }
+                if (currentDestination != destination) {
+                    if (currentDestination != null) {
+                        navController.popBackStack()
+                    }
+                    navigationState.navigate(destination)
+                }
+            },
+            onOpenSettings = {
+                showReadingQueue = false
+                isReadingPlayerExpandedByUser = false
+                if (navEntry?.destination?.hasRoute<Account.ReadingSettings>() != true) {
+                    navigationState.navigate(Account.ReadingSettings)
+                }
+            },
+        )
     }
 }
 

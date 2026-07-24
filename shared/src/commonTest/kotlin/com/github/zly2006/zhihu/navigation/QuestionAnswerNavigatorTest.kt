@@ -19,7 +19,10 @@ package com.github.zly2006.zhihu.navigation
 
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import io.ktor.client.HttpClient
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.yield
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
@@ -27,6 +30,8 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 
 class QuestionAnswerNavigatorTest {
@@ -45,6 +50,152 @@ class QuestionAnswerNavigatorTest {
         assertEquals(101L, navigator.previousAnswerPreview?.article?.id)
         assertEquals(103L, navigator.loadNext()?.id)
         assertEquals(104L, navigator.loadNext()?.id)
+    }
+
+    @Test
+    fun remainingAnswerSnapshotDoesNotConsumeSwitchingQueue() = runTest {
+        val navigator = QuestionAnswerNavigator(
+            questionId = 1L,
+            initialNextAnswers = listOf(answer(103L), answer(104L)),
+            getAlreadyOpenedAnswerIds = { emptySet() },
+            environment = NoopEnvironment,
+        )
+
+        assertEquals(listOf(103L), navigator.remainingAnswersSnapshot(102L, limit = 1).map(Article::id))
+        assertEquals(103L, navigator.loadNext()?.id)
+        assertEquals(listOf(104L), navigator.remainingAnswersSnapshot(103L, limit = 8).map(Article::id))
+    }
+
+    @Test
+    fun remainingAnswerSnapshotKeepsForwardHistoryBeforeSourceQueueWithoutConsumingEither() = runTest {
+        val navigator = QuestionAnswerNavigator(
+            questionId = 1L,
+            initialNextAnswers = listOf(answer(104L), answer(105L)),
+            getAlreadyOpenedAnswerIds = { emptySet() },
+            environment = NoopEnvironment,
+        )
+        navigator.pushAnswer(answer(101L).toCachedContent())
+        navigator.pushAnswer(answer(102L).toCachedContent())
+        navigator.pushAnswer(answer(103L).toCachedContent())
+        assertEquals(102L, navigator.goToPrevious()?.article?.id)
+
+        val expected = listOf(103L, 104L, 105L)
+        assertEquals(expected, navigator.remainingAnswersSnapshot(102L, limit = 8).map(Article::id))
+        assertEquals(expected, navigator.remainingAnswersSnapshot(102L, limit = 8).map(Article::id))
+        assertEquals(103L, navigator.goToNext()?.article?.id)
+        assertEquals(104L, navigator.loadNext()?.id)
+        assertEquals(105L, navigator.loadNext()?.id)
+    }
+
+    @Test
+    fun remainingAnswerSnapshotFiltersOpenedInitialCandidates() = runTest {
+        val openedAnswerIds = setOf(104L, 106L)
+        val navigator = QuestionAnswerNavigator(
+            questionId = 1L,
+            initialNextAnswers = listOf(103L, 104L, 105L, 106L, 107L).map(::answer),
+            getAlreadyOpenedAnswerIds = { ids -> ids.filter { it in openedAnswerIds }.toSet() },
+            environment = NoopEnvironment,
+        )
+
+        assertEquals(
+            listOf(103L, 105L, 107L),
+            navigator.remainingAnswersSnapshot(102L, limit = 8).map(Article::id),
+        )
+    }
+
+    @Test
+    fun remainingAnswerSnapshotFollowsSeededNextUrlUntilLimitIsFilled() = runTest {
+        val firstNextUrl = "https://www.zhihu.com/api/v4/questions/1/feeds?offset=2"
+        val secondNextUrl = "https://www.zhihu.com/api/v4/questions/1/feeds?offset=4"
+        val environment = PagedFeedEnvironment(
+            mapOf(
+                firstNextUrl to feedPage(listOf(104L), secondNextUrl),
+                secondNextUrl to feedPage(listOf(105L, 106L), ""),
+            ),
+        )
+        val navigator = QuestionAnswerNavigator(
+            questionId = 1L,
+            initialNextAnswers = listOf(answer(103L)),
+            initialNextUrl = firstNextUrl,
+            getAlreadyOpenedAnswerIds = { ids -> ids.filterTo(mutableSetOf()) { it == 104L } },
+            environment = environment,
+        )
+
+        assertEquals(
+            listOf(103L, 105L, 106L),
+            navigator.remainingAnswersSnapshot(102L, limit = 3).map(Article::id),
+        )
+        assertEquals(listOf(firstNextUrl, secondNextUrl), environment.requestedUrls)
+        assertEquals(103L, navigator.loadNext()?.id)
+        assertEquals(105L, navigator.loadNext()?.id)
+        assertEquals(106L, navigator.loadNext()?.id)
+    }
+
+    @Test
+    fun failedInitialCandidateLookupCanBeRetried() = runTest {
+        var lookupAttempts = 0
+        val navigator = QuestionAnswerNavigator(
+            questionId = 1L,
+            initialNextAnswers = listOf(answer(103L), answer(104L)),
+            getAlreadyOpenedAnswerIds = {
+                lookupAttempts++
+                if (lookupAttempts == 1) error("lookup failed")
+                emptySet()
+            },
+            environment = NoopEnvironment,
+        )
+
+        assertFailsWith<IllegalStateException> {
+            navigator.remainingAnswersSnapshot(102L, limit = 2)
+        }
+        assertEquals(
+            listOf(103L, 104L),
+            navigator.remainingAnswersSnapshot(102L, limit = 2).map(Article::id),
+        )
+        assertEquals(2, lookupAttempts)
+    }
+
+    @Test
+    fun newlyDiscoveredPreviousAnswerInvalidatesCachedPreviousContent() = runTest {
+        val navigator = QuestionAnswerNavigator(
+            questionId = 1L,
+            initialNextAnswers = listOf(answer(103L)),
+            getAlreadyOpenedAnswerIds = { setOf(103L) },
+            environment = NoopEnvironment,
+        )
+        navigator.previousAnswerContent = answer(101L).toCachedContent()
+
+        assertEquals(emptyList(), navigator.remainingAnswersSnapshot(102L, limit = 1))
+
+        assertNull(navigator.previousAnswerContent)
+        assertEquals(103L, navigator.previousAnswerPreview?.article?.id)
+    }
+
+    @Test
+    fun snapshotWaitsForInFlightInitialCandidateFiltering() = runTest {
+        val lookupStarted = CompletableDeferred<Unit>()
+        val finishLookup = CompletableDeferred<Unit>()
+        val navigator = QuestionAnswerNavigator(
+            questionId = 1L,
+            initialNextAnswers = listOf(answer(103L), answer(104L)),
+            getAlreadyOpenedAnswerIds = {
+                lookupStarted.complete(Unit)
+                finishLookup.await()
+                emptySet()
+            },
+            environment = NoopEnvironment,
+        )
+
+        val prefetch = async { navigator.prefetchNext(102L) }
+        lookupStarted.await()
+        val snapshot = async { navigator.remainingAnswersSnapshot(102L, limit = 8).map(Article::id) }
+        yield()
+        assertFalse(snapshot.isCompleted)
+
+        finishLookup.complete(Unit)
+        assertEquals(listOf(103L, 104L), snapshot.await())
+        prefetch.await()
+        assertEquals(103L, navigator.loadNext()?.id)
     }
 
     @Test
@@ -260,6 +411,47 @@ class QuestionAnswerNavigatorTest {
             tag: String?,
             error: Exception,
         ): Unit = throw error
+    }
+
+    private inner class PagedFeedEnvironment(
+        private val pages: Map<String, JsonObject>,
+    ) : ZhihuApiEnvironment {
+        val requestedUrls = mutableListOf<String>()
+
+        override fun httpClient(): HttpClient = error("not used")
+
+        override fun authenticatedCookies(): Map<String, String> = emptyMap()
+
+        override suspend fun fetchJson(
+            url: String,
+            include: String,
+        ): JsonObject {
+            requestedUrls += url
+            return pages.getValue(url)
+        }
+
+        override suspend fun handleFetchFailure(
+            tag: String?,
+            error: Exception,
+        ): Unit = throw error
+    }
+
+    private fun feedPage(
+        answerIds: List<Long>,
+        nextUrl: String,
+    ) = buildJsonObject {
+        put(
+            "data",
+            buildJsonArray {
+                answerIds.forEach { answerId -> add(answerFeed(answerId)) }
+            },
+        )
+        put(
+            "paging",
+            buildJsonObject {
+                put("next", JsonPrimitive(nextUrl))
+            },
+        )
     }
 
     private fun answerFeed(answerId: Long) = buildJsonObject {

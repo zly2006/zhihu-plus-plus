@@ -125,6 +125,8 @@ class ArticleViewModel(
         private set
     val voters = mutableStateListOf<DataHolder.Author>()
     var questionId by mutableLongStateOf(0L)
+    var answerNextIds by mutableStateOf<List<Long>>(emptyList())
+        private set
     var collections = mutableStateListOf<Collection>()
     var updatedAt by mutableLongStateOf(0L)
     var createdAt by mutableLongStateOf(0L)
@@ -269,6 +271,7 @@ class ArticleViewModel(
                             votersTotal = answer.voteupCount
                             commentCount = answer.commentCount
                             questionId = answer.question.id
+                            answerNextIds = answer.paginationInfo?.nextAnswerIds.orEmpty()
                             voteUpState = when (answer.reaction?.relation?.vote) {
                                 "UP" -> VoteUpState.Up
                                 "DOWN" -> VoteUpState.Down
@@ -292,31 +295,37 @@ class ArticleViewModel(
                                 ),
                             )
                             environment.recordOpenEvent(article, answer.question.id)
-                            // 设置问题回答导航器（如果当前不是收藏夹导航器）
-                            if (sharedData?.navigator !is CollectionAnswerNavigator) {
-                                val existingNav = sharedData?.navigator
-                                val isSameQuestion = when (existingNav) {
-                                    is QuestionAnswerNavigator -> existingNav.questionId == questionId
-                                    is PaginationInfoNavigator -> existingNav.questionId == questionId
-                                    else -> false
+                            withContext(Dispatchers.Main.immediate) {
+                                // 设置问题回答导航器（如果当前不是收藏夹导航器）
+                                if (sharedData?.navigator !is CollectionAnswerNavigator) {
+                                    val existingNav = sharedData?.navigator
+                                    val isSameQuestion = when (existingNav) {
+                                        is QuestionAnswerNavigator -> existingNav.questionId == questionId
+                                        is PaginationInfoNavigator -> existingNav.questionId == questionId
+                                        else -> false
+                                    }
+                                    if (!isSameQuestion) {
+                                        sharedData?.navigator = QuestionAnswerNavigator(
+                                            questionId = questionId,
+                                            environment = environment,
+                                        )
+                                    }
                                 }
-                                if (!isSameQuestion) {
-                                    sharedData?.navigator = QuestionAnswerNavigator(
-                                        questionId = questionId,
-                                        environment = environment,
-                                    )
-                                }
+                                sharedData?.navigator?.pushAnswer(
+                                    toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"),
+                                )
                             }
-                            sharedData?.navigator?.pushAnswer(toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"))
                             loadAnswerRelationshipEndorsement(environment)
                             loadMoreVoters(environment, reset = true)
 
                             // 仅在无前向历史时预取下一个回答
-                            sharedData?.navigator?.let { nav ->
-                                if (nav.currentAnswerIndex >= nav.answerHistory.size - 1) {
-                                    nav.prefetchNext(article.id)
+                            withContext(Dispatchers.Main.immediate) {
+                                sharedData?.navigator?.let { nav ->
+                                    if (nav.currentAnswerIndex >= nav.answerHistory.size - 1) {
+                                        nav.prefetchNext(article.id)
+                                    }
+                                    nav.prefetchPrevious(article.id)
                                 }
-                                nav.prefetchPrevious(article.id)
                             }
                         } else {
                             content = "<h1>你似乎来到了没有知识存在的荒原</h1>"

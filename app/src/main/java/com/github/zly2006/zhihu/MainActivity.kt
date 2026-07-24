@@ -23,8 +23,6 @@ import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.speech.tts.TextToSpeech
-import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -36,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
@@ -66,6 +65,15 @@ import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.nlp.NLPService
 import com.github.zly2006.zhihu.nlp.NlpServiceKeywordSemanticMatcher
 import com.github.zly2006.zhihu.nlp.SentenceEmbeddingManager
+import com.github.zly2006.zhihu.reading.AndroidReadingPlayerBridge
+import com.github.zly2006.zhihu.reading.ContentReadingService
+import com.github.zly2006.zhihu.reading.ReadingContentType
+import com.github.zly2006.zhihu.reading.ReadingPlaybackStatus
+import com.github.zly2006.zhihu.reading.ReadingPreferences
+import com.github.zly2006.zhihu.reading.ReadingQueueItem
+import com.github.zly2006.zhihu.reading.ReadingStartRequest
+import com.github.zly2006.zhihu.reading.ReadingTemplateField
+import com.github.zly2006.zhihu.reading.loadReadingPlaybackSpeed
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.shared.filter.TrackedContentIdentity
@@ -100,10 +108,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 class MainActivity :
@@ -131,17 +137,7 @@ class MainActivity :
         AccountData.httpClient(this)
     }
 
-    // TTS服务实例
-    var textToSpeech: TextToSpeech? = null
-
-    enum class TtsEngine {
-        Uninitialized, // 未初始化
-        Pico,
-        Google,
-        Sherpa,
-    }
-
-    private val _ttsState = mutableStateOf(TtsState.Uninitialized)
+    private val _ttsState = mutableStateOf(TtsState.Ready)
     var ttsState: TtsState
         get() = _ttsState.value
         private set(value) {
@@ -151,9 +147,6 @@ class MainActivity :
                 Log.i(TAG, "TTS State: $oldState -> $value")
             }
         }
-
-    var ttsEngine: TtsEngine = TtsEngine.Uninitialized // 默认使用Pico TTS引擎
-    private var isTtsInitialized = false
 
     lateinit var navController: NavHostController
     private lateinit var continuousUsageReminderManager: ContinuousUsageReminderManager
@@ -310,56 +303,16 @@ class MainActivity :
                 }
             }
 
-        // 初始化TTS
-        ttsState = TtsState.Initializing
-        textToSpeech = TextToSpeech(this) { status ->
-            if (status == TextToSpeech.SUCCESS) {
-                // 设置使用Pico TTS引擎
-                val picoEngine = "com.svox.pico"
-                val sherpaEngine = "com.k2fsa.sherpa.onnx.tts.engine"
-                val availableEngines = textToSpeech?.engines?.map { it.name } ?: emptyList()
-
-                Log.i(TAG, "availableEngines:$availableEngines")
-
-                if (availableEngines.contains(picoEngine)) {
-                    // 如果Pico TTS可用，切换到Pico引擎
-                    textToSpeech?.shutdown()
-                    ttsState = TtsState.Initializing
-                    textToSpeech = TextToSpeech(this, { status ->
-                        if (status == TextToSpeech.SUCCESS) {
-                            initializeTtsSettings()
-                            ttsEngine = TtsEngine.Pico
-                            Log.i(TAG, "Using Pico TTS engine")
-                            ttsState = TtsState.Ready
-                        } else {
-                            Log.w(TAG, "Pico TTS engine unavailable on this device")
-                            ttsState = TtsState.Error
-                        }
-                    }, picoEngine)
-                } else if (availableEngines.contains(sherpaEngine)) {
-                    // Sherpa TTS可用，切换到Sherpa引擎
-                    textToSpeech?.shutdown()
-                    ttsState = TtsState.Initializing
-                    textToSpeech = TextToSpeech(this, { status ->
-                        if (status == TextToSpeech.SUCCESS) {
-                            initializeTtsSettings()
-                            ttsEngine = TtsEngine.Sherpa
-                            Log.i(TAG, "Using Sherpa TTS engine")
-                            ttsState = TtsState.Ready
-                        } else {
-                            Log.w(TAG, "Sherpa TTS engine unavailable on this device")
-                            ttsState = TtsState.Error
-                        }
-                    }, sherpaEngine)
-                } else {
-                    Log.w(TAG, "Pico TTS not available, using default engine")
-                    // 继续使用默认引擎的初始化
-                    initializeTtsSettings()
-                    ttsEngine = TtsEngine.Google
+        lifecycleScope.launch {
+            AndroidReadingPlayerBridge.state.collect { state ->
+                ttsState = when (state.status) {
+                    ReadingPlaybackStatus.Idle -> TtsState.Ready
+                    ReadingPlaybackStatus.Initializing -> TtsState.Initializing
+                    ReadingPlaybackStatus.Loading -> TtsState.LoadingText
+                    ReadingPlaybackStatus.Playing -> TtsState.Speaking
+                    ReadingPlaybackStatus.Paused -> TtsState.Paused
+                    ReadingPlaybackStatus.Error -> TtsState.Error
                 }
-            } else {
-                Log.w(TAG, "TTS unavailable on this device")
-                ttsState = TtsState.Error
             }
         }
 
@@ -390,72 +343,14 @@ class MainActivity :
         get() = DeveloperRuntimeInfo(
             continuousUsageDurationMs = continuousUsageReminderManager.currentElapsedForegroundMs(),
             ttsState = ttsState,
-            currentTtsEngineLabel = when (ttsEngine) {
-                TtsEngine.Pico -> "Pico TTS"
-                TtsEngine.Google -> "Google TTS"
-                TtsEngine.Sherpa -> "Sherpa TTS"
-                TtsEngine.Uninitialized -> "未初始化"
-            },
-            availableTtsEngineLabels = textToSpeech?.engines?.map { it.name }.orEmpty(),
+            currentTtsEngineLabel = AndroidReadingPlayerBridge.state.value.engineLabel
+                .ifBlank { "按需初始化" },
+            availableTtsEngineLabels = AndroidReadingPlayerBridge.state.value.availableEngineLabels,
         )
-
-    private fun initializeTtsSettings() {
-        // 设置语言
-        val result = textToSpeech?.setLanguage(Locale.CHINESE)
-        if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-            // 如果中文不支持，尝试英文
-            val englishResult = textToSpeech?.setLanguage(Locale.ENGLISH)
-            if (englishResult == TextToSpeech.LANG_MISSING_DATA || englishResult == TextToSpeech.LANG_NOT_SUPPORTED) {
-                Log.w(TAG, "TTS language not supported on this device")
-                ttsState = TtsState.Error
-            } else {
-                Log.i(TAG, "Using English language for TTS")
-                isTtsInitialized = true
-                ttsState = TtsState.Ready
-            }
-        } else {
-            Log.i(TAG, "Using Chinese language for TTS")
-            isTtsInitialized = true
-            ttsState = TtsState.Ready
-        }
-
-        // 设置语音参数
-        when (ttsEngine) {
-            TtsEngine.Sherpa -> {
-                textToSpeech?.setSpeechRate(1.1f) // 稍微慢一点的语速
-                textToSpeech?.setPitch(1.0f) // 正常音调
-            }
-            else -> {
-                textToSpeech?.setSpeechRate(0.9f) // 稍微慢一点的语速
-                textToSpeech?.setPitch(1.0f) // 正常音调
-            }
-        }
-    }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         if (hasFocus) {
-            if (intent.data != null) {
-                if (intent.data!!.authority != "zhihu-plus.internal") {
-                    Log.i(TAG, "Intent data: ${intent.data}")
-                    val destination = resolveContent(intent.data.toString())
-                    if (destination != null) {
-                        if (destination != sharedData.clipboardDestination) {
-                            sharedData.clipboardDestination = destination
-                            navigate(destination, popup = true)
-                        }
-                    } else {
-                        AlertDialog
-                            .Builder(this)
-                            .apply {
-                                setTitle("Unsupported URL")
-                                setMessage("Unknown URL: ${intent.data}")
-                                setPositiveButton("OK") { _, _ ->
-                                }
-                            }.create()
-                            .show()
-                    }
-                }
-            } else {
+            if (!handleIntentData(intent)) {
                 // read clipboard
                 val clip = clipboardManager.primaryClip
                 if (clip != null && clip.itemCount > 0) {
@@ -473,6 +368,40 @@ class MainActivity :
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (::navController.isInitialized) {
+            handleIntentData(intent)
+        }
+    }
+
+    private fun handleIntentData(incomingIntent: Intent): Boolean {
+        val data = incomingIntent.data ?: return false
+        if (data.authority == "zhihu-plus.internal") return true
+        val forceNavigation = incomingIntent.getBooleanExtra(ContentReadingService.READING_NOTIFICATION_INTENT_EXTRA, false)
+        incomingIntent.removeExtra(ContentReadingService.READING_NOTIFICATION_INTENT_EXTRA)
+
+        Log.i(TAG, "Intent data: $data")
+        val destination = resolveContent(data.toString())
+        if (destination != null) {
+            if (forceNavigation || destination != sharedData.clipboardDestination) {
+                sharedData.clipboardDestination = destination
+                navigate(destination, popup = true)
+            }
+        } else {
+            AlertDialog
+                .Builder(this)
+                .apply {
+                    setTitle("Unsupported URL")
+                    setMessage("Unknown URL: $data")
+                    setPositiveButton("OK") { _, _ -> }
+                }.create()
+                .show()
+        }
+        return true
     }
 
     fun navigate(route: NavDestination, popup: Boolean = false) {
@@ -610,135 +539,37 @@ class MainActivity :
         text: String,
         title: String,
     ) {
-        speakText(text, title)
+        val request = ReadingStartRequest(
+            queue = listOf(
+                ReadingQueueItem(
+                    contentType = ReadingContentType.Article,
+                    id = title.hashCode().toLong() and 0xffffffffL,
+                    title = title,
+                    bodyHtml = text,
+                ),
+            ),
+            preferences = ReadingPreferences(
+                fieldOrder = listOf(ReadingTemplateField.Body),
+                enabledFields = setOf(ReadingTemplateField.Body),
+                queueLimit = 1,
+                transitionText = "",
+            ),
+            playbackSpeed = loadReadingPlaybackSpeed(androidSettingsStore(this)),
+        )
+        AndroidReadingPlayerBridge.prepareStart(request)
+        ContextCompat.startForegroundService(
+            this,
+            ContentReadingService.commandIntent(this, ContentReadingService.ACTION_START),
+        )
     }
 
     override fun stopArticleSpeaking() {
-        stopSpeaking()
+        startService(ContentReadingService.commandIntent(this, ContentReadingService.ACTION_STOP))
     }
 
     override fun onDestroy() {
         continuousUsageReminderManager.onDestroy()
-        textToSpeech?.shutdown()
         super.onDestroy()
-    }
-
-    // TTS相关方法
-    fun speakText(text: String, title: String) {
-        if (!isTtsInitialized || textToSpeech == null) return
-
-        ttsState = TtsState.LoadingText
-
-        @OptIn(DelicateCoroutinesApi::class)
-        GlobalScope.launch {
-            val maxChunkLength = 100
-            val textChunks = splitTextIntoChunks(text, maxChunkLength)
-
-            // 使用闭包来管理状态和递归调用
-            lateinit var speakNextChunk: (Int) -> Unit
-            speakNextChunk = { currentIndex ->
-                if (currentIndex < textChunks.size) {
-                    val chunk = textChunks[currentIndex]
-
-                    runOnUiThread {
-                        ttsState = TtsState.Speaking
-
-                        textToSpeech?.speak(
-                            chunk,
-                            TextToSpeech.QUEUE_FLUSH,
-                            null,
-                            "chunk_$currentIndex",
-                        )
-
-                        // 设置朗读完成监听器，自动播放下一段
-                        textToSpeech?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-                            override fun onStart(utteranceId: String?) {
-                                if (currentIndex == 0) {
-                                    androidUserMessageSink(this@MainActivity).showShortMessage("开始朗读：$title")
-                                }
-                                if (utteranceId == "chunk_$currentIndex") {
-                                    ttsState = TtsState.Speaking
-                                }
-                            }
-
-                            override fun onDone(utteranceId: String?) {
-                                if (utteranceId == "chunk_$currentIndex") {
-                                    if (currentIndex + 1 < textChunks.size) {
-                                        ttsState = TtsState.SwitchingChunk
-                                        // 延迟一点再播放下一段，避免太快
-                                        @OptIn(DelicateCoroutinesApi::class)
-                                        GlobalScope.launch {
-                                            when (ttsEngine) {
-                                                TtsEngine.Sherpa -> {
-                                                    // 无需延迟, Sherpa 本身不会太快
-                                                }
-                                                else -> {
-                                                    delay(500)
-                                                }
-                                            }
-                                            runOnUiThread {
-                                                speakNextChunk(currentIndex + 1)
-                                            }
-                                        }
-                                    } else {
-                                        ttsState = TtsState.Ready
-                                    }
-                                }
-                            }
-
-                            @Suppress("OVERRIDE_DEPRECATION")
-                            override fun onError(p0: String?) = Unit
-
-                            override fun onError(utteranceId: String?, errorCode: Int) {
-                                if (utteranceId == "chunk_$currentIndex") {
-                                    ttsState = TtsState.Error
-                                }
-                            }
-                        })
-                    }
-                } else {
-                    runOnUiThread {
-                        ttsState = TtsState.Ready
-                    }
-                }
-            }
-
-            // 开始播放第一段
-            runOnUiThread {
-                speakNextChunk(0)
-            }
-        }
-    }
-
-    @Suppress("SameParameterValue")
-    private fun splitTextIntoChunks(text: String, maxLength: Int = 100): List<String> {
-        if (text.length <= maxLength) return listOf(text)
-
-        val chunks = mutableListOf<String>()
-        var currentPos = 0
-
-        while (currentPos < text.length) {
-            val endPos = minOf(currentPos + maxLength, text.length)
-            var chunk = text.substring(currentPos, endPos)
-
-            // 如果不是最后一段，尝试在句号、感叹号、问号处分割
-            if (endPos < text.length) {
-                val lastSentenceEnd = chunk.lastIndexOfAny(listOf("。", "！", "？", ".", "!", "?"))
-                if (lastSentenceEnd > chunk.length / 2) {
-                    chunk = chunk.substring(0, lastSentenceEnd + 1)
-                }
-            }
-
-            chunks.add(chunk.trim())
-            currentPos += chunk.length
-        }
-
-        return chunks
-    }
-
-    fun stopSpeaking() {
-        textToSpeech?.stop()
-        ttsState = TtsState.Ready
     }
 
     @Suppress("unused")

@@ -38,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
 import com.github.zly2006.zhihu.shared.data.HotListFeed
 import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
@@ -72,6 +73,13 @@ fun HotListScreen(
     onTestLoadMore: (() -> Unit)? = null,
 ) {
     val viewModel: HotListViewModel = viewModel { HotListViewModel() }
+    val readingQueueSourceId = "hot-list:total"
+    if (isActive) {
+        RegisterReadingQueueSource(
+            sourceId = readingQueueSourceId,
+            items = viewModel.displayItems,
+        )
+    }
     val environment = rememberPaginationEnvironment(viewModel.allowGuestAccess)
     val userMessages = rememberUserMessageSink()
     val settings = rememberSettingsStore()
@@ -123,6 +131,7 @@ fun HotListScreen(
             ) { item ->
                 FeedCard(
                     item,
+                    readingQueueSourceId = readingQueueSourceId.takeIf { isActive },
                     thumbnailUrl = (item.feed as? HotListFeed)?.children?.firstOrNull()?.thumbnail,
                 )
             }

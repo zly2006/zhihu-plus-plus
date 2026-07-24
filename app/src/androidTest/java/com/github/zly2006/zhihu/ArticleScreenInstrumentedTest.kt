@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu
 
 import android.content.Context
+import android.content.Intent
 import android.os.SystemClock
 import android.util.Log
 import androidx.compose.foundation.layout.Column
@@ -47,12 +48,20 @@ import com.github.zly2006.zhihu.markdown.RenderMarkdownText
 import com.github.zly2006.zhihu.navigation.AnswerNavigator
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.reading.AndroidReadingPlayerBridge
+import com.github.zly2006.zhihu.reading.ContentReadingService
+import com.github.zly2006.zhihu.reading.ReadingContentType
+import com.github.zly2006.zhihu.reading.ReadingPlaybackStatus
+import com.github.zly2006.zhihu.reading.ReadingPlayerState
+import com.github.zly2006.zhihu.reading.ReadingQueueItem
+import com.github.zly2006.zhihu.reading.ReadingQueueSourceRegistry
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.ArticleActionsMenu
 import com.github.zly2006.zhihu.ui.ArticleScreen
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.TtsState
@@ -60,12 +69,18 @@ import com.github.zly2006.zhihu.ui.rememberArticleTtsState
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import io.ktor.client.HttpClient
+import kotlinx.coroutines.CancellationException
+import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 
 @RunWith(AndroidJUnit4::class)
 class ArticleScreenInstrumentedTest {
@@ -74,6 +89,7 @@ class ArticleScreenInstrumentedTest {
 
     @Before
     fun setUp() {
+        AndroidReadingPlayerBridge.publish(ReadingPlayerState())
         composeRule.resetAppPreferences()
         composeRule.activity
             .getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
@@ -88,6 +104,18 @@ class ArticleScreenInstrumentedTest {
             .putBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)
             .putString("answerDoubleTapAction", AnswerDoubleTapAction.Ask.preferenceValue)
             .commit()
+    }
+
+    @After
+    fun tearDown() {
+        composeRule.activity.stopService(Intent(composeRule.activity, ContentReadingService::class.java))
+        AndroidReadingPlayerBridge.publish(ReadingPlayerState())
+        ReadingQueueSourceRegistry.register(FULL_ORIGIN_SOURCE_ID, emptyList())
+        ReadingQueueSourceRegistry.register(PARTIAL_ORIGIN_SOURCE_ID, emptyList())
+        composeRule.runOnIdle {
+            composeRule.activity.articleAnswerSwitchState.navigator = null
+            composeRule.activity.articleAnswerSwitchState.pendingNavigator = null
+        }
     }
 
     @Test
@@ -319,6 +347,236 @@ class ArticleScreenInstrumentedTest {
     }
 
     @Test
+    fun pausedContinuousReadingOnAnotherQueueItemUsesStopActionInArticleMenu() {
+        val viewModel = seededAnswerViewModel(ANSWER)
+        AndroidReadingPlayerBridge.publish(
+            ReadingPlayerState(
+                status = ReadingPlaybackStatus.Paused,
+                queue = listOf(
+                    ReadingQueueItem(
+                        contentType = ReadingContentType.Answer,
+                        id = ANSWER.id,
+                        title = "离线 Answer 标题",
+                        author = "离线答主",
+                    ),
+                    ReadingQueueItem(
+                        contentType = ReadingContentType.Answer,
+                        id = NEXT_ANSWER.id,
+                        title = "下一个离线回答",
+                        author = "下一个作者",
+                    ),
+                ),
+                currentIndex = 1,
+            ),
+        )
+        composeRule.setScreenContent {
+            Scaffold(
+                modifier = androidx.compose.ui.Modifier
+                    .fillMaxSize(),
+            ) { _ ->
+                ArticleScreen(
+                    article = ANSWER,
+                    viewModel = viewModel,
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("更多选项").assertIsDisplayed().performClick()
+        composeRule.onNodeWithText("停止朗读").assertIsDisplayed()
+        composeRule.onNodeWithText("暂停朗读").assertDoesNotExist()
+        composeRule.onNodeWithText("继续朗读").assertDoesNotExist()
+        composeRule.onNodeWithText("停止朗读").performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            !AndroidReadingPlayerBridge.state.value.hasSession
+        }
+    }
+
+    @Test
+    fun emptyAnswerQueueProviderDoesNotFallBackToPaginationIds() {
+        val viewModel = seededAnswerViewModel(ANSWER)
+        composeRule.runOnIdle {
+            viewModel.forceAnswerNextIdsForTest(listOf(901L, 902L))
+        }
+        setArticleActionsMenu(
+            viewModel = viewModel,
+            answerQueueFallbackProvider = { _ -> emptyList() },
+        )
+
+        composeRule.onNodeWithText("开始连续朗读").assertIsDisplayed().performClick()
+        waitForReadingQueue(listOf(ANSWER.id))
+
+        composeRule.onNodeWithText("停止朗读").assertIsDisplayed().performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            !AndroidReadingPlayerBridge.state.value.hasSession
+        }
+    }
+
+    @Test
+    fun answerQueueProviderKeepsCollectionOrderWithoutPaginationItems() {
+        val viewModel = seededAnswerViewModel(ANSWER)
+        composeRule.runOnIdle {
+            viewModel.forceAnswerNextIdsForTest(listOf(901L, 902L))
+        }
+        setArticleActionsMenu(
+            viewModel = viewModel,
+            answerQueueFallbackProvider = { _ ->
+                listOf(
+                    Article(type = ArticleType.Answer, id = 801L, title = "收藏回答一"),
+                    Article(type = ArticleType.Answer, id = 802L, title = "收藏回答二"),
+                )
+            },
+        )
+
+        composeRule.onNodeWithText("开始连续朗读").assertIsDisplayed().performClick()
+        waitForReadingQueue(listOf(ANSWER.id, 801L, 802L))
+
+        composeRule.onNodeWithText("停止朗读").assertIsDisplayed().performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            !AndroidReadingPlayerBridge.state.value.hasSession
+        }
+    }
+
+    @Test
+    fun failingAnswerQueueProviderStillStartsCurrentAnswer() {
+        val viewModel = seededAnswerViewModel(ANSWER)
+        setArticleActionsMenu(
+            viewModel = viewModel,
+            answerQueueFallbackProvider = { error("离线分页失败") },
+        )
+
+        composeRule.onNodeWithText("开始连续朗读").assertIsDisplayed().performClick()
+        waitForReadingQueue(listOf(ANSWER.id))
+    }
+
+    @Test
+    fun matchingOriginAtQueueLimitDoesNotLoadQuestionFallback() {
+        val viewModel = seededAnswerViewModel(ANSWER)
+        val sourceId = FULL_ORIGIN_SOURCE_ID
+        val sourceAnswer = ANSWER.copy(readingQueueSourceId = sourceId)
+        var providerCalls = 0
+        ReadingQueueSourceRegistry.register(
+            sourceId = sourceId,
+            items = listOf(
+                ReadingQueueItem(ReadingContentType.Answer, id = ANSWER.id),
+                ReadingQueueItem(ReadingContentType.Answer, id = NEXT_ANSWER.id),
+                ReadingQueueItem(ReadingContentType.Answer, id = 779L),
+                ReadingQueueItem(ReadingContentType.Answer, id = 780L),
+                ReadingQueueItem(ReadingContentType.Answer, id = 781L),
+            ),
+        )
+        setArticleActionsMenu(
+            viewModel = viewModel,
+            article = sourceAnswer,
+            answerQueueFallbackProvider = {
+                providerCalls++
+                error("来源队列足够时不应加载 fallback")
+            },
+        )
+
+        composeRule.onNodeWithText("开始连续朗读").assertIsDisplayed().performClick()
+        waitForReadingQueue(listOf(ANSWER.id, NEXT_ANSWER.id, 779L, 780L, 781L))
+        composeRule.runOnIdle { assertEquals(0, providerCalls) }
+    }
+
+    @Test
+    fun partialMatchingOriginLoadsRequestedRemainderAndFillsQueue() {
+        val viewModel = seededAnswerViewModel(ANSWER)
+        val sourceId = PARTIAL_ORIGIN_SOURCE_ID
+        val sourceAnswer = ANSWER.copy(readingQueueSourceId = sourceId)
+        var requestedLimit = 0
+        ReadingQueueSourceRegistry.register(
+            sourceId = sourceId,
+            items = listOf(
+                ReadingQueueItem(ReadingContentType.Answer, id = ANSWER.id),
+                ReadingQueueItem(ReadingContentType.Answer, id = NEXT_ANSWER.id),
+            ),
+        )
+        setArticleActionsMenu(
+            viewModel = viewModel,
+            article = sourceAnswer,
+            answerQueueFallbackProvider = { limit ->
+                requestedLimit = limit
+                listOf(
+                    NEXT_ANSWER,
+                    Article(type = ArticleType.Answer, id = 779L),
+                    Article(type = ArticleType.Answer, id = 780L),
+                    Article(type = ArticleType.Answer, id = 781L),
+                )
+            },
+        )
+
+        composeRule.onNodeWithText("开始连续朗读").assertIsDisplayed().performClick()
+        waitForReadingQueue(listOf(ANSWER.id, NEXT_ANSWER.id, 779L, 780L, 781L))
+        composeRule.runOnIdle { assertEquals(4, requestedLimit) }
+    }
+
+    @Test
+    fun cancelledAnswerQueueProviderDoesNotStartReadingSession() {
+        val viewModel = seededAnswerViewModel(ANSWER)
+        val providerCalled = AtomicBoolean(false)
+        setArticleActionsMenu(
+            viewModel = viewModel,
+            answerQueueFallbackProvider = {
+                providerCalled.set(true)
+                throw CancellationException("测试取消")
+            },
+        )
+
+        composeRule.onNodeWithText("开始连续朗读").assertIsDisplayed().performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) { providerCalled.get() }
+
+        assertFalse(AndroidReadingPlayerBridge.state.value.hasSession)
+    }
+
+    @Test
+    fun articleScreenUsesSharedAnswerNavigatorSnapshotForReadingQueue() {
+        val viewModel = seededAnswerViewModel(ANSWER)
+        val snapshotCurrentId = AtomicLong(-1L)
+        val snapshotLimit = AtomicInteger(0)
+        val sharedNavigator = object : AnswerNavigator(
+            sourceName = "此问题",
+            environment = NO_OP_API_ENVIRONMENT,
+        ) {
+            override suspend fun loadNext(): Article? = null
+
+            override suspend fun prefetchNext(currentArticleId: Long) = Unit
+
+            override suspend fun remainingAnswersSnapshot(
+                currentArticleId: Long,
+                limit: Int,
+            ): List<Article> {
+                snapshotCurrentId.set(currentArticleId)
+                snapshotLimit.set(limit)
+                return listOf(
+                    NEXT_ANSWER,
+                    Article(type = ArticleType.Answer, id = 779L),
+                ).take(limit)
+            }
+        }
+        composeRule.activity.runOnUiThread {
+            composeRule.activity.articleAnswerSwitchState.pendingNavigator = sharedNavigator
+        }
+        composeRule.setScreenContent {
+            Scaffold(
+                modifier = androidx.compose.ui.Modifier
+                    .fillMaxSize(),
+            ) { _ ->
+                ArticleScreen(
+                    article = ANSWER,
+                    viewModel = viewModel,
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("更多选项").assertIsDisplayed().performClick()
+        composeRule.onNodeWithText("开始连续朗读").assertIsDisplayed().performClick()
+
+        waitForReadingQueue(listOf(ANSWER.id, NEXT_ANSWER.id, 779L))
+        assertEquals(ANSWER.id, snapshotCurrentId.get())
+        assertEquals(4, snapshotLimit.get())
+    }
+
+    @Test
     fun skipAnswerButtonNavigatesToPrefetchedNextAnswerOffline() {
         val viewModel = seededAnswerViewModel(ANSWER)
         val nextAnswer = ArticleViewModel.CachedAnswerContent(
@@ -435,6 +693,42 @@ class ArticleScreenInstrumentedTest {
         }
     }
 
+    private fun setArticleActionsMenu(
+        viewModel: ArticleViewModel,
+        article: Article = ANSWER,
+        answerQueueFallbackProvider: suspend (limit: Int) -> List<Article>,
+    ) {
+        composeRule.setScreenContent {
+            Scaffold(
+                modifier = androidx.compose.ui.Modifier
+                    .fillMaxSize(),
+            ) { _ ->
+                ArticleActionsMenu(
+                    article = article,
+                    viewModel = viewModel,
+                    answerQueueFallbackProvider = answerQueueFallbackProvider,
+                    showMenu = true,
+                    onDismissRequest = {},
+                    onSummaryRequest = {},
+                    onAigcFlagRequest = {},
+                    onExportRequest = {},
+                )
+            }
+        }
+    }
+
+    private fun waitForReadingQueue(expectedIds: List<Long>) {
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            AndroidReadingPlayerBridge.state.value.queue
+                .map(ReadingQueueItem::id) == expectedIds
+        }
+        assertEquals(
+            expectedIds,
+            AndroidReadingPlayerBridge.state.value.queue
+                .map(ReadingQueueItem::id),
+        )
+    }
+
     private fun dragSkipAnswerButtonBy(deltaX: Float) {
         composeRule
             .onNodeWithContentDescription("下一个回答")
@@ -511,7 +805,15 @@ class ArticleScreenInstrumentedTest {
         (ttsStateField.get(this) as MutableState<TtsState>).value = state
     }
 
+    private fun ArticleViewModel.forceAnswerNextIdsForTest(ids: List<Long>) {
+        val setter = ArticleViewModel::class.java.getDeclaredMethod("setAnswerNextIds", List::class.java)
+        setter.isAccessible = true
+        setter.invoke(this, ids)
+    }
+
     private companion object {
+        const val FULL_ORIGIN_SOURCE_ID = "instrumented:reading-origin"
+        const val PARTIAL_ORIGIN_SOURCE_ID = "instrumented:partial-reading-origin"
         const val ISSUE_495_BENCHMARK_TAG = "Issue495Benchmark"
         const val ISSUE_495_FIRST_FRAME_LIMIT_MS = 5_000L
 
