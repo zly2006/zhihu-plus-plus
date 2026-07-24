@@ -276,39 +276,6 @@ adb shell input swipe 540 400 540 1200 500   # 下拉刷新
 | `feed_card` | 卡片主体（点击进入详情） | 多个 |
 | `feed_card_more_btn` | 卡片右上角更多菜单 | 多个，与 feed_card 一一对应 |
 
-### 连续朗读播放器
-
-| testTag | 描述 |
-|---------|------|
-| `reading_player_bar` | 悬浮播放工具栏 |
-| `reading_player_compact` | 可拖动的圆形朗读浮窗 |
-| `reading_player_previous` | 上一条 |
-| `reading_player_toggle` | 暂停或继续 |
-| `reading_player_next` | 下一条 |
-| `reading_player_stop` | 停止朗读 |
-| `reading_player_queue` | 播放列表 |
-| `reading_player_speed` | 当前播放速度按钮 |
-| `reading_player_speed_menu` | 播放速度菜单 |
-| `reading_player_speed_75` | 0.75× |
-| `reading_player_speed_100` | 1.0× |
-| `reading_player_speed_125` | 1.25× |
-| `reading_player_speed_150` | 1.5× |
-| `reading_player_speed_200` | 2.0× |
-| `reading_queue_sheet` | 播放列表弹层 |
-| `reading_queue_settings` | 播放列表顶部的朗读设置入口 |
-
-### 朗读设置
-
-| testTag | 描述 |
-|---------|------|
-| `readingSettings.publishedTimeMode.Absolute` | 发布时间使用绝对时间 |
-| `readingSettings.publishedTimeMode.Relative` | 发布时间使用相对时间 |
-| `readingSettings.relativeTimePrecision.Second` | 相对时间保留到秒 |
-| `readingSettings.relativeTimePrecision.Hour` | 相对时间保留到时 |
-| `readingSettings.relativeTimePrecision.Day` | 相对时间保留到天 |
-| `readingSettings.commentAuthor` | 是否朗读评论作者名称 |
-| `readingSettings.templatePreview` | 动态朗读模板预览 |
-
 ---
 
 ## 错误排查
