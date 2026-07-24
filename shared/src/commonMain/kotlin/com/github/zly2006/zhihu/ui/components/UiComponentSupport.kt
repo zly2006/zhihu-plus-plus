@@ -55,7 +55,11 @@ import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedQuestionAuthor
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedUser
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonPrimitive
 
 data class FeedBlockActions(
     val handleBlockUser: (
@@ -104,9 +108,45 @@ fun FeedAuthorBlockConfirmDialog(
     val coroutineScope = rememberCoroutineScope()
     val userMessages = rememberUserMessageSink()
     val database = remember { getContentFilterDatabase() }
+    val environment = rememberPaginationEnvironment(allowGuestAccess = false)
+    var questionAuthorStats by remember(request) { mutableStateOf<QuestionAuthorActivityStats?>(null) }
+    var isQuestionAuthorStatsLoading by remember(request) {
+        mutableStateOf(request?.type == FeedAuthorBlockType.QUESTION_AUTHOR)
+    }
+
+    LaunchedEffect(request) {
+        if (request?.type != FeedAuthorBlockType.QUESTION_AUTHOR) return@LaunchedEffect
+
+        isQuestionAuthorStatsLoading = true
+        questionAuthorStats = try {
+            environment
+                .fetchJson(
+                    "https://api.zhihu.com/people/${request.userId}",
+                    "answer_count,question_count",
+                )?.let { profile ->
+                    val questionCount = profile["question_count"]?.jsonPrimitive?.intOrNull
+                    val answerCount = profile["answer_count"]?.jsonPrimitive?.intOrNull
+                    if (questionCount != null && answerCount != null) {
+                        QuestionAuthorActivityStats(questionCount, answerCount)
+                    } else {
+                        null
+                    }
+                }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            Log.e("FeedBlockActions", "Failed to load question author activity stats", error)
+            null
+        } finally {
+            isQuestionAuthorStatsLoading = false
+        }
+    }
+
     FeedAuthorBlockConfirmDialogContent(
         request = request,
         displayItems = displayItems,
+        questionAuthorStats = questionAuthorStats,
+        isQuestionAuthorStatsLoading = isQuestionAuthorStatsLoading,
         onDismiss = onDismiss,
         onConfirmBlock = { author ->
             coroutineScope.launch {

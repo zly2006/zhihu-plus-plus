@@ -27,10 +27,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.questionAuthor
 import com.github.zly2006.zhihu.shared.data.target
+import kotlin.math.roundToInt
 
 enum class FeedAuthorBlockType {
     CONTENT_AUTHOR,
@@ -43,6 +45,11 @@ data class FeedAuthorBlockRequest(
     val userName: String,
 )
 
+data class QuestionAuthorActivityStats(
+    val questionCount: Int,
+    val answerCount: Int,
+)
+
 /**
  * 信息流作者屏蔽确认弹窗。
  *
@@ -52,6 +59,8 @@ data class FeedAuthorBlockRequest(
 fun FeedAuthorBlockConfirmDialogContent(
     request: FeedAuthorBlockRequest?,
     displayItems: List<FeedDisplayItem>,
+    questionAuthorStats: QuestionAuthorActivityStats? = null,
+    isQuestionAuthorStatsLoading: Boolean = false,
     onDismiss: () -> Unit,
     onConfirmBlock: (BlockedFeedAuthor) -> Unit,
 ) {
@@ -64,6 +73,22 @@ fun FeedAuthorBlockConfirmDialogContent(
         text = {
             Column {
                 Text("确定要屏蔽${if (isQuestionAuthor) "提问者" else "用户"} \"${request.userName}\" 吗？")
+                if (isQuestionAuthor) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = when {
+                            isQuestionAuthorStatsLoading -> "正在加载问题与回答数据…"
+                            questionAuthorStats != null ->
+                                "问题 ${questionAuthorStats.questionCount} · " +
+                                    "回答 ${questionAuthorStats.answerCount} · " +
+                                    "问题/回答比 ${questionAnswerRatioText(questionAuthorStats)}"
+                            else -> "问题与回答数据暂时不可用"
+                        },
+                        modifier = Modifier.testTag("feed_question_author_activity_stats"),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     if (isQuestionAuthor) {
@@ -109,6 +134,17 @@ fun FeedAuthorBlockConfirmDialogContent(
             }
         },
     )
+}
+
+internal fun questionAnswerRatioText(stats: QuestionAuthorActivityStats): String {
+    val questionCount = stats.questionCount.coerceAtLeast(0)
+    val answerCount = stats.answerCount.coerceAtLeast(0)
+    if (answerCount == 0) return if (questionCount == 0) "—" else "∞"
+
+    val tenthsOfPercent = (questionCount.toDouble() * 1_000 / answerCount).roundToInt()
+    val whole = tenthsOfPercent / 10
+    val decimal = tenthsOfPercent % 10
+    return if (decimal == 0) "$whole%" else "$whole.$decimal%"
 }
 
 data class BlockedFeedAuthor(
