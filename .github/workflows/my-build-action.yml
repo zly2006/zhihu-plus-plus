@@ -17,6 +17,15 @@ on:
         required: false
         type: boolean
     secrets:
+      # Prefer KEYSTORE_* (same as auto-release.yml); ANDROID_* kept as fallback.
+      KEYSTORE_BASE64:
+        required: false
+      KEYSTORE_PASSWORD:
+        required: false
+      KEY_ALIAS:
+        required: false
+      KEY_PASSWORD:
+        required: false
       ANDROID_SIGNING_KEY:
         required: false
       ANDROID_KEY_ALIAS:
@@ -156,16 +165,65 @@ jobs:
         run: ./gradlew ktlintCheck
       #- name: Run gradle tests
       #  run: ./gradlew test
+      # Prefer KEYSTORE_* (valid in this fork); fall back to ANDROID_*.
+      # Strip whitespace so Base64 decode does not produce a corrupt jks
+      # ("Tag number over 30 is not supported").
+      - name: Resolve signing secrets
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          ANDROID_SIGNING_KEY: ${{ secrets.ANDROID_SIGNING_KEY }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          SIGNING_B64="$(printf '%s' "${KEYSTORE_BASE64:-${ANDROID_SIGNING_KEY:-}}" | tr -d '[:space:]')"
+          STORE_PASS="$(printf '%s' "${KEYSTORE_PASSWORD:-${ANDROID_KEYSTORE_PASSWORD:-}}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+          ALIAS="$(printf '%s' "${KEY_ALIAS:-${ANDROID_KEY_ALIAS:-}}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+          KEY_PASS="$(printf '%s' "${KEY_PASSWORD:-${ANDROID_KEY_PASSWORD:-}}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+
+          echo "KEYSTORE present: $([ -n "$SIGNING_B64" ] && echo yes || echo no)"
+          echo "KEYSTORE length: ${#SIGNING_B64}"
+          echo "ALIAS present: $([ -n "$ALIAS" ] && echo yes || echo no)"
+
+          if [ -z "$SIGNING_B64" ] || [ -z "$STORE_PASS" ] || [ -z "$ALIAS" ] || [ -z "$KEY_PASS" ]; then
+            echo "::error::Release signing secrets incomplete. Set KEYSTORE_BASE64/KEYSTORE_PASSWORD/KEY_ALIAS/KEY_PASSWORD (or ANDROID_* equivalents)."
+            exit 1
+          fi
+
+          KEYSTORE_PATH="${{ github.workspace }}/app/zhihu.jks"
+          printf '%s' "$SIGNING_B64" | base64 --decode > "$KEYSTORE_PATH"
+          if [ ! -s "$KEYSTORE_PATH" ]; then
+            echo "::error::Failed to decode keystore base64."
+            exit 1
+          fi
+          if ! keytool -list -keystore "$KEYSTORE_PATH" -storepass "$STORE_PASS" -alias "$ALIAS" >/tmp/keystore-alias.txt 2>/tmp/keystore-alias.err; then
+            echo "::error::Keystore validation failed for alias '$ALIAS'."
+            cat /tmp/keystore-alias.err
+            exit 1
+          fi
+          cat /tmp/keystore-alias.txt
+
+          # app/build.gradle.kts env signingConfig expects Base64 in signingKey + passwords.
+          {
+            echo "signingKey=$SIGNING_B64"
+            echo "keyStorePassword=$STORE_PASS"
+            echo "keyAlias=$ALIAS"
+            echo "keyPassword=$KEY_PASS"
+          } >> "$GITHUB_ENV"
       - name: Build App
         # Build .apk
         run: |
           bash ./gradlew ${{inputs.args}} assembleFullRelease
           bash ./gradlew ${{inputs.args}} assembleLiteRelease
         env:
-          signingKey: ${{ secrets.ANDROID_SIGNING_KEY }}
-          keyAlias: ${{ secrets.ANDROID_KEY_ALIAS }}
-          keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          signingKey: ${{ env.signingKey }}
+          keyAlias: ${{ env.keyAlias }}
+          keyStorePassword: ${{ env.keyStorePassword }}
+          keyPassword: ${{ env.keyPassword }}
           CI_BUILD_MINIFY: ${{ inputs.minify }}
       - name: Move files
         run: |
