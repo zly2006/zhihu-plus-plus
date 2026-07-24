@@ -119,7 +119,7 @@ kotlin {
             implementation("io.ktor:ktor-serialization-kotlinx-json:3.5.0")
             implementation("com.materialkolor:material-kolor:4.1.1")
             implementation("com.fleeksoft.ksoup:ksoup:0.2.6")
-            implementation("io.github.zly2006:latex-renderer:0.0.1-alpha2")
+            implementation("io.github.zly2006:latex-renderer:0.0.1-alpha4")
             implementation(project(":markdown-parser"))
             implementation(project(":markdown-renderer"))
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.8.0")
