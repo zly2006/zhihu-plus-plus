@@ -35,7 +35,10 @@ private fun resolveCommitHash(projectRoot: java.io.File): String =
         ?: envOrNull("GITHUB_SHA")
         ?: gitFullHash(projectRoot)
 
-private fun resolveShortHash(projectRoot: java.io.File, commitHash: String): String {
+private fun resolveShortHash(
+    projectRoot: java.io.File,
+    commitHash: String,
+): String {
     envOrNull("ZHPLUS_SHORT_HASH")?.let { return it }
     if (commitHash != "unknown" && commitHash.length >= 8) {
         return commitHash.take(8)
