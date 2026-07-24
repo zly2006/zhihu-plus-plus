@@ -36,6 +36,12 @@
         <meta-data
                 android:name="com.github.zly2006.zhihu.GIT_HASH"
                 android:value="${zhihuGitHash}"/>
+        <meta-data
+                android:name="com.github.zly2006.zhihu.COMMIT_HASH"
+                android:value="${zhihuCommitHash}"/>
+        <meta-data
+                android:name="com.github.zly2006.zhihu.BUILD_TIME"
+                android:value="${zhihuBuildTime}"/>
 
         <activity
                 android:name=".CaptureActivity"

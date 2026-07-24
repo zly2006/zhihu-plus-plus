@@ -10,6 +10,7 @@
 4. Desktop: `shared/src/jvmMain/kotlin/com/github/zly2006/zhihu/ui/DesktopZhihuMain.kt`
 5. 设置页: `shared/src/commonMain/kotlin/com/github/zly2006/zhihu/ui/subscreens/*SettingsScreen.kt`
 6. 复用组件: `shared/src/commonMain/kotlin/com/github/zly2006/zhihu/ui/components/SettingItem.kt`、`FeedCard.kt`、`DraggableRefreshButton.kt`
+7. 首装/更新门控: `shared/src/commonMain/kotlin/com/github/zly2006/zhihu/onboarding/AppGateHost.kt`（OSS 声明 > 用户须知 > 本次更新说明）；账号页「开源说明与鸣谢」经 `OssNoticeReopenBus` 重开。
 
 UI 改动不要只看目标页面。至少用 `rg "<preferenceKey>" shared app` 查设置项的读取点，用 `rg "<NavDestinationName>" shared app` 查导航入口和测试。
 
@@ -28,6 +29,8 @@ URL 解析集中在 `resolveContent()`。支持知乎问题、回答、文章、
 ## 主界面结构
 
 `ZhihuMain` 是共同 UI 外壳。它读取 `ZhihuMainPreferenceState`，生成底栏项、主 pager 页、自动隐藏状态和 `NavHost` route。Android 与 Desktop 分别用平台 adapter 注入文章页、NLP 管理页、视频打开和转场。
+
+`AppGateHost` 外包在 Android `AndroidZhihuMain` 与 Desktop `DesktopZhihuMain` 的 `ZhihuMain` 外，门控优先级为开源声明 > 产品用户须知 > 本次更新说明 > 主内容。账号页「开源说明与鸣谢」通过 `OssNoticeReopenBus` 以 reopen 模式叠在主内容上，不新增 `NavDestination`、不重置 first-run。
 
 底栏项顺序固定为: 主页、关注、热榜、日报、历史、账号。实际显示由 `bottom_bar_items` 决定，并经过 `normalizeBottomBarSelection()` 兜底。`duo3_home_account` 开启后，账号入口迁到主页头像，底栏选择规则会改变；这类改动必须一起检查主页账号入口、账号页历史快捷方式和底栏启动页。
 

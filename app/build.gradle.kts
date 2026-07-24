@@ -1,5 +1,6 @@
 @file:OptIn(ExperimentalEncodingApi::class)
 
+import buildlogic.gitFullHash
 import buildlogic.gitHash
 import org.gradle.api.tasks.testing.Test
 import org.gradle.jvm.toolchain.JavaLanguageVersion
@@ -14,6 +15,38 @@ plugins {
     id("kotlin-parcelize")
     id("org.jlleitschuh.gradle.ktlint")
 }
+
+// CI may inject ZHPLUS_* build identity (see .github/workflows/auto-release.yml).
+// Local builds fall back to gradle.properties + git.
+private fun envOrNull(name: String): String? =
+    System.getenv(name)?.trim()?.takeIf { it.isNotEmpty() }
+
+private fun resolveVersionName(): String =
+    envOrNull("ZHPLUS_VERSION_NAME")
+        ?: property("app.versionName").toString()
+
+private fun resolveVersionCode(): Int =
+    envOrNull("ZHPLUS_VERSION_CODE")?.toIntOrNull()
+        ?: property("app.versionCode").toString().toIntOrNull()
+        ?: 1
+
+private fun resolveCommitHash(projectRoot: java.io.File): String =
+    envOrNull("ZHPLUS_COMMIT_HASH")
+        ?: envOrNull("GITHUB_SHA")
+        ?: gitFullHash(projectRoot)
+
+private fun resolveShortHash(projectRoot: java.io.File, commitHash: String): String {
+    envOrNull("ZHPLUS_SHORT_HASH")?.let { return it }
+    if (commitHash != "unknown" && commitHash.length >= 8) {
+        return commitHash.take(8)
+    }
+    val local = gitHash(projectRoot)
+    return if (local != "unknown") local else commitHash.take(7).ifEmpty { "unknown" }
+}
+
+private fun resolveBuildTimeUtcMillis(): Long =
+    envOrNull("ZHPLUS_BUILD_TIME_UTC_MILLIS")?.toLongOrNull()
+        ?: System.currentTimeMillis()
 
 ktlint {
     android.set(true)
@@ -39,8 +72,8 @@ android {
         applicationId = "com.github.zly2006.zhplus"
         minSdk = 27
         targetSdk = 35
-        versionCode = property("app.versionCode").toString().toIntOrNull() ?: 1
-        versionName = property("app.versionName").toString()
+        versionCode = resolveVersionCode()
+        versionName = resolveVersionName()
 
         testInstrumentationRunner = "com.github.zly2006.zhihu.ZhihuInstrumentedTestRunner"
     }
@@ -85,19 +118,29 @@ android {
     }
 
     buildTypes {
-        val gitHash = gitHash(rootProject.projectDir)
+        val commitHash = resolveCommitHash(rootProject.projectDir)
+        val shortHash = resolveShortHash(rootProject.projectDir, commitHash)
+        val buildTimeUtcMillis = resolveBuildTimeUtcMillis()
         debug {
-            buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
+            buildConfigField("String", "GIT_HASH", "\"$shortHash\"")
+            buildConfigField("String", "COMMIT_HASH", "\"$commitHash\"")
+            buildConfigField("long", "BUILD_TIME_UTC_MILLIS", "${buildTimeUtcMillis}L")
             manifestPlaceholders["zhihuBuildType"] = "debug"
-            manifestPlaceholders["zhihuGitHash"] = gitHash
+            manifestPlaceholders["zhihuGitHash"] = shortHash
+            manifestPlaceholders["zhihuCommitHash"] = commitHash
+            manifestPlaceholders["zhihuBuildTime"] = buildTimeUtcMillis.toString()
         }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
+            buildConfigField("String", "GIT_HASH", "\"$shortHash\"")
+            buildConfigField("String", "COMMIT_HASH", "\"$commitHash\"")
+            buildConfigField("long", "BUILD_TIME_UTC_MILLIS", "${buildTimeUtcMillis}L")
             manifestPlaceholders["zhihuBuildType"] = "release"
-            manifestPlaceholders["zhihuGitHash"] = gitHash
+            manifestPlaceholders["zhihuGitHash"] = shortHash
+            manifestPlaceholders["zhihuCommitHash"] = commitHash
+            manifestPlaceholders["zhihuBuildTime"] = buildTimeUtcMillis.toString()
             if (System.getenv("signingKey") != null) {
                 signingConfig = signingConfigs["env"]
             }

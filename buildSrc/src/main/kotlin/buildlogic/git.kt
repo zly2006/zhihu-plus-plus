@@ -25,10 +25,16 @@ private const val SHORT_HASH_LENGTH = 7
 private const val HEADS_REF_PREFIX = "refs/heads/"
 
 fun gitHash(projectRoot: File): String {
+    val fullHash = gitFullHash(projectRoot)
+    if (fullHash == FALLBACK_HASH) return FALLBACK_HASH
+    return fullHash.take(SHORT_HASH_LENGTH)
+}
+
+/** Full 40-char commit hash, or [FALLBACK_HASH] when unavailable. */
+fun gitFullHash(projectRoot: File): String {
     val repoRoot = findRepositoryRoot(projectRoot.absoluteFile) ?: return FALLBACK_HASH
     val gitDir = resolveGitDir(repoRoot) ?: return FALLBACK_HASH
-    val fullHash = readHeadHash(gitDir) ?: return FALLBACK_HASH
-    return fullHash.take(SHORT_HASH_LENGTH)
+    return readHeadHash(gitDir) ?: FALLBACK_HASH
 }
 
 fun gitBranch(projectRoot: File): String {

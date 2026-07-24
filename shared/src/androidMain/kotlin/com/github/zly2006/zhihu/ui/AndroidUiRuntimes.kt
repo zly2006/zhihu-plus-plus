@@ -168,7 +168,14 @@ private fun Context.zhihuVersionInfo(): String {
     val buildType = metaData?.getString("com.github.zly2006.zhihu.BUILD_TYPE")
         ?: if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) "debug" else "release"
     val gitHash = metaData?.getString("com.github.zly2006.zhihu.GIT_HASH") ?: "unknown"
-    return "$versionName $buildType, $gitHash"
+    val buildTime =
+        metaData?.getString("com.github.zly2006.zhihu.BUILD_TIME")?.toLongOrNull()
+            ?: 0L
+    return if (buildTime > 0L) {
+        "$versionName $buildType, $gitHash · $buildTime"
+    } else {
+        "$versionName $buildType, $gitHash"
+    }
 }
 
 private fun Context.navigateMainTab(destination: TopLevelDestination) {

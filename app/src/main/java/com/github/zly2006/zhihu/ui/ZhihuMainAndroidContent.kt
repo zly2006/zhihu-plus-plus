@@ -34,6 +34,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.onboarding.AppGateHost
 import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
 import com.github.zly2006.zhihu.viewmodel.AndroidArticlesSharedData
@@ -44,17 +45,20 @@ import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
  *
  * 这里把 [MainActivity] 持有的导航、偏好设置、文章页 ViewModel、回答切换转场和 NLP 页面适配到共享 [ZhihuMain]。
  * UI 结构仍由 common 主壳负责，Android 只提供生命周期、Activity、ViewModel 和平台专属页面实现。
+ * [AppGateHost] 负责首装开源声明、用户须知与本次更新说明门控。
  */
 @Composable
 fun AndroidZhihuMain(navController: NavHostController) {
     val activity = LocalActivity.current as MainActivity
-    ZhihuMain(
-        navController = navController,
-        navigationState = rememberAndroidZhihuMainNavigationState(),
-        preferenceState = rememberAndroidZhihuMainPreferenceState(),
-        isDarkTheme = com.github.zly2006.zhihu.theme.ThemeManager.isDarkTheme,
-        platformAdapter = androidZhihuMainPlatformAdapter(activity),
-    )
+    AppGateHost {
+        ZhihuMain(
+            navController = navController,
+            navigationState = rememberAndroidZhihuMainNavigationState(),
+            preferenceState = rememberAndroidZhihuMainPreferenceState(),
+            isDarkTheme = com.github.zly2006.zhihu.theme.ThemeManager.isDarkTheme,
+            platformAdapter = androidZhihuMainPlatformAdapter(activity),
+        )
+    }
 }
 
 private fun androidZhihuMainPlatformAdapter(activity: MainActivity) = ZhihuMainPlatformAdapter(
