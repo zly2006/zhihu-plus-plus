@@ -136,6 +136,7 @@ import com.github.zly2006.zhihu.ui.subscreens.BlockedFeedHistoryScreen
 import com.github.zly2006.zhihu.ui.subscreens.ColorSchemeScreen
 import com.github.zly2006.zhihu.ui.subscreens.ContentFilterSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.DeveloperSettingsScreen
+import com.github.zly2006.zhihu.ui.subscreens.IdentityManagementScreen
 import com.github.zly2006.zhihu.ui.subscreens.OpenSourceLicensesScreen
 import com.github.zly2006.zhihu.ui.subscreens.ReadingSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.SystemAndUpdateSettingsScreen
@@ -645,6 +646,9 @@ fun ZhihuMain(
                     composable<Account.RecommendSettings> { navEntry ->
                         val args = navEntry.toRoute<Account.RecommendSettings>()
                         ContentFilterSettingsScreen(args.setting)
+                    }
+                    composable<Account.IdentityManagement> {
+                        IdentityManagementScreen()
                     }
                     composable<Account.SystemAndUpdateSettings> {
                         SystemAndUpdateSettingsScreen()
