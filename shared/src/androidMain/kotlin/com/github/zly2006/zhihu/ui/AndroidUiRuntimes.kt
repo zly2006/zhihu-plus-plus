@@ -155,6 +155,7 @@ fun AccountData.Data.toAccountSettingsAccountState(): AccountSettingsAccountStat
     avatarUrl = self?.avatarUrl,
     id = self?.id ?: "",
     urlToken = self?.urlToken,
+    identityManagementSupported = true,
 )
 
 private fun Context.zhihuVersionInfo(): String {

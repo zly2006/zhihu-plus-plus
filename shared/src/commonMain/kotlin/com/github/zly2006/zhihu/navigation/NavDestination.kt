@@ -131,6 +131,9 @@ data object Account : TopLevelDestination {
     }
 
     @Serializable
+    data object IdentityManagement : NavDestination
+
+    @Serializable
     data object SystemAndUpdateSettings : NavDestination
 
     @Serializable

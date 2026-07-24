@@ -490,6 +490,7 @@ data class AccountSettingsAccountState(
     val avatarUrl: String? = null,
     val id: String = "",
     val urlToken: String? = null,
+    val identityManagementSupported: Boolean = false,
 )
 
 @Composable
