@@ -46,6 +46,10 @@ object ClashPartnerCompat {
         "com.github.metacubex.clash",
         "com.github.metacubex.clash.meta",
         "com.github.metacubex.clash.alpha",
+        // Common custom.application.id / fork packaging variants.
+        "com.chloemlla.clash",
+        "com.chloemlla.clash.meta",
+        "com.chloemlla.clash.alpha",
     )
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -113,6 +117,10 @@ object ClashPartnerCompat {
         val ctx = context?.applicationContext ?: appContext ?: return
         val next = buildStatus(ctx)
         status = next
+        // Keep this process on the VPN network while Clash is routing so
+        // apps cannot "escape" via ConnectivityManager request-network /
+        // allowBypass paths. Clear binding when Clash is off.
+        applyVpnProcessBinding(ctx, next)
         listeners.forEach { listener ->
             mainHandler.post { listener(next) }
         }
@@ -234,6 +242,32 @@ object ClashPartnerCompat {
                 "name" to bundle.getString("name"),
                 "package" to (bundle.getString("package") ?: pkg),
             )
+        }
+        return null
+    }
+
+    /**
+     * Bind (or unbind) this process to the active VPN network while Clash is
+     * routing. Without this, [NetworkCapabilities.NET_CAPABILITY_NOT_VPN]
+     * requests and [VpnService.allowBypass] can let Ktor/WebView leave the
+     * tunnel even though Clash is "on".
+     */
+    private fun applyVpnProcessBinding(context: Context, status: Status) {
+        val cm = context.getSystemService<ConnectivityManager>() ?: return
+        if (!isAutoAdaptEnabled(context) || !status.isClashVpnRouting) {
+            runCatching { cm.bindProcessToNetwork(null) }
+            return
+        }
+        val vpn = findVpnNetwork(cm) ?: return
+        runCatching { cm.bindProcessToNetwork(vpn) }
+    }
+
+    private fun findVpnNetwork(cm: ConnectivityManager): Network? {
+        for (network in cm.allNetworks) {
+            val caps = cm.getNetworkCapabilities(network) ?: continue
+            if (caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) {
+                return network
+            }
         }
         return null
     }
