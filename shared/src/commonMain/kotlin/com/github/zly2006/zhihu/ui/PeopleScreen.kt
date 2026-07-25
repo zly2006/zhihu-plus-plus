@@ -801,7 +801,7 @@ fun PeopleScreen(
                         ) {
                             FeedCard(
                                 it,
-                                modifier = Modifier.testTag("people_screen_activity_item_${it.localFeedId ?: it.title}"),
+                                modifier = Modifier.testTag("people_screen_activity_item_${it.stableKey}"),
                                 horizontalPadding = 4.dp,
                             )
                         }

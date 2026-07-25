@@ -197,7 +197,6 @@ class CollectionContentScreenInstrumentedTest {
                 navDestinationJson = seedQuestionDestination(index + 1).toFeedDisplayItemNavDestinationJson(),
                 feed = null,
                 authorName = "作者 ${index + 1}",
-                localFeedId = "collection-content-test-item-${index + 1}",
             )
         }
         val seededAllData = List(itemCount) { index ->

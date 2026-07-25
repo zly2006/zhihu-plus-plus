@@ -891,6 +891,7 @@ object DataHolder {
         @SerialName("image")
         data class ContentImage(
             val url: String,
+            val thumbnail: String = "",
             val width: Int,
             val height: Int,
             val isGif: Boolean = false,

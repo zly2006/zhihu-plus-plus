@@ -441,7 +441,6 @@ class PeopleScreenInstrumentedTest {
                 details = "动态详情 ${index + 1}",
                 feed = null,
                 navDestinationJson = Search(query = "离线动态 ${index + 1}").toFeedDisplayItemNavDestinationJson(),
-                localFeedId = "activity-${index + 1}",
             )
         }
 

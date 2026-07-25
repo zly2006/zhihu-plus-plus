@@ -364,7 +364,6 @@ class QuestionScreenInstrumentedTest {
                 id = 7000L + id,
             ).toFeedDisplayItemNavDestinationJson(),
             authorName = "离线作者 $id",
-            localFeedId = "offline-question-item-$id",
         )
     }
 

@@ -52,6 +52,7 @@ class PinFeedDisplayItemTest {
                         {
                           "type": "image",
                           "url": "https://pic.example/image.jpg",
+                          "thumbnail": "https://pic.example/thumbnail.jpg",
                           "width": 1200,
                           "height": 800,
                           "is_gif": false,
@@ -70,6 +71,7 @@ class PinFeedDisplayItemTest {
 
         val image = assertIs<DataHolder.Pin.ContentImage>(pin.content[1])
         assertEquals("https://pic.example/image.jpg", image.url)
+        assertEquals("https://pic.example/thumbnail.jpg", image.thumbnail)
         assertEquals(1200, image.width)
         assertEquals("https://pic.example/original.jpg", image.originalUrl)
     }

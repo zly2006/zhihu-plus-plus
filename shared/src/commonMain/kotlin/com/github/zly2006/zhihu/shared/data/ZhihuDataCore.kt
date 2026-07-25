@@ -31,18 +31,9 @@ data class FeedDisplayItem(
     val isFiltered: Boolean = false,
     val content: String? = null,
     var raw: DataHolder.Content? = null,
-    val localContentId: String? = null,
-    val localFeedId: String? = null,
-    val localReason: String? = null,
-    val sourceLabel: String? = null,
-    val segmentInfos: List<SegmentInfoParagraph> = emptyList(),
-    val segmentSourceUrl: String? = null,
-    val pinImages: List<DataHolder.Pin.ContentImage> = emptyList(),
 ) {
     val stableKey: String
-        get() = localFeedId
-            ?: localContentId
-            ?: navDestinationJson
+        get() = navDestinationJson
             ?: feed?.target?.stableTargetKey
             ?: "$title|${summary.orEmpty()}|$details"
 }
@@ -133,16 +124,6 @@ private fun Feed.toTargetDisplayItem(
             authorName = target.author?.name,
             authorBadgeV2 = target.author?.badgeV2,
             feed = this,
-            segmentInfos = when (target) {
-                is Feed.AnswerTarget -> target.segmentInfos
-                is Feed.ArticleTarget -> target.segmentInfos
-                else -> emptyList()
-            },
-            segmentSourceUrl = when (target) {
-                is Feed.AnswerTarget -> "https://www.zhihu.com/question/${target.question.id}/answer/${target.id}"
-                is Feed.ArticleTarget -> "https://zhuanlan.zhihu.com/p/${target.id}"
-                else -> null
-            },
         )
 
         is Feed.PinTarget -> {
@@ -167,7 +148,6 @@ private fun Feed.toTargetDisplayItem(
                 authorName = target.author.name,
                 authorBadgeV2 = target.author.badgeV2,
                 feed = this,
-                pinImages = target.content.filterIsInstance<DataHolder.Pin.ContentImage>(),
             )
         }
 

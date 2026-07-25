@@ -649,7 +649,7 @@ fun HomeScreen(
                         if (feed != null) {
 //                            DataHolder.putFeed(feed)
                             (viewModel as? HomeFeedInteractionViewModel)?.onUiContentClick(paginationEnvironment, feed, item)
-                        } else if (item.localContentId != null) {
+                        } else {
                             localHomeViewModel?.onLocalItemOpened(item)
                         }
                         if (destination != null) {

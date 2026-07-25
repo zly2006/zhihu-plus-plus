@@ -39,6 +39,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Search
+import com.github.zly2006.zhihu.shared.data.CommonFeed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
@@ -339,7 +340,6 @@ class FollowScreenInstrumentedTest {
             details = "离线推荐详情 $itemId",
             feed = null,
             navDestinationJson = Search(query = "follow-recommend-$itemId").toFeedDisplayItemNavDestinationJson(),
-            localFeedId = "recommend-item-$itemId",
         )
     }
 
@@ -349,10 +349,11 @@ class FollowScreenInstrumentedTest {
             title = "动态离线条目 ${itemId.toString().padStart(2, '0')}",
             summary = "这是第 $itemId 条 Follow 动态页离线摘要。",
             details = "离线动态详情 $itemId",
-            feed = null,
+            feed = CommonFeed(
+                id = "dynamic-item-$itemId",
+                actionText = "关注用户 $itemId 赞同了回答",
+            ),
             navDestinationJson = Search(query = "follow-dynamic-$itemId").toFeedDisplayItemNavDestinationJson(),
-            localFeedId = "dynamic-item-$itemId",
-            sourceLabel = "关注用户 $itemId 赞同了回答",
         )
     }
 
