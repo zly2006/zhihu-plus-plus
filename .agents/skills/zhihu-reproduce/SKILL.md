@@ -113,6 +113,10 @@ https://www.zhihu.com/api/v4/comment_v5/{contentType}/{contentId}/root_comment
 - Web API 使用 `signFetchRequest(context)`；Android API 使用 `AccountData.ANDROID_HEADERS` 和 `ANDROID_USER_AGENT`。
 - 新增模型优先复用现有结构；只有语义不同或生命周期不同才新增类型。
 
+### 领域结构必须在序列化层强类型化
+
+当接口字段具有稳定的领域结构，且项目中已经存在同类内容模型时，不能为了暂时取几个字段而把它长期声明成 `JsonArray`、`JsonObject` 或 `JsonElement`，再在展示映射层逐个做运行时类型判断。必须先核对并复用已有领域模型；确实缺字段时，在数据层补齐 `@Serializable` 强类型结构和兼容默认值，让 `kotlinx.serialization` 负责解码，UI/展示层只消费业务字段。例子：一个内容数组由文本、图片、链接卡片等固定条目组成时，应建模为可序列化条目列表并在模型内表达可选字段，不能让卡片渲染逻辑自己遍历原始 JSON 猜测条目类型。
+
 如果发现网页字段和现有存储模型不匹配，先说明差异和迁移影响，再决定是否改 Room、Repository 或只做内存态展示。
 
 ### 字段可用性与请求层级决策
@@ -161,6 +165,10 @@ https://www.zhihu.com/api/v4/comment_v5/{contentType}/{contentId}/root_comment
 - Compose 中用 `LaunchedEffect` 处理副作用，并设置正确 key。
 - 用 `collectAsState()` 观察 Flow/StateFlow。
 - 导航相关改动前必须先检查 `NavDestination.kt`。
+
+### 文案行数不等于布局契约
+
+需求或 issue 用“显示若干行”描述预览内容时，必须先判断它是在说明内容组成，还是明确要求修改现有组件的截断规则。若问题根因是字段取错或正文为空，应先修正数据映射，并让现有卡片布局自然展示；没有真实 UI 对比证明前，不得顺手修改共用组件的 `maxLines`、高度或截断行为。例子：需求说预览应由标题和正文组成，正确做法可能只是把虚构标题替换为真实标题、把正文映射回来，而不是据此重写两套卡片各自的行数限制。
 
 如果原版依赖 hover、复杂 DOM 或桌面布局，应转换成 Android 上自然的交互，例如 bottom sheet、菜单、长按、可点击行或显式按钮。
 

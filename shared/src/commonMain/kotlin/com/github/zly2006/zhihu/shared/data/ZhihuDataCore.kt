@@ -17,6 +17,8 @@
 
 package com.github.zly2006.zhihu.shared.data
 
+import com.fleeksoft.ksoup.Ksoup
+
 data class FeedDisplayItem(
     val title: String,
     val summary: String?,
@@ -142,15 +144,34 @@ private fun Feed.toTargetDisplayItem(
             },
         )
 
-        is Feed.PinTarget -> FeedDisplayItem(
-            title = target.author.name + "的想法",
-            summary = target.excerpt,
-            details = target.detailsText,
-            avatarSrc = target.author.avatarUrl,
-            authorName = target.author.name,
-            authorBadgeV2 = target.author.badgeV2,
-            feed = this,
-        )
+        is Feed.PinTarget -> {
+            val textContent = target.content
+                .filterIsInstance<DataHolder.Pin.ContentText>()
+                .firstOrNull()
+            val title = textContent
+                ?.title
+                ?.let { Ksoup.parse(it).text() }
+                ?.takeIf { it.isNotBlank() }
+                .orEmpty()
+            val contentSummary = textContent
+                ?.content
+                ?.let { Ksoup.parse(it).text() }
+                ?.takeIf { it.isNotBlank() }
+            val excerptSummary = target.excerpt
+                ?.let { Ksoup.parse(it).text() }
+                ?.takeIf { it.isNotBlank() }
+            val summary = (contentSummary ?: excerptSummary)?.takeUnless { it == title }
+
+            FeedDisplayItem(
+                title = title,
+                summary = summary,
+                details = target.detailsText,
+                avatarSrc = target.author.avatarUrl,
+                authorName = target.author.name,
+                authorBadgeV2 = target.author.badgeV2,
+                feed = this,
+            )
+        }
 
         else -> FeedDisplayItem(
             title = target?.description() ?: "广告",
