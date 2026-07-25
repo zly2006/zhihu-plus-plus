@@ -43,6 +43,7 @@ import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.github.zly2006.zhihu.markdown.RenderImage
 import com.github.zly2006.zhihu.markdown.RenderMarkdownText
 import com.github.zly2006.zhihu.navigation.AnswerNavigator
 import com.github.zly2006.zhihu.navigation.Article
@@ -59,6 +60,7 @@ import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.ui.rememberArticleTtsState
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
+import com.hrm.markdown.renderer.MarkdownImageData
 import io.ktor.client.HttpClient
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -244,6 +246,33 @@ class ArticleScreenInstrumentedTest {
             "Initial estimated scroll range should stay within 25% of the fully materialized range; " +
                 "estimated=$initialMaxScroll materialized=$materializedMaxScroll",
             estimateRatio in 0.75f..1.25f,
+        )
+    }
+
+    @Test
+    fun markdownImageReservesItsApiAspectRatioBeforeNetworkLoad() {
+        composeRule.setScreenContent {
+            RenderImage(
+                data = MarkdownImageData(
+                    url = "https://invalid.invalid/not-loaded.jpg",
+                    altText = "未加载的比例图片",
+                    width = 1200,
+                    height = 880,
+                ),
+                modifier = androidx.compose.ui.Modifier,
+            )
+        }
+
+        val imageBounds = composeRule
+            .onNodeWithContentDescription("未加载的比例图片")
+            .fetchSemanticsNode()
+            .boundsInRoot
+        assertTrue("Image width must be reserved before loading", imageBounds.width > 0f)
+        assertTrue("Image height must be reserved before loading", imageBounds.height > 0f)
+        assertEquals(
+            1200.0 / 880.0,
+            imageBounds.width.toDouble() / imageBounds.height.toDouble(),
+            0.02,
         )
     }
 
