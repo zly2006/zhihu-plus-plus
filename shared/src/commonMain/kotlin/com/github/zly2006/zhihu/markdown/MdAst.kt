@@ -388,6 +388,10 @@ private fun createBlockImage(element: Element): MarkdownNode? {
     return Figure(
         imageUrl = src,
         caption = caption,
+        imageWidth = element.attr("data-rawwidth").toIntOrNull()
+            ?: element.attr("width").toIntOrNull(),
+        imageHeight = element.attr("data-rawheight").toIntOrNull()
+            ?: element.attr("height").toIntOrNull(),
     )
 }
 
@@ -398,8 +402,10 @@ private fun createFigureBlock(element: Element): MarkdownNode? {
         return Figure(
             imageUrl = src,
             caption = caption,
-            imageWidth = image.attr("width").toIntOrNull(),
-            imageHeight = image.attr("height").toIntOrNull(),
+            imageWidth = image.attr("data-rawwidth").toIntOrNull()
+                ?: image.attr("width").toIntOrNull(),
+            imageHeight = image.attr("data-rawheight").toIntOrNull()
+                ?: image.attr("height").toIntOrNull(),
         )
     }
 

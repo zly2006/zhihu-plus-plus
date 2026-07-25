@@ -98,6 +98,14 @@ fun RenderImage(
     val previewUrls = remember(imageUrls, data.url) {
         imageUrls.ifEmpty { listOf(data.url) }
     }
+    val imageWidth = data.width
+    val imageHeight = data.height
+    val imageAspectRatio =
+        if (imageWidth != null && imageHeight != null && imageWidth > 0 && imageHeight > 0) {
+            imageWidth.toFloat() / imageHeight
+        } else {
+            null
+        }
 
     fun openGallery() {
         val initialIndex = previewUrls.indexOf(data.url).takeIf { it >= 0 } ?: 0
@@ -113,7 +121,13 @@ fun RenderImage(
             contentDescription = data.altText,
             modifier = modifier
                 .fillMaxWidth(0.8f)
-                .pointerInput(Unit) {
+                .then(
+                    if (imageAspectRatio != null) {
+                        Modifier.aspectRatio(imageAspectRatio)
+                    } else {
+                        Modifier
+                    },
+                ).pointerInput(Unit) {
                     detectTapGestures(
                         onTap = {
                             openGallery()
