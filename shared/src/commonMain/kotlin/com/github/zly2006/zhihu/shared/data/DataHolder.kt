@@ -873,7 +873,9 @@ object DataHolder {
         @Serializable
         @SerialName("text")
         data class ContentText(
+            /** 想法正文的 HTML 片段。 */
             val content: String,
+            /** 想法标题的纯文本；不能按 HTML 解析，否则尖括号内容会丢失。 */
             val title: String,
         ) : ContentItem
 

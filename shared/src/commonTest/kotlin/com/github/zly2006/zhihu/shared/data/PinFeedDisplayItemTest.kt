@@ -127,6 +127,18 @@ class PinFeedDisplayItemTest {
     }
 
     @Test
+    fun pinPreviewPreservesPlainTextAnglesInTitleAndDecodesHtmlBody() {
+        val item = pinFeed(
+            title = "List<Integer> 后面的标题",
+            content = "<p>正文 List&lt;Integer&gt; 后面的内容</p>",
+            excerptTitle = "",
+        ).toDisplayItem()
+
+        assertEquals("List<Integer> 后面的标题", item.title)
+        assertEquals("正文 List<Integer> 后面的内容", item.summary)
+    }
+
+    @Test
     fun pinPreviewWithoutTitleUsesContentBody() {
         val item = pinFeed(
             title = "",

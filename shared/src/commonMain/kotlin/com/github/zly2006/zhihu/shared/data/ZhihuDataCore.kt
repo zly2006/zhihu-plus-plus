@@ -150,7 +150,6 @@ private fun Feed.toTargetDisplayItem(
                 .firstOrNull()
             val title = textContent
                 ?.title
-                ?.let { Ksoup.parse(it).text() }
                 ?.takeIf { it.isNotBlank() }
                 .orEmpty()
             val contentSummary = textContent
