@@ -37,6 +37,7 @@ data class FeedDisplayItem(
     val sourceLabel: String? = null,
     val segmentInfos: List<SegmentInfoParagraph> = emptyList(),
     val segmentSourceUrl: String? = null,
+    val pinImages: List<DataHolder.Pin.ContentImage> = emptyList(),
 ) {
     val stableKey: String
         get() = localFeedId
@@ -166,6 +167,7 @@ private fun Feed.toTargetDisplayItem(
                 authorName = target.author.name,
                 authorBadgeV2 = target.author.badgeV2,
                 feed = this,
+                pinImages = target.content.filterIsInstance<DataHolder.Pin.ContentImage>(),
             )
         }
 

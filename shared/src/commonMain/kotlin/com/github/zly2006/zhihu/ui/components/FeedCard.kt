@@ -18,11 +18,15 @@
 package com.github.zly2006.zhihu.ui.components
 
 import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -51,8 +55,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -118,6 +124,7 @@ fun FeedCard(
     val duo3CardAppearance = remember { settings.getBoolean("duo3_card_appearance", false) }
     val duo3CardLayout = remember { settings.getBoolean("duo3_card_layout", false) }
     val duo3CardLargeTitle = remember { settings.getBoolean("duo3_card_large_title", true) }
+    val showPinImages = showFeedThumbnail && item.pinImages.isNotEmpty() && !item.isFiltered
     val onClick = onClick ?: {
         this.navDestination?.let {
             navigator.onNavigate(it)
@@ -134,7 +141,7 @@ fun FeedCard(
         Column(
             modifier = modifier
                 .fillMaxWidth()
-                .heightIn(max = maxHeight),
+                .then(if (showPinImages) Modifier else Modifier.heightIn(max = maxHeight)),
         ) {
             Column(
                 modifier = Modifier
@@ -163,7 +170,7 @@ fun FeedCard(
         Box(
             modifier = modifier
                 .fillMaxWidth()
-                .heightIn(max = maxHeight)
+                .then(if (showPinImages) Modifier else Modifier.heightIn(max = maxHeight))
                 .padding(horizontal = horizontalPadding, vertical = 8.dp),
         ) {
             Card(
@@ -338,6 +345,7 @@ private fun FeedCardContent(
     val fontSizePercent = remember { settings.getInt(PREF_FONT_SIZE, 100) }
     val lineHeightPercent = remember { settings.getInt(PREF_LINE_HEIGHT, 160) }
     val navigator = LocalNavigator.current
+    val pinImages = item.pinImages.takeIf { showFeedThumbnail && !item.isFiltered }.orEmpty()
     if (duo3CardLayout) {
         // ── 新排版（duo3）────────────────────────────────────────────────────
         if (showSourceLabel) {
@@ -386,6 +394,10 @@ private fun FeedCardContent(
                     )
                 }
             }
+            PinFeedImages(
+                images = pinImages,
+                modifier = Modifier.padding(top = 8.dp),
+            )
             if (item.details.isNotEmpty() || (item.avatarSrc != null && item.authorName != null)) {
                 Row(
                     modifier = Modifier
@@ -497,6 +509,10 @@ private fun FeedCardContent(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = if (item.isFiltered) 0.dp else 3.dp),
                 )
+                PinFeedImages(
+                    images = pinImages,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
                 if (item.details.isNotEmpty()) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -522,6 +538,133 @@ private fun FeedCardContent(
                         .weight(1f)
                         .sizeIn(maxWidth = 60.dp)
                         .clip(RoundedCornerShape(8.dp)),
+                )
+            }
+        }
+    }
+}
+
+internal enum class PinFeedImageLayout {
+    SINGLE,
+    MULTI_ROW,
+    NINE_GRID,
+}
+
+internal fun pinFeedImageLayout(imageCount: Int): PinFeedImageLayout? = when (imageCount) {
+    0 -> null
+    1 -> PinFeedImageLayout.SINGLE
+    in 2..4 -> PinFeedImageLayout.MULTI_ROW
+    else -> PinFeedImageLayout.NINE_GRID
+}
+
+@Composable
+private fun PinFeedImages(
+    images: List<DataHolder.Pin.ContentImage>,
+    modifier: Modifier = Modifier,
+) {
+    when (pinFeedImageLayout(images.size)) {
+        null -> return
+        PinFeedImageLayout.SINGLE -> {
+            val image = images.single()
+            AsyncImage(
+                model = image.url,
+                contentDescription = "想法图片 1/1",
+                modifier = modifier
+                    .fillMaxWidth()
+                    .aspectRatio((image.width.toFloat() / image.height.coerceAtLeast(1)).coerceIn(0.8f, 16f / 9f))
+                    .clip(RoundedCornerShape(8.dp))
+                    .testTag("pin_feed_image_0"),
+                contentScale = ContentScale.Crop,
+            )
+        }
+        PinFeedImageLayout.MULTI_ROW -> {
+            Row(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .testTag("pin_feed_images"),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                images.forEachIndexed { index, image ->
+                    PinFeedImage(
+                        image = image,
+                        index = index,
+                        totalCount = images.size,
+                        modifier = Modifier
+                            .weight(1f)
+                            .aspectRatio(1f),
+                    )
+                }
+            }
+        }
+        PinFeedImageLayout.NINE_GRID -> {
+            val visibleImages = images.take(9)
+            Column(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .testTag("pin_feed_images"),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                visibleImages.chunked(3).forEachIndexed { rowIndex, rowImages ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        rowImages.forEachIndexed { columnIndex, image ->
+                            val index = rowIndex * 3 + columnIndex
+                            PinFeedImage(
+                                image = image,
+                                index = index,
+                                totalCount = images.size,
+                                remainingCount = (images.size - 9).takeIf { index == 8 && it > 0 },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .aspectRatio(1f),
+                            )
+                        }
+                        repeat(3 - rowImages.size) {
+                            Spacer(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .aspectRatio(1f),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PinFeedImage(
+    image: DataHolder.Pin.ContentImage,
+    index: Int,
+    totalCount: Int,
+    remainingCount: Int? = null,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .testTag("pin_feed_image_$index"),
+    ) {
+        AsyncImage(
+            model = image.url,
+            contentDescription = "想法图片 ${index + 1}/$totalCount",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+        )
+        if (remainingCount != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.55f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "+$remainingCount",
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleLarge,
                 )
             }
         }
