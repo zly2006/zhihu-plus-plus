@@ -194,7 +194,7 @@ sealed interface Feed {
         override val url: String,
         override val author: Person,
         val commentCount: Int = 0,
-        val content: JsonArray? = null,
+        val content: List<DataHolder.Pin.ContentItem> = emptyList(),
         val likeCount: Int = 0,
         val excerptTitle: String = "",
         val contentHtml: String = "",
