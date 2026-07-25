@@ -197,20 +197,22 @@ class PeopleScreenInstrumentedTest {
          *    their seeded rows still need to stay visible and interactive after swipe cycles.
          * 4. Tab switching itself must remain deterministic through the tagged tab row.
          */
-        seededViewModel(itemCount = 18)
+        val viewModel = seededViewModel(itemCount = 18)
+        val lastActivityTag = "people_screen_activity_item_${viewModel.activitiesFeedModel.displayItems[17].stableKey}"
+        val clickedActivityTag = "people_screen_activity_item_${viewModel.activitiesFeedModel.displayItems[1].stableKey}"
         val navigator = setPeopleScreen()
 
         composeRule.onNodeWithTag("people_screen_tab_2").performClick()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_ACTIVITIES_LIST_TAG).assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_ACTIVITIES_LIST_TAG)
-            .performScrollToNode(hasTestTag("people_screen_activity_item_activity-18"))
+            .performScrollToNode(hasTestTag(lastActivityTag))
         composeRule.waitUntilRequestCount(HttpMethod.Get, "moments/${ROOT_PERSON.urlToken}/activities", 1)
-        composeRule.onNodeWithTag("people_screen_activity_item_activity-18").assertIsDisplayed()
+        composeRule.onNodeWithTag(lastActivityTag).assertIsDisplayed()
         composeRule
             .onNodeWithTag(PEOPLE_SCREEN_ACTIVITIES_LIST_TAG)
-            .performScrollToNode(hasTestTag("people_screen_activity_item_activity-2"))
-        composeRule.onNodeWithTag("people_screen_activity_item_activity-2").performClick()
+            .performScrollToNode(hasTestTag(clickedActivityTag))
+        composeRule.onNodeWithTag(clickedActivityTag).performClick()
 
         composeRule.onNodeWithTag("people_screen_tab_3").performClick()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_COLLECTIONS_LIST_TAG).assertIsDisplayed()

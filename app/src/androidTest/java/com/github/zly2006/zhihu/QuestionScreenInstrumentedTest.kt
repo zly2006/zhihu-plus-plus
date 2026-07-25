@@ -184,24 +184,26 @@ class QuestionScreenInstrumentedTest {
             itemCount = 24,
             isEnd = false,
         )
+        val tailItemTag = "question_feed_item_${viewModel.displayItems[17].stableKey}"
+        val clickedItemTag = "question_feed_item_${viewModel.displayItems[2].stableKey}"
         mockQuestionDetail()
         val navigator = setScreen()
 
         composeRule.onNodeWithTag(QUESTION_SCREEN_LIST_TAG).assertIsDisplayed()
         composeRule
             .onNodeWithTag(QUESTION_SCREEN_LIST_TAG)
-            .performScrollToNode(hasTestTag("question_feed_item_offline-question-item-18"))
-        composeRule.onNodeWithTag("question_feed_item_offline-question-item-18").assertIsDisplayed()
+            .performScrollToNode(hasTestTag(tailItemTag))
+        composeRule.onNodeWithTag(tailItemTag).assertIsDisplayed()
         composeRule.onNodeWithTag(QUESTION_SCREEN_LIST_TAG).performVerticalSwipeCycle()
         composeRule
             .onNodeWithTag(QUESTION_SCREEN_LIST_TAG)
-            .performScrollToNode(hasTestTag("question_feed_item_offline-question-item-18"))
-        composeRule.onNodeWithTag("question_feed_item_offline-question-item-18").assertIsDisplayed()
+            .performScrollToNode(hasTestTag(tailItemTag))
+        composeRule.onNodeWithTag(tailItemTag).assertIsDisplayed()
 
         composeRule
             .onNodeWithTag(QUESTION_SCREEN_LIST_TAG)
-            .performScrollToNode(hasTestTag("question_feed_item_offline-question-item-3"))
-        composeRule.onNodeWithTag("question_feed_item_offline-question-item-3").performClick()
+            .performScrollToNode(hasTestTag(clickedItemTag))
+        composeRule.onNodeWithTag(clickedItemTag).performClick()
 
         assertTrue("Scrolling near the end should trigger the seeded load-more path", viewModel.loadMoreCount > 0)
         assertEquals(
