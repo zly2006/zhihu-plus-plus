@@ -163,6 +163,16 @@ object AccountData {
         accountClient(context).clear()
     }
 
+    /**
+     * Drop cached Ktor clients after Clash VPN bind/unbind so sockets are
+     * recreated on the current process network (bound VPN or default).
+     */
+    @Synchronized
+    fun invalidateHttpClientsForNetworkAdapt() {
+        accountClient?.invalidateHttpClient()
+        observedLifecycleClient = null
+    }
+
     internal fun identityClient(context: Context): ZhihuIdentityClient {
         val client = accountClient(context)
         return ZhihuIdentityClient(

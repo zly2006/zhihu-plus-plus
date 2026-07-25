@@ -388,7 +388,8 @@ fun SystemAndUpdateSettingsScreen() {
                         title = { Text("Clash VPN 自动适配") },
                         description = {
                             Text(
-                                "Clash Meta 开启 VPN 时流量自动经其处理，无需手填代理。\n${clashPartner.statusLabel}",
+                                "Clash Meta 开启 VPN 时：进程绑定到 VPN 网络、跳过应用层代理叠加，" +
+                                    "Ktor/WebView 流量经 Clash 隧道。\n${clashPartner.statusLabel}",
                             )
                         },
                         checked = clashPartner.isAutoAdaptEnabled,

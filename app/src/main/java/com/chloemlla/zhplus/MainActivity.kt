@@ -194,6 +194,9 @@ class MainActivity :
         clearShareImageCache(this)
         enableEdgeToEdgeCompat()
         ClashPartnerCompat.start(this)
+        ClashPartnerCompat.setNetworkAdaptHook {
+            AccountData.invalidateHttpClientsForNetworkAdapt()
+        }
         continuousUsageReminderManager = ContinuousUsageReminderManager(this)
         history = HistoryStorage(this)
         AccountData.loadData(this)

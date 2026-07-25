@@ -46,14 +46,17 @@ object ClashPartnerCompat {
         "com.github.metacubex.clash",
         "com.github.metacubex.clash.meta",
         "com.github.metacubex.clash.alpha",
-        // Common custom.application.id / fork packaging variants.
-        "com.chloemlla.clash",
-        "com.chloemlla.clash.meta",
-        "com.chloemlla.clash.alpha",
     )
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private val listeners = CopyOnWriteArrayList<(Status) -> Unit>()
+
+    /**
+     * Optional hook invoked after status/binding changes so host code can
+     * rebuild HTTP clients / image loaders on the new process network.
+     */
+    @Volatile
+    private var networkAdaptHook: (() -> Unit)? = null
 
     @Volatile
     private var appContext: Context? = null
@@ -63,6 +66,12 @@ object ClashPartnerCompat {
 
     @Volatile
     private var lastVpnActive: Boolean? = null
+
+    @Volatile
+    private var lastVpnNetwork: Network? = null
+
+    @Volatile
+    private var boundVpnNetwork: Network? = null
 
     @Volatile
     var status: Status = Status()
@@ -75,9 +84,20 @@ object ClashPartnerCompat {
         val partnerAppAutoAdapt: Boolean = true,
         val profileName: String? = null,
         val clashPackage: String? = null,
+        /**
+         * True when Clash StatusProvider responded. Prefer [clashVpnRunning] over
+         * generic VPN heuristics in that case so a non-Clash VPN is not treated
+         * as "Clash routing".
+         */
+        val partnerStatusAvailable: Boolean = false,
     ) {
         val isClashVpnRouting: Boolean
-            get() = clashVpnRunning || (clashInstalled && vpnActive)
+            get() =
+                if (partnerStatusAvailable) {
+                    clashVpnRunning
+                } else {
+                    clashInstalled && vpnActive
+                }
     }
 
     fun isAutoAdaptEnabled(context: Context): Boolean =
@@ -94,7 +114,7 @@ object ClashPartnerCompat {
         return when {
             !enabled -> "已关闭自动适配"
             !s.clashInstalled -> "未检测到 Clash Meta"
-            s.clashVpnRunning || s.vpnActive -> {
+            s.isClashVpnRouting -> {
                 val profile = s.profileName
                 if (!profile.isNullOrBlank()) {
                     "VPN 已连接 · $profile"
@@ -113,14 +133,22 @@ object ClashPartnerCompat {
         startNetworkWatch(app)
     }
 
+    fun setNetworkAdaptHook(hook: (() -> Unit)?) {
+        networkAdaptHook = hook
+    }
+
     fun refresh(context: Context? = null) {
         val ctx = context?.applicationContext ?: appContext ?: return
+        val previousBound = boundVpnNetwork
         val next = buildStatus(ctx)
         status = next
         // Keep this process on the VPN network while Clash is routing so
         // apps cannot "escape" via ConnectivityManager request-network /
         // allowBypass paths. Clear binding when Clash is off.
         applyVpnProcessBinding(ctx, next)
+        if (previousBound != boundVpnNetwork) {
+            runCatching { networkAdaptHook?.invoke() }
+        }
         listeners.forEach { listener ->
             mainHandler.post { listener(next) }
         }
@@ -145,8 +173,13 @@ object ClashPartnerCompat {
         val clashInstalled = isClashInstalled(context)
         val vpnActive = isVpnActive(context)
         val partner = queryPartnerStatus(context)
-        val clashVpnRunning = (partner?.get("vpnRunning") as? Boolean)
-            ?: (clashInstalled && vpnActive)
+        val partnerStatusAvailable = partner != null
+        val clashVpnRunning =
+            if (partnerStatusAvailable) {
+                partner?.get("vpnRunning") as? Boolean ?: false
+            } else {
+                clashInstalled && vpnActive
+            }
         return Status(
             clashInstalled = clashInstalled,
             vpnActive = vpnActive,
@@ -156,6 +189,7 @@ object ClashPartnerCompat {
                 ?: true,
             profileName = partner?.get("name") as? String,
             clashPackage = partner?.get("package") as? String,
+            partnerStatusAvailable = partnerStatusAvailable,
         )
     }
 
@@ -192,9 +226,14 @@ object ClashPartnerCompat {
 
     private fun onNetworkMaybeChanged() {
         val context = appContext ?: return
+        val cm = context.getSystemService<ConnectivityManager>()
         val vpnActive = isVpnActive(context)
-        if (lastVpnActive == vpnActive) return
+        val vpnNetwork = cm?.let { findVpnNetwork(it) }
+        // Re-evaluate when VPN goes up/down *or* the underlying Network handle
+        // is replaced (Clash restart / re-establish) so process binding follows.
+        if (lastVpnActive == vpnActive && lastVpnNetwork == vpnNetwork) return
         lastVpnActive = vpnActive
+        lastVpnNetwork = vpnNetwork
         refresh(context)
     }
 
@@ -255,11 +294,29 @@ object ClashPartnerCompat {
     private fun applyVpnProcessBinding(context: Context, status: Status) {
         val cm = context.getSystemService<ConnectivityManager>() ?: return
         if (!isAutoAdaptEnabled(context) || !status.isClashVpnRouting) {
-            runCatching { cm.bindProcessToNetwork(null) }
+            clearProcessNetworkBinding(cm)
             return
         }
-        val vpn = findVpnNetwork(cm) ?: return
-        runCatching { cm.bindProcessToNetwork(vpn) }
+        val vpn = findVpnNetwork(cm)
+        if (vpn == null) {
+            // Status says routing but no VPN Network is visible yet — drop any
+            // stale binding so we do not stick to a dead Network handle.
+            clearProcessNetworkBinding(cm)
+            return
+        }
+        if (boundVpnNetwork == vpn) return
+        runCatching {
+            cm.bindProcessToNetwork(vpn)
+            boundVpnNetwork = vpn
+        }.onFailure {
+            boundVpnNetwork = null
+        }
+    }
+
+    private fun clearProcessNetworkBinding(cm: ConnectivityManager) {
+        if (boundVpnNetwork == null && cm.boundNetworkForProcess == null) return
+        runCatching { cm.bindProcessToNetwork(null) }
+        boundVpnNetwork = null
     }
 
     private fun findVpnNetwork(cm: ConnectivityManager): Network? {
