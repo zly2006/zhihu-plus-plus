@@ -369,6 +369,14 @@ class CommentScreenInstrumentedTest {
             viewModel.submissions.size == 1
         }
 
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            try {
+                composeRule.onNodeWithText("离线发送的回复").assertIsDisplayed()
+                true
+            } catch (_: AssertionError) {
+                false
+            }
+        }
         composeRule.onNodeWithText("离线发送的回复").assertIsDisplayed()
         composeRule.onAllNodesWithTag(COMMENT_REPLY_BANNER_TAG).assertCountEquals(0)
         composeRule.onAllNodesWithText("回复 子回复作者 1...").assertCountEquals(0)

@@ -98,7 +98,9 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
@@ -425,6 +427,8 @@ fun CommentScreen(
     var isSending by remember { mutableStateOf(false) }
     var replyToComment by remember { mutableStateOf<CommentModel?>(null) }
     val viewModelKey = commentViewModelKey(resolvedContent)
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     // 根据内容类型选择合适的ViewModel
     val viewModel: BaseCommentViewModel = testOverrides?.viewModel ?: when (resolvedContent) {
@@ -486,6 +490,8 @@ fun CommentScreen(
             environment = paginationEnvironment,
             replyToCommentId = replyToComment?.item?.id,
         ) {
+            focusManager.clearFocus(force = true)
+            keyboardController?.hide()
             onCommentInputChange("")
             replyToComment = null
             isSending = false
