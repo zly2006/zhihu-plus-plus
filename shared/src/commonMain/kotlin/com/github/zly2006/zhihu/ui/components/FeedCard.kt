@@ -579,8 +579,8 @@ private fun PinFeedImages(
                 model = image.feedThumbnailUrl,
                 contentDescription = "想法图片 1/1",
                 modifier = modifier
-                    .fillMaxWidth()
-                    .aspectRatio((image.width.toFloat() / image.height.coerceAtLeast(1)).coerceIn(0.8f, 16f / 9f))
+                    .fillMaxWidth(1f / 3f)
+                    .aspectRatio(1f)
                     .clip(RoundedCornerShape(8.dp))
                     .testTag("pin_feed_image_0"),
                 contentScale = ContentScale.Crop,
@@ -598,6 +598,13 @@ private fun PinFeedImages(
                         image = image,
                         index = index,
                         totalCount = images.size,
+                        modifier = Modifier
+                            .weight(1f)
+                            .aspectRatio(1f),
+                    )
+                }
+                repeat((3 - images.size).coerceAtLeast(0)) {
+                    Spacer(
                         modifier = Modifier
                             .weight(1f)
                             .aspectRatio(1f),

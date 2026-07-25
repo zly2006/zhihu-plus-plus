@@ -27,6 +27,7 @@ class PinFeedImagesTest {
     fun selectsImageLayoutFromRealPinImageCounts() {
         assertNull(pinFeedImageLayout(0))
         assertEquals(PinFeedImageLayout.SINGLE, pinFeedImageLayout(1))
+        assertEquals(PinFeedImageLayout.MULTI_ROW, pinFeedImageLayout(2))
         assertEquals(PinFeedImageLayout.MULTI_ROW, pinFeedImageLayout(3))
         assertEquals(PinFeedImageLayout.MULTI_ROW, pinFeedImageLayout(4))
         assertEquals(PinFeedImageLayout.NINE_GRID, pinFeedImageLayout(5))

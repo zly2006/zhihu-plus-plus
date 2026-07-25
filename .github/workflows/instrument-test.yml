@@ -5,6 +5,7 @@ on:
     paths:
       - "app/**"
       - "shared/**"
+      - ".github/scripts/run-instrumented-shard.sh"
       - ".github/workflows/instrument-test.yml"
       - "build.gradle.kts"
       - "settings.gradle.kts"
@@ -69,22 +70,7 @@ jobs:
           profile: pixel_7
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           disable-animations: true
-          script: |
-            set +e
-            adb -s emulator-5554 logcat -c
-            adb -s emulator-5554 logcat -v time -s ZHPP_TEST:I &
-            logcat_pid=$!
-            ANDROID_SERIAL=emulator-5554 ./gradlew connectedLiteDebugAndroidTest \
-              --console=plain \
-              -Dorg.gradle.configuration-cache=false \
-              -Pandroid.testInstrumentationRunnerArguments.numShards=5 \
-              -Pandroid.testInstrumentationRunnerArguments.shardIndex=${{ matrix.shard_index }}
-            test_status=$?
-            kill "$logcat_pid" 2>/dev/null || true
-            wait "$logcat_pid" 2>/dev/null || true
-            mkdir -p app/build/outputs/androidTest-results
-            adb -s emulator-5554 logcat -d > app/build/outputs/androidTest-results/logcat-shard-${{ matrix.shard_index }}.txt
-            exit "$test_status"
+          script: bash .github/scripts/run-instrumented-shard.sh 5 ${{ matrix.shard_index }}
 
       - name: Upload shard test reports
         if: always()
