@@ -28,7 +28,6 @@ import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.hrm.markdown.parser.ast.AbbreviationDefinition
 import com.hrm.markdown.parser.ast.BlankLine
@@ -201,9 +200,21 @@ private fun DeferredMarkdownBlock(
             if (preserveSelectionAcrossDeferredBlocks) node.selectionProjectionText() else ""
         }
         if (selectionProjection.isNotEmpty()) {
+            val selectionLineHeightSp = theme.bodyStyle.lineHeight.value
+                .takeIf { it.isFinite() && it > 0f }
+                ?: theme.bodyStyle.fontSize.value.coerceAtLeast(1f) * 1.5f
+            val selectionLineHeightDp = selectionLineHeightSp * density.fontScale
+            val selectionLayoutHeightDp = measuredHeightDp
+                ?: estimateMarkdownBlockHeightDp(node, maxWidth.value, theme)
+            val selectionLayoutLineCapacity = ceil(selectionLayoutHeightDp / selectionLineHeightDp)
+                .toInt()
+                .coerceAtLeast(1)
             // AndroidX 没有公开的离屏 Selectable 注册 API，且 selectable 在注销后会丢失已有选择。
-            // 因此同一个无语义投影始终留在视觉内容下层，滚动时其身份和选择数据都不变；上层富内容
-            // 不参与选择注册，但仍优先接收链接等点击事件。
+            // 因此同一个完整多行文字层始终留在视觉内容下方，它是长按、拖动、全选和复制共享的
+            // 唯一选择源。上层富内容不再注册第二份文字，只负责可见绘制和链接等交互，避免复制重复。
+            // maxLines 不能低于可见块的行容量：文字虽仍能全部复制，选中路径却只包含已布局的行；
+            // 固定成 1 就会导致多行段落只有第一行显示选中背景。按块高计算容量可以保留完整高亮，
+            // 同时避免对超出该块可见高度的展平文字做无意义布局。
             // 长文基准中，改为在全选时完整物化富文本首次耗时约 3.4 秒；反复重建约 34 秒后，
             // 包含大量公式的 instrument 测试在约 200 MB 堆上 OOM，因此不能用全量物化替代此投影。
             // https://developer.android.com/reference/kotlin/androidx/compose/foundation/text/selection/package-summary#SelectionContainer(androidx.compose.ui.Modifier,kotlin.Function0)
@@ -213,8 +224,7 @@ private fun DeferredMarkdownBlock(
                     .matchParentSize()
                     .clearAndSetSemantics { },
                 style = theme.bodyStyle.copy(color = Color.Transparent),
-                maxLines = 1,
-                overflow = TextOverflow.Clip,
+                maxLines = selectionLayoutLineCapacity,
             )
         }
         if (renderBlock) {
