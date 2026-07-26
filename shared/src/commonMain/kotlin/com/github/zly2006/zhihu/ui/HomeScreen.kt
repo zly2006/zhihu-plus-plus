@@ -87,6 +87,9 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.navigation.Account
@@ -152,11 +155,11 @@ const val HOME_ACCOUNT_BUTTON_TAG = "home_account_button"
 const val HOME_FEED_LIST_TAG = "home_feed_list"
 const val HOME_REFRESH_BUTTON_TAG = "home_refresh_button"
 const val HOME_AUTHOR_POLL_ANNOUNCEMENT_TAG = "home_author_poll_announcement"
+private const val MAX_HOME_PIN_ANNOUNCEMENTS = 3
 
 fun homeAuthorPollAnnouncementTag(pinId: Long): String = "$HOME_AUTHOR_POLL_ANNOUNCEMENT_TAG:$pinId"
 
-private fun authorPollAnnouncementDismissedKey(announcement: HomePollAnnouncement): String =
-    "dismissAuthorPollAnnouncement_${announcement.pinId}_${announcement.pollId}"
+fun homePinAnnouncementReadKey(pinId: Long): String = "readHomePinAnnouncement_$pinId"
 
 /**
  * 首页信息流页面。
@@ -177,6 +180,7 @@ fun HomeScreen(
     val notificationSettings = rememberNotificationSettingsStore()
     val userMessages = rememberUserMessageSink()
     val openExternalUrl = rememberExternalUrlOpener()
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     val duo3HomeAccount = settings.getBoolean("duo3_home_account", false)
     val showRefreshFab = settings.getBoolean("showRefreshFab", true)
@@ -218,9 +222,7 @@ fun HomeScreen(
     var showAigcMarkingAnnouncement by remember {
         mutableStateOf(!settings.getBoolean(AIGC_MARKING_ANNOUNCEMENT_DISMISSED_PREFERENCE_KEY, false))
     }
-    var authorPollAnnouncements by remember {
-        mutableStateOf(emptyList<HomePollAnnouncement>())
-    }
+    var authorPinAnnouncements by remember { mutableStateOf(emptyList<HomePinAnnouncement>()) }
 
     // 首次启动提示
     var showFilterExplainDialog by remember {
@@ -276,19 +278,23 @@ fun HomeScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
-        authorPollAnnouncements = try {
-            paginationEnvironment
-                .fetchJson(ZHIHU_PLUS_AUTHOR_PINS_URL, "")
-                ?.let(::decodeHomePollAnnouncements)
-                ?.filterNot { it.isVoted }
-                ?.take(3)
-                ?: emptyList()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Log.e("HomeScreen", "Failed to load author poll announcements", e)
-            emptyList()
+    LaunchedEffect(lifecycleOwner, scrollToTopTrigger) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            val loadedAnnouncements = try {
+                paginationEnvironment
+                    .fetchJson(ZHIHU_PLUS_AUTHOR_PINS_URL, "")
+                    ?.let(::decodeHomePinAnnouncements)
+                    ?.filterNot { settings.getBoolean(homePinAnnouncementReadKey(it.pinId), false) }
+                    ?.take(MAX_HOME_PIN_ANNOUNCEMENTS)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("HomeScreen", "Failed to load home pin announcements", e)
+                null
+            }
+            if (loadedAnnouncements != null) {
+                authorPinAnnouncements = loadedAnnouncements
+            }
         }
     }
 
@@ -555,13 +561,15 @@ fun HomeScreen(
                                     showAigcMarkingAnnouncement = false
                                 },
                             )
-                            authorPollAnnouncements.forEach { announcement ->
-                                val dismissedKey = authorPollAnnouncementDismissedKey(announcement)
-                                val visible = !settings.getBoolean(dismissedKey, false)
+                            authorPinAnnouncements.forEach { announcement ->
                                 AnnouncementCard(
                                     modifier = Modifier.testTag(homeAuthorPollAnnouncementTag(announcement.pinId)),
-                                    visible = visible,
-                                    title = "请给未来的知乎++提出建议",
+                                    visible = true,
+                                    title = if (announcement.kind == HomePinAnnouncementKind.Poll) {
+                                        "请给未来的知乎++提出建议"
+                                    } else {
+                                        "知乎++新动态"
+                                    },
                                     leadingIcon = { Icon(Icons.Default.Flag, contentDescription = null) },
                                     content = buildString {
                                         append(announcement.title)
@@ -572,23 +580,26 @@ fun HomeScreen(
                                             if (announcement.memberCount > 0) {
                                                 add("${announcement.memberCount} 人已参与")
                                             }
-                                            if (announcement.isVoted) {
-                                                add("已投票")
-                                            }
                                         }
                                         if (details.isNotEmpty()) {
                                             append("\n")
                                             append(details.joinToString(" · "))
                                         }
                                     },
-                                    accept = { Text("去投票") },
+                                    accept = {
+                                        Text(if (announcement.kind == HomePinAnnouncementKind.Poll) "去投票" else "查看")
+                                    },
                                     onAccept = {
+                                        settings.putBoolean(homePinAnnouncementReadKey(announcement.pinId), true)
+                                        authorPinAnnouncements = authorPinAnnouncements.filterNot {
+                                            it.pinId == announcement.pinId
+                                        }
                                         navigator.onNavigate(Pin(announcement.pinId))
                                     },
                                     dismiss = { Text("关闭") },
                                     onDismiss = {
-                                        settings.putBoolean(dismissedKey, true)
-                                        authorPollAnnouncements = authorPollAnnouncements.filterNot {
+                                        settings.putBoolean(homePinAnnouncementReadKey(announcement.pinId), true)
+                                        authorPinAnnouncements = authorPinAnnouncements.filterNot {
                                             it.pinId == announcement.pinId
                                         }
                                     },
