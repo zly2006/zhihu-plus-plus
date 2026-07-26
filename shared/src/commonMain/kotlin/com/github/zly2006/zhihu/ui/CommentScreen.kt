@@ -441,6 +441,23 @@ fun CommentScreen(
             RootCommentViewModel(resolvedContent)
         }
     }
+    val restoredListPosition = remember(resolvedContent) {
+        listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
+    }
+    var restoredListPositionApplied by remember(resolvedContent) {
+        mutableStateOf(restoredListPosition.first == 0 && restoredListPosition.second == 0)
+    }
+    LaunchedEffect(viewModel.allData.size) {
+        if (!restoredListPositionApplied && viewModel.allData.isNotEmpty()) {
+            // 子评论 ViewModel 异步重建且列表仍为空时，恢复的 LazyListState 会先被压回顶部；
+            // 等回复数据到达后必须重新应用原位置。
+            listState.scrollToItem(
+                restoredListPosition.first.coerceAtMost(viewModel.allData.size),
+                restoredListPosition.second,
+            )
+            restoredListPositionApplied = true
+        }
+    }
     val rootContent = when (resolvedContent) {
         is CommentHolder -> resolvedContent.article
         else -> resolvedContent

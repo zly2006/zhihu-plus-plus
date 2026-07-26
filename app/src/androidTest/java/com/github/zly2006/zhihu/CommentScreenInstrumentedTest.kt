@@ -17,8 +17,12 @@
 
 package com.github.zly2006.zhihu
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
@@ -39,10 +43,13 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CommentHolder
+import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.navigation.Navigator
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.shared.comment.CommentSortOrder
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
 import com.github.zly2006.zhihu.test.InstrumentedTestEnvironment
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
@@ -68,6 +75,7 @@ import com.github.zly2006.zhihu.ui.COMMENT_SORT_TIME_TAG
 import com.github.zly2006.zhihu.ui.CommentImageMenuAction
 import com.github.zly2006.zhihu.ui.CommentScreen
 import com.github.zly2006.zhihu.ui.CommentScreenTestOverrides
+import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
@@ -76,6 +84,7 @@ import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.paginationEnvironment
 import io.ktor.http.HttpMethod
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonArray
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -190,6 +199,94 @@ class CommentScreenInstrumentedTest {
             ),
             navigator.destinations,
         )
+    }
+
+    @Test
+    fun childCommentTargetAndScrollSurviveExternalNavigation() {
+        /*
+         * Expected behavior:
+         * 1. Opening a root comment's reply sheet and scrolling deep into its child replies records
+         *    both the active root comment and the child list position in the host back-stack state.
+         * 2. Navigating to a child comment author's profile removes the comment host from composition.
+         * 3. Returning to the saved host must reopen the same reply sheet at the same child reply,
+         *    instead of falling back to the root comment list or resetting the child list to the top.
+         */
+        val rootComment = seedRootComment(index = 99, childCommentCount = 24)
+        val childComments = seedChildComments(count = 24)
+        ZhihuMockApi.mockJsonPrefix(
+            method = HttpMethod.Get,
+            urlPrefix = "https://www.zhihu.com/api/v4/comment_v5/answers/9001/root_comment",
+            body =
+                """
+                {
+                  "data": ${ZhihuJson.json.encodeToString(listOf(rootComment))},
+                  "paging": {"is_end": true, "is_start": true, "totals": 1, "next": ""}
+                }
+                """.trimIndent(),
+        )
+        ZhihuMockApi.mockJsonPrefix(
+            method = HttpMethod.Get,
+            urlPrefix = "https://www.zhihu.com/api/v4/comment_v5/comment/root-99/child_comment",
+            body =
+                """
+                {
+                  "data": ${ZhihuJson.json.encodeToString(childComments)},
+                  "paging": {"is_end": true, "is_start": true, "totals": 24, "next": ""}
+                }
+                """.trimIndent(),
+        )
+
+        val showCommentHost = mutableStateOf(true)
+        composeRule.setScreenContent {
+            val stateHolder = rememberSaveableStateHolder()
+            val navigator = remember {
+                Navigator(
+                    onNavigate = { showCommentHost.value = false },
+                    onNavigateBack = {},
+                )
+            }
+            if (showCommentHost.value) {
+                stateHolder.SaveableStateProvider("comment-host") {
+                    CompositionLocalProvider(LocalNavigator provides navigator) {
+                        CommentScreenComponent(
+                            showComments = true,
+                            onDismiss = {},
+                            content = ROOT_ARTICLE,
+                        )
+                    }
+                }
+            } else {
+                androidx.compose.material3.Text(
+                    text = "外部页面",
+                    modifier = Modifier.testTag("external_page"),
+                )
+            }
+        }
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag("comment_child_button_root-99").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("comment_child_button_root-99").performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(COMMENT_SCREEN_LIST_TAG).fetchSemanticsNodes().size == 2
+        }
+        composeRule
+            .onAllNodesWithTag(COMMENT_SCREEN_LIST_TAG)[1]
+            .performScrollToNode(hasTestTag("comment_row_child-20"))
+        composeRule.onNodeWithTag("comment_row_child-20").assertIsDisplayed()
+        composeRule.onNodeWithTag("comment_author_child-20").performClick()
+        composeRule.onNodeWithTag("external_page").assertIsDisplayed()
+
+        composeRule.runOnIdle { showCommentHost.value = true }
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            composeRule.onAllNodesWithTag(COMMENT_SCREEN_LIST_TAG).fetchSemanticsNodes().size == 2
+        }
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            runCatching {
+                composeRule.onNodeWithTag("comment_row_child-20").assertIsDisplayed()
+            }.isSuccess
+        }
+        composeRule.onNodeWithTag("comment_row_child-20").assertIsDisplayed()
     }
 
     @Test
