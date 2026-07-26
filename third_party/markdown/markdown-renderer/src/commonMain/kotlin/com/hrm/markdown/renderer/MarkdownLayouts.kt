@@ -215,6 +215,8 @@ private fun DeferredMarkdownBlock(
                 if (selectionProjection.isNotEmpty()) {
                     // AndroidX 明确说明 SelectionContainer 不会复制或全选未组合的文本，且没有公开的
                     // 离屏 Selectable 注册 API。占位块只注册单行、无语义的文本投影，不恢复昂贵的富内容布局。
+                    // 长文基准中，改为在全选时完整物化富文本首次耗时约 3.4 秒；反复重建约 34 秒后，
+                    // 包含大量公式的 instrument 测试在约 200 MB 堆上 OOM，因此不能用全量物化替代此投影。
                     // https://developer.android.com/reference/kotlin/androidx/compose/foundation/text/selection/package-summary#SelectionContainer(androidx.compose.ui.Modifier,kotlin.Function0)
                     BasicText(
                         text = selectionProjection,
