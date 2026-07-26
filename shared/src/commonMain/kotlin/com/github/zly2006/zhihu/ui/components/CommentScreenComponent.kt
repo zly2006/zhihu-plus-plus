@@ -27,10 +27,11 @@ import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -44,9 +45,13 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
+import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
 import com.github.zly2006.zhihu.theme.Typography
 import com.github.zly2006.zhihu.ui.CommentScreen
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 
 /**
  * 最好不要在 if 或者其他条件语句中使用，这会导致本组件内部状态丢失。
@@ -58,8 +63,10 @@ fun CommentScreenComponent(
     onDismiss: () -> Unit,
     content: NavDestination,
 ) {
-    var activeChildComment by remember { mutableStateOf<CommentItem?>(null) }
     val contentStateKey = commentContentStateKey(content)
+    var activeChildComment by rememberSaveable(contentStateKey, saver = activeChildCommentSaver) {
+        mutableStateOf<CommentItem?>(null)
+    }
     var commentDrafts by rememberSaveable(contentStateKey) {
         mutableStateOf<Map<String, String>>(emptyMap())
     }
@@ -75,6 +82,15 @@ fun CommentScreenComponent(
     val childSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val childTarget = activeChildComment?.clickTarget
     val childDraftKey = childTarget?.let(::commentContentStateKey)
+    var childListResetToken by rememberSaveable(contentStateKey) { mutableIntStateOf(0) }
+    val childListState = rememberSaveable(
+        contentStateKey,
+        childDraftKey,
+        childListResetToken,
+        saver = LazyListState.Saver,
+    ) {
+        LazyListState()
+    }
 
     @Composable
     fun DragHandleTitle(text: String) {
@@ -96,6 +112,7 @@ fun CommentScreenComponent(
     fun dismissRootComments() {
         activeChildComment = null
         rootListResetToken += 1
+        childListResetToken += 1
         onDismiss()
     }
 
@@ -121,7 +138,11 @@ fun CommentScreenComponent(
         ) {
             CommentScreen(
                 content = { content },
-                onChildCommentClick = { activeChildComment = it },
+                onChildCommentClick = { commentItem ->
+                    if (commentItem.clickTarget != null) {
+                        activeChildComment = commentItem
+                    }
+                },
                 commentInput = commentDrafts[contentStateKey].orEmpty(),
                 onCommentInputChange = { updateCommentDraft(contentStateKey, it) },
                 listState = rootListState,
@@ -131,7 +152,10 @@ fun CommentScreenComponent(
 
     if (showComments && activeChildComment != null && childTarget != null && childDraftKey != null) {
         MyModalBottomSheet(
-            onDismissRequest = { activeChildComment = null },
+            onDismissRequest = {
+                activeChildComment = null
+                childListResetToken += 1
+            },
             sheetState = childSheetState,
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             properties = ModalBottomSheetProperties(
@@ -147,10 +171,40 @@ fun CommentScreenComponent(
                 onChildCommentClick = { },
                 commentInput = commentDrafts[childDraftKey].orEmpty(),
                 onCommentInputChange = { updateCommentDraft(childDraftKey, it) },
+                listState = childListState,
             )
         }
     }
 }
+
+private val activeChildCommentSaver = Saver<MutableState<CommentItem?>, List<String>>(
+    save = { state ->
+        val commentItem = state.value
+        val target = commentItem?.clickTarget
+        if (commentItem == null || target == null) {
+            emptyList()
+        } else {
+            listOf(
+                ZhihuJson.json.encodeToString(commentItem.item),
+                ZhihuJson.json.encodeToString(target),
+            )
+        }
+    },
+    restore = { saved ->
+        mutableStateOf(
+            if (saved.size != 2) {
+                null
+            } else {
+                runCatching {
+                    CommentItem(
+                        item = ZhihuJson.json.decodeFromString<DataHolder.Comment>(saved[0]),
+                        clickTarget = ZhihuJson.json.decodeFromString<CommentHolder>(saved[1]),
+                    )
+                }.getOrNull()
+            },
+        )
+    },
+)
 
 private fun commentContentStateKey(content: NavDestination): String = when (content) {
     is Article -> "article:${content.type}:${content.id}"
