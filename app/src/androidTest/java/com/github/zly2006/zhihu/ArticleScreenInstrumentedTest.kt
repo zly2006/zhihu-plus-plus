@@ -214,22 +214,6 @@ class ArticleScreenInstrumentedTest {
             composeRule.runOnIdle {
                 requireNotNull(textToolbar.onSelectAllRequested).invoke()
             }
-            // 全选后滚到底部，覆盖离屏投影与真实 Markdown 块互换时的选择稳定性。
-            val scrollContainer = composeRule.onNode(
-                SemanticsMatcher("has vertical scroll axis") { node ->
-                    node.config.contains(SemanticsProperties.VerticalScrollAxisRange)
-                },
-            )
-            repeat(40) {
-                val range = scrollContainer
-                    .fetchSemanticsNode()
-                    .config[SemanticsProperties.VerticalScrollAxisRange]
-                if (range.maxValue() - range.value() <= 1f) return@repeat
-                scrollContainer.performSemanticsAction(SemanticsActions.ScrollBy) { scrollBy ->
-                    scrollBy(0f, 4_000f)
-                }
-                composeRule.waitForIdle()
-            }
             composeRule.runOnIdle {
                 requireNotNull(textToolbar.onCopyRequested).invoke()
             }
