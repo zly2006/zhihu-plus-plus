@@ -20,20 +20,28 @@ package com.github.zly2006.zhihu
 import android.content.Context
 import android.os.SystemClock
 import android.util.Log
+import androidx.compose.foundation.ComposeFoundationFlags
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.MutableState
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.platform.LocalTextToolbar
+import androidx.compose.ui.platform.TextToolbar
+import androidx.compose.ui.platform.TextToolbarStatus
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -176,6 +184,53 @@ class ArticleScreenInstrumentedTest {
             "Issue #495 median first frame took ${medianMillis}ms; benchmark includes HTML parsing, Compose layout, and draw",
             medianMillis < ISSUE_495_FIRST_FRAME_LIMIT_MS,
         )
+    }
+
+    @OptIn(ExperimentalFoundationApi::class)
+    @Test
+    fun selectAllIncludesDeferredMarkdownBlocks() {
+        val previousContextMenuFlag = ComposeFoundationFlags.isNewContextMenuEnabled
+        ComposeFoundationFlags.isNewContextMenuEnabled = false
+        try {
+            val textToolbar = CapturingTextToolbar()
+            val markdown = buildString {
+                appendLine("第一段可见正文")
+                appendLine()
+                repeat(120) { index ->
+                    appendLine("第 $index 段长文填充正文，用于把末段推到视口之外。")
+                    appendLine()
+                }
+                appendLine("末段必须被全选")
+            }
+            composeRule.setScreenContent {
+                CompositionLocalProvider(LocalTextToolbar provides textToolbar) {
+                    RenderMarkdownText(markdown = markdown)
+                }
+            }
+
+            composeRule
+                .onNodeWithText("第一段可见正文")
+                .performTouchInput { longClick() }
+            composeRule.runOnIdle {
+                requireNotNull(textToolbar.onSelectAllRequested).invoke()
+            }
+            composeRule.runOnIdle {
+                requireNotNull(textToolbar.onCopyRequested).invoke()
+            }
+
+            val clipboard = composeRule.activity.getSystemService(android.content.ClipboardManager::class.java)
+            val copiedText = clipboard.primaryClip
+                ?.getItemAt(0)
+                ?.coerceToText(composeRule.activity)
+                ?.toString()
+                .orEmpty()
+            assertTrue(
+                "Select all must include markdown blocks that are deferred outside the viewport",
+                copiedText.contains("末段必须被全选"),
+            )
+        } finally {
+            ComposeFoundationFlags.isNewContextMenuEnabled = previousContextMenuFlag
+        }
     }
 
     @Test
@@ -570,5 +625,29 @@ class ArticleScreenInstrumentedTest {
                 error: Exception,
             ) = Unit
         }
+    }
+}
+
+private class CapturingTextToolbar : TextToolbar {
+    var onCopyRequested: (() -> Unit)? = null
+    var onSelectAllRequested: (() -> Unit)? = null
+
+    override var status = TextToolbarStatus.Hidden
+        private set
+
+    override fun showMenu(
+        rect: Rect,
+        onCopyRequested: (() -> Unit)?,
+        onPasteRequested: (() -> Unit)?,
+        onCutRequested: (() -> Unit)?,
+        onSelectAllRequested: (() -> Unit)?,
+    ) {
+        this.onCopyRequested = onCopyRequested
+        this.onSelectAllRequested = onSelectAllRequested
+        status = TextToolbarStatus.Shown
+    }
+
+    override fun hide() {
+        status = TextToolbarStatus.Hidden
     }
 }

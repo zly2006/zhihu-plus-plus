@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -19,15 +20,19 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.hrm.markdown.parser.ast.AbbreviationDefinition
 import com.hrm.markdown.parser.ast.BlankLine
 import com.hrm.markdown.parser.ast.ContainerNode
+import com.hrm.markdown.parser.ast.Emoji
 import com.hrm.markdown.parser.ast.FencedCodeBlock
 import com.hrm.markdown.parser.ast.Figure
 import com.hrm.markdown.parser.ast.FootnoteDefinition
@@ -35,10 +40,12 @@ import com.hrm.markdown.parser.ast.FootnoteReference
 import com.hrm.markdown.parser.ast.FrontMatter
 import com.hrm.markdown.parser.ast.HardLineBreak
 import com.hrm.markdown.parser.ast.Heading
+import com.hrm.markdown.parser.ast.HtmlEntity
 import com.hrm.markdown.parser.ast.Image
 import com.hrm.markdown.parser.ast.InlineCode
 import com.hrm.markdown.parser.ast.InlineMath
 import com.hrm.markdown.parser.ast.LinkReferenceDefinition
+import com.hrm.markdown.parser.ast.LeafNode
 import com.hrm.markdown.parser.ast.MathBlock
 import com.hrm.markdown.parser.ast.Node
 import com.hrm.markdown.parser.ast.Paragraph
@@ -79,6 +86,7 @@ internal fun MarkdownDocumentLayout(
                 MarkdownBlockColumn(
                     blocks = renderState.renderBlocks,
                     deferOffscreenBlocks = deferOffscreenBlocks,
+                    enableOffscreenSelection = renderMode == MarkdownRenderMode.SelectableColumn,
                 )
             }
             val theme = LocalMarkdownTheme.current
@@ -112,6 +120,7 @@ internal fun MarkdownBlockChildren(
         blocks = blockNodes,
         modifier = modifier,
         deferOffscreenBlocks = false,
+        enableOffscreenSelection = false,
     )
 }
 
@@ -120,13 +129,14 @@ internal fun MarkdownBlockColumn(
     blocks: List<Node>,
     modifier: Modifier = Modifier,
     deferOffscreenBlocks: Boolean,
+    enableOffscreenSelection: Boolean,
 ) {
     val theme = LocalMarkdownTheme.current
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(theme.blockSpacing),
     ) {
-        MarkdownBlockItems(blocks, deferOffscreenBlocks)
+        MarkdownBlockItems(blocks, deferOffscreenBlocks, enableOffscreenSelection)
     }
 }
 
@@ -134,11 +144,12 @@ internal fun MarkdownBlockColumn(
 private fun MarkdownBlockItems(
     blocks: List<Node>,
     deferOffscreenBlocks: Boolean,
+    enableOffscreenSelection: Boolean,
 ) {
     for (node in blocks) {
         key(node::class, node.stableKey) {
             if (deferOffscreenBlocks) {
-                DeferredMarkdownBlock(node)
+                DeferredMarkdownBlock(node, enableOffscreenSelection)
             } else {
                 BlockRenderer(
                     node = node,
@@ -150,7 +161,10 @@ private fun MarkdownBlockItems(
 }
 
 @Composable
-private fun DeferredMarkdownBlock(node: Node) {
+private fun DeferredMarkdownBlock(
+    node: Node,
+    enableOffscreenSelection: Boolean,
+) {
     val theme = LocalMarkdownTheme.current
     val footnoteNavigationState = LocalFootnoteNavigationState.current
     val density = LocalDensity.current
@@ -193,9 +207,33 @@ private fun DeferredMarkdownBlock(node: Node) {
                     .height(
                         (measuredHeightDp ?: estimateMarkdownBlockHeightDp(node, maxWidth.value, theme)).dp,
                     ),
-            )
+            ) {
+                val selectionText = remember(node, enableOffscreenSelection) {
+                    if (enableOffscreenSelection) node.selectionText() else ""
+                }
+                if (enableOffscreenSelection && selectionText.isNotEmpty()) {
+                    // Compose SelectionContainer 只会全选已注册的文本。屏外富文本延迟布局时保留单行透明节点，
+                    // 让全选仍覆盖完整正文，同时避免重新引入公式与富文本的全量布局开销。
+                    BasicText(
+                        text = selectionText,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clearAndSetSemantics { },
+                        style = theme.bodyStyle.copy(color = Color.Transparent),
+                        maxLines = 1,
+                        overflow = TextOverflow.Clip,
+                    )
+                }
+            }
         }
     }
+}
+
+private fun Node.selectionText(): String = when (this) {
+    is HtmlEntity -> resolved.ifEmpty { literal }
+    is Emoji -> unicode ?: literal.ifEmpty { ":$shortcode:" }
+    is ContainerNode -> children.joinToString("") { it.selectionText() }
+    is LeafNode -> literal
 }
 
 private fun Node.hasRequestedFootnoteReference(navigationState: FootnoteNavigationState): Boolean = when (this) {
