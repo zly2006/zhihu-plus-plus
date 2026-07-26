@@ -31,6 +31,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.hrm.markdown.parser.ast.AbbreviationDefinition
 import com.hrm.markdown.parser.ast.BlankLine
+import com.hrm.markdown.parser.ast.CitationReference
 import com.hrm.markdown.parser.ast.ContainerNode
 import com.hrm.markdown.parser.ast.Emoji
 import com.hrm.markdown.parser.ast.FencedCodeBlock
@@ -86,7 +87,7 @@ internal fun MarkdownDocumentLayout(
                 MarkdownBlockColumn(
                     blocks = renderState.renderBlocks,
                     deferOffscreenBlocks = deferOffscreenBlocks,
-                    enableOffscreenSelection = renderMode == MarkdownRenderMode.SelectableColumn,
+                    preserveSelectionAcrossDeferredBlocks = renderMode == MarkdownRenderMode.SelectableColumn,
                 )
             }
             val theme = LocalMarkdownTheme.current
@@ -120,7 +121,7 @@ internal fun MarkdownBlockChildren(
         blocks = blockNodes,
         modifier = modifier,
         deferOffscreenBlocks = false,
-        enableOffscreenSelection = false,
+        preserveSelectionAcrossDeferredBlocks = false,
     )
 }
 
@@ -129,14 +130,14 @@ internal fun MarkdownBlockColumn(
     blocks: List<Node>,
     modifier: Modifier = Modifier,
     deferOffscreenBlocks: Boolean,
-    enableOffscreenSelection: Boolean,
+    preserveSelectionAcrossDeferredBlocks: Boolean,
 ) {
     val theme = LocalMarkdownTheme.current
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(theme.blockSpacing),
     ) {
-        MarkdownBlockItems(blocks, deferOffscreenBlocks, enableOffscreenSelection)
+        MarkdownBlockItems(blocks, deferOffscreenBlocks, preserveSelectionAcrossDeferredBlocks)
     }
 }
 
@@ -144,12 +145,12 @@ internal fun MarkdownBlockColumn(
 private fun MarkdownBlockItems(
     blocks: List<Node>,
     deferOffscreenBlocks: Boolean,
-    enableOffscreenSelection: Boolean,
+    preserveSelectionAcrossDeferredBlocks: Boolean,
 ) {
     for (node in blocks) {
         key(node::class, node.stableKey) {
             if (deferOffscreenBlocks) {
-                DeferredMarkdownBlock(node, enableOffscreenSelection)
+                DeferredMarkdownBlock(node, preserveSelectionAcrossDeferredBlocks)
             } else {
                 BlockRenderer(
                     node = node,
@@ -163,7 +164,7 @@ private fun MarkdownBlockItems(
 @Composable
 private fun DeferredMarkdownBlock(
     node: Node,
-    enableOffscreenSelection: Boolean,
+    preserveSelectionAcrossDeferredBlocks: Boolean,
 ) {
     val theme = LocalMarkdownTheme.current
     val footnoteNavigationState = LocalFootnoteNavigationState.current
@@ -208,14 +209,15 @@ private fun DeferredMarkdownBlock(
                         (measuredHeightDp ?: estimateMarkdownBlockHeightDp(node, maxWidth.value, theme)).dp,
                     ),
             ) {
-                val selectionText = remember(node, enableOffscreenSelection) {
-                    if (enableOffscreenSelection) node.selectionText() else ""
+                val selectionProjection = remember(node, preserveSelectionAcrossDeferredBlocks) {
+                    if (preserveSelectionAcrossDeferredBlocks) node.selectionProjectionText() else ""
                 }
-                if (enableOffscreenSelection && selectionText.isNotEmpty()) {
-                    // Compose SelectionContainer 只会全选已注册的文本。屏外富文本延迟布局时保留单行透明节点，
-                    // 让全选仍覆盖完整正文，同时避免重新引入公式与富文本的全量布局开销。
+                if (selectionProjection.isNotEmpty()) {
+                    // AndroidX 明确说明 SelectionContainer 不会复制或全选未组合的文本，且没有公开的
+                    // 离屏 Selectable 注册 API。占位块只注册单行、无语义的文本投影，不恢复昂贵的富内容布局。
+                    // https://developer.android.com/reference/kotlin/androidx/compose/foundation/text/selection/package-summary#SelectionContainer(androidx.compose.ui.Modifier,kotlin.Function0)
                     BasicText(
-                        text = selectionText,
+                        text = selectionProjection,
                         modifier = Modifier
                             .fillMaxWidth()
                             .clearAndSetSemantics { },
@@ -229,10 +231,13 @@ private fun DeferredMarkdownBlock(
     }
 }
 
-private fun Node.selectionText(): String = when (this) {
+private fun Node.selectionProjectionText(): String = when (this) {
+    is FrontMatter, is LinkReferenceDefinition, is AbbreviationDefinition, is BlankLine -> ""
+    is FootnoteReference -> "[$index]"
+    is CitationReference -> "[$key]"
     is HtmlEntity -> resolved.ifEmpty { literal }
     is Emoji -> unicode ?: literal.ifEmpty { ":$shortcode:" }
-    is ContainerNode -> children.joinToString("") { it.selectionText() }
+    is ContainerNode -> children.joinToString("") { it.selectionProjectionText() }
     is LeafNode -> literal
 }
 

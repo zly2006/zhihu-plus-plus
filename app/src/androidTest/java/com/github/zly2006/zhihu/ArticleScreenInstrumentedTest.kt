@@ -214,6 +214,22 @@ class ArticleScreenInstrumentedTest {
             composeRule.runOnIdle {
                 requireNotNull(textToolbar.onSelectAllRequested).invoke()
             }
+            // 全选后滚到底部，覆盖离屏投影与真实 Markdown 块互换时的选择稳定性。
+            val scrollContainer = composeRule.onNode(
+                SemanticsMatcher("has vertical scroll axis") { node ->
+                    node.config.contains(SemanticsProperties.VerticalScrollAxisRange)
+                },
+            )
+            repeat(40) {
+                val range = scrollContainer
+                    .fetchSemanticsNode()
+                    .config[SemanticsProperties.VerticalScrollAxisRange]
+                if (range.maxValue() - range.value() <= 1f) return@repeat
+                scrollContainer.performSemanticsAction(SemanticsActions.ScrollBy) { scrollBy ->
+                    scrollBy(0f, 4_000f)
+                }
+                composeRule.waitForIdle()
+            }
             composeRule.runOnIdle {
                 requireNotNull(textToolbar.onCopyRequested).invoke()
             }
@@ -224,9 +240,14 @@ class ArticleScreenInstrumentedTest {
                 ?.coerceToText(composeRule.activity)
                 ?.toString()
                 .orEmpty()
+            val copiedParagraphIndexes = Regex("第 (\\d+) 段长文填充正文")
+                .findAll(copiedText)
+                .map { it.groupValues[1].toInt() }
+                .toList()
+            assertEquals((0 until 120).toList(), copiedParagraphIndexes)
             assertTrue(
                 "Select all must include markdown blocks that are deferred outside the viewport",
-                copiedText.contains("末段必须被全选"),
+                copiedText.contains("第一段可见正文") && copiedText.contains("末段必须被全选"),
             )
         } finally {
             ComposeFoundationFlags.isNewContextMenuEnabled = previousContextMenuFlag
