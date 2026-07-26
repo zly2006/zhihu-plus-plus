@@ -220,9 +220,6 @@ internal fun createLocalFeedDisplayItem(entry: LocalRecommendationEntry): FeedDi
     feed = null,
     navDestinationJson = entry.navDestination?.toFeedDisplayItemNavDestinationJson(),
     isFiltered = false,
-    localContentId = entry.result.contentId,
-    localFeedId = entry.feed.id,
-    localReason = entry.result.reason.name,
 )
 
 internal suspend fun cleanupLocalRecommendationData(

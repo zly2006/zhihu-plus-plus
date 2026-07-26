@@ -16,11 +16,15 @@
 
 除非用户明确要求，本地不要跑完整的 instrument test；全量 Android instrument test 应交给 GitHub CI 验证。本地只做必要的构建、格式化，以及针对当前失败点的定向用例或诊断。例子：修复某个页面的单个失败用例时，可以本地跑该 class 或 method 辅助定位，但不能默认执行完整 `connectedLiteDebugAndroidTest` 来占用模拟器和拖慢反馈。
 
-不要等待远端 Instrumented Tests 跑完。检查 PR 或 CI 状态时，只看当前已经可见的失败；如果剩下的是 instrumented job 正在运行、排队或耗时过长，应直接进入下一步，不要 `watch` 到结束。例子：清理重构 PR 推送后可以看一眼 checks 是否已有非 instrument 失败，但不能因为 Mock/Android Instrumented Tests 还在跑就停住等绿。
+默认不要让仍在运行的 Instrumented Tests 阻塞其他可执行工作；先处理当前可见失败，再做下一步。但当用户明确要求持续监控、任务本身是 CI/测试基础设施修复，或远端终态就是验收条件时，必须持续跟踪到终态：失败就继续取日志和修复，全部通过后才能结束。
 
-修复已经明确失败的 mock instrument CI 时，拿到失败类或方法后必须先在 `$off-android-avd-ci-debug` 的远端 AVD 上跑定向复现，不要只盯着 GitHub 日志或等待新一轮 run。例子：CI 已经列出某个列表缺失和线程崩溃时，应先把当前 APK 和测试 APK 放到远端 AVD，运行这些失败方法确认现象，再决定改生产代码还是测试注入；不能把“还有 CI 在跑”当成不复现的理由。
+修复 mock instrument CI 时，先按失败层级选择验证面，不能把远端 AVD 当成固定前置步骤：
 
-修复已经明确失败的 mock instrument CI 时，拿到失败类或方法后必须先在 `$off-android-avd-ci-debug` 的远端 AVD 上跑定向复现，不要只盯着 GitHub 日志或等待新一轮 run。例子：CI 已经列出评论页列表缺失和 Toast 线程崩溃时，应先把当前 APK 和测试 APK 放到远端 AVD，运行这些失败方法确认现象，再决定改生产代码还是测试注入；不能把“还有 CI 在跑”当成不复现的理由。
+1. workflow shell、Gradle 配置、编译或测试发现错误，直接用日志和本地静态/构建命令验证，不启动 AVD。
+2. 日志已经充分证明确定性断言或夹具错误时，可以直接修复并用最小相关测试或下一轮 CI 验证。
+3. 只有失败依赖设备状态、Compose/系统交互、API 版本或时序，且定向复现能显著提高判断质量时，才选择当前成本最低且环境匹配的 AVD；本地 AVD、`off` 远端 AVD 和 CI 定向重跑都可以。
+
+选择 `off` 后必须遵守 `$off-android-avd-ci-debug` 的远端 ADB 作用域和清理规则，但不能为了满足流程形式而强制启动 `off`。例子：五个分片都在 Gradle 选任务阶段报同一个 workflow 续行错误时，应直接修 workflow；只有某个页面测试进入 instrumentation 后稳定失败，才需要考虑 AVD 定向复现。
 
 ### Desktop release jar 运行验证
 
@@ -198,27 +202,29 @@ WebView 正文渲染不再接受任何功能更新，只作为废弃路径保留
 ## Android 调试标准流程
 
 注意：
-1. 必须使用avd验证，不要使用真机。若 `/Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/SKILL.md` 存在，UI/AVD 验证必须优先使用 `$off-android-avd-ci-debug` 提供的远端 `off` AVD；只有该 skill 不存在或远端 runner 不可用时，才退回本地 AVD。
+1. 需要设备验证时必须使用 AVD，不要使用真机。根据失败类型、目标 API、现有设备状态和启动成本，在本地 AVD、`off` 远端 AVD或 CI runner 中选择最合适的一种；`off` 是可选验证面，不是强制前置。
 2. 时刻注意你是一个LLM，延迟很高。所以大多数情况下不需要你执行sleep指令，你本身的反应就很慢，足够程序响应了。这也是说，如果需要执行双击等复杂手势，必须用&&来串联多个adb指令，不然你的反应太慢就不是双击了。
 3. UI 验证时如果启动后看到“下载官方App”“查看协议”“查看设置”这类官方 App/协议确认页，或进入知乎网页登录/安全验证页，不要当成普通业务 UI 问题；这表示当前 AVD 登录态缺失或失效。应先按 `.agents/skills/launch-on-device/SKILL.md` 的 Login JSON Backup and Restore 流程恢复/覆盖 `files/account.json`，确认已登录后再继续 UI 验证；不要反复卡在登录流程里。
 4. 调用 `$ui-test` 或安排 UI 自动化 subagent 时，尽量使用 `gpt-5.4-mini`；复杂判断再使用 `gpt-5.4`，避免使用反应较慢的模型拖慢 AVD 交互。
 
-### AVD 选择优先级
+### AVD 选择
 
-1. 若 `$off-android-avd-ci-debug` 存在，先读取该 skill，并用其远端 runner 脚本做健康检查：
+1. 先判断是否真的需要设备。workflow、shell、Gradle 配置、编译和测试发现错误不需要启动 AVD。
+2. 需要设备时，优先复用已经健康、目标 API 匹配且启动成本最低的本地或远端 AVD；不要仅因 `$off-android-avd-ci-debug` 存在就启动远端 runner。
+3. 选择 `off` 时，先读取该 skill，并按需运行健康检查：
    ```bash
    /Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/scripts/off-avd-ci-debug.sh status
    /Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/scripts/off-avd-ci-debug.sh boot-check
    ```
-2. `boot-check` 只证明远端 runner 可启动并会在结束时清理模拟器。需要真实 UI 交互时，应按 `$off-android-avd-ci-debug` 的远端环境约定在 `off` 上启动短生命周期 AVD，并在远端 ADB 环境中安装、启动和执行 UI 验证，不要把本地 ADB 当成远端 emulator。
-3. 远端 AVD 只作为短生命周期 runner 使用；验证完成后必须清理：
+4. `boot-check` 只证明远端 runner 可启动并会在结束时清理模拟器。需要真实 UI 交互时，应按 `$off-android-avd-ci-debug` 的远端环境约定在 `off` 上启动短生命周期 AVD，并在远端 ADB 环境中安装、启动和执行 UI 验证，不要把本地 ADB 当成远端 emulator。
+5. 选择远端 AVD 后，验证完成必须清理：
    ```bash
    /Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/scripts/off-avd-ci-debug.sh kill
    ```
-4. 只有远端 skill 缺失或远端 runner 明确不可用时，才使用本地 `Medium_Phone_2`。
+6. 本地 `Medium_Phone_2` 已经可用、与目标 API 更匹配或能更快完成定向验证时，可以直接使用本地 AVD。
 
 ### 应用启动与验证
-远端路径和本地回退路径必须分开执行，不能连续复制执行。只要选择了 `$off-android-avd-ci-debug`，后续 `adb` / `ui-test` 命令都必须在 `off` 的远端 ADB 环境中运行，不能继续使用本机裸 `adb`。如果当前远端 skill 只有 `status` / `boot-check` / `kill`，没有能保持 emulator 运行的交互入口，不能把 `boot-check` 后面接本机 `adb`；应先补远端交互脚本，或把远端 runner 明确标记为当前不可用后再走本地回退。
+远端路径和本地路径必须分开执行，不能连续复制执行。只要选择了 `$off-android-avd-ci-debug`，后续 `adb` / `ui-test` 命令都必须在 `off` 的远端 ADB 环境中运行，不能继续使用本机裸 `adb`。如果远端缺少能保持 emulator 运行的交互入口，可以改选本地 AVD；不要把远端 `boot-check` 后面接本机裸 `adb`。
 
 ```bash
 # 检查包名（必须先做）
@@ -226,7 +232,7 @@ grep "applicationId" app/build.gradle.kts
 # lite variant: com.github.zly2006.zhplus.lite
 ```
 
-远端优先路径：
+远端路径（选择 `off` 时）：
 
 ```bash
 /Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/scripts/off-avd-ci-debug.sh status
@@ -247,7 +253,7 @@ adb devices
 '"'"''
 ```
 
-本地回退路径，仅当 off skill 缺失或远端 runner 明确不可用时执行：
+本地路径（选择本地 AVD 时）：
 
 ```bash
 emulator -avd Medium_Phone_2

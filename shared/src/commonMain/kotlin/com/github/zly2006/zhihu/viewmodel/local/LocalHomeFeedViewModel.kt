@@ -33,6 +33,7 @@ class LocalHomeFeedViewModel :
     BaseFeedViewModel(),
     HomeFeedInteractionViewModel {
     private lateinit var recommendationEngine: LocalRecommendationEngine
+    private val recommendationResults = mutableMapOf<String, CrawlingResult>()
 
     override val initialUrl: String
         get() = error("LocalHomeFeedViewModel should not be used directly. Use LocalFeedViewModel instead.")
@@ -47,11 +48,18 @@ class LocalHomeFeedViewModel :
         try {
             val engine = ensureEngine(environment)
             val recommendations = engine.generateRecommendations(20)
+            recommendationResults.clear()
 
             if (recommendations.isEmpty()) {
                 generateFallbackContent()
             } else {
-                addDisplayItems(recommendations.map(::createLocalFeedDisplayItem))
+                addDisplayItems(
+                    recommendations.map { entry ->
+                        createLocalFeedDisplayItem(entry).also { item ->
+                            recommendationResults[item.stableKey] = entry.result
+                        }
+                    },
+                )
             }
         } catch (e: Exception) {
             environment.handleLocalRecommendationFailure(e)
@@ -65,13 +73,12 @@ class LocalHomeFeedViewModel :
     }
 
     fun onLocalItemOpened(item: FeedDisplayItem) {
-        val contentId = item.localContentId ?: return
-        val reason = item.localReason?.let { runCatching { CrawlingReason.valueOf(it) }.getOrNull() } ?: return
+        val result = recommendationResults[item.stableKey] ?: return
         if (!::recommendationEngine.isInitialized) {
             return
         }
         viewModelScope.launch(Dispatchers.Default) {
-            recommendationEngine.recordContentOpened(contentId, reason)
+            recommendationEngine.recordContentOpened(result.contentId, result.reason)
         }
     }
 
