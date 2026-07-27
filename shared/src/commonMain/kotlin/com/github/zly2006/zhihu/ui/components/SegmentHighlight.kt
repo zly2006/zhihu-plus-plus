@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.text.BasicText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material.icons.filled.ThumbUp
@@ -36,6 +35,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -46,33 +46,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.LinkAnnotation
-import androidx.compose.ui.text.LinkInteractionListener
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextLayoutResult
-import androidx.compose.ui.text.TextLinkStyles
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
 import com.github.zly2006.zhihu.shared.data.SegmentInfoMeta
-import com.github.zly2006.zhihu.shared.platform.SettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberPlainTextClipboard
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.util.SegmentHighlightSpan
-import com.github.zly2006.zhihu.shared.util.SegmentTextPart
-import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
-import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
+import com.hrm.markdown.parser.ast.SegmentHighlight
+import com.hrm.markdown.renderer.LocalOnSegmentHighlightClick
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -83,7 +64,7 @@ import kotlinx.serialization.json.put
 /**
  * 在可选中的 Markdown 子树外承载划线交互弹窗。
  *
- * `SegmentedText` 作为 Markdown 的原生块渲染，通常处在 Markdown 级别的文本选择容器内。
+ * `SegmentHighlight` 作为 Markdown 段落内联节点渲染，处在 Markdown 级别的文本选择容器内。
  * 如果它直接从这个子树里打开底部弹窗或评论弹窗，Compose 文本选择工具栏可能会跨弹窗窗口换算坐标，
  * 触发 `IllegalArgumentException: layouts are not part of the same hierarchy`。
  */
@@ -166,35 +147,28 @@ fun updateSegmentMetaAfterLike(
 expect fun rememberSegmentedTextRuntime(): SegmentedTextRuntime
 
 @Composable
-fun SegmentedText(
-    parts: List<SegmentTextPart>,
-    modifier: Modifier = Modifier,
-    maxLines: Int = Int.MAX_VALUE,
-    overflow: TextOverflow = TextOverflow.Clip,
-    style: TextStyle = segmentedTextStyle(),
+internal fun SegmentHighlightInteractionHost(
+    content: @Composable () -> Unit,
 ) {
     val runtime = rememberSegmentedTextRuntime()
     val copyPlainText = rememberPlainTextClipboard()
     val coroutineScope = rememberCoroutineScope()
-    val metaStates = remember(parts) { mutableStateMapOf<String, SegmentInfoMeta>() }
-    var selectedHighlight by remember(parts) { mutableStateOf<SegmentHighlightSpan?>(null) }
+    val metaStates = remember { mutableStateMapOf<String, SegmentInfoMeta>() }
+    var selectedHighlight by remember { mutableStateOf<Pair<String, SegmentHighlightSpan>?>(null) }
     val openSegmentComments = LocalSegmentCommentHost.current
     val showSegmentActionSheet = LocalSegmentActionSheetHost.current
+    val onSegmentHighlightClick: (SegmentHighlight) -> Unit = remember {
+        { node -> selectedHighlight = node.interactionKey to node.toSegmentHighlightSpan() }
+    }
 
-    val onHighlightClick = remember(parts) { { highlight: SegmentHighlightSpan -> selectedHighlight = highlight } }
-
-    SegmentTextRenderer(
-        parts = parts,
-        modifier = modifier,
-        maxLines = maxLines,
-        overflow = overflow,
-        style = style,
-        onHighlightClick = onHighlightClick,
+    CompositionLocalProvider(
+        LocalOnSegmentHighlightClick provides onSegmentHighlightClick,
+        content = content,
     )
 
-    val selected = selectedHighlight
-    val selectedKey = selected?.let(::highlightKey)
-    val selectedMeta = selectedKey?.let { metaStates[it] } ?: selected?.meta
+    val selectedKey = selectedHighlight?.first
+    val selected = selectedHighlight?.second
+    val selectedMeta = selectedKey?.let(metaStates::get) ?: selected?.meta
     LaunchedEffect(selected, selectedMeta) {
         if (selected == null || selectedKey == null || selectedMeta == null) {
             showSegmentActionSheet(null)
@@ -245,60 +219,6 @@ internal fun SegmentActionSheet(state: SegmentActionSheetState) {
         onLikeClick = state.onLikeClick,
         onCommentClick = state.onCommentClick,
         onCopyClick = state.onCopyClick,
-    )
-}
-
-@Composable
-private fun SegmentTextRenderer(
-    parts: List<SegmentTextPart>,
-    modifier: Modifier,
-    maxLines: Int,
-    overflow: TextOverflow,
-    style: TextStyle,
-    onHighlightClick: (SegmentHighlightSpan) -> Unit,
-) {
-    val highlightTextColor = MaterialTheme.colorScheme.onSurface
-    val highlightUnderlineColor = MaterialTheme.colorScheme.outlineVariant
-    var textLayoutResult by remember(parts) { mutableStateOf<TextLayoutResult?>(null) }
-
-    val annotatedText = remember(parts, highlightTextColor, onHighlightClick) {
-        buildSegmentAnnotatedText(
-            parts = parts,
-            highlightTextColor = highlightTextColor,
-            onHighlightClick = onHighlightClick,
-        )
-    }
-
-    BasicText(
-        text = annotatedText,
-        modifier = modifier.drawBehind {
-            val layout = textLayoutResult ?: return@drawBehind
-            val strokeWidth = 1.dp.toPx()
-            val dashWidth = 6.dp.toPx()
-            val gapWidth = 4.dp.toPx()
-            annotatedText.getLinkAnnotations(0, annotatedText.length).forEach { annotation ->
-                highlightedLineRects(layout, annotation.start, annotation.end).forEach { rect ->
-                    val y = rect.bottom - 2.dp.toPx()
-                    val path = Path().apply {
-                        moveTo(rect.left, y)
-                        lineTo(rect.right, y)
-                    }
-                    drawPath(
-                        path = path,
-                        color = highlightUnderlineColor,
-                        style = Stroke(
-                            width = strokeWidth,
-                            cap = StrokeCap.Round,
-                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(dashWidth, gapWidth)),
-                        ),
-                    )
-                }
-            }
-        },
-        style = style,
-        maxLines = maxLines,
-        overflow = overflow,
-        onTextLayout = { textLayoutResult = it },
     )
 }
 
@@ -368,46 +288,27 @@ private fun SegmentActionSheet(
     }
 }
 
-private fun buildSegmentAnnotatedText(
-    parts: List<SegmentTextPart>,
-    highlightTextColor: androidx.compose.ui.graphics.Color,
-    onHighlightClick: (SegmentHighlightSpan) -> Unit,
-): AnnotatedString = buildAnnotatedString {
-    parts.forEach { part ->
-        val highlight = part.highlight
-        if (highlight == null) {
-            append(part.text)
-        } else {
-            withLink(
-                LinkAnnotation.Clickable(
-                    tag = highlightKey(highlight),
-                    styles = TextLinkStyles(style = SpanStyle(color = highlightTextColor)),
-                    linkInteractionListener = LinkInteractionListener { onHighlightClick(highlight) },
-                ),
-            ) {
-                append(part.text)
-            }
-        }
-    }
-}
-
-@Composable
-fun segmentedTextStyle(settings: SettingsStore = rememberSettingsStore()): TextStyle {
-    val fontSizePercent = settings.getInt(PREF_FONT_SIZE, 100)
-    val lineHeightPercent = settings.getInt(PREF_LINE_HEIGHT, 160)
-    return MaterialTheme.typography.bodyLarge.copy(
-        fontSize = 16.sp * fontSizePercent / 100,
-        lineHeight = 16.sp * fontSizePercent / 100 * lineHeightPercent / 100,
-        color = MaterialTheme.colorScheme.onSurface,
-    )
-}
-
-private fun highlightKey(highlight: SegmentHighlightSpan): String =
-    buildString {
-        append(highlight.meta.segIds.joinToString(","))
-        append('|')
-        append(highlight.text)
-    }
+private fun SegmentHighlight.toSegmentHighlightSpan(): SegmentHighlightSpan = SegmentHighlightSpan(
+    text = text,
+    meta = SegmentInfoMeta(
+        segIds = attributes["data-highlight-id"]
+            .orEmpty()
+            .split(',')
+            .map(String::trim)
+            .filter(String::isNotEmpty),
+        isLike = attributes["data-highlight-is-like"]?.toBoolean() ?: false,
+        likeCount = attributes["data-highlight-like-count"]?.toIntOrNull() ?: 0,
+        commentCount = attributes["data-highlight-comment-count"]?.toIntOrNull() ?: 0,
+        myCommentCount = attributes["data-highlight-my-comment-count"]?.toIntOrNull() ?: 0,
+        isSpan = attributes["data-highlight-is-span"]?.toBoolean() ?: false,
+    ),
+    sourceUrl = attributes["data-highlight-source-url"],
+    contentId = attributes["data-highlight-content-id"],
+    contentType = attributes["data-highlight-content-type"],
+    paragraphId = attributes["data-highlight-pid"],
+    startOffset = attributes["data-highlight-start-offset"]?.toIntOrNull(),
+    endOffset = attributes["data-highlight-end-offset"]?.toIntOrNull(),
+)
 
 private fun SegmentHighlightSpan.toSegmentCommentHolder(): SegmentCommentHolder? {
     val contentId = contentId ?: return null
@@ -418,37 +319,4 @@ private fun SegmentHighlightSpan.toSegmentCommentHolder(): SegmentCommentHolder?
         contentType = contentType,
         segmentId = segmentId,
     )
-}
-
-private fun highlightedLineRects(
-    layout: TextLayoutResult,
-    start: Int,
-    end: Int,
-): List<Rect> {
-    if (start >= end) return emptyList()
-
-    val result = mutableListOf<Rect>()
-    var current: Rect? = null
-    for (offset in start until end) {
-        val box = layout.getBoundingBox(offset)
-        current = if (current == null) {
-            box
-        } else if (
-            kotlin.math.abs(box.top - current.top) < 0.5f &&
-            kotlin.math.abs(box.bottom - current.bottom) < 0.5f &&
-            box.left <= current.right + 1f
-        ) {
-            Rect(
-                left = current.left,
-                top = current.top,
-                right = box.right,
-                bottom = current.bottom,
-            )
-        } else {
-            result += current
-            box
-        }
-    }
-    current?.let(result::add)
-    return result
 }

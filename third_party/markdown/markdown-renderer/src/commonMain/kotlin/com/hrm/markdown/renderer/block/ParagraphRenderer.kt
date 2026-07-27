@@ -3,10 +3,24 @@ package com.hrm.markdown.renderer.block
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.dp
 import com.hrm.codehigh.theme.LocalCodeTheme
 import com.hrm.markdown.parser.ast.Image
 import com.hrm.markdown.parser.ast.Node
@@ -19,11 +33,16 @@ import com.hrm.markdown.renderer.LocalMarkdownDirectiveRegistry
 import com.hrm.markdown.renderer.LocalMarkdownTheme
 import com.hrm.markdown.renderer.LocalOnFootnoteClick
 import com.hrm.markdown.renderer.LocalOnLinkClick
+import com.hrm.markdown.renderer.LocalOnSegmentHighlightClick
+import com.hrm.markdown.renderer.LocalSegmentHighlightProjectionEnabled
 import com.hrm.markdown.renderer.MarkdownImageData
+import com.hrm.markdown.renderer.segmentHighlightTaps
+import com.hrm.markdown.renderer.segmentHighlightsByKey
 import com.hrm.latex.renderer.measure.rememberLatexMeasurer
 import com.hrm.markdown.renderer.inline.buildInlineAnnotatedString
 import com.hrm.markdown.renderer.inline.InlineFlowText
 import com.hrm.markdown.renderer.inline.InlineContentEntry
+import com.hrm.markdown.renderer.inline.SEGMENT_HIGHLIGHT_ANNOTATION_TAG
 import com.hrm.markdown.renderer.inline.rememberInlineContent
 
 /**
@@ -67,12 +86,99 @@ private fun SimpleParagraphRenderer(
         onLinkClick = onLinkClick,
         hostTextStyle = theme.bodyStyle,
     )
+    val onSegmentHighlightClick = LocalOnSegmentHighlightClick.current
+    val segmentHighlightProjectionEnabled = LocalSegmentHighlightProjectionEnabled.current
+    val segmentHighlights = remember(node, node.contentHash, node.lineRange.endLine, node.childCount()) {
+        node.segmentHighlightsByKey()
+    }
+    val annotatedText = inlineResult.annotated
+    var textLayoutResult by remember(annotatedText) { mutableStateOf<TextLayoutResult?>(null) }
+    val underlineColor = MaterialTheme.colorScheme.outlineVariant
+    val interactionModifier = if (segmentHighlightProjectionEnabled) {
+        modifier
+    } else {
+        modifier.segmentHighlightTaps(
+            annotated = annotatedText,
+            highlights = segmentHighlights,
+            textLayoutResult = { textLayoutResult },
+            onClick = onSegmentHighlightClick,
+        )
+    }
+    val segmentModifier = if (segmentHighlights.isEmpty()) {
+        interactionModifier
+    } else {
+        interactionModifier
+            .drawBehind {
+                val layout = textLayoutResult ?: return@drawBehind
+                val strokeWidth = 1.dp.toPx()
+                val dashWidth = 6.dp.toPx()
+                val gapWidth = 4.dp.toPx()
+                annotatedText
+                    .getStringAnnotations(
+                        SEGMENT_HIGHLIGHT_ANNOTATION_TAG,
+                        0,
+                        annotatedText.length,
+                    ).forEach { annotation ->
+                        highlightedLineRects(layout, annotation.start, annotation.end).forEach { rect ->
+                            val y = rect.bottom - 2.dp.toPx()
+                            drawPath(
+                                path = Path().apply {
+                                    moveTo(rect.left, y)
+                                    lineTo(rect.right, y)
+                                },
+                                color = underlineColor,
+                                style = Stroke(
+                                    width = strokeWidth,
+                                    cap = StrokeCap.Round,
+                                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(dashWidth, gapWidth)),
+                                ),
+                            )
+                        }
+                    }
+            }.semantics {
+                if (onSegmentHighlightClick != null) {
+                    customActions = segmentHighlights.values.map { highlight ->
+                        CustomAccessibilityAction("打开划线片段：${highlight.text}") {
+                            onSegmentHighlightClick(highlight)
+                            true
+                        }
+                    }
+                }
+            }
+    }
     InlineFlowText(
-        annotated = inlineResult.annotated,
+        annotated = annotatedText,
         inlineContents = inlineResult.inlineContents,
-        modifier = modifier.fillMaxWidth(),
+        modifier = segmentModifier.fillMaxWidth(),
         style = theme.bodyStyle,
+        onTextLayout = { textLayoutResult = it },
     )
+}
+
+private fun highlightedLineRects(
+    layout: TextLayoutResult,
+    start: Int,
+    end: Int,
+): List<androidx.compose.ui.geometry.Rect> {
+    if (start >= end || layout.layoutInput.text.isEmpty()) return emptyList()
+    val safeStart = start.coerceIn(0, layout.layoutInput.text.length)
+    val safeEnd = end.coerceIn(safeStart, layout.layoutInput.text.length)
+    if (safeStart >= safeEnd) return emptyList()
+
+    val startLine = layout.getLineForOffset(safeStart)
+    val endLine = layout.getLineForOffset((safeEnd - 1).coerceAtLeast(safeStart))
+    return (startLine..endLine).map { line ->
+        val lineStart = maxOf(safeStart, layout.getLineStart(line))
+        val lineEnd = minOf(safeEnd, layout.getLineEnd(line, visibleEnd = true))
+        val left = if (lineStart < lineEnd) layout.getHorizontalPosition(lineStart, usePrimaryDirection = true) else 0f
+        val right = if (lineStart < lineEnd) layout.getHorizontalPosition(lineEnd, usePrimaryDirection = true) else left
+        androidx.compose.ui.geometry.Rect(
+            left = minOf(left, right),
+            top = layout.getLineTop(line),
+            right = maxOf(left, right),
+            bottom = layout.getLineBottom(line),
+        )
+    }
 }
 
 /**
