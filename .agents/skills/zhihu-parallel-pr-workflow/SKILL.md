@@ -5,6 +5,12 @@ description: Coordinate Zhihu++ issue and PR implementation through subagents wi
 
 # Zhihu Parallel PR Workflow
 
+## Trigger Boundary
+
+This workflow is only for work with real parallel value: multiple independent issues or PRs, an explicit user request for subagents/delegation, or independently executable scopes that materially reduce wall-clock time. Do not trigger it merely because a task references one GitHub issue or will end in one PR. A single narrow issue should stay with the main agent, including implementation, validation, screenshots, and PR publication, unless the user explicitly asks to delegate it.
+
+Example: adding one menu action and adjusting that menu's sheet behavior is one bounded UI change. Spawning a worker only adds handoff and review overhead, so the main agent should complete it directly.
+
 ## Core Contract
 
 Use this skill for high-throughput Zhihu++ issue work. The main agent must coordinate; worker subagents must implement.
