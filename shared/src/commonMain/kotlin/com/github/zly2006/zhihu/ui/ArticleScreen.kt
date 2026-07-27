@@ -513,6 +513,7 @@ fun ArticleActionsMenu(
     val openArticleInBrowser = rememberArticleBrowserOpener()
     val shareRuntime = rememberShareDialogRuntime()
     val coroutineScope = rememberCoroutineScope()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     @Composable
     fun MenuActionButton(
@@ -701,6 +702,17 @@ fun ArticleActionsMenu(
         Spacer(modifier = Modifier.height(12.dp))
 
         MenuActionButton(
+            icon = Icons.Filled.Share,
+            text = "分享 Markdown 正文",
+            onClick = {
+                onDismissRequest()
+                shareRuntime.directShare(article, viewModel.convertToMarkdown())
+            },
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        MenuActionButton(
             icon = Icons.Outlined.DesktopWindows,
             text = "在电脑中打开（我计划使用浏览器插件实现，还在写，点击后请手动前往收藏夹打开）",
             onClick = {
@@ -716,7 +728,10 @@ fun ArticleActionsMenu(
     }
 
     if (showMenu) {
-        MyModalBottomSheet(onDismissRequest) {
+        MyModalBottomSheet(
+            onDismissRequest = onDismissRequest,
+            sheetState = sheetState,
+        ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
