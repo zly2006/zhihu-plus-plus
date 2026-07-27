@@ -93,6 +93,7 @@ class PeopleScreenProfileUrlTest {
 
         assertEquals("GitHub·zly2006", githubSocial?.title)
         assertEquals("4.0k", githubSocial?.starCount)
+        assertEquals("https://github.com/zly2006", githubSocial?.profileUrl)
         assertEquals("https://example.invalid/github.png", githubSocial?.iconUrl)
     }
 
@@ -106,7 +107,22 @@ class PeopleScreenProfileUrlTest {
                 ),
                 DataHolder.SocialMedia(
                     title = "GitHub·zly2006",
+                    link = "https://github.com/zly2006",
                     modules = listOf(DataHolder.SocialMediaModule("公开仓库数", "119")),
+                ),
+            ),
+        )
+
+        assertNull(profile.githubSocialUiState())
+    }
+
+    @Test
+    fun ignoresGithubEntriesWithoutProfileLink() {
+        val profile = people(
+            socialMedias = listOf(
+                DataHolder.SocialMedia(
+                    title = "GitHub·zly2006",
+                    modules = listOf(DataHolder.SocialMediaModule("stars", "4.0k")),
                 ),
             ),
         )

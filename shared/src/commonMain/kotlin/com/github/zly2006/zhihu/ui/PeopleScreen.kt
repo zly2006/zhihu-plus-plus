@@ -82,6 +82,7 @@ import com.github.zly2006.zhihu.shared.data.OfficialBadge
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.shared.data.officialBadgeDetails
+import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberImagePreviewOpener
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberZhihuWebUrlOpener
@@ -542,6 +543,7 @@ internal fun peopleProfileUrl(person: Person): String {
 data class GithubSocialUiState(
     val title: String,
     val starCount: String,
+    val profileUrl: String,
     val iconUrl: String? = null,
 )
 
@@ -554,10 +556,13 @@ internal fun DataHolder.People.githubSocialUiState(): GithubSocialUiState? = soc
         ?.value
         ?.takeIf { it.isNotBlank() }
         ?: return@firstNotNullOfOrNull null
+    val profileUrl = media.link.takeIf { it.isNotBlank() }
+        ?: return@firstNotNullOfOrNull null
 
     GithubSocialUiState(
         title = media.title,
         starCount = starCount,
+        profileUrl = profileUrl,
         iconUrl = media.icon.takeIf { it.isNotBlank() },
     )
 }
@@ -1482,6 +1487,7 @@ private fun UserInfoHeader(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val openImagePreview = rememberImagePreviewOpener()
+    val openExternalUrl = rememberExternalUrlOpener()
     Column(
         modifier = modifier.padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1534,7 +1540,8 @@ private fun UserInfoHeader(
                     Row(
                         modifier = Modifier
                             .padding(top = 4.dp)
-                            .testTag(PEOPLE_SCREEN_GITHUB_STARS_TAG),
+                            .testTag(PEOPLE_SCREEN_GITHUB_STARS_TAG)
+                            .clickable { openExternalUrl(githubSocial.profileUrl) },
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
