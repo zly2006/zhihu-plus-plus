@@ -85,6 +85,7 @@ import com.github.zly2006.zhihu.shared.data.officialBadgeDetails
 import com.github.zly2006.zhihu.shared.platform.rememberImagePreviewOpener
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberZhihuWebUrlOpener
+import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.shared.util.raiseForStatus
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.FeedCard
@@ -101,6 +102,7 @@ import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.postSigned
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import io.ktor.client.call.body
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
@@ -335,6 +337,7 @@ class PersonViewModel(
     var headline by mutableStateOf("")
     var officialBadge by mutableStateOf<OfficialBadge?>(null)
     var officialBadgeDetails by mutableStateOf<List<OfficialBadge>>(emptyList())
+    var githubSocial by mutableStateOf<GithubSocialUiState?>(null)
     var followerCount by mutableIntStateOf(0)
     var followingCount by mutableIntStateOf(0)
     var answerCount by mutableIntStateOf(0)
@@ -460,6 +463,17 @@ class PersonViewModel(
         if (urlToken != null) {
             this.person.urlToken = urlToken
         }
+
+        this.githubSocial = try {
+            environment
+                .fetchJson("${peopleProfileUrl(person)}/profile/detail", "")
+                ?.let { ZhihuJson.decodeJson<DataHolder.People>(it).githubSocialUiState() }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            Log.e("PersonViewModel", "Failed to load optional social media profile detail", error)
+            null
+        }
     }
 }
 
@@ -508,6 +522,7 @@ const val PEOPLE_SCREEN_BLOCK_BUTTON_TAG = "people_screen_block_button"
 const val PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG = "people_screen_recommendation_block_button"
 const val PEOPLE_SCREEN_QUESTION_AUTHOR_BLOCK_BUTTON_TAG = "people_screen_question_author_block_button"
 const val PEOPLE_SCREEN_SEARCH_BUTTON_TAG = "people_screen_search_button"
+const val PEOPLE_SCREEN_GITHUB_STARS_TAG = "people_screen_github_stars"
 const val PEOPLE_SCREEN_ANSWER_SORT_HOT_TAG = "people_screen_answer_sort_voteups"
 const val PEOPLE_SCREEN_ANSWER_SORT_TIME_TAG = "people_screen_answer_sort_created"
 const val PEOPLE_SCREEN_ARTICLE_SORT_HOT_TAG = "people_screen_article_sort_voteups"
@@ -522,6 +537,29 @@ private fun peopleScreenInitialPage(person: Person): Int {
 internal fun peopleProfileUrl(person: Person): String {
     val identifier = person.urlToken.takeIf { it.isNotBlank() } ?: person.id
     return "https://api.zhihu.com/people/$identifier"
+}
+
+data class GithubSocialUiState(
+    val title: String,
+    val starCount: String,
+    val iconUrl: String? = null,
+)
+
+internal fun DataHolder.People.githubSocialUiState(): GithubSocialUiState? = socialMedias.firstNotNullOfOrNull { media ->
+    if (!media.title.startsWith("GitHub", ignoreCase = true)) {
+        return@firstNotNullOfOrNull null
+    }
+    val starCount = media.modules
+        .firstOrNull { it.title.equals("stars", ignoreCase = true) }
+        ?.value
+        ?.takeIf { it.isNotBlank() }
+        ?: return@firstNotNullOfOrNull null
+
+    GithubSocialUiState(
+        title = media.title,
+        starCount = starCount,
+        iconUrl = media.icon.takeIf { it.isNotBlank() },
+    )
 }
 
 /**
@@ -1492,6 +1530,37 @@ private fun UserInfoHeader(
                     badges = viewModel.officialBadgeDetails,
                     modifier = Modifier.padding(top = 6.dp),
                 )
+                viewModel.githubSocial?.let { githubSocial ->
+                    Row(
+                        modifier = Modifier
+                            .padding(top = 4.dp)
+                            .testTag(PEOPLE_SCREEN_GITHUB_STARS_TAG),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        githubSocial.iconUrl?.let { iconUrl ->
+                            AsyncImage(
+                                model = iconUrl,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
+                        Text(
+                            text = githubSocial.title,
+                            modifier = Modifier.weight(1f, fill = false),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = "· ${githubSocial.starCount} stars",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                        )
+                    }
+                }
             }
         }
         Row(
