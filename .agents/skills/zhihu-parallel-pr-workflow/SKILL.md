@@ -128,9 +128,12 @@ Workers create draft PRs themselves.
 - Sync from latest `origin/master` before branch creation.
 - PR title/body must be Chinese.
 - Title prefix must be `feat:`, `fix:`, or `refactor:`.
+- After creating or editing a PR, read it back with `gh pr view` and explicitly verify the title prefix instead of trusting the worker's summary.
 - Include `Resolves #<issue>` when the PR closes the issue.
 - UI PR descriptions must include final effect screenshots from a real app run, AVD, or reproducible UI render.
 - Do not create one mega PR for unrelated issue work.
+
+When an upstream UI module supplies both display data and a destination URL, review the state projection and interaction together. Do not preserve only the visible label or count while silently discarding the action target; keep the URL in UI state, make the relevant container actionable through the project's established URL opener, and verify click semantics. For example, a social profile row with a count and profile link is incomplete if it renders the count but cannot open the profile.
 
 ## Main-Agent Review
 
@@ -146,7 +149,8 @@ After a worker returns:
    - settings keys without runtime reads
    - UI text truncation or layout regressions
 4. Confirm validation evidence and screenshot are real.
-5. If a worker missed requirements, send it back to fix in the same worktree.
+5. Read the published PR back and verify its title matches `^(feat|fix|refactor): `, its body language and issue linkage are correct, and any visible data carrying a destination URL remains actionable.
+6. If a worker missed requirements, send it back to fix in the same worktree.
 
 ## Shutdown
 

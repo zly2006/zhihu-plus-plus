@@ -556,6 +556,20 @@ object DataHolder {
     )
 
     @Serializable
+    data class SocialMedia(
+        val icon: String = "",
+        val title: String = "",
+        val link: String = "",
+        val modules: List<SocialMediaModule> = emptyList(),
+    )
+
+    @Serializable
+    data class SocialMediaModule(
+        val title: String = "",
+        val value: String = "",
+    )
+
+    @Serializable
     sealed interface Thumbnail
 
     @Suppress("unused")
@@ -746,6 +760,7 @@ object DataHolder {
         val followingCount: Int = 0,
         val answerCount: Int = 0,
         val articlesCount: Int = 0,
+        val socialMedias: List<SocialMedia> = emptyList(),
         val availableMedalsCount: Int = 0,
         val orgVerifyStatus: JsonElement? = null,
         val isRealname: Boolean = false,

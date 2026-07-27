@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu
 
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -67,6 +68,7 @@ import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_FOLLOWER_COUNT_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_FOLLOWING_COUNT_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_FOLLOWING_LIST_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_FOLLOW_BUTTON_TAG
+import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_GITHUB_STARS_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_HEADER_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_OFFICIAL_BADGE_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_PINS_LIST_TAG
@@ -124,6 +126,12 @@ class PeopleScreenInstrumentedTest {
         composeRule.onNodeWithTag(PEOPLE_SCREEN_HEADER_TAG).assertIsDisplayed()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_OFFICIAL_BADGE_TAG).assertIsDisplayed()
         composeRule.onNodeWithText("社区成就: 英语等 5 个话题下的优秀答主").assertIsDisplayed()
+        composeRule
+            .onNodeWithTag(PEOPLE_SCREEN_GITHUB_STARS_TAG)
+            .assertIsDisplayed()
+            .assertHasClickAction()
+        composeRule.onNodeWithText("GitHub·zly2006").assertIsDisplayed()
+        composeRule.onNodeWithText("· 4.0k stars").assertIsDisplayed()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_AVATAR_TAG).assertIsDisplayed()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_ANSWER_COUNT_TAG).assertIsDisplayed()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_ARTICLE_COUNT_TAG).assertIsDisplayed()
@@ -510,6 +518,26 @@ class PeopleScreenInstrumentedTest {
             method = HttpMethod.Get,
             urlPrefix = "https://api.zhihu.com/people/$token",
             body = ZhihuJson.json.encodeToString(seededProfile(itemCount)),
+        )
+        ZhihuMockApi.mockJson(
+            method = HttpMethod.Get,
+            url = "https://api.zhihu.com/people/$token/profile/detail",
+            body = ZhihuJson.json.encodeToString(
+                seededProfile(itemCount).copy(
+                    socialMedias = listOf(
+                        DataHolder.SocialMedia(
+                            icon = "https://example.invalid/github.png",
+                            title = "GitHub·zly2006",
+                            link = "https://github.com/zly2006",
+                            modules = listOf(
+                                DataHolder.SocialMediaModule("被关注人", "169"),
+                                DataHolder.SocialMediaModule("公开仓库数", "119"),
+                                DataHolder.SocialMediaModule("stars", "4.0k"),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
         )
         ZhihuMockApi.mockJson(
             method = HttpMethod.Post,
