@@ -18,7 +18,9 @@
 package com.github.zly2006.zhihu.ui
 
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
+import com.github.zly2006.zhihu.shared.util.Log
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 
@@ -36,12 +38,16 @@ fun homeFeedStartupCacheFileNames(): List<String> =
     listOf(LEGACY_HOME_FEED_STARTUP_CACHE_FILE_NAME) + RecommendationMode.entries.map(::homeFeedStartupCacheFileName)
 
 fun encodeHomeFeedStartupSnapshot(items: List<FeedDisplayItem>): String? {
-    val snapshotItems = items.take(HOME_FEED_STARTUP_SNAPSHOT_MAX_ITEMS)
+    // raw 的多态内容自带 type 字段，会与 kotlinx.serialization 的默认类型判别字段冲突；启动恢复也不需要这份可重新获取的详情缓存。
+    val snapshotItems = items.take(HOME_FEED_STARTUP_SNAPSHOT_MAX_ITEMS).map { it.copy(raw = null) }
     if (snapshotItems.isEmpty()) return null
 
-    return runCatching {
+    return try {
         ZhihuJson.json.encodeToString(snapshotItems)
-    }.getOrNull()
+    } catch (error: Exception) {
+        Log.e("HomeFeedStartupSnapshot", "Failed to encode home feed startup snapshot", error)
+        null
+    }
 }
 
 fun decodeHomeFeedStartupSnapshot(serialized: String?): List<FeedDisplayItem> {

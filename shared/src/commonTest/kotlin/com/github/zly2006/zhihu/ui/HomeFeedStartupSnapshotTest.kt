@@ -34,7 +34,7 @@ import kotlin.test.assertNull
 
 class HomeFeedStartupSnapshotTest {
     @Test
-    fun snapshotRoundTripKeepsCompleteFeedDisplayItem() {
+    fun snapshotRoundTripKeepsRestorableFeedDisplayItem() {
         val question = Feed.QuestionTarget(
             id = 1,
             _title = "缓存问题",
@@ -113,7 +113,7 @@ class HomeFeedStartupSnapshotTest {
         assertEquals(item.authorBadgeV2, restored.single().authorBadgeV2)
         assertEquals(item.isFiltered, restored.single().isFiltered)
         assertEquals(item.content, restored.single().content)
-        assertEquals(item.raw, restored.single().raw)
+        assertNull(restored.single().raw)
         assertEquals(item.localContentId, restored.single().localContentId)
         assertEquals(item.localFeedId, restored.single().localFeedId)
         assertEquals(item.localReason, restored.single().localReason)
@@ -225,7 +225,10 @@ class HomeFeedStartupSnapshotTest {
         )
         assertEquals(
             RecommendationMode.entries.size,
-            RecommendationMode.entries.map(::homeFeedStartupCacheFileName).distinct().size,
+            RecommendationMode.entries
+                .map(::homeFeedStartupCacheFileName)
+                .distinct()
+                .size,
         )
         assertEquals(
             homeFeedStartupCacheFileNames(),

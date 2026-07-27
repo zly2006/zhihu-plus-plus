@@ -268,10 +268,10 @@ fun HomeScreen(
         }
     }
 
-    val cacheableDisplayItems = viewModel.displayItems.toList()
-    LaunchedEffect(cacheableDisplayItems) {
-        if (cacheableDisplayItems.isNotEmpty()) {
-            startupCache.writeHomeFeedStartupCache(cacheableDisplayItems)
+    val latestLoadedDisplayItems = viewModel.latestLoadedDisplayItems.value
+    LaunchedEffect(latestLoadedDisplayItems) {
+        if (latestLoadedDisplayItems.isNotEmpty()) {
+            startupCache.writeHomeFeedStartupCache(latestLoadedDisplayItems)
         }
     }
 
