@@ -53,13 +53,13 @@ class LocalHomeFeedViewModel :
             if (recommendations.isEmpty()) {
                 generateFallbackContent()
             } else {
-                addDisplayItems(
-                    recommendations.map { entry ->
-                        createLocalFeedDisplayItem(entry).also { item ->
-                            recommendationResults[item.stableKey] = entry.result
-                        }
-                    },
-                )
+                val loadedItems = recommendations.map { entry ->
+                    createLocalFeedDisplayItem(entry).also { item ->
+                        recommendationResults[item.stableKey] = entry.result
+                    }
+                }
+                addDisplayItems(loadedItems)
+                latestLoadedDisplayItems.value = loadedItems
             }
         } catch (e: Exception) {
             environment.handleLocalRecommendationFailure(e)
@@ -115,6 +115,7 @@ class LocalHomeFeedViewModel :
             }
             delay(300)
         }
+        latestLoadedDisplayItems.value = fallbackItems
     }
 
     override suspend fun recordContentInteraction(

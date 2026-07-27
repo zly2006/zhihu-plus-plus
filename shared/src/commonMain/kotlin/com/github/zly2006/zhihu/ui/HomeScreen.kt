@@ -184,6 +184,7 @@ fun HomeScreen(
 
     val duo3HomeAccount = settings.getBoolean("duo3_home_account", false)
     val showRefreshFab = settings.getBoolean("showRefreshFab", true)
+    val autoRefreshOnStartup = settings.getBoolean(AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY, true)
     val showUnreadBadge = notificationSettings.getUnreadBadgeEnabled()
     var showAccountBottomSheet by remember { mutableStateOf(false) }
     var showCreateMenu by remember { mutableStateOf(false) }
@@ -198,6 +199,7 @@ fun HomeScreen(
         RecommendationMode.entries.find {
             it.key == settings.getString("recommendationMode", RecommendationMode.MIXED.key)
         } ?: RecommendationMode.MIXED
+    val startupCache = rememberHomeFeedStartupCache(currentRecommendationMode)
 
     val account = rememberHomeAccountState()
     val updateAnnouncement = rememberHomeUpdateAnnouncement()
@@ -266,15 +268,31 @@ fun HomeScreen(
         }
     }
 
+    val latestLoadedDisplayItems = viewModel.latestLoadedDisplayItems.value
+    LaunchedEffect(latestLoadedDisplayItems) {
+        if (latestLoadedDisplayItems.isNotEmpty()) {
+            startupCache.writeHomeFeedStartupCache(latestLoadedDisplayItems)
+        }
+    }
+
     // 初始加载
-    LaunchedEffect(currentRecommendationMode, account.isLoggedIn) {
+    LaunchedEffect(currentRecommendationMode, account.isLoggedIn, autoRefreshOnStartup) {
         if (!account.isLoggedIn &&
             settings.getBoolean("loginForRecommendation", true)
         ) {
             requestLogin()
         } else if (viewModel.displayItems.isEmpty()) {
-            // 只在第一次加载时刷新，这样可以避免在返回时刷新
-            viewModel.refresh(paginationEnvironment)
+            val cachedItems = if (autoRefreshOnStartup) {
+                emptyList()
+            } else {
+                startupCache.readHomeFeedStartupCache()
+            }
+            if (viewModel.displayItems.isEmpty() && cachedItems.isNotEmpty()) {
+                viewModel.addDisplayItems(cachedItems)
+            } else if (viewModel.displayItems.isEmpty()) {
+                // 只在第一次加载时刷新，这样可以避免在返回时刷新
+                viewModel.refresh(paginationEnvironment)
+            }
         }
     }
 
