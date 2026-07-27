@@ -640,6 +640,17 @@ fun ArticleActionsMenu(
         Spacer(modifier = Modifier.height(12.dp))
 
         MenuActionButton(
+            icon = Icons.Filled.Share,
+            text = "分享 Markdown 正文",
+            onClick = {
+                onDismissRequest()
+                shareRuntime.directShare(article, viewModel.convertToMarkdown())
+            },
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        MenuActionButton(
             icon = Icons.AutoMirrored.Filled.Comment,
             text = "总结本文",
             onClick = {
