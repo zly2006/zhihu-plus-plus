@@ -79,6 +79,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -241,6 +242,26 @@ fun HomeScreen(
 
     val listState = rememberLazyListState()
     var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
+
+    LaunchedEffect(lifecycleOwner, listState, viewModel) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            snapshotFlow {
+                if (listState.isScrollInProgress) {
+                    emptySet()
+                } else {
+                    listState.layoutInfo.visibleItemsInfo
+                        .mapNotNull { it.key as? String }
+                        .toSet()
+                }
+            }.collect { visibleItemKeys ->
+                if (visibleItemKeys.isNotEmpty()) {
+                    (viewModel as? HomeFeedInteractionViewModel)
+                        ?.reportVisibleItems(paginationEnvironment, visibleItemKeys)
+                }
+            }
+        }
+    }
+
     LaunchedEffect(scrollToTopTrigger) {
         when (
             topLevelReselectAction(
@@ -675,10 +696,8 @@ fun HomeScreen(
                     ) {
                         val feed = this.feed
                         val destination = navDestination
-                        if (feed != null) {
-//                            DataHolder.putFeed(feed)
-                            (viewModel as? HomeFeedInteractionViewModel)?.onUiContentClick(paginationEnvironment, feed, item)
-                        } else {
+                        (viewModel as? HomeFeedInteractionViewModel)?.onUiContentClick(paginationEnvironment, item)
+                        if (feed == null) {
                             localHomeViewModel?.onLocalItemOpened(item)
                         }
                         if (destination != null) {

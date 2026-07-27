@@ -25,6 +25,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.MomentsFeed
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.sourceLabel
 import com.github.zly2006.zhihu.shared.data.target
@@ -49,8 +50,35 @@ class FollowViewModel : BaseFeedViewModel() {
 }
 
 class FollowRecommendViewModel : BaseFeedViewModel() {
+    private val feedbackPoster = RecommendationFeedbackPoster("https://api.zhihu.com/moments/lastread")
+
     override val initialUrl: String
         get() = "https://api.zhihu.com/moments_v3?feed_type=recommend"
+
+    suspend fun reportVisibleItems(
+        environment: ZhihuApiEnvironment,
+        visibleItemKeys: Set<String>,
+    ) {
+        feedbackPoster.touch(
+            environment,
+            displayItems
+                .asSequence()
+                .filter { it.stableKey in visibleItemKeys }
+                .mapNotNull { (it.feed as? MomentsFeed)?.brief?.takeIf(String::isNotBlank) }
+                .map(::listOf)
+                .toList(),
+        )
+    }
+
+    fun reportRead(
+        environment: ZhihuApiEnvironment,
+        item: FeedDisplayItem,
+    ) {
+        val brief = (item.feed as? MomentsFeed)?.brief?.takeIf(String::isNotBlank) ?: return
+        viewModelScope.launch {
+            feedbackPoster.read(environment, listOf(brief))
+        }
+    }
 }
 
 class RecentMomentsViewModel : ViewModel() {

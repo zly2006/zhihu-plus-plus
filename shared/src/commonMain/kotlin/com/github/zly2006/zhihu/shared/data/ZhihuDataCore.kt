@@ -33,6 +33,8 @@ data class FeedDisplayItem(
     val isFiltered: Boolean = false,
     val content: String? = null,
     var raw: DataHolder.Content? = null,
+    /** 推荐反馈协议中事件类型之后的目标字段。 */
+    val recommendationFeedbackTarget: List<String> = emptyList(),
 ) {
     val stableKey: String
         get() = navDestinationJson

@@ -431,6 +431,7 @@ data class MomentsFeed(
     val id: String,
 //    val interaction: Interaction? = null,
     val momentDesc: String = "",
+    val brief: String = "",
     val target: Feed.Target,
     val targetType: String,
 ) : Feed {
