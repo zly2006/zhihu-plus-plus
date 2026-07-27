@@ -273,10 +273,20 @@ class ArticleScreenInstrumentedTest {
         ComposeFoundationFlags.isNewContextMenuEnabled = false
         try {
             val textToolbar = CapturingTextToolbar()
+            val selectionColor = Color.Magenta
             composeRule.setScreenContent {
-                CompositionLocalProvider(LocalTextToolbar provides textToolbar) {
+                CompositionLocalProvider(
+                    LocalTextToolbar provides textToolbar,
+                    LocalTextSelectionColors provides TextSelectionColors(
+                        handleColor = selectionColor,
+                        backgroundColor = selectionColor,
+                    ),
+                ) {
                     RenderMarkdown(
                         html = HIGHLIGHTED_PARAGRAPH_HTML,
+                        modifier = androidx.compose.ui.Modifier
+                            .width(280.dp)
+                            .testTag("highlighted-selection-article"),
                         enableScroll = false,
                     )
                 }
@@ -285,6 +295,22 @@ class ArticleScreenInstrumentedTest {
             composeRule
                 .onNodeWithText(HIGHLIGHTED_PARAGRAPH)
                 .performTouchInput { longClick() }
+
+            val selectionImage = composeRule
+                .onNodeWithTag("highlighted-selection-article")
+                .captureToImage()
+            val selectedPixels = selectionImage.toPixelMap().let { pixels ->
+                (0 until pixels.height).sumOf { y ->
+                    (0 until pixels.width).count { x ->
+                        val color = pixels[x, y]
+                        color.red > 0.9f && color.green < 0.1f && color.blue > 0.9f
+                    }
+                }
+            }
+            assertTrue(
+                "A long press on a highlighted paragraph must draw a visible selection background; found $selectedPixels selected pixels",
+                selectedPixels >= 100,
+            )
             composeRule.runOnIdle {
                 requireNotNull(textToolbar.onSelectAllRequested).invoke()
                 requireNotNull(textToolbar.onCopyRequested).invoke()
@@ -310,12 +336,20 @@ class ArticleScreenInstrumentedTest {
         ComposeFoundationFlags.isNewContextMenuEnabled = false
         try {
             val textToolbar = CapturingTextToolbar()
+            val selectionColor = Color.Magenta
             composeRule.setScreenContent {
-                CompositionLocalProvider(LocalTextToolbar provides textToolbar) {
+                CompositionLocalProvider(
+                    LocalTextToolbar provides textToolbar,
+                    LocalTextSelectionColors provides TextSelectionColors(
+                        handleColor = selectionColor,
+                        backgroundColor = selectionColor,
+                    ),
+                ) {
                     RenderMarkdown(
                         html = "$HIGHLIGHTED_PARAGRAPH_HTML<p>$HIGHLIGHT_SELECTION_TARGET</p>",
                         modifier = androidx.compose.ui.Modifier
-                            .width(280.dp),
+                            .width(280.dp)
+                            .testTag("highlighted-selection-drag-article"),
                         enableScroll = false,
                     )
                 }
@@ -348,6 +382,22 @@ class ArticleScreenInstrumentedTest {
                 )
                 up()
             }
+            val selectedPixels = composeRule
+                .onNodeWithTag("highlighted-selection-drag-article")
+                .captureToImage()
+                .toPixelMap()
+                .let { pixels ->
+                    (0 until pixels.height).sumOf { y ->
+                        (0 until pixels.width).count { x ->
+                            val color = pixels[x, y]
+                            color.red > 0.9f && color.green < 0.1f && color.blue > 0.9f
+                        }
+                    }
+                }
+            assertTrue(
+                "Dragging out of a highlighted paragraph must keep the cross-block selection visible; found $selectedPixels selected pixels",
+                selectedPixels >= 1_000,
+            )
             composeRule.runOnIdle {
                 requireNotNull(textToolbar.onCopyRequested).invoke()
             }
