@@ -5,6 +5,7 @@ import androidx.compose.ui.text.AnnotatedString
 
 internal const val INLINE_PLACEHOLDER_TAG = "markdown-inline-placeholder"
 internal const val INLINE_PLACEHOLDER_CHAR = '\uFFFC'
+internal const val SEGMENT_HIGHLIGHT_ANNOTATION_TAG = "segment-highlight"
 
 internal data class InlineContentEntry(
     val alternateText: String,

@@ -55,6 +55,7 @@ import com.hrm.markdown.parser.ast.KeyboardInput
 import com.hrm.markdown.parser.ast.Link
 import com.hrm.markdown.parser.ast.Node
 import com.hrm.markdown.parser.ast.RubyText
+import com.hrm.markdown.parser.ast.SegmentHighlight
 import com.hrm.markdown.parser.ast.SoftLineBreak
 import com.hrm.markdown.parser.ast.Spoiler
 import com.hrm.markdown.parser.ast.Strikethrough
@@ -423,6 +424,27 @@ internal fun AnnotatedString.Builder.renderInlineNode(
                     inlineCodeTheme
                 )
             }
+        }
+
+        is SegmentHighlight -> {
+            pushStringAnnotation(
+                tag = SEGMENT_HIGHLIGHT_ANNOTATION_TAG,
+                annotation = node.interactionKey,
+            )
+            renderInlineChildren(
+                node.children,
+                theme,
+                hostTextStyle,
+                inlineContents,
+                directiveRegistry,
+                onLinkClick,
+                onFootnoteClick,
+                latexMeasurer,
+                density,
+                textMeasurer,
+                inlineCodeTheme,
+            )
+            pop()
         }
 
         is Superscript -> {

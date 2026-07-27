@@ -652,6 +652,15 @@ class HtmlRenderer(
         closeTag("mark")
     }
 
+    override fun visitSegmentHighlight(node: SegmentHighlight) {
+        tag(
+            "span",
+            node.attributes + ("class" to "highlight-wrap"),
+        )
+        visitChildren(node)
+        closeTag("span")
+    }
+
     override fun visitSuperscript(node: Superscript) {
         tag("sup")
         visitChildren(node)
