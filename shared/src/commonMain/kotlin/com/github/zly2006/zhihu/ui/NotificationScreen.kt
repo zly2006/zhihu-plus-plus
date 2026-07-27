@@ -141,8 +141,11 @@ fun NotificationScreen() {
                     if (viewModel.unreadCount > 0) {
                         IconButton(onClick = {
                             coroutineScope.launch {
-                                viewModel.markAllAsRead(environment)
-                                userMessages.showMessage("已全部标记为已读")
+                                if (viewModel.markAllAsRead(environment)) {
+                                    userMessages.showMessage("已全部标记为已读")
+                                } else {
+                                    userMessages.showMessage("标记已读失败")
+                                }
                             }
                         }) {
                             Icon(Icons.Default.MarkChatRead, contentDescription = "已读")
