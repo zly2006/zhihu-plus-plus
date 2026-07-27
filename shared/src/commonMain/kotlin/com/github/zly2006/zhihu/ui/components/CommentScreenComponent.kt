@@ -21,20 +21,24 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -47,6 +51,7 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
 import com.github.zly2006.zhihu.theme.Typography
 import com.github.zly2006.zhihu.ui.CommentScreen
@@ -62,7 +67,12 @@ fun CommentScreenComponent(
     showComments: Boolean,
     onDismiss: () -> Unit,
     content: NavDestination,
+    isZhPlusAuthorContent: Boolean = false,
 ) {
+    val settings = rememberSettingsStore()
+    var authorCommentPolicyAcknowledged by remember {
+        mutableStateOf(settings.getBoolean(ZH_PLUS_AUTHOR_COMMENT_POLICY_ACKNOWLEDGED_KEY, false))
+    }
     val contentStateKey = commentContentStateKey(content)
     var activeChildComment by rememberSaveable(contentStateKey, saver = activeChildCommentSaver) {
         mutableStateOf<CommentItem?>(null)
@@ -175,7 +185,44 @@ fun CommentScreenComponent(
             )
         }
     }
+
+    if (showComments && isZhPlusAuthorContent && !authorCommentPolicyAcknowledged) {
+        AlertDialog(
+            modifier = Modifier.testTag(ZH_PLUS_AUTHOR_COMMENT_POLICY_DIALOG_TAG),
+            onDismissRequest = {},
+            title = { Text("评论区使用须知") },
+            text = {
+                Column {
+                    Text(
+                        "请勿通过知乎提交任何 Bug 反馈或功能建议。所有反馈仅在 GitHub Issues 处理；" +
+                            "不要发送到任何交流群，也不要发送到知乎++作者的回答或想法评论区。",
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "评论区只可发布与当前回答或想法相关的内容。无关内容将被无视，严重时会被直接拉黑。",
+                        color = MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    modifier = Modifier.testTag(ZH_PLUS_AUTHOR_COMMENT_POLICY_CONFIRM_TAG),
+                    onClick = {
+                        settings.putBoolean(ZH_PLUS_AUTHOR_COMMENT_POLICY_ACKNOWLEDGED_KEY, true)
+                        authorCommentPolicyAcknowledged = true
+                    },
+                ) {
+                    Text("我已知晓并确认")
+                }
+            },
+        )
+    }
 }
+
+const val ZH_PLUS_AUTHOR_COMMENT_POLICY_ACKNOWLEDGED_KEY = "zhPlusAuthorCommentPolicyAcknowledged"
+const val ZH_PLUS_AUTHOR_COMMENT_POLICY_DIALOG_TAG = "zh_plus_author_comment_policy_dialog"
+const val ZH_PLUS_AUTHOR_COMMENT_POLICY_CONFIRM_TAG = "zh_plus_author_comment_policy_confirm"
 
 private val activeChildCommentSaver = Saver<MutableState<CommentItem?>, List<String>>(
     save = { state ->

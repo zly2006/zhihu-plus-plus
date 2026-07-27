@@ -129,6 +129,7 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Person
 import com.github.zly2006.zhihu.shared.data.ZhihuPaging
 import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
@@ -1995,6 +1996,8 @@ fun ArticleScreen(
         showComments = showComments,
         onDismiss = { showComments = false },
         content = article,
+        isZhPlusAuthorContent = article.type == ArticleType.Answer &&
+            viewModel.authorId == DataHolder.ZH_PLUS_AUTHOR_USER_ID,
     )
     VotersSheet(
         show = showVoters,
