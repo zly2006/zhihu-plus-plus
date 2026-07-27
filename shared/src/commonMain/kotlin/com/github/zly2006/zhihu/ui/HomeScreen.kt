@@ -87,6 +87,9 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.navigation.Account
@@ -114,8 +117,10 @@ import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.ui.components.AnnouncementCard
 import com.github.zly2006.zhihu.ui.components.AnnouncementCardDefaults
 import com.github.zly2006.zhihu.ui.components.BlockByKeywordsDialog
-import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
+import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockConfirmDialog
+import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockRequest
+import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockType
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
@@ -150,11 +155,11 @@ const val HOME_ACCOUNT_BUTTON_TAG = "home_account_button"
 const val HOME_FEED_LIST_TAG = "home_feed_list"
 const val HOME_REFRESH_BUTTON_TAG = "home_refresh_button"
 const val HOME_AUTHOR_POLL_ANNOUNCEMENT_TAG = "home_author_poll_announcement"
+private const val MAX_HOME_PIN_ANNOUNCEMENTS = 3
 
 fun homeAuthorPollAnnouncementTag(pinId: Long): String = "$HOME_AUTHOR_POLL_ANNOUNCEMENT_TAG:$pinId"
 
-private fun authorPollAnnouncementDismissedKey(announcement: HomePollAnnouncement): String =
-    "dismissAuthorPollAnnouncement_${announcement.pinId}_${announcement.pollId}"
+fun homePinAnnouncementReadKey(pinId: Long): String = "readHomePinAnnouncement_$pinId"
 
 /**
  * 首页信息流页面。
@@ -176,9 +181,11 @@ fun HomeScreen(
     val notificationSettings = rememberNotificationSettingsStore()
     val userMessages = rememberUserMessageSink()
     val openExternalUrl = rememberExternalUrlOpener()
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     val duo3HomeAccount = settings.getBoolean("duo3_home_account", false)
     val showRefreshFab = settings.getBoolean("showRefreshFab", true)
+    val autoRefreshOnStartup = settings.getBoolean(AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY, true)
     val showUnreadBadge = notificationSettings.getUnreadBadgeEnabled()
     var showAccountBottomSheet by remember { mutableStateOf(false) }
     var showCreateMenu by remember { mutableStateOf(false) }
@@ -193,6 +200,7 @@ fun HomeScreen(
         RecommendationMode.entries.find {
             it.key == settings.getString("recommendationMode", RecommendationMode.MIXED.key)
         } ?: RecommendationMode.MIXED
+    val startupCache = rememberHomeFeedStartupCache(currentRecommendationMode)
 
     val account = rememberHomeAccountState()
     val updateAnnouncement = rememberHomeUpdateAnnouncement()
@@ -222,9 +230,7 @@ fun HomeScreen(
     var showAigcMarkingAnnouncement by remember {
         mutableStateOf(!settings.getBoolean(AIGC_MARKING_ANNOUNCEMENT_DISMISSED_PREFERENCE_KEY, false))
     }
-    var authorPollAnnouncements by remember {
-        mutableStateOf(emptyList<HomePollAnnouncement>())
-    }
+    var authorPinAnnouncements by remember { mutableStateOf(emptyList<HomePinAnnouncement>()) }
 
     // 首次启动提示
     var showFilterExplainDialog by remember {
@@ -268,31 +274,51 @@ fun HomeScreen(
         }
     }
 
+    val latestLoadedDisplayItems = viewModel.latestLoadedDisplayItems.value
+    LaunchedEffect(latestLoadedDisplayItems) {
+        if (latestLoadedDisplayItems.isNotEmpty()) {
+            startupCache.writeHomeFeedStartupCache(latestLoadedDisplayItems)
+        }
+    }
+
     // 初始加载
-    LaunchedEffect(currentRecommendationMode, account.isLoggedIn) {
+    LaunchedEffect(currentRecommendationMode, account.isLoggedIn, autoRefreshOnStartup) {
         if (!account.isLoggedIn &&
             settings.getBoolean("loginForRecommendation", true)
         ) {
             requestLogin()
         } else if (viewModel.displayItems.isEmpty()) {
-            // 只在第一次加载时刷新，这样可以避免在返回时刷新
-            viewModel.refresh(paginationEnvironment)
+            val cachedItems = if (autoRefreshOnStartup) {
+                emptyList()
+            } else {
+                startupCache.readHomeFeedStartupCache()
+            }
+            if (viewModel.displayItems.isEmpty() && cachedItems.isNotEmpty()) {
+                viewModel.addDisplayItems(cachedItems)
+            } else if (viewModel.displayItems.isEmpty()) {
+                // 只在第一次加载时刷新，这样可以避免在返回时刷新
+                viewModel.refresh(paginationEnvironment)
+            }
         }
     }
 
-    LaunchedEffect(Unit) {
-        authorPollAnnouncements = try {
-            paginationEnvironment
-                .fetchJson(ZHIHU_PLUS_AUTHOR_PINS_URL, "")
-                ?.let(::decodeHomePollAnnouncements)
-                ?.filterNot { it.isVoted }
-                ?.take(3)
-                ?: emptyList()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Log.e("HomeScreen", "Failed to load author poll announcements", e)
-            emptyList()
+    LaunchedEffect(lifecycleOwner, scrollToTopTrigger) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            val loadedAnnouncements = try {
+                paginationEnvironment
+                    .fetchJson(ZHIHU_PLUS_AUTHOR_PINS_URL, "")
+                    ?.let(::decodeHomePinAnnouncements)
+                    ?.filterNot { settings.getBoolean(homePinAnnouncementReadKey(it.pinId), false) }
+                    ?.take(MAX_HOME_PIN_ANNOUNCEMENTS)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("HomeScreen", "Failed to load home pin announcements", e)
+                null
+            }
+            if (loadedAnnouncements != null) {
+                authorPinAnnouncements = loadedAnnouncements
+            }
         }
     }
 
@@ -303,9 +329,7 @@ fun HomeScreen(
         }
     }
 
-    // 屏蔽用户确认对话框
-    var showBlockUserDialog by remember { mutableStateOf(false) }
-    var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) } // 二元组内容为 userId 和 userName。
+    var feedAuthorBlockRequest by remember { mutableStateOf<FeedAuthorBlockRequest?>(null) }
 
     // 按关键词屏蔽对话框
     var showBlockByKeywordsDialog by remember { mutableStateOf(false) }
@@ -561,13 +585,15 @@ fun HomeScreen(
                                     showAigcMarkingAnnouncement = false
                                 },
                             )
-                            authorPollAnnouncements.forEach { announcement ->
-                                val dismissedKey = authorPollAnnouncementDismissedKey(announcement)
-                                val visible = !settings.getBoolean(dismissedKey, false)
+                            authorPinAnnouncements.forEach { announcement ->
                                 AnnouncementCard(
                                     modifier = Modifier.testTag(homeAuthorPollAnnouncementTag(announcement.pinId)),
-                                    visible = visible,
-                                    title = "请给未来的知乎++提出建议",
+                                    visible = true,
+                                    title = if (announcement.kind == HomePinAnnouncementKind.Poll) {
+                                        "请给未来的知乎++提出建议"
+                                    } else {
+                                        "知乎++新动态"
+                                    },
                                     leadingIcon = { Icon(Icons.Default.Flag, contentDescription = null) },
                                     content = buildString {
                                         append(announcement.title)
@@ -578,23 +604,26 @@ fun HomeScreen(
                                             if (announcement.memberCount > 0) {
                                                 add("${announcement.memberCount} 人已参与")
                                             }
-                                            if (announcement.isVoted) {
-                                                add("已投票")
-                                            }
                                         }
                                         if (details.isNotEmpty()) {
                                             append("\n")
                                             append(details.joinToString(" · "))
                                         }
                                     },
-                                    accept = { Text("去投票") },
+                                    accept = {
+                                        Text(if (announcement.kind == HomePinAnnouncementKind.Poll) "去投票" else "查看")
+                                    },
                                     onAccept = {
+                                        settings.putBoolean(homePinAnnouncementReadKey(announcement.pinId), true)
+                                        authorPinAnnouncements = authorPinAnnouncements.filterNot {
+                                            it.pinId == announcement.pinId
+                                        }
                                         navigator.onNavigate(Pin(announcement.pinId))
                                     },
                                     dismiss = { Text("关闭") },
                                     onDismiss = {
-                                        settings.putBoolean(dismissedKey, true)
-                                        authorPollAnnouncements = authorPollAnnouncements.filterNot {
+                                        settings.putBoolean(homePinAnnouncementReadKey(announcement.pinId), true)
+                                        authorPinAnnouncements = authorPinAnnouncements.filterNot {
                                             it.pinId == announcement.pinId
                                         }
                                     },
@@ -625,8 +654,20 @@ fun HomeScreen(
                         },
                         onBlockUser = { feedItem ->
                             feedBlockActions.handleBlockUser(viewModel, feedItem) { authorInfo ->
-                                userToBlock = authorInfo
-                                showBlockUserDialog = true
+                                feedAuthorBlockRequest = FeedAuthorBlockRequest(
+                                    type = FeedAuthorBlockType.CONTENT_AUTHOR,
+                                    userId = authorInfo.first,
+                                    userName = authorInfo.second,
+                                )
+                            }
+                        },
+                        onBlockQuestionAuthor = { feedItem ->
+                            feedBlockActions.handleBlockQuestionAuthor(viewModel, feedItem) { authorInfo ->
+                                feedAuthorBlockRequest = FeedAuthorBlockRequest(
+                                    type = FeedAuthorBlockType.QUESTION_AUTHOR,
+                                    userId = authorInfo.first,
+                                    userName = authorInfo.second,
+                                )
                             }
                         },
                         onBlockByKeywords = { feedItem ->
@@ -795,19 +836,13 @@ fun HomeScreen(
         }
     }
 
-    // 屏蔽用户确认对话框
-    BlockUserConfirmDialog(
-        showDialog = showBlockUserDialog,
-        userToBlock = userToBlock,
+    FeedAuthorBlockConfirmDialog(
+        request = feedAuthorBlockRequest,
         displayItems = viewModel.displayItems,
-        onDismiss = {
-            showBlockUserDialog = false
-            userToBlock = null
-        },
+        onDismiss = { feedAuthorBlockRequest = null },
         onConfirm = {
             viewModel.refresh(paginationEnvironment)
-            showBlockUserDialog = false
-            userToBlock = null
+            feedAuthorBlockRequest = null
         },
     )
 

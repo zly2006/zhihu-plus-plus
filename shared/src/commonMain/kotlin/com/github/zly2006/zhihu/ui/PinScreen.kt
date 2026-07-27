@@ -438,6 +438,7 @@ fun PinScreen(
                         showComments = showComments,
                         onDismiss = { showComments = false },
                         content = pin,
+                        isZhPlusAuthorContent = pinContent?.author?.id == DataHolder.ZH_PLUS_AUTHOR_USER_ID,
                     )
 
                     val shareText = getShareText(pin)

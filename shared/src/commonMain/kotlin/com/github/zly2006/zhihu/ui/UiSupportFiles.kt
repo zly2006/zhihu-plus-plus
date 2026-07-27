@@ -42,6 +42,8 @@ import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.shared.platform.SettingsStore
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
@@ -436,7 +438,6 @@ enum class TtsState(
  */
 data class ZhihuMainPreferenceSnapshot(
     val duo3HomeAccount: Boolean,
-    val duo3NavStyle: Boolean,
     val tapToScrollToTopEnabled: Boolean,
     val autoHideBottomBar: Boolean,
     val selectedBottomBarItemKeys: List<String>,
@@ -455,7 +456,6 @@ class ZhihuMainPreferenceState(
     private var snapshot by mutableStateOf(readSnapshot())
 
     val duo3HomeAccount: Boolean get() = snapshot.duo3HomeAccount
-    val duo3NavStyle: Boolean get() = snapshot.duo3NavStyle
     val tapToScrollToTopEnabled: Boolean get() = snapshot.tapToScrollToTopEnabled
     val autoHideBottomBar: Boolean get() = snapshot.autoHideBottomBar
     val selectedBottomBarItemKeys: List<String> get() = snapshot.selectedBottomBarItemKeys
@@ -546,6 +546,14 @@ data class HomeUpdateAnnouncement(
 
 @Composable
 expect fun rememberHomeAccountState(): HomeAccountState
+
+data class HomeFeedStartupCache(
+    val readHomeFeedStartupCache: suspend () -> List<FeedDisplayItem>,
+    val writeHomeFeedStartupCache: suspend (List<FeedDisplayItem>) -> Unit,
+)
+
+@Composable
+expect fun rememberHomeFeedStartupCache(recommendationMode: RecommendationMode): HomeFeedStartupCache
 
 @Composable
 expect fun rememberHomeUpdateAnnouncement(): HomeUpdateAnnouncement?

@@ -165,6 +165,9 @@ class DesktopPaginationEnvironment(
     override suspend fun isUserBlocked(userId: String): Boolean =
         contentFilterDb.blockedUserDao().isUserBlocked(userId)
 
+    override suspend fun isQuestionAuthorBlocked(userId: String): Boolean =
+        contentFilterDb.blockedQuestionAuthorDao().isUserBlocked(userId)
+
     override fun blockedUserIds(): Set<String> =
         runBlocking {
             contentFilterDb
@@ -190,8 +193,28 @@ class DesktopPaginationEnvironment(
         )
     }
 
+    override suspend fun addBlockedQuestionAuthor(
+        userId: String,
+        userName: String,
+        urlToken: String?,
+        avatarUrl: String?,
+    ) {
+        contentFilterDb.blockedQuestionAuthorDao().insertUser(
+            com.github.zly2006.zhihu.viewmodel.filter.BlockedQuestionAuthor(
+                userId = userId,
+                userName = userName,
+                urlToken = urlToken,
+                avatarUrl = avatarUrl,
+            ),
+        )
+    }
+
     override suspend fun removeBlockedUser(userId: String) {
         contentFilterDb.blockedUserDao().deleteUserById(userId)
+    }
+
+    override suspend fun removeBlockedQuestionAuthor(userId: String) {
+        contentFilterDb.blockedQuestionAuthorDao().deleteUserById(userId)
     }
 
     override suspend fun recordContentOpenEvent(
@@ -231,6 +254,7 @@ class DesktopPaginationEnvironment(
                 settings = settings,
                 blockedKeywordDao = contentFilterDb.blockedKeywordDao(),
                 blockedUserDao = contentFilterDb.blockedUserDao(),
+                blockedQuestionAuthorDao = contentFilterDb.blockedQuestionAuthorDao(),
                 blockedTopicDao = contentFilterDb.blockedTopicDao(),
                 blockedKeywordService = BlockedKeywordService(
                     keywordDao = contentFilterDb.blockedKeywordDao(),

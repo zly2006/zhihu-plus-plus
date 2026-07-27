@@ -17,8 +17,13 @@
 
 package com.github.zly2006.zhihu
 
+import android.content.Context
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
@@ -39,10 +44,13 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CommentHolder
+import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.navigation.Navigator
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.shared.comment.CommentSortOrder
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
 import com.github.zly2006.zhihu.test.InstrumentedTestEnvironment
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
@@ -68,6 +76,11 @@ import com.github.zly2006.zhihu.ui.COMMENT_SORT_TIME_TAG
 import com.github.zly2006.zhihu.ui.CommentImageMenuAction
 import com.github.zly2006.zhihu.ui.CommentScreen
 import com.github.zly2006.zhihu.ui.CommentScreenTestOverrides
+import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
+import com.github.zly2006.zhihu.ui.components.ZH_PLUS_AUTHOR_COMMENT_POLICY_ACKNOWLEDGED_KEY
+import com.github.zly2006.zhihu.ui.components.ZH_PLUS_AUTHOR_COMMENT_POLICY_CONFIRM_TAG
+import com.github.zly2006.zhihu.ui.components.ZH_PLUS_AUTHOR_COMMENT_POLICY_DIALOG_TAG
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
@@ -76,9 +89,11 @@ import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.paginationEnvironment
 import io.ktor.http.HttpMethod
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonArray
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -107,6 +122,54 @@ class CommentScreenInstrumentedTest {
             urlPrefix = "https://www.zhihu.com/api/v4/comments/",
             body = "{}",
         )
+    }
+
+    @Test
+    fun zhPlusAuthorCommentPolicyRequiresExplicitOneTimeConfirmation() {
+        seedRootCommentViewModel(emptyList())
+        val showComments = mutableStateOf(true)
+        composeRule.setScreenContent {
+            CommentScreenComponent(
+                showComments = showComments.value,
+                onDismiss = { showComments.value = false },
+                content = ROOT_ARTICLE,
+                isZhPlusAuthorContent = true,
+            )
+        }
+
+        composeRule.onNodeWithTag(ZH_PLUS_AUTHOR_COMMENT_POLICY_DIALOG_TAG).assertIsDisplayed()
+        composeRule.onNodeWithText("请勿通过知乎提交任何 Bug 反馈或功能建议。", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithText("评论区只可发布与当前回答或想法相关的内容。", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithTag(ZH_PLUS_AUTHOR_COMMENT_POLICY_CONFIRM_TAG).assertIsDisplayed()
+
+        composeRule.pressSystemBack()
+        val preferences = composeRule.activity.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        assertFalse(preferences.getBoolean(ZH_PLUS_AUTHOR_COMMENT_POLICY_ACKNOWLEDGED_KEY, false))
+        composeRule.runOnIdle { showComments.value = true }
+        composeRule.onNodeWithTag(ZH_PLUS_AUTHOR_COMMENT_POLICY_DIALOG_TAG).assertIsDisplayed()
+
+        composeRule.onNodeWithTag(ZH_PLUS_AUTHOR_COMMENT_POLICY_CONFIRM_TAG).performClick()
+        composeRule.onAllNodesWithTag(ZH_PLUS_AUTHOR_COMMENT_POLICY_DIALOG_TAG).assertCountEquals(0)
+        assertTrue(preferences.getBoolean(ZH_PLUS_AUTHOR_COMMENT_POLICY_ACKNOWLEDGED_KEY, false))
+
+        composeRule.runOnIdle { showComments.value = false }
+        composeRule.runOnIdle { showComments.value = true }
+        composeRule.onAllNodesWithTag(ZH_PLUS_AUTHOR_COMMENT_POLICY_DIALOG_TAG).assertCountEquals(0)
+    }
+
+    @Test
+    fun commentPolicyDoesNotShowForOtherAuthors() {
+        seedRootCommentViewModel(emptyList())
+        composeRule.setScreenContent {
+            CommentScreenComponent(
+                showComments = true,
+                onDismiss = {},
+                content = ROOT_ARTICLE,
+                isZhPlusAuthorContent = false,
+            )
+        }
+
+        composeRule.onAllNodesWithTag(ZH_PLUS_AUTHOR_COMMENT_POLICY_DIALOG_TAG).assertCountEquals(0)
     }
 
     @After
@@ -190,6 +253,94 @@ class CommentScreenInstrumentedTest {
             ),
             navigator.destinations,
         )
+    }
+
+    @Test
+    fun childCommentTargetAndScrollSurviveExternalNavigation() {
+        /*
+         * Expected behavior:
+         * 1. Opening a root comment's reply sheet and scrolling deep into its child replies records
+         *    both the active root comment and the child list position in the host back-stack state.
+         * 2. Navigating to a child comment author's profile removes the comment host from composition.
+         * 3. Returning to the saved host must reopen the same reply sheet at the same child reply,
+         *    instead of falling back to the root comment list or resetting the child list to the top.
+         */
+        val rootComment = seedRootComment(index = 99, childCommentCount = 24)
+        val childComments = seedChildComments(count = 24)
+        ZhihuMockApi.mockJsonPrefix(
+            method = HttpMethod.Get,
+            urlPrefix = "https://www.zhihu.com/api/v4/comment_v5/answers/9001/root_comment",
+            body =
+                """
+                {
+                  "data": ${ZhihuJson.json.encodeToString(listOf(rootComment))},
+                  "paging": {"is_end": true, "is_start": true, "totals": 1, "next": ""}
+                }
+                """.trimIndent(),
+        )
+        ZhihuMockApi.mockJsonPrefix(
+            method = HttpMethod.Get,
+            urlPrefix = "https://www.zhihu.com/api/v4/comment_v5/comment/root-99/child_comment",
+            body =
+                """
+                {
+                  "data": ${ZhihuJson.json.encodeToString(childComments)},
+                  "paging": {"is_end": true, "is_start": true, "totals": 24, "next": ""}
+                }
+                """.trimIndent(),
+        )
+
+        val showCommentHost = mutableStateOf(true)
+        composeRule.setScreenContent {
+            val stateHolder = rememberSaveableStateHolder()
+            val navigator = remember {
+                Navigator(
+                    onNavigate = { showCommentHost.value = false },
+                    onNavigateBack = {},
+                )
+            }
+            if (showCommentHost.value) {
+                stateHolder.SaveableStateProvider("comment-host") {
+                    CompositionLocalProvider(LocalNavigator provides navigator) {
+                        CommentScreenComponent(
+                            showComments = true,
+                            onDismiss = {},
+                            content = ROOT_ARTICLE,
+                        )
+                    }
+                }
+            } else {
+                androidx.compose.material3.Text(
+                    text = "外部页面",
+                    modifier = Modifier.testTag("external_page"),
+                )
+            }
+        }
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag("comment_child_button_root-99").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("comment_child_button_root-99").performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(COMMENT_SCREEN_LIST_TAG).fetchSemanticsNodes().size == 2
+        }
+        composeRule
+            .onAllNodesWithTag(COMMENT_SCREEN_LIST_TAG)[1]
+            .performScrollToNode(hasTestTag("comment_row_child-20"))
+        composeRule.onNodeWithTag("comment_row_child-20").assertIsDisplayed()
+        composeRule.onNodeWithTag("comment_author_child-20").performClick()
+        composeRule.onNodeWithTag("external_page").assertIsDisplayed()
+
+        composeRule.runOnIdle { showCommentHost.value = true }
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            composeRule.onAllNodesWithTag(COMMENT_SCREEN_LIST_TAG).fetchSemanticsNodes().size == 2
+        }
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            runCatching {
+                composeRule.onNodeWithTag("comment_row_child-20").assertIsDisplayed()
+            }.isSuccess
+        }
+        composeRule.onNodeWithTag("comment_row_child-20").assertIsDisplayed()
     }
 
     @Test
@@ -369,6 +520,14 @@ class CommentScreenInstrumentedTest {
             viewModel.submissions.size == 1
         }
 
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            try {
+                composeRule.onNodeWithText("离线发送的回复").assertIsDisplayed()
+                true
+            } catch (_: AssertionError) {
+                false
+            }
+        }
         composeRule.onNodeWithText("离线发送的回复").assertIsDisplayed()
         composeRule.onAllNodesWithTag(COMMENT_REPLY_BANNER_TAG).assertCountEquals(0)
         composeRule.onAllNodesWithText("回复 子回复作者 1...").assertCountEquals(0)

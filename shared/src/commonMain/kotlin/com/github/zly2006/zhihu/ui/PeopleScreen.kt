@@ -84,9 +84,11 @@ import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.shared.data.officialBadgeDetails
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
+import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberImagePreviewOpener
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberZhihuWebUrlOpener
+import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.shared.util.raiseForStatus
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.FeedCard
@@ -103,6 +105,7 @@ import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.postSigned
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import io.ktor.client.call.body
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
@@ -337,6 +340,7 @@ class PersonViewModel(
     var headline by mutableStateOf("")
     var officialBadge by mutableStateOf<OfficialBadge?>(null)
     var officialBadgeDetails by mutableStateOf<List<OfficialBadge>>(emptyList())
+    var githubSocial by mutableStateOf<GithubSocialUiState?>(null)
     var followerCount by mutableIntStateOf(0)
     var followingCount by mutableIntStateOf(0)
     var answerCount by mutableIntStateOf(0)
@@ -344,6 +348,7 @@ class PersonViewModel(
     var isFollowing by mutableStateOf(false)
     var isBlocking by mutableStateOf(false)
     var isBlockedInRecommendations by mutableStateOf(false)
+    var isBlockedAsQuestionAuthor by mutableStateOf(false)
     var memberHashId by mutableStateOf(person.id)
 
     // 只实现已有数据类型的 ViewModel
@@ -411,6 +416,21 @@ class PersonViewModel(
         }
     }
 
+    suspend fun toggleQuestionAuthorBlock(environment: ContentBlocklistEnvironment) {
+        if (isBlockedAsQuestionAuthor) {
+            environment.removeBlockedQuestionAuthor(person.id)
+            isBlockedAsQuestionAuthor = false
+        } else {
+            environment.addBlockedQuestionAuthor(
+                userId = person.id,
+                userName = name,
+                urlToken = person.urlToken,
+                avatarUrl = avatar,
+            )
+            isBlockedAsQuestionAuthor = true
+        }
+    }
+
     suspend fun load(environment: ProfileLoadEnvironment) {
         environment.addReadHistory(person.id, "profile")
 
@@ -440,10 +460,22 @@ class PersonViewModel(
         this.isFollowing = loadedPerson.isFollowing
         this.isBlocking = loadedPerson.isBlocking
         this.isBlockedInRecommendations = environment.isUserBlocked(loadedPerson.id)
+        this.isBlockedAsQuestionAuthor = environment.isQuestionAuthorBlocked(loadedPerson.id)
         this.memberHashId = loadedPerson.id
         this.person.id = loadedPerson.id
         if (urlToken != null) {
             this.person.urlToken = urlToken
+        }
+
+        this.githubSocial = try {
+            environment
+                .fetchJson("${peopleProfileUrl(person)}/profile/detail", "")
+                ?.let { ZhihuJson.decodeJson<DataHolder.People>(it).githubSocialUiState() }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            Log.e("PersonViewModel", "Failed to load optional social media profile detail", error)
+            null
         }
     }
 }
@@ -543,7 +575,9 @@ const val PEOPLE_SCREEN_FOLLOWING_COUNT_TAG = "people_screen_stat_following"
 const val PEOPLE_SCREEN_FOLLOW_BUTTON_TAG = "people_screen_follow_button"
 const val PEOPLE_SCREEN_BLOCK_BUTTON_TAG = "people_screen_block_button"
 const val PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG = "people_screen_recommendation_block_button"
+const val PEOPLE_SCREEN_QUESTION_AUTHOR_BLOCK_BUTTON_TAG = "people_screen_question_author_block_button"
 const val PEOPLE_SCREEN_SEARCH_BUTTON_TAG = "people_screen_search_button"
+const val PEOPLE_SCREEN_GITHUB_STARS_TAG = "people_screen_github_stars"
 const val PEOPLE_SCREEN_ANSWER_SORT_HOT_TAG = "people_screen_answer_sort_voteups"
 const val PEOPLE_SCREEN_ANSWER_SORT_TIME_TAG = "people_screen_answer_sort_created"
 const val PEOPLE_SCREEN_ARTICLE_SORT_HOT_TAG = "people_screen_article_sort_voteups"
@@ -558,6 +592,33 @@ private fun peopleScreenInitialPage(person: Person): Int {
 internal fun peopleProfileUrl(person: Person): String {
     val identifier = person.urlToken.takeIf { it.isNotBlank() } ?: person.id
     return "https://api.zhihu.com/people/$identifier"
+}
+
+data class GithubSocialUiState(
+    val title: String,
+    val starCount: String,
+    val profileUrl: String,
+    val iconUrl: String? = null,
+)
+
+internal fun DataHolder.People.githubSocialUiState(): GithubSocialUiState? = socialMedias.firstNotNullOfOrNull { media ->
+    if (!media.title.startsWith("GitHub", ignoreCase = true)) {
+        return@firstNotNullOfOrNull null
+    }
+    val starCount = media.modules
+        .firstOrNull { it.title.equals("stars", ignoreCase = true) }
+        ?.value
+        ?.takeIf { it.isNotBlank() }
+        ?: return@firstNotNullOfOrNull null
+    val profileUrl = media.link.takeIf { it.isNotBlank() }
+        ?: return@firstNotNullOfOrNull null
+
+    GithubSocialUiState(
+        title = media.title,
+        starCount = starCount,
+        profileUrl = profileUrl,
+        iconUrl = media.icon.takeIf { it.isNotBlank() },
+    )
 }
 
 /**
@@ -682,13 +743,23 @@ fun PeopleScreen(
                                     }
                                 }
                             },
+                            onQuestionAuthorBlockToggle = {
+                                coroutineScope.launch {
+                                    try {
+                                        viewModel.toggleQuestionAuthorBlock(paginationEnvironment)
+                                        userMessages.showShortMessage(if (viewModel.isBlockedAsQuestionAuthor) "已屏蔽其提问" else "已取消屏蔽其提问")
+                                    } catch (e: Exception) {
+                                        userMessages.showShortMessage("操作失败: ${e.message}")
+                                    }
+                                }
+                            },
                         )
                     },
                     colors = TopAppBarDefaults.topAppBarColors().copy(
                         scrolledContainerColor = MaterialTheme.colorScheme.surface,
                     ),
                     scrollBehavior = scrollBehavior,
-                    expandedHeight = 200.dp,
+                    expandedHeight = 240.dp,
                 )
                 if (viewModel.memberHashId.isNotBlank() && viewModel.memberHashId != Person.EMPTY_ID) {
                     IconButton(
@@ -831,7 +902,7 @@ fun PeopleScreen(
                             FeedCard(
                                 it,
                                 readingQueueSourceId = readingQueueSourceId,
-                                modifier = Modifier.testTag("people_screen_activity_item_${it.localFeedId ?: it.title}"),
+                                modifier = Modifier.testTag("people_screen_activity_item_${it.stableKey}"),
                                 horizontalPadding = 4.dp,
                             )
                         }
@@ -1469,7 +1540,7 @@ private fun SortBar(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
 private fun UserInfoHeader(
     viewModel: PersonViewModel,
@@ -1478,9 +1549,11 @@ private fun UserInfoHeader(
     onFollowToggle: () -> Unit,
     onBlockToggle: () -> Unit,
     onRecommendationBlockToggle: () -> Unit,
+    onQuestionAuthorBlockToggle: () -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val openImagePreview = rememberImagePreviewOpener()
+    val openExternalUrl = rememberExternalUrlOpener()
     Column(
         modifier = modifier.padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1529,6 +1602,38 @@ private fun UserInfoHeader(
                     badges = viewModel.officialBadgeDetails,
                     modifier = Modifier.padding(top = 6.dp),
                 )
+                viewModel.githubSocial?.let { githubSocial ->
+                    Row(
+                        modifier = Modifier
+                            .padding(top = 4.dp)
+                            .testTag(PEOPLE_SCREEN_GITHUB_STARS_TAG)
+                            .clickable { openExternalUrl(githubSocial.profileUrl) },
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        githubSocial.iconUrl?.let { iconUrl ->
+                            AsyncImage(
+                                model = iconUrl,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
+                        Text(
+                            text = githubSocial.title,
+                            modifier = Modifier.weight(1f, fill = false),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = "· ${githubSocial.starCount} stars",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                        )
+                    }
+                }
             }
         }
         Row(
@@ -1558,11 +1663,12 @@ private fun UserInfoHeader(
                 }
             }, tag = PEOPLE_SCREEN_FOLLOWING_COUNT_TAG)
         }
-        Row(
+        FlowRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             OutlinedButton(
                 onClick = onFollowToggle,
@@ -1581,6 +1687,12 @@ private fun UserInfoHeader(
                 modifier = Modifier.testTag(PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG),
             ) {
                 Text(if (viewModel.isBlockedInRecommendations) "取消屏蔽推荐" else "屏蔽推荐")
+            }
+            OutlinedButton(
+                onClick = onQuestionAuthorBlockToggle,
+                modifier = Modifier.testTag(PEOPLE_SCREEN_QUESTION_AUTHOR_BLOCK_BUTTON_TAG),
+            ) {
+                Text(if (viewModel.isBlockedAsQuestionAuthor) "取消屏蔽其提问" else "屏蔽其提问")
             }
         }
     }

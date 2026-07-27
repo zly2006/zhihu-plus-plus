@@ -21,29 +21,48 @@ import android.content.Context
 import android.content.Intent
 import android.os.SystemClock
 import android.util.Log
+import androidx.compose.foundation.ComposeFoundationFlags
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
+import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.MutableState
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.platform.LocalTextToolbar
+import androidx.compose.ui.platform.TextToolbar
+import androidx.compose.ui.platform.TextToolbarStatus
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.github.zly2006.zhihu.markdown.RenderImage
+import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.markdown.RenderMarkdownText
 import com.github.zly2006.zhihu.navigation.AnswerNavigator
 import com.github.zly2006.zhihu.navigation.Article
@@ -68,6 +87,7 @@ import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.ui.rememberArticleTtsState
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
+import com.hrm.markdown.renderer.MarkdownImageData
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CancellationException
 import org.junit.After
@@ -204,6 +224,378 @@ class ArticleScreenInstrumentedTest {
         )
     }
 
+    @OptIn(ExperimentalFoundationApi::class)
+    @Test
+    fun selectAllIncludesDeferredMarkdownBlocks() {
+        val previousContextMenuFlag = ComposeFoundationFlags.isNewContextMenuEnabled
+        ComposeFoundationFlags.isNewContextMenuEnabled = false
+        try {
+            val textToolbar = CapturingTextToolbar()
+            val markdown = buildString {
+                appendLine("第一段可见正文")
+                appendLine()
+                repeat(120) { index ->
+                    appendLine("第 $index 段长文填充正文，用于把末段推到视口之外。")
+                    appendLine()
+                }
+                appendLine("末段必须被全选")
+            }
+            composeRule.setScreenContent {
+                CompositionLocalProvider(LocalTextToolbar provides textToolbar) {
+                    RenderMarkdownText(markdown = markdown)
+                }
+            }
+
+            composeRule
+                .onNodeWithText("第一段可见正文")
+                .performTouchInput { longClick() }
+            composeRule.runOnIdle {
+                requireNotNull(textToolbar.onSelectAllRequested).invoke()
+            }
+            // 全选后滚到底部，覆盖离屏投影与真实 Markdown 块互换时的选择稳定性。
+            val scrollContainer = composeRule.onNode(
+                SemanticsMatcher("has vertical scroll axis") { node ->
+                    node.config.contains(SemanticsProperties.VerticalScrollAxisRange)
+                },
+            )
+            repeat(40) {
+                val range = scrollContainer
+                    .fetchSemanticsNode()
+                    .config[SemanticsProperties.VerticalScrollAxisRange]
+                if (range.maxValue() - range.value() <= 1f) return@repeat
+                scrollContainer.performSemanticsAction(SemanticsActions.ScrollBy) { scrollBy ->
+                    scrollBy(0f, 4_000f)
+                }
+                composeRule.waitForIdle()
+            }
+            composeRule.runOnIdle {
+                requireNotNull(textToolbar.onCopyRequested).invoke()
+            }
+
+            val clipboard = composeRule.activity.getSystemService(android.content.ClipboardManager::class.java)
+            val copiedText = clipboard.primaryClip
+                ?.getItemAt(0)
+                ?.coerceToText(composeRule.activity)
+                ?.toString()
+                .orEmpty()
+            val copiedParagraphIndexes = Regex("第 (\\d+) 段长文填充正文")
+                .findAll(copiedText)
+                .map { it.groupValues[1].toInt() }
+                .toList()
+            assertEquals((0 until 120).toList(), copiedParagraphIndexes)
+            assertEquals(1, Regex(Regex.escape("第一段可见正文")).findAll(copiedText).count())
+            assertEquals(1, Regex(Regex.escape("末段必须被全选")).findAll(copiedText).count())
+            assertTrue(
+                "Select all must include markdown blocks that are deferred outside the viewport",
+                copiedText.contains("第一段可见正文") && copiedText.contains("末段必须被全选"),
+            )
+        } finally {
+            ComposeFoundationFlags.isNewContextMenuEnabled = previousContextMenuFlag
+        }
+    }
+
+    @OptIn(ExperimentalFoundationApi::class)
+    @Test
+    fun highlightedParagraphRemainsSelectable() {
+        val previousContextMenuFlag = ComposeFoundationFlags.isNewContextMenuEnabled
+        ComposeFoundationFlags.isNewContextMenuEnabled = false
+        try {
+            val textToolbar = CapturingTextToolbar()
+            val selectionColor = Color.Magenta
+            composeRule.setScreenContent {
+                CompositionLocalProvider(
+                    LocalTextToolbar provides textToolbar,
+                    LocalTextSelectionColors provides TextSelectionColors(
+                        handleColor = selectionColor,
+                        backgroundColor = selectionColor,
+                    ),
+                ) {
+                    RenderMarkdown(
+                        html = HIGHLIGHTED_PARAGRAPH_HTML,
+                        modifier = androidx.compose.ui.Modifier
+                            .width(280.dp)
+                            .testTag("highlighted-selection-article"),
+                        enableScroll = false,
+                    )
+                }
+            }
+
+            composeRule
+                .onNodeWithText(HIGHLIGHTED_PARAGRAPH)
+                .performTouchInput { longClick() }
+
+            val selectionImage = composeRule
+                .onNodeWithTag("highlighted-selection-article")
+                .captureToImage()
+            val selectedPixels = selectionImage.toPixelMap().let { pixels ->
+                (0 until pixels.height).sumOf { y ->
+                    (0 until pixels.width).count { x ->
+                        val color = pixels[x, y]
+                        color.red > 0.9f && color.green < 0.1f && color.blue > 0.9f
+                    }
+                }
+            }
+            assertTrue(
+                "A long press on a highlighted paragraph must draw a visible selection background; found $selectedPixels selected pixels",
+                selectedPixels >= 100,
+            )
+            composeRule.runOnIdle {
+                requireNotNull(textToolbar.onSelectAllRequested).invoke()
+                requireNotNull(textToolbar.onCopyRequested).invoke()
+            }
+
+            val copiedText = composeRule.activity
+                .getSystemService(android.content.ClipboardManager::class.java)
+                .primaryClip
+                ?.getItemAt(0)
+                ?.coerceToText(composeRule.activity)
+                ?.toString()
+                .orEmpty()
+            assertEquals(HIGHLIGHTED_PARAGRAPH, copiedText)
+        } finally {
+            ComposeFoundationFlags.isNewContextMenuEnabled = previousContextMenuFlag
+        }
+    }
+
+    @OptIn(ExperimentalFoundationApi::class)
+    @Test
+    fun highlightedParagraphSelectionHandleCanExtendToFollowingParagraph() {
+        val previousContextMenuFlag = ComposeFoundationFlags.isNewContextMenuEnabled
+        ComposeFoundationFlags.isNewContextMenuEnabled = false
+        try {
+            val textToolbar = CapturingTextToolbar()
+            val selectionColor = Color.Magenta
+            composeRule.setScreenContent {
+                CompositionLocalProvider(
+                    LocalTextToolbar provides textToolbar,
+                    LocalTextSelectionColors provides TextSelectionColors(
+                        handleColor = selectionColor,
+                        backgroundColor = selectionColor,
+                    ),
+                ) {
+                    RenderMarkdown(
+                        html = "$HIGHLIGHTED_PARAGRAPH_HTML<p>$HIGHLIGHT_SELECTION_TARGET</p>",
+                        modifier = androidx.compose.ui.Modifier
+                            .width(280.dp)
+                            .testTag("highlighted-selection-drag-article"),
+                        enableScroll = false,
+                    )
+                }
+            }
+
+            composeRule
+                .onNodeWithText(HIGHLIGHTED_PARAGRAPH)
+                .performTouchInput { longClick() }
+            val endHandle = composeRule.onNode(
+                SemanticsMatcher("是划线段落选区末端手柄") { node ->
+                    node.config.any { (key, value) ->
+                        key.name == "SelectionHandleInfo" && value.toString().contains("SelectionEnd")
+                    }
+                },
+            )
+            val targetBounds = composeRule
+                .onNodeWithText(HIGHLIGHT_SELECTION_TARGET)
+                .fetchSemanticsNode()
+                .boundsInRoot
+            val handleBounds = endHandle.fetchSemanticsNode().boundsInRoot
+            endHandle.performTouchInput {
+                down(center)
+                advanceEventTime(100)
+                moveTo(
+                    Offset(
+                        x = targetBounds.right - handleBounds.left - 1f,
+                        y = targetBounds.bottom - handleBounds.top - 1f,
+                    ),
+                    delayMillis = 500,
+                )
+                up()
+            }
+            val selectedPixels = composeRule
+                .onNodeWithTag("highlighted-selection-drag-article")
+                .captureToImage()
+                .toPixelMap()
+                .let { pixels ->
+                    (0 until pixels.height).sumOf { y ->
+                        (0 until pixels.width).count { x ->
+                            val color = pixels[x, y]
+                            color.red > 0.9f && color.green < 0.1f && color.blue > 0.9f
+                        }
+                    }
+                }
+            assertTrue(
+                "Dragging out of a highlighted paragraph must keep the cross-block selection visible; found $selectedPixels selected pixels",
+                selectedPixels >= 1_000,
+            )
+            composeRule.runOnIdle {
+                requireNotNull(textToolbar.onCopyRequested).invoke()
+            }
+
+            val copiedText = composeRule.activity
+                .getSystemService(android.content.ClipboardManager::class.java)
+                .primaryClip
+                ?.getItemAt(0)
+                ?.coerceToText(composeRule.activity)
+                ?.toString()
+                .orEmpty()
+            assertTrue(
+                "The standard selection handle must extend from a highlighted paragraph into the following block",
+                copiedText.contains(HIGHLIGHT_SELECTION_TARGET),
+            )
+        } finally {
+            ComposeFoundationFlags.isNewContextMenuEnabled = previousContextMenuFlag
+        }
+    }
+
+    @Test
+    fun highlightedParagraphTapStillOpensActions() {
+        composeRule.setScreenContent {
+            RenderMarkdown(
+                html = HIGHLIGHTED_PARAGRAPH_HTML,
+                enableScroll = false,
+            )
+        }
+
+        composeRule
+            .onNodeWithText(HIGHLIGHTED_PARAGRAPH)
+            .performTouchInput { click() }
+        composeRule.onNodeWithText("划线片段").assertIsDisplayed()
+        composeRule.onNodeWithText("“$HIGHLIGHTED_PARAGRAPH”").assertIsDisplayed()
+    }
+
+    @OptIn(ExperimentalFoundationApi::class)
+    @Test
+    fun selectAllHighlightsEveryVisualLineOfLongParagraph() {
+        val previousContextMenuFlag = ComposeFoundationFlags.isNewContextMenuEnabled
+        ComposeFoundationFlags.isNewContextMenuEnabled = false
+        try {
+            val textToolbar = CapturingTextToolbar()
+            val selectionColor = Color.Magenta
+            val paragraph = "长段落的选中背景必须跟随真实换行，".repeat(12)
+            composeRule.setScreenContent {
+                CompositionLocalProvider(
+                    LocalTextToolbar provides textToolbar,
+                    LocalTextSelectionColors provides TextSelectionColors(
+                        handleColor = selectionColor,
+                        backgroundColor = selectionColor,
+                    ),
+                ) {
+                    RenderMarkdownText(
+                        markdown = paragraph,
+                        modifier = androidx.compose.ui.Modifier
+                            .width(240.dp)
+                            .testTag("multiline-selection-article"),
+                        enableScroll = false,
+                    )
+                }
+            }
+
+            composeRule
+                .onNodeWithText("长段落的选中背景", substring = true)
+                .performTouchInput { longClick() }
+            composeRule.runOnIdle {
+                requireNotNull(textToolbar.onSelectAllRequested).invoke()
+            }
+
+            val pixels = composeRule
+                .onNodeWithTag("multiline-selection-article")
+                .captureToImage()
+                .toPixelMap()
+            val highlightedRows = (0 until pixels.height).count { y ->
+                var selectedPixels = 0
+                for (x in 0 until pixels.width) {
+                    val color = pixels[x, y]
+                    if (color.red > 0.9f && color.green < 0.1f && color.blue > 0.9f) {
+                        selectedPixels++
+                    }
+                }
+                selectedPixels >= 100
+            }
+            Log.i("MarkdownSelection", "multilineSelectionHighlightedRows=$highlightedRows")
+            assertTrue(
+                "Select-all highlight only covered $highlightedRows pixel rows; a wrapped paragraph must highlight every line",
+                highlightedRows >= 180,
+            )
+        } finally {
+            ComposeFoundationFlags.isNewContextMenuEnabled = previousContextMenuFlag
+        }
+    }
+
+    @OptIn(ExperimentalFoundationApi::class)
+    @Test
+    fun draggingSelectionHandleUsesSameCompleteTextLayer() {
+        val previousContextMenuFlag = ComposeFoundationFlags.isNewContextMenuEnabled
+        ComposeFoundationFlags.isNewContextMenuEnabled = false
+        try {
+            val textToolbar = CapturingTextToolbar()
+            composeRule.setScreenContent {
+                CompositionLocalProvider(LocalTextToolbar provides textToolbar) {
+                    RenderMarkdownText(
+                        markdown =
+                            """
+                            起始段落从这里开始拖动。
+
+                            中间段落确保选区跨越多个文字块。
+
+                            末段拖动必须到达这里。
+                            """.trimIndent(),
+                        modifier = androidx.compose.ui.Modifier
+                            .width(280.dp),
+                        enableScroll = false,
+                    )
+                }
+            }
+
+            composeRule
+                .onNodeWithText("起始段落从这里开始拖动。")
+                .performTouchInput { longClick() }
+
+            // AndroidX 的手柄语义 key 仍是 internal，测试按 key 名匹配真实弹出层，
+            // 避免另写一套选区计算来假装验证拖动。
+            // https://cs.android.com/androidx/platform/frameworks/support/+/androidx-main:compose/foundation/foundation/src/commonMain/kotlin/androidx/compose/foundation/text/selection/SelectionHandles.kt
+            val endHandle = composeRule.onNode(
+                SemanticsMatcher("是选区末端手柄") { node ->
+                    node.config.any { (key, value) ->
+                        key.name == "SelectionHandleInfo" && value.toString().contains("SelectionEnd")
+                    }
+                },
+            )
+            val targetBounds = composeRule
+                .onNodeWithText("末段拖动必须到达这里。")
+                .fetchSemanticsNode()
+                .boundsInRoot
+            val handleBounds = endHandle.fetchSemanticsNode().boundsInRoot
+            endHandle.performTouchInput {
+                down(center)
+                advanceEventTime(100)
+                moveTo(
+                    Offset(
+                        x = targetBounds.right - handleBounds.left - 1f,
+                        y = targetBounds.bottom - handleBounds.top - 1f,
+                    ),
+                    delayMillis = 500,
+                )
+                up()
+            }
+            composeRule.runOnIdle {
+                requireNotNull(textToolbar.onCopyRequested).invoke()
+            }
+
+            val copiedText = composeRule.activity
+                .getSystemService(android.content.ClipboardManager::class.java)
+                .primaryClip
+                ?.getItemAt(0)
+                ?.coerceToText(composeRule.activity)
+                ?.toString()
+                .orEmpty()
+            assertTrue(
+                "Dragging the standard selection handle must reach later blocks through the same selection layer",
+                copiedText.contains("起始段落") && copiedText.contains("末段拖动必须到达这里"),
+            )
+        } finally {
+            ComposeFoundationFlags.isNewContextMenuEnabled = previousContextMenuFlag
+        }
+    }
+
     @Test
     fun issue495MaterializesEstimatedOffscreenBlocksWhenScrolledIntoView() {
         val viewModel = issue495ViewModel()
@@ -272,6 +664,33 @@ class ArticleScreenInstrumentedTest {
             "Initial estimated scroll range should stay within 25% of the fully materialized range; " +
                 "estimated=$initialMaxScroll materialized=$materializedMaxScroll",
             estimateRatio in 0.75f..1.25f,
+        )
+    }
+
+    @Test
+    fun markdownImageReservesItsApiAspectRatioBeforeNetworkLoad() {
+        composeRule.setScreenContent {
+            RenderImage(
+                data = MarkdownImageData(
+                    url = "https://invalid.invalid/not-loaded.jpg",
+                    altText = "未加载的比例图片",
+                    width = 1200,
+                    height = 880,
+                ),
+                modifier = androidx.compose.ui.Modifier,
+            )
+        }
+
+        val imageBounds = composeRule
+            .onNodeWithContentDescription("未加载的比例图片")
+            .fetchSemanticsNode()
+            .boundsInRoot
+        assertTrue("Image width must be reserved before loading", imageBounds.width > 0f)
+        assertTrue("Image height must be reserved before loading", imageBounds.height > 0f)
+        assertEquals(
+            1200.0 / 880.0,
+            imageBounds.width.toDouble() / imageBounds.height.toDouble(),
+            0.02,
         )
     }
 
@@ -816,6 +1235,24 @@ class ArticleScreenInstrumentedTest {
         const val PARTIAL_ORIGIN_SOURCE_ID = "instrumented:partial-reading-origin"
         const val ISSUE_495_BENCHMARK_TAG = "Issue495Benchmark"
         const val ISSUE_495_FIRST_FRAME_LIMIT_MS = 5_000L
+        const val HIGHLIGHTED_PARAGRAPH =
+            "目前灰度机制是在OpenCode上，被选中的账号调用deepseek-v4-pro或deepseek-v4-flash有机会拿到GA版。"
+        const val HIGHLIGHT_SELECTION_TARGET = "后续普通段落用于验证拖动手柄跨越文字块。"
+        val HIGHLIGHTED_PARAGRAPH_HTML =
+            """
+            <p data-pid="WGd4cbq-"><span class="highlight-wrap other has-comments"
+                data-highlight-id="2063081895399788604"
+                data-highlight-like-count="9"
+                data-highlight-comment-count="2"
+                data-highlight-my-comment-count="0"
+                data-highlight-is-like="false"
+                data-highlight-is-span="false"
+                data-highlight-content-id="2062174868112676264"
+                data-highlight-content-type="answer"
+                data-highlight-pid="WGd4cbq-"
+                data-highlight-start-offset="0"
+                data-highlight-end-offset="68">$HIGHLIGHTED_PARAGRAPH</span></p>
+            """.trimIndent()
 
         val ARTICLE = Article(
             type = ArticleType.Article,
@@ -843,5 +1280,29 @@ class ArticleScreenInstrumentedTest {
                 error: Exception,
             ) = Unit
         }
+    }
+}
+
+private class CapturingTextToolbar : TextToolbar {
+    var onCopyRequested: (() -> Unit)? = null
+    var onSelectAllRequested: (() -> Unit)? = null
+
+    override var status = TextToolbarStatus.Hidden
+        private set
+
+    override fun showMenu(
+        rect: Rect,
+        onCopyRequested: (() -> Unit)?,
+        onPasteRequested: (() -> Unit)?,
+        onCutRequested: (() -> Unit)?,
+        onSelectAllRequested: (() -> Unit)?,
+    ) {
+        this.onCopyRequested = onCopyRequested
+        this.onSelectAllRequested = onSelectAllRequested
+        status = TextToolbarStatus.Shown
+    }
+
+    override fun hide() {
+        status = TextToolbarStatus.Hidden
     }
 }

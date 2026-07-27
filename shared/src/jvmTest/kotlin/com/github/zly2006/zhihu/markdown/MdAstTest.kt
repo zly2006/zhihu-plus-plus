@@ -18,16 +18,19 @@
 package com.github.zly2006.zhihu.markdown
 
 import com.hrm.markdown.parser.ast.ContainerNode
+import com.hrm.markdown.parser.ast.Emphasis
 import com.hrm.markdown.parser.ast.Figure
 import com.hrm.markdown.parser.ast.FootnoteDefinition
 import com.hrm.markdown.parser.ast.FootnoteReference
 import com.hrm.markdown.parser.ast.InlineMath
+import com.hrm.markdown.parser.ast.Link
 import com.hrm.markdown.parser.ast.ListBlock
 import com.hrm.markdown.parser.ast.ListItem
 import com.hrm.markdown.parser.ast.MathBlock
 import com.hrm.markdown.parser.ast.NativeBlock
 import com.hrm.markdown.parser.ast.Node
 import com.hrm.markdown.parser.ast.Paragraph
+import com.hrm.markdown.parser.ast.SegmentHighlight
 import com.hrm.markdown.parser.ast.StrongEmphasis
 import com.hrm.markdown.parser.ast.Text
 import org.jsoup.Jsoup
@@ -68,7 +71,7 @@ class MdAstTest {
     }
 
     @Test
-    fun highlighted_paragraph_should_skip_segmented_native_block_when_native_blocks_disabled() {
+    fun highlighted_paragraph_should_remain_inline_when_native_blocks_disabled() {
         val document = htmlToMdAst(
             """
             <p data-pid="seg-1"><span class="highlight-wrap other has-comments"
@@ -88,7 +91,62 @@ class MdAstTest {
         )
 
         assertFalse(document.allNodes().any { it is NativeBlock })
+        assertEquals(1, document.allNodes().count { it is SegmentHighlight })
         assertEquals("第一句需要划线，第二句保持原样。", document.toMarkdown())
+    }
+
+    @Test
+    fun highlighted_paragraph_should_use_segment_highlight_inside_paragraph() {
+        val document = htmlToMdAst(
+            """
+            <p data-pid="seg-1"><span class="highlight-wrap other has-comments"
+                data-highlight-id="abc"
+                data-highlight-like-count="5"
+                data-highlight-comment-count="1"
+                data-highlight-my-comment-count="0"
+                data-highlight-is-like="true"
+                data-highlight-is-span="false"
+                data-highlight-content-id="42"
+                data-highlight-content-type="answer"
+                data-highlight-pid="seg-1"
+                data-highlight-start-offset="0"
+                data-highlight-end-offset="7">第一句需要划线</span>，第二句保持原样。</p>
+            """.trimIndent(),
+        )
+
+        val paragraph = document.children.single() as Paragraph
+        val highlight = paragraph.children.first() as SegmentHighlight
+        assertEquals("第一句需要划线", highlight.text)
+        assertEquals("abc", highlight.attributes["data-highlight-id"])
+        assertEquals("第一句需要划线，第二句保持原样。", document.toMarkdown())
+    }
+
+    @Test
+    fun segment_highlight_should_preserve_supported_inline_format() {
+        val document = htmlToMdAst(
+            """
+            <p data-pid="seg-1"><span class="highlight-wrap"
+                data-highlight-id="abc"><strong>加粗</strong><em>斜体</em></span>保持原样。</p>
+            """.trimIndent(),
+        )
+
+        val highlight = document.allNodes().filterIsInstance<SegmentHighlight>().single()
+        assertTrue(highlight.children[0] is StrongEmphasis)
+        assertTrue(highlight.children[1] is Emphasis)
+        assertEquals("**加粗***斜体*保持原样。", document.toMarkdown())
+    }
+
+    @Test
+    fun segment_highlight_should_yield_to_unsupported_inline_format() {
+        val document = htmlToMdAst(
+            """
+            <p><span class="highlight-wrap" data-highlight-id="abc">划线文字</span><a href="https://example.com">原链接</a></p>
+            """.trimIndent(),
+        )
+
+        assertFalse(document.allNodes().any { it is SegmentHighlight })
+        assertEquals(1, document.allNodes().count { it is Link })
+        assertEquals("划线文字[原链接](https://example.com)", document.toMarkdown())
     }
 
     @Test

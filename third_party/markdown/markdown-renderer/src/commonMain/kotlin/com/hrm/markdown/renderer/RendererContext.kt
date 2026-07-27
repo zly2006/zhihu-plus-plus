@@ -7,6 +7,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import com.hrm.codehigh.theme.CodeTheme
 import com.hrm.markdown.parser.ast.Document
+import com.hrm.markdown.parser.ast.SegmentHighlight
 import com.hrm.markdown.runtime.MarkdownDirectiveRegistry
 
 /**
@@ -20,6 +21,10 @@ import com.hrm.markdown.runtime.MarkdownDirectiveRegistry
 internal val LocalOnLinkClick = compositionLocalOf<((String) -> Unit)?> { null }
 internal val LocalOnFootnoteClick = compositionLocalOf<((String) -> Unit)?> { null }
 internal val LocalOnFootnoteBackClick = compositionLocalOf<((String) -> Unit)?> { null }
+internal val LocalSegmentHighlightProjectionEnabled = compositionLocalOf { false }
+
+/** 由宿主处理知乎划线的点赞、评论等产品交互。 */
+val LocalOnSegmentHighlightClick = compositionLocalOf<((SegmentHighlight) -> Unit)?> { null }
 
 /**
  * 文档引用，通过 [compositionLocalOf] 在组件树中传递。

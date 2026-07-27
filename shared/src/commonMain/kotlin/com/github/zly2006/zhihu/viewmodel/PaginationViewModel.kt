@@ -381,9 +381,18 @@ interface AigcVoteEnvironment {
 interface ContentBlocklistEnvironment {
     suspend fun isUserBlocked(userId: String): Boolean = false
 
+    suspend fun isQuestionAuthorBlocked(userId: String): Boolean = false
+
     fun blockedUserIds(): Set<String> = emptySet()
 
     suspend fun addBlockedUser(
+        userId: String,
+        userName: String,
+        urlToken: String? = null,
+        avatarUrl: String? = null,
+    ) = Unit
+
+    suspend fun addBlockedQuestionAuthor(
         userId: String,
         userName: String,
         urlToken: String? = null,
@@ -396,6 +405,8 @@ interface ContentBlocklistEnvironment {
     ) = Unit
 
     suspend fun removeBlockedUser(userId: String) = Unit
+
+    suspend fun removeBlockedQuestionAuthor(userId: String) = Unit
 }
 
 interface LocalRecommendationEnvironment : ZhihuApiEnvironment {

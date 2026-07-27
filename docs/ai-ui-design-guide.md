@@ -127,14 +127,13 @@ URL 解析集中在 `resolveContent()`。支持知乎问题、回答、文章、
 
 ## 123Duo3 UI/UX 开关
 
-`duo3_all` 是批量开关。开启时会写入 `duo3_home_account`、`duo3_nav_style`、`duo3_card_appearance`、`duo3_card_layout`、`duo3_article_bar`、`duo3_article_actions`，并关闭 `showRefreshFab` 和 `buttonSkipAnswer`。
+`duo3_all` 是批量开关。开启时会写入 `duo3_home_account`、`duo3_card_appearance`、`duo3_card_layout`、`duo3_article_bar`、`duo3_article_actions`，并关闭 `showRefreshFab` 和 `buttonSkipAnswer`。底部导航栏统一使用 Material 样式，不再提供单独开关。
 
 各子开关影响:
 
 | key | 影响 |
 | --- | --- |
 | `duo3_home_account` | 主页头像承接账号入口，底栏账号项规则变化，账号页可能显示历史快捷方式 |
-| `duo3_nav_style` | 底栏高度、标签显示、图标和选中样式变化 |
 | `duo3_card_appearance` | Feed 卡片圆角、背景和阴影变化 |
 | `duo3_card_layout` | Feed 卡片作者、图片、摘要行数和字体排版变化 |
 | `duo3_card_large_title` | `duo3_card_layout` 开启后控制标题字号 |

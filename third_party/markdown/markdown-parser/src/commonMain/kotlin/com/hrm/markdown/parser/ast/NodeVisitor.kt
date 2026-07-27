@@ -57,6 +57,7 @@ interface NodeVisitor<R> {
     fun visitFootnoteReference(node: FootnoteReference): R
     fun visitInlineMath(node: InlineMath): R
     fun visitHighlight(node: Highlight): R
+    fun visitSegmentHighlight(node: SegmentHighlight): R
     fun visitSuperscript(node: Superscript): R
     fun visitSubscript(node: Subscript): R
     fun visitInsertedText(node: InsertedText): R
@@ -130,6 +131,7 @@ abstract class DefaultNodeVisitor<R>(private val defaultValue: R) : NodeVisitor<
     override fun visitFootnoteReference(node: FootnoteReference): R = defaultValue
     override fun visitInlineMath(node: InlineMath): R = defaultValue
     override fun visitHighlight(node: Highlight): R = defaultValue
+    override fun visitSegmentHighlight(node: SegmentHighlight): R = defaultValue
     override fun visitSuperscript(node: Superscript): R = defaultValue
     override fun visitSubscript(node: Subscript): R = defaultValue
     override fun visitInsertedText(node: InsertedText): R = defaultValue

@@ -73,6 +73,7 @@ import com.github.zly2006.zhihu.ui.components.LocalSegmentActionSheetHost
 import com.github.zly2006.zhihu.ui.components.LocalSegmentCommentHost
 import com.github.zly2006.zhihu.ui.components.SegmentActionSheet
 import com.github.zly2006.zhihu.ui.components.SegmentActionSheetState
+import com.github.zly2006.zhihu.ui.components.SegmentHighlightInteractionHost
 import com.github.zly2006.zhihu.ui.subscreens.PREF_BLOCK_SPACING
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
@@ -98,6 +99,14 @@ fun RenderImage(
     val previewUrls = remember(imageUrls, data.url) {
         imageUrls.ifEmpty { listOf(data.url) }
     }
+    val imageWidth = data.width
+    val imageHeight = data.height
+    val imageAspectRatio =
+        if (imageWidth != null && imageHeight != null && imageWidth > 0 && imageHeight > 0) {
+            imageWidth.toFloat() / imageHeight
+        } else {
+            null
+        }
 
     fun openGallery() {
         val initialIndex = previewUrls.indexOf(data.url).takeIf { it >= 0 } ?: 0
@@ -113,7 +122,13 @@ fun RenderImage(
             contentDescription = data.altText,
             modifier = modifier
                 .fillMaxWidth(0.8f)
-                .pointerInput(Unit) {
+                .then(
+                    if (imageAspectRatio != null) {
+                        Modifier.aspectRatio(imageAspectRatio)
+                    } else {
+                        Modifier
+                    },
+                ).pointerInput(Unit) {
                     detectTapGestures(
                         onTap = {
                             openGallery()
@@ -323,29 +338,31 @@ private fun RenderMarkdownDocument(
         },
         LocalSegmentActionSheetHost provides { state -> segmentActionSheetState = state },
     ) {
-        Box(modifier = modifier) {
-            NoDoubleClickSelectionScope {
-                Markdown(
-                    document = document,
-                    imageContent = { data, imageModifier ->
-                        RenderImage(
-                            data = data,
-                            modifier = imageModifier,
-                            imageUrls = previewImageUrls,
-                        )
-                    },
-                    scrollState = scrollState,
-                    enableScroll = enableScroll,
-                    enableSelection = selectable,
-                    deferOffscreenBlocks = deferOffscreenBlocks,
-                    onLinkClick = { url ->
-                        resolveContent(url)?.let { navigator.onNavigate(it) }
-                            ?: openExternalUrl(url)
-                    },
-                    header = header,
-                    footer = footer,
-                    theme = theme,
-                )
+        SegmentHighlightInteractionHost {
+            Box(modifier = modifier) {
+                NoDoubleClickSelectionScope {
+                    Markdown(
+                        document = document,
+                        imageContent = { data, imageModifier ->
+                            RenderImage(
+                                data = data,
+                                modifier = imageModifier,
+                                imageUrls = previewImageUrls,
+                            )
+                        },
+                        scrollState = scrollState,
+                        enableScroll = enableScroll,
+                        enableSelection = selectable,
+                        deferOffscreenBlocks = deferOffscreenBlocks,
+                        onLinkClick = { url ->
+                            resolveContent(url)?.let { navigator.onNavigate(it) }
+                                ?: openExternalUrl(url)
+                        },
+                        header = header,
+                        footer = footer,
+                        theme = theme,
+                    )
+                }
             }
         }
     }

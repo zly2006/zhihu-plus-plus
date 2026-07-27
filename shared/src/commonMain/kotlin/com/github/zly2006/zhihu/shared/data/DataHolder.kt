@@ -17,10 +17,21 @@
 
 package com.github.zly2006.zhihu.shared.data
 
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonEncoder
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
 import kotlin.jvm.JvmInline
 
 object DataHolder {
@@ -179,6 +190,7 @@ object DataHolder {
         val updatedTime: Long,
         val url: String,
         val topics: List<Topic> = emptyList(),
+        val author: Author? = null,
     )
 
     @Serializable
@@ -544,6 +556,20 @@ object DataHolder {
     )
 
     @Serializable
+    data class SocialMedia(
+        val icon: String = "",
+        val title: String = "",
+        val link: String = "",
+        val modules: List<SocialMediaModule> = emptyList(),
+    )
+
+    @Serializable
+    data class SocialMediaModule(
+        val title: String = "",
+        val value: String = "",
+    )
+
+    @Serializable
     sealed interface Thumbnail
 
     @Suppress("unused")
@@ -734,6 +760,7 @@ object DataHolder {
         val followingCount: Int = 0,
         val answerCount: Int = 0,
         val articlesCount: Int = 0,
+        val socialMedias: List<SocialMedia> = emptyList(),
         val availableMedalsCount: Int = 0,
         val orgVerifyStatus: JsonElement? = null,
         val isRealname: Boolean = false,
@@ -804,13 +831,66 @@ object DataHolder {
         val topReactions: JsonObject? = null,
         val bottomPoll: BottomPoll? = null,
     ) : Content {
-        @Serializable
+        @Serializable(with = ContentItemSerializer::class)
         sealed interface ContentItem
+
+        object ContentItemSerializer : KSerializer<ContentItem> {
+            override val descriptor: SerialDescriptor = JsonObject.serializer().descriptor
+
+            override fun deserialize(decoder: Decoder): ContentItem {
+                val jsonDecoder = decoder as? JsonDecoder
+                    ?: throw SerializationException("Pin content can only be decoded from JSON")
+                val element = jsonDecoder.decodeJsonElement().jsonObject
+                return when ((element["type"] as? JsonPrimitive)?.contentOrNull) {
+                    "text" -> jsonDecoder.json.decodeFromJsonElement(ContentText.serializer(), element)
+                    "link_card" -> jsonDecoder.json.decodeFromJsonElement(ContentLinkCard.serializer(), element)
+                    "image" -> jsonDecoder.json.decodeFromJsonElement(ContentImage.serializer(), element)
+                    "poll" -> jsonDecoder.json.decodeFromJsonElement(ContentPoll.serializer(), element)
+                    else -> ContentUnknown(element)
+                }
+            }
+
+            override fun serialize(
+                encoder: Encoder,
+                value: ContentItem,
+            ) {
+                val jsonEncoder = encoder as? JsonEncoder
+                    ?: throw SerializationException("Pin content can only be encoded to JSON")
+                val (type, element) = when (value) {
+                    is ContentText ->
+                        "text" to jsonEncoder.json.encodeToJsonElement(ContentText.serializer(), value).jsonObject
+                    is ContentLinkCard ->
+                        "link_card" to
+                            jsonEncoder.json.encodeToJsonElement(ContentLinkCard.serializer(), value).jsonObject
+                    is ContentImage ->
+                        "image" to jsonEncoder.json.encodeToJsonElement(ContentImage.serializer(), value).jsonObject
+                    is ContentPoll ->
+                        "poll" to jsonEncoder.json.encodeToJsonElement(ContentPoll.serializer(), value).jsonObject
+                    is ContentUnknown -> null to value.value
+                }
+                jsonEncoder.encodeJsonElement(
+                    if (type == null) {
+                        element
+                    } else {
+                        buildJsonObject {
+                            put("type", JsonPrimitive(type))
+                            element.forEach(::put)
+                        }
+                    },
+                )
+            }
+        }
+
+        data class ContentUnknown(
+            val value: JsonObject,
+        ) : ContentItem
 
         @Serializable
         @SerialName("text")
         data class ContentText(
+            /** 想法正文的 HTML 片段。 */
             val content: String,
+            /** 想法标题的纯文本；不能按 HTML 解析，否则尖括号内容会丢失。 */
             val title: String,
         ) : ContentItem
 
@@ -826,6 +906,7 @@ object DataHolder {
         @SerialName("image")
         data class ContentImage(
             val url: String,
+            val thumbnail: String = "",
             val width: Int,
             val height: Int,
             val isGif: Boolean = false,

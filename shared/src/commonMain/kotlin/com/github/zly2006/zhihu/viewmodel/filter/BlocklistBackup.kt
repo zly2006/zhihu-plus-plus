@@ -23,11 +23,12 @@ import kotlin.time.Clock
 
 @Serializable
 data class BlocklistBackup(
-    val version: Int = 2,
+    val version: Int = 3,
     val exportTime: Long = Clock.System.now().toEpochMilliseconds(),
     val keywords: List<KeywordBackup> = emptyList(),
     val nlpKeywords: List<NlpKeywordBackup> = emptyList(),
     val users: List<UserBackup> = emptyList(),
+    val questionAuthors: List<UserBackup> = emptyList(),
     val topics: List<TopicBackup> = emptyList(),
 )
 
@@ -61,6 +62,7 @@ data class BlocklistStats(
     val keywordCount: Int,
     val userCount: Int,
     val topicCount: Int,
+    val questionAuthorCount: Int = 0,
 )
 
 private val blocklistBackupJson = Json {
@@ -71,10 +73,12 @@ private val blocklistBackupJson = Json {
 suspend fun encodeBlocklistBackup(
     keywordDao: BlockedKeywordDao,
     userDao: BlockedUserDao,
+    questionAuthorDao: BlockedQuestionAuthorDao,
     topicDao: BlockedTopicDao,
 ): String {
     val allKeywords = keywordDao.getAllKeywords()
     val users = userDao.getAllUsers()
+    val questionAuthors = questionAuthorDao.getAllUsers()
     val topics = topicDao.getAllTopics()
 
     val backup = BlocklistBackup(
@@ -85,6 +89,7 @@ suspend fun encodeBlocklistBackup(
             .filter { it.getKeywordTypeEnum() == KeywordType.NLP_SEMANTIC }
             .map { NlpKeywordBackup(it.keyword) },
         users = users.map { UserBackup(it.userId, it.userName, it.urlToken ?: "", it.avatarUrl ?: "") },
+        questionAuthors = questionAuthors.map { UserBackup(it.userId, it.userName, it.urlToken ?: "", it.avatarUrl ?: "") },
         topics = topics.map { TopicBackup(it.topicId, it.topicName) },
     )
 
@@ -94,6 +99,7 @@ suspend fun encodeBlocklistBackup(
 suspend fun importBlocklistBackupFromJsonText(
     keywordDao: BlockedKeywordDao,
     userDao: BlockedUserDao,
+    questionAuthorDao: BlockedQuestionAuthorDao,
     topicDao: BlockedTopicDao,
     text: String,
 ): String {
@@ -124,9 +130,19 @@ suspend fun importBlocklistBackupFromJsonText(
             ),
         )
     }
+    backup.questionAuthors.filter { it.userId.isNotBlank() }.forEach { user ->
+        questionAuthorDao.insertUser(
+            BlockedQuestionAuthor(
+                userId = user.userId,
+                userName = user.userName,
+                urlToken = user.urlToken.takeIf { it.isNotBlank() },
+                avatarUrl = user.avatarUrl.takeIf { it.isNotBlank() },
+            ),
+        )
+    }
     backup.topics.filter { it.topicId.isNotBlank() }.forEach { topic ->
         topicDao.insertTopic(BlockedTopic(topicId = topic.topicId, topicName = topic.topicName))
     }
 
-    return "关键词 ${backup.keywords.size} · NLP ${backup.nlpKeywords.size} · 用户 ${backup.users.size} · 主题 ${backup.topics.size}"
+    return "关键词 ${backup.keywords.size} · NLP ${backup.nlpKeywords.size} · 用户 ${backup.users.size} · 提问者 ${backup.questionAuthors.size} · 主题 ${backup.topics.size}"
 }

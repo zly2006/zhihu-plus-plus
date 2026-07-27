@@ -6,9 +6,11 @@
 - 上游基线提交：`0ae14148bbe427e27629117b3581ea071d86c4c7`
 - 保持原应用行为的源码提交：`4f2ab8c13f44bf24cc070821ea6b510efe188759`
 - 内置日期：2026-07-21
-- 生产源码清单 SHA-256：`84dfec2a2e279e96863fffdfa989b47f6c9fcbf6c2b9267553108eec1d171c28`
+- 生产源码清单 SHA-256：`4ae22da5adf66d621696f5c403181d0f866242bcc6dcf1c34a0c04ddf8ab9046`
 
 替换前，应用依赖的是 `io.github.zly2006:markdown-*:0.0.1-alpha.11`。这个坐标只说明被替换的分叉构件，不是本目录的上游 base version；本目录的 base version 始终按上游实际版本记为 `1.2.9`。源码提交 `4f2ab8c...` 在 1.2.9 基础上保留了原应用所需的 `NativeBlock` 与 LaTeX 1.4.6-zly 兼容改动。
+
+`NativeBlock` 只用于视频卡片这类无法表达为正文 AST 的原生 Compose 内容，不得承载文字或文字交互。知乎划线使用段落内的 `SegmentHighlight` inline 节点，确保正文选择、格式、无障碍和视口外延迟布局继续复用普通段落链路。
 
 `/Users/zhaoliyan/IdeaProjects/Zhihu/.tmp/Markdown-issue-495` 是 issue #495 的实验工作树，只用于判断哪些性能思路值得采用。这里没有整体带入它基于后续上游版本的 parser、renderer、布局引擎或自定义选择实现。特别是后续自定义选择仍有[选择手柄问题](https://github.com/huarangmeng/Markdown/issues/33)，本目录继续使用 1.2.9 分支的原生 Compose `SelectionContainer`。
 

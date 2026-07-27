@@ -50,6 +50,24 @@ fun BaseFeedViewModel.handleBlockUser(
     }
 }
 
+fun BaseFeedViewModel.handleBlockQuestionAuthor(
+    context: Context,
+    feedItem: FeedDisplayItem,
+    onShowDialog: (Pair<String, String>) -> Unit,
+) {
+    val userMessages = androidUserMessageSink(context)
+    viewModelScope.launch {
+        val authorInfo = withContext(Dispatchers.IO) {
+            resolveFeedQuestionAuthorInfo(feedItem, context.asApiEnvironment()::getOrFetchContentDetail)
+        }
+        if (authorInfo != null) {
+            onShowDialog(authorInfo)
+        } else {
+            userMessages.showLongMessage("当前条目没有可用的提问者数据，无法屏蔽提问者")
+        }
+    }
+}
+
 /**
  * 处理关键词屏蔽（包含数据获取和屏蔽逻辑）
  */

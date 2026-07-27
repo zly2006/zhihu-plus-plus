@@ -40,6 +40,8 @@ private val emptyContentFilterDatabase = object : ContentFilterDatabase() {
 
     override fun blockedUserDao(): BlockedUserDao = emptyBlockedUserDao
 
+    override fun blockedQuestionAuthorDao(): BlockedQuestionAuthorDao = emptyBlockedQuestionAuthorDao
+
     override fun blockedContentRecordDao(): BlockedContentRecordDao = emptyBlockedContentRecordDao
 
     override fun blockedTopicDao(): BlockedTopicDao = emptyBlockedTopicDao
@@ -91,6 +93,20 @@ private val emptyBlockedUserDao = object : BlockedUserDao {
     override suspend fun getAllUsers(): List<BlockedUser> = emptyList()
 
     override suspend fun insertUser(user: BlockedUser) = Unit
+
+    override suspend fun deleteUserById(userId: String) = Unit
+
+    override suspend fun clearAllUsers() = Unit
+
+    override suspend fun getUserCount(): Int = 0
+
+    override suspend fun isUserBlocked(userId: String): Boolean = false
+}
+
+private val emptyBlockedQuestionAuthorDao = object : BlockedQuestionAuthorDao {
+    override suspend fun getAllUsers(): List<BlockedQuestionAuthor> = emptyList()
+
+    override suspend fun insertUser(user: BlockedQuestionAuthor) = Unit
 
     override suspend fun deleteUserById(userId: String) = Unit
 
