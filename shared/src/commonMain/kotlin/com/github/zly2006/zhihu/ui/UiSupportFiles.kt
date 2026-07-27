@@ -438,7 +438,6 @@ enum class TtsState(
  */
 data class ZhihuMainPreferenceSnapshot(
     val duo3HomeAccount: Boolean,
-    val duo3NavStyle: Boolean,
     val tapToScrollToTopEnabled: Boolean,
     val autoHideBottomBar: Boolean,
     val selectedBottomBarItemKeys: List<String>,
@@ -457,7 +456,6 @@ class ZhihuMainPreferenceState(
     private var snapshot by mutableStateOf(readSnapshot())
 
     val duo3HomeAccount: Boolean get() = snapshot.duo3HomeAccount
-    val duo3NavStyle: Boolean get() = snapshot.duo3NavStyle
     val tapToScrollToTopEnabled: Boolean get() = snapshot.tapToScrollToTopEnabled
     val autoHideBottomBar: Boolean get() = snapshot.autoHideBottomBar
     val selectedBottomBarItemKeys: List<String> get() = snapshot.selectedBottomBarItemKeys
