@@ -66,42 +66,34 @@ jobs:
       - name: Change wrapper permissions
         run: chmod +x ./gradlew
 
-      - name: Setup Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          override: true
-
-      - name: Install cargo-ndk
-        run: cargo install cargo-ndk || true
-
-      - name: Add Android Rust targets
-        run: |
-          rustup target add aarch64-linux-android
-          rustup target add armv7-linux-androideabi
-          rustup target add i686-linux-android
-          rustup target add x86_64-linux-android
-
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Run unit tests and build APKs
+      - name: Build Lite APKs
         env:
           CI_BUILD_MINIFY: false
           RUN_INSTRUMENTED_TESTS: ${{ steps.instrumented_changes.outputs.required }}
         run: |
-          tasks=(test assembleFullDebug assembleLiteDebug)
+          tasks=(assembleLiteDebug)
           if [[ "$RUN_INSTRUMENTED_TESTS" == "true" ]]; then
             tasks+=(:app:assembleLiteDebugAndroidTest)
           fi
           ./gradlew "${tasks[@]}" --max-workers=2
 
-      - name: Prepare debug APKs
+      - name: Upload Gradle build cache
+        uses: actions/upload-artifact@v4
+        with:
+          name: PR Gradle build cache
+          path: .gradle/build-cache/
+          include-hidden-files: true
+          retention-days: 1
+
+      - name: Prepare Lite debug APK
         run: |
           mkdir -p app/build/upload
-          cp app/build/outputs/apk/full/debug/app-full-debug.apk app/build/upload/zhihu++-full-debug.apk
           cp app/build/outputs/apk/lite/debug/app-lite-debug.apk app/build/upload/zhihu++-lite-debug.apk
 
-      - name: Upload debug APKs
+      - name: Upload Lite debug APK
         uses: actions/upload-artifact@v4
         with:
           name: PR Debug artifacts
@@ -121,6 +113,32 @@ jobs:
           name: Instrumented test APKs
           path: app/build/instrument-apks/
           retention-days: 1
+
+  unit-tests:
+    name: Unit Tests
+    needs: build_pr
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set Up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: "17"
+          cache: gradle
+
+      - name: Restore Gradle build cache
+        uses: actions/download-artifact@v4
+        with:
+          name: PR Gradle build cache
+          path: .gradle/build-cache
+
+      - name: Change wrapper permissions
+        run: chmod +x ./gradlew
+
+      - name: Run Lite unit tests
+        run: ./gradlew :app:testLiteDebugUnitTest --max-workers=2
 
       - name: Upload test reports
         if: always()
@@ -198,6 +216,7 @@ jobs:
     needs:
       - ktlint
       - build_pr
+      - unit-tests
       - mock-instrumented-shards
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -206,11 +225,13 @@ jobs:
         env:
           KTLINT_RESULT: ${{ needs.ktlint.result }}
           BUILD_RESULT: ${{ needs.build_pr.result }}
+          UNIT_TEST_RESULT: ${{ needs.unit-tests.result }}
           RUN_INSTRUMENTED_TESTS: ${{ needs.build_pr.outputs.run_instrumented_tests }}
           SHARD_RESULT: ${{ needs.mock-instrumented-shards.result }}
         run: |
           test "$KTLINT_RESULT" = "success"
           test "$BUILD_RESULT" = "success"
+          test "$UNIT_TEST_RESULT" = "success"
           if [[ "$RUN_INSTRUMENTED_TESTS" == "true" ]]; then
             test "$SHARD_RESULT" = "success"
           else
