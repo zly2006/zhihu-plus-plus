@@ -242,6 +242,32 @@ fun ZhihuMain(
             readingPlayerOverlayOffsetState.resetOffset()
         }
     }
+    var previousReadingItemKey by remember { mutableStateOf(readingPlayerState.currentItem?.key) }
+    LaunchedEffect(readingPlayerState.currentItem?.key) {
+        val currentItem = readingPlayerState.currentItem
+        val currentItemKey = currentItem?.key
+        val itemChanged = previousReadingItemKey != null && previousReadingItemKey != currentItemKey
+        previousReadingItemKey = currentItemKey
+        if (itemChanged && currentItem != null) {
+            val currentDestination = when {
+                navEntry?.destination?.hasRoute<Article>() == true -> runCatching {
+                    navEntry?.toRoute<Article>()
+                }.getOrNull()
+                navEntry?.destination?.hasRoute<Pin>() == true -> runCatching {
+                    navEntry?.toRoute<Pin>()
+                }.getOrNull()
+                navEntry?.destination?.hasRoute<Question>() == true -> runCatching {
+                    navEntry?.toRoute<Question>()
+                }.getOrNull()
+                else -> null
+            }
+            val destination = currentItem.toDestination(readingPlayerState.sourceId)
+            if (currentDestination != null && currentDestination != destination) {
+                navController.popBackStack()
+                navigationState.navigate(destination)
+            }
+        }
+    }
     val isOnArticle = navEntry?.destination?.hasRoute<Article>() == true
     LaunchedEffect(navEntry) {
         isReadingPlayerExpandedByUser = false
@@ -666,7 +692,10 @@ fun ZhihuMain(
                 if (!isOnReadingDetail) isReadingPlayerExpandedByUser = false
             },
             onItemClick = { index, item ->
-                readingPlayer.playAt(index)
+                previousReadingItemKey = item.key
+                if (index != readingPlayerState.currentIndex) {
+                    readingPlayer.playAt(index)
+                }
                 showReadingQueue = false
                 val destination = item.toDestination(readingPlayerState.sourceId)
                 val currentDestination = when {

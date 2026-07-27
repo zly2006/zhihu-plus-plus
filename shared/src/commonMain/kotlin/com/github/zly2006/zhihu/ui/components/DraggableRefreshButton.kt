@@ -107,6 +107,8 @@ fun DraggableRefreshButton(
         animationSpec = tween(if (pressing) 1 else 300),
         label = "offsetY",
     )
+    val displayedOffsetX = if (pressing) offsetX else animatedOffsetX
+    val displayedOffsetY = if (pressing) visibleOffsetY else animatedOffsetY
     val hapticFeedback = LocalHapticFeedback.current
 
     val opacityFraction = remember(settings) {
@@ -123,11 +125,12 @@ fun DraggableRefreshButton(
             FloatingActionButtonDefaults.elevation()
         },
         modifier = modifier
-            .offset { IntOffset(animatedOffsetX.roundToInt(), animatedOffsetY.roundToInt()) }
+            .offset { IntOffset(displayedOffsetX.roundToInt(), displayedOffsetY.roundToInt()) }
             .pointerInput(Unit) {
                 detectDragGestures(
                     onDragStart = {
-                        offsetY = visibleOffsetY
+                        offsetX = animatedOffsetX
+                        offsetY = animatedOffsetY
                         pressing = true
                         hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                     },
