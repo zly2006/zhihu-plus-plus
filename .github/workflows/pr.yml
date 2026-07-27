@@ -1,42 +1,72 @@
 name: Pull Request Check
+
 on:
   pull_request:
   workflow_dispatch:
 
+concurrency:
+  group: pull-request-check-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build_pr:
-    name: Build PR
+  ktlint:
+    name: KtLint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Set Current Date As Env Variable
-      - name: Set current date as env variable
-        run: echo "date_today=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
-
-      # Set Repository Name As Env Variable
-      - name: Set repository name as env variable
-        run: echo "repository_name=$(echo '${{ github.repository }}' | awk -F '/' '{print $2}')" >> $GITHUB_ENV
 
       - name: Set Up JDK
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu' # See 'Supported distributions' for available options
-          java-version: '17'
-          cache: 'gradle'
+          distribution: zulu
+          java-version: "17"
+          cache: gradle
+
       - name: Change wrapper permissions
         run: chmod +x ./gradlew
-      - name: Cache Gradle
-        uses: actions/cache@v3
+
+      - name: Run KtLint
+        run: ./gradlew ktlintCheck
+
+  build_pr:
+    name: Build PR
+    runs-on: ubuntu-latest
+    outputs:
+      run_instrumented_tests: ${{ steps.instrumented_changes.outputs.required }}
+    steps:
+      - uses: actions/checkout@v4
         with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-            ~/.m2/repository
-            ./.gradle
-            ./**/.gradle
-          # dont invalidate cache if only gradle.properties is changed -- they
-          key: gradle-cache-${{ hashFiles('**/*.gradle.kts', '**/gradle-wrapper.properties') }}
-      - name: Setup rust
+          fetch-depth: 0
+
+      - name: Check whether instrumented tests are required
+        id: instrumented_changes
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            echo "required=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if git diff --name-only "$BASE_SHA" "$HEAD_SHA" | grep -Eq '^(app/|shared/|\.github/scripts/run-instrumented-shard\.sh$|\.github/workflows/(instrument-test|pr)\.yml$|build\.gradle\.kts$|settings\.gradle\.kts$|gradle\.properties$|gradle/)'; then
+            echo "required=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "required=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set Up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: "17"
+          cache: gradle
+
+      - name: Change wrapper permissions
+        run: chmod +x ./gradlew
+
+      - name: Setup Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           override: true
@@ -50,33 +80,139 @@ jobs:
           rustup target add armv7-linux-androideabi
           rustup target add i686-linux-android
           rustup target add x86_64-linux-android
+
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
-      # Run Tests Build
-      - name: Run KtLint
-        run: ./gradlew ktlintCheck
-      - name: Run gradle tests
-        run: ./gradlew test
-      - name: Build App
-        # Build .apk
-        run: |
-          bash ./gradlew assembleFullDebug --max-workers=2
-          bash ./gradlew assembleLiteDebug --max-workers=2
+
+      - name: Run unit tests and build APKs
         env:
           CI_BUILD_MINIFY: false
-      - name: Move files
+          RUN_INSTRUMENTED_TESTS: ${{ steps.instrumented_changes.outputs.required }}
+        run: |
+          tasks=(test assembleFullDebug assembleLiteDebug)
+          if [[ "$RUN_INSTRUMENTED_TESTS" == "true" ]]; then
+            tasks+=(:app:assembleLiteDebugAndroidTest)
+          fi
+          ./gradlew "${tasks[@]}" --max-workers=2
+
+      - name: Prepare debug APKs
         run: |
           mkdir -p app/build/upload
-          mv app/build/outputs/apk/full/debug/app-full-debug.apk app/build/upload/zhihu++-full-debug.apk
-          mv app/build/outputs/apk/lite/debug/app-lite-debug.apk app/build/upload/zhihu++-lite-debug.apk
-      - name: Upload APK
+          cp app/build/outputs/apk/full/debug/app-full-debug.apk app/build/upload/zhihu++-full-debug.apk
+          cp app/build/outputs/apk/lite/debug/app-lite-debug.apk app/build/upload/zhihu++-lite-debug.apk
+
+      - name: Upload debug APKs
         uses: actions/upload-artifact@v4
         with:
           name: PR Debug artifacts
           path: app/build/upload/
-      - name: Upload test reports
+
+      - name: Prepare instrumented test APKs
+        if: steps.instrumented_changes.outputs.required == 'true'
+        run: |
+          mkdir -p app/build/instrument-apks
+          cp app/build/outputs/apk/lite/debug/app-lite-debug.apk app/build/instrument-apks/app.apk
+          cp app/build/outputs/apk/androidTest/lite/debug/app-lite-debug-androidTest.apk app/build/instrument-apks/test.apk
+
+      - name: Upload instrumented test APKs
+        if: steps.instrumented_changes.outputs.required == 'true'
         uses: actions/upload-artifact@v4
+        with:
+          name: Instrumented test APKs
+          path: app/build/instrument-apks/
+          retention-days: 1
+
+      - name: Upload test reports
         if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: PR Test Reports
           path: app/build/reports
+
+  mock-instrumented-shards:
+    name: Mock Instrumented Shard (${{ matrix.shard_label }}/5)
+    if: needs.build_pr.outputs.run_instrumented_tests == 'true'
+    needs: build_pr
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        include:
+          - shard_index: 0
+            shard_label: 1
+          - shard_index: 1
+            shard_label: 2
+          - shard_index: 2
+            shard_label: 3
+          - shard_index: 3
+            shard_label: 4
+          - shard_index: 4
+            shard_label: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download instrumented test APKs
+        uses: actions/download-artifact@v4
+        with:
+          name: Instrumented test APKs
+          path: app/build/instrument-apks
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run mock-mode androidTest on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          INSTRUMENT_APP_APK: app/build/instrument-apks/app.apk
+          INSTRUMENT_TEST_APK: app/build/instrument-apks/test.apk
+        with:
+          api-level: 36
+          arch: x86_64
+          target: default
+          profile: pixel_7
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          disable-animations: true
+          script: bash .github/scripts/run-instrumented-shard.sh 5 ${{ matrix.shard_index }}
+
+      - name: Upload shard test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mock-instrumented-shard-${{ matrix.shard_label }}
+          path: app/build/outputs/androidTest-results/**
+          if-no-files-found: warn
+
+  android-instrument-tests:
+    name: Mock Instrumented Tests
+    if: always()
+    needs:
+      - ktlint
+      - build_pr
+      - mock-instrumented-shards
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify pull request checks
+        env:
+          KTLINT_RESULT: ${{ needs.ktlint.result }}
+          BUILD_RESULT: ${{ needs.build_pr.result }}
+          RUN_INSTRUMENTED_TESTS: ${{ needs.build_pr.outputs.run_instrumented_tests }}
+          SHARD_RESULT: ${{ needs.mock-instrumented-shards.result }}
+        run: |
+          test "$KTLINT_RESULT" = "success"
+          test "$BUILD_RESULT" = "success"
+          if [[ "$RUN_INSTRUMENTED_TESTS" == "true" ]]; then
+            test "$SHARD_RESULT" = "success"
+          else
+            test "$SHARD_RESULT" = "skipped"
+          fi
