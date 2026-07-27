@@ -189,13 +189,12 @@ abstract class HomeFeedFeedbackViewModel :
 }
 
 internal fun FeedDisplayItem.topStoryFeedbackTarget(): List<String>? =
-    recommendationFeedbackTarget.takeIf(List<String>::isNotEmpty)
-        ?: when (val target = feed?.target) {
-            is Feed.AnswerTarget -> listOf("a", target.id.toString())
-            is Feed.ArticleTarget -> listOf("p", target.id.toString())
-            is Feed.QuestionTarget -> listOf("q", target.id.toString())
-            else -> null
-        }
+    when (val target = feed?.target) {
+        is Feed.AnswerTarget -> listOf("a", target.id.toString())
+        is Feed.ArticleTarget -> listOf("p", target.id.toString())
+        is Feed.QuestionTarget -> listOf("q", target.id.toString())
+        else -> null
+    }
 
 class HomeFeedViewModel : HomeFeedFeedbackViewModel() {
     override val initialUrl: String

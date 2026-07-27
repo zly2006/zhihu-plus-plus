@@ -87,19 +87,6 @@ class RecommendationFeedbackPosterTest {
     }
 
     @Test
-    fun prefersMobileFeedbackTargetOverDecodedFeedTarget() {
-        val item = FeedDisplayItem(
-            title = "标题",
-            summary = null,
-            details = "",
-            feed = null,
-            recommendationFeedbackTarget = listOf("p", "42"),
-        )
-
-        assertEquals(listOf("p", "42"), item.topStoryFeedbackTarget())
-    }
-
-    @Test
     fun mapsWebFeedTargetToOfficialShortTypeAndId() {
         val item = FeedDisplayItem(
             title = "问题",

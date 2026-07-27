@@ -49,7 +49,6 @@ class MobileHomeFeedParserTest {
         assertEquals("10 赞同 · 2 评论 · 3 收藏 · 手机版推荐", item.details)
         assertEquals("作者名", item.authorName)
         assertEquals("https://example.com/avatar.jpg", item.avatarSrc)
-        assertEquals(listOf("a", "456"), item.recommendationFeedbackTarget)
 
         val destination = item.navDestination as Article
         assertEquals(ArticleType.Answer, destination.type)
@@ -199,13 +198,6 @@ class MobileHomeFeedParserTest {
 
     private fun mobileCard(): JsonObject = buildJsonObject {
         put("type", "ComponentCard")
-        put(
-            "extra",
-            buildJsonObject {
-                put("content_type", "answer")
-                put("content_id", "456")
-            },
-        )
         put(
             "action",
             buildJsonObject {

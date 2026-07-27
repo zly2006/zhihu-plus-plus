@@ -232,6 +232,8 @@ fun parseMobileHomeFeedDisplayItem(card: JsonObject): FeedDisplayItem? {
         null
     }
 
+    // 官方模板卡片通过 /lastread/touch/v2 上报原始 brief；当前 ComponentCard 响应不提供该字段。
+    // 不能用 content_type + content_id 冒充旧版 Feed 的 v1 目标，否则请求成功也不代表模板卡片已被标记。
     return FeedDisplayItem(
         navDestinationJson = routeDest.toFeedDisplayItemNavDestinationJson(),
         avatarSrc = avatar,
@@ -240,20 +242,7 @@ fun parseMobileHomeFeedDisplayItem(card: JsonObject): FeedDisplayItem? {
         title = title,
         details = "$footerText · 手机版推荐",
         feed = feed,
-        recommendationFeedbackTarget = mobileTopStoryFeedbackTarget(card).orEmpty(),
     )
-}
-
-private fun mobileTopStoryFeedbackTarget(card: JsonObject): List<String>? {
-    val extra = card["extra"]?.jsonObject ?: return null
-    val type = when (extra["content_type"]?.jsonPrimitive?.content?.lowercase()) {
-        "answer" -> "a"
-        "article" -> "p"
-        "question" -> "q"
-        else -> return null
-    }
-    val id = extra["content_id"]?.jsonPrimitive?.content?.takeIf(String::isNotBlank) ?: return null
-    return listOf(type, id)
 }
 
 @Serializable
