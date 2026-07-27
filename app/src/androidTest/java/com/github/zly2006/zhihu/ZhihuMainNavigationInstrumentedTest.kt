@@ -251,7 +251,6 @@ class ZhihuMainNavigationInstrumentedTest {
             putString(START_DESTINATION_PREFERENCE_KEY, startDestination)
             putStringSet(BOTTOM_BAR_ITEMS_PREFERENCE_KEY, bottomBarItems)
             putBoolean("duo3_home_account", false)
-            putBoolean("duo3_nav_style", false)
             putBoolean("bottomBarTapScrollToTop", false)
             putBoolean("autoHideBottomBar", false)
         }
