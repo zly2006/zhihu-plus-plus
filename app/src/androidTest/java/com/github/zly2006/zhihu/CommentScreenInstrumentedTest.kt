@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu
 
+import android.content.Context
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -75,7 +76,11 @@ import com.github.zly2006.zhihu.ui.COMMENT_SORT_TIME_TAG
 import com.github.zly2006.zhihu.ui.CommentImageMenuAction
 import com.github.zly2006.zhihu.ui.CommentScreen
 import com.github.zly2006.zhihu.ui.CommentScreenTestOverrides
+import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
+import com.github.zly2006.zhihu.ui.components.ZH_PLUS_AUTHOR_COMMENT_POLICY_ACKNOWLEDGED_KEY
+import com.github.zly2006.zhihu.ui.components.ZH_PLUS_AUTHOR_COMMENT_POLICY_CONFIRM_TAG
+import com.github.zly2006.zhihu.ui.components.ZH_PLUS_AUTHOR_COMMENT_POLICY_DIALOG_TAG
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
@@ -88,6 +93,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonArray
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -116,6 +122,54 @@ class CommentScreenInstrumentedTest {
             urlPrefix = "https://www.zhihu.com/api/v4/comments/",
             body = "{}",
         )
+    }
+
+    @Test
+    fun zhPlusAuthorCommentPolicyRequiresExplicitOneTimeConfirmation() {
+        seedRootCommentViewModel(emptyList())
+        val showComments = mutableStateOf(true)
+        composeRule.setScreenContent {
+            CommentScreenComponent(
+                showComments = showComments.value,
+                onDismiss = { showComments.value = false },
+                content = ROOT_ARTICLE,
+                isZhPlusAuthorContent = true,
+            )
+        }
+
+        composeRule.onNodeWithTag(ZH_PLUS_AUTHOR_COMMENT_POLICY_DIALOG_TAG).assertIsDisplayed()
+        composeRule.onNodeWithText("请勿通过知乎提交任何 Bug 反馈或功能建议。", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithText("评论区只可发布与当前回答或想法相关的内容。", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithTag(ZH_PLUS_AUTHOR_COMMENT_POLICY_CONFIRM_TAG).assertIsDisplayed()
+
+        composeRule.pressSystemBack()
+        val preferences = composeRule.activity.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        assertFalse(preferences.getBoolean(ZH_PLUS_AUTHOR_COMMENT_POLICY_ACKNOWLEDGED_KEY, false))
+        composeRule.runOnIdle { showComments.value = true }
+        composeRule.onNodeWithTag(ZH_PLUS_AUTHOR_COMMENT_POLICY_DIALOG_TAG).assertIsDisplayed()
+
+        composeRule.onNodeWithTag(ZH_PLUS_AUTHOR_COMMENT_POLICY_CONFIRM_TAG).performClick()
+        composeRule.onAllNodesWithTag(ZH_PLUS_AUTHOR_COMMENT_POLICY_DIALOG_TAG).assertCountEquals(0)
+        assertTrue(preferences.getBoolean(ZH_PLUS_AUTHOR_COMMENT_POLICY_ACKNOWLEDGED_KEY, false))
+
+        composeRule.runOnIdle { showComments.value = false }
+        composeRule.runOnIdle { showComments.value = true }
+        composeRule.onAllNodesWithTag(ZH_PLUS_AUTHOR_COMMENT_POLICY_DIALOG_TAG).assertCountEquals(0)
+    }
+
+    @Test
+    fun commentPolicyDoesNotShowForOtherAuthors() {
+        seedRootCommentViewModel(emptyList())
+        composeRule.setScreenContent {
+            CommentScreenComponent(
+                showComments = true,
+                onDismiss = {},
+                content = ROOT_ARTICLE,
+                isZhPlusAuthorContent = false,
+            )
+        }
+
+        composeRule.onAllNodesWithTag(ZH_PLUS_AUTHOR_COMMENT_POLICY_DIALOG_TAG).assertCountEquals(0)
     }
 
     @After
