@@ -394,6 +394,14 @@ open class SharedAndroidPaginationEnvironment(
         ContentFilterManager(database.contentFilterDao()).recordContentInteraction(targetType, targetId)
     }
 
+    override suspend fun recordContentView(item: FeedDisplayItem) {
+        val settings = context.contentFilterSettings()
+        if (!settings.enableContentFilter) return
+        val identity = item.navDestination?.let(ContentOpenEventSupport::toTrackedContentIdentity) ?: return
+        val database = getContentFilterDatabase(context)
+        ContentFilterManager(database.contentFilterDao()).recordContentView(identity.type, identity.id)
+    }
+
     override suspend fun clearAllHistory() {
         HistoryStorage(context).clearAndSave()
         postSigned("https://api.zhihu.com/read_history/batch_del") {

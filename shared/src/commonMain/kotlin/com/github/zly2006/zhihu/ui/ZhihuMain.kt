@@ -554,11 +554,13 @@ private fun MainTabsPager(
             MainTabPage.HomePage -> HomeScreen(
                 scrollToTopTrigger = scrollToTopTrigger,
                 innerPadding = innerPadding,
+                isActive = pagerState.currentPage == pageIndex,
             )
             MainTabPage.FollowPage -> FollowScreen(
                 scrollToTopTrigger = scrollToTopTrigger,
                 innerPadding = innerPadding,
                 parentPagerState = pagerState,
+                isActive = pagerState.currentPage == pageIndex,
             )
             MainTabPage.HotListPage -> HotListScreen(
                 innerPadding = innerPadding,

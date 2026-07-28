@@ -285,6 +285,13 @@ class DesktopPaginationEnvironment(
         ContentFilterManager(contentFilterDb.contentFilterDao()).recordContentInteraction(targetType, targetId)
     }
 
+    override suspend fun recordContentView(item: FeedDisplayItem) {
+        val settings = settingsStore.toFeedFilterSettings()
+        if (!settings.enableContentFilter) return
+        val identity = item.navDestination?.let(ContentOpenEventSupport::toTrackedContentIdentity) ?: return
+        ContentFilterManager(contentFilterDb.contentFilterDao()).recordContentView(identity.type, identity.id)
+    }
+
     override suspend fun clearAllHistory() {
         historyStorage.clearAndSave()
         if (store.load().cookies["d_c0"] == null) return

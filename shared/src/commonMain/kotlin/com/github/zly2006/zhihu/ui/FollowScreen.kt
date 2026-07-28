@@ -124,10 +124,12 @@ fun FollowScreen(
     scrollToTopTrigger: Int,
     innerPadding: PaddingValues,
     parentPagerState: PagerState,
+    isActive: Boolean = true,
 ): Unit = FollowScreenContent(
     scrollToTopTrigger = scrollToTopTrigger,
     innerPadding = innerPadding,
     parentPagerState = parentPagerState,
+    isActive = isActive,
     onTestRecommendRefreshClick = null,
     onTestRecommendLoadMore = null,
     onTestDynamicRefreshClick = null,
@@ -144,6 +146,7 @@ fun FollowScreen(
     scrollToTopTrigger: Int = 0,
     innerPadding: PaddingValues,
     parentPagerState: PagerState,
+    isActive: Boolean = true,
     onTestRecommendRefreshClick: (() -> Unit)?,
     onTestRecommendLoadMore: (() -> Unit)?,
     onTestDynamicRefreshClick: (() -> Unit)?,
@@ -152,6 +155,7 @@ fun FollowScreen(
     scrollToTopTrigger = scrollToTopTrigger,
     innerPadding = innerPadding,
     parentPagerState = parentPagerState,
+    isActive = isActive,
     onTestRecommendRefreshClick = onTestRecommendRefreshClick,
     onTestRecommendLoadMore = onTestRecommendLoadMore,
     onTestDynamicRefreshClick = onTestDynamicRefreshClick,
@@ -170,6 +174,7 @@ private fun FollowScreenContent(
     scrollToTopTrigger: Int = 0,
     innerPadding: PaddingValues = PaddingValues(0.dp),
     parentPagerState: PagerState,
+    isActive: Boolean = true,
     onTestRecommendRefreshClick: (() -> Unit)? = null,
     onTestRecommendLoadMore: (() -> Unit)? = null,
     onTestDynamicRefreshClick: (() -> Unit)? = null,
@@ -218,14 +223,14 @@ private fun FollowScreenContent(
             when (page) {
                 0 -> FollowRecommendScreen(
                     scrollToTopTrigger = scrollToTopTrigger,
-                    isActive = pagerState.currentPage == 0,
+                    isActive = isActive && pagerState.currentPage == 0,
                     onTestRefreshClick = onTestRecommendRefreshClick,
                     onTestLoadMore = onTestRecommendLoadMore,
                 )
 
                 1 -> FollowDynamicScreen(
                     scrollToTopTrigger = scrollToTopTrigger,
-                    isActive = pagerState.currentPage == 1,
+                    isActive = isActive && pagerState.currentPage == 1,
                     onTestRefreshClick = onTestDynamicRefreshClick,
                     onTestLoadMore = onTestDynamicLoadMore,
                 )

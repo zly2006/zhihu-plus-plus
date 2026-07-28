@@ -58,8 +58,8 @@ class ForegroundReadFilterPipeline(
             val isLowQualityAndroidFeed = isLowQualityForegroundFeed(item)
 
             if (isFollowing || (!isViewed && !isLowQualityAndroidFeed)) {
+                // 过滤阶段只查询历史；曝光只能由前台页面停滚后的真实可见集合写入。
                 keptItems.add(item)
-                contentFilterManager.recordContentView(identity.type, identity.id)
             } else {
                 blockedItems.add(
                     item.toFilterableContent(identity, DataHolder.DummyContent) to "已读过且未关注作者",

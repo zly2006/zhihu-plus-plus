@@ -174,6 +174,7 @@ fun homePinAnnouncementReadKey(pinId: Long): String = "readHomePinAnnouncement_$
 fun HomeScreen(
     scrollToTopTrigger: Int,
     innerPadding: PaddingValues,
+    isActive: Boolean = true,
 ) {
     val navigator = LocalNavigator.current
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = true)
@@ -243,10 +244,10 @@ fun HomeScreen(
     val listState = rememberLazyListState()
     var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
 
-    LaunchedEffect(lifecycleOwner, listState, viewModel) {
+    LaunchedEffect(lifecycleOwner, listState, viewModel, isActive) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             snapshotFlow {
-                if (listState.isScrollInProgress) {
+                if (!isActive || listState.isScrollInProgress) {
                     emptySet()
                 } else {
                     listState.layoutInfo.visibleItemsInfo

@@ -161,14 +161,21 @@ abstract class HomeFeedFeedbackViewModel :
         environment: ContentInteractionEnvironment,
         visibleItemKeys: Set<String>,
     ) {
+        val visibleItems = displayItems.filter { it.stableKey in visibleItemKeys }
         feedbackPoster.touch(
             environment,
-            displayItems
+            visibleItems
                 .asSequence()
-                .filter { it.stableKey in visibleItemKeys }
                 .mapNotNull(FeedDisplayItem::topStoryFeedbackTarget)
                 .toList(),
         )
+        visibleItems.forEach { item ->
+            try {
+                environment.recordContentView(item)
+            } catch (error: Exception) {
+                environment.handleFetchFailure("HomeFeedFeedbackViewModel", error)
+            }
+        }
     }
 
     override fun onUiContentClick(

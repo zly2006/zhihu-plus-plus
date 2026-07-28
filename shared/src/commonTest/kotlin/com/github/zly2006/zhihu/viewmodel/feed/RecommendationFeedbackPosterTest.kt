@@ -128,6 +128,20 @@ class RecommendationFeedbackPosterTest {
     }
 
     @Test
+    fun homeFeedRecordsOnlyItemsFromTheSettledVisibleSet() = runTest {
+        val recordedTitles = mutableListOf<String>()
+        val environment = environment(mutableListOf(), recordedTitles)
+        val viewModel = HomeFeedViewModel()
+        val visibleItem = followDynamicItem(1, "visible")
+        val offscreenItem = followDynamicItem(2, "offscreen")
+        viewModel.addDisplayItems(listOf(visibleItem, offscreenItem))
+
+        viewModel.reportVisibleItems(environment, setOf(visibleItem.stableKey))
+
+        assertEquals(listOf(visibleItem.title), recordedTitles)
+    }
+
+    @Test
     fun bothFollowViewModelsReportBriefsWhenVisibleItemsSettle() = runTest {
         val payloads = mutableListOf<String>()
         val environment = environment(payloads)
@@ -160,7 +174,10 @@ class RecommendationFeedbackPosterTest {
         assertEquals(null, followRecommendItem(4, "").momentsFeedbackTarget())
     }
 
-    private fun environment(payloads: MutableList<String>): ContentInteractionEnvironment {
+    private fun environment(
+        payloads: MutableList<String>,
+        recordedTitles: MutableList<String> = mutableListOf(),
+    ): ContentInteractionEnvironment {
         val client = HttpClient(
             MockEngine { request ->
                 val body = when (val content = request.body) {
@@ -180,6 +197,10 @@ class RecommendationFeedbackPosterTest {
             override fun httpClient() = client
 
             override fun authenticatedCookies() = mapOf("d_c0" to "test-cookie")
+
+            override suspend fun recordContentView(item: FeedDisplayItem) {
+                recordedTitles += item.title
+            }
 
             override suspend fun handleFetchFailure(
                 tag: String?,
