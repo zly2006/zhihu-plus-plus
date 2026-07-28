@@ -34,7 +34,6 @@ import com.hrm.markdown.renderer.LocalMarkdownTheme
 import com.hrm.markdown.renderer.LocalOnFootnoteClick
 import com.hrm.markdown.renderer.LocalOnLinkClick
 import com.hrm.markdown.renderer.LocalOnSegmentHighlightClick
-import com.hrm.markdown.renderer.LocalSegmentHighlightProjectionEnabled
 import com.hrm.markdown.renderer.MarkdownImageData
 import com.hrm.markdown.renderer.segmentHighlightTaps
 import com.hrm.markdown.renderer.segmentHighlightsByKey
@@ -87,23 +86,18 @@ private fun SimpleParagraphRenderer(
         hostTextStyle = theme.bodyStyle,
     )
     val onSegmentHighlightClick = LocalOnSegmentHighlightClick.current
-    val segmentHighlightProjectionEnabled = LocalSegmentHighlightProjectionEnabled.current
     val segmentHighlights = remember(node, node.contentHash, node.lineRange.endLine, node.childCount()) {
         node.segmentHighlightsByKey()
     }
     val annotatedText = inlineResult.annotated
     var textLayoutResult by remember(annotatedText) { mutableStateOf<TextLayoutResult?>(null) }
     val underlineColor = MaterialTheme.colorScheme.outlineVariant
-    val interactionModifier = if (segmentHighlightProjectionEnabled) {
-        modifier
-    } else {
-        modifier.segmentHighlightTaps(
-            annotated = annotatedText,
-            highlights = segmentHighlights,
-            textLayoutResult = { textLayoutResult },
-            onClick = onSegmentHighlightClick,
-        )
-    }
+    val interactionModifier = modifier.segmentHighlightTaps(
+        annotated = annotatedText,
+        highlights = segmentHighlights,
+        textLayoutResult = { textLayoutResult },
+        onClick = onSegmentHighlightClick,
+    )
     val segmentModifier = if (segmentHighlights.isEmpty()) {
         interactionModifier
     } else {

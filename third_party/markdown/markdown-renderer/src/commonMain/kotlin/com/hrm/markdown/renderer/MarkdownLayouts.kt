@@ -15,7 +15,6 @@ import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -29,8 +28,6 @@ import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.unit.dp
 import com.hrm.markdown.parser.ast.AbbreviationDefinition
 import com.hrm.markdown.parser.ast.BlankLine
@@ -54,13 +51,11 @@ import com.hrm.markdown.parser.ast.MathBlock
 import com.hrm.markdown.parser.ast.Node
 import com.hrm.markdown.parser.ast.Paragraph
 import com.hrm.markdown.parser.ast.SetextHeading
-import com.hrm.markdown.parser.ast.SegmentHighlight
 import com.hrm.markdown.parser.ast.SoftLineBreak
 import com.hrm.markdown.parser.ast.Text
 import com.hrm.markdown.parser.ast.ThematicBreak
 import com.hrm.markdown.renderer.block.BlockRenderer
 import com.hrm.markdown.renderer.block.blockRenderRevision
-import com.hrm.markdown.renderer.inline.SEGMENT_HIGHLIGHT_ANNOTATION_TAG
 import kotlin.math.ceil
 
 @Composable
@@ -173,7 +168,6 @@ private fun DeferredMarkdownBlock(
 ) {
     val theme = LocalMarkdownTheme.current
     val footnoteNavigationState = LocalFootnoteNavigationState.current
-    val onSegmentHighlightClick = LocalOnSegmentHighlightClick.current
     val density = LocalDensity.current
     val viewportHeightPx = LocalWindowInfo.current.containerSize.height.toFloat()
     var materialized by remember(node) { mutableStateOf(false) }
@@ -187,26 +181,9 @@ private fun DeferredMarkdownBlock(
     val selectionProjectionText = remember(node, preserveSelectionAcrossDeferredBlocks) {
         if (preserveSelectionAcrossDeferredBlocks) node.selectionProjectionText() else ""
     }
-    val segmentHighlights = remember(node) { node.segmentHighlightsByKey() }
-    val segmentSelectionProjection = remember(node, preserveSelectionAcrossDeferredBlocks, segmentHighlights) {
-        if (preserveSelectionAcrossDeferredBlocks && segmentHighlights.isNotEmpty()) {
-            node.segmentSelectionProjection()
-        } else {
-            null
-        }
-    }
-    var selectionTextLayout by remember(segmentSelectionProjection) {
-        mutableStateOf<androidx.compose.ui.text.TextLayoutResult?>(null)
-    }
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
-            .segmentHighlightTaps(
-                annotated = segmentSelectionProjection ?: AnnotatedString(""),
-                highlights = segmentHighlights,
-                textLayoutResult = { selectionTextLayout },
-                onClick = onSegmentHighlightClick,
-            )
             .onGloballyPositioned { coordinates ->
                 if (viewportHeightPx > 0f) {
                     val top = coordinates.positionInWindow().y
@@ -241,39 +218,21 @@ private fun DeferredMarkdownBlock(
             // 长文基准中，改为在全选时完整物化富文本首次耗时约 3.4 秒；反复重建约 34 秒后，
             // 包含大量公式的 instrument 测试在约 200 MB 堆上 OOM，因此不能用全量物化替代此投影。
             // https://developer.android.com/reference/kotlin/androidx/compose/foundation/text/selection/package-summary#SelectionContainer(androidx.compose.ui.Modifier,kotlin.Function0)
-            val projectionModifier = Modifier
-                .matchParentSize()
-                .clearAndSetSemantics { }
-            val projectionStyle = theme.bodyStyle.copy(color = Color.Transparent)
-            if (segmentSelectionProjection != null) {
-                BasicText(
-                    text = segmentSelectionProjection,
-                    modifier = projectionModifier,
-                    style = projectionStyle,
-                    maxLines = selectionLayoutLineCapacity,
-                    onTextLayout = { selectionTextLayout = it },
-                )
-            } else {
-                // 普通块保留 String 重载快路径：Pixel 6 Pro API 31 的 36,460 字符基准中，
-                // 所有块改用 AnnotatedString 会让首帧中位数从 478 ms 增至 541 ms；只有划线块需要 annotation。
-                BasicText(
-                    text = selectionProjectionText,
-                    modifier = projectionModifier,
-                    style = projectionStyle,
-                    maxLines = selectionLayoutLineCapacity,
-                )
-            }
+            BasicText(
+                text = selectionProjectionText,
+                modifier = Modifier
+                    .matchParentSize()
+                    .clearAndSetSemantics { },
+                style = theme.bodyStyle.copy(color = Color.Transparent),
+                maxLines = selectionLayoutLineCapacity,
+            )
         }
         if (renderBlock) {
-            CompositionLocalProvider(
-                LocalSegmentHighlightProjectionEnabled provides (segmentSelectionProjection != null),
-            ) {
-                DisableSelection {
-                    BlockRenderer(
-                        node = node,
-                        renderRevision = blockRenderRevision(node),
-                    )
-                }
+            DisableSelection {
+                BlockRenderer(
+                    node = node,
+                    renderRevision = blockRenderRevision(node),
+                )
             }
         } else {
             Box(
@@ -284,29 +243,6 @@ private fun DeferredMarkdownBlock(
                     ),
             )
         }
-    }
-}
-
-private fun Node.segmentSelectionProjection(): AnnotatedString = buildAnnotatedString {
-    appendSelectionProjection(this@segmentSelectionProjection)
-}
-
-private fun AnnotatedString.Builder.appendSelectionProjection(
-    node: Node,
-) {
-    when (node) {
-        is FrontMatter, is LinkReferenceDefinition, is AbbreviationDefinition, is BlankLine -> Unit
-        is FootnoteReference -> append("[${node.index}]")
-        is CitationReference -> append("[${node.key}]")
-        is HtmlEntity -> append(node.resolved.ifEmpty { node.literal })
-        is Emoji -> append(node.unicode ?: node.literal.ifEmpty { ":${node.shortcode}:" })
-        is SegmentHighlight -> {
-            pushStringAnnotation(SEGMENT_HIGHLIGHT_ANNOTATION_TAG, node.interactionKey)
-            node.children.forEach { appendSelectionProjection(it) }
-            pop()
-        }
-        is ContainerNode -> node.children.forEach { appendSelectionProjection(it) }
-        is LeafNode -> append(node.literal)
     }
 }
 
