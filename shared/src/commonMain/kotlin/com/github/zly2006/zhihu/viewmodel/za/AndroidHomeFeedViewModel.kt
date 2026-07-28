@@ -232,8 +232,9 @@ fun parseMobileHomeFeedDisplayItem(card: JsonObject): FeedDisplayItem? {
         null
     }
 
-    // 官方模板卡片通过 /lastread/touch/v2 上报原始 brief；当前 ComponentCard 响应不提供该字段。
-    // 不能用 content_type + content_id 冒充旧版 Feed 的 v1 目标，否则请求成功也不代表模板卡片已被标记。
+    // 官方旧 TemplateRoot 会把响应中的 brief 原样交给 /lastread/touch/v2。11.2 的 ComponentCard 不仅
+    // 没有该字段，官方 LastReadHelper 也没有 Card 目标分支；attachinfo 中的版本标记只进入曝光日志。
+    // 不能用 content_type + content_id 冒充旧版 Feed 的 v1 目标，否则请求成功也不代表卡片已被标记。
     return FeedDisplayItem(
         navDestinationJson = routeDest.toFeedDisplayItemNavDestinationJson(),
         avatarSrc = avatar,
