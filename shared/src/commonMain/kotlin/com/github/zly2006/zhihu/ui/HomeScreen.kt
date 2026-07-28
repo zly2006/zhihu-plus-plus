@@ -131,7 +131,7 @@ import com.github.zly2006.zhihu.ui.components.rememberFeedBlockActions
 import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_FAB_OPACITY
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FAB_OPACITY
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
+import com.github.zly2006.zhihu.viewmodel.feed.FeedInteractionViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
@@ -255,7 +255,7 @@ fun HomeScreen(
                 }
             }.collect { visibleItemKeys ->
                 if (visibleItemKeys.isNotEmpty()) {
-                    (viewModel as? HomeFeedInteractionViewModel)
+                    (viewModel as? FeedInteractionViewModel)
                         ?.reportVisibleItems(paginationEnvironment, visibleItemKeys)
                 }
             }
@@ -696,7 +696,7 @@ fun HomeScreen(
                     ) {
                         val feed = this.feed
                         val destination = navDestination
-                        (viewModel as? HomeFeedInteractionViewModel)?.onUiContentClick(paginationEnvironment, item)
+                        (viewModel as? FeedInteractionViewModel)?.onUiContentClick(paginationEnvironment, item)
                         if (feed == null) {
                             localHomeViewModel?.onLocalItemOpened(item)
                         }

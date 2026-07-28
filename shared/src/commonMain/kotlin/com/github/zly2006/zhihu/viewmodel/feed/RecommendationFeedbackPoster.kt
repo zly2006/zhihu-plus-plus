@@ -36,7 +36,7 @@ private const val FEEDBACK_MAX_PENDING_MILLIS = 120_000L
 /**
  * 按知乎推荐反馈协议批量发送触达和已读状态。
  *
- * `target` 不含事件类型；首页目标形如 `type, id`，关注推荐目标只有 `brief`。触达累计五条再发送，
+ * `target` 不含事件类型；首页目标形如 `type, id`，关注流目标只有 `brief`。触达累计五条再发送，
  * 已读立即冲刷队列；超过两分钟仍有待发送触达时，在下一次列表停稳时冲刷。
  */
 internal class RecommendationFeedbackPoster(

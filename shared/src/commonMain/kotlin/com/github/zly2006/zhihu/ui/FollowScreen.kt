@@ -473,7 +473,7 @@ fun FollowRecommendScreen(
                         feedBlockActions.handleBlockTopic(viewModel, topicId, topicName)
                     },
                     onClick = {
-                        viewModel.reportRead(environment, item)
+                        viewModel.onUiContentClick(environment, item)
                         navDestination?.let { navigator.onNavigate(it) }
                     },
                 )
@@ -519,9 +519,29 @@ fun FollowDynamicScreen(
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()
     val feedBlockActions = rememberFeedBlockActions()
+    val navigator = LocalNavigator.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val showRefreshFab = remember { settings.getBoolean("showRefreshFab", true) }
     val listState = rememberLazyListState()
     var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
+
+    LaunchedEffect(lifecycleOwner, listState, viewModel, isActive) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            snapshotFlow {
+                if (!isActive || listState.isScrollInProgress) {
+                    emptySet()
+                } else {
+                    listState.layoutInfo.visibleItemsInfo
+                        .mapNotNull { it.key as? String }
+                        .toSet()
+                }
+            }.collect { visibleItemKeys ->
+                if (visibleItemKeys.isNotEmpty()) {
+                    viewModel.reportVisibleItems(environment, visibleItemKeys)
+                }
+            }
+        }
+    }
 
     LaunchedEffect(scrollToTopTrigger, isActive) {
         val action = topLevelReselectAction(
@@ -565,6 +585,7 @@ fun FollowDynamicScreen(
                     }
                 },
                 footer = ProgressIndicatorFooter,
+                key = { item -> item.stableKey },
             ) { item ->
                 FeedCard(
                     item = item,
@@ -590,6 +611,10 @@ fun FollowDynamicScreen(
                     },
                     onBlockTopic = { topicId, topicName ->
                         feedBlockActions.handleBlockTopic(viewModel, topicId, topicName)
+                    },
+                    onClick = {
+                        viewModel.onUiContentClick(environment, item)
+                        navDestination?.let { navigator.onNavigate(it) }
                     },
                 )
             }

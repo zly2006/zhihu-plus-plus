@@ -20,7 +20,8 @@ package com.github.zly2006.zhihu.viewmodel.feed
 import com.github.zly2006.zhihu.shared.data.CommonFeed
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
+import com.github.zly2006.zhihu.shared.data.MomentsFeed
+import com.github.zly2006.zhihu.viewmodel.ContentInteractionEnvironment
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -87,6 +88,27 @@ class RecommendationFeedbackPosterTest {
     }
 
     @Test
+    fun doesNotPostTheSameTouchOrReadEventTwice() = runTest {
+        val payloads = mutableListOf<String>()
+        val environment = environment(payloads)
+        val poster = RecommendationFeedbackPoster("https://api.zhihu.com/moments/lastread")
+        val targets = (1..5).map { listOf("brief-$it") }
+
+        poster.touch(environment, targets)
+        poster.touch(environment, targets)
+        poster.read(environment, targets.first())
+        poster.read(environment, targets.first())
+
+        assertEquals(
+            listOf(
+                targets.map { listOf("t") + it },
+                listOf(listOf("r", "brief-1")),
+            ),
+            payloads.map(::decodeTargets),
+        )
+    }
+
+    @Test
     fun mapsWebFeedTargetToOfficialShortTypeAndId() {
         val item = FeedDisplayItem(
             title = "问题",
@@ -105,7 +127,40 @@ class RecommendationFeedbackPosterTest {
         assertEquals(listOf("q", "42"), item.topStoryFeedbackTarget())
     }
 
-    private fun environment(payloads: MutableList<String>): ZhihuApiEnvironment {
+    @Test
+    fun bothFollowViewModelsReportBriefsWhenVisibleItemsSettle() = runTest {
+        val payloads = mutableListOf<String>()
+        val environment = environment(payloads)
+        val dynamicViewModel = FollowViewModel()
+        val recommendViewModel = FollowRecommendViewModel()
+        val dynamicItems = (1L..5L).map { id -> followDynamicItem(id, "dynamic-$id") }
+        val recommendItems = (6L..10L).map { id -> followRecommendItem(id, "recommend-$id") }
+        dynamicViewModel.addDisplayItems(dynamicItems)
+        recommendViewModel.addDisplayItems(recommendItems)
+
+        dynamicViewModel.reportVisibleItems(environment, dynamicItems.mapTo(mutableSetOf()) { it.stableKey })
+        recommendViewModel.reportVisibleItems(environment, recommendItems.mapTo(mutableSetOf()) { it.stableKey })
+        dynamicViewModel.reportVisibleItems(environment, dynamicItems.mapTo(mutableSetOf()) { it.stableKey })
+        recommendViewModel.reportVisibleItems(environment, recommendItems.mapTo(mutableSetOf()) { it.stableKey })
+
+        assertEquals(
+            listOf(
+                (1L..5L).map { id -> listOf("t", "dynamic-$id") },
+                (6L..10L).map { id -> listOf("t", "recommend-$id") },
+            ),
+            payloads.map(::decodeTargets),
+        )
+    }
+
+    @Test
+    fun followFeedbackUsesOnlyRealNonBlankBriefs() {
+        assertEquals(listOf("dynamic"), followDynamicItem(1, "dynamic").momentsFeedbackTarget())
+        assertEquals(listOf("recommend"), followRecommendItem(2, "recommend").momentsFeedbackTarget())
+        assertEquals(null, followDynamicItem(3, "<none>").momentsFeedbackTarget())
+        assertEquals(null, followRecommendItem(4, "").momentsFeedbackTarget())
+    }
+
+    private fun environment(payloads: MutableList<String>): ContentInteractionEnvironment {
         val client = HttpClient(
             MockEngine { request ->
                 val body = when (val content = request.body) {
@@ -121,7 +176,7 @@ class RecommendationFeedbackPosterTest {
                 )
             },
         )
-        return object : ZhihuApiEnvironment {
+        return object : ContentInteractionEnvironment {
             override fun httpClient() = client
 
             override fun authenticatedCookies() = mapOf("d_c0" to "test-cookie")
@@ -132,6 +187,42 @@ class RecommendationFeedbackPosterTest {
             ): Unit = throw error
         }
     }
+
+    private fun followDynamicItem(
+        id: Long,
+        brief: String,
+    ) = FeedDisplayItem(
+        title = "动态 $id",
+        summary = null,
+        details = "",
+        feed = CommonFeed(
+            id = "dynamic-$id",
+            brief = brief,
+            target = questionTarget(id),
+        ),
+    )
+
+    private fun followRecommendItem(
+        id: Long,
+        brief: String,
+    ) = FeedDisplayItem(
+        title = "推荐 $id",
+        summary = null,
+        details = "",
+        feed = MomentsFeed(
+            id = "recommend-$id",
+            brief = brief,
+            target = questionTarget(id),
+            targetType = "question",
+        ),
+    )
+
+    private fun questionTarget(id: Long) = Feed.QuestionTarget(
+        id = id,
+        _title = "问题 $id",
+        url = "https://www.zhihu.com/question/$id",
+        type = "question",
+    )
 
     private fun decodeTargets(value: String): List<List<String>> = Json
         .parseToJsonElement(value)

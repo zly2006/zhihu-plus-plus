@@ -135,7 +135,7 @@ private suspend fun resolveFeedBlockContentDetail(
     return contentDetailProvider?.get(navDestination)
 }
 
-interface HomeFeedInteractionViewModel {
+interface FeedInteractionViewModel {
     suspend fun reportVisibleItems(
         environment: ContentInteractionEnvironment,
         visibleItemKeys: Set<String>,
@@ -149,7 +149,7 @@ interface HomeFeedInteractionViewModel {
 
 abstract class HomeFeedFeedbackViewModel :
     BaseFeedViewModel(),
-    HomeFeedInteractionViewModel {
+    FeedInteractionViewModel {
     private val feedbackPoster = RecommendationFeedbackPoster("https://api.zhihu.com/lastread/touch")
     protected open val recordsContentInteraction = true
 

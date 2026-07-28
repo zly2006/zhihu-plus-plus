@@ -23,19 +23,60 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.github.zly2006.zhihu.shared.data.CommonFeed
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.MomentsFeed
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.sourceLabel
 import com.github.zly2006.zhihu.shared.data.target
+import com.github.zly2006.zhihu.viewmodel.ContentInteractionEnvironment
 import com.github.zly2006.zhihu.viewmodel.FeedDisplayEnvironment
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.jsonArray
 
-class FollowViewModel : BaseFeedViewModel() {
+abstract class FollowFeedFeedbackViewModel :
+    BaseFeedViewModel(),
+    FeedInteractionViewModel {
+    private val feedbackPoster = RecommendationFeedbackPoster("https://api.zhihu.com/moments/lastread")
+
+    override suspend fun reportVisibleItems(
+        environment: ContentInteractionEnvironment,
+        visibleItemKeys: Set<String>,
+    ) {
+        feedbackPoster.touch(
+            environment,
+            displayItems
+                .asSequence()
+                .filter { it.stableKey in visibleItemKeys }
+                .mapNotNull(FeedDisplayItem::momentsFeedbackTarget)
+                .toList(),
+        )
+    }
+
+    override fun onUiContentClick(
+        environment: ContentInteractionEnvironment,
+        item: FeedDisplayItem,
+    ) {
+        val target = item.momentsFeedbackTarget() ?: return
+        viewModelScope.launch {
+            feedbackPoster.read(environment, target)
+        }
+    }
+}
+
+internal fun FeedDisplayItem.momentsFeedbackTarget(): List<String>? {
+    val brief = when (val feed = feed) {
+        is CommonFeed -> feed.brief.takeUnless { it == "<none>" }
+        is MomentsFeed -> feed.brief
+        else -> null
+    }
+    return brief?.takeIf(String::isNotBlank)?.let(::listOf)
+}
+
+class FollowViewModel : FollowFeedFeedbackViewModel() {
     override val initialUrl: String
         get() = "https://www.zhihu.com/api/v3/moments?limit=10&desktop=true"
 
@@ -49,36 +90,9 @@ class FollowViewModel : BaseFeedViewModel() {
     }
 }
 
-class FollowRecommendViewModel : BaseFeedViewModel() {
-    private val feedbackPoster = RecommendationFeedbackPoster("https://api.zhihu.com/moments/lastread")
-
+class FollowRecommendViewModel : FollowFeedFeedbackViewModel() {
     override val initialUrl: String
         get() = "https://api.zhihu.com/moments_v3?feed_type=recommend"
-
-    suspend fun reportVisibleItems(
-        environment: ZhihuApiEnvironment,
-        visibleItemKeys: Set<String>,
-    ) {
-        feedbackPoster.touch(
-            environment,
-            displayItems
-                .asSequence()
-                .filter { it.stableKey in visibleItemKeys }
-                .mapNotNull { (it.feed as? MomentsFeed)?.brief?.takeIf(String::isNotBlank) }
-                .map(::listOf)
-                .toList(),
-        )
-    }
-
-    fun reportRead(
-        environment: ZhihuApiEnvironment,
-        item: FeedDisplayItem,
-    ) {
-        val brief = (item.feed as? MomentsFeed)?.brief?.takeIf(String::isNotBlank) ?: return
-        viewModelScope.launch {
-            feedbackPoster.read(environment, listOf(brief))
-        }
-    }
 }
 
 class RecentMomentsViewModel : ViewModel() {
