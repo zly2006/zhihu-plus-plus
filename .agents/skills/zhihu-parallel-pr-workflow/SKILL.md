@@ -28,7 +28,7 @@ Do not use any Gradle, Kotlin compiler, build, watch, or long-lived helper daemo
 - Every Gradle command in this workflow must use `--no-daemon`.
 - Every Gradle command that compiles Kotlin must also pass `-Dkotlin.compiler.execution.strategy=in-process` so it does not start a Kotlin compiler daemon.
 - Prefer bounded one-shot commands only. Do not run `--continuous`, watch mode, dev servers, background Gradle processes, or any command intended to stay resident.
-- Before a batch and after heavy validation, stop existing Gradle daemons with `./gradlew --stop || true`. This cleanup command is allowed because it terminates daemons rather than relying on them.
+- Before a batch and after heavy validation, stop existing Gradle daemons from a writable isolated worktree with `./gradlew --stop || true`. This cleanup command is allowed because it terminates daemons rather than relying on them; never run it in a main checkout rejected by **Main Checkout Drift Guard**.
 - Worker prompts must repeat this rule explicitly; if a worker reports validation without `--no-daemon`, send it back to rerun validation correctly.
 
 ## Startup
@@ -36,8 +36,7 @@ Do not use any Gradle, Kotlin compiler, build, watch, or long-lived helper daemo
 1. Record start time with `date '+%Y-%m-%d %H:%M:%S %Z'`.
 2. Read repo instructions that apply to `/Users/zhaoliyan/IdeaProjects/Zhihu`, especially `AGENTS.md`.
 3. Choose the lowest-cost healthy AVD that matches the target API. Read `$off-android-avd-ci-debug` only when remote validation is selected.
-4. Inspect current checkout, open PRs, and open issues:
-   - `git status --short --branch`
+4. Capture the main checkout baseline as required by **Main Checkout Drift Guard**, then inspect worktrees, open PRs, and open issues:
    - `git worktree list --porcelain`
    - `gh pr list --state open --limit 80 --json number,title,headRefName,baseRefName,isDraft,url`
    - `gh issue list --state open --limit 80 --json number,title,labels,updatedAt,url`
@@ -45,8 +44,22 @@ Do not use any Gradle, Kotlin compiler, build, watch, or long-lived helper daemo
    - `/Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/scripts/off-avd-ci-debug.sh status`
    - `/Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/scripts/off-avd-ci-debug.sh boot-check`
    - If boot-check fails, inspect remote logs before assigning UI verification.
-6. Stop any existing Gradle daemons before assigning workers:
+6. Stop any existing Gradle daemons from a writable isolated worktree before assigning workers:
    - `./gradlew --stop || true`
+
+## Main Checkout Drift Guard
+
+Treat the canonical main checkout as concurrently owned state, not as a stable workspace. At startup, record its exact branch, HEAD, and status outputs; an empty status output is the only clean state:
+
+```bash
+git -C /Users/zhaoliyan/IdeaProjects/Zhihu branch --show-current
+git -C /Users/zhaoliyan/IdeaProjects/Zhihu rev-parse HEAD
+git -C /Users/zhaoliyan/IdeaProjects/Zhihu status --porcelain=v1 --untracked-files=all
+```
+
+Re-run and compare all three commands after triage, immediately before assigning a worker or starting implementation, immediately before every intended write in the main checkout, at the start of main-agent review, and again during shutdown. An initially clean checkout is not a lasting guarantee; each check authorizes only the next action.
+
+If the status is non-empty at any check, branch/HEAD/status differs from the baseline, or another person/process modified the checkout, do not edit, format, stage, stash, reset, clean, switch, commit, or otherwise write there. Preserve all user and other-agent changes, and immediately create or use a fresh isolated worktree from the current `origin/master` using **Worktree Rules**. Existing workers always remain in their assigned worktrees; main-checkout drift never moves or redirects them.
 
 ## Candidate Selection
 
@@ -60,12 +73,13 @@ Choose issues critically, not literally. Rank by user impact, feasibility, curre
 
 ## Worktree Rules
 
-Create one worktree per worker from current `origin/master`.
+Create one worktree per worker from current `origin/master`. These commands update repository/worktree metadata without changing files in the main checkout:
 
 ```bash
-git fetch origin master --prune
-git worktree add .worktrees/<short-name> origin/master -b codex/<short-name>
-cp local.properties .worktrees/<short-name>/local.properties 2>/dev/null || true
+ZH_MAIN=/Users/zhaoliyan/IdeaProjects/Zhihu
+git -C "$ZH_MAIN" fetch origin master --prune
+git -C "$ZH_MAIN" worktree add -b codex/<short-name> "$ZH_MAIN/.worktrees/<short-name>" origin/master
+cp "$ZH_MAIN/local.properties" "$ZH_MAIN/.worktrees/<short-name>/local.properties" 2>/dev/null || true
 ```
 
 Use unique branch names such as:
@@ -145,26 +159,28 @@ When an upstream UI module supplies both display data and a destination URL, rev
 
 After a worker returns:
 
-1. Inspect `git status`, `git show --stat`, and the PR diff.
-2. Check for overlap with other worker branches and open PRs.
-3. Review for:
+1. Re-run **Main Checkout Drift Guard** before review; if it fails, preserve the main checkout, create or use a fresh isolated coordination worktree from current `origin/master`, and inspect each worker only in its assigned worktree.
+2. Inspect `git status`, `git show --stat`, and the PR diff.
+3. Check for overlap with other worker branches and open PRs.
+4. Review for:
    - thin helper/wrapper regressions
    - duplicated logic
    - stale comments or wrong doc-comment style
    - broken navigation semantics
    - settings keys without runtime reads
    - UI text truncation or layout regressions
-4. Confirm validation evidence and screenshot are real.
-5. Read the published PR back and verify its title matches `^(feat|fix|refactor): `, its body language and issue linkage are correct, and any visible data carrying a destination URL remains actionable.
-6. If a worker missed requirements, send it back to fix in the same worktree.
+5. Confirm validation evidence and screenshot are real.
+6. Read the published PR back and verify its title matches `^(feat|fix|refactor): `, its body language and issue linkage are correct, and any visible data carrying a destination URL remains actionable.
+7. If a worker missed requirements, send it back to fix in the same worktree.
 
 ## Shutdown
 
-1. If `off` was used, ensure remote AVD cleanup:
+1. Re-run **Main Checkout Drift Guard** and preserve any observed drift; never clean the main checkout to make the final check pass.
+2. If `off` was used, ensure remote AVD cleanup:
    `/Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/scripts/off-avd-ci-debug.sh kill`
-2. Stop Gradle daemons from the main checkout and every worker worktree:
+3. Stop Gradle daemons from every worker worktree; include the main checkout only when its final drift check is still clean and unchanged:
    `./gradlew --stop || true`
-3. Record end time with `date '+%Y-%m-%d %H:%M:%S %Z'`.
-4. If total runtime exceeds 5 minutes, notify:
+4. Record end time with `date '+%Y-%m-%d %H:%M:%S %Z'`.
+5. If total runtime exceeds 5 minutes, notify:
    `terminal-notifier -message "已完成 Zhihu++ 并行 PR 工作" -sound default`
-5. Final response must list each worker branch/PR, validation state, screenshots, and any blocked items.
+6. Final response must list each worker branch/PR, validation state, screenshots, and any blocked items.
