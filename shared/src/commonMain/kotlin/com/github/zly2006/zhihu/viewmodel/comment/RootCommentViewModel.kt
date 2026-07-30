@@ -17,6 +17,9 @@
 
 package com.github.zly2006.zhihu.viewmodel.comment
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
@@ -48,6 +51,13 @@ class RootCommentViewModel(
     private val initialCommentId: String? = null,
 ) : BaseCommentViewModel(content) {
     private var initialCommentLoaded = false
+    var initialChildComment by mutableStateOf<DataHolder.Comment?>(null)
+        private set
+
+    internal data class ResolvedCommentAnchor(
+        val target: DataHolder.Comment,
+        val root: DataHolder.Comment,
+    )
 
     companion object {
         val NavDestination.submitCommentUrl: String
@@ -120,9 +130,11 @@ class RootCommentViewModel(
             try {
                 // 根评论列表接口会忽略通知 deep link 的 anchor_comment_id，只能先通过详情解析根评论并置于列表顶部。
                 // https://github.com/zly2006/zhihu-plus-plus/issues/569
+                val resolvedAnchor = resolveCommentAnchor(initialCommentId, environment)
+                initialChildComment = resolvedAnchor.target.takeIf { it.id != resolvedAnchor.root.id }
                 processResponse(
                     environment = environment,
-                    data = listOf(resolveCommentAnchor(initialCommentId, environment)),
+                    data = listOf(resolvedAnchor.root),
                     rawData = JsonArray(emptyList()),
                 )
             } catch (error: Exception) {
@@ -136,7 +148,7 @@ class RootCommentViewModel(
     internal suspend fun resolveCommentAnchor(
         commentId: String,
         environment: ZhihuApiEnvironment,
-    ): DataHolder.Comment {
+    ): ResolvedCommentAnchor {
         val target = environment
             .fetchJson(
                 "https://www.zhihu.com/api/v4/comment_v5/comment/$commentId",
@@ -145,13 +157,14 @@ class RootCommentViewModel(
             ?: error("Comment $commentId was not found")
         val rootCommentId = target.replyRootCommentId
             ?.takeIf { it.isNotBlank() && it != target.id }
-            ?: return target
-        return environment
+            ?: return ResolvedCommentAnchor(target = target, root = target)
+        val root = environment
             .fetchJson(
                 "https://www.zhihu.com/api/v4/comment_v5/comment/$rootCommentId",
                 "",
             )?.let { ZhihuJson.decodeJson<DataHolder.Comment>(it) }
             ?: error("Root comment $rootCommentId was not found")
+        return ResolvedCommentAnchor(target = target, root = root)
     }
 
     override fun createCommentItem(comment: DataHolder.Comment, article: NavDestination): CommentItem {

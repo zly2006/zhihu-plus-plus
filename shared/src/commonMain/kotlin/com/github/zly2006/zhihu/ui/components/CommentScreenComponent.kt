@@ -83,6 +83,9 @@ fun CommentScreenComponent(
     var activeChildComment by rememberSaveable(contentStateKey, saver = activeChildCommentSaver) {
         mutableStateOf<CommentItem?>(null)
     }
+    var pendingChildComment by remember(contentStateKey) {
+        mutableStateOf<DataHolder.Comment?>(null)
+    }
     var commentDrafts by rememberSaveable(contentStateKey) {
         mutableStateOf<Map<String, String>>(emptyMap())
     }
@@ -127,6 +130,7 @@ fun CommentScreenComponent(
 
     fun dismissRootComments() {
         pendingCommentId = null
+        pendingChildComment = null
         activeChildComment = null
         rootListResetToken += 1
         childListResetToken += 1
@@ -158,12 +162,17 @@ fun CommentScreenComponent(
                 initialCommentId = pendingCommentId,
                 onChildCommentClick = { commentItem ->
                     if (commentItem.clickTarget != null) {
+                        pendingChildComment = null
                         activeChildComment = commentItem
                     }
                 },
                 commentInput = commentDrafts[contentStateKey].orEmpty(),
                 onCommentInputChange = { updateCommentDraft(contentStateKey, it) },
                 listState = rootListState,
+                onInitialChildCommentResolved = { rootComment, childComment ->
+                    pendingChildComment = childComment
+                    activeChildComment = rootComment
+                },
             )
         }
     }
@@ -171,6 +180,7 @@ fun CommentScreenComponent(
     if (commentsVisible && activeChildComment != null && childTarget != null && childDraftKey != null) {
         MyModalBottomSheet(
             onDismissRequest = {
+                pendingChildComment = null
                 activeChildComment = null
                 childListResetToken += 1
             },
@@ -190,6 +200,7 @@ fun CommentScreenComponent(
                 commentInput = commentDrafts[childDraftKey].orEmpty(),
                 onCommentInputChange = { updateCommentDraft(childDraftKey, it) },
                 listState = childListState,
+                initialComment = pendingChildComment,
             )
         }
     }

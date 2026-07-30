@@ -142,6 +142,7 @@ import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
 import com.github.zly2006.zhihu.navigation.resolveContent
+import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
 import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberImagePreviewOpener
@@ -444,6 +445,8 @@ fun CommentScreen(
     onCommentInputChange: (String) -> Unit,
     listState: LazyListState = rememberLazyListState(),
     testOverrides: CommentScreenTestOverrides? = null,
+    initialComment: DataHolder.Comment? = null,
+    onInitialChildCommentResolved: (CommentModel, DataHolder.Comment) -> Unit = { _, _ -> },
 ) {
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val resolvedContent = content()
@@ -453,7 +456,8 @@ fun CommentScreen(
     var commentPendingDeletion by remember { mutableStateOf<CommentModel?>(null) }
     var isDeletingComment by remember { mutableStateOf(false) }
     var deleteCommentError by remember { mutableStateOf<String?>(null) }
-    val viewModelKey = commentViewModelKey(resolvedContent) + initialCommentId?.let { ":initial:$it" }.orEmpty()
+    val initialTargetId = initialCommentId ?: initialComment?.id
+    val viewModelKey = commentViewModelKey(resolvedContent) + initialTargetId?.let { ":initial:$it" }.orEmpty()
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val commentInputFocusRequester = remember { FocusRequester() }
@@ -488,7 +492,7 @@ fun CommentScreen(
     val viewModel: BaseCommentViewModel = testOverrides?.viewModel ?: when (resolvedContent) {
         is CommentHolder -> remember(viewModelKey) {
             // 子评论不进行状态保存
-            ChildCommentViewModel(resolvedContent)
+            ChildCommentViewModel(resolvedContent, initialComment)
         }
 
         else -> viewModel(key = viewModelKey) {
@@ -515,6 +519,21 @@ fun CommentScreen(
     val rootContent = when (resolvedContent) {
         is CommentHolder -> resolvedContent.article
         else -> resolvedContent
+    }
+    val initialChildComment = (viewModel as? RootCommentViewModel)?.initialChildComment
+    var initialChildCommentHandled by remember(viewModelKey) { mutableStateOf(false) }
+    LaunchedEffect(initialChildComment?.id, viewModel.allData.size) {
+        if (!initialChildCommentHandled && initialChildComment != null) {
+            val rootCommentId = initialChildComment.replyRootCommentId
+            val rootComment = viewModel.allData.firstOrNull { it.id == rootCommentId }
+            if (rootComment != null) {
+                initialChildCommentHandled = true
+                onInitialChildCommentResolved(
+                    viewModel.createCommentItem(rootComment, rootContent),
+                    initialChildComment,
+                )
+            }
+        }
     }
     val commentBackgroundColor = MaterialTheme.colorScheme.surfaceContainerLow
     val commentInputBarColor = MaterialTheme.colorScheme.surfaceContainer

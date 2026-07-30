@@ -38,10 +38,11 @@ class RootCommentAnchorTest {
             requests = requests,
         )
 
-        val comment = RootCommentViewModel(article).resolveCommentAnchor("root", environment)
+        val anchor = RootCommentViewModel(article).resolveCommentAnchor("root", environment)
 
         assertEquals(listOf("root"), requests)
-        assertEquals("root", comment.id)
+        assertEquals("root", anchor.target.id)
+        assertEquals("root", anchor.root.id)
     }
 
     @Test
@@ -55,10 +56,11 @@ class RootCommentAnchorTest {
             requests = requests,
         )
 
-        val comment = RootCommentViewModel(article).resolveCommentAnchor("reply", environment)
+        val anchor = RootCommentViewModel(article).resolveCommentAnchor("reply", environment)
 
         assertEquals(listOf("reply", "root"), requests)
-        assertEquals("root", comment.id)
+        assertEquals("reply", anchor.target.id)
+        assertEquals("root", anchor.root.id)
     }
 
     private val article = Article(

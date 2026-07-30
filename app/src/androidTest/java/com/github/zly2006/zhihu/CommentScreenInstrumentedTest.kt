@@ -184,7 +184,7 @@ class CommentScreenInstrumentedTest {
     }
 
     @Test
-    fun activityCommentHolderOpensRootListAndResolvesChildAnchor() {
+    fun activityCommentHolderOpensChildListAndTargetsNestedComment() {
         mockCommentDetail(
             commentId = "liked-child-comment",
             resourceType = "answer",
@@ -197,6 +197,10 @@ class CommentScreenInstrumentedTest {
         mockRootComments(
             urlPrefix = "https://www.zhihu.com/api/v4/comment_v5/answers/9001/root_comment",
             commentId = "liked-root-comment",
+        )
+        mockRootComments(
+            urlPrefix = "https://www.zhihu.com/api/v4/comment_v5/comment/liked-root-comment/child_comment",
+            commentId = "other-child-comment",
         )
         composeRule.activity.navigate(
             CommentHolder(
@@ -213,15 +217,17 @@ class CommentScreenInstrumentedTest {
             )
         }
 
-        composeRule.waitUntil("Expected pending comment holder to open comments", timeoutMillis = 5_000) {
-            composeRule.onAllNodesWithTag(COMMENT_SCREEN_LIST_TAG).fetchSemanticsNodes().isNotEmpty()
+        composeRule.waitUntil("Expected pending child comment holder to open both comment sheets", timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(COMMENT_SCREEN_LIST_TAG).fetchSemanticsNodes().size == 2
         }
-        composeRule.onNodeWithTag(COMMENT_SCREEN_LIST_TAG).assertIsDisplayed()
-        composeRule.onNodeWithText("离线评论作者").assertIsDisplayed()
+        composeRule.onAllNodesWithTag(COMMENT_SCREEN_LIST_TAG).assertCountEquals(2)
+        composeRule.onNodeWithTag("comment_row_liked-child-comment").assertIsDisplayed()
         composeRule.waitUntil("Expected child and root comment detail requests", timeoutMillis = 5_000) {
             ZhihuMockApi.requestCount(HttpMethod.Get, "comment/liked-child-comment") == 1 &&
-                ZhihuMockApi.requestCount(HttpMethod.Get, "comment/liked-root-comment") == 1
+                ZhihuMockApi.requestCount(HttpMethod.Get, "comment/liked-root-comment") == 1 &&
+                ZhihuMockApi.requestCount(HttpMethod.Get, "comment/liked-root-comment/child_comment") == 1
         }
+        assertEquals(0, ZhihuMockApi.requestCount(HttpMethod.Get, "comment/liked-child-comment/child_comment"))
     }
 
     @After
