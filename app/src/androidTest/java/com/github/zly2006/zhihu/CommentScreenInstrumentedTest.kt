@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu
 
 import android.content.Context
+import androidx.activity.compose.setContent
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -202,6 +203,8 @@ class CommentScreenInstrumentedTest {
             urlPrefix = "https://www.zhihu.com/api/v4/comment_v5/comment/liked-root-comment/child_comment",
             commentId = "other-child-comment",
         )
+        composeRule.activity.setContent { }
+        composeRule.waitForIdle()
         composeRule.activity.navigate(
             CommentHolder(
                 commentId = "liked-child-comment",
