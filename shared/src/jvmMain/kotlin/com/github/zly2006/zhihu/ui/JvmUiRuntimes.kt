@@ -189,6 +189,16 @@ actual fun rememberCommentEmojiInlineContent(emojiKeys: Set<String>): Map<String
             }.toMap()
     }
 
+@Composable
+actual fun rememberCommentEmojis(): List<CommentEmoji> = remember {
+    desktopEmojiMapping().mapNotNull { (placeholder, fileName) ->
+        val inlineKey = "emoji_$fileName"
+        desktopEmojiFileByInlineKey(inlineKey)?.let {
+            CommentEmoji(placeholder = placeholder, inlineKey = inlineKey)
+        }
+    }
+}
+
 actual fun commentEmojiInlineKey(placeholder: String): String? =
     desktopEmojiMapping()[placeholder]?.let { fileName -> "emoji_$fileName" }
 
