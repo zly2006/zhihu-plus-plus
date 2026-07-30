@@ -185,17 +185,23 @@ fun OnlineHistoryScreen(
             ) { item ->
                 FeedCard(
                     item,
-                    onDelete = {
-                        coroutineScope.launch {
-                            try {
-                                viewModel.deleteItem(paginationEnvironment, item)
-                                userMessages.showShortMessage("已删除")
-                            } catch (error: CancellationException) {
-                                throw error
-                            } catch (_: Exception) {
-                                userMessages.showShortMessage("操作失败")
-                            }
-                        }
+                    menuItems = { dismissMenu ->
+                        DropdownMenuItem(
+                            text = { Text("删除该条历史记录") },
+                            onClick = {
+                                dismissMenu()
+                                coroutineScope.launch {
+                                    try {
+                                        viewModel.deleteItem(paginationEnvironment, item)
+                                        userMessages.showShortMessage("已删除")
+                                    } catch (error: CancellationException) {
+                                        throw error
+                                    } catch (_: Exception) {
+                                        userMessages.showShortMessage("操作失败")
+                                    }
+                                }
+                            },
+                        )
                     },
                 )
             }

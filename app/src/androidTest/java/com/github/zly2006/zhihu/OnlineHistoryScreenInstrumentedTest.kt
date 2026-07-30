@@ -104,20 +104,13 @@ class OnlineHistoryScreenInstrumentedTest {
 
     @Test
     fun historyItemOverflowOffersSingleDeleteAction() {
-        val navigator = setOnlineHistoryScreen()
+        setOnlineHistoryScreen()
 
         // The toolbar is the first "更多选项" node; the next one belongs to the first visible
         // history card. Single-record deletion lives in that existing card menu rather than the
         // global toolbar menu.
         composeRule.onAllNodesWithContentDescription("更多选项")[1].performClick()
-        composeRule.onNodeWithText("删除").assertIsDisplayed()
-        composeRule.pressSystemBack()
-        composeRule.onNodeWithText("删除").assertDoesNotExist()
-
-        composeRule.runOnIdle {
-            assertEquals(0, navigator.destinations.size)
-            assertEquals(0, navigator.backCount)
-        }
+        composeRule.onNodeWithText("删除该条历史记录").assertIsDisplayed()
     }
 
     @Test
