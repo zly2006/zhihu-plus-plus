@@ -479,7 +479,7 @@ class MainActivity :
 
     fun navigate(route: NavDestination, popup: Boolean = false) {
         if (route is CommentHolder) {
-            pendingCommentHolder = route
+            preparePendingComment(route)
             navigate(route.article, popup)
             return
         }
@@ -539,6 +539,10 @@ class MainActivity :
                 }
             }
         }
+    }
+
+    internal fun preparePendingComment(holder: CommentHolder) {
+        pendingCommentHolder = holder
     }
 
     override fun consumePendingContentOpenFrom(destination: NavDestination): String {
