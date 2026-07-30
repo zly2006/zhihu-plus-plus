@@ -37,6 +37,7 @@ import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
@@ -62,7 +63,7 @@ class RootCommentViewModel(
                 }
 
                 is SegmentCommentHolder -> {
-                    "https://www.zhihu.com/api/v4/comment_v5/${normalizedContentType}s/$contentId/segment/comment?segment_id=$segmentId"
+                    "https://www.zhihu.com/api/v4/comment_v5/${normalizedContentType}s/$contentId/segment/comment"
                 }
 
                 else -> ""
@@ -127,14 +128,7 @@ class RootCommentViewModel(
 
         viewModelScope.launch {
             try {
-                // Escape HTML special characters to prevent HTML injection
-                val escapedText = commentText.escapeCommentHtml()
-
-                // Use buildJsonObject to properly escape JSON special characters
-                val requestBody = buildJsonObject {
-                    put("content", "<p>$escapedText</p>")
-                    replyToCommentId?.let { put("reply_comment_id", it) }
-                }
+                val requestBody = content.buildSubmitCommentBody(commentText, replyToCommentId)
 
                 val response = environment.postSigned(content.submitCommentUrl) {
                     contentType(ContentType.Application.Json)
@@ -152,6 +146,46 @@ class RootCommentViewModel(
             } catch (e: Exception) {
                 errorMessage = "评论发送异常: ${e.message}"
             }
+        }
+    }
+}
+
+internal fun NavDestination.buildSubmitCommentBody(
+    commentText: String,
+    replyToCommentId: String?,
+): JsonObject {
+    val escapedText = commentText.escapeCommentHtml()
+    return buildJsonObject {
+        put("content", "<p>$escapedText</p>")
+        replyToCommentId?.let { put("reply_comment_id", it) }
+        if (this@buildSubmitCommentBody is SegmentCommentHolder) {
+            put("unfriendly_check", "strict")
+            put("selected_settings", buildJsonArray { })
+            put(
+                "segment",
+                buildJsonObject {
+                    put("content", segmentContent)
+                    put(
+                        "position",
+                        buildJsonObject {
+                            put(
+                                "start",
+                                buildJsonObject {
+                                    put("offset", startOffset)
+                                    put("paragraph_id", paragraphId)
+                                },
+                            )
+                            put(
+                                "end",
+                                buildJsonObject {
+                                    put("offset", endOffset)
+                                    put("paragraph_id", paragraphId)
+                                },
+                            )
+                        },
+                    )
+                },
+            )
         }
     }
 }

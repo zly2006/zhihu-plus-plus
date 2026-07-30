@@ -318,5 +318,9 @@ private fun SegmentHighlightSpan.toSegmentCommentHolder(): SegmentCommentHolder?
         contentId = contentId,
         contentType = contentType,
         segmentId = segmentId,
+        segmentContent = text,
+        paragraphId = paragraphId ?: return null,
+        startOffset = startOffset ?: return null,
+        endOffset = endOffset ?: return null,
     )
 }

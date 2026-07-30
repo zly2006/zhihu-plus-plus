@@ -369,7 +369,7 @@ private fun RenderMarkdownDocument(
     CommentScreenComponent(
         showComments = segmentCommentTarget != null,
         onDismiss = { segmentCommentTarget = null },
-        content = segmentCommentTarget ?: SegmentCommentHolder("dummy", "dummy", "dummy"),
+        content = segmentCommentTarget ?: SegmentCommentHolder("dummy", "dummy", "dummy", "", "", 0, 0),
     )
     segmentActionSheetState?.let { state ->
         SegmentActionSheet(state)
