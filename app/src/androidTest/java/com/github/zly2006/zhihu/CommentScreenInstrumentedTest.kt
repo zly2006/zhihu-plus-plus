@@ -58,6 +58,8 @@ import com.github.zly2006.zhihu.test.InstrumentedTestEnvironment
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
 import com.github.zly2006.zhihu.test.ZhihuMockApi
+import com.github.zly2006.zhihu.test.mockCommentDetail
+import com.github.zly2006.zhihu.test.mockRootComments
 import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.pressSystemBack
@@ -179,6 +181,47 @@ class CommentScreenInstrumentedTest {
         }
 
         composeRule.onAllNodesWithTag(ZH_PLUS_AUTHOR_COMMENT_POLICY_DIALOG_TAG).assertCountEquals(0)
+    }
+
+    @Test
+    fun activityCommentHolderOpensRootListAndResolvesChildAnchor() {
+        mockCommentDetail(
+            commentId = "liked-child-comment",
+            resourceType = "answer",
+            replyRootCommentId = "liked-root-comment",
+        )
+        mockCommentDetail(
+            commentId = "liked-root-comment",
+            resourceType = "answer",
+        )
+        mockRootComments(
+            urlPrefix = "https://www.zhihu.com/api/v4/comment_v5/answers/9001/root_comment",
+            commentId = "liked-root-comment",
+        )
+        composeRule.activity.navigate(
+            CommentHolder(
+                commentId = "liked-child-comment",
+                article = ROOT_ARTICLE,
+            ),
+        )
+
+        composeRule.setScreenContent {
+            CommentScreenComponent(
+                showComments = false,
+                onDismiss = {},
+                content = ROOT_ARTICLE,
+            )
+        }
+
+        composeRule.waitUntil("Expected pending comment holder to open comments", timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(COMMENT_SCREEN_LIST_TAG).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag(COMMENT_SCREEN_LIST_TAG).assertIsDisplayed()
+        composeRule.onNodeWithText("离线评论作者").assertIsDisplayed()
+        composeRule.waitUntil("Expected child and root comment detail requests", timeoutMillis = 5_000) {
+            ZhihuMockApi.requestCount(HttpMethod.Get, "comment/liked-child-comment") == 1 &&
+                ZhihuMockApi.requestCount(HttpMethod.Get, "comment/liked-root-comment") == 1
+        }
     }
 
     @After

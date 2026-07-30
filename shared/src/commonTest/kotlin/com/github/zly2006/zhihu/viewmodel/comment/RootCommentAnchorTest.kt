@@ -64,7 +64,6 @@ class RootCommentAnchorTest {
     private val article = Article(
         type = ArticleType.Answer,
         id = 42,
-        commentAnchorId = "anchor",
     )
 
     private fun commentEnvironment(

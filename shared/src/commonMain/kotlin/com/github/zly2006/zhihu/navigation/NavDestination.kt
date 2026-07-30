@@ -206,8 +206,6 @@ data class Article(
     var authorBio: String = "loading...",
     var avatarSrc: String? = null,
     var excerpt: String? = null,
-    /** 从通知进入回答时，需要在根评论列表顶部定位的评论 ID。 */
-    val commentAnchorId: String? = null,
 ) : NavDestination {
     override fun hashCode(): Int = id.hashCode()
 
@@ -235,8 +233,6 @@ data class SegmentCommentHolder(
 data class Question(
     val questionId: Long,
     val title: String = "loading...",
-    /** 从通知进入问题时，需要在根评论列表顶部定位的评论 ID。 */
-    val commentAnchorId: String? = null,
 ) : NavDestination {
     override fun hashCode(): Int = questionId.hashCode()
 
@@ -315,8 +311,6 @@ data class Video(
 @Serializable
 data class Pin(
     val id: Long,
-    /** 从通知进入想法时，需要在根评论列表顶部定位的评论 ID。 */
-    val commentAnchorId: String? = null,
 ) : NavDestination {
     override fun hashCode(): Int = id.hashCode()
 
@@ -412,31 +406,24 @@ fun resolveContent(url: Url): NavDestination? {
             val commentId = url.parameters["anchor_comment_id"]
                 ?.takeIf { id -> id.isNotEmpty() && id.all { it in '0'..'9' } }
                 ?: return null
-            return when (segments[1]) {
+            val content = when (segments[1]) {
                 "answer" -> Article(
                     type = ArticleType.Answer,
                     id = contentId,
-                    commentAnchorId = commentId,
                 )
 
                 "article" -> Article(
                     type = ArticleType.Article,
                     id = contentId,
-                    commentAnchorId = commentId,
                 )
 
-                "pin" -> Pin(
-                    id = contentId,
-                    commentAnchorId = commentId,
-                )
+                "pin" -> Pin(id = contentId)
 
-                "question" -> Question(
-                    questionId = contentId,
-                    commentAnchorId = commentId,
-                )
+                "question" -> Question(questionId = contentId)
 
-                else -> null
+                else -> return null
             }
+            return CommentHolder(commentId = commentId, article = content)
         } else if (url.host == "answers") {
             val answerId = segments[0].toLong()
             return Article(type = ArticleType.Answer, id = answerId)

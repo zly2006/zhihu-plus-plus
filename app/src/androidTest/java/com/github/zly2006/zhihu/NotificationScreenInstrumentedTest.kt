@@ -28,6 +28,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.navigation.CommentHolder
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
@@ -166,20 +167,24 @@ class NotificationScreenInstrumentedTest {
         }
 
         assertEquals(4, recordingNavigator.destinations.size)
-        val commentedAnswer = recordingNavigator.destinations[0] as Article
+        val commentedAnswerHolder = recordingNavigator.destinations[0] as CommentHolder
+        assertEquals("3", commentedAnswerHolder.commentId)
+        val commentedAnswer = commentedAnswerHolder.article as Article
         assertEquals(ArticleType.Answer, commentedAnswer.type)
         assertEquals(2L, commentedAnswer.id)
-        assertEquals("3", commentedAnswer.commentAnchorId)
-        val repliedPin = recordingNavigator.destinations[1] as Pin
+        val repliedPinHolder = recordingNavigator.destinations[1] as CommentHolder
+        assertEquals("5", repliedPinHolder.commentId)
+        val repliedPin = repliedPinHolder.article as Pin
         assertEquals(4L, repliedPin.id)
-        assertEquals("5", repliedPin.commentAnchorId)
-        val likedArticleComment = recordingNavigator.destinations[2] as Article
+        val likedArticleCommentHolder = recordingNavigator.destinations[2] as CommentHolder
+        assertEquals("7", likedArticleCommentHolder.commentId)
+        val likedArticleComment = likedArticleCommentHolder.article as Article
         assertEquals(ArticleType.Article, likedArticleComment.type)
         assertEquals(6L, likedArticleComment.id)
-        assertEquals("7", likedArticleComment.commentAnchorId)
-        val likedChildPinComment = recordingNavigator.destinations[3] as Pin
+        val likedChildPinCommentHolder = recordingNavigator.destinations[3] as CommentHolder
+        assertEquals("9", likedChildPinCommentHolder.commentId)
+        val likedChildPinComment = likedChildPinCommentHolder.article as Pin
         assertEquals(8L, likedChildPinComment.id)
-        assertEquals("9", likedChildPinComment.commentAnchorId)
     }
 
     @Test
@@ -225,23 +230,23 @@ class NotificationScreenInstrumentedTest {
         assertEquals(212, fixtures.size)
         assertEquals(199, fixtures.map { it.url }.distinct().size)
         fixtures.forEach { fixture ->
-            when (val destination = resolveContent(fixture.url)) {
+            val holder = resolveContent(fixture.url) as? CommentHolder
+                ?: throw AssertionError("无法解析真实评论跳转结构：${fixture.url}")
+            assertEquals(fixture.anchorId, holder.commentId)
+            when (val destination = holder.article) {
                 is Article -> {
                     assertEquals(fixture.contentType, destination.type.toString())
                     assertEquals(fixture.contentId, destination.id)
-                    assertEquals(fixture.anchorId, destination.commentAnchorId)
                 }
 
                 is Pin -> {
                     assertEquals("pin", fixture.contentType)
                     assertEquals(fixture.contentId, destination.id)
-                    assertEquals(fixture.anchorId, destination.commentAnchorId)
                 }
 
                 is Question -> {
                     assertEquals("question", fixture.contentType)
                     assertEquals(fixture.contentId, destination.questionId)
-                    assertEquals(fixture.anchorId, destination.commentAnchorId)
                 }
 
                 else -> throw AssertionError("无法解析真实评论跳转结构：${fixture.url}")

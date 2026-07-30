@@ -55,6 +55,7 @@ import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
 import com.github.zly2006.zhihu.theme.Typography
 import com.github.zly2006.zhihu.ui.CommentScreen
+import com.github.zly2006.zhihu.ui.rememberArticleHost
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 
@@ -70,6 +71,11 @@ fun CommentScreenComponent(
     isZhPlusAuthorContent: Boolean = false,
 ) {
     val settings = rememberSettingsStore()
+    val articleHost = rememberArticleHost()
+    var pendingCommentId by remember(content) {
+        mutableStateOf(articleHost?.consumePendingCommentId(content))
+    }
+    val commentsVisible = showComments || pendingCommentId != null
     var authorCommentPolicyAcknowledged by remember {
         mutableStateOf(settings.getBoolean(ZH_PLUS_AUTHOR_COMMENT_POLICY_ACKNOWLEDGED_KEY, false))
     }
@@ -120,6 +126,7 @@ fun CommentScreenComponent(
     }
 
     fun dismissRootComments() {
+        pendingCommentId = null
         activeChildComment = null
         rootListResetToken += 1
         childListResetToken += 1
@@ -134,7 +141,7 @@ fun CommentScreenComponent(
         }
     }
 
-    if (showComments) {
+    if (commentsVisible) {
         MyModalBottomSheet(
             onDismissRequest = { dismissRootComments() },
             sheetState = rootSheetState,
@@ -148,6 +155,7 @@ fun CommentScreenComponent(
         ) {
             CommentScreen(
                 content = { content },
+                initialCommentId = pendingCommentId,
                 onChildCommentClick = { commentItem ->
                     if (commentItem.clickTarget != null) {
                         activeChildComment = commentItem
@@ -160,7 +168,7 @@ fun CommentScreenComponent(
         }
     }
 
-    if (showComments && activeChildComment != null && childTarget != null && childDraftKey != null) {
+    if (commentsVisible && activeChildComment != null && childTarget != null && childDraftKey != null) {
         MyModalBottomSheet(
             onDismissRequest = {
                 activeChildComment = null
@@ -186,7 +194,7 @@ fun CommentScreenComponent(
         }
     }
 
-    if (showComments && isZhPlusAuthorContent && !authorCommentPolicyAcknowledged) {
+    if (commentsVisible && isZhPlusAuthorContent && !authorCommentPolicyAcknowledged) {
         AlertDialog(
             modifier = Modifier.testTag(ZH_PLUS_AUTHOR_COMMENT_POLICY_DIALOG_TAG),
             onDismissRequest = {},

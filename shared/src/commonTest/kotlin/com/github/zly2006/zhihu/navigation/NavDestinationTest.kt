@@ -53,10 +53,11 @@ class NavDestinationTest {
             "zhihu://comment/list/answer/42?anchor_comment_id=123456&is_child=false",
         )
 
-        val article = assertIs<Article>(destination)
+        val holder = assertIs<CommentHolder>(destination)
+        val article = assertIs<Article>(holder.article)
         assertEquals(ArticleType.Answer, article.type)
         assertEquals(42L, article.id)
-        assertEquals("123456", article.commentAnchorId)
+        assertEquals("123456", holder.commentId)
     }
 
     @Test
@@ -65,10 +66,11 @@ class NavDestinationTest {
             "zhihu://comment/list/article/43?anchor_comment_id=123457&is_child=false",
         )
 
-        val article = assertIs<Article>(destination)
+        val holder = assertIs<CommentHolder>(destination)
+        val article = assertIs<Article>(holder.article)
         assertEquals(ArticleType.Article, article.type)
         assertEquals(43L, article.id)
-        assertEquals("123457", article.commentAnchorId)
+        assertEquals("123457", holder.commentId)
     }
 
     @Test
@@ -77,9 +79,10 @@ class NavDestinationTest {
             "zhihu://comment/list/pin/44?anchor_comment_id=123458&is_child=true",
         )
 
-        val pin = assertIs<Pin>(destination)
+        val holder = assertIs<CommentHolder>(destination)
+        val pin = assertIs<Pin>(holder.article)
         assertEquals(44L, pin.id)
-        assertEquals("123458", pin.commentAnchorId)
+        assertEquals("123458", holder.commentId)
     }
 
     @Test
@@ -88,9 +91,10 @@ class NavDestinationTest {
             "zhihu://comment/list/question/45?anchor_comment_id=123459&is_child=false",
         )
 
-        val question = assertIs<Question>(destination)
+        val holder = assertIs<CommentHolder>(destination)
+        val question = assertIs<Question>(holder.article)
         assertEquals(45L, question.questionId)
-        assertEquals("123459", question.commentAnchorId)
+        assertEquals("123459", holder.commentId)
     }
 
     @Test
@@ -99,10 +103,11 @@ class NavDestinationTest {
             "zhihu://comment/list/answer/46?anchor_comment_id=123460&list_height_ratio=0.66&dragIconVisible=true&segment=%7B%22id%22%3A1%7D",
         )
 
-        val article = assertIs<Article>(destination)
+        val holder = assertIs<CommentHolder>(destination)
+        val article = assertIs<Article>(holder.article)
         assertEquals(ArticleType.Answer, article.type)
         assertEquals(46L, article.id)
-        assertEquals("123460", article.commentAnchorId)
+        assertEquals("123460", holder.commentId)
     }
 
     @Test

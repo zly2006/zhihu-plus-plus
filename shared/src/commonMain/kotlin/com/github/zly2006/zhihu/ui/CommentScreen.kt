@@ -437,6 +437,7 @@ private fun ClickableImageWithMenu(
 @Composable
 fun CommentScreen(
     content: () -> NavDestination,
+    initialCommentId: String? = null,
     activeCommentItem: CommentModel? = null,
     onChildCommentClick: (CommentModel) -> Unit,
     commentInput: String,
@@ -452,7 +453,7 @@ fun CommentScreen(
     var commentPendingDeletion by remember { mutableStateOf<CommentModel?>(null) }
     var isDeletingComment by remember { mutableStateOf(false) }
     var deleteCommentError by remember { mutableStateOf<String?>(null) }
-    val viewModelKey = commentViewModelKey(resolvedContent)
+    val viewModelKey = commentViewModelKey(resolvedContent) + initialCommentId?.let { ":initial:$it" }.orEmpty()
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val commentInputFocusRequester = remember { FocusRequester() }
@@ -491,7 +492,7 @@ fun CommentScreen(
         }
 
         else -> viewModel(key = viewModelKey) {
-            RootCommentViewModel(resolvedContent)
+            RootCommentViewModel(resolvedContent, initialCommentId)
         }
     }
     val restoredListPosition = remember(resolvedContent) {

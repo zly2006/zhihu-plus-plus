@@ -790,9 +790,7 @@ fun ArticleScreen(
     val density = LocalDensity.current
     val scrollDeltaThreshold = with(density) { ScrollThresholdDp.toPx() }
     var topBarHeight by remember { mutableIntStateOf(0) }
-    var showComments by rememberSaveable(article.type, article.id, article.commentAnchorId) {
-        mutableStateOf(article.commentAnchorId != null)
-    }
+    var showComments by rememberSaveable(article.type, article.id) { mutableStateOf(false) }
     var showCollectionDialog by remember { mutableStateOf(false) }
     var showActionsMenu by remember { mutableStateOf(false) }
     var showSummaryDialog by remember { mutableStateOf(false) }

@@ -40,7 +40,6 @@ import com.github.zly2006.zhihu.test.InstrumentedTestEnvironment
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
 import com.github.zly2006.zhihu.test.ZhihuMockApi
-import com.github.zly2006.zhihu.test.mockCommentDetail
 import com.github.zly2006.zhihu.test.mockRootComments
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
@@ -222,36 +221,6 @@ class QuestionScreenInstrumentedTest {
     }
 
     @Test
-    fun notificationAnchorOpensQuestionCommentsOffline() {
-        mockQuestionDetail()
-        mockCommentDetail(
-            commentId = "question-comment-anchor",
-            resourceType = "question",
-        )
-        mockRootComments(
-            urlPrefix = "https://www.zhihu.com/api/v4/comment_v5/questions/123456789/root_comment",
-            commentId = "question-comment-anchor",
-            resourceType = "question",
-        )
-        seedQuestionViewModel()
-
-        setScreen(
-            Question(
-                questionId = 123456789L,
-                title = "离线问题标题",
-                commentAnchorId = "question-comment-anchor",
-            ),
-        )
-
-        composeRule.waitUntilTagIsDisplayed(COMMENT_SCREEN_LIST_TAG)
-        composeRule.onNodeWithTag(COMMENT_SCREEN_LIST_TAG).assertIsDisplayed()
-        composeRule.onNodeWithText("离线评论作者").assertIsDisplayed()
-        composeRule.waitUntil("Expected anchored question comment detail request", timeoutMillis = 5_000) {
-            ZhihuMockApi.requestCount(HttpMethod.Get, "comment/question-comment-anchor") == 1
-        }
-    }
-
-    @Test
     fun blockedUserAnswersAreRemovedFromQuestionFeedProcessing() {
         /*
          * Expected behavior:
@@ -287,10 +256,10 @@ class QuestionScreenInstrumentedTest {
         assertEquals(listOf("这条回答应展示"), viewModel.displayItems.map { it.summary })
     }
 
-    private fun setScreen(
-        question: Question = Question(questionId = 123456789L, title = "离线问题标题"),
-    ): RecordingNavigator = composeRule.setScreenContent {
-        QuestionScreen(question = question)
+    private fun setScreen(): RecordingNavigator = composeRule.setScreenContent {
+        QuestionScreen(
+            question = Question(questionId = 123456789L, title = "离线问题标题"),
+        )
     }
 
     private fun seedQuestionViewModel(

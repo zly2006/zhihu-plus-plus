@@ -45,8 +45,9 @@ import kotlinx.serialization.json.put
 
 class RootCommentViewModel(
     content: NavDestination,
+    private val initialCommentId: String? = null,
 ) : BaseCommentViewModel(content) {
-    private var commentAnchorLoaded = false
+    private var initialCommentLoaded = false
 
     companion object {
         val NavDestination.submitCommentUrl: String
@@ -114,20 +115,14 @@ class RootCommentViewModel(
         }
 
     override suspend fun fetchFeeds(environment: PaginationEnvironment) {
-        val commentAnchorId = when (val content = article) {
-            is Article -> content.commentAnchorId
-            is Pin -> content.commentAnchorId
-            is Question -> content.commentAnchorId
-            else -> null
-        }
-        if (!commentAnchorLoaded && commentAnchorId != null) {
-            commentAnchorLoaded = true
+        if (!initialCommentLoaded && initialCommentId != null) {
+            initialCommentLoaded = true
             try {
                 // 根评论列表接口会忽略通知 deep link 的 anchor_comment_id，只能先通过详情解析根评论并置于列表顶部。
                 // https://github.com/zly2006/zhihu-plus-plus/issues/569
                 processResponse(
                     environment = environment,
-                    data = listOf(resolveCommentAnchor(commentAnchorId, environment)),
+                    data = listOf(resolveCommentAnchor(initialCommentId, environment)),
                     rawData = JsonArray(emptyList()),
                 )
             } catch (error: Exception) {
