@@ -26,6 +26,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.shared.data.MobileNotificationContent
 import com.github.zly2006.zhihu.shared.data.MobileNotificationTimelineItem
@@ -126,6 +128,19 @@ class NotificationScreenInstrumentedTest {
         composeRule.onNodeWithText("2").assertIsDisplayed()
     }
 
+    @Test
+    fun notificationScreen_commentReplyNavigatesWithCommentAnchor() {
+        val recordingNavigator = setNotificationScreenContent()
+
+        composeRule.onNodeWithText("测试用户 回复了回答下你的评论").performClick()
+
+        assertEquals(1, recordingNavigator.destinations.size)
+        val article = recordingNavigator.destinations.single() as Article
+        assertEquals(ArticleType.Answer, article.type)
+        assertEquals(2L, article.id)
+        assertEquals("3", article.commentAnchorId)
+    }
+
     private fun setNotificationScreenContent(): RecordingNavigator {
         composeRule.seedNotificationViewModel()
         return composeRule.setScreenContent {
@@ -139,9 +154,9 @@ class NotificationScreenInstrumentedTest {
         isRead = true,
         created = 1_713_420_000L,
         content = MobileNotificationContent(
-            title = "测试用户 赞同了你的回答",
-            subTitle = "赞同喜欢",
-            targetLink = "https://www.zhihu.com/question/1/answer/2",
+            title = "测试用户 回复了回答下你的评论",
+            subTitle = "评论和回复",
+            targetLink = "zhihu://comment/list/answer/2?anchor_comment_id=3&is_child=false",
         ),
     )
 

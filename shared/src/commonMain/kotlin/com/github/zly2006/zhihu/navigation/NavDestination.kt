@@ -206,6 +206,8 @@ data class Article(
     var authorBio: String = "loading...",
     var avatarSrc: String? = null,
     var excerpt: String? = null,
+    /** 从通知进入回答时，需要在根评论列表顶部定位的评论 ID。 */
+    val commentAnchorId: String? = null,
 ) : NavDestination {
     override fun hashCode(): Int = id.hashCode()
 
@@ -397,7 +399,22 @@ fun resolveContent(url: Url): NavDestination? {
         }
     }
     if (url.protocol.name == "zhihu") {
-        if (url.host == "answers") {
+        if (
+            url.host == "comment" &&
+            segments.size == 3 &&
+            segments[0] == "list" &&
+            segments[1] == "answer"
+        ) {
+            val answerId = segments[2].toLongOrNull() ?: return null
+            val commentId = url.parameters["anchor_comment_id"]
+                ?.takeIf { id -> id.isNotEmpty() && id.all { it in '0'..'9' } }
+                ?: return null
+            return Article(
+                type = ArticleType.Answer,
+                id = answerId,
+                commentAnchorId = commentId,
+            )
+        } else if (url.host == "answers") {
             val answerId = segments[0].toLong()
             return Article(type = ArticleType.Answer, id = answerId)
         } else if (url.host == "questions") {

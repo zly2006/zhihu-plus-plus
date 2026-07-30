@@ -48,6 +48,18 @@ class NavDestinationTest {
     }
 
     @Test
+    fun resolvesAnswerCommentDeepLinkWithAnchor() {
+        val destination = resolveContent(
+            "zhihu://comment/list/answer/42?anchor_comment_id=123456&is_child=false",
+        )
+
+        val article = assertIs<Article>(destination)
+        assertEquals(ArticleType.Answer, article.type)
+        assertEquals(42L, article.id)
+        assertEquals("123456", article.commentAnchorId)
+    }
+
+    @Test
     fun resolvesZhihuAppViewPinUrlFromCommonCode() {
         val destination = resolveContent("https://www.zhihu.com/appview/pin/2059710318939301395")
 

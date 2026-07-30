@@ -27,7 +27,9 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
+import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
+import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.postSigned
 import io.ktor.client.call.body
@@ -36,6 +38,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -43,6 +46,8 @@ import kotlinx.serialization.json.put
 class RootCommentViewModel(
     content: NavDestination,
 ) : BaseCommentViewModel(content) {
+    private var commentAnchorLoaded = false
+
     companion object {
         val NavDestination.submitCommentUrl: String
             get() = when (this) {
@@ -107,6 +112,47 @@ class RootCommentViewModel(
             val separator = if ('?' in baseUrl) "&" else "?"
             return "$baseUrl${separator}order_by=$orderParam"
         }
+
+    override suspend fun fetchFeeds(environment: PaginationEnvironment) {
+        val commentAnchorId = (article as? Article)?.commentAnchorId
+        if (!commentAnchorLoaded && commentAnchorId != null) {
+            commentAnchorLoaded = true
+            try {
+                // 根评论列表接口会忽略通知 deep link 的 anchor_comment_id，只能先通过详情解析根评论并置于列表顶部。
+                // https://github.com/zly2006/zhihu-plus-plus/issues/569
+                processResponse(
+                    environment = environment,
+                    data = listOf(resolveCommentAnchor(commentAnchorId, environment)),
+                    rawData = JsonArray(emptyList()),
+                )
+            } catch (error: Exception) {
+                if (error is kotlin.coroutines.cancellation.CancellationException) throw error
+                Log.e("RootCommentViewModel", "Failed to resolve comment anchor", error)
+            }
+        }
+        super.fetchFeeds(environment)
+    }
+
+    internal suspend fun resolveCommentAnchor(
+        commentId: String,
+        environment: ZhihuApiEnvironment,
+    ): DataHolder.Comment {
+        val target = environment
+            .fetchJson(
+                "https://www.zhihu.com/api/v4/comment_v5/comment/$commentId",
+                "",
+            )?.let { ZhihuJson.decodeJson<DataHolder.Comment>(it) }
+            ?: error("Comment $commentId was not found")
+        val rootCommentId = target.replyRootCommentId
+            ?.takeIf { it.isNotBlank() && it != target.id }
+            ?: return target
+        return environment
+            .fetchJson(
+                "https://www.zhihu.com/api/v4/comment_v5/comment/$rootCommentId",
+                "",
+            )?.let { ZhihuJson.decodeJson<DataHolder.Comment>(it) }
+            ?: error("Root comment $rootCommentId was not found")
+    }
 
     override fun createCommentItem(comment: DataHolder.Comment, article: NavDestination): CommentItem {
         val clickTarget = CommentHolder(comment.id, article)
