@@ -64,8 +64,11 @@ import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.ThumbUp
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -79,6 +82,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -168,6 +172,9 @@ const val COMMENT_IMAGE_MENU_OPEN_TAG = "comment_image_menu_open"
 const val COMMENT_IMAGE_MENU_BROWSER_TAG = "comment_image_menu_browser"
 const val COMMENT_IMAGE_MENU_SAVE_TAG = "comment_image_menu_save"
 const val COMMENT_IMAGE_MENU_SHARE_TAG = "comment_image_menu_share"
+const val COMMENT_DELETE_DIALOG_TAG = "comment_delete_dialog"
+const val COMMENT_DELETE_CONFIRM_TAG = "comment_delete_confirm"
+const val COMMENT_DELETE_CANCEL_TAG = "comment_delete_cancel"
 
 enum class CommentImageMenuAction {
     Open,
@@ -426,6 +433,9 @@ fun CommentScreen(
     val resolvedContent = content()
     var isSending by remember { mutableStateOf(false) }
     var replyToComment by remember { mutableStateOf<CommentModel?>(null) }
+    var commentPendingDeletion by remember { mutableStateOf<CommentModel?>(null) }
+    var isDeletingComment by remember { mutableStateOf(false) }
+    var deleteCommentError by remember { mutableStateOf<String?>(null) }
     val viewModelKey = commentViewModelKey(resolvedContent)
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -466,6 +476,67 @@ fun CommentScreen(
     val commentInputBarColor = MaterialTheme.colorScheme.surfaceContainer
     val actionChipColor = MaterialTheme.colorScheme.surfaceContainerHigh
     val actionChipIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+
+    commentPendingDeletion?.let { target ->
+        AlertDialog(
+            modifier = Modifier.testTag(COMMENT_DELETE_DIALOG_TAG),
+            onDismissRequest = {
+                if (!isDeletingComment) {
+                    commentPendingDeletion = null
+                    deleteCommentError = null
+                }
+            },
+            title = { Text("删除评论") },
+            text = {
+                Column {
+                    Text("删除后无法恢复，确认删除这条评论吗？")
+                    deleteCommentError?.let { message ->
+                        Text(
+                            text = message,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    modifier = Modifier.testTag(COMMENT_DELETE_CONFIRM_TAG),
+                    enabled = !isDeletingComment,
+                    onClick = {
+                        isDeletingComment = true
+                        deleteCommentError = null
+                        viewModel.deleteComment(
+                            commentData = target.item,
+                            environment = paginationEnvironment,
+                            onSuccess = {
+                                isDeletingComment = false
+                                commentPendingDeletion = null
+                            },
+                            onFailure = { message ->
+                                isDeletingComment = false
+                                deleteCommentError = message
+                            },
+                        )
+                    },
+                ) {
+                    Text("删除", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    modifier = Modifier.testTag(COMMENT_DELETE_CANCEL_TAG),
+                    enabled = !isDeletingComment,
+                    onClick = {
+                        commentPendingDeletion = null
+                        deleteCommentError = null
+                    },
+                ) {
+                    Text("取消")
+                }
+            },
+        )
+    }
 
     // 监控滚动位置以实现加载更多
     val loadMore = remember {
@@ -563,6 +634,7 @@ fun CommentScreen(
                             fun Comment(
                                 commentItem: CommentModel,
                                 modifier: Modifier = Modifier,
+                                allowDelete: Boolean = true,
                                 onChildCommentClick: (CommentModel) -> Unit,
                             ) {
                                 var isLiked by remember { mutableStateOf(commentItem.item.liked) }
@@ -589,6 +661,14 @@ fun CommentScreen(
                                         },
                                         onChildCommentClick = onChildCommentClick,
                                         onImageMenuAction = testOverrides?.onImageMenuAction,
+                                        onDelete = if (allowDelete && commentItem.item.canDelete) {
+                                            {
+                                                commentPendingDeletion = commentItem
+                                                deleteCommentError = null
+                                            }
+                                        } else {
+                                            null
+                                        },
                                     )
 
                                     // 在根评论区时 子评论
@@ -625,6 +705,14 @@ fun CommentScreen(
                                                         },
                                                         onChildCommentClick = onChildCommentClick,
                                                         onImageMenuAction = testOverrides?.onImageMenuAction,
+                                                        onDelete = if (childComment.canDelete) {
+                                                            {
+                                                                commentPendingDeletion = childCommentItem
+                                                                deleteCommentError = null
+                                                            }
+                                                        } else {
+                                                            null
+                                                        },
                                                     )
                                                 }
                                             }
@@ -678,7 +766,7 @@ fun CommentScreen(
                                                 ),
                                             ),
                                         ) {
-                                            Comment(activeCommentItem) { }
+                                            Comment(activeCommentItem, allowDelete = false) { }
                                             HorizontalDivider()
                                             if (viewModel.allData.isEmpty()) {
                                                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -963,9 +1051,11 @@ private fun CommentItem(
     toggleLike: () -> Unit = {},
     onChildCommentClick: (CommentModel) -> Unit,
     onImageMenuAction: ((CommentImageMenuAction, String) -> Unit)? = null,
+    onDelete: (() -> Unit)? = null,
 ) {
     val navigator = LocalNavigator.current
     val commentData = comment.item
+    var showMoreMenu by remember(commentData.id) { mutableStateOf(false) }
 
     Column(modifier = modifier.fillMaxWidth()) {
         // 作者信息
@@ -1136,6 +1226,45 @@ private fun CommentItem(
             }
 
             Spacer(modifier = Modifier.weight(1f))
+
+            if (onDelete != null) {
+                Box {
+                    IconButton(
+                        onClick = { showMoreMenu = true },
+                        modifier = Modifier
+                            .size(24.dp)
+                            .testTag("comment_more_button_${commentData.id}"),
+                    ) {
+                        Icon(
+                            Icons.Default.MoreVert,
+                            contentDescription = "更多操作",
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showMoreMenu,
+                        onDismissRequest = { showMoreMenu = false },
+                    ) {
+                        DropdownMenuItem(
+                            modifier = Modifier.testTag("comment_delete_menu_item_${commentData.id}"),
+                            text = { Text("删除", color = MaterialTheme.colorScheme.error) },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                )
+                            },
+                            onClick = {
+                                showMoreMenu = false
+                                onDelete()
+                            },
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+            }
 
             // 回复按钮
             Row(

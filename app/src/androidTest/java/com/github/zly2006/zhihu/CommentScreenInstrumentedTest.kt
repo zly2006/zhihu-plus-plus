@@ -63,6 +63,9 @@ import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.seedViewModel
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.COMMENT_CANCEL_REPLY_TAG
+import com.github.zly2006.zhihu.ui.COMMENT_DELETE_CANCEL_TAG
+import com.github.zly2006.zhihu.ui.COMMENT_DELETE_CONFIRM_TAG
+import com.github.zly2006.zhihu.ui.COMMENT_DELETE_DIALOG_TAG
 import com.github.zly2006.zhihu.ui.COMMENT_IMAGE_MENU_BROWSER_TAG
 import com.github.zly2006.zhihu.ui.COMMENT_IMAGE_MENU_OPEN_TAG
 import com.github.zly2006.zhihu.ui.COMMENT_IMAGE_MENU_SAVE_TAG
@@ -253,6 +256,55 @@ class CommentScreenInstrumentedTest {
             ),
             navigator.destinations,
         )
+    }
+
+    @Test
+    fun deletableCommentRequiresConfirmationAndIsRemovedAfterSuccessfulRequest() {
+        val deletableComment = seedComment(
+            id = "deletable-comment",
+            authorId = "current-user",
+            authorName = "当前用户",
+            content = "可以删除的评论",
+            canDelete = true,
+        )
+        val retainedComment = seedComment(
+            id = "retained-comment",
+            authorId = "other-user",
+            authorName = "其他用户",
+            content = "不能删除的评论",
+        )
+        val deleteUrl = "https://www.zhihu.com/api/v4/comment_v5/comment/${deletableComment.id}"
+        ZhihuMockApi.mockJson(method = HttpMethod.Delete, url = deleteUrl, body = "{}")
+        val viewModel = seedRootCommentViewModel(listOf(deletableComment, retainedComment))
+        setCommentScreen(testOverrides = CommentScreenTestOverrides(viewModel = viewModel))
+
+        composeRule
+            .onNodeWithTag(COMMENT_SCREEN_LIST_TAG)
+            .performScrollToNode(hasTestTag("comment_row_${deletableComment.id}"))
+        composeRule.onNodeWithTag("comment_more_button_${deletableComment.id}").assertIsDisplayed()
+        composeRule.onAllNodesWithTag("comment_more_button_${retainedComment.id}").assertCountEquals(0)
+
+        composeRule.onNodeWithTag("comment_more_button_${deletableComment.id}").performClick()
+        composeRule.onNodeWithTag("comment_delete_menu_item_${deletableComment.id}").assertIsDisplayed()
+        composeRule.onNodeWithTag("comment_delete_menu_item_${deletableComment.id}").performClick()
+        composeRule.onNodeWithTag(COMMENT_DELETE_DIALOG_TAG).assertIsDisplayed()
+        composeRule.onNodeWithText("删除后无法恢复，确认删除这条评论吗？").assertIsDisplayed()
+        composeRule.onNodeWithTag(COMMENT_DELETE_CANCEL_TAG).performClick()
+        assertEquals(0, ZhihuMockApi.requestCount(HttpMethod.Delete, deleteUrl))
+        composeRule.onNodeWithTag("comment_row_${deletableComment.id}").assertIsDisplayed()
+
+        composeRule.onNodeWithTag("comment_more_button_${deletableComment.id}").performClick()
+        composeRule.onNodeWithTag("comment_delete_menu_item_${deletableComment.id}").performClick()
+        composeRule.onNodeWithTag(COMMENT_DELETE_CONFIRM_TAG).performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            ZhihuMockApi.requestCount(HttpMethod.Delete, deleteUrl) == 1
+        }
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag("comment_row_${deletableComment.id}").fetchSemanticsNodes().isEmpty()
+        }
+
+        composeRule.onAllNodesWithTag("comment_row_${deletableComment.id}").assertCountEquals(0)
+        composeRule.onNodeWithTag("comment_row_${retainedComment.id}").assertIsDisplayed()
     }
 
     @Test
@@ -794,6 +846,7 @@ class CommentScreenInstrumentedTest {
         childCommentCount: Int = 0,
         childComments: List<DataHolder.Comment> = emptyList(),
         replyToAuthor: DataHolder.Comment.Author? = null,
+        canDelete: Boolean = false,
     ): DataHolder.Comment = DataHolder.Comment(
         id = id,
         type = "comment",
@@ -807,6 +860,7 @@ class CommentScreenInstrumentedTest {
         liked = false,
         likeCount = likeCount,
         isAuthor = false,
+        canDelete = canDelete,
         author = seedAuthor(authorId, "$authorId-token", authorName),
         replyToAuthor = replyToAuthor,
         childCommentCount = childCommentCount,
