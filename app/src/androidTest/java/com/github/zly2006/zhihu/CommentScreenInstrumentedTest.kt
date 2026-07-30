@@ -222,9 +222,9 @@ class CommentScreenInstrumentedTest {
         }
         composeRule.onAllNodesWithTag(COMMENT_SCREEN_LIST_TAG).assertCountEquals(2)
         composeRule.onNodeWithTag("comment_row_liked-child-comment").assertIsDisplayed()
-        composeRule.waitUntil("Expected child and root comment detail requests", timeoutMillis = 5_000) {
+        composeRule.waitUntil("Expected target/root details and root child list requests", timeoutMillis = 5_000) {
             ZhihuMockApi.requestCount(HttpMethod.Get, "comment/liked-child-comment") == 1 &&
-                ZhihuMockApi.requestCount(HttpMethod.Get, "comment/liked-root-comment") == 1 &&
+                ZhihuMockApi.requestCount(HttpMethod.Get, "comment/liked-root-comment") == 2 &&
                 ZhihuMockApi.requestCount(HttpMethod.Get, "comment/liked-root-comment/child_comment") == 1
         }
         assertEquals(0, ZhihuMockApi.requestCount(HttpMethod.Get, "comment/liked-child-comment/child_comment"))
