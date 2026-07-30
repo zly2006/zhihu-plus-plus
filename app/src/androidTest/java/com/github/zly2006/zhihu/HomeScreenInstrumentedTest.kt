@@ -19,6 +19,7 @@ package com.github.zly2006.zhihu
 
 import android.content.Context
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyAncestor
@@ -34,6 +35,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Search
@@ -66,9 +69,15 @@ import com.github.zly2006.zhihu.ui.homeAuthorPollAnnouncementTag
 import com.github.zly2006.zhihu.ui.homePinAnnouncementReadKey
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterManager
+import com.github.zly2006.zhihu.viewmodel.filter.FeedFilterSettings
+import com.github.zly2006.zhihu.viewmodel.filter.ForegroundReadFilterPipeline
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import io.ktor.http.HttpMethod
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -331,6 +340,65 @@ class HomeScreenInstrumentedTest {
         composeRule.onNodeWithTag(HOME_FEED_LIST_TAG).performVerticalSwipeCycle()
         composeRule.onNodeWithTag(HOME_FEED_LIST_TAG).performScrollToNode(hasText("离线条目 00"))
         composeRule.onNodeWithText("离线条目 00").assertIsDisplayed()
+    }
+
+    @Test
+    fun exposureDatabaseRecordsOnlySettledVisibleItemsOnTheActiveHomePage() {
+        val database = getContentFilterDatabase(composeRule.activity)
+        runBlocking { database.contentFilterDao().clearAllRecords() }
+        val isActive = mutableStateOf(false)
+        val items = List(20) { index ->
+            FeedDisplayItem(
+                title = "曝光条目 $index",
+                summary = "仅可见条目应写入本地数据库",
+                details = "曝光时机测试",
+                feed = null,
+                navDestinationJson = Article(
+                    type = ArticleType.Article,
+                    id = index.toLong() + 1,
+                ).toFeedDisplayItemNavDestinationJson(),
+            )
+        }
+        val filteredItems = runBlocking {
+            ForegroundReadFilterPipeline(
+                settings = FeedFilterSettings(),
+                contentFilterManager = ContentFilterManager(database.contentFilterDao()),
+                blockedFeedRecordDao = database.blockedFeedRecordDao(),
+            ).filter(items)
+        }
+        assertEquals(items, filteredItems)
+        assertEquals(0, runBlocking { database.contentFilterDao().getRecordCount() })
+        composeRule.activity.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE).edit(commit = true) {
+            putBoolean("enableContentFilter", true)
+            putBoolean("showRefreshFab", false)
+            putBoolean("filterExplainDialogShown", true)
+            putBoolean("survey_feedback_done", true)
+            putBoolean("autoRefreshHomeOnStartup", false)
+            putBoolean("autoCheckUpdates", false)
+            putString("recommendationMode", RecommendationMode.WEB.key)
+        }
+        composeRule.activity.runOnUiThread {
+            clearHomeFeedViewModel()
+            seedHomeFeedViewModel(filteredItems)
+        }
+
+        composeRule.setScreenContent {
+            HomeScreen(
+                scrollToTopTrigger = 0,
+                innerPadding = PaddingValues(),
+                isActive = isActive.value,
+            )
+        }
+        composeRule.waitForIdle()
+        assertEquals(0, runBlocking { database.contentFilterDao().getRecordCount() })
+
+        composeRule.runOnUiThread { isActive.value = true }
+        composeRule.waitUntil("Active settled home feed should record visible items", timeoutMillis = 5_000) {
+            runBlocking { database.contentFilterDao().getRecordCount() } > 0
+        }
+        val recordedCount = runBlocking { database.contentFilterDao().getRecordCount() }
+        assertTrue(recordedCount in 1 until items.size)
+        runBlocking { database.contentFilterDao().clearAllRecords() }
     }
 
     private fun MainActivityComposeRule.launchHomeScreen(

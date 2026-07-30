@@ -356,6 +356,9 @@ interface HistoryEnvironment {
 }
 
 interface ContentInteractionEnvironment : ZhihuApiEnvironment {
+    /** 记录首页列表停稳后真实可见的内容；加载和过滤阶段不得调用。 */
+    suspend fun recordContentView(item: FeedDisplayItem) = Unit
+
     suspend fun recordContentInteraction(feed: Feed) = Unit
 }
 

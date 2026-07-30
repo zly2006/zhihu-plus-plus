@@ -79,6 +79,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -130,7 +131,7 @@ import com.github.zly2006.zhihu.ui.components.rememberFeedBlockActions
 import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_FAB_OPACITY
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FAB_OPACITY
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
+import com.github.zly2006.zhihu.viewmodel.feed.FeedInteractionViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
@@ -173,6 +174,7 @@ fun homePinAnnouncementReadKey(pinId: Long): String = "readHomePinAnnouncement_$
 fun HomeScreen(
     scrollToTopTrigger: Int,
     innerPadding: PaddingValues,
+    isActive: Boolean = true,
 ) {
     val navigator = LocalNavigator.current
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = true)
@@ -241,6 +243,26 @@ fun HomeScreen(
 
     val listState = rememberLazyListState()
     var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
+
+    LaunchedEffect(lifecycleOwner, listState, viewModel, isActive) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            snapshotFlow {
+                if (!isActive || listState.isScrollInProgress) {
+                    emptySet()
+                } else {
+                    listState.layoutInfo.visibleItemsInfo
+                        .mapNotNull { it.key as? String }
+                        .toSet()
+                }
+            }.collect { visibleItemKeys ->
+                if (visibleItemKeys.isNotEmpty()) {
+                    (viewModel as? FeedInteractionViewModel)
+                        ?.reportVisibleItems(paginationEnvironment, visibleItemKeys)
+                }
+            }
+        }
+    }
+
     LaunchedEffect(scrollToTopTrigger) {
         when (
             topLevelReselectAction(
@@ -675,10 +697,8 @@ fun HomeScreen(
                     ) {
                         val feed = this.feed
                         val destination = navDestination
-                        if (feed != null) {
-//                            DataHolder.putFeed(feed)
-                            (viewModel as? HomeFeedInteractionViewModel)?.onUiContentClick(paginationEnvironment, feed, item)
-                        } else {
+                        (viewModel as? FeedInteractionViewModel)?.onUiContentClick(paginationEnvironment, item)
+                        if (feed == null) {
                             localHomeViewModel?.onLocalItemOpened(item)
                         }
                         if (destination != null) {

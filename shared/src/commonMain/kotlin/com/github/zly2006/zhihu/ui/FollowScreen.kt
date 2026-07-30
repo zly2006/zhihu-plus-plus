@@ -59,6 +59,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -68,11 +69,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
@@ -119,10 +124,12 @@ fun FollowScreen(
     scrollToTopTrigger: Int,
     innerPadding: PaddingValues,
     parentPagerState: PagerState,
+    isActive: Boolean = true,
 ): Unit = FollowScreenContent(
     scrollToTopTrigger = scrollToTopTrigger,
     innerPadding = innerPadding,
     parentPagerState = parentPagerState,
+    isActive = isActive,
     onTestRecommendRefreshClick = null,
     onTestRecommendLoadMore = null,
     onTestDynamicRefreshClick = null,
@@ -139,6 +146,7 @@ fun FollowScreen(
     scrollToTopTrigger: Int = 0,
     innerPadding: PaddingValues,
     parentPagerState: PagerState,
+    isActive: Boolean = true,
     onTestRecommendRefreshClick: (() -> Unit)?,
     onTestRecommendLoadMore: (() -> Unit)?,
     onTestDynamicRefreshClick: (() -> Unit)?,
@@ -147,6 +155,7 @@ fun FollowScreen(
     scrollToTopTrigger = scrollToTopTrigger,
     innerPadding = innerPadding,
     parentPagerState = parentPagerState,
+    isActive = isActive,
     onTestRecommendRefreshClick = onTestRecommendRefreshClick,
     onTestRecommendLoadMore = onTestRecommendLoadMore,
     onTestDynamicRefreshClick = onTestDynamicRefreshClick,
@@ -165,6 +174,7 @@ private fun FollowScreenContent(
     scrollToTopTrigger: Int = 0,
     innerPadding: PaddingValues = PaddingValues(0.dp),
     parentPagerState: PagerState,
+    isActive: Boolean = true,
     onTestRecommendRefreshClick: (() -> Unit)? = null,
     onTestRecommendLoadMore: (() -> Unit)? = null,
     onTestDynamicRefreshClick: (() -> Unit)? = null,
@@ -213,14 +223,14 @@ private fun FollowScreenContent(
             when (page) {
                 0 -> FollowRecommendScreen(
                     scrollToTopTrigger = scrollToTopTrigger,
-                    isActive = pagerState.currentPage == 0,
+                    isActive = isActive && pagerState.currentPage == 0,
                     onTestRefreshClick = onTestRecommendRefreshClick,
                     onTestLoadMore = onTestRecommendLoadMore,
                 )
 
                 1 -> FollowDynamicScreen(
                     scrollToTopTrigger = scrollToTopTrigger,
-                    isActive = pagerState.currentPage == 1,
+                    isActive = isActive && pagerState.currentPage == 1,
                     onTestRefreshClick = onTestDynamicRefreshClick,
                     onTestLoadMore = onTestDynamicLoadMore,
                 )
@@ -375,9 +385,29 @@ fun FollowRecommendScreen(
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()
     val feedBlockActions = rememberFeedBlockActions()
+    val navigator = LocalNavigator.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val showRefreshFab = remember { settings.getBoolean("showRefreshFab", true) }
     val listState = rememberLazyListState()
     var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
+
+    LaunchedEffect(lifecycleOwner, listState, viewModel, isActive) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            snapshotFlow {
+                if (!isActive || listState.isScrollInProgress) {
+                    emptySet()
+                } else {
+                    listState.layoutInfo.visibleItemsInfo
+                        .mapNotNull { it.key as? String }
+                        .toSet()
+                }
+            }.collect { visibleItemKeys ->
+                if (visibleItemKeys.isNotEmpty()) {
+                    viewModel.reportVisibleItems(environment, visibleItemKeys)
+                }
+            }
+        }
+    }
 
     LaunchedEffect(scrollToTopTrigger, isActive) {
         val action = topLevelReselectAction(
@@ -421,6 +451,7 @@ fun FollowRecommendScreen(
                 },
                 onLoadMore = { onTestLoadMore?.invoke() ?: viewModel.loadMore(environment) },
                 footer = ProgressIndicatorFooter,
+                key = { item -> item.stableKey },
             ) { item ->
                 FeedCard(
                     item = item,
@@ -445,6 +476,10 @@ fun FollowRecommendScreen(
                     },
                     onBlockTopic = { topicId, topicName ->
                         feedBlockActions.handleBlockTopic(viewModel, topicId, topicName)
+                    },
+                    onClick = {
+                        viewModel.onUiContentClick(environment, item)
+                        navDestination?.let { navigator.onNavigate(it) }
                     },
                 )
             }
@@ -489,9 +524,29 @@ fun FollowDynamicScreen(
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()
     val feedBlockActions = rememberFeedBlockActions()
+    val navigator = LocalNavigator.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val showRefreshFab = remember { settings.getBoolean("showRefreshFab", true) }
     val listState = rememberLazyListState()
     var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
+
+    LaunchedEffect(lifecycleOwner, listState, viewModel, isActive) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            snapshotFlow {
+                if (!isActive || listState.isScrollInProgress) {
+                    emptySet()
+                } else {
+                    listState.layoutInfo.visibleItemsInfo
+                        .mapNotNull { it.key as? String }
+                        .toSet()
+                }
+            }.collect { visibleItemKeys ->
+                if (visibleItemKeys.isNotEmpty()) {
+                    viewModel.reportVisibleItems(environment, visibleItemKeys)
+                }
+            }
+        }
+    }
 
     LaunchedEffect(scrollToTopTrigger, isActive) {
         val action = topLevelReselectAction(
@@ -535,6 +590,7 @@ fun FollowDynamicScreen(
                     }
                 },
                 footer = ProgressIndicatorFooter,
+                key = { item -> item.stableKey },
             ) { item ->
                 FeedCard(
                     item = item,
@@ -560,6 +616,10 @@ fun FollowDynamicScreen(
                     },
                     onBlockTopic = { topicId, topicName ->
                         feedBlockActions.handleBlockTopic(viewModel, topicId, topicName)
+                    },
+                    onClick = {
+                        viewModel.onUiContentClick(environment, item)
+                        navDestination?.let { navigator.onNavigate(it) }
                     },
                 )
             }

@@ -16,7 +16,6 @@
  */
 
 package com.github.zly2006.zhihu.viewmodel.za
-import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.resolveContent
@@ -28,26 +27,17 @@ import com.github.zly2006.zhihu.shared.data.Person
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
-import com.github.zly2006.zhihu.viewmodel.ContentInteractionEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
-import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
+import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedFeedbackViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.replaceHomeFeedItemsWithFilteredResult
-import com.github.zly2006.zhihu.viewmodel.postSigned
 import io.ktor.client.call.body
-import io.ktor.client.request.forms.MultiPartFormDataContent
-import io.ktor.client.request.forms.formData
 import io.ktor.client.request.get
-import io.ktor.client.request.header
-import io.ktor.client.request.setBody
 import io.ktor.http.decodeURLPart
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
@@ -56,9 +46,9 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
-class AndroidHomeFeedViewModel :
-    BaseFeedViewModel(),
-    HomeFeedInteractionViewModel {
+class AndroidHomeFeedViewModel : HomeFeedFeedbackViewModel() {
+    override val recordsContentInteraction = false
+
     override val initialUrl: String
         get() = "https://api.zhihu.com/topstory/recommend"
 
@@ -114,35 +104,6 @@ class AndroidHomeFeedViewModel :
             throw e
         } finally {
             isLoading = false
-        }
-    }
-
-    override suspend fun recordContentInteraction(environment: ContentInteractionEnvironment, feed: Feed) {
-        // Android 版本暂不记录交互
-    }
-
-    override fun onUiContentClick(environment: ContentInteractionEnvironment, feed: Feed, item: FeedDisplayItem) {
-        viewModelScope.launch(Dispatchers.Default) {
-            if (environment.authenticatedCookies()["d_c0"] != null) {
-                val payloadItem = when (val target = feed.target) {
-                    is Feed.AnswerTarget -> listOf("answer", target.id.toString(), "read")
-                    is Feed.ArticleTarget -> listOf("article", target.id.toString(), "read")
-                    is Feed.PinTarget -> listOf("pin", target.id.toString(), "read")
-                    else -> null
-                }
-                if (payloadItem != null) {
-                    environment.postSigned("https://www.zhihu.com/lastread/touch") {
-                        header("x-requested-with", "fetch")
-                        setBody(
-                            MultiPartFormDataContent(
-                                formData {
-                                    append("items", ZhihuJson.json.encodeToString(listOf(payloadItem)))
-                                },
-                            ),
-                        )
-                    }
-                }
-            }
         }
     }
 }
@@ -271,6 +232,9 @@ fun parseMobileHomeFeedDisplayItem(card: JsonObject): FeedDisplayItem? {
         null
     }
 
+    // 官方旧 TemplateRoot 会把响应中的 brief 原样交给 /lastread/touch/v2。11.2 的 ComponentCard 不仅
+    // 没有该字段，官方 LastReadHelper 也没有 Card 目标分支；attachinfo 中的版本标记只进入曝光日志。
+    // 不能用 content_type + content_id 冒充旧版 Feed 的 v1 目标，否则请求成功也不代表卡片已被标记。
     return FeedDisplayItem(
         navDestinationJson = routeDest.toFeedDisplayItemNavDestinationJson(),
         avatarSrc = avatar,

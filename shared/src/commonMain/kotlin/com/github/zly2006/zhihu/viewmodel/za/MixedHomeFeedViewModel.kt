@@ -17,20 +17,14 @@
 
 package com.github.zly2006.zhihu.viewmodel.za
 
-import com.github.zly2006.zhihu.shared.data.Feed
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.viewmodel.ContentInteractionEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
-import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
+import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedFeedbackViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.joinAll
 
-class MixedHomeFeedViewModel :
-    BaseFeedViewModel(),
-    HomeFeedInteractionViewModel {
+class MixedHomeFeedViewModel : HomeFeedFeedbackViewModel() {
     val android = AndroidHomeFeedViewModel()
     val web = HomeFeedViewModel()
     override val initialUrl: String
@@ -51,13 +45,5 @@ class MixedHomeFeedViewModel :
             ).joinAll()
         }
         isLoading = false
-    }
-
-    override suspend fun recordContentInteraction(environment: ContentInteractionEnvironment, feed: Feed) {
-        web.recordContentInteraction(environment, feed)
-    }
-
-    override fun onUiContentClick(environment: ContentInteractionEnvironment, feed: Feed, item: FeedDisplayItem) {
-        web.onUiContentClick(environment, feed, item)
     }
 }
