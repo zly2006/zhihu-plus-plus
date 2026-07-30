@@ -31,6 +31,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -107,19 +108,20 @@ fun CollectionScreen(
                         }
                     }
                 },
-                actions = {
-                    IconButton(
-                        onClick = {
-                            viewModel.clearMutationErrors()
-                            showCreateCollectionDialog = true
-                        },
-                        enabled = !viewModel.isCreatingCollection && viewModel.deletingCollectionId == null,
-                        modifier = Modifier.testTag(COLLECTION_SCREEN_CREATE_BUTTON_TAG),
-                    ) {
-                        Icon(Icons.Filled.Add, contentDescription = "新建收藏夹")
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = {
+                    if (!viewModel.isCreatingCollection && viewModel.deletingCollectionId == null) {
+                        viewModel.clearMutationErrors()
+                        showCreateCollectionDialog = true
                     }
                 },
-            )
+                modifier = Modifier.testTag(COLLECTION_SCREEN_CREATE_BUTTON_TAG),
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = "新建收藏夹")
+            }
         },
     ) { innerPadding ->
         PaginatedList(
