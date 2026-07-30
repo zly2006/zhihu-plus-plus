@@ -281,17 +281,20 @@ class CommentScreenInstrumentedTest {
         composeRule
             .onNodeWithTag(COMMENT_SCREEN_LIST_TAG)
             .performScrollToNode(hasTestTag("comment_row_${deletableComment.id}"))
-        composeRule.onNodeWithTag("comment_delete_button_${deletableComment.id}").assertIsDisplayed()
-        composeRule.onAllNodesWithTag("comment_delete_button_${retainedComment.id}").assertCountEquals(0)
+        composeRule.onNodeWithTag("comment_more_button_${deletableComment.id}").assertIsDisplayed()
+        composeRule.onAllNodesWithTag("comment_more_button_${retainedComment.id}").assertCountEquals(0)
 
-        composeRule.onNodeWithTag("comment_delete_button_${deletableComment.id}").performClick()
+        composeRule.onNodeWithTag("comment_more_button_${deletableComment.id}").performClick()
+        composeRule.onNodeWithTag("comment_delete_menu_item_${deletableComment.id}").assertIsDisplayed()
+        composeRule.onNodeWithTag("comment_delete_menu_item_${deletableComment.id}").performClick()
         composeRule.onNodeWithTag(COMMENT_DELETE_DIALOG_TAG).assertIsDisplayed()
         composeRule.onNodeWithText("删除后无法恢复，确认删除这条评论吗？").assertIsDisplayed()
         composeRule.onNodeWithTag(COMMENT_DELETE_CANCEL_TAG).performClick()
         assertEquals(0, ZhihuMockApi.requestCount(HttpMethod.Delete, deleteUrl))
         composeRule.onNodeWithTag("comment_row_${deletableComment.id}").assertIsDisplayed()
 
-        composeRule.onNodeWithTag("comment_delete_button_${deletableComment.id}").performClick()
+        composeRule.onNodeWithTag("comment_more_button_${deletableComment.id}").performClick()
+        composeRule.onNodeWithTag("comment_delete_menu_item_${deletableComment.id}").performClick()
         composeRule.onNodeWithTag(COMMENT_DELETE_CONFIRM_TAG).performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) {
             ZhihuMockApi.requestCount(HttpMethod.Delete, deleteUrl) == 1

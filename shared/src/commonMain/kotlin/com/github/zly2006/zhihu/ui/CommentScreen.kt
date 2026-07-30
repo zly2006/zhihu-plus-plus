@@ -65,6 +65,7 @@ import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.AlertDialog
@@ -1054,6 +1055,7 @@ private fun CommentItem(
 ) {
     val navigator = LocalNavigator.current
     val commentData = comment.item
+    var showMoreMenu by remember(commentData.id) { mutableStateOf(false) }
 
     Column(modifier = modifier.fillMaxWidth()) {
         // 作者信息
@@ -1226,18 +1228,40 @@ private fun CommentItem(
             Spacer(modifier = Modifier.weight(1f))
 
             if (onDelete != null) {
-                IconButton(
-                    onClick = onDelete,
-                    modifier = Modifier
-                        .size(24.dp)
-                        .testTag("comment_delete_button_${commentData.id}"),
-                ) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "删除评论",
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.error,
-                    )
+                Box {
+                    IconButton(
+                        onClick = { showMoreMenu = true },
+                        modifier = Modifier
+                            .size(24.dp)
+                            .testTag("comment_more_button_${commentData.id}"),
+                    ) {
+                        Icon(
+                            Icons.Default.MoreVert,
+                            contentDescription = "更多操作",
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showMoreMenu,
+                        onDismissRequest = { showMoreMenu = false },
+                    ) {
+                        DropdownMenuItem(
+                            modifier = Modifier.testTag("comment_delete_menu_item_${commentData.id}"),
+                            text = { Text("删除", color = MaterialTheme.colorScheme.error) },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                )
+                            },
+                            onClick = {
+                                showMoreMenu = false
+                                onDelete()
+                            },
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.width(8.dp))
             }
