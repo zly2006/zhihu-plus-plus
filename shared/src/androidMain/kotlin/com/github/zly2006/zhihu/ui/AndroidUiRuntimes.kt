@@ -501,6 +501,18 @@ actual fun supportsZhihuHtmlWebView(): Boolean = true
 actual fun rememberCommentEmojiInlineContent(emojiKeys: Set<String>): Map<String, InlineTextContent> =
     remember(emojiKeys) { createEmojiInlineContent(emojiKeys) }
 
+@Composable
+actual fun rememberCommentEmojis(): List<CommentEmoji> {
+    val placeholders by EmojiManager.placeholders.collectAsState()
+    return remember(placeholders) {
+        placeholders.mapNotNull { placeholder ->
+            commentEmojiInlineKey(placeholder)?.let { inlineKey ->
+                CommentEmoji(placeholder = placeholder, inlineKey = inlineKey)
+            }
+        }
+    }
+}
+
 actual fun commentEmojiInlineKey(placeholder: String): String? {
     val emojiPath = EmojiManager.getEmojiPath(placeholder) ?: return null
     val emojiFileName = emojiPath.substringAfterLast('/')

@@ -27,10 +27,12 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -66,6 +68,9 @@ import com.github.zly2006.zhihu.ui.COMMENT_CANCEL_REPLY_TAG
 import com.github.zly2006.zhihu.ui.COMMENT_DELETE_CANCEL_TAG
 import com.github.zly2006.zhihu.ui.COMMENT_DELETE_CONFIRM_TAG
 import com.github.zly2006.zhihu.ui.COMMENT_DELETE_DIALOG_TAG
+import com.github.zly2006.zhihu.ui.COMMENT_EMOJI_BUTTON_TAG
+import com.github.zly2006.zhihu.ui.COMMENT_EMOJI_ITEM_TAG_PREFIX
+import com.github.zly2006.zhihu.ui.COMMENT_EMOJI_PICKER_TAG
 import com.github.zly2006.zhihu.ui.COMMENT_IMAGE_MENU_BROWSER_TAG
 import com.github.zly2006.zhihu.ui.COMMENT_IMAGE_MENU_OPEN_TAG
 import com.github.zly2006.zhihu.ui.COMMENT_IMAGE_MENU_SAVE_TAG
@@ -76,6 +81,7 @@ import com.github.zly2006.zhihu.ui.COMMENT_SCREEN_LIST_TAG
 import com.github.zly2006.zhihu.ui.COMMENT_SEND_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.COMMENT_SORT_SCORE_TAG
 import com.github.zly2006.zhihu.ui.COMMENT_SORT_TIME_TAG
+import com.github.zly2006.zhihu.ui.CommentEmoji
 import com.github.zly2006.zhihu.ui.CommentImageMenuAction
 import com.github.zly2006.zhihu.ui.CommentScreen
 import com.github.zly2006.zhihu.ui.CommentScreenTestOverrides
@@ -180,6 +186,36 @@ class CommentScreenInstrumentedTest {
         val database = getContentFilterDatabase(composeRule.activity)
         database.blockedUserDao().clearAllUsers()
         ZhihuMockApi.install(enabled = InstrumentedTestEnvironment.isMockMode())
+    }
+
+    @Test
+    fun emojiPickerInsertsPlaceholderAtCursor() {
+        val viewModel = seedRootCommentViewModel(seedRootComments(count = 1))
+        setCommentScreen(
+            testOverrides = CommentScreenTestOverrides(
+                viewModel = viewModel,
+                commentEmojis = listOf(
+                    CommentEmoji(
+                        placeholder = "[惊喜]",
+                        inlineKey = "emoji_test",
+                    ),
+                ),
+            ),
+        )
+
+        composeRule.onNodeWithTag(COMMENT_INPUT_TAG).performTextInput("已有草稿")
+        composeRule
+            .onNodeWithTag(COMMENT_INPUT_TAG)
+            .performSemanticsAction(SemanticsActions.SetSelection) { setSelection ->
+                setSelection(0, 0, false)
+            }
+        composeRule.onNodeWithTag(COMMENT_EMOJI_BUTTON_TAG).performClick()
+        composeRule.onNodeWithTag(COMMENT_EMOJI_PICKER_TAG).assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("切换到键盘").assertIsDisplayed()
+        composeRule.onNodeWithTag(COMMENT_EMOJI_ITEM_TAG_PREFIX + "[惊喜]").performClick()
+        composeRule.onNodeWithTag(COMMENT_INPUT_TAG).assertTextEquals("[惊喜]已有草稿")
+        composeRule.onNodeWithTag(COMMENT_EMOJI_BUTTON_TAG).performClick()
+        composeRule.onNodeWithContentDescription("选择表情").assertIsDisplayed()
     }
 
     @Test

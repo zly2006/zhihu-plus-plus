@@ -570,6 +570,14 @@ expect fun rememberHomeLoginRequester(): () -> Unit
 @Composable
 expect fun rememberCommentEmojiInlineContent(emojiKeys: Set<String>): Map<String, InlineTextContent>
 
+data class CommentEmoji(
+    val placeholder: String,
+    val inlineKey: String,
+)
+
+@Composable
+expect fun rememberCommentEmojis(): List<CommentEmoji>
+
 expect fun commentEmojiInlineKey(placeholder: String): String?
 
 expect fun Modifier.commentSelectionWorkaround(): Modifier
