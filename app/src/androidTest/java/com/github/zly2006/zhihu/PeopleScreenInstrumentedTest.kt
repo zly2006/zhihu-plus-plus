@@ -528,7 +528,7 @@ class PeopleScreenInstrumentedTest {
                         DataHolder.SocialMedia(
                             icon = "https://example.invalid/github.png",
                             title = "GitHub·zly2006",
-                            link = "https://github.com/zly2006",
+                            link = "zhihu://hybrid?zh_hide_nav_bar=true&zh_url=https:%2F%2Fwww.zhihu.com%2Fappview%2Fgithub%2Fdetail%3Fhash_id=ea09b6c82124e0162caa10d658058c10",
                             modules = listOf(
                                 DataHolder.SocialMediaModule("被关注人", "169"),
                                 DataHolder.SocialMediaModule("公开仓库数", "119"),

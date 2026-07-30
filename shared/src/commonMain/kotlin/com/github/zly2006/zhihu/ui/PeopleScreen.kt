@@ -556,8 +556,19 @@ internal fun DataHolder.People.githubSocialUiState(): GithubSocialUiState? = soc
         ?.value
         ?.takeIf { it.isNotBlank() }
         ?: return@firstNotNullOfOrNull null
-    val profileUrl = media.link.takeIf { it.isNotBlank() }
+    val profileLink = media.link.takeIf { it.isNotBlank() }
         ?: return@firstNotNullOfOrNull null
+    val profileUrl = if (profileLink.startsWith("zhihu://", ignoreCase = true)) {
+        // link 是知乎内部 AppView，GitHub 用户名来自同一条社交资料的标题。
+        val username = media.title
+            .substringAfter('·', missingDelimiterValue = "")
+            .trim()
+            .takeIf { it.isNotBlank() }
+            ?: return@firstNotNullOfOrNull null
+        "https://github.com/$username"
+    } else {
+        profileLink
+    }
 
     GithubSocialUiState(
         title = media.title,
