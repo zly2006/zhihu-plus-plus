@@ -37,6 +37,7 @@ import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.test.InstrumentedTestEnvironment
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.ZhihuMockApi
+import com.github.zly2006.zhihu.test.mockCommentDetail
 import com.github.zly2006.zhihu.test.mockRootComments
 import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
@@ -235,6 +236,40 @@ class PinScreenInstrumentedTest {
         composeRule.onNodeWithTag(PIN_SCREEN_COMMENT_BUTTON_TAG).performClick()
         composeRule.waitUntilTagExists(COMMENT_INPUT_TAG)
         composeRule.onNodeWithTag(COMMENT_INPUT_TAG).assertTextEquals(draft)
+    }
+
+    @Test
+    fun notificationChildAnchorOpensCommentsAndLoadsItsRootOffline() {
+        mockPinDetail(content = seededPinContent())
+        mockCommentDetail(
+            commentId = "liked-child-comment",
+            resourceType = "pin",
+            replyRootCommentId = "liked-root-comment",
+        )
+        mockCommentDetail(
+            commentId = "liked-root-comment",
+            resourceType = "pin",
+        )
+        mockRootComments(
+            urlPrefix = "https://www.zhihu.com/api/v4/comment_v5/pins/101/root_comment",
+            commentId = "liked-root-comment",
+            resourceType = "pin",
+        )
+
+        composeRule.setScreenContent {
+            PinScreen(
+                pin = Pin(
+                    id = 101,
+                    commentAnchorId = "liked-child-comment",
+                ),
+            )
+        }
+
+        composeRule.waitUntilTagExists(COMMENT_SCREEN_LIST_TAG)
+        composeRule.onNodeWithTag(COMMENT_SCREEN_LIST_TAG).assertIsDisplayed()
+        composeRule.onNodeWithText("离线评论作者").assertIsDisplayed()
+        composeRule.waitUntilRequestCount(HttpMethod.Get, "comment/liked-child-comment", 1)
+        composeRule.waitUntilRequestCount(HttpMethod.Get, "comment/liked-root-comment", 1)
     }
 
     private fun mockPinPollVote(pollId: String = "poll-101") {

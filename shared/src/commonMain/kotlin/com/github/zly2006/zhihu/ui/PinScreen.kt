@@ -222,7 +222,9 @@ fun PinScreen(
     }
 
     var showShareDialog by remember { mutableStateOf(false) }
-    var showComments by rememberSaveable(pin.id) { mutableStateOf(false) }
+    var showComments by rememberSaveable(pin.id, pin.commentAnchorId) {
+        mutableStateOf(pin.commentAnchorId != null)
+    }
     var showVoters by rememberSaveable(pin.id) { mutableStateOf(false) }
     var votersNextUrl by rememberSaveable(pin.id) { mutableStateOf<String?>(null) }
     var votersLoading by rememberSaveable(pin.id) { mutableStateOf(false) }

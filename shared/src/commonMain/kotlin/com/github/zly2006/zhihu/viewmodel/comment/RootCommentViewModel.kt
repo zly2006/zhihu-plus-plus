@@ -114,7 +114,12 @@ class RootCommentViewModel(
         }
 
     override suspend fun fetchFeeds(environment: PaginationEnvironment) {
-        val commentAnchorId = (article as? Article)?.commentAnchorId
+        val commentAnchorId = when (val content = article) {
+            is Article -> content.commentAnchorId
+            is Pin -> content.commentAnchorId
+            is Question -> content.commentAnchorId
+            else -> null
+        }
         if (!commentAnchorLoaded && commentAnchorId != null) {
             commentAnchorLoaded = true
             try {

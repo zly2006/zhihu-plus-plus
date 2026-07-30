@@ -29,6 +29,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.Notification
+import com.github.zly2006.zhihu.navigation.Pin
+import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.data.MobileNotificationContent
 import com.github.zly2006.zhihu.shared.data.MobileNotificationTimelineItem
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
@@ -129,48 +132,175 @@ class NotificationScreenInstrumentedTest {
     }
 
     @Test
-    fun notificationScreen_commentReplyNavigatesWithCommentAnchor() {
-        val recordingNavigator = setNotificationScreenContent()
+    fun notificationScreen_fourObservedCommentActionsNavigateWithCommentAnchors() {
+        val notifications = listOf(
+            notificationFixture(
+                id = "comment-content",
+                title = "别人评论我的内容",
+                subTitle = "评论了你的回答",
+                targetLink = "zhihu://comment/list/answer/2?anchor_comment_id=3&is_child=false",
+            ),
+            notificationFixture(
+                id = "reply-comment",
+                title = "别人回复我的评论",
+                subTitle = "回复了想法下你的评论",
+                targetLink = "zhihu://comment/list/pin/4?anchor_comment_id=5&is_child=true",
+            ),
+            notificationFixture(
+                id = "like-root-comment",
+                title = "别人点赞我的根评论",
+                subTitle = "喜欢了你的评论",
+                targetLink = "zhihu://comment/list/article/6?anchor_comment_id=7&is_child=false",
+            ),
+            notificationFixture(
+                id = "like-child-comment",
+                title = "别人点赞我的楼中楼评论",
+                subTitle = "喜欢了你的评论",
+                targetLink = "zhihu://comment/list/pin/8?anchor_comment_id=9&is_child=false",
+            ),
+        )
+        val recordingNavigator = setNotificationScreenContent(notifications)
 
-        composeRule.onNodeWithText("测试用户 回复了回答下你的评论").performClick()
+        notifications.forEach { notification ->
+            composeRule.onNodeWithText(notification.content!!.title).performClick()
+        }
 
-        assertEquals(1, recordingNavigator.destinations.size)
-        val article = recordingNavigator.destinations.single() as Article
-        assertEquals(ArticleType.Answer, article.type)
-        assertEquals(2L, article.id)
-        assertEquals("3", article.commentAnchorId)
+        assertEquals(4, recordingNavigator.destinations.size)
+        val commentedAnswer = recordingNavigator.destinations[0] as Article
+        assertEquals(ArticleType.Answer, commentedAnswer.type)
+        assertEquals(2L, commentedAnswer.id)
+        assertEquals("3", commentedAnswer.commentAnchorId)
+        val repliedPin = recordingNavigator.destinations[1] as Pin
+        assertEquals(4L, repliedPin.id)
+        assertEquals("5", repliedPin.commentAnchorId)
+        val likedArticleComment = recordingNavigator.destinations[2] as Article
+        assertEquals(ArticleType.Article, likedArticleComment.type)
+        assertEquals(6L, likedArticleComment.id)
+        assertEquals("7", likedArticleComment.commentAnchorId)
+        val likedChildPinComment = recordingNavigator.destinations[3] as Pin
+        assertEquals(8L, likedChildPinComment.id)
+        assertEquals("9", likedChildPinComment.commentAnchorId)
     }
 
-    private fun setNotificationScreenContent(): RecordingNavigator {
-        composeRule.seedNotificationViewModel()
+    @Test
+    fun realAccountCommentLinkSnapshot_all212OccurrencesResolveToTheirAnchors() {
+        // 2026-07-30 从当前账号 comment/like 通知各取两页后，保留结构与数量，ID 全部替换为测试值。
+        val fixtures = buildList {
+            val groups = listOf(
+                ObservedCommentLinkGroup("pin", occurrences = 163, uniqueLinks = 163),
+                ObservedCommentLinkGroup("answer", occurrences = 22, uniqueLinks = 22),
+                ObservedCommentLinkGroup("article", occurrences = 4, uniqueLinks = 4),
+                ObservedCommentLinkGroup("pin", occurrences = 1, uniqueLinks = 1, isChild = true),
+                ObservedCommentLinkGroup("question", occurrences = 1, uniqueLinks = 1),
+                // like 分区有 20 次跳转，聚合到 7 条唯一链接：3 条根评论、4 条楼中楼评论。
+                ObservedCommentLinkGroup("answer", occurrences = 5, uniqueLinks = 3),
+                ObservedCommentLinkGroup("article", occurrences = 1, uniqueLinks = 1),
+                ObservedCommentLinkGroup("pin", occurrences = 14, uniqueLinks = 3),
+            )
+            groups.forEachIndexed { groupIndex, group ->
+                repeat(group.occurrences) { occurrence ->
+                    val uniqueIndex = occurrence % group.uniqueLinks
+                    val contentId = 100_000L + groupIndex * 10_000L + uniqueIndex
+                    val anchorId = (1_000_000L + groupIndex * 10_000L + uniqueIndex).toString()
+                    add(
+                        ObservedCommentLink(
+                            url = "zhihu://comment/list/${group.contentType}/$contentId?anchor_comment_id=$anchorId&is_child=${group.isChild}",
+                            contentType = group.contentType,
+                            contentId = contentId,
+                            anchorId = anchorId,
+                        ),
+                    )
+                }
+            }
+            add(
+                ObservedCommentLink(
+                    url = "zhihu://comment/list/answer/900000?anchor_comment_id=1900000&list_height_ratio=0.66&dragIconVisible=true&segment=%7B%22id%22%3A1%7D",
+                    contentType = "answer",
+                    contentId = 900_000L,
+                    anchorId = "1900000",
+                ),
+            )
+        }
+
+        assertEquals(212, fixtures.size)
+        assertEquals(199, fixtures.map { it.url }.distinct().size)
+        fixtures.forEach { fixture ->
+            when (val destination = resolveContent(fixture.url)) {
+                is Article -> {
+                    assertEquals(fixture.contentType, destination.type.toString())
+                    assertEquals(fixture.contentId, destination.id)
+                    assertEquals(fixture.anchorId, destination.commentAnchorId)
+                }
+
+                is Pin -> {
+                    assertEquals("pin", fixture.contentType)
+                    assertEquals(fixture.contentId, destination.id)
+                    assertEquals(fixture.anchorId, destination.commentAnchorId)
+                }
+
+                is Question -> {
+                    assertEquals("question", fixture.contentType)
+                    assertEquals(fixture.contentId, destination.questionId)
+                    assertEquals(fixture.anchorId, destination.commentAnchorId)
+                }
+
+                else -> throw AssertionError("无法解析真实评论跳转结构：${fixture.url}")
+            }
+        }
+    }
+
+    private fun setNotificationScreenContent(
+        notifications: List<MobileNotificationTimelineItem> = listOf(notificationFixture()),
+    ): RecordingNavigator {
+        composeRule.seedNotificationViewModel(notifications = notifications)
         return composeRule.setScreenContent {
             NotificationScreen()
         }
     }
 
-    private fun notificationFixture() = MobileNotificationTimelineItem(
-        id = "local-notification",
+    private fun notificationFixture(
+        id: String = "local-notification",
+        title: String = "测试用户 回复了回答下你的评论",
+        subTitle: String = "评论和回复",
+        targetLink: String = "zhihu://comment/list/answer/2?anchor_comment_id=3&is_child=false",
+    ) = MobileNotificationTimelineItem(
+        id = id,
         type = "aggregate_notification",
         isRead = true,
         created = 1_713_420_000L,
         content = MobileNotificationContent(
-            title = "测试用户 回复了回答下你的评论",
-            subTitle = "评论和回复",
-            targetLink = "zhihu://comment/list/answer/2?anchor_comment_id=3&is_child=false",
+            title = title,
+            subTitle = subTitle,
+            targetLink = targetLink,
         ),
     )
 
     private fun MainActivityComposeRule.seedNotificationViewModel(
         unreadCounts: Map<MobileNotificationCategory, Int> = emptyMap(),
+        notifications: List<MobileNotificationTimelineItem> = listOf(notificationFixture()),
     ) {
         activity.runOnUiThread {
             val viewModel = ViewModelProvider(activity)[NotificationViewModel::class.java]
             viewModel.allData.clear()
-            viewModel.allData += notificationFixture()
+            viewModel.allData += notifications
             if (unreadCounts.isNotEmpty()) {
                 viewModel.categoryUnreadCounts.putAll(unreadCounts)
             }
         }
         waitForIdle()
     }
+
+    private data class ObservedCommentLink(
+        val url: String,
+        val contentType: String,
+        val contentId: Long,
+        val anchorId: String,
+    )
+
+    private data class ObservedCommentLinkGroup(
+        val contentType: String,
+        val occurrences: Int,
+        val uniqueLinks: Int,
+        val isChild: Boolean = false,
+    )
 }
