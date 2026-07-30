@@ -37,7 +37,6 @@ import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
@@ -159,8 +158,7 @@ internal fun NavDestination.buildSubmitCommentBody(
         put("content", "<p>$escapedText</p>")
         replyToCommentId?.let { put("reply_comment_id", it) }
         if (this@buildSubmitCommentBody is SegmentCommentHolder) {
-            put("unfriendly_check", "strict")
-            put("selected_settings", buildJsonArray { })
+            // `unfriendly_check` 和 `selected_settings` 均为可选字段，发布段评时无需提交。
             put(
                 "segment",
                 buildJsonObject {

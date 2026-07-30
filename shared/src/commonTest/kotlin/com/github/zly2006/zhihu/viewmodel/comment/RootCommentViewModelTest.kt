@@ -19,7 +19,6 @@ package com.github.zly2006.zhihu.viewmodel.comment
 
 import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
 import com.github.zly2006.zhihu.viewmodel.comment.RootCommentViewModel.Companion.submitCommentUrl
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
@@ -49,8 +48,8 @@ class RootCommentViewModelTest {
         val position = segment["position"]!!.jsonObject
 
         assertEquals("<p>，</p>", body["content"]!!.jsonPrimitive.content)
-        assertEquals("strict", body["unfriendly_check"]!!.jsonPrimitive.content)
-        assertEquals(0, body["selected_settings"]!!.jsonArray.size)
+        assertFalse("unfriendly_check" in body)
+        assertFalse("selected_settings" in body)
         assertEquals("都不能称为 Rust 的杀手级项目", segment["content"]!!.jsonPrimitive.content)
         assertEquals("22", position["start"]!!.jsonObject["offset"]!!.jsonPrimitive.content)
         assertEquals("KFR9BNtv", position["start"]!!.jsonObject["paragraph_id"]!!.jsonPrimitive.content)
