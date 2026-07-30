@@ -39,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -48,16 +49,27 @@ fun CreateCollectionDialog(
     showDialog: Boolean,
     onDismiss: () -> Unit,
     onConfirm: (title: String, description: String, Boolean) -> Unit,
+    isSubmitting: Boolean = false,
+    errorMessage: String? = null,
 ) {
     if (showDialog) {
         var title by remember { mutableStateOf("") }
         var description by remember { mutableStateOf("") }
 
-        Dialog(onDismissRequest = onDismiss) {
+        Dialog(
+            onDismissRequest = {
+                if (!isSubmitting) {
+                    onDismiss()
+                }
+            },
+        ) {
             Surface(
                 shape = RoundedCornerShape(16.dp),
                 color = MaterialTheme.colorScheme.surface,
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .testTag(CREATE_COLLECTION_DIALOG_TAG),
             ) {
                 Column(
                     modifier = Modifier
@@ -78,7 +90,10 @@ fun CreateCollectionDialog(
                         onValueChange = { title = it },
                         label = { Text("收藏夹名称") },
                         placeholder = { Text("请输入收藏夹名称") },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag(CREATE_COLLECTION_TITLE_INPUT_TAG),
+                        enabled = !isSubmitting,
                         singleLine = true,
                     )
 
@@ -89,6 +104,7 @@ fun CreateCollectionDialog(
                         label = { Text("描述（可选）") },
                         placeholder = { Text("请输入收藏夹描述") },
                         modifier = Modifier.fillMaxWidth(),
+                        enabled = !isSubmitting,
                         maxLines = 3,
                     )
 
@@ -99,6 +115,7 @@ fun CreateCollectionDialog(
                         Checkbox(
                             checked = isPublic,
                             onCheckedChange = { isPublic = it },
+                            enabled = !isSubmitting,
                         )
                         Text(
                             text = "公开收藏夹",
@@ -107,12 +124,23 @@ fun CreateCollectionDialog(
                         )
                     }
 
+                    errorMessage?.let {
+                        Text(
+                            text = it,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+
                     // 按钮行
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End,
                     ) {
-                        TextButton(onClick = onDismiss) {
+                        TextButton(
+                            onClick = onDismiss,
+                            enabled = !isSubmitting,
+                        ) {
                             Text("取消")
                         }
                         Spacer(modifier = Modifier.width(8.dp))
@@ -120,12 +148,12 @@ fun CreateCollectionDialog(
                             onClick = {
                                 if (title.isNotBlank()) {
                                     onConfirm(title.trim(), description.trim(), isPublic)
-                                    onDismiss()
                                 }
                             },
-                            enabled = title.isNotBlank(),
+                            enabled = title.isNotBlank() && !isSubmitting,
+                            modifier = Modifier.testTag(CREATE_COLLECTION_CONFIRM_TAG),
                         ) {
-                            Text("创建")
+                            Text(if (isSubmitting) "创建中…" else "创建")
                         }
                     }
                 }
@@ -133,3 +161,7 @@ fun CreateCollectionDialog(
         }
     }
 }
+
+private const val CREATE_COLLECTION_DIALOG_TAG = "create_collection_dialog"
+private const val CREATE_COLLECTION_TITLE_INPUT_TAG = "create_collection_title_input"
+private const val CREATE_COLLECTION_CONFIRM_TAG = "create_collection_confirm"

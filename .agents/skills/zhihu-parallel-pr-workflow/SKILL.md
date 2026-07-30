@@ -9,6 +9,8 @@ description: Coordinate Zhihu++ issue and PR implementation through subagents wi
 
 This workflow is only for work with real parallel value: multiple independent issues or PRs, an explicit user request for subagents/delegation, or independently executable scopes that materially reduce wall-clock time. Do not trigger it merely because a task references one GitHub issue or will end in one PR. A single narrow issue should stay with the main agent, including implementation, validation, screenshots, and PR publication, unless the user explicitly asks to delegate it.
 
+Mentioning this skill is not authorization to use subagents. One product feature and its small accompanying workflow-documentation change remain one main-agent task unless the user explicitly requests delegation.
+
 Example: adding one menu action and adjusting that menu's sheet behavior is one bounded UI change. Spawning a worker only adds handoff and review overhead, so the main agent should complete it directly.
 
 ## Core Contract
@@ -67,6 +69,8 @@ git fetch origin master --prune
 git worktree add .worktrees/<short-name> origin/master -b codex/<short-name>
 cp local.properties .worktrees/<short-name>/local.properties 2>/dev/null || true
 ```
+
+Keep watching the main checkout throughout the task, not only at startup. Re-check it before implementation and before any intended main-checkout write; if it is dirty or another person/process has modified it, preserve those changes and create or use a fresh worktree instead.
 
 Use unique branch names such as:
 
