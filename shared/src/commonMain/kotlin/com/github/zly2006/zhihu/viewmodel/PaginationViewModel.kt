@@ -35,6 +35,7 @@ import com.github.zly2006.zhihu.shared.aigc.AigcVoteVoter
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.OnlineHistoryDeletePair
 import com.github.zly2006.zhihu.shared.data.ZhihuJson.decodeJson
 import com.github.zly2006.zhihu.shared.data.ZhihuPaging
 import com.github.zly2006.zhihu.shared.data.fetchZhihuAuthenticatedJson
@@ -54,6 +55,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpMethod
 import io.ktor.http.URLProtocol
 import io.ktor.http.contentType
+import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Job
@@ -306,6 +308,29 @@ suspend fun ZhihuApiEnvironment.addReadHistory(
             )
         }
     }
+}
+
+internal suspend fun ZhihuApiEnvironment.deleteOnlineHistoryItem(item: OnlineHistoryDeletePair) {
+    val response = postSigned("https://api.zhihu.com/read_history/batch_del") {
+        contentType(ContentType.Application.Json)
+        setBody(
+            buildJsonObject {
+                put(
+                    "pairs",
+                    JsonArray(
+                        listOf(
+                            buildJsonObject {
+                                put("content_token", item.contentToken)
+                                put("content_type", item.contentType)
+                            },
+                        ),
+                    ),
+                )
+                put("clear", false)
+            }.toString(),
+        )
+    }
+    check(response.status.isSuccess()) { "删除在线历史记录失败: ${response.status}" }
 }
 
 suspend fun ZhihuApiEnvironment.postSigned(

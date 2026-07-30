@@ -568,14 +568,20 @@ fun SearchScreen(
                     ) { item ->
                         FeedCard(
                             item = item,
-                            onBlockUser = { feedItem ->
-                                feedBlockActions.handleBlockUser(viewModel, feedItem) { authorInfo ->
-                                    feedAuthorBlockRequest = FeedAuthorBlockRequest(
-                                        FeedAuthorBlockType.CONTENT_AUTHOR,
-                                        authorInfo.first,
-                                        authorInfo.second,
-                                    )
-                                }
+                            menuItems = { dismissMenu ->
+                                DropdownMenuItem(
+                                    text = { Text("屏蔽用户") },
+                                    onClick = {
+                                        dismissMenu()
+                                        feedBlockActions.handleBlockUser(viewModel, item) { authorInfo ->
+                                            feedAuthorBlockRequest = FeedAuthorBlockRequest(
+                                                FeedAuthorBlockType.CONTENT_AUTHOR,
+                                                authorInfo.first,
+                                                authorInfo.second,
+                                            )
+                                        }
+                                    },
+                                )
                             },
                         )
                     }

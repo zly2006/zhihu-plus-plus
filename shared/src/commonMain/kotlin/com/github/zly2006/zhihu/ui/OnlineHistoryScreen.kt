@@ -54,6 +54,7 @@ import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.viewmodel.feed.OnlineHistoryViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 const val ONLINE_HISTORY_OVERFLOW_TAG = "online_history_overflow"
@@ -181,9 +182,28 @@ fun OnlineHistoryScreen(
                 listState = listState,
                 onLoadMore = { viewModel.loadMore(paginationEnvironment) },
                 isEnd = { viewModel.isEnd },
+                key = { item -> item.stableKey },
             ) { item ->
                 FeedCard(
                     item,
+                    menuItems = { dismissMenu ->
+                        DropdownMenuItem(
+                            text = { Text("删除该条历史记录") },
+                            onClick = {
+                                dismissMenu()
+                                coroutineScope.launch {
+                                    try {
+                                        viewModel.deleteItem(paginationEnvironment, item)
+                                        userMessages.showShortMessage("已删除")
+                                    } catch (error: CancellationException) {
+                                        throw error
+                                    } catch (_: Exception) {
+                                        userMessages.showShortMessage("操作失败")
+                                    }
+                                }
+                            },
+                        )
+                    },
                 )
             }
         }

@@ -99,6 +99,7 @@ import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.navigation.WritePin
 import com.github.zly2006.zhihu.shared.aigc.AIGC_MARKING_ENABLED_PREFERENCE_KEY
+import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.data.ZHIHU_ME_URL
@@ -109,6 +110,7 @@ import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.notification.rememberNotificationSettingsStore
 import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
 import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
+import com.github.zly2006.zhihu.shared.platform.rememberIsLiteVariant
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.ui.TopLevelReselectAction
@@ -207,6 +209,7 @@ fun HomeScreen(
     val isDebuggable = rememberHomeIsDebuggable()
     val requestLogin = rememberHomeLoginRequester()
     val feedBlockActions = rememberFeedBlockActions()
+    val isLiteVariant = rememberIsLiteVariant()
     val viewModel: BaseFeedViewModel = when (currentRecommendationMode) {
         RecommendationMode.WEB -> viewModel { HomeFeedViewModel() }
         RecommendationMode.ANDROID -> viewModel { AndroidHomeFeedViewModel() }
@@ -645,32 +648,67 @@ fun HomeScreen(
                             is Feed.AnswerTarget -> target.thumbnail
                             else -> null
                         },
-                        onBlockUser = { feedItem ->
-                            feedBlockActions.handleBlockUser(viewModel, feedItem) { authorInfo ->
-                                feedAuthorBlockRequest = FeedAuthorBlockRequest(
-                                    type = FeedAuthorBlockType.CONTENT_AUTHOR,
-                                    userId = authorInfo.first,
-                                    userName = authorInfo.second,
+                        menuItems = { dismissMenu ->
+                            if (!isLiteVariant) {
+                                DropdownMenuItem(
+                                    text = { Text("按关键词屏蔽") },
+                                    onClick = {
+                                        dismissMenu()
+                                        feedBlockActions.handleBlockByKeywords(viewModel, item) { (_, contentInfo) ->
+                                            feedToBlockByKeywords = contentInfo.first to contentInfo.second
+                                            showBlockByKeywordsDialog = true
+                                        }
+                                    },
                                 )
                             }
-                        },
-                        onBlockQuestionAuthor = { feedItem ->
-                            feedBlockActions.handleBlockQuestionAuthor(viewModel, feedItem) { authorInfo ->
-                                feedAuthorBlockRequest = FeedAuthorBlockRequest(
-                                    type = FeedAuthorBlockType.QUESTION_AUTHOR,
-                                    userId = authorInfo.first,
-                                    userName = authorInfo.second,
+                            DropdownMenuItem(
+                                text = { Text("屏蔽用户") },
+                                onClick = {
+                                    dismissMenu()
+                                    feedBlockActions.handleBlockUser(viewModel, item) { authorInfo ->
+                                        feedAuthorBlockRequest = FeedAuthorBlockRequest(
+                                            type = FeedAuthorBlockType.CONTENT_AUTHOR,
+                                            userId = authorInfo.first,
+                                            userName = authorInfo.second,
+                                        )
+                                    }
+                                },
+                            )
+                            val canBlockQuestionAuthor = when (item.feed?.target) {
+                                is Feed.AnswerTarget, is Feed.QuestionTarget -> true
+                                else -> item.raw is DataHolder.Answer || item.raw is DataHolder.Question
+                            }
+                            if (canBlockQuestionAuthor) {
+                                DropdownMenuItem(
+                                    text = { Text("屏蔽提问者") },
+                                    onClick = {
+                                        dismissMenu()
+                                        feedBlockActions.handleBlockQuestionAuthor(viewModel, item) { authorInfo ->
+                                            feedAuthorBlockRequest = FeedAuthorBlockRequest(
+                                                type = FeedAuthorBlockType.QUESTION_AUTHOR,
+                                                userId = authorInfo.first,
+                                                userName = authorInfo.second,
+                                            )
+                                        }
+                                    },
                                 )
                             }
-                        },
-                        onBlockByKeywords = { feedItem ->
-                            feedBlockActions.handleBlockByKeywords(viewModel, feedItem) { (_, contentInfo) ->
-                                feedToBlockByKeywords = contentInfo.first to contentInfo.second
-                                showBlockByKeywordsDialog = true
+                            val topics = when (val raw = item.raw) {
+                                is DataHolder.Answer -> raw.question.topics
+                                is DataHolder.Question -> raw.topics
+                                is DataHolder.Article -> raw.topics ?: emptyList()
+                                is DataHolder.Pin -> raw.topics ?: emptyList()
+                                else -> emptyList()
                             }
-                        },
-                        onBlockTopic = { topicId, topicName ->
-                            feedBlockActions.handleBlockTopic(viewModel, topicId, topicName)
+                            topics.forEach { topic ->
+                                DropdownMenuItem(
+                                    text = { Text("屏蔽「${topic.name}」") },
+                                    onClick = {
+                                        dismissMenu()
+                                        feedBlockActions.handleBlockTopic(viewModel, topic.id, topic.name)
+                                    },
+                                )
+                            }
                         },
                     ) {
                         val feed = this.feed
