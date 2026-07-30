@@ -143,7 +143,7 @@ import kotlinx.serialization.json.Json
 
 const val PREFERENCE_NAME = "com.github.zly2006.zhihu_preferences"
 const val ARTICLE_USE_WEBVIEW_PREFERENCE_KEY = "webviewRenderLegacy"
-const val QQ_GROUP_DISMISSED_PREFERENCE_KEY = "dismissQQGroup3"
+const val QQ_GROUP_DISMISSED_PREFERENCE_KEY = "dismiss_QQ_Channel"
 const val AIGC_MARKING_ANNOUNCEMENT_DISMISSED_PREFERENCE_KEY = "dismissAigcMarkingAnnouncement"
 const val HOME_TOP_ACTIONS_TAG = "home_top_actions"
 const val HOME_SEARCH_BUTTON_TAG = "home_search_button"
@@ -550,12 +550,12 @@ fun HomeScreen(
                             )
                             AnnouncementCard(
                                 visible = showQQGroup,
-                                title = "欢迎加入 QQ 群",
+                                title = "欢迎加入 QQ 频道",
                                 leadingIcon = { Icon(Icons.Default.MarkUnreadChatAlt, contentDescription = null) },
-                                content = "欢迎加入 Zhihu++ QQ 群。1 & 2 群已满，我们新建了 3 群。已入群的朋友请不要重复加群。",
+                                content = "所有 QQ 群人数都已经达到上限了，不管你之前是否加过群，都可以加一下频道，感谢你的支持！",
                                 accept = { Text("加入") },
                                 onAccept = {
-                                    openExternalUrl("https://qm.qq.com/q/AaCml6Un4G")
+                                    openExternalUrl("https://pd.qq.com/s/7l31fn0yt?b=9")
                                 },
                                 dismiss = { Text("关闭") },
                                 onDismiss = {
