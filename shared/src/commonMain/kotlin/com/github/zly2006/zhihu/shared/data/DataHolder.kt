@@ -666,7 +666,7 @@ object DataHolder {
         val isAuthor: Boolean = false,
 //         val canLike: Boolean,
 //         val canDislike: Boolean,
-//         val canDelete: Boolean,
+        val canDelete: Boolean = false,
 //         val canReply: Boolean,
 //         val canHot: Boolean,
 //         val canAuthorTop: Boolean,
