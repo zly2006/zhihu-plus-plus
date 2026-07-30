@@ -72,3 +72,8 @@ data class OnlineHistoryExtra(
     val readTime: Long,
     val questionToken: String,
 )
+
+internal data class OnlineHistoryDeletePair(
+    val contentToken: String,
+    val contentType: String,
+)

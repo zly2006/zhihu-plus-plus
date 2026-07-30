@@ -104,6 +104,7 @@ fun FeedCard(
     onBlockQuestionAuthor: ((FeedDisplayItem) -> Unit)? = null,
     onBlockByKeywords: ((FeedDisplayItem) -> Unit)? = null,
     onBlockTopic: ((topicId: String, topicName: String) -> Unit)? = null,
+    onDelete: ((FeedDisplayItem) -> Unit)? = null,
     showSourceLabel: Boolean = false,
     /**
      * 默认点击行为：优先跳转到信息流条目的详情页；如果只能识别为外链则打开外链，否则提示暂不支持。
@@ -165,6 +166,7 @@ fun FeedCard(
                     onBlockQuestionAuthor = onBlockQuestionAuthor,
                     onBlockByKeywords = if (isLiteVariant) null else onBlockByKeywords,
                     onBlockTopic = onBlockTopic,
+                    onDelete = onDelete,
                     duo3CardLayout = duo3CardLayout,
                     duo3CardLargeTitle = duo3CardLargeTitle,
                     showSourceLabel = showSourceLabel,
@@ -216,6 +218,7 @@ fun FeedCard(
                         onBlockQuestionAuthor = onBlockQuestionAuthor,
                         onBlockByKeywords = if (isLiteVariant) null else onBlockByKeywords,
                         onBlockTopic = onBlockTopic,
+                        onDelete = onDelete,
                         duo3CardLayout = duo3CardLayout,
                         duo3CardLargeTitle = duo3CardLargeTitle,
                         showSourceLabel = showSourceLabel,
@@ -241,6 +244,7 @@ private fun FeedCardMenuBox(
     onBlockQuestionAuthor: ((FeedDisplayItem) -> Unit)?,
     onBlockByKeywords: ((FeedDisplayItem) -> Unit)?,
     onBlockTopic: ((topicId: String, topicName: String) -> Unit)?,
+    onDelete: ((FeedDisplayItem) -> Unit)?,
     navigator: Navigator,
 ) {
     Box {
@@ -307,6 +311,15 @@ private fun FeedCardMenuBox(
                     )
                 }
             }
+            if (onDelete != null) {
+                DropdownMenuItem(
+                    text = { Text("删除") },
+                    onClick = {
+                        onShowMenuChange(false)
+                        onDelete(item)
+                    },
+                )
+            }
             DropdownMenuItem(
                 text = { Text("外观设置") },
                 onClick = {
@@ -345,6 +358,7 @@ private fun FeedCardContent(
     onBlockQuestionAuthor: ((FeedDisplayItem) -> Unit)?,
     onBlockByKeywords: ((FeedDisplayItem) -> Unit)?,
     onBlockTopic: ((topicId: String, topicName: String) -> Unit)?,
+    onDelete: ((FeedDisplayItem) -> Unit)?,
     duo3CardLayout: Boolean,
     duo3CardLargeTitle: Boolean,
     showSourceLabel: Boolean,
@@ -456,7 +470,7 @@ private fun FeedCardContent(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
                         )
-                        FeedCardMenuBox(item, showMenu, onShowMenuChange, onBlockUser, onBlockQuestionAuthor, onBlockByKeywords, onBlockTopic, navigator)
+                        FeedCardMenuBox(item, showMenu, onShowMenuChange, onBlockUser, onBlockQuestionAuthor, onBlockByKeywords, onBlockTopic, onDelete, navigator)
                     }
                 }
             }
@@ -534,7 +548,7 @@ private fun FeedCardContent(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.weight(1f),
                         )
-                        FeedCardMenuBox(item, showMenu, onShowMenuChange, onBlockUser, onBlockQuestionAuthor, onBlockByKeywords, onBlockTopic, navigator)
+                        FeedCardMenuBox(item, showMenu, onShowMenuChange, onBlockUser, onBlockQuestionAuthor, onBlockByKeywords, onBlockTopic, onDelete, navigator)
                     }
                 }
             }
