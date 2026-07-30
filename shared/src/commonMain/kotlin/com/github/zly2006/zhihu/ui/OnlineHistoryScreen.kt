@@ -182,6 +182,7 @@ fun OnlineHistoryScreen(
                 listState = listState,
                 onLoadMore = { viewModel.loadMore(paginationEnvironment) },
                 isEnd = { viewModel.isEnd },
+                key = { item -> item.stableKey },
             ) { item ->
                 FeedCard(
                     item,
