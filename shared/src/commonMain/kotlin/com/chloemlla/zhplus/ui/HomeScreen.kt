@@ -404,7 +404,135 @@ fun HomeScreen(
                                             BadgedBox(
                                                 badge = {
                                                     if (showUnreadBadge && unreadCount > 0) {
-                                                        Badge { …1733 tokens truncated…       AnnouncementCard(
+                                                        Badge { }
+                                                    }
+                                                },
+                                            ) {
+                                                val avatarUrl = account.avatarUrl
+                                                if (avatarUrl != null) {
+                                                    AsyncImage(
+                                                        model = avatarUrl,
+                                                        contentDescription = "账号",
+                                                        contentScale = ContentScale.Crop,
+                                                        modifier = Modifier
+                                                            .size(40.dp)
+                                                            .border(
+                                                                0.5.dp,
+                                                                MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
+                                                                CircleShape,
+                                                            ).clip(CircleShape),
+                                                    )
+                                                } else {
+                                                    Icon(
+                                                        Icons.Default.AccountCircle,
+                                                        contentDescription = "账号",
+                                                        tint = MaterialTheme.colorScheme.onSurface,
+                                                        modifier = Modifier.size(40.dp),
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    Surface(shadowElevation = 4.dp) {
+                        Row(
+                            modifier = Modifier
+                                .testTag(HOME_TOP_ACTIONS_TAG)
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Surface(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(36.dp)
+                                    .testTag(HOME_SEARCH_BUTTON_TAG),
+                                shape = RoundedCornerShape(24.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                onClick = {
+                                    navigator.onNavigate(
+                                        Search(query = ""),
+                                    )
+                                },
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Icon(
+                                        Icons.Default.Search,
+                                        contentDescription = "搜索",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        text = "搜索内容",
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            IconButton(
+                                onClick = { navigator.onNavigate(Notification) },
+                                modifier = Modifier.testTag(HOME_NOTIFICATION_BUTTON_TAG),
+                            ) {
+                                BadgedBox(
+                                    badge = {
+                                        if (showUnreadBadge && unreadCount > 0) {
+                                            Badge { Text("$unreadCount") }
+                                        }
+                                    },
+                                ) {
+                                    Icon(
+                                        Icons.Default.Notifications,
+                                        contentDescription = "通知",
+                                        tint = MaterialTheme.colorScheme.onSurface,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+        ) { scaffoldPadding ->
+            if (duo3HomeAccount && showAccountBottomSheet) {
+                MyModalBottomSheet(
+                    onDismissRequest = { showAccountBottomSheet = false },
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                ) {
+                    AccountSettingScreen(
+                        innerPadding = PaddingValues(0.dp),
+                        unreadCount = unreadCount,
+                        showUnreadBadge = showUnreadBadge,
+                        onDismissRequest = { showAccountBottomSheet = false },
+                    )
+                }
+            }
+
+            FeedPullToRefresh(viewModel, PaddingValues(top = scaffoldPadding.calculateTopPadding())) {
+                PaginatedList(
+                    items = viewModel.displayItems,
+                    listState = listState,
+                    modifier = Modifier.testTag(HOME_FEED_LIST_TAG),
+                    contentPadding = PaddingValues(
+                        top = scaffoldPadding.calculateTopPadding() + 8.dp,
+                        bottom = innerPadding.calculateBottomPadding(),
+                    ),
+                    onLoadMore = { viewModel.loadMore(paginationEnvironment) },
+                    footer = ProgressIndicatorFooter,
+                    key = { item -> item.stableKey },
+                    topContent = {
+                        item {
+                            val availableUpdate = updateAnnouncement
+
+                            AnnouncementCard(
                                 visible = availableUpdate != null && dismissedUpdateVersion != availableUpdate.version,
                                 title = "发现新版本：${availableUpdate?.version}${if (availableUpdate?.isNightly == true) " (Nightly)" else ""}",
                                 leadingIcon = { Icon(Icons.Default.ArrowCircleUp, contentDescription = null) },

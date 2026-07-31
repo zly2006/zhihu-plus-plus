@@ -400,7 +400,69 @@ class CommentScreenInstrumentedTest {
             } else {
                 androidx.compose.material3.Text(
                     text = "外部页面",
-                    m…737 tokens truncated…UnmergedTree = true).assertIsDisplayed()
+                    modifier = Modifier.testTag("external_page"),
+                )
+            }
+        }
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag("comment_child_button_root-99").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("comment_child_button_root-99").performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(COMMENT_SCREEN_LIST_TAG).fetchSemanticsNodes().size == 2
+        }
+        composeRule
+            .onAllNodesWithTag(COMMENT_SCREEN_LIST_TAG)[1]
+            .performScrollToNode(hasTestTag("comment_row_child-20"))
+        composeRule.onNodeWithTag("comment_row_child-20").assertIsDisplayed()
+        composeRule.onNodeWithTag("comment_author_child-20").performClick()
+        composeRule.onNodeWithTag("external_page").assertIsDisplayed()
+
+        composeRule.runOnIdle { showCommentHost.value = true }
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            composeRule.onAllNodesWithTag(COMMENT_SCREEN_LIST_TAG).fetchSemanticsNodes().size == 2
+        }
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            runCatching {
+                composeRule.onNodeWithTag("comment_row_child-20").assertIsDisplayed()
+            }.isSuccess
+        }
+        composeRule.onNodeWithTag("comment_row_child-20").assertIsDisplayed()
+    }
+
+    @Test
+    fun commentImageMenuSupportsCancelAndAllStableOfflineActions() {
+        /*
+         * Expected behavior:
+         * 1. Long-pressing the seeded comment image should always open the stable context menu.
+         * 2. Pressing system back while the menu is open should dismiss only the menu, which is the
+         *    cancel path available in this offline seam.
+         * 3. Reopening the menu and choosing each action should invoke the injected image handler in
+         *    deterministic order instead of starting real dialogs, intents, or storage writes.
+         */
+        val imageActions = mutableListOf<CommentImageMenuAction>()
+        val viewModel = seedRootCommentViewModel(seedRootComments(count = 4))
+
+        setCommentScreen(
+            testOverrides = CommentScreenTestOverrides(
+                viewModel = viewModel,
+                onImageMenuAction = { action, _ -> imageActions += action },
+            ),
+        )
+
+        composeRule
+            .onNodeWithTag(COMMENT_SCREEN_LIST_TAG)
+            .performScrollToNode(hasTestTag("comment_image_root-1"))
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            runCatching {
+                composeRule.onNodeWithTag("comment_image_root-1", useUnmergedTree = true).assertIsDisplayed()
+            }.isSuccess
+        }
+        composeRule
+            .onNodeWithTag("comment_image_root-1", useUnmergedTree = true)
+            .performSemanticsAction(SemanticsActions.OnLongClick)
+        composeRule.onNodeWithTag(COMMENT_IMAGE_MENU_OPEN_TAG, useUnmergedTree = true).assertIsDisplayed()
         composeRule.onNodeWithTag(COMMENT_IMAGE_MENU_BROWSER_TAG, useUnmergedTree = true).assertIsDisplayed()
         composeRule.onNodeWithTag(COMMENT_IMAGE_MENU_SAVE_TAG, useUnmergedTree = true).assertIsDisplayed()
         composeRule.onNodeWithTag(COMMENT_IMAGE_MENU_SHARE_TAG, useUnmergedTree = true).assertIsDisplayed()

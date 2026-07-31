@@ -454,7 +454,128 @@ class ArticleScreenInstrumentedTest {
             assertTrue(getTextLayoutResult(results))
             highlightCenter = results
                 .single()
-                .getBoundingBox(FORMATTED_HIGHLIGHT_PREFIX.length)…1167 tokens truncated…arkdown =
+                .getBoundingBox(FORMATTED_HIGHLIGHT_PREFIX.length)
+                .center
+        }
+        paragraph.performTouchInput { click(highlightCenter) }
+
+        composeRule.onNodeWithText("划线片段").assertIsDisplayed()
+        composeRule.onNodeWithText("“$FORMATTED_HIGHLIGHT”").assertIsDisplayed()
+    }
+
+    @Test
+    fun highlightedParagraphTapOpensActionsInsideAnswerScreen() {
+        val viewModel = seededAnswerViewModel(ANSWER)
+        composeRule.activity.runOnUiThread {
+            viewModel.content = HIGHLIGHTED_PARAGRAPH_HTML
+        }
+        composeRule.setScreenContent {
+            Scaffold(
+                modifier = androidx.compose.ui.Modifier
+                    .fillMaxSize(),
+            ) { _ ->
+                ArticleScreen(
+                    article = ANSWER,
+                    viewModel = viewModel,
+                )
+            }
+        }
+
+        composeRule
+            .onNodeWithText(HIGHLIGHTED_PARAGRAPH)
+            .performTouchInput { click() }
+        composeRule.onNodeWithText("划线片段").assertIsDisplayed()
+        composeRule.onNodeWithText("“$HIGHLIGHTED_PARAGRAPH”").assertIsDisplayed()
+    }
+
+    @Test
+    fun highlightedParagraphDragDoesNotOpenActions() {
+        composeRule.setScreenContent {
+            RenderMarkdown(
+                html = HIGHLIGHTED_PARAGRAPH_HTML,
+                enableScroll = false,
+            )
+        }
+
+        composeRule
+            .onNodeWithText(HIGHLIGHTED_PARAGRAPH)
+            .performTouchInput {
+                down(center)
+                moveBy(Offset(0f, -100f))
+                up()
+            }
+        composeRule.onNodeWithText("划线片段").assertDoesNotExist()
+    }
+
+    @OptIn(ExperimentalFoundationApi::class)
+    @Test
+    fun selectAllHighlightsEveryVisualLineOfLongParagraph() {
+        val previousContextMenuFlag = ComposeFoundationFlags.isNewContextMenuEnabled
+        ComposeFoundationFlags.isNewContextMenuEnabled = false
+        try {
+            val textToolbar = CapturingTextToolbar()
+            val selectionColor = Color.Magenta
+            val paragraph = "长段落的选中背景必须跟随真实换行，".repeat(12)
+            composeRule.setScreenContent {
+                CompositionLocalProvider(
+                    LocalTextToolbar provides textToolbar,
+                    LocalTextSelectionColors provides TextSelectionColors(
+                        handleColor = selectionColor,
+                        backgroundColor = selectionColor,
+                    ),
+                ) {
+                    RenderMarkdownText(
+                        markdown = paragraph,
+                        modifier = androidx.compose.ui.Modifier
+                            .width(240.dp)
+                            .testTag("multiline-selection-article"),
+                        enableScroll = false,
+                    )
+                }
+            }
+
+            composeRule
+                .onNodeWithText("长段落的选中背景", substring = true)
+                .performTouchInput { longClick() }
+            composeRule.runOnIdle {
+                requireNotNull(textToolbar.onSelectAllRequested).invoke()
+            }
+
+            val pixels = composeRule
+                .onNodeWithTag("multiline-selection-article")
+                .captureToImage()
+                .toPixelMap()
+            val highlightedRows = (0 until pixels.height).count { y ->
+                var selectedPixels = 0
+                for (x in 0 until pixels.width) {
+                    val color = pixels[x, y]
+                    if (color.red > 0.9f && color.green < 0.1f && color.blue > 0.9f) {
+                        selectedPixels++
+                    }
+                }
+                selectedPixels >= 100
+            }
+            Log.i("MarkdownSelection", "multilineSelectionHighlightedRows=$highlightedRows")
+            assertTrue(
+                "Select-all highlight only covered $highlightedRows pixel rows; a wrapped paragraph must highlight every line",
+                highlightedRows >= 180,
+            )
+        } finally {
+            ComposeFoundationFlags.isNewContextMenuEnabled = previousContextMenuFlag
+        }
+    }
+
+    @OptIn(ExperimentalFoundationApi::class)
+    @Test
+    fun draggingSelectionHandleUsesSameCompleteTextLayer() {
+        val previousContextMenuFlag = ComposeFoundationFlags.isNewContextMenuEnabled
+        ComposeFoundationFlags.isNewContextMenuEnabled = false
+        try {
+            val textToolbar = CapturingTextToolbar()
+            composeRule.setScreenContent {
+                CompositionLocalProvider(LocalTextToolbar provides textToolbar) {
+                    RenderMarkdownText(
+                        markdown =
                             """
                             起始段落从这里开始拖动。
 
