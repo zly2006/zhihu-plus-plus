@@ -77,7 +77,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import com.fleeksoft.ksoup.Ksoup
 import com.chloemlla.zhplus.navigation.LocalNavigator
 import com.chloemlla.zhplus.navigation.resolveContent
 import com.chloemlla.zhplus.shared.data.DailySection
@@ -87,6 +86,7 @@ import com.chloemlla.zhplus.shared.ui.topLevelReselectAction
 import com.chloemlla.zhplus.shared.util.formatDailyDate
 import com.chloemlla.zhplus.shared.util.twoDigitString
 import com.chloemlla.zhplus.shared.viewmodel.DailyViewModel
+import com.fleeksoft.ksoup.Ksoup
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import kotlinx.coroutines.Dispatchers

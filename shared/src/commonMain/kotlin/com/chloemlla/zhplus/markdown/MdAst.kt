@@ -17,12 +17,12 @@
 
 package com.chloemlla.zhplus.markdown
 
-import com.fleeksoft.ksoup.Ksoup
-import com.fleeksoft.ksoup.nodes.Element
-import com.fleeksoft.ksoup.nodes.TextNode
 import com.chloemlla.zhplus.navigation.Video
 import com.chloemlla.zhplus.navigation.resolveContent
 import com.chloemlla.zhplus.shared.util.extractImageUrl
+import com.fleeksoft.ksoup.Ksoup
+import com.fleeksoft.ksoup.nodes.Element
+import com.fleeksoft.ksoup.nodes.TextNode
 import com.hrm.markdown.parser.LineRange
 import com.hrm.markdown.parser.MarkdownParser
 import com.hrm.markdown.parser.ast.BlockQuote

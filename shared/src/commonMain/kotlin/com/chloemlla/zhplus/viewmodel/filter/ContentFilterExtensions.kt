@@ -17,7 +17,6 @@
 
 package com.chloemlla.zhplus.viewmodel.filter
 
-import com.fleeksoft.ksoup.Ksoup
 import com.chloemlla.zhplus.navigation.Article
 import com.chloemlla.zhplus.navigation.NavDestination
 import com.chloemlla.zhplus.navigation.Pin
@@ -29,6 +28,7 @@ import com.chloemlla.zhplus.shared.data.questionAuthor
 import com.chloemlla.zhplus.shared.data.target
 import com.chloemlla.zhplus.shared.filter.ContentOpenEventSupport
 import com.chloemlla.zhplus.shared.platform.SettingsStore
+import com.fleeksoft.ksoup.Ksoup
 import kotlinx.serialization.json.Json
 
 class ForegroundReadFilterPipeline(
