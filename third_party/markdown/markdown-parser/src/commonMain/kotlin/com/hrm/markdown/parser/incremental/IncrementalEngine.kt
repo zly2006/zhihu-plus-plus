@@ -738,6 +738,9 @@ class IncrementalEngine(
                 for (child in node.children) appendNodeText(child, sb)
                 sb.append("==")
             }
+            is SegmentHighlight -> {
+                for (child in node.children) appendNodeText(child, sb)
+            }
             is Link -> {
                 sb.append("[")
                 for (child in node.children) appendNodeText(child, sb)

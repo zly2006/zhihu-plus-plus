@@ -35,6 +35,7 @@ import com.chloemlla.zhplus.shared.aigc.AigcVoteVoter
 import com.chloemlla.zhplus.shared.data.DataHolder
 import com.chloemlla.zhplus.shared.data.Feed
 import com.chloemlla.zhplus.shared.data.FeedDisplayItem
+import com.chloemlla.zhplus.shared.data.OnlineHistoryDeletePair
 import com.chloemlla.zhplus.shared.data.ZhihuJson.decodeJson
 import com.chloemlla.zhplus.shared.data.ZhihuPaging
 import com.chloemlla.zhplus.shared.data.fetchZhihuAuthenticatedJson
@@ -54,6 +55,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpMethod
 import io.ktor.http.URLProtocol
 import io.ktor.http.contentType
+import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Job
@@ -308,6 +310,29 @@ suspend fun ZhihuApiEnvironment.addReadHistory(
     }
 }
 
+internal suspend fun ZhihuApiEnvironment.deleteOnlineHistoryItem(item: OnlineHistoryDeletePair) {
+    val response = postSigned("https://api.zhihu.com/read_history/batch_del") {
+        contentType(ContentType.Application.Json)
+        setBody(
+            buildJsonObject {
+                put(
+                    "pairs",
+                    JsonArray(
+                        listOf(
+                            buildJsonObject {
+                                put("content_token", item.contentToken)
+                                put("content_type", item.contentType)
+                            },
+                        ),
+                    ),
+                )
+                put("clear", false)
+            }.toString(),
+        )
+    }
+    check(response.status.isSuccess()) { "删除在线历史记录失败: ${response.status}" }
+}
+
 suspend fun ZhihuApiEnvironment.postSigned(
     url: String,
     block: HttpRequestBuilder.() -> Unit = {},
@@ -381,9 +406,18 @@ interface AigcVoteEnvironment {
 interface ContentBlocklistEnvironment {
     suspend fun isUserBlocked(userId: String): Boolean = false
 
+    suspend fun isQuestionAuthorBlocked(userId: String): Boolean = false
+
     fun blockedUserIds(): Set<String> = emptySet()
 
     suspend fun addBlockedUser(
+        userId: String,
+        userName: String,
+        urlToken: String? = null,
+        avatarUrl: String? = null,
+    ) = Unit
+
+    suspend fun addBlockedQuestionAuthor(
         userId: String,
         userName: String,
         urlToken: String? = null,
@@ -396,6 +430,8 @@ interface ContentBlocklistEnvironment {
     ) = Unit
 
     suspend fun removeBlockedUser(userId: String) = Unit
+
+    suspend fun removeBlockedQuestionAuthor(userId: String) = Unit
 }
 
 interface LocalRecommendationEnvironment : ZhihuApiEnvironment {

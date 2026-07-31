@@ -17,15 +17,12 @@
 
 package com.chloemlla.zhplus.markdown
 
-import com.chloemlla.zhplus.navigation.Video
-import com.chloemlla.zhplus.navigation.resolveContent
-import com.chloemlla.zhplus.shared.util.extractImageUrl
-import com.chloemlla.zhplus.shared.util.parseSegmentTextParagraph
-import com.chloemlla.zhplus.ui.components.SegmentedText
-import com.chloemlla.zhplus.ui.components.segmentedTextStyle
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Element
 import com.fleeksoft.ksoup.nodes.TextNode
+import com.chloemlla.zhplus.navigation.Video
+import com.chloemlla.zhplus.navigation.resolveContent
+import com.chloemlla.zhplus.shared.util.extractImageUrl
 import com.hrm.markdown.parser.LineRange
 import com.hrm.markdown.parser.MarkdownParser
 import com.hrm.markdown.parser.ast.BlockQuote
@@ -49,6 +46,7 @@ import com.hrm.markdown.parser.ast.ListItem
 import com.hrm.markdown.parser.ast.MathBlock
 import com.hrm.markdown.parser.ast.NativeBlock
 import com.hrm.markdown.parser.ast.Paragraph
+import com.hrm.markdown.parser.ast.SegmentHighlight
 import com.hrm.markdown.parser.ast.Strikethrough
 import com.hrm.markdown.parser.ast.StrongEmphasis
 import com.hrm.markdown.parser.ast.Subscript
@@ -242,25 +240,12 @@ private fun convertElementToBlock(
                 ?.let { formula -> listOf(MathBlock(formula)) }
                 ?: listOfNotNull(createBlockImage(image))
         } else {
-            if (!noNativeBlock && element.selectFirst("span.highlight-wrap") != null) {
-                // 含有知乎的划线高亮结构，需要单独处理
-                // TODO: 暂不考虑其他可能的结构，直接尝试解析整个段落为SegmentedTextParagraph
-                parseSegmentTextParagraph(element)?.let { paragraph ->
-                    return listOf(
-                        NativeBlock {
-                            SegmentedText(
-                                parts = paragraph.parts,
-                                style = segmentedTextStyle(),
-                            )
-                        },
-                    )
-                }
-            }
             // 特殊处理<p>里面包含的MathBlock
             val list = mutableListOf<MarkdownNode>()
 
             fun paragraph(): Paragraph = list.lastOrNull() as? Paragraph ?: Paragraph().also { list.add(it) }
-            extractInlineChildren(element).forEach {
+            val segmentHighlightsEnabled = element.childNodes().all(HtmlNode::supportsSegmentHighlightFormat)
+            extractInlineChildren(element, segmentHighlightsEnabled).forEach {
                 if (it is MathBlock) {
                     list.add(it)
                 } else {
@@ -388,6 +373,10 @@ private fun createBlockImage(element: Element): MarkdownNode? {
     return Figure(
         imageUrl = src,
         caption = caption,
+        imageWidth = element.attr("data-rawwidth").toIntOrNull()
+            ?: element.attr("width").toIntOrNull(),
+        imageHeight = element.attr("data-rawheight").toIntOrNull()
+            ?: element.attr("height").toIntOrNull(),
     )
 }
 
@@ -398,8 +387,10 @@ private fun createFigureBlock(element: Element): MarkdownNode? {
         return Figure(
             imageUrl = src,
             caption = caption,
-            imageWidth = image.attr("width").toIntOrNull(),
-            imageHeight = image.attr("height").toIntOrNull(),
+            imageWidth = image.attr("data-rawwidth").toIntOrNull()
+                ?: image.attr("width").toIntOrNull(),
+            imageHeight = image.attr("data-rawheight").toIntOrNull()
+                ?: image.attr("height").toIntOrNull(),
         )
     }
 
@@ -505,7 +496,10 @@ private fun Element.toAlignment(): Table.Alignment = when (attr("align").lowerca
     else -> Table.Alignment.NONE
 }
 
-private fun extractInlineChildren(element: Element): List<MarkdownNode> {
+private fun extractInlineChildren(
+    element: Element,
+    segmentHighlightsEnabled: Boolean = true,
+): List<MarkdownNode> {
     val childNodes = element.childNodes()
     return childNodes.flatMapIndexed { index, child ->
         if (child is TextNode && child.text().isBlank()) {
@@ -515,7 +509,7 @@ private fun extractInlineChildren(element: Element): List<MarkdownNode> {
                 emptyList()
             }
         } else {
-            extractInlineNode(child)
+            extractInlineNode(child, segmentHighlightsEnabled)
         }
     }
 }
@@ -530,6 +524,16 @@ private fun HtmlNode.hasInlineContent(): Boolean = when (this) {
     else -> false
 }
 
+private fun HtmlNode.supportsSegmentHighlightFormat(): Boolean = when (this) {
+    is TextNode -> true
+    is Element -> {
+        val supportedTag = tagName().lowercase() in SEGMENT_HIGHLIGHT_FORMAT_TAGS ||
+            (tagName().equals("span", ignoreCase = true) && hasClass("highlight-wrap"))
+        supportedTag && childNodes().all(HtmlNode::supportsSegmentHighlightFormat)
+    }
+    else -> false
+}
+
 private fun extractEquationTex(imgElement: Element): String? = extractImageUrl(imgElement::attr)
     ?.takeIf { it.startsWith(ZHIHU_EQUATION_URL_PREFIX) }
     ?.let { Url(it).parameters["tex"].orEmpty() }
@@ -540,7 +544,10 @@ private fun extractEquationTex(imgElement: Element): String? = extractImageUrl(i
  *
  * > 注意：由于知乎的bug，MathBlock在<p>里面。
  */
-private fun extractInlineNode(node: HtmlNode): List<MarkdownNode> = when (node) {
+private fun extractInlineNode(
+    node: HtmlNode,
+    segmentHighlightsEnabled: Boolean = true,
+): List<MarkdownNode> = when (node) {
     is TextNode -> {
         val text = node.text()
         if (text.isBlank()) {
@@ -553,17 +560,38 @@ private fun extractInlineNode(node: HtmlNode): List<MarkdownNode> = when (node) 
     }
 
     is Element -> when (node.tagName().lowercase()) {
-        "strong", "b" -> listOf(StrongEmphasis().apply { appendChildren(extractInlineChildren(node)) })
+        "strong", "b" -> listOf(
+            StrongEmphasis().apply { appendChildren(extractInlineChildren(node, segmentHighlightsEnabled)) },
+        )
 
-        "em", "i" -> listOf(Emphasis().apply { appendChildren(extractInlineChildren(node)) })
+        "em", "i" -> listOf(
+            Emphasis().apply { appendChildren(extractInlineChildren(node, segmentHighlightsEnabled)) },
+        )
 
-        "del", "s", "strike" -> listOf(Strikethrough().apply { appendChildren(extractInlineChildren(node)) })
+        "del", "s", "strike" -> listOf(
+            Strikethrough().apply { appendChildren(extractInlineChildren(node, segmentHighlightsEnabled)) },
+        )
 
-        "mark" -> listOf(Highlight().apply { appendChildren(extractInlineChildren(node)) })
+        "mark" -> listOf(Highlight().apply { appendChildren(extractInlineChildren(node, segmentHighlightsEnabled)) })
 
-        "span" -> extractInlineChildren(node)
+        "span" -> {
+            if (segmentHighlightsEnabled && node.hasClass("highlight-wrap")) {
+                listOf(
+                    SegmentHighlight(
+                        text = node.text(),
+                        attributes = SEGMENT_HIGHLIGHT_ATTRIBUTES
+                            .associateWith(node::attr)
+                            .filterValues(String::isNotEmpty),
+                    ).apply {
+                        appendChildren(extractInlineChildren(node, segmentHighlightsEnabled))
+                    },
+                )
+            } else {
+                extractInlineChildren(node, segmentHighlightsEnabled)
+            }
+        }
 
-        "sub" -> listOf(Subscript().apply { appendChildren(extractInlineChildren(node)) })
+        "sub" -> listOf(Subscript().apply { appendChildren(extractInlineChildren(node, segmentHighlightsEnabled)) })
 
         "sup" -> {
             if (node.attr("data-draft-type") == "reference") {
@@ -585,7 +613,7 @@ private fun extractInlineNode(node: HtmlNode): List<MarkdownNode> = when (node) 
                 }
                 listOf(FootnoteReference(index.toString(), index))
             } else {
-                listOf(Superscript().apply { appendChildren(extractInlineChildren(node)) })
+                listOf(Superscript().apply { appendChildren(extractInlineChildren(node, segmentHighlightsEnabled)) })
             }
         }
 
@@ -598,7 +626,7 @@ private fun extractInlineNode(node: HtmlNode): List<MarkdownNode> = when (node) 
             listOf(
                 Link(destination = normalizeLinkDestination(href)).apply {
                     appendChildren(
-                        extractInlineChildren(node).ifEmpty {
+                        extractInlineChildren(node, segmentHighlightsEnabled).ifEmpty {
                             listOf(
                                 Text(node.text()),
                             )
@@ -640,7 +668,7 @@ private fun extractInlineNode(node: HtmlNode): List<MarkdownNode> = when (node) 
         }
 
         else -> {
-            val children = extractInlineChildren(node)
+            val children = extractInlineChildren(node, segmentHighlightsEnabled)
             if (children.isNotEmpty()) {
                 children
             } else {
@@ -669,6 +697,23 @@ private fun normalizeLinkDestination(href: String): String =
 private fun ContainerNode.appendChildren(children: List<MarkdownNode>) {
     children.forEach(::appendChild)
 }
+
+private val SEGMENT_HIGHLIGHT_ATTRIBUTES = listOf(
+    "data-highlight-id",
+    "data-highlight-like-count",
+    "data-highlight-comment-count",
+    "data-highlight-my-comment-count",
+    "data-highlight-is-like",
+    "data-highlight-is-span",
+    "data-highlight-source-url",
+    "data-highlight-content-id",
+    "data-highlight-content-type",
+    "data-highlight-pid",
+    "data-highlight-start-offset",
+    "data-highlight-end-offset",
+)
+
+private val SEGMENT_HIGHLIGHT_FORMAT_TAGS = setOf("b", "strong", "i", "em")
 
 /**
  * 把知乎回答的 HTML（DataHolder.Answer.content / editableContent）转换成 Markdown，

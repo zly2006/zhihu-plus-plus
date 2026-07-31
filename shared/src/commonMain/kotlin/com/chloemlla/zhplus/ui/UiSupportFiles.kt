@@ -32,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import com.fleeksoft.ksoup.Ksoup
 import com.chloemlla.zhplus.markdown.RenderMarkdown
 import com.chloemlla.zhplus.navigation.AnswerNavigator
 import com.chloemlla.zhplus.navigation.Article
@@ -41,6 +42,8 @@ import com.chloemlla.zhplus.navigation.Pin
 import com.chloemlla.zhplus.navigation.Question
 import com.chloemlla.zhplus.navigation.TopLevelDestination
 import com.chloemlla.zhplus.shared.data.DataHolder
+import com.chloemlla.zhplus.shared.data.FeedDisplayItem
+import com.chloemlla.zhplus.shared.data.RecommendationMode
 import com.chloemlla.zhplus.shared.filter.ContentOpenFrom
 import com.chloemlla.zhplus.shared.platform.SettingsStore
 import com.chloemlla.zhplus.shared.platform.UserMessageSink
@@ -53,7 +56,6 @@ import com.chloemlla.zhplus.ui.components.normalizedAnswerSwitchSensitivity
 import com.chloemlla.zhplus.viewmodel.ArticleViewModel.CachedAnswerContent
 import com.chloemlla.zhplus.viewmodel.ZhihuApiEnvironment
 import com.chloemlla.zhplus.viewmodel.getOrFetchContentDetail
-import com.fleeksoft.ksoup.Ksoup
 import io.ktor.client.HttpClient
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.booleanOrNull
@@ -436,7 +438,6 @@ enum class TtsState(
  */
 data class ZhihuMainPreferenceSnapshot(
     val duo3HomeAccount: Boolean,
-    val duo3NavStyle: Boolean,
     val tapToScrollToTopEnabled: Boolean,
     val autoHideBottomBar: Boolean,
     val selectedBottomBarItemKeys: List<String>,
@@ -455,7 +456,6 @@ class ZhihuMainPreferenceState(
     private var snapshot by mutableStateOf(readSnapshot())
 
     val duo3HomeAccount: Boolean get() = snapshot.duo3HomeAccount
-    val duo3NavStyle: Boolean get() = snapshot.duo3NavStyle
     val tapToScrollToTopEnabled: Boolean get() = snapshot.tapToScrollToTopEnabled
     val autoHideBottomBar: Boolean get() = snapshot.autoHideBottomBar
     val selectedBottomBarItemKeys: List<String> get() = snapshot.selectedBottomBarItemKeys
@@ -547,6 +547,14 @@ data class HomeUpdateAnnouncement(
 @Composable
 expect fun rememberHomeAccountState(): HomeAccountState
 
+data class HomeFeedStartupCache(
+    val readHomeFeedStartupCache: suspend () -> List<FeedDisplayItem>,
+    val writeHomeFeedStartupCache: suspend (List<FeedDisplayItem>) -> Unit,
+)
+
+@Composable
+expect fun rememberHomeFeedStartupCache(recommendationMode: RecommendationMode): HomeFeedStartupCache
+
 @Composable
 expect fun rememberHomeUpdateAnnouncement(): HomeUpdateAnnouncement?
 
@@ -561,6 +569,14 @@ expect fun rememberHomeLoginRequester(): () -> Unit
 
 @Composable
 expect fun rememberCommentEmojiInlineContent(emojiKeys: Set<String>): Map<String, InlineTextContent>
+
+data class CommentEmoji(
+    val placeholder: String,
+    val inlineKey: String,
+)
+
+@Composable
+expect fun rememberCommentEmojis(): List<CommentEmoji>
 
 expect fun commentEmojiInlineKey(placeholder: String): String?
 

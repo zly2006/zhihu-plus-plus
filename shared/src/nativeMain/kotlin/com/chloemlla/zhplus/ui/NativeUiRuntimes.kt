@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import com.chloemlla.zhplus.navigation.Article
 import com.chloemlla.zhplus.navigation.TopLevelDestination
 import com.chloemlla.zhplus.shared.account.IosAccountStore
+import com.chloemlla.zhplus.shared.data.RecommendationMode
 import com.chloemlla.zhplus.shared.notification.NotificationSettingsStore
 import com.chloemlla.zhplus.shared.platform.UserMessageSink
 import com.chloemlla.zhplus.shared.platform.rememberUserMessageSink
@@ -106,6 +107,9 @@ actual fun Modifier.articleMarkdownSelectionWorkaround(): Modifier = this
 @Composable
 actual fun rememberCommentEmojiInlineContent(emojiKeys: Set<String>): Map<String, InlineTextContent> = emptyMap() // TODO: iOS 表情内联内容
 
+@Composable
+actual fun rememberCommentEmojis(): List<CommentEmoji> = emptyList() // TODO: iOS 表情选择
+
 actual fun commentEmojiInlineKey(placeholder: String): String? = null // TODO: iOS 表情内联 key
 
 actual fun Modifier.commentSelectionWorkaround(): Modifier = this
@@ -132,6 +136,15 @@ actual fun rememberHomeLoginRequester(): () -> Unit {
         { userMessages.showMessage("iOS 登录暂未实现") } // TODO: iOS 登录
     }
 }
+
+@Composable
+actual fun rememberHomeFeedStartupCache(recommendationMode: RecommendationMode): HomeFeedStartupCache =
+    remember(recommendationMode) {
+        HomeFeedStartupCache(
+            readHomeFeedStartupCache = { emptyList() }, // TODO: iOS 首页缓存
+            writeHomeFeedStartupCache = { }, // TODO: iOS 首页缓存
+        )
+    }
 
 @Composable
 actual fun rememberAccountSettingsAccountState(): androidx.compose.runtime.State<AccountSettingsAccountState> =

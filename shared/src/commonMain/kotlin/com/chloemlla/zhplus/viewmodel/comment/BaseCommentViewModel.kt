@@ -130,4 +130,47 @@ abstract class BaseCommentViewModel(
             }
         }
     }
+
+    fun deleteComment(
+        commentData: DataHolder.Comment,
+        environment: ZhihuApiEnvironment,
+        onSuccess: () -> Unit,
+        onFailure: (String) -> Unit,
+    ) {
+        if (!commentData.canDelete) {
+            onFailure("当前账号无权删除这条评论")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = environment.deleteSigned(
+                    "https://www.zhihu.com/api/v4/comment_v5/comment/${commentData.id}",
+                )
+                if (response.status.isSuccess()) {
+                    allData
+                        .firstOrNull { it.id == commentData.id }
+                        ?.childComments
+                        ?.forEach { commentsMap.remove(it.id) }
+                    allData.removeAll { it.id == commentData.id }
+                    allData.indices.forEach { index ->
+                        val parent = allData[index]
+                        val remainingChildren = parent.childComments.filterNot { it.id == commentData.id }
+                        if (remainingChildren.size != parent.childComments.size) {
+                            allData[index] = parent.copy(
+                                childComments = remainingChildren,
+                                childCommentCount = (parent.childCommentCount - 1).coerceAtLeast(remainingChildren.size),
+                            )
+                        }
+                    }
+                    commentsMap.remove(commentData.id)
+                    onSuccess()
+                } else {
+                    onFailure("删除失败：${response.status}")
+                }
+            } catch (e: Exception) {
+                onFailure("删除失败：${e.message}")
+            }
+        }
+    }
 }

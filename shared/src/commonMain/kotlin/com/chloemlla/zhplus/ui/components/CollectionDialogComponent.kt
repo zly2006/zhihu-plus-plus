@@ -148,6 +148,7 @@ fun CollectionDialogComponent(
         onDismiss = { showCreateDialog = false },
         onConfirm = { title, description, isPublic ->
             onCreateCollection(title, description, isPublic)
+            showCreateDialog = false
         },
     )
 }

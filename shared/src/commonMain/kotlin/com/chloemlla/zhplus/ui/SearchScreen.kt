@@ -80,8 +80,10 @@ import com.chloemlla.zhplus.shared.platform.SettingsStore
 import com.chloemlla.zhplus.shared.platform.UserMessageDuration
 import com.chloemlla.zhplus.shared.platform.rememberSettingsStore
 import com.chloemlla.zhplus.shared.platform.rememberUserMessageSink
-import com.chloemlla.zhplus.ui.components.BlockUserConfirmDialog
 import com.chloemlla.zhplus.ui.components.DraggableRefreshButton
+import com.chloemlla.zhplus.ui.components.FeedAuthorBlockConfirmDialog
+import com.chloemlla.zhplus.ui.components.FeedAuthorBlockRequest
+import com.chloemlla.zhplus.ui.components.FeedAuthorBlockType
 import com.chloemlla.zhplus.ui.components.FeedCard
 import com.chloemlla.zhplus.ui.components.FeedPullToRefresh
 import com.chloemlla.zhplus.ui.components.PaginatedList
@@ -162,8 +164,7 @@ fun SearchScreen(
     var hotSearchMoreMenuExpanded by remember { mutableStateOf(false) }
     var historyMoreMenuExpanded by remember { mutableStateOf(false) }
     var filterMenuExpanded by remember { mutableStateOf(false) }
-    var showBlockUserDialog by remember { mutableStateOf(false) }
-    var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var feedAuthorBlockRequest by remember { mutableStateOf<FeedAuthorBlockRequest?>(null) }
     val useTestHotSearchQueries = testHotSearchQueries != null
     val showSearchHistory = remember { mutableStateOf(!isMemberSearch && settings.getBoolean("showSearchHistory", true)) }
     val searchHistoryItems = remember {
@@ -567,11 +568,20 @@ fun SearchScreen(
                     ) { item ->
                         FeedCard(
                             item = item,
-                            onBlockUser = { feedItem ->
-                                feedBlockActions.handleBlockUser(viewModel, feedItem) { authorInfo ->
-                                    userToBlock = authorInfo
-                                    showBlockUserDialog = true
-                                }
+                            menuItems = { dismissMenu ->
+                                DropdownMenuItem(
+                                    text = { Text("屏蔽用户") },
+                                    onClick = {
+                                        dismissMenu()
+                                        feedBlockActions.handleBlockUser(viewModel, item) { authorInfo ->
+                                            feedAuthorBlockRequest = FeedAuthorBlockRequest(
+                                                FeedAuthorBlockType.CONTENT_AUTHOR,
+                                                authorInfo.first,
+                                                authorInfo.second,
+                                            )
+                                        }
+                                    },
+                                )
                             },
                         )
                     }
@@ -595,18 +605,13 @@ fun SearchScreen(
         }
     }
 
-    BlockUserConfirmDialog(
-        showDialog = showBlockUserDialog,
-        userToBlock = userToBlock,
+    FeedAuthorBlockConfirmDialog(
+        request = feedAuthorBlockRequest,
         displayItems = viewModel.displayItems,
-        onDismiss = {
-            showBlockUserDialog = false
-            userToBlock = null
-        },
+        onDismiss = { feedAuthorBlockRequest = null },
         onConfirm = {
             viewModel.refresh(paginationEnvironment)
-            showBlockUserDialog = false
-            userToBlock = null
+            feedAuthorBlockRequest = null
         },
     )
 }

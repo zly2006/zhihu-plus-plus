@@ -73,6 +73,7 @@ import com.chloemlla.zhplus.ui.components.LocalSegmentActionSheetHost
 import com.chloemlla.zhplus.ui.components.LocalSegmentCommentHost
 import com.chloemlla.zhplus.ui.components.SegmentActionSheet
 import com.chloemlla.zhplus.ui.components.SegmentActionSheetState
+import com.chloemlla.zhplus.ui.components.SegmentHighlightInteractionHost
 import com.chloemlla.zhplus.ui.subscreens.PREF_BLOCK_SPACING
 import com.chloemlla.zhplus.ui.subscreens.PREF_FONT_SIZE
 import com.chloemlla.zhplus.ui.subscreens.PREF_LINE_HEIGHT
@@ -98,6 +99,14 @@ fun RenderImage(
     val previewUrls = remember(imageUrls, data.url) {
         imageUrls.ifEmpty { listOf(data.url) }
     }
+    val imageWidth = data.width
+    val imageHeight = data.height
+    val imageAspectRatio =
+        if (imageWidth != null && imageHeight != null && imageWidth > 0 && imageHeight > 0) {
+            imageWidth.toFloat() / imageHeight
+        } else {
+            null
+        }
 
     fun openGallery() {
         val initialIndex = previewUrls.indexOf(data.url).takeIf { it >= 0 } ?: 0
@@ -113,7 +122,13 @@ fun RenderImage(
             contentDescription = data.altText,
             modifier = modifier
                 .fillMaxWidth(0.8f)
-                .pointerInput(Unit) {
+                .then(
+                    if (imageAspectRatio != null) {
+                        Modifier.aspectRatio(imageAspectRatio)
+                    } else {
+                        Modifier
+                    },
+                ).pointerInput(Unit) {
                     detectTapGestures(
                         onTap = {
                             openGallery()
@@ -323,36 +338,38 @@ private fun RenderMarkdownDocument(
         },
         LocalSegmentActionSheetHost provides { state -> segmentActionSheetState = state },
     ) {
-        Box(modifier = modifier) {
-            NoDoubleClickSelectionScope {
-                Markdown(
-                    document = document,
-                    imageContent = { data, imageModifier ->
-                        RenderImage(
-                            data = data,
-                            modifier = imageModifier,
-                            imageUrls = previewImageUrls,
-                        )
-                    },
-                    scrollState = scrollState,
-                    enableScroll = enableScroll,
-                    enableSelection = selectable,
-                    deferOffscreenBlocks = deferOffscreenBlocks,
-                    onLinkClick = { url ->
-                        resolveContent(url)?.let { navigator.onNavigate(it) }
-                            ?: openExternalUrl(url)
-                    },
-                    header = header,
-                    footer = footer,
-                    theme = theme,
-                )
+        SegmentHighlightInteractionHost {
+            Box(modifier = modifier) {
+                NoDoubleClickSelectionScope {
+                    Markdown(
+                        document = document,
+                        imageContent = { data, imageModifier ->
+                            RenderImage(
+                                data = data,
+                                modifier = imageModifier,
+                                imageUrls = previewImageUrls,
+                            )
+                        },
+                        scrollState = scrollState,
+                        enableScroll = enableScroll,
+                        enableSelection = selectable,
+                        deferOffscreenBlocks = deferOffscreenBlocks,
+                        onLinkClick = { url ->
+                            resolveContent(url)?.let { navigator.onNavigate(it) }
+                                ?: openExternalUrl(url)
+                        },
+                        header = header,
+                        footer = footer,
+                        theme = theme,
+                    )
+                }
             }
         }
     }
     CommentScreenComponent(
         showComments = segmentCommentTarget != null,
         onDismiss = { segmentCommentTarget = null },
-        content = segmentCommentTarget ?: SegmentCommentHolder("dummy", "dummy", "dummy"),
+        content = segmentCommentTarget ?: SegmentCommentHolder("dummy", "dummy", "dummy", "", "", 0, 0),
     )
     segmentActionSheetState?.let { state ->
         SegmentActionSheet(state)

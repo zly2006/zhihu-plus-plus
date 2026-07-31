@@ -87,6 +87,9 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.chloemlla.zhplus.navigation.Account
@@ -96,6 +99,7 @@ import com.chloemlla.zhplus.navigation.Pin
 import com.chloemlla.zhplus.navigation.Search
 import com.chloemlla.zhplus.navigation.WritePin
 import com.chloemlla.zhplus.shared.aigc.AIGC_MARKING_ENABLED_PREFERENCE_KEY
+import com.chloemlla.zhplus.shared.data.DataHolder
 import com.chloemlla.zhplus.shared.data.Feed
 import com.chloemlla.zhplus.shared.data.RecommendationMode
 import com.chloemlla.zhplus.shared.data.ZHIHU_ME_URL
@@ -106,6 +110,7 @@ import com.chloemlla.zhplus.shared.data.target
 import com.chloemlla.zhplus.shared.notification.rememberNotificationSettingsStore
 import com.chloemlla.zhplus.shared.platform.UserMessageDuration
 import com.chloemlla.zhplus.shared.platform.rememberExternalUrlOpener
+import com.chloemlla.zhplus.shared.platform.rememberIsLiteVariant
 import com.chloemlla.zhplus.shared.platform.rememberSettingsStore
 import com.chloemlla.zhplus.shared.platform.rememberUserMessageSink
 import com.chloemlla.zhplus.shared.ui.TopLevelReselectAction
@@ -114,8 +119,10 @@ import com.chloemlla.zhplus.shared.util.Log
 import com.chloemlla.zhplus.ui.components.AnnouncementCard
 import com.chloemlla.zhplus.ui.components.AnnouncementCardDefaults
 import com.chloemlla.zhplus.ui.components.BlockByKeywordsDialog
-import com.chloemlla.zhplus.ui.components.BlockUserConfirmDialog
 import com.chloemlla.zhplus.ui.components.DraggableRefreshButton
+import com.chloemlla.zhplus.ui.components.FeedAuthorBlockConfirmDialog
+import com.chloemlla.zhplus.ui.components.FeedAuthorBlockRequest
+import com.chloemlla.zhplus.ui.components.FeedAuthorBlockType
 import com.chloemlla.zhplus.ui.components.FeedCard
 import com.chloemlla.zhplus.ui.components.FeedPullToRefresh
 import com.chloemlla.zhplus.ui.components.MyModalBottomSheet
@@ -136,7 +143,7 @@ import kotlinx.serialization.json.Json
 
 const val PREFERENCE_NAME = "com.chloemlla.zhplus_preferences"
 const val ARTICLE_USE_WEBVIEW_PREFERENCE_KEY = "webviewRenderLegacy"
-const val QQ_GROUP_DISMISSED_PREFERENCE_KEY = "dismissQQGroup3"
+const val QQ_GROUP_DISMISSED_PREFERENCE_KEY = "dismiss_QQ_Channel"
 const val AIGC_MARKING_ANNOUNCEMENT_DISMISSED_PREFERENCE_KEY = "dismissAigcMarkingAnnouncement"
 const val HOME_TOP_ACTIONS_TAG = "home_top_actions"
 const val HOME_SEARCH_BUTTON_TAG = "home_search_button"
@@ -150,11 +157,11 @@ const val HOME_ACCOUNT_BUTTON_TAG = "home_account_button"
 const val HOME_FEED_LIST_TAG = "home_feed_list"
 const val HOME_REFRESH_BUTTON_TAG = "home_refresh_button"
 const val HOME_AUTHOR_POLL_ANNOUNCEMENT_TAG = "home_author_poll_announcement"
+private const val MAX_HOME_PIN_ANNOUNCEMENTS = 3
 
 fun homeAuthorPollAnnouncementTag(pinId: Long): String = "$HOME_AUTHOR_POLL_ANNOUNCEMENT_TAG:$pinId"
 
-private fun authorPollAnnouncementDismissedKey(announcement: HomePollAnnouncement): String =
-    "dismissAuthorPollAnnouncement_${announcement.pinId}_${announcement.pollId}"
+fun homePinAnnouncementReadKey(pinId: Long): String = "readHomePinAnnouncement_$pinId"
 
 /**
  * 首页信息流页面。
@@ -175,9 +182,11 @@ fun HomeScreen(
     val notificationSettings = rememberNotificationSettingsStore()
     val userMessages = rememberUserMessageSink()
     val openExternalUrl = rememberExternalUrlOpener()
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     val duo3HomeAccount = settings.getBoolean("duo3_home_account", false)
     val showRefreshFab = settings.getBoolean("showRefreshFab", true)
+    val autoRefreshOnStartup = settings.getBoolean(AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY, true)
     val showUnreadBadge = notificationSettings.getUnreadBadgeEnabled()
     var showAccountBottomSheet by remember { mutableStateOf(false) }
     var showCreateMenu by remember { mutableStateOf(false) }
@@ -192,6 +201,7 @@ fun HomeScreen(
         RecommendationMode.entries.find {
             it.key == settings.getString("recommendationMode", RecommendationMode.MIXED.key)
         } ?: RecommendationMode.MIXED
+    val startupCache = rememberHomeFeedStartupCache(currentRecommendationMode)
 
     val account = rememberHomeAccountState()
     val updateAnnouncement = rememberHomeUpdateAnnouncement()
@@ -199,6 +209,7 @@ fun HomeScreen(
     val isDebuggable = rememberHomeIsDebuggable()
     val requestLogin = rememberHomeLoginRequester()
     val feedBlockActions = rememberFeedBlockActions()
+    val isLiteVariant = rememberIsLiteVariant()
     val viewModel: BaseFeedViewModel = when (currentRecommendationMode) {
         RecommendationMode.WEB -> viewModel { HomeFeedViewModel() }
         RecommendationMode.ANDROID -> viewModel { AndroidHomeFeedViewModel() }
@@ -216,9 +227,7 @@ fun HomeScreen(
     var showAigcMarkingAnnouncement by remember {
         mutableStateOf(!settings.getBoolean(AIGC_MARKING_ANNOUNCEMENT_DISMISSED_PREFERENCE_KEY, false))
     }
-    var authorPollAnnouncements by remember {
-        mutableStateOf(emptyList<HomePollAnnouncement>())
-    }
+    var authorPinAnnouncements by remember { mutableStateOf(emptyList<HomePinAnnouncement>()) }
 
     // 首次启动提示
     var showFilterExplainDialog by remember {
@@ -262,31 +271,51 @@ fun HomeScreen(
         }
     }
 
+    val latestLoadedDisplayItems = viewModel.latestLoadedDisplayItems.value
+    LaunchedEffect(latestLoadedDisplayItems) {
+        if (latestLoadedDisplayItems.isNotEmpty()) {
+            startupCache.writeHomeFeedStartupCache(latestLoadedDisplayItems)
+        }
+    }
+
     // 初始加载
-    LaunchedEffect(currentRecommendationMode, account.isLoggedIn) {
+    LaunchedEffect(currentRecommendationMode, account.isLoggedIn, autoRefreshOnStartup) {
         if (!account.isLoggedIn &&
             settings.getBoolean("loginForRecommendation", true)
         ) {
             requestLogin()
         } else if (viewModel.displayItems.isEmpty()) {
-            // 只在第一次加载时刷新，这样可以避免在返回时刷新
-            viewModel.refresh(paginationEnvironment)
+            val cachedItems = if (autoRefreshOnStartup) {
+                emptyList()
+            } else {
+                startupCache.readHomeFeedStartupCache()
+            }
+            if (viewModel.displayItems.isEmpty() && cachedItems.isNotEmpty()) {
+                viewModel.addDisplayItems(cachedItems)
+            } else if (viewModel.displayItems.isEmpty()) {
+                // 只在第一次加载时刷新，这样可以避免在返回时刷新
+                viewModel.refresh(paginationEnvironment)
+            }
         }
     }
 
-    LaunchedEffect(Unit) {
-        authorPollAnnouncements = try {
-            paginationEnvironment
-                .fetchJson(ZHIHU_PLUS_AUTHOR_PINS_URL, "")
-                ?.let(::decodeHomePollAnnouncements)
-                ?.filterNot { it.isVoted }
-                ?.take(3)
-                ?: emptyList()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Log.e("HomeScreen", "Failed to load author poll announcements", e)
-            emptyList()
+    LaunchedEffect(lifecycleOwner, scrollToTopTrigger) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            val loadedAnnouncements = try {
+                paginationEnvironment
+                    .fetchJson(ZHIHU_PLUS_AUTHOR_PINS_URL, "")
+                    ?.let(::decodeHomePinAnnouncements)
+                    ?.filterNot { settings.getBoolean(homePinAnnouncementReadKey(it.pinId), false) }
+                    ?.take(MAX_HOME_PIN_ANNOUNCEMENTS)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("HomeScreen", "Failed to load home pin announcements", e)
+                null
+            }
+            if (loadedAnnouncements != null) {
+                authorPinAnnouncements = loadedAnnouncements
+            }
         }
     }
 
@@ -297,9 +326,7 @@ fun HomeScreen(
         }
     }
 
-    // 屏蔽用户确认对话框
-    var showBlockUserDialog by remember { mutableStateOf(false) }
-    var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) } // 二元组内容为 userId 和 userName。
+    var feedAuthorBlockRequest by remember { mutableStateOf<FeedAuthorBlockRequest?>(null) }
 
     // 按关键词屏蔽对话框
     var showBlockByKeywordsDialog by remember { mutableStateOf(false) }
@@ -377,135 +404,7 @@ fun HomeScreen(
                                             BadgedBox(
                                                 badge = {
                                                     if (showUnreadBadge && unreadCount > 0) {
-                                                        Badge { }
-                                                    }
-                                                },
-                                            ) {
-                                                val avatarUrl = account.avatarUrl
-                                                if (avatarUrl != null) {
-                                                    AsyncImage(
-                                                        model = avatarUrl,
-                                                        contentDescription = "账号",
-                                                        contentScale = ContentScale.Crop,
-                                                        modifier = Modifier
-                                                            .size(40.dp)
-                                                            .border(
-                                                                0.5.dp,
-                                                                MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
-                                                                CircleShape,
-                                                            ).clip(CircleShape),
-                                                    )
-                                                } else {
-                                                    Icon(
-                                                        Icons.Default.AccountCircle,
-                                                        contentDescription = "账号",
-                                                        tint = MaterialTheme.colorScheme.onSurface,
-                                                        modifier = Modifier.size(40.dp),
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    Surface(shadowElevation = 4.dp) {
-                        Row(
-                            modifier = Modifier
-                                .testTag(HOME_TOP_ACTIONS_TAG)
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Surface(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(36.dp)
-                                    .testTag(HOME_SEARCH_BUTTON_TAG),
-                                shape = RoundedCornerShape(24.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant,
-                                onClick = {
-                                    navigator.onNavigate(
-                                        Search(query = ""),
-                                    )
-                                },
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(horizontal = 16.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Icon(
-                                        Icons.Default.Search,
-                                        contentDescription = "搜索",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text(
-                                        text = "搜索内容",
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                    )
-                                }
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            IconButton(
-                                onClick = { navigator.onNavigate(Notification) },
-                                modifier = Modifier.testTag(HOME_NOTIFICATION_BUTTON_TAG),
-                            ) {
-                                BadgedBox(
-                                    badge = {
-                                        if (showUnreadBadge && unreadCount > 0) {
-                                            Badge { Text("$unreadCount") }
-                                        }
-                                    },
-                                ) {
-                                    Icon(
-                                        Icons.Default.Notifications,
-                                        contentDescription = "通知",
-                                        tint = MaterialTheme.colorScheme.onSurface,
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-        ) { scaffoldPadding ->
-            if (duo3HomeAccount && showAccountBottomSheet) {
-                MyModalBottomSheet(
-                    onDismissRequest = { showAccountBottomSheet = false },
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                ) {
-                    AccountSettingScreen(
-                        innerPadding = PaddingValues(0.dp),
-                        unreadCount = unreadCount,
-                        showUnreadBadge = showUnreadBadge,
-                        onDismissRequest = { showAccountBottomSheet = false },
-                    )
-                }
-            }
-
-            FeedPullToRefresh(viewModel, PaddingValues(top = scaffoldPadding.calculateTopPadding())) {
-                PaginatedList(
-                    items = viewModel.displayItems,
-                    listState = listState,
-                    modifier = Modifier.testTag(HOME_FEED_LIST_TAG),
-                    contentPadding = PaddingValues(
-                        top = scaffoldPadding.calculateTopPadding() + 8.dp,
-                        bottom = innerPadding.calculateBottomPadding(),
-                    ),
-                    onLoadMore = { viewModel.loadMore(paginationEnvironment) },
-                    footer = ProgressIndicatorFooter,
-                    key = { item -> item.stableKey },
-                    topContent = {
-                        item {
-                            val availableUpdate = updateAnnouncement
-
-                            AnnouncementCard(
+                                                        Badge { …1733 tokens truncated…       AnnouncementCard(
                                 visible = availableUpdate != null && dismissedUpdateVersion != availableUpdate.version,
                                 title = "发现新版本：${availableUpdate?.version}${if (availableUpdate?.isNightly == true) " (Nightly)" else ""}",
                                 leadingIcon = { Icon(Icons.Default.ArrowCircleUp, contentDescription = null) },
@@ -523,12 +422,12 @@ fun HomeScreen(
                             )
                             AnnouncementCard(
                                 visible = showQQGroup,
-                                title = "欢迎加入 QQ 群",
+                                title = "欢迎加入 QQ 频道",
                                 leadingIcon = { Icon(Icons.Default.MarkUnreadChatAlt, contentDescription = null) },
-                                content = "欢迎加入 Zhihu++ QQ 群。1 & 2 群已满，我们新建了 3 群。已入群的朋友请不要重复加群。",
+                                content = "所有 QQ 群人数都已经达到上限了，不管你之前是否加过群，都可以加一下频道，感谢你的支持！",
                                 accept = { Text("加入") },
                                 onAccept = {
-                                    openExternalUrl("https://qm.qq.com/q/AaCml6Un4G")
+                                    openExternalUrl("https://pd.qq.com/s/7l31fn0yt?b=9")
                                 },
                                 dismiss = { Text("关闭") },
                                 onDismiss = {
@@ -555,13 +454,15 @@ fun HomeScreen(
                                     showAigcMarkingAnnouncement = false
                                 },
                             )
-                            authorPollAnnouncements.forEach { announcement ->
-                                val dismissedKey = authorPollAnnouncementDismissedKey(announcement)
-                                val visible = !settings.getBoolean(dismissedKey, false)
+                            authorPinAnnouncements.forEach { announcement ->
                                 AnnouncementCard(
                                     modifier = Modifier.testTag(homeAuthorPollAnnouncementTag(announcement.pinId)),
-                                    visible = visible,
-                                    title = "请给未来的知乎++提出建议",
+                                    visible = true,
+                                    title = if (announcement.kind == HomePinAnnouncementKind.Poll) {
+                                        "请给未来的知乎++提出建议"
+                                    } else {
+                                        "知乎++新动态"
+                                    },
                                     leadingIcon = { Icon(Icons.Default.Flag, contentDescription = null) },
                                     content = buildString {
                                         append(announcement.title)
@@ -572,23 +473,26 @@ fun HomeScreen(
                                             if (announcement.memberCount > 0) {
                                                 add("${announcement.memberCount} 人已参与")
                                             }
-                                            if (announcement.isVoted) {
-                                                add("已投票")
-                                            }
                                         }
                                         if (details.isNotEmpty()) {
                                             append("\n")
                                             append(details.joinToString(" · "))
                                         }
                                     },
-                                    accept = { Text("去投票") },
+                                    accept = {
+                                        Text(if (announcement.kind == HomePinAnnouncementKind.Poll) "去投票" else "查看")
+                                    },
                                     onAccept = {
+                                        settings.putBoolean(homePinAnnouncementReadKey(announcement.pinId), true)
+                                        authorPinAnnouncements = authorPinAnnouncements.filterNot {
+                                            it.pinId == announcement.pinId
+                                        }
                                         navigator.onNavigate(Pin(announcement.pinId))
                                     },
                                     dismiss = { Text("关闭") },
                                     onDismiss = {
-                                        settings.putBoolean(dismissedKey, true)
-                                        authorPollAnnouncements = authorPollAnnouncements.filterNot {
+                                        settings.putBoolean(homePinAnnouncementReadKey(announcement.pinId), true)
+                                        authorPinAnnouncements = authorPinAnnouncements.filterNot {
                                             it.pinId == announcement.pinId
                                         }
                                     },
@@ -616,20 +520,67 @@ fun HomeScreen(
                             is Feed.AnswerTarget -> target.thumbnail
                             else -> null
                         },
-                        onBlockUser = { feedItem ->
-                            feedBlockActions.handleBlockUser(viewModel, feedItem) { authorInfo ->
-                                userToBlock = authorInfo
-                                showBlockUserDialog = true
+                        menuItems = { dismissMenu ->
+                            if (!isLiteVariant) {
+                                DropdownMenuItem(
+                                    text = { Text("按关键词屏蔽") },
+                                    onClick = {
+                                        dismissMenu()
+                                        feedBlockActions.handleBlockByKeywords(viewModel, item) { (_, contentInfo) ->
+                                            feedToBlockByKeywords = contentInfo.first to contentInfo.second
+                                            showBlockByKeywordsDialog = true
+                                        }
+                                    },
+                                )
                             }
-                        },
-                        onBlockByKeywords = { feedItem ->
-                            feedBlockActions.handleBlockByKeywords(viewModel, feedItem) { (_, contentInfo) ->
-                                feedToBlockByKeywords = contentInfo.first to contentInfo.second
-                                showBlockByKeywordsDialog = true
+                            DropdownMenuItem(
+                                text = { Text("屏蔽用户") },
+                                onClick = {
+                                    dismissMenu()
+                                    feedBlockActions.handleBlockUser(viewModel, item) { authorInfo ->
+                                        feedAuthorBlockRequest = FeedAuthorBlockRequest(
+                                            type = FeedAuthorBlockType.CONTENT_AUTHOR,
+                                            userId = authorInfo.first,
+                                            userName = authorInfo.second,
+                                        )
+                                    }
+                                },
+                            )
+                            val canBlockQuestionAuthor = when (item.feed?.target) {
+                                is Feed.AnswerTarget, is Feed.QuestionTarget -> true
+                                else -> item.raw is DataHolder.Answer || item.raw is DataHolder.Question
                             }
-                        },
-                        onBlockTopic = { topicId, topicName ->
-                            feedBlockActions.handleBlockTopic(viewModel, topicId, topicName)
+                            if (canBlockQuestionAuthor) {
+                                DropdownMenuItem(
+                                    text = { Text("屏蔽提问者") },
+                                    onClick = {
+                                        dismissMenu()
+                                        feedBlockActions.handleBlockQuestionAuthor(viewModel, item) { authorInfo ->
+                                            feedAuthorBlockRequest = FeedAuthorBlockRequest(
+                                                type = FeedAuthorBlockType.QUESTION_AUTHOR,
+                                                userId = authorInfo.first,
+                                                userName = authorInfo.second,
+                                            )
+                                        }
+                                    },
+                                )
+                            }
+                            val topics = when (val raw = item.raw) {
+                                is DataHolder.Answer -> raw.question.topics
+                                is DataHolder.Question -> raw.topics
+                                is DataHolder.Article -> raw.topics ?: emptyList()
+                                is DataHolder.Pin -> raw.topics ?: emptyList()
+                                else -> emptyList()
+                            }
+                            topics.forEach { topic ->
+                                DropdownMenuItem(
+                                    text = { Text("屏蔽「${topic.name}」") },
+                                    onClick = {
+                                        dismissMenu()
+                                        feedBlockActions.handleBlockTopic(viewModel, topic.id, topic.name)
+                                    },
+                                )
+                            }
                         },
                     ) {
                         val feed = this.feed
@@ -637,7 +588,7 @@ fun HomeScreen(
                         if (feed != null) {
 //                            DataHolder.putFeed(feed)
                             (viewModel as? HomeFeedInteractionViewModel)?.onUiContentClick(paginationEnvironment, feed, item)
-                        } else if (item.localContentId != null) {
+                        } else {
                             localHomeViewModel?.onLocalItemOpened(item)
                         }
                         if (destination != null) {
@@ -786,19 +737,13 @@ fun HomeScreen(
         }
     }
 
-    // 屏蔽用户确认对话框
-    BlockUserConfirmDialog(
-        showDialog = showBlockUserDialog,
-        userToBlock = userToBlock,
+    FeedAuthorBlockConfirmDialog(
+        request = feedAuthorBlockRequest,
         displayItems = viewModel.displayItems,
-        onDismiss = {
-            showBlockUserDialog = false
-            userToBlock = null
-        },
+        onDismiss = { feedAuthorBlockRequest = null },
         onConfirm = {
             viewModel.refresh(paginationEnvironment)
-            showBlockUserDialog = false
-            userToBlock = null
+            feedAuthorBlockRequest = null
         },
     )
 

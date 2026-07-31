@@ -23,6 +23,21 @@ import com.chloemlla.zhplus.test.InstrumentedTestEnvironment
 
 class ZhihuInstrumentedTestRunner : AndroidJUnitRunner() {
     override fun onCreate(arguments: Bundle) {
+        if (!arguments.containsKey(TEST_TIMEOUT_ARGUMENT)) {
+            arguments.putString(TEST_TIMEOUT_ARGUMENT, DEFAULT_TEST_TIMEOUT_MILLIS.toString())
+        }
+
+        val timingListenerName = InstrumentedTestTimingListener::class.java.name
+        val listenerNames = arguments
+            .getString(TEST_LISTENER_ARGUMENT)
+            .orEmpty()
+            .split(',')
+            .map(String::trim)
+            .filter(String::isNotEmpty)
+            .toMutableSet()
+        listenerNames += timingListenerName
+        arguments.putString(TEST_LISTENER_ARGUMENT, listenerNames.joinToString(","))
+
         InstrumentedTestEnvironment.configureFromArguments(arguments)
         super.onCreate(arguments)
     }
@@ -30,5 +45,11 @@ class ZhihuInstrumentedTestRunner : AndroidJUnitRunner() {
     override fun onStart() {
         InstrumentedTestEnvironment.reseed(targetContext)
         super.onStart()
+    }
+
+    private companion object {
+        const val TEST_TIMEOUT_ARGUMENT = "timeout_msec"
+        const val TEST_LISTENER_ARGUMENT = "listener"
+        const val DEFAULT_TEST_TIMEOUT_MILLIS = 30_000L
     }
 }

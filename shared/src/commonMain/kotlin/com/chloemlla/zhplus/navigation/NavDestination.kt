@@ -223,6 +223,10 @@ data class SegmentCommentHolder(
     val contentId: String,
     val contentType: String,
     val segmentId: String,
+    val segmentContent: String,
+    val paragraphId: String,
+    val startOffset: Int,
+    val endOffset: Int,
 ) : NavDestination
 
 @Serializable

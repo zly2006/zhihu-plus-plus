@@ -55,6 +55,14 @@ class BlocklistBackupTest {
                     avatarUrl = "https://example.com/avatar.png",
                 ),
             ),
+            questionAuthors = listOf(
+                UserBackup(
+                    userId = "asker-1",
+                    userName = "提问者",
+                    urlToken = "asker-token",
+                    avatarUrl = "https://example.com/asker.png",
+                ),
+            ),
             topics = listOf(TopicBackup(topicId = "topic-1", topicName = "主题")),
         )
 
@@ -63,6 +71,7 @@ class BlocklistBackupTest {
         val element = json.parseToJsonElement(encoded).jsonObject
 
         assertTrue("keywords" in element)
+        assertTrue("questionAuthors" in element)
         assertEquals(backup, decoded)
     }
 

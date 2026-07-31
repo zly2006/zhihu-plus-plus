@@ -17,6 +17,7 @@
 
 package com.chloemlla.zhplus.ui
 
+import com.fleeksoft.ksoup.Ksoup
 import com.chloemlla.zhplus.shared.data.DataHolder
 import com.chloemlla.zhplus.shared.data.ZhihuJson
 import kotlinx.serialization.json.JsonObject
@@ -26,26 +27,31 @@ import kotlin.time.Clock
 
 const val ZHIHU_PLUS_AUTHOR_URL_TOKEN = "scanmenge"
 const val ZHIHU_PLUS_AUTHOR_PINS_URL = "https://www.zhihu.com/api/v4/v2/pins/$ZHIHU_PLUS_AUTHOR_URL_TOKEN/moments"
+const val ZHIHU_PLUS_TOPIC_ID = "2064846813258109867"
 
-data class HomePollAnnouncement(
+enum class HomePinAnnouncementKind {
+    Poll,
+    Topic,
+}
+
+data class HomePinAnnouncement(
     val pinId: Long,
-    val pollId: String,
+    val kind: HomePinAnnouncementKind,
     val title: String,
     val optionCount: Int,
     val memberCount: Int,
-    val isVoted: Boolean,
 )
 
-internal fun decodeHomePollAnnouncements(
+internal fun decodeHomePinAnnouncements(
     response: JsonObject,
-): List<HomePollAnnouncement> =
+): List<HomePinAnnouncement> =
     response["data"]
         ?.jsonArray
         ?.mapNotNull { item ->
             val pin = runCatching {
                 ZhihuJson.decodeJson<DataHolder.Pin>(item.jsonObject)
             }.getOrNull()
-            pin?.toHomePollAnnouncement()
+            pin?.toHomePinAnnouncement()
         }
         ?: emptyList()
 
@@ -107,17 +113,27 @@ internal fun DataHolder.Pin.Poll.statusText(): String {
     }
 }
 
-internal fun DataHolder.Pin.toHomePollAnnouncement(): HomePollAnnouncement? {
-    val poll = bottomPoll?.voting ?: return null
-    if (!poll.acceptsVote()) {
+internal fun DataHolder.Pin.toHomePinAnnouncement(): HomePinAnnouncement? {
+    val pinId = id.toLongOrNull() ?: return null
+    val poll = bottomPoll?.voting
+    if (poll != null && poll.acceptsVote() && !poll.isVoted) {
+        return HomePinAnnouncement(
+            pinId = pinId,
+            kind = HomePinAnnouncementKind.Poll,
+            title = poll.title.ifBlank { "想法投票" },
+            optionCount = poll.options.size,
+            memberCount = poll.memberCount,
+        )
+    }
+
+    if (topics.orEmpty().none { it.id == ZHIHU_PLUS_TOPIC_ID }) {
         return null
     }
-    return HomePollAnnouncement(
-        pinId = id.toLongOrNull() ?: return null,
-        pollId = poll.id,
-        title = poll.title.ifBlank { "想法投票" },
-        optionCount = poll.options.size,
-        memberCount = poll.memberCount,
-        isVoted = poll.isVoted,
+    return HomePinAnnouncement(
+        pinId = pinId,
+        kind = HomePinAnnouncementKind.Topic,
+        title = Ksoup.parse(excerptTitle.substringBefore("<br")).text().ifBlank { "知乎++新动态" },
+        optionCount = 0,
+        memberCount = 0,
     )
 }

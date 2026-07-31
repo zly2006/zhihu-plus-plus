@@ -21,6 +21,7 @@ import android.content.Context
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -29,6 +30,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.core.content.edit
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.chloemlla.zhplus.data.AccountData
@@ -47,6 +49,7 @@ import com.chloemlla.zhplus.test.ZhihuMockApi
 import com.chloemlla.zhplus.test.performVerticalSwipeCycle
 import com.chloemlla.zhplus.test.resetAppPreferences
 import com.chloemlla.zhplus.test.setScreenContent
+import com.chloemlla.zhplus.ui.AIGC_MARKING_ANNOUNCEMENT_DISMISSED_PREFERENCE_KEY
 import com.chloemlla.zhplus.ui.HOME_ACCOUNT_BUTTON_TAG
 import com.chloemlla.zhplus.ui.HOME_CREATE_FAB_TAG
 import com.chloemlla.zhplus.ui.HOME_CREATE_MENU_TAG
@@ -60,6 +63,7 @@ import com.chloemlla.zhplus.ui.PREFERENCE_NAME
 import com.chloemlla.zhplus.ui.QQ_GROUP_DISMISSED_PREFERENCE_KEY
 import com.chloemlla.zhplus.ui.ZHIHU_PLUS_AUTHOR_PINS_URL
 import com.chloemlla.zhplus.ui.homeAuthorPollAnnouncementTag
+import com.chloemlla.zhplus.ui.homePinAnnouncementReadKey
 import com.chloemlla.zhplus.updater.UpdateManager
 import com.chloemlla.zhplus.viewmodel.feed.HomeFeedViewModel
 import io.ktor.http.HttpMethod
@@ -231,6 +235,75 @@ class HomeScreenInstrumentedTest {
         composeRule.onNodeWithText("去投票").assertIsDisplayed().performClick()
 
         assertEquals(listOf(Pin(2051253530787370452L)), recordingNavigator.destinations)
+        assertEquals(
+            true,
+            composeRule.activity
+                .getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+                .getBoolean(homePinAnnouncementReadKey(2051253530787370452L), false),
+        )
+    }
+
+    @Test
+    fun authorAnnouncements_keepUnreadItemsWhenOneIsDismissed() {
+        val firstPinId = 2064846692340470567L
+        val secondPinId = 2064847476998279874L
+        val firstPin = authorTopicPin(firstPinId, "第一条开发动态")
+        val secondPin = authorTopicPin(secondPinId, "第二条开发动态")
+        mockAuthorAnnouncements(firstPin, secondPin)
+        composeRule.launchHomeScreen(
+            duo3HomeAccount = false,
+            showRefreshFab = false,
+            useSeededAccountForNetwork = true,
+            displayItems = homeFeedFixtureItems(),
+        )
+
+        composeRule.waitUntilRequestCount(HttpMethod.Get, ZHIHU_PLUS_AUTHOR_PINS_URL, 1)
+        composeRule.waitUntilHomeFeedTagExists(homeAuthorPollAnnouncementTag(firstPinId))
+        composeRule.waitUntilHomeFeedTagExists(homeAuthorPollAnnouncementTag(secondPinId))
+        assertEquals(
+            false,
+            composeRule.activity
+                .getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+                .getBoolean(homePinAnnouncementReadKey(firstPinId), false),
+        )
+        assertEquals(
+            false,
+            composeRule.activity
+                .getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+                .getBoolean(homePinAnnouncementReadKey(secondPinId), false),
+        )
+        composeRule
+            .onNode(hasText("关闭") and hasAnyAncestor(hasTestTag(homeAuthorPollAnnouncementTag(firstPinId))))
+            .performClick()
+        composeRule.waitUntil {
+            composeRule.activity
+                .getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+                .getBoolean(homePinAnnouncementReadKey(firstPinId), false)
+        }
+        composeRule.onNodeWithTag(homeAuthorPollAnnouncementTag(firstPinId)).assertDoesNotExist()
+        composeRule.onNodeWithTag(homeAuthorPollAnnouncementTag(secondPinId)).assertExists()
+        assertEquals(
+            false,
+            composeRule.activity
+                .getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+                .getBoolean(homePinAnnouncementReadKey(secondPinId), false),
+        )
+
+        val thirdPinId = 2064848000000000000L
+        mockAuthorAnnouncements(
+            authorTopicPin(thirdPinId, "关于来自123duo3的UI修改<br><p>详细投票说明</p>"),
+            secondPin,
+            firstPin,
+        )
+        composeRule.activityRule.scenario.moveToState(Lifecycle.State.STARTED)
+        composeRule.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+
+        composeRule.waitUntilRequestCount(HttpMethod.Get, ZHIHU_PLUS_AUTHOR_PINS_URL, 2)
+        composeRule.waitUntilHomeFeedTagExists(homeAuthorPollAnnouncementTag(secondPinId))
+        composeRule.waitUntilHomeFeedTagExists(homeAuthorPollAnnouncementTag(thirdPinId))
+        composeRule.onNodeWithTag(homeAuthorPollAnnouncementTag(firstPinId)).assertDoesNotExist()
+        composeRule.onNodeWithText("关于来自123duo3的UI修改").assertIsDisplayed()
+        composeRule.onNodeWithText("详细投票说明").assertDoesNotExist()
     }
 
     @Test
@@ -272,6 +345,7 @@ class HomeScreenInstrumentedTest {
             putBoolean("showRefreshFab", showRefreshFab)
             putBoolean("loginForRecommendation", useSeededAccountForNetwork)
             putBoolean("filterExplainDialogShown", true)
+            putBoolean(AIGC_MARKING_ANNOUNCEMENT_DISMISSED_PREFERENCE_KEY, true)
             putBoolean(QQ_GROUP_DISMISSED_PREFERENCE_KEY, true)
             putBoolean("survey_feedback_done", true)
             putBoolean("autoCheckUpdates", false)
@@ -379,6 +453,44 @@ class HomeScreenInstrumentedTest {
             method = HttpMethod.Get,
             url = ZHIHU_PLUS_AUTHOR_PINS_URL,
             body = """{"data":[${ZhihuJson.json.encodeToString(pin)}]}""",
+        )
+    }
+
+    private fun authorTopicPin(
+        pinId: Long,
+        title: String,
+    ) = DataHolder.Pin(
+        id = pinId.toString(),
+        url = "https://www.zhihu.com/pin/$pinId",
+        author = DataHolder.Author(
+            avatarUrl = "",
+            gender = 0,
+            headline = "",
+            id = "zhihu-plus-author",
+            isAdvertiser = false,
+            isOrg = false,
+            name = "知乎++作者",
+            type = "people",
+            url = "https://www.zhihu.com/people/scanmenge",
+            urlToken = "scanmenge",
+            userType = "people",
+        ),
+        excerptTitle = title,
+        topics = listOf(
+            DataHolder.Topic(
+                id = "2064846813258109867",
+                type = "topic",
+                url = "zhihu://topic/2064846813258109867/pin20",
+                name = "zhihuplusplus",
+            ),
+        ),
+    )
+
+    private fun mockAuthorAnnouncements(vararg pins: DataHolder.Pin) {
+        ZhihuMockApi.mockJson(
+            method = HttpMethod.Get,
+            url = ZHIHU_PLUS_AUTHOR_PINS_URL,
+            body = """{"data":${ZhihuJson.json.encodeToString(pins.toList())}}""",
         )
     }
 }

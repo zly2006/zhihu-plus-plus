@@ -18,12 +18,14 @@
 package com.chloemlla.zhplus.viewmodel.feed
 
 import androidx.lifecycle.viewModelScope
+import com.chloemlla.zhplus.navigation.Question
 import com.chloemlla.zhplus.shared.data.DataHolder
 import com.chloemlla.zhplus.shared.data.Feed
 import com.chloemlla.zhplus.shared.data.FeedDisplayItem
 import com.chloemlla.zhplus.shared.data.ZhihuJson
 import com.chloemlla.zhplus.shared.data.flattenFeeds
 import com.chloemlla.zhplus.shared.data.navDestination
+import com.chloemlla.zhplus.shared.data.questionAuthor
 import com.chloemlla.zhplus.shared.data.target
 import com.chloemlla.zhplus.shared.util.Log
 import com.chloemlla.zhplus.viewmodel.ContentInteractionEnvironment
@@ -37,6 +39,7 @@ import io.ktor.client.request.header
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.isSuccess
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -59,6 +62,42 @@ suspend fun resolveFeedBlockAuthorInfo(
         is DataHolder.Pin -> content.author.let { Pair(it.id, it.name) }
         else -> null
     }
+}
+
+suspend fun resolveFeedQuestionAuthorInfo(
+    feedItem: FeedDisplayItem,
+    contentDetailProvider: ContentDetailProvider?,
+): Pair<String, String>? {
+    feedItem.feed?.target?.questionAuthor?.let { author ->
+        return Pair(author.id, author.name)
+    }
+
+    val questionDestination = when (val raw = feedItem.raw) {
+        is DataHolder.Question -> return raw.author.let { Pair(it.id, it.name) }
+        is DataHolder.Answer -> {
+            raw.question.author?.let { return Pair(it.id, it.name) }
+            Question(questionId = raw.question.id, title = raw.question.title)
+        }
+        else -> when (val target = feedItem.feed?.target) {
+            is Feed.AnswerTarget -> Question(questionId = target.question.id, title = target.question.title)
+            is Feed.QuestionTarget -> Question(questionId = target.id, title = target.title)
+            else -> null
+        }
+    } ?: return null
+
+    val questionDetail = try {
+        contentDetailProvider?.get(questionDestination) as? DataHolder.Question
+    } catch (error: CancellationException) {
+        throw error
+    } catch (error: Exception) {
+        Log.e("HomeFeedViewModel", "Failed to resolve feed question author from question detail", error)
+        null
+    }
+    return questionDetail
+        ?.author
+        ?.let { author ->
+            Pair(author.id, author.name)
+        }
 }
 
 suspend fun resolveFeedKeywordBlockingContent(
@@ -153,6 +192,7 @@ class HomeFeedViewModel :
             // 移除被过滤的条目，并更新已保留条目的 raw 内容
             withContext(Dispatchers.Main) {
                 displayItems.replaceHomeFeedItemsWithFilteredResult(filterResult)
+                latestLoadedDisplayItems.value = filterResult.filteredItems
             }
         }
     }

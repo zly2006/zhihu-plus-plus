@@ -44,6 +44,8 @@ import com.chloemlla.zhplus.data.AccountData
 import com.chloemlla.zhplus.data.asApiEnvironment
 import com.chloemlla.zhplus.navigation.Article
 import com.chloemlla.zhplus.navigation.TopLevelDestination
+import com.chloemlla.zhplus.shared.data.FeedDisplayItem
+import com.chloemlla.zhplus.shared.data.RecommendationMode
 import com.chloemlla.zhplus.shared.data.ZHIHU_ME_URL
 import com.chloemlla.zhplus.shared.data.ZhihuJson
 import com.chloemlla.zhplus.shared.notification.NotificationSettingsStore
@@ -134,7 +136,12 @@ actual fun rememberAccountQrLoginRequester(): () -> Unit {
 actual fun rememberAccountLogoutAction(): () -> Unit {
     val context = LocalContext.current
     return remember(context) {
-        { AccountData.delete(context) }
+        {
+            homeFeedStartupCacheFileNames().forEach { fileName ->
+                File(context.filesDir, fileName).delete()
+            }
+            AccountData.delete(context)
+        }
     }
 }
 
@@ -169,9 +176,7 @@ private fun Context.zhihuVersionInfo(): String {
     val buildType = metaData?.getString("com.chloemlla.zhplus.BUILD_TYPE")
         ?: if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) "debug" else "release"
     val gitHash = metaData?.getString("com.chloemlla.zhplus.GIT_HASH") ?: "unknown"
-    val buildTime =
-        metaData?.getString("com.chloemlla.zhplus.BUILD_TIME")?.toLongOrNull()
-            ?: 0L
+    val buildTime = metaData?.getString("com.chloemlla.zhplus.BUILD_TIME")?.toLongOrNull() ?: 0L
     return if (buildTime > 0L) {
         "$versionName $buildType, $gitHash · $buildTime"
     } else {
@@ -372,6 +377,37 @@ actual fun rememberHomeLoginRequester(): () -> Unit {
 }
 
 @Composable
+actual fun rememberHomeFeedStartupCache(recommendationMode: RecommendationMode): HomeFeedStartupCache {
+    val context = LocalContext.current
+    val startupCacheFile = remember(context, recommendationMode) {
+        File(context.filesDir, homeFeedStartupCacheFileName(recommendationMode))
+    }
+    return remember(startupCacheFile) {
+        HomeFeedStartupCache(
+            readHomeFeedStartupCache = {
+                withContext(Dispatchers.IO) {
+                    if (startupCacheFile.exists()) {
+                        decodeHomeFeedStartupSnapshot(startupCacheFile.readText())
+                    } else {
+                        emptyList()
+                    }
+                }
+            },
+            writeHomeFeedStartupCache = { items: List<FeedDisplayItem> ->
+                withContext(Dispatchers.IO) {
+                    val serialized = encodeHomeFeedStartupSnapshot(items)
+                    if (serialized != null) {
+                        runCatching {
+                            startupCacheFile.writeText(serialized)
+                        }
+                    }
+                }
+            },
+        )
+    }
+}
+
+@Composable
 actual fun rememberBlocklistRuleImporter(
     userMessages: UserMessageSink,
 ): (((String) -> Unit) -> Unit) {
@@ -394,6 +430,7 @@ actual fun rememberBlocklistRuleImporter(
                         importBlocklistBackupFromJsonText(
                             keywordDao = database.blockedKeywordDao(),
                             userDao = database.blockedUserDao(),
+                            questionAuthorDao = database.blockedQuestionAuthorDao(),
                             topicDao = database.blockedTopicDao(),
                             text = text,
                         )
@@ -427,6 +464,7 @@ actual fun rememberBlocklistRuleExporter(): suspend () -> String {
                     encodeBlocklistBackup(
                         keywordDao = database.blockedKeywordDao(),
                         userDao = database.blockedUserDao(),
+                        questionAuthorDao = database.blockedQuestionAuthorDao(),
                         topicDao = database.blockedTopicDao(),
                     ),
                 )
@@ -467,6 +505,18 @@ actual fun supportsZhihuHtmlWebView(): Boolean = true
 @Composable
 actual fun rememberCommentEmojiInlineContent(emojiKeys: Set<String>): Map<String, InlineTextContent> =
     remember(emojiKeys) { createEmojiInlineContent(emojiKeys) }
+
+@Composable
+actual fun rememberCommentEmojis(): List<CommentEmoji> {
+    val placeholders by EmojiManager.placeholders.collectAsState()
+    return remember(placeholders) {
+        placeholders.mapNotNull { placeholder ->
+            commentEmojiInlineKey(placeholder)?.let { inlineKey ->
+                CommentEmoji(placeholder = placeholder, inlineKey = inlineKey)
+            }
+        }
+    }
+}
 
 actual fun commentEmojiInlineKey(placeholder: String): String? {
     val emojiPath = EmojiManager.getEmojiPath(placeholder) ?: return null

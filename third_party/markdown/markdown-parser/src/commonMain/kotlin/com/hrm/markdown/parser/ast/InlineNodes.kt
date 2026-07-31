@@ -181,6 +181,29 @@ class Highlight : ContainerNode() {
 }
 
 /**
+ * 知乎正文中的可交互划线片段。
+ *
+ * 这是段落内联节点，因此正文选择、粗体和斜体仍沿用普通段落的 AST 与渲染链路。
+ * [attributes] 保留服务端返回的 `data-highlight-*` 元数据，供宿主处理点赞、评论等交互。
+ */
+class SegmentHighlight(
+    val text: String,
+    val attributes: Map<String, String>,
+) : ContainerNode() {
+    val interactionKey: String = listOf(
+        attributes["data-highlight-content-type"],
+        attributes["data-highlight-content-id"],
+        attributes["data-highlight-pid"],
+        attributes["data-highlight-start-offset"],
+        attributes["data-highlight-end-offset"],
+        attributes["data-highlight-id"],
+        text,
+    ).joinToString("|") { it.orEmpty() }
+
+    override fun <R> accept(visitor: NodeVisitor<R>): R = visitor.visitSegmentHighlight(this)
+}
+
+/**
  * 上标：`^text^`。
  */
 class Superscript : ContainerNode() {

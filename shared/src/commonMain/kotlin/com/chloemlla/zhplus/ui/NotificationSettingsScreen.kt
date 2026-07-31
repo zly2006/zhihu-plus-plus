@@ -119,7 +119,7 @@ fun NotificationSettingsScreen() {
             SettingItemGroup(title = "阅读行为") {
                 SettingItemWithSwitch(
                     title = { Text("打开通知自动已读") },
-                    description = { Text("进入通知页后，自动把当前通知批次标记为已读") },
+                    description = { Text("进入通知板块后，自动把当前查看的板块标记为已读") },
                     checked = autoMarkAsRead,
                     onCheckedChange = { checked ->
                         autoMarkAsRead = checked

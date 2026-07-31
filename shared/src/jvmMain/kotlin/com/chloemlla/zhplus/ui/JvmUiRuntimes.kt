@@ -34,8 +34,11 @@ import androidx.compose.ui.unit.em
 import com.chloemlla.zhplus.markdown.RenderMarkdown
 import com.chloemlla.zhplus.navigation.Article
 import com.chloemlla.zhplus.navigation.TopLevelDestination
+import com.chloemlla.zhplus.shared.data.FeedDisplayItem
+import com.chloemlla.zhplus.shared.data.RecommendationMode
 import com.chloemlla.zhplus.shared.desktop.DesktopAccountStore
 import com.chloemlla.zhplus.shared.desktop.DesktopLoginRequests
+import com.chloemlla.zhplus.shared.desktop.desktopZhihuDataFile
 import com.chloemlla.zhplus.shared.desktop.openDesktopExternalUrl
 import com.chloemlla.zhplus.shared.notification.NotificationSettingsStore
 import com.chloemlla.zhplus.shared.platform.UserMessageSink
@@ -186,6 +189,16 @@ actual fun rememberCommentEmojiInlineContent(emojiKeys: Set<String>): Map<String
             }.toMap()
     }
 
+@Composable
+actual fun rememberCommentEmojis(): List<CommentEmoji> = remember {
+    desktopEmojiMapping().mapNotNull { (placeholder, fileName) ->
+        val inlineKey = "emoji_$fileName"
+        desktopEmojiFileByInlineKey(inlineKey)?.let {
+            CommentEmoji(placeholder = placeholder, inlineKey = inlineKey)
+        }
+    }
+}
+
 actual fun commentEmojiInlineKey(placeholder: String): String? =
     desktopEmojiMapping()[placeholder]?.let { fileName -> "emoji_$fileName" }
 
@@ -234,6 +247,37 @@ actual fun rememberHomeUpdateAnnouncement(): HomeUpdateAnnouncement? {
 }
 
 @Composable
+actual fun rememberHomeFeedStartupCache(recommendationMode: RecommendationMode): HomeFeedStartupCache {
+    val startupCacheFile = remember(recommendationMode) {
+        desktopZhihuDataFile(homeFeedStartupCacheFileName(recommendationMode))
+    }
+    return remember(startupCacheFile) {
+        HomeFeedStartupCache(
+            readHomeFeedStartupCache = {
+                withContext(Dispatchers.IO) {
+                    if (startupCacheFile.exists()) {
+                        decodeHomeFeedStartupSnapshot(startupCacheFile.readText())
+                    } else {
+                        emptyList()
+                    }
+                }
+            },
+            writeHomeFeedStartupCache = { items: List<FeedDisplayItem> ->
+                withContext(Dispatchers.IO) {
+                    val serialized = encodeHomeFeedStartupSnapshot(items)
+                    if (serialized != null) {
+                        runCatching {
+                            startupCacheFile.parentFile?.mkdirs()
+                            startupCacheFile.writeText(serialized)
+                        }
+                    }
+                }
+            },
+        )
+    }
+}
+
+@Composable
 actual fun rememberHomeInstalledAtLeastThreeHours(): Boolean = false
 
 @Composable
@@ -263,6 +307,7 @@ actual fun rememberBlocklistRuleImporter(
                         val summary = importBlocklistBackupFromJsonText(
                             keywordDao = database.blockedKeywordDao(),
                             userDao = database.blockedUserDao(),
+                            questionAuthorDao = database.blockedQuestionAuthorDao(),
                             topicDao = database.blockedTopicDao(),
                             text = selectedFile.readText(),
                         )
@@ -291,6 +336,7 @@ actual fun rememberBlocklistRuleExporter(): suspend () -> String {
                 encodeBlocklistBackup(
                     keywordDao = database.blockedKeywordDao(),
                     userDao = database.blockedUserDao(),
+                    questionAuthorDao = database.blockedQuestionAuthorDao(),
                     topicDao = database.blockedTopicDao(),
                 ),
             )
@@ -368,6 +414,9 @@ private object DesktopAccountSettingsState {
     }
 
     fun clear() {
+        homeFeedStartupCacheFileNames().forEach { fileName ->
+            desktopZhihuDataFile(fileName).delete()
+        }
         store.clear()
         accountState.value = AccountSettingsAccountState()
     }

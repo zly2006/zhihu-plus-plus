@@ -38,6 +38,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -76,8 +77,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
+import com.fleeksoft.ksoup.Ksoup
 import com.chloemlla.zhplus.navigation.LocalNavigator
-import com.chloemlla.zhplus.navigation.NavDestination
 import com.chloemlla.zhplus.navigation.resolveContent
 import com.chloemlla.zhplus.shared.data.DailySection
 import com.chloemlla.zhplus.shared.data.DailyStory
@@ -86,8 +87,6 @@ import com.chloemlla.zhplus.shared.ui.topLevelReselectAction
 import com.chloemlla.zhplus.shared.util.formatDailyDate
 import com.chloemlla.zhplus.shared.util.twoDigitString
 import com.chloemlla.zhplus.shared.viewmodel.DailyViewModel
-import com.fleeksoft.ksoup.Ksoup
-import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import kotlinx.coroutines.Dispatchers
@@ -120,6 +119,7 @@ fun DailyScreen(
     var isRefreshing by remember { mutableStateOf(false) }
     var currentViewingDate by remember { mutableStateOf("") }
     var showDatePicker by remember { mutableStateOf(false) }
+    var missingOriginStoryUrl by remember { mutableStateOf<String?>(null) }
     var pendingDateSelection by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
@@ -213,6 +213,26 @@ fun DailyScreen(
         ) {
             DatePicker(state = datePickerState)
         }
+    }
+
+    missingOriginStoryUrl?.let { storyUrl ->
+        AlertDialog(
+            onDismissRequest = { missingOriginStoryUrl = null },
+            text = { Text("由于知乎的 Bug，无法找到原文") },
+            confirmButton = {
+                TextButton(onClick = {
+                    missingOriginStoryUrl = null
+                    uriHandler.openUri(storyUrl)
+                }) {
+                    Text("在浏览器中打开")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { missingOriginStoryUrl = null }) {
+                    Text("知道了")
+                }
+            },
+        )
     }
 
     Scaffold(
@@ -335,11 +355,28 @@ fun DailyScreen(
                                     modifier = Modifier.testTag("daily_screen_story_${story.id}"),
                                     onClick = {
                                         scope.launch {
-                                            val destination = fetchDailyStoryDestination(httpClient, story.id)
+                                            val response: JsonObject = withContext(Dispatchers.Default) {
+                                                httpClient
+                                                    .get("https://daily.zhihu.com/api/7/story/${story.id}")
+                                                    .body()
+                                            }
+                                            val body = response["body"]?.jsonPrimitive?.content
+                                            if (body == null) {
+                                                missingOriginStoryUrl = story.url
+                                                return@launch
+                                            }
+                                            val doc = Ksoup.parse(body)
+                                            val originUrl = doc.selectFirst("a.originUrl")?.attr("href")
+                                            val destination = originUrl
+                                                ?.let(::resolveContent)
+                                                ?: doc
+                                                    .selectFirst("div.view-more a")
+                                                    ?.attr("href")
+                                                    ?.let(::resolveContent)
                                             if (destination != null) {
                                                 navigator.onNavigate(destination)
                                             } else {
-                                                uriHandler.openUri(story.url)
+                                                missingOriginStoryUrl = story.url
                                             }
                                         }
                                     },
@@ -505,26 +542,6 @@ private fun formatDailyDatePickerSelection(millis: Long): String {
     return date.year.toString().padStart(4, '0') +
         (date.month.ordinal + 1).twoDigitString() +
         date.day.twoDigitString()
-}
-
-private suspend fun fetchDailyStoryDestination(
-    httpClient: HttpClient,
-    storyId: Long,
-): NavDestination? = withContext(Dispatchers.Default) {
-    val response: JsonObject = httpClient
-        .get("https://daily.zhihu.com/api/7/story/$storyId")
-        .body()
-    val body = response["body"]?.jsonPrimitive?.content ?: return@withContext null
-    val doc = Ksoup.parse(body)
-    return@withContext doc
-        .selectFirst("a.originUrl")
-        ?.attr("href")
-        ?.let(::resolveContent)
-        ?: doc
-            .selectFirst("div.view-more")
-            ?.selectFirst("a")
-            ?.attr("href")
-            ?.let(::resolveContent)
 }
 
 private const val DAILY_SCREEN_TITLE_TAG = "daily_screen_title"

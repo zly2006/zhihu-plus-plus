@@ -1,0 +1,4 @@
+interface:
+  display_name: "Zhihu++ 性能回归复核"
+  short_description: "验证性能优化引发的功能回归，并用真实分阶段基准选择双全方案"
+  default_prompt: "Use $zhihu-performance-regression-review to review this performance-related regression and verify the least invasive fix with real benchmarks."

@@ -18,11 +18,16 @@
 package com.chloemlla.zhplus.ui.components
 
 import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -51,8 +56,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -62,11 +69,14 @@ import coil3.compose.AsyncImage
 import com.chloemlla.zhplus.navigation.Account
 import com.chloemlla.zhplus.navigation.LocalNavigator
 import com.chloemlla.zhplus.navigation.Navigator
+import com.chloemlla.zhplus.shared.data.DataHolder
+import com.chloemlla.zhplus.shared.data.Feed
 import com.chloemlla.zhplus.shared.data.FeedDisplayItem
 import com.chloemlla.zhplus.shared.data.navDestination
 import com.chloemlla.zhplus.shared.data.officialBadge
+import com.chloemlla.zhplus.shared.data.sourceLabel
+import com.chloemlla.zhplus.shared.data.target
 import com.chloemlla.zhplus.shared.platform.UserMessageDuration
-import com.chloemlla.zhplus.shared.platform.rememberIsLiteVariant
 import com.chloemlla.zhplus.shared.platform.rememberSettingsStore
 import com.chloemlla.zhplus.shared.platform.rememberUserMessageSink
 import com.chloemlla.zhplus.ui.subscreens.PREF_FONT_SIZE
@@ -77,7 +87,7 @@ import com.chloemlla.zhplus.util.parseEmphasizedHtmlTextWithTheme
  * 信息流卡片的 Material 3 实现。
  *
  * 卡片负责展示标题、摘要、作者、徽章、缩略图和更多菜单，并根据设置支持卡片/分割线两种外观、Duo3 排版和缩略图开关。
- * 默认点击会解析 [FeedDisplayItem] 的导航目标并进入详情页；外部也可以注入屏蔽用户、按关键词屏蔽和屏蔽主题等动作。
+ * 默认点击会解析 [FeedDisplayItem] 的导航目标并进入详情页；页面可以通过 [menuItems] 直接声明自己的业务菜单项。
  *
  * 修改这个组件时要同步复核 `showFeedThumbnail`、`feedCardStyle`、`duo3_card_appearance`、
  * `duo3_card_layout` 和 `duo3_card_large_title` 对各信息流入口的影响。
@@ -90,9 +100,7 @@ fun FeedCard(
     maxHeight: Dp = 240.dp,
     thumbnailUrl: String? = null,
     horizontalPadding: Dp = 16.dp,
-    onBlockUser: ((FeedDisplayItem) -> Unit)? = null,
-    onBlockByKeywords: ((FeedDisplayItem) -> Unit)? = null,
-    onBlockTopic: ((topicId: String, topicName: String) -> Unit)? = null,
+    menuItems: @Composable ColumnScope.(dismissMenu: () -> Unit) -> Unit = { _ -> },
     showSourceLabel: Boolean = false,
     /**
      * 默认点击行为：优先跳转到信息流条目的详情页；如果只能识别为外链则打开外链，否则提示暂不支持。
@@ -103,7 +111,6 @@ fun FeedCard(
     val uriHandler = LocalUriHandler.current
     val userMessages = rememberUserMessageSink()
     val settings = rememberSettingsStore()
-    val isLiteVariant = rememberIsLiteVariant()
     var showMenu by remember { mutableStateOf(false) }
     val showFeedThumbnail = remember {
         settings.getBoolean("showFeedThumbnail", true)
@@ -114,6 +121,11 @@ fun FeedCard(
     val duo3CardAppearance = remember { settings.getBoolean("duo3_card_appearance", false) }
     val duo3CardLayout = remember { settings.getBoolean("duo3_card_layout", false) }
     val duo3CardLargeTitle = remember { settings.getBoolean("duo3_card_large_title", true) }
+    val pinImages = (item.feed?.target as? Feed.PinTarget)
+        ?.content
+        ?.filterIsInstance<DataHolder.Pin.ContentImage>()
+        .orEmpty()
+    val showPinImages = showFeedThumbnail && pinImages.isNotEmpty() && !item.isFiltered
     val onClick = onClick ?: {
         this.navDestination?.let {
             navigator.onNavigate(it)
@@ -130,7 +142,7 @@ fun FeedCard(
         Column(
             modifier = modifier
                 .fillMaxWidth()
-                .heightIn(max = maxHeight),
+                .then(if (showPinImages) Modifier else Modifier.heightIn(max = maxHeight)),
         ) {
             Column(
                 modifier = Modifier
@@ -142,11 +154,10 @@ fun FeedCard(
                     item = item,
                     showFeedThumbnail = showFeedThumbnail,
                     thumbnailUrl = thumbnailUrl,
+                    pinImages = pinImages,
                     showMenu = showMenu,
                     onShowMenuChange = { showMenu = it },
-                    onBlockUser = onBlockUser,
-                    onBlockByKeywords = if (isLiteVariant) null else onBlockByKeywords,
-                    onBlockTopic = onBlockTopic,
+                    menuItems = menuItems,
                     duo3CardLayout = duo3CardLayout,
                     duo3CardLargeTitle = duo3CardLargeTitle,
                     showSourceLabel = showSourceLabel,
@@ -158,7 +169,7 @@ fun FeedCard(
         Box(
             modifier = modifier
                 .fillMaxWidth()
-                .heightIn(max = maxHeight)
+                .then(if (showPinImages) Modifier else Modifier.heightIn(max = maxHeight))
                 .padding(horizontal = horizontalPadding, vertical = 8.dp),
         ) {
             Card(
@@ -191,11 +202,10 @@ fun FeedCard(
                         item = item,
                         showFeedThumbnail = showFeedThumbnail,
                         thumbnailUrl = thumbnailUrl,
+                        pinImages = pinImages,
                         showMenu = showMenu,
                         onShowMenuChange = { showMenu = it },
-                        onBlockUser = onBlockUser,
-                        onBlockByKeywords = if (isLiteVariant) null else onBlockByKeywords,
-                        onBlockTopic = onBlockTopic,
+                        menuItems = menuItems,
                         duo3CardLayout = duo3CardLayout,
                         duo3CardLargeTitle = duo3CardLargeTitle,
                         showSourceLabel = showSourceLabel,
@@ -209,17 +219,14 @@ fun FeedCard(
 /**
  * 信息流卡片右上角的更多菜单。
  *
- * 菜单集中承载和当前条目相关的轻量操作：按关键词屏蔽、屏蔽用户、屏蔽主题、跳转外观设置，以及对已过滤内容快速关闭质量过滤。
- * 这些入口会把用户带回对应设置项，因此新增菜单动作时要明确它是直接修改内容，还是跳转到设置页继续配置。
+ * 卡片只负责菜单的展开、收起和通用设置项；页面业务动作由 [menuItems] 直接提供。
  */
 @Composable
 private fun FeedCardMenuBox(
     item: FeedDisplayItem,
     showMenu: Boolean,
     onShowMenuChange: (Boolean) -> Unit,
-    onBlockUser: ((FeedDisplayItem) -> Unit)?,
-    onBlockByKeywords: ((FeedDisplayItem) -> Unit)?,
-    onBlockTopic: ((topicId: String, topicName: String) -> Unit)?,
+    menuItems: @Composable ColumnScope.(dismissMenu: () -> Unit) -> Unit,
     navigator: Navigator,
 ) {
     Box {
@@ -238,40 +245,7 @@ private fun FeedCardMenuBox(
             expanded = showMenu,
             onDismissRequest = { onShowMenuChange(false) },
         ) {
-            if (onBlockByKeywords != null) {
-                DropdownMenuItem(
-                    text = { Text("按关键词屏蔽") },
-                    onClick = {
-                        onShowMenuChange(false)
-                        onBlockByKeywords(item)
-                    },
-                )
-            }
-            DropdownMenuItem(
-                text = { Text("屏蔽用户") },
-                onClick = {
-                    onShowMenuChange(false)
-                    onBlockUser?.invoke(item)
-                },
-            )
-            if (onBlockTopic != null && item.raw != null) {
-                val topics = when (val raw = item.raw) {
-                    is com.chloemlla.zhplus.shared.data.DataHolder.Answer -> raw.question.topics
-                    is com.chloemlla.zhplus.shared.data.DataHolder.Question -> raw.topics
-                    is com.chloemlla.zhplus.shared.data.DataHolder.Article -> raw.topics ?: emptyList()
-                    is com.chloemlla.zhplus.shared.data.DataHolder.Pin -> raw.topics ?: emptyList()
-                    else -> emptyList()
-                }
-                topics.forEach { topic ->
-                    DropdownMenuItem(
-                        text = { Text("屏蔽「${topic.name}」") },
-                        onClick = {
-                            onShowMenuChange(false)
-                            onBlockTopic(topic.id, topic.name)
-                        },
-                    )
-                }
-            }
+            menuItems { onShowMenuChange(false) }
             DropdownMenuItem(
                 text = { Text("外观设置") },
                 onClick = {
@@ -303,11 +277,10 @@ private fun FeedCardContent(
     item: FeedDisplayItem,
     showFeedThumbnail: Boolean,
     thumbnailUrl: String?,
+    pinImages: List<DataHolder.Pin.ContentImage>,
     showMenu: Boolean,
     onShowMenuChange: (Boolean) -> Unit,
-    onBlockUser: ((FeedDisplayItem) -> Unit)?,
-    onBlockByKeywords: ((FeedDisplayItem) -> Unit)?,
-    onBlockTopic: ((topicId: String, topicName: String) -> Unit)?,
+    menuItems: @Composable ColumnScope.(dismissMenu: () -> Unit) -> Unit,
     duo3CardLayout: Boolean,
     duo3CardLargeTitle: Boolean,
     showSourceLabel: Boolean,
@@ -316,10 +289,12 @@ private fun FeedCardContent(
     val fontSizePercent = remember { settings.getInt(PREF_FONT_SIZE, 100) }
     val lineHeightPercent = remember { settings.getInt(PREF_LINE_HEIGHT, 160) }
     val navigator = LocalNavigator.current
+    val visiblePinImages = pinImages.takeIf { showFeedThumbnail && !item.isFiltered }.orEmpty()
+    val sourceLabel = item.feed?.sourceLabel.takeUnless { item.isFiltered }
     if (duo3CardLayout) {
         // ── 新排版（duo3）────────────────────────────────────────────────────
         if (showSourceLabel) {
-            FeedCardSourceLabel(item.sourceLabel)
+            FeedCardSourceLabel(sourceLabel)
         }
         if (!item.title.isEmpty()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -364,6 +339,10 @@ private fun FeedCardContent(
                     )
                 }
             }
+            PinFeedImages(
+                images = visiblePinImages,
+                modifier = Modifier.padding(top = 8.dp),
+            )
             if (item.details.isNotEmpty() || (item.avatarSrc != null && item.authorName != null)) {
                 Row(
                     modifier = Modifier
@@ -413,7 +392,7 @@ private fun FeedCardContent(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
                         )
-                        FeedCardMenuBox(item, showMenu, onShowMenuChange, onBlockUser, onBlockByKeywords, onBlockTopic, navigator)
+                        FeedCardMenuBox(item, showMenu, onShowMenuChange, menuItems, navigator)
                     }
                 }
             }
@@ -421,7 +400,7 @@ private fun FeedCardContent(
     } else {
         // ── 原始排版（master）────────────────────────────────────────────────
         if (showSourceLabel) {
-            FeedCardSourceLabel(item.sourceLabel)
+            FeedCardSourceLabel(sourceLabel)
         }
         if (!item.title.isEmpty() && !item.isFiltered) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -475,6 +454,10 @@ private fun FeedCardContent(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = if (item.isFiltered) 0.dp else 3.dp),
                 )
+                PinFeedImages(
+                    images = visiblePinImages,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
                 if (item.details.isNotEmpty()) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -487,7 +470,7 @@ private fun FeedCardContent(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.weight(1f),
                         )
-                        FeedCardMenuBox(item, showMenu, onShowMenuChange, onBlockUser, onBlockByKeywords, onBlockTopic, navigator)
+                        FeedCardMenuBox(item, showMenu, onShowMenuChange, menuItems, navigator)
                     }
                 }
             }
@@ -505,6 +488,143 @@ private fun FeedCardContent(
         }
     }
 }
+
+internal enum class PinFeedImageLayout {
+    SINGLE,
+    MULTI_ROW,
+    NINE_GRID,
+}
+
+internal fun pinFeedImageLayout(imageCount: Int): PinFeedImageLayout? = when (imageCount) {
+    0 -> null
+    1 -> PinFeedImageLayout.SINGLE
+    in 2..4 -> PinFeedImageLayout.MULTI_ROW
+    else -> PinFeedImageLayout.NINE_GRID
+}
+
+@Composable
+private fun PinFeedImages(
+    images: List<DataHolder.Pin.ContentImage>,
+    modifier: Modifier = Modifier,
+) {
+    when (pinFeedImageLayout(images.size)) {
+        null -> return
+        PinFeedImageLayout.SINGLE -> {
+            val image = images.single()
+            AsyncImage(
+                model = image.feedThumbnailUrl,
+                contentDescription = "想法图片 1/1",
+                modifier = modifier
+                    .fillMaxWidth(1f / 3f)
+                    .aspectRatio(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .testTag("pin_feed_image_0"),
+                contentScale = ContentScale.Crop,
+            )
+        }
+        PinFeedImageLayout.MULTI_ROW -> {
+            Row(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .testTag("pin_feed_images"),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                images.forEachIndexed { index, image ->
+                    PinFeedImage(
+                        image = image,
+                        index = index,
+                        totalCount = images.size,
+                        modifier = Modifier
+                            .weight(1f)
+                            .aspectRatio(1f),
+                    )
+                }
+                repeat((3 - images.size).coerceAtLeast(0)) {
+                    Spacer(
+                        modifier = Modifier
+                            .weight(1f)
+                            .aspectRatio(1f),
+                    )
+                }
+            }
+        }
+        PinFeedImageLayout.NINE_GRID -> {
+            val visibleImages = images.take(9)
+            Column(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .testTag("pin_feed_images"),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                visibleImages.chunked(3).forEachIndexed { rowIndex, rowImages ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        rowImages.forEachIndexed { columnIndex, image ->
+                            val index = rowIndex * 3 + columnIndex
+                            PinFeedImage(
+                                image = image,
+                                index = index,
+                                totalCount = images.size,
+                                remainingCount = (images.size - 9).takeIf { index == 8 && it > 0 },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .aspectRatio(1f),
+                            )
+                        }
+                        repeat(3 - rowImages.size) {
+                            Spacer(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .aspectRatio(1f),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PinFeedImage(
+    image: DataHolder.Pin.ContentImage,
+    index: Int,
+    totalCount: Int,
+    remainingCount: Int? = null,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .testTag("pin_feed_image_$index"),
+    ) {
+        AsyncImage(
+            model = image.feedThumbnailUrl,
+            contentDescription = "想法图片 ${index + 1}/$totalCount",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+        )
+        if (remainingCount != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.55f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "+$remainingCount",
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleLarge,
+                )
+            }
+        }
+    }
+}
+
+internal val DataHolder.Pin.ContentImage.feedThumbnailUrl: String
+    get() = thumbnail.ifBlank { url }
 
 @Composable
 private fun FeedCardSourceLabel(sourceLabel: String?) {

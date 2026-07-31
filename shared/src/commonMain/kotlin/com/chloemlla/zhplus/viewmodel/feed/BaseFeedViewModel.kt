@@ -33,12 +33,15 @@ import kotlin.reflect.typeOf
 
 abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
     var displayItems = mutableStateListOf<FeedDisplayItem>()
+    internal var latestLoadedDisplayItems = mutableStateOf<List<FeedDisplayItem>>(emptyList())
     var isPullToRefresh by mutableStateOf(false)
         protected set
 
     override fun processResponse(environment: PaginationEnvironment, data: List<Feed>, rawData: JsonArray) {
         super.processResponse(environment, data, rawData)
-        addDisplayItems(data.flattenFeeds().map { createDisplayItem(environment, it) })
+        val loadedItems = data.flattenFeeds().map { createDisplayItem(environment, it) }
+        addDisplayItems(loadedItems)
+        latestLoadedDisplayItems.value = loadedItems
     }
 
     override fun refresh(environment: PaginationEnvironment) {

@@ -14,6 +14,7 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.MeasurePolicy
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
@@ -35,6 +36,7 @@ internal fun InlineFlowText(
     style: TextStyle,
     modifier: Modifier = Modifier,
     maxLines: Int = Int.MAX_VALUE,
+    onTextLayout: ((TextLayoutResult) -> Unit)? = null,
 ) {
     if (inlineContents.isEmpty()) {
         BasicText(
@@ -42,6 +44,7 @@ internal fun InlineFlowText(
             modifier = modifier,
             style = style,
             maxLines = maxLines,
+            onTextLayout = onTextLayout,
         )
         return
     }

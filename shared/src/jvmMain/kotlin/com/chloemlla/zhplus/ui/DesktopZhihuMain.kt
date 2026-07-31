@@ -266,7 +266,6 @@ private fun rememberDesktopZhihuMainPreferenceState(): ZhihuMainPreferenceState 
         )
         ZhihuMainPreferenceSnapshot(
             duo3HomeAccount = duo3HomeAccount,
-            duo3NavStyle = settings.getBoolean("duo3_nav_style", false),
             tapToScrollToTopEnabled = settings.getBoolean("bottomBarTapScrollToTop", true),
             autoHideBottomBar = settings.getBoolean("autoHideBottomBar", false),
             selectedBottomBarItemKeys = orderedSelectedKeys,

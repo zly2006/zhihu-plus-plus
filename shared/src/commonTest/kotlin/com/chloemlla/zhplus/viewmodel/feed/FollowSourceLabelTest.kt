@@ -22,7 +22,7 @@ import com.chloemlla.zhplus.shared.data.Feed
 import com.chloemlla.zhplus.shared.data.GroupFeed
 import com.chloemlla.zhplus.shared.data.Person
 import com.chloemlla.zhplus.shared.data.sourceLabel
-import com.chloemlla.zhplus.shared.data.toDisplayItem
+import com.chloemlla.zhplus.viewmodel.FeedDisplayEnvironment
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -36,10 +36,10 @@ class FollowSourceLabelTest {
             actionText = "关注用户赞同了回答",
         )
 
-        val item = feed.toDisplayItem().withFollowSourceLabel(feed)
+        val item = FollowViewModel().createDisplayItem(object : FeedDisplayEnvironment {}, feed)
 
         assertEquals("关注用户赞同了回答", feed.sourceLabel)
-        assertEquals("关注用户赞同了回答", item.sourceLabel)
+        assertEquals(feed, item.feed)
         assertEquals("回答 · 42 赞同 · 7 评论", item.details)
     }
 
@@ -54,9 +54,9 @@ class FollowSourceLabelTest {
             actionText = "关注用户赞同了回答",
         )
 
-        val item = feed.toDisplayItem().withFollowSourceLabel(feed)
+        val item = FollowViewModel().createDisplayItem(object : FeedDisplayEnvironment {}, feed)
 
-        assertNull(item.sourceLabel)
+        assertEquals(feed, item.feed)
         assertEquals("已屏蔽", item.title)
     }
 

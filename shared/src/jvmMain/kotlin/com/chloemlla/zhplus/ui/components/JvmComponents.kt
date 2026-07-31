@@ -16,6 +16,7 @@
  */
 
 package com.chloemlla.zhplus.ui.components
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.lifecycle.viewModelScope
@@ -31,6 +32,7 @@ import com.chloemlla.zhplus.viewmodel.DesktopPaginationEnvironment
 import com.chloemlla.zhplus.viewmodel.feed.removeFeedItemsByBlockedTopic
 import com.chloemlla.zhplus.viewmodel.feed.resolveFeedBlockAuthorInfo
 import com.chloemlla.zhplus.viewmodel.feed.resolveFeedKeywordBlockingContent
+import com.chloemlla.zhplus.viewmodel.feed.resolveFeedQuestionAuthorInfo
 import com.chloemlla.zhplus.viewmodel.filter.BlockedKeyword
 import com.chloemlla.zhplus.viewmodel.filter.BlockedTopic
 import com.chloemlla.zhplus.viewmodel.filter.ContentDetailProvider
@@ -58,6 +60,16 @@ actual fun rememberFeedBlockActions(): FeedBlockActions {
                         onShowDialog(authorInfo)
                     } else {
                         userMessages.showShortMessage("无法获取屏蔽用户所需的数据，请尝试进入内容详情页操作")
+                    }
+                }
+            },
+            handleBlockQuestionAuthor = { viewModel, feedItem, onShowDialog ->
+                viewModel.viewModelScope.launch {
+                    val authorInfo = resolveFeedQuestionAuthorInfo(feedItem, contentDetailProvider)
+                    if (authorInfo != null) {
+                        onShowDialog(authorInfo)
+                    } else {
+                        userMessages.showShortMessage("当前条目没有可用的提问者数据，无法屏蔽提问者")
                     }
                 }
             },

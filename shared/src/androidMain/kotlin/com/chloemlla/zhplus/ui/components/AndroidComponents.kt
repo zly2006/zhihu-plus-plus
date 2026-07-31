@@ -45,6 +45,7 @@ import com.chloemlla.zhplus.util.clipboardManager
 import com.chloemlla.zhplus.util.luoTianYiUrlLauncher
 import com.chloemlla.zhplus.util.signFetchRequest
 import com.chloemlla.zhplus.viewmodel.feed.handleBlockByKeywords
+import com.chloemlla.zhplus.viewmodel.feed.handleBlockQuestionAuthor
 import com.chloemlla.zhplus.viewmodel.feed.handleBlockTopic
 import com.chloemlla.zhplus.viewmodel.feed.handleBlockUser
 import com.chloemlla.zhplus.viewmodel.filter.AndroidContentFilterRuntime
@@ -241,6 +242,9 @@ actual fun rememberFeedBlockActions(): FeedBlockActions {
         FeedBlockActions(
             handleBlockUser = { viewModel, feedItem, onShowDialog ->
                 viewModel.handleBlockUser(context, feedItem, onShowDialog)
+            },
+            handleBlockQuestionAuthor = { viewModel, feedItem, onShowDialog ->
+                viewModel.handleBlockQuestionAuthor(context, feedItem, onShowDialog)
             },
             handleBlockTopic = { viewModel, topicId, topicName ->
                 viewModel.handleBlockTopic(context, topicId, topicName)

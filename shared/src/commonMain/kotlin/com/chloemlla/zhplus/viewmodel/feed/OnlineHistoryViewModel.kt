@@ -21,17 +21,23 @@ import com.chloemlla.zhplus.navigation.Article
 import com.chloemlla.zhplus.navigation.resolveContent
 import com.chloemlla.zhplus.shared.data.Feed
 import com.chloemlla.zhplus.shared.data.FeedDisplayItem
+import com.chloemlla.zhplus.shared.data.OnlineHistoryDeletePair
 import com.chloemlla.zhplus.shared.data.OnlineHistoryItem
 import com.chloemlla.zhplus.shared.data.ZhihuJson.decodeJson
 import com.chloemlla.zhplus.shared.data.toFeedDisplayItemNavDestinationJson
 import com.chloemlla.zhplus.viewmodel.PaginationEnvironment
+import com.chloemlla.zhplus.viewmodel.deleteOnlineHistoryItem
 import kotlinx.serialization.json.JsonArray
 
 class OnlineHistoryViewModel : BaseFeedViewModel() {
     override val initialUrl: String = "https://api.zhihu.com/unify-consumption/read_history?offset=0&limit=10"
     override val shouldLogDecodeFailures: Boolean = false
+    private val deletionPairs = mutableMapOf<FeedDisplayItem, OnlineHistoryDeletePair>()
 
     override fun processResponse(environment: PaginationEnvironment, data: List<Feed>, rawData: JsonArray) {
+        if (displayItems.isEmpty()) {
+            deletionPairs.clear()
+        }
         val response = rawData.mapNotNull { item ->
             runCatching { decodeJson<OnlineHistoryItem>(item) }.getOrNull()
         }
@@ -64,7 +70,18 @@ class OnlineHistoryViewModel : BaseFeedViewModel() {
                 },
                 authorName = item.data.content?.authorName,
             )
+            deletionPairs[displayItem] = OnlineHistoryDeletePair(
+                contentToken = item.data.extra.contentToken,
+                contentType = item.data.extra.contentType,
+            )
             displayItems.add(displayItem)
         }
+    }
+
+    suspend fun deleteItem(environment: PaginationEnvironment, item: FeedDisplayItem) {
+        val pair = checkNotNull(deletionPairs[item]) { "在线历史记录缺少删除标识" }
+        environment.deleteOnlineHistoryItem(pair)
+        displayItems.remove(item)
+        deletionPairs.remove(item)
     }
 }

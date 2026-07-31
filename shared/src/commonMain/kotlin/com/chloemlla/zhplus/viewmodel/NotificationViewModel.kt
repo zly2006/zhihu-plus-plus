@@ -22,6 +22,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateMap
+import androidx.lifecycle.viewModelScope
 import com.chloemlla.zhplus.shared.data.MobileNotificationMessageOverview
 import com.chloemlla.zhplus.shared.data.MobileNotificationTimelineItem
 import com.chloemlla.zhplus.shared.data.ZhihuJson
@@ -31,6 +32,9 @@ import com.chloemlla.zhplus.shared.notification.matchNotificationType
 import com.chloemlla.zhplus.shared.util.Log
 import io.ktor.client.call.body
 import io.ktor.client.request.get
+import io.ktor.client.request.post
+import io.ktor.http.isSuccess
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
@@ -58,7 +62,10 @@ enum class MobileNotificationCategory(
     ;
 
     val initialUrl: String
-        get() = "$MOBILE_NOTIFICATION_ENTRY_BASE_URL/$entryName?limit=20"
+        get() = "https://api.zhihu.com/notifications/v3/timeline/entry/$entryName?limit=20"
+
+    val readAllUrl: String
+        get() = "https://api.zhihu.com/notifications/v3/timeline/entry/$entryName/actions/readall"
 }
 
 class NotificationViewModel :
@@ -91,7 +98,7 @@ class NotificationViewModel :
 
     fun selectCategory(
         category: MobileNotificationCategory,
-        environment: PaginationEnvironment,
+        environment: NotificationEnvironment,
     ) {
         if (selectedCategory == category) return
         selectedCategory = category
@@ -99,6 +106,10 @@ class NotificationViewModel :
         allData.addAll(categoryData.getValue(category))
         if (allData.isEmpty() && category !in endedCategories) {
             loadMore(environment)
+        } else if (environment.notificationSettingsStore.getAutoMarkAsReadEnabled()) {
+            viewModelScope.launch {
+                markCategoryAsRead(category, environment)
+            }
         }
     }
 
@@ -142,8 +153,11 @@ class NotificationViewModel :
             if (paging == null || paging.isEnd) {
                 endedCategories += category
             }
-            if (notificationSettingsEnvironment.notificationSettingsStore.getAutoMarkAsReadEnabled()) {
-                markAllAsRead(environment)
+            if (
+                selectedCategory == category &&
+                notificationSettingsEnvironment.notificationSettingsStore.getAutoMarkAsReadEnabled()
+            ) {
+                markCategoryAsRead(category, environment)
             }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
@@ -197,18 +211,37 @@ class NotificationViewModel :
         }
     }
 
-    /**
-     * 标记所有消息为已读
-     */
-    suspend fun markAllAsRead(environment: ZhihuApiEnvironment) {
-        listOf(
-            "https://www.zhihu.com/api/v4/notifications/v2/default/actions/readall",
-            "https://www.zhihu.com/api/v4/notifications/v2/follow/actions/readall",
-            "https://www.zhihu.com/api/v4/notifications/v2/vote_thank/actions/readall",
-        ).forEach { url ->
-            environment.postSigned(url)
+    suspend fun markCategoryAsRead(
+        category: MobileNotificationCategory,
+        environment: MobileHomeFeedEnvironment,
+    ): Boolean {
+        if ((categoryUnreadCounts[category] ?: 0) <= 0) return true
+
+        return try {
+            val response = environment.mobileHomeFeedHttpClient().post(category.readAllUrl)
+            if (!response.status.isSuccess()) {
+                Log.e("NotificationViewModel", "Failed to mark ${category.entryName} notifications as read: ${response.status}")
+                false
+            } else {
+                categoryUnreadCounts[category] = 0
+                unreadCount = categoryUnreadCounts.values.sum()
+                true
+            }
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            Log.e("NotificationViewModel", "Failed to mark ${category.entryName} notifications as read", e)
+            false
         }
-        unreadCount = 0
+    }
+
+    suspend fun markAllAsRead(environment: MobileHomeFeedEnvironment): Boolean {
+        var succeeded = true
+        MobileNotificationCategory.entries.forEach { category ->
+            if (!markCategoryAsRead(category, environment)) {
+                succeeded = false
+            }
+        }
+        return succeeded
     }
 
     private suspend fun updateUnreadCounts(environment: PaginationEnvironment) {
@@ -238,5 +271,4 @@ class NotificationViewModel :
     }
 }
 
-private const val MOBILE_NOTIFICATION_ENTRY_BASE_URL = "https://api.zhihu.com/notifications/v3/timeline/entry"
 private const val MOBILE_NOTIFICATION_MESSAGE_URL = "https://api.zhihu.com/notifications/v3/message/v3?limit=20"

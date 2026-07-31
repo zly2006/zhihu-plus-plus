@@ -112,6 +112,48 @@ class CollectionScreenInstrumentedTest {
         }
     }
 
+    @Test
+    fun createActionOpensExistingCollectionDialog() {
+        setCollectionScreen(seedCollections(count = 1))
+
+        composeRule.onNodeWithTag(COLLECTION_SCREEN_CREATE_BUTTON_TAG).performClick()
+
+        composeRule.onNodeWithTag(CREATE_COLLECTION_DIALOG_TAG).assertIsDisplayed()
+        composeRule.onNodeWithTag(CREATE_COLLECTION_TITLE_INPUT_TAG).assertIsDisplayed()
+        composeRule.onNodeWithText("新建收藏夹").assertIsDisplayed()
+    }
+
+    @Test
+    fun onlySelectedNonDefaultCollectionOffersDeleteConfirmation() {
+        val defaultCollection = Collection(
+            id = "default-collection",
+            title = "默认收藏夹",
+            isDefault = true,
+        )
+        val selectedCollection = Collection(
+            id = "selected-collection",
+            title = "待删除收藏夹",
+        )
+        setCollectionScreen(listOf(defaultCollection, selectedCollection))
+
+        composeRule
+            .onNodeWithTag(collectionDeleteButtonTag(defaultCollection.id))
+            .assertDoesNotExist()
+        composeRule
+            .onNodeWithTag(collectionDeleteButtonTag(selectedCollection.id))
+            .performClick()
+
+        composeRule
+            .onNodeWithTag(collectionDeleteDialogTag(selectedCollection.id))
+            .assertIsDisplayed()
+        composeRule
+            .onNodeWithTag(collectionDeleteConfirmTag(selectedCollection.id))
+            .assertIsDisplayed()
+        composeRule
+            .onNodeWithText("删除后无法恢复，确认删除收藏夹“${selectedCollection.title}”吗？")
+            .assertIsDisplayed()
+    }
+
     private fun setCollectionScreen(testCollections: List<Collection>) = composeRule.setScreenContent {
         CollectionScreen(
             urlToken = "offline-test-user",
@@ -135,7 +177,16 @@ class CollectionScreenInstrumentedTest {
         const val COLLECTION_SCREEN_TITLE_TAG = "collection_screen_title"
         const val COLLECTION_SCREEN_BACK_BUTTON_TAG = "collection_screen_back_button"
         const val COLLECTION_SCREEN_LIST_TAG = "collection_screen_list"
+        const val COLLECTION_SCREEN_CREATE_BUTTON_TAG = "collection_screen_create_button"
+        const val CREATE_COLLECTION_DIALOG_TAG = "create_collection_dialog"
+        const val CREATE_COLLECTION_TITLE_INPUT_TAG = "create_collection_title_input"
 
         fun collectionItemTag(collectionId: String) = "collection_screen_item_$collectionId"
+
+        fun collectionDeleteButtonTag(collectionId: String) = "collection_screen_delete_button_$collectionId"
+
+        fun collectionDeleteDialogTag(collectionId: String) = "collection_screen_delete_dialog_$collectionId"
+
+        fun collectionDeleteConfirmTag(collectionId: String) = "collection_screen_delete_confirm_$collectionId"
     }
 }

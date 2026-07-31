@@ -190,9 +190,9 @@ class MainActivity :
             startActivity(intent)
             finish()
         }
+        enableEdgeToEdgeCompat()
         super.onCreate(savedInstanceState)
         clearShareImageCache(this)
-        enableEdgeToEdgeCompat()
         ClashPartnerCompat.start(this)
         ClashPartnerCompat.setNetworkAdaptHook {
             AccountData.invalidateHttpClientsForNetworkAdapt()

@@ -1315,7 +1315,6 @@ fun AppearanceSettingsScreen(
 
             // 先声明所有子开关状态，以便主开关可以批量操作
             val duo3All = remember { mutableStateOf(settings.getBoolean("duo3_all", false)) }
-            val duo3NavStyle = remember { mutableStateOf(settings.getBoolean("duo3_nav_style", false)) }
             val duo3CardAppearance = remember { mutableStateOf(settings.getBoolean("duo3_card_appearance", false)) }
             val duo3CardLayout = remember { mutableStateOf(settings.getBoolean("duo3_card_layout", false)) }
             val duo3CardLargeTitle = remember {
@@ -1326,7 +1325,6 @@ fun AppearanceSettingsScreen(
 
             fun enableAllSubs() {
                 settings.putBoolean("duo3_home_account", true)
-                settings.putBoolean("duo3_nav_style", true)
                 settings.putBoolean("duo3_card_appearance", true)
                 settings.putBoolean("duo3_card_layout", true)
                 settings.putBoolean("duo3_article_bar", true)
@@ -1334,7 +1332,6 @@ fun AppearanceSettingsScreen(
                 settings.putBoolean("showRefreshFab", false)
                 settings.putBoolean("buttonSkipAnswer", false)
                 duo3HomeAccount.value = true
-                duo3NavStyle.value = true
                 duo3CardAppearance.value = true
                 duo3CardLayout.value = true
                 duo3ArticleBar.value = true
@@ -1352,13 +1349,11 @@ fun AppearanceSettingsScreen(
 
             fun disableAllSubs() {
                 settings.putBoolean("duo3_home_account", false)
-                settings.putBoolean("duo3_nav_style", false)
                 settings.putBoolean("duo3_card_appearance", false)
                 settings.putBoolean("duo3_card_layout", false)
                 settings.putBoolean("duo3_article_bar", false)
                 settings.putBoolean("duo3_article_actions", false)
                 duo3HomeAccount.value = false
-                duo3NavStyle.value = false
                 duo3CardAppearance.value = false
                 duo3CardLayout.value = false
                 duo3ArticleBar.value = false
@@ -1420,16 +1415,6 @@ fun AppearanceSettingsScreen(
                             selectedBottomBarItemKeys.value
                         }
                         persistBottomBarSelection(updatedSelection, it)
-                    },
-                )
-
-                SettingItemWithSwitch(
-                    title = { Text("底部导航栏：改为 Material 样式") },
-                    description = { Text("移除自定义样式；更改「关注」按钮图标。") },
-                    checked = duo3NavStyle.value,
-                    onCheckedChange = {
-                        duo3NavStyle.value = it
-                        settings.putBoolean("duo3_nav_style", it)
                     },
                 )
 

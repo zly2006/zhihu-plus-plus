@@ -38,17 +38,14 @@ class FollowViewModel : BaseFeedViewModel() {
     override val initialUrl: String
         get() = "https://www.zhihu.com/api/v3/moments?limit=10&desktop=true"
 
-    override fun createDisplayItem(environment: FeedDisplayEnvironment, feed: Feed): FeedDisplayItem =
-        super.createDisplayItem(environment, feed).withFollowSourceLabel(feed)
-}
-
-internal fun FeedDisplayItem.withFollowSourceLabel(feed: Feed): FeedDisplayItem {
-    if (isFiltered) return this
-    val label = feed.sourceLabel ?: return this
-    return copy(
-        sourceLabel = label,
-        details = feed.target?.detailsText ?: details,
-    )
+    override fun createDisplayItem(environment: FeedDisplayEnvironment, feed: Feed): FeedDisplayItem {
+        val item = super.createDisplayItem(environment, feed)
+        return if (item.isFiltered || feed.sourceLabel == null) {
+            item
+        } else {
+            item.copy(details = feed.target?.detailsText ?: item.details)
+        }
+    }
 }
 
 class FollowRecommendViewModel : BaseFeedViewModel() {

@@ -38,4 +38,24 @@ class ContentFilterDatabaseTest {
         assertEquals(listOf("noise"), keywords.map { it.keyword })
         database.close()
     }
+
+    @Test
+    fun storesBlockedQuestionAuthor() = runTest {
+        val database = getContentFilterDatabase(
+            createTempDirectory("content-filter-room-question-author").resolve("content-filter.db").toFile(),
+        )
+
+        database.blockedQuestionAuthorDao().insertUser(
+            BlockedQuestionAuthor(
+                userId = "asker-id",
+                userName = "提问者",
+                urlToken = "asker-token",
+            ),
+        )
+
+        val authors = database.blockedQuestionAuthorDao().getAllUsers()
+        assertEquals(listOf("asker-id"), authors.map { it.userId })
+        assertEquals(listOf("提问者"), authors.map { it.userName })
+        database.close()
+    }
 }

@@ -16,6 +16,7 @@
  */
 
 package com.chloemlla.zhplus.ui.components
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.chloemlla.zhplus.shared.platform.rememberPlainTextClipboard
@@ -25,6 +26,7 @@ import com.chloemlla.zhplus.shared.platform.rememberUserMessageSink
 actual fun rememberFeedBlockActions(): FeedBlockActions = remember {
     FeedBlockActions(
         handleBlockUser = { _, _, _ -> },
+        handleBlockQuestionAuthor = { _, _, _ -> },
         handleBlockTopic = { _, _, _ -> },
         handleBlockByKeywords = { _, _, _ -> },
     )

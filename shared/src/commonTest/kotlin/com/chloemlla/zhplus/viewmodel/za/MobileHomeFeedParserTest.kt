@@ -19,16 +19,25 @@ package com.chloemlla.zhplus.viewmodel.za
 
 import com.chloemlla.zhplus.navigation.Article
 import com.chloemlla.zhplus.navigation.ArticleType
+import com.chloemlla.zhplus.navigation.Pin
+import com.chloemlla.zhplus.shared.data.CommonFeed
+import com.chloemlla.zhplus.shared.data.DataHolder
+import com.chloemlla.zhplus.shared.data.Feed
 import com.chloemlla.zhplus.shared.data.navDestination
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertNull
 
+@OptIn(ExperimentalEncodingApi::class)
 class MobileHomeFeedParserTest {
     @Test
     fun parsesMobileRecommendationCardToFeedDisplayItem() {
@@ -58,6 +67,133 @@ class MobileHomeFeedParserTest {
         )
 
         assertNull(item)
+    }
+
+    @Test
+    fun parsesAndroidPinImagesIntoTypedFeedTarget() {
+        val originalContent = buildJsonObject {
+            put(
+                "media_info",
+                buildJsonObject {
+                    put(
+                        "images",
+                        buildJsonArray {
+                            repeat(9) { index ->
+                                add(
+                                    buildJsonObject {
+                                        put("url", "https://example.com/original-$index.jpg")
+                                        put("width", JsonPrimitive(1900 + index))
+                                        put("height", JsonPrimitive(1000 + index))
+                                    },
+                                )
+                            }
+                        },
+                    )
+                },
+            )
+        }
+        val card = buildJsonObject {
+            put("type", "ComponentCard")
+            put("id", "pin-card-2064056340616631575")
+            put(
+                "action",
+                buildJsonObject {
+                    put(
+                        "parameter",
+                        "route_url=https%3A%2F%2Fwww.zhihu.com%2Fpin%2F2064056340616631575",
+                    )
+                },
+            )
+            put(
+                "children",
+                buildJsonArray {
+                    add(
+                        buildJsonObject {
+                            put("type", "Text")
+                            put("id", "Text")
+                            put("style", "text_recommend_title")
+                            put("text", "九图想法标题")
+                        },
+                    )
+                    add(
+                        buildJsonObject {
+                            put("type", "Text")
+                            put("id", "text_pin_summary")
+                            put("style", "text_pin_summary")
+                            put("text", "九图想法摘要")
+                        },
+                    )
+                    add(lineWithText("想法"))
+                    add(reactionFooter())
+                    add(authorLine())
+                },
+            )
+            put(
+                "extra",
+                buildJsonObject {
+                    put(
+                        "business_ext_map",
+                        buildJsonObject {
+                            put(
+                                "ori_content",
+                                Base64.Default.encode(originalContent.toString().encodeToByteArray()),
+                            )
+                            put(
+                                "images",
+                                buildJsonArray {
+                                    add(
+                                        buildJsonObject {
+                                            put("url", "https://example.com/thumbnail-0.jpg")
+                                            put("width", JsonPrimitive(720))
+                                            put("height", JsonPrimitive(400))
+                                        },
+                                    )
+                                },
+                            )
+                        },
+                    )
+                    put(
+                        "passthrough_info",
+                        buildJsonObject {
+                            put(
+                                "author",
+                                buildJsonObject {
+                                    put("id", "author-id")
+                                    put("url", "https://www.zhihu.com/people/author-token")
+                                    put("url_token", "author-token")
+                                    put("is_following", true)
+                                },
+                            )
+                            put(
+                                "content",
+                                buildJsonObject {
+                                    put("title", JsonNull)
+                                },
+                            )
+                        },
+                    )
+                },
+            )
+        }
+
+        val item = requireNotNull(parseMobileHomeFeedDisplayItem(card))
+
+        assertEquals("九图想法标题", item.title)
+        assertEquals(2064056340616631575L, assertIs<Pin>(item.navDestination).id)
+        val target = assertIs<Feed.PinTarget>(assertIs<CommonFeed>(item.feed).target)
+        assertEquals(2064056340616631575L, target.id)
+        assertEquals("author-token", target.author.urlToken)
+        assertEquals(true, target.author.isFollowing)
+        assertEquals(
+            DataHolder.Pin.ContentText(title = "九图想法标题", content = "九图想法摘要"),
+            target.content.first(),
+        )
+        val images = target.content.drop(1).map { assertIs<DataHolder.Pin.ContentImage>(it) }
+        assertEquals(9, images.size)
+        assertEquals("https://example.com/original-0.jpg", images.first().url)
+        assertEquals("https://example.com/thumbnail-0.jpg", images.first().thumbnail)
+        assertEquals("", images[1].thumbnail)
+        assertEquals("https://example.com/original-8.jpg", images.last().url)
     }
 
     private fun mobileCard(): JsonObject = buildJsonObject {
