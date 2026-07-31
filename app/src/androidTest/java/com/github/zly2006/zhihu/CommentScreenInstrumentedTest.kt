@@ -58,6 +58,8 @@ import com.github.zly2006.zhihu.test.InstrumentedTestEnvironment
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
 import com.github.zly2006.zhihu.test.ZhihuMockApi
+import com.github.zly2006.zhihu.test.mockCommentDetail
+import com.github.zly2006.zhihu.test.mockRootComments
 import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.pressSystemBack
@@ -179,6 +181,53 @@ class CommentScreenInstrumentedTest {
         }
 
         composeRule.onAllNodesWithTag(ZH_PLUS_AUTHOR_COMMENT_POLICY_DIALOG_TAG).assertCountEquals(0)
+    }
+
+    @Test
+    fun activityCommentHolderOpensChildListAndTargetsNestedComment() {
+        mockCommentDetail(
+            commentId = "liked-child-comment",
+            resourceType = "answer",
+            replyRootCommentId = "liked-root-comment",
+        )
+        mockCommentDetail(
+            commentId = "liked-root-comment",
+            resourceType = "answer",
+        )
+        mockRootComments(
+            urlPrefix = "https://www.zhihu.com/api/v4/comment_v5/answers/9001/root_comment",
+            commentId = "liked-root-comment",
+        )
+        mockRootComments(
+            urlPrefix = "https://www.zhihu.com/api/v4/comment_v5/comment/liked-root-comment/child_comment",
+            commentId = "other-child-comment",
+        )
+        composeRule.activity.preparePendingComment(
+            CommentHolder(
+                commentId = "liked-child-comment",
+                article = ROOT_ARTICLE,
+            ),
+        )
+
+        composeRule.setScreenContent {
+            CommentScreenComponent(
+                showComments = false,
+                onDismiss = {},
+                content = ROOT_ARTICLE,
+            )
+        }
+
+        composeRule.waitUntil("Expected pending child comment holder to open both comment sheets", timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(COMMENT_SCREEN_LIST_TAG).fetchSemanticsNodes().size == 2
+        }
+        composeRule.onAllNodesWithTag(COMMENT_SCREEN_LIST_TAG).assertCountEquals(2)
+        composeRule.onNodeWithTag("comment_row_liked-child-comment").assertIsDisplayed()
+        composeRule.waitUntil("Expected target/root details and root child list requests", timeoutMillis = 5_000) {
+            ZhihuMockApi.requestCount(HttpMethod.Get, "comment/liked-child-comment") == 1 &&
+                ZhihuMockApi.requestCount(HttpMethod.Get, "comment/liked-root-comment") == 2 &&
+                ZhihuMockApi.requestCount(HttpMethod.Get, "comment/liked-root-comment/child_comment") == 1
+        }
+        assertEquals(0, ZhihuMockApi.requestCount(HttpMethod.Get, "comment/liked-child-comment/child_comment"))
     }
 
     @After

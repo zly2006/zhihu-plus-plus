@@ -381,6 +381,8 @@ interface ArticleHost {
 
     fun consumePendingContentOpenFrom(destination: NavDestination): String = ContentOpenFrom.UNKNOWN
 
+    fun consumePendingCommentId(destination: NavDestination): String? = null
+
     fun speakArticleText(
         text: String,
         title: String,
