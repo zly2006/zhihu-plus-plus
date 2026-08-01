@@ -21,20 +21,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
-<<<<<<< HEAD:shared/src/commonMain/kotlin/com/chloemlla/zhplus/viewmodel/comment/RootCommentViewModel.kt
-import com.chloemlla.zhplus.navigation.Article
-import com.chloemlla.zhplus.navigation.ArticleType
-import com.chloemlla.zhplus.navigation.CommentHolder
-import com.chloemlla.zhplus.navigation.NavDestination
-import com.chloemlla.zhplus.navigation.Pin
-import com.chloemlla.zhplus.navigation.Question
-import com.chloemlla.zhplus.navigation.SegmentCommentHolder
-import com.chloemlla.zhplus.shared.data.DataHolder
-import com.chloemlla.zhplus.shared.data.ZhihuJson
-import com.chloemlla.zhplus.shared.viewmodel.CommentItem
-import com.chloemlla.zhplus.viewmodel.ZhihuApiEnvironment
-import com.chloemlla.zhplus.viewmodel.postSigned
-=======
 import com.chloemlla.zhplus.navigation.Article
 import com.chloemlla.zhplus.navigation.ArticleType
 import com.chloemlla.zhplus.navigation.CommentHolder
@@ -49,7 +35,6 @@ import com.chloemlla.zhplus.shared.viewmodel.CommentItem
 import com.chloemlla.zhplus.viewmodel.PaginationEnvironment
 import com.chloemlla.zhplus.viewmodel.ZhihuApiEnvironment
 import com.chloemlla.zhplus.viewmodel.postSigned
->>>>>>> upstream/master:shared/src/commonMain/kotlin/com/github/zly2006/zhihu/viewmodel/comment/RootCommentViewModel.kt
 import io.ktor.client.call.body
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType

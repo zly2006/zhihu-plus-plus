@@ -43,20 +43,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-<<<<<<< HEAD:shared/src/commonMain/kotlin/com/chloemlla/zhplus/ui/components/CommentScreenComponent.kt
-import com.chloemlla.zhplus.navigation.Article
-import com.chloemlla.zhplus.navigation.CommentHolder
-import com.chloemlla.zhplus.navigation.NavDestination
-import com.chloemlla.zhplus.navigation.Pin
-import com.chloemlla.zhplus.navigation.Question
-import com.chloemlla.zhplus.navigation.SegmentCommentHolder
-import com.chloemlla.zhplus.shared.data.DataHolder
-import com.chloemlla.zhplus.shared.data.ZhihuJson
-import com.chloemlla.zhplus.shared.platform.rememberSettingsStore
-import com.chloemlla.zhplus.shared.viewmodel.CommentItem
-import com.chloemlla.zhplus.theme.Typography
-import com.chloemlla.zhplus.ui.CommentScreen
-=======
 import com.chloemlla.zhplus.navigation.Article
 import com.chloemlla.zhplus.navigation.CommentHolder
 import com.chloemlla.zhplus.navigation.NavDestination
@@ -70,7 +56,6 @@ import com.chloemlla.zhplus.shared.viewmodel.CommentItem
 import com.chloemlla.zhplus.theme.Typography
 import com.chloemlla.zhplus.ui.CommentScreen
 import com.chloemlla.zhplus.ui.rememberArticleHost
->>>>>>> upstream/master:shared/src/commonMain/kotlin/com/github/zly2006/zhihu/ui/components/CommentScreenComponent.kt
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 
