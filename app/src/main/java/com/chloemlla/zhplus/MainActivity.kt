@@ -53,6 +53,7 @@ import com.chloemlla.zhplus.data.HistoryStorage
 import com.chloemlla.zhplus.navigation.Article
 import com.chloemlla.zhplus.navigation.ArticleType
 import com.chloemlla.zhplus.navigation.CollectionContent
+import com.chloemlla.zhplus.navigation.CommentHolder
 import com.chloemlla.zhplus.navigation.History
 import com.chloemlla.zhplus.navigation.Home
 import com.chloemlla.zhplus.navigation.MainTabs
@@ -160,6 +161,7 @@ class MainActivity :
     private lateinit var continuousUsageReminderManager: ContinuousUsageReminderManager
     private var pendingContentOpenIdentity: TrackedContentIdentity? = null
     private var pendingContentOpenFrom: String? = null
+    private var pendingCommentHolder: CommentHolder? = null
     private var currentMainTabOpenFrom: String? = null
     var mainTabNavigationTarget by mutableStateOf<TopLevelDestination?>(null)
         private set
@@ -481,6 +483,14 @@ class MainActivity :
     }
 
     fun navigate(route: NavDestination, popup: Boolean = false) {
+        if (route is CommentHolder) {
+            preparePendingComment(route)
+            navigate(route.article, popup)
+            return
+        }
+        if (pendingCommentHolder?.article != route) {
+            pendingCommentHolder = null
+        }
         preparePendingContentOpen(route)
         history.add(route)
         if (route is Video) {
@@ -536,6 +546,10 @@ class MainActivity :
         }
     }
 
+    internal fun preparePendingComment(holder: CommentHolder) {
+        pendingCommentHolder = holder
+    }
+
     override fun consumePendingContentOpenFrom(destination: NavDestination): String {
         val identity = ContentOpenEventSupport.toTrackedContentIdentity(destination) ?: return ContentOpenFrom.UNKNOWN
         if (identity != pendingContentOpenIdentity) {
@@ -545,6 +559,12 @@ class MainActivity :
         pendingContentOpenIdentity = null
         pendingContentOpenFrom = null
         return openFrom
+    }
+
+    override fun consumePendingCommentId(destination: NavDestination): String? {
+        val holder = pendingCommentHolder?.takeIf { it.article == destination } ?: return null
+        pendingCommentHolder = null
+        return holder.commentId
     }
 
     private fun preparePendingContentOpen(target: NavDestination) {

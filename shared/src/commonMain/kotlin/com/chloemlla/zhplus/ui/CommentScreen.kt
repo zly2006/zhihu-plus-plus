@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.chloemlla.zhplus.ui
+package com.github.zly2006.zhihu.ui
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
@@ -129,35 +129,36 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import com.chloemlla.zhplus.navigation.Article
-import com.chloemlla.zhplus.navigation.CommentHolder
-import com.chloemlla.zhplus.navigation.LocalNavigator
-import com.chloemlla.zhplus.navigation.NavDestination
-import com.chloemlla.zhplus.navigation.Person
-import com.chloemlla.zhplus.navigation.Pin
-import com.chloemlla.zhplus.navigation.Question
-import com.chloemlla.zhplus.navigation.SegmentCommentHolder
-import com.chloemlla.zhplus.navigation.resolveContent
-import com.chloemlla.zhplus.shared.platform.PlatformBackHandler
-import com.chloemlla.zhplus.shared.platform.rememberExternalUrlOpener
-import com.chloemlla.zhplus.shared.platform.rememberImagePreviewOpener
-import com.chloemlla.zhplus.shared.platform.rememberImageSaver
-import com.chloemlla.zhplus.shared.platform.rememberImageSharer
-import com.chloemlla.zhplus.shared.platform.rememberSettingsStore
-import com.chloemlla.zhplus.shared.util.twoDigitString
-import com.chloemlla.zhplus.shared.viewmodel.CommentItem
-import com.chloemlla.zhplus.ui.components.replaceSelection
-import com.chloemlla.zhplus.ui.subscreens.PREF_FONT_SIZE
-import com.chloemlla.zhplus.ui.subscreens.PREF_LINE_HEIGHT
-import com.chloemlla.zhplus.viewmodel.comment.BaseCommentViewModel
-import com.chloemlla.zhplus.viewmodel.comment.ChildCommentViewModel
-import com.chloemlla.zhplus.viewmodel.comment.CommentSortOrder
-import com.chloemlla.zhplus.viewmodel.comment.RootCommentViewModel
-import com.chloemlla.zhplus.viewmodel.rememberPaginationEnvironment
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Element
 import com.fleeksoft.ksoup.nodes.Node
 import com.fleeksoft.ksoup.nodes.TextNode
+import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.CommentHolder
+import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.navigation.Pin
+import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
+import com.github.zly2006.zhihu.navigation.resolveContent
+import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
+import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
+import com.github.zly2006.zhihu.shared.platform.rememberImagePreviewOpener
+import com.github.zly2006.zhihu.shared.platform.rememberImageSaver
+import com.github.zly2006.zhihu.shared.platform.rememberImageSharer
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.shared.util.twoDigitString
+import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
+import com.github.zly2006.zhihu.ui.components.replaceSelection
+import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
+import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
+import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
+import com.github.zly2006.zhihu.viewmodel.comment.ChildCommentViewModel
+import com.github.zly2006.zhihu.viewmodel.comment.CommentSortOrder
+import com.github.zly2006.zhihu.viewmodel.comment.RootCommentViewModel
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
@@ -437,12 +438,15 @@ private fun ClickableImageWithMenu(
 @Composable
 fun CommentScreen(
     content: () -> NavDestination,
+    initialCommentId: String? = null,
     activeCommentItem: CommentModel? = null,
     onChildCommentClick: (CommentModel) -> Unit,
     commentInput: String,
     onCommentInputChange: (String) -> Unit,
     listState: LazyListState = rememberLazyListState(),
     testOverrides: CommentScreenTestOverrides? = null,
+    initialComment: DataHolder.Comment? = null,
+    onInitialChildCommentResolved: (CommentModel, DataHolder.Comment) -> Unit = { _, _ -> },
 ) {
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val resolvedContent = content()
@@ -452,7 +456,8 @@ fun CommentScreen(
     var commentPendingDeletion by remember { mutableStateOf<CommentModel?>(null) }
     var isDeletingComment by remember { mutableStateOf(false) }
     var deleteCommentError by remember { mutableStateOf<String?>(null) }
-    val viewModelKey = commentViewModelKey(resolvedContent)
+    val initialTargetId = initialCommentId ?: initialComment?.id
+    val viewModelKey = commentViewModelKey(resolvedContent) + initialTargetId?.let { ":initial:$it" }.orEmpty()
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val commentInputFocusRequester = remember { FocusRequester() }
@@ -487,11 +492,11 @@ fun CommentScreen(
     val viewModel: BaseCommentViewModel = testOverrides?.viewModel ?: when (resolvedContent) {
         is CommentHolder -> remember(viewModelKey) {
             // 子评论不进行状态保存
-            ChildCommentViewModel(resolvedContent)
+            ChildCommentViewModel(resolvedContent, initialComment)
         }
 
         else -> viewModel(key = viewModelKey) {
-            RootCommentViewModel(resolvedContent)
+            RootCommentViewModel(resolvedContent, initialCommentId)
         }
     }
     val restoredListPosition = remember(resolvedContent) {
@@ -514,6 +519,21 @@ fun CommentScreen(
     val rootContent = when (resolvedContent) {
         is CommentHolder -> resolvedContent.article
         else -> resolvedContent
+    }
+    val initialChildComment = (viewModel as? RootCommentViewModel)?.initialChildComment
+    var initialChildCommentHandled by remember(viewModelKey) { mutableStateOf(false) }
+    LaunchedEffect(initialChildComment?.id, viewModel.allData.size) {
+        if (!initialChildCommentHandled && initialChildComment != null) {
+            val rootCommentId = initialChildComment.replyRootCommentId
+            val rootComment = viewModel.allData.firstOrNull { it.id == rootCommentId }
+            if (rootComment != null) {
+                initialChildCommentHandled = true
+                onInitialChildCommentResolved(
+                    viewModel.createCommentItem(rootComment, rootContent),
+                    initialChildComment,
+                )
+            }
+        }
     }
     val commentBackgroundColor = MaterialTheme.colorScheme.surfaceContainerLow
     val commentInputBarColor = MaterialTheme.colorScheme.surfaceContainer

@@ -43,6 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+<<<<<<< HEAD:shared/src/commonMain/kotlin/com/chloemlla/zhplus/ui/components/CommentScreenComponent.kt
 import com.chloemlla.zhplus.navigation.Article
 import com.chloemlla.zhplus.navigation.CommentHolder
 import com.chloemlla.zhplus.navigation.NavDestination
@@ -55,6 +56,21 @@ import com.chloemlla.zhplus.shared.platform.rememberSettingsStore
 import com.chloemlla.zhplus.shared.viewmodel.CommentItem
 import com.chloemlla.zhplus.theme.Typography
 import com.chloemlla.zhplus.ui.CommentScreen
+=======
+import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.CommentHolder
+import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.navigation.Pin
+import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
+import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
+import com.github.zly2006.zhihu.theme.Typography
+import com.github.zly2006.zhihu.ui.CommentScreen
+import com.github.zly2006.zhihu.ui.rememberArticleHost
+>>>>>>> upstream/master:shared/src/commonMain/kotlin/com/github/zly2006/zhihu/ui/components/CommentScreenComponent.kt
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 
@@ -70,12 +86,20 @@ fun CommentScreenComponent(
     isZhPlusAuthorContent: Boolean = false,
 ) {
     val settings = rememberSettingsStore()
+    val articleHost = rememberArticleHost()
+    var pendingCommentId by remember(content) {
+        mutableStateOf(articleHost?.consumePendingCommentId(content))
+    }
+    val commentsVisible = showComments || pendingCommentId != null
     var authorCommentPolicyAcknowledged by remember {
         mutableStateOf(settings.getBoolean(ZH_PLUS_AUTHOR_COMMENT_POLICY_ACKNOWLEDGED_KEY, false))
     }
     val contentStateKey = commentContentStateKey(content)
     var activeChildComment by rememberSaveable(contentStateKey, saver = activeChildCommentSaver) {
         mutableStateOf<CommentItem?>(null)
+    }
+    var pendingChildComment by remember(contentStateKey) {
+        mutableStateOf<DataHolder.Comment?>(null)
     }
     var commentDrafts by rememberSaveable(contentStateKey) {
         mutableStateOf<Map<String, String>>(emptyMap())
@@ -120,6 +144,8 @@ fun CommentScreenComponent(
     }
 
     fun dismissRootComments() {
+        pendingCommentId = null
+        pendingChildComment = null
         activeChildComment = null
         rootListResetToken += 1
         childListResetToken += 1
@@ -134,7 +160,7 @@ fun CommentScreenComponent(
         }
     }
 
-    if (showComments) {
+    if (commentsVisible) {
         MyModalBottomSheet(
             onDismissRequest = { dismissRootComments() },
             sheetState = rootSheetState,
@@ -148,21 +174,28 @@ fun CommentScreenComponent(
         ) {
             CommentScreen(
                 content = { content },
+                initialCommentId = pendingCommentId,
                 onChildCommentClick = { commentItem ->
                     if (commentItem.clickTarget != null) {
+                        pendingChildComment = null
                         activeChildComment = commentItem
                     }
                 },
                 commentInput = commentDrafts[contentStateKey].orEmpty(),
                 onCommentInputChange = { updateCommentDraft(contentStateKey, it) },
                 listState = rootListState,
+                onInitialChildCommentResolved = { rootComment, childComment ->
+                    pendingChildComment = childComment
+                    activeChildComment = rootComment
+                },
             )
         }
     }
 
-    if (showComments && activeChildComment != null && childTarget != null && childDraftKey != null) {
+    if (commentsVisible && activeChildComment != null && childTarget != null && childDraftKey != null) {
         MyModalBottomSheet(
             onDismissRequest = {
+                pendingChildComment = null
                 activeChildComment = null
                 childListResetToken += 1
             },
@@ -182,11 +215,12 @@ fun CommentScreenComponent(
                 commentInput = commentDrafts[childDraftKey].orEmpty(),
                 onCommentInputChange = { updateCommentDraft(childDraftKey, it) },
                 listState = childListState,
+                initialComment = pendingChildComment,
             )
         }
     }
 
-    if (showComments && isZhPlusAuthorContent && !authorCommentPolicyAcknowledged) {
+    if (commentsVisible && isZhPlusAuthorContent && !authorCommentPolicyAcknowledged) {
         AlertDialog(
             modifier = Modifier.testTag(ZH_PLUS_AUTHOR_COMMENT_POLICY_DIALOG_TAG),
             onDismissRequest = {},
