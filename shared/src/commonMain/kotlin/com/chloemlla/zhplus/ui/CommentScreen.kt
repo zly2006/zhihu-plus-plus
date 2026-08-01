@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.github.zly2006.zhihu.ui
+package com.chloemlla.zhplus.ui
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
@@ -133,32 +133,32 @@ import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Element
 import com.fleeksoft.ksoup.nodes.Node
 import com.fleeksoft.ksoup.nodes.TextNode
-import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.CommentHolder
-import com.github.zly2006.zhihu.navigation.LocalNavigator
-import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.navigation.Person
-import com.github.zly2006.zhihu.navigation.Pin
-import com.github.zly2006.zhihu.navigation.Question
-import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
-import com.github.zly2006.zhihu.navigation.resolveContent
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
-import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
-import com.github.zly2006.zhihu.shared.platform.rememberImagePreviewOpener
-import com.github.zly2006.zhihu.shared.platform.rememberImageSaver
-import com.github.zly2006.zhihu.shared.platform.rememberImageSharer
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.util.twoDigitString
-import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
-import com.github.zly2006.zhihu.ui.components.replaceSelection
-import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
-import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
-import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
-import com.github.zly2006.zhihu.viewmodel.comment.ChildCommentViewModel
-import com.github.zly2006.zhihu.viewmodel.comment.CommentSortOrder
-import com.github.zly2006.zhihu.viewmodel.comment.RootCommentViewModel
-import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import com.chloemlla.zhplus.navigation.Article
+import com.chloemlla.zhplus.navigation.CommentHolder
+import com.chloemlla.zhplus.navigation.LocalNavigator
+import com.chloemlla.zhplus.navigation.NavDestination
+import com.chloemlla.zhplus.navigation.Person
+import com.chloemlla.zhplus.navigation.Pin
+import com.chloemlla.zhplus.navigation.Question
+import com.chloemlla.zhplus.navigation.SegmentCommentHolder
+import com.chloemlla.zhplus.navigation.resolveContent
+import com.chloemlla.zhplus.shared.data.DataHolder
+import com.chloemlla.zhplus.shared.platform.PlatformBackHandler
+import com.chloemlla.zhplus.shared.platform.rememberExternalUrlOpener
+import com.chloemlla.zhplus.shared.platform.rememberImagePreviewOpener
+import com.chloemlla.zhplus.shared.platform.rememberImageSaver
+import com.chloemlla.zhplus.shared.platform.rememberImageSharer
+import com.chloemlla.zhplus.shared.platform.rememberSettingsStore
+import com.chloemlla.zhplus.shared.util.twoDigitString
+import com.chloemlla.zhplus.shared.viewmodel.CommentItem
+import com.chloemlla.zhplus.ui.components.replaceSelection
+import com.chloemlla.zhplus.ui.subscreens.PREF_FONT_SIZE
+import com.chloemlla.zhplus.ui.subscreens.PREF_LINE_HEIGHT
+import com.chloemlla.zhplus.viewmodel.comment.BaseCommentViewModel
+import com.chloemlla.zhplus.viewmodel.comment.ChildCommentViewModel
+import com.chloemlla.zhplus.viewmodel.comment.CommentSortOrder
+import com.chloemlla.zhplus.viewmodel.comment.RootCommentViewModel
+import com.chloemlla.zhplus.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone

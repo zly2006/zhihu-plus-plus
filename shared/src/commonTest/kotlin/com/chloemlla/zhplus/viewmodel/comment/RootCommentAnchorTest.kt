@@ -15,12 +15,12 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.github.zly2006.zhihu.viewmodel.comment
+package com.chloemlla.zhplus.viewmodel.comment
 
-import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.ArticleType
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
+import com.chloemlla.zhplus.navigation.Article
+import com.chloemlla.zhplus.navigation.ArticleType
+import com.chloemlla.zhplus.shared.data.ZhihuJson
+import com.chloemlla.zhplus.viewmodel.ZhihuApiEnvironment
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import kotlinx.coroutines.test.runTest

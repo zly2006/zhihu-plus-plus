@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.github.zly2006.zhihu
+package com.chloemlla.zhplus
 
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
@@ -26,22 +26,22 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.ArticleType
-import com.github.zly2006.zhihu.navigation.CommentHolder
-import com.github.zly2006.zhihu.navigation.Notification
-import com.github.zly2006.zhihu.navigation.Pin
-import com.github.zly2006.zhihu.navigation.Question
-import com.github.zly2006.zhihu.navigation.resolveContent
-import com.github.zly2006.zhihu.shared.data.MobileNotificationContent
-import com.github.zly2006.zhihu.shared.data.MobileNotificationTimelineItem
-import com.github.zly2006.zhihu.test.MainActivityComposeRule
-import com.github.zly2006.zhihu.test.RecordingNavigator
-import com.github.zly2006.zhihu.test.resetAppPreferences
-import com.github.zly2006.zhihu.test.setScreenContent
-import com.github.zly2006.zhihu.ui.NotificationScreen
-import com.github.zly2006.zhihu.viewmodel.MobileNotificationCategory
-import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
+import com.chloemlla.zhplus.navigation.Article
+import com.chloemlla.zhplus.navigation.ArticleType
+import com.chloemlla.zhplus.navigation.CommentHolder
+import com.chloemlla.zhplus.navigation.Notification
+import com.chloemlla.zhplus.navigation.Pin
+import com.chloemlla.zhplus.navigation.Question
+import com.chloemlla.zhplus.navigation.resolveContent
+import com.chloemlla.zhplus.shared.data.MobileNotificationContent
+import com.chloemlla.zhplus.shared.data.MobileNotificationTimelineItem
+import com.chloemlla.zhplus.test.MainActivityComposeRule
+import com.chloemlla.zhplus.test.RecordingNavigator
+import com.chloemlla.zhplus.test.resetAppPreferences
+import com.chloemlla.zhplus.test.setScreenContent
+import com.chloemlla.zhplus.ui.NotificationScreen
+import com.chloemlla.zhplus.viewmodel.MobileNotificationCategory
+import com.chloemlla.zhplus.viewmodel.NotificationViewModel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
