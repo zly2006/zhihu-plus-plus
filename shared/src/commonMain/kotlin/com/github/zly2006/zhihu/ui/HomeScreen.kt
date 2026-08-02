@@ -93,15 +93,20 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.navigation.Account
+import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.navigation.WritePin
+import com.github.zly2006.zhihu.shared.announcement.HOME_NOTIFICATION_ACTION_OPEN_ANSWER
+import com.github.zly2006.zhihu.shared.announcement.HOME_NOTIFICATION_ACTION_OPEN_ARTICLE
 import com.github.zly2006.zhihu.shared.announcement.HOME_NOTIFICATION_ACTION_OPEN_PIN
 import com.github.zly2006.zhihu.shared.announcement.HOME_NOTIFICATION_ACTION_OPEN_UPDATE_SETTINGS
 import com.github.zly2006.zhihu.shared.announcement.HOME_NOTIFICATION_ACTION_OPEN_URL
 import com.github.zly2006.zhihu.shared.announcement.HOME_NOTIFICATION_ACTION_SET_SETTING
+import com.github.zly2006.zhihu.shared.announcement.HOME_NOTIFICATION_CACHE_FILE_NAME
 import com.github.zly2006.zhihu.shared.announcement.HOME_NOTIFICATION_CHECK_INTERVAL_MILLIS
 import com.github.zly2006.zhihu.shared.announcement.OnlineHomeNotificationRepository
 import com.github.zly2006.zhihu.shared.data.DataHolder
@@ -114,6 +119,7 @@ import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.notification.rememberNotificationSettingsStore
 import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
+import com.github.zly2006.zhihu.shared.platform.rememberAppPrivateDirectory
 import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.shared.platform.rememberIsLiteVariant
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
@@ -145,6 +151,7 @@ import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.za.MixedHomeFeedViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import kotlinx.io.files.Path
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
@@ -191,6 +198,7 @@ fun HomeScreen(
     val navigator = LocalNavigator.current
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = true)
     val settings = rememberSettingsStore()
+    val appPrivateDirectory = rememberAppPrivateDirectory()
     val notificationSettings = rememberNotificationSettingsStore()
     val userMessages = rememberUserMessageSink()
     val openExternalUrl = rememberExternalUrlOpener()
@@ -218,7 +226,12 @@ fun HomeScreen(
     val account = rememberHomeAccountState()
     val updateAnnouncement = rememberHomeUpdateAnnouncement()
     val versionName = rememberAppVersionInfo().substringBefore(' ').takeIf { it.firstOrNull()?.isDigit() == true }
-    val onlineNotificationRepository = remember(settings) { OnlineHomeNotificationRepository(settings) }
+    val onlineNotificationRepository = remember(settings, appPrivateDirectory) {
+        OnlineHomeNotificationRepository(
+            settings,
+            Path(appPrivateDirectory, HOME_NOTIFICATION_CACHE_FILE_NAME),
+        )
+    }
     var onlineNotifications by remember(onlineNotificationRepository) {
         mutableStateOf(onlineNotificationRepository.cachedNotifications())
     }
@@ -587,6 +600,16 @@ fun HomeScreen(
                                             HOME_NOTIFICATION_ACTION_OPEN_PIN -> {
                                                 accept.value?.jsonPrimitive?.contentOrNull?.toLongOrNull()?.let {
                                                     navigator.onNavigate(Pin(it))
+                                                }
+                                            }
+                                            HOME_NOTIFICATION_ACTION_OPEN_ANSWER -> {
+                                                accept.value?.jsonPrimitive?.contentOrNull?.toLongOrNull()?.let {
+                                                    navigator.onNavigate(Article(type = ArticleType.Answer, id = it))
+                                                }
+                                            }
+                                            HOME_NOTIFICATION_ACTION_OPEN_ARTICLE -> {
+                                                accept.value?.jsonPrimitive?.contentOrNull?.toLongOrNull()?.let {
+                                                    navigator.onNavigate(Article(type = ArticleType.Article, id = it))
                                                 }
                                             }
                                             HOME_NOTIFICATION_ACTION_SET_SETTING -> {

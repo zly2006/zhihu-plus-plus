@@ -16,18 +16,24 @@
  */
 
 package com.github.zly2006.zhihu.shared.platform
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopPropertiesFile
 import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
+import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDataDir
 import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
 import com.github.zly2006.zhihu.shared.desktop.saveImageToDownloads
 import kotlinx.coroutines.launch
+import kotlinx.io.files.Path
 
 @Composable
 actual fun rememberSettingsStore(): SettingsStore = remember { desktopSettingsStore() }
+
+@Composable
+actual fun rememberAppPrivateDirectory(): Path = remember { Path(desktopZhihuDataDir().absolutePath) }
 
 fun desktopSettingsStore(): SettingsStore {
     val propertiesFile = DesktopPropertiesFile("settings.properties", "Zhihu++ desktop settings")

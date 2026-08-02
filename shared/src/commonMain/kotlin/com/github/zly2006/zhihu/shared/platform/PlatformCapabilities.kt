@@ -16,7 +16,9 @@
  */
 
 package com.github.zly2006.zhihu.shared.platform
+
 import androidx.compose.runtime.Composable
+import kotlinx.io.files.Path
 
 enum class UserMessageDuration {
     Short,
@@ -61,6 +63,9 @@ data class SettingsStore(
 
 @Composable
 expect fun rememberSettingsStore(): SettingsStore
+
+@Composable
+expect fun rememberAppPrivateDirectory(): Path
 
 @Composable
 expect fun rememberExternalUrlOpener(): (String) -> Unit
