@@ -148,7 +148,9 @@ open class SharedAndroidPaginationEnvironment(
         AccountData.delete(context)
     }
 
-    override fun currentAccountId(): String = AccountData.data.self?.id.orEmpty()
+    override fun currentAccountId(): String = AccountData.data.self
+        ?.id
+        .orEmpty()
 
     override fun identityClient() = AccountData.identityClient(context.applicationContext)
 

@@ -148,7 +148,11 @@ class DesktopPaginationEnvironment(
         store.clear()
     }
 
-    override fun currentAccountId(): String = store.load().profile?.id.orEmpty()
+    override fun currentAccountId(): String = store
+        .load()
+        .profile
+        ?.id
+        .orEmpty()
 
     override suspend fun verifyLogin(cookies: Map<String, String>): Boolean =
         store.verifyAndSave(cookies.toMutableMap())

@@ -46,10 +46,10 @@ import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
 import com.github.zly2006.zhihu.util.PowerSaveModeCompat
 import com.mikepenz.aboutlibraries.Libs
 import com.mikepenz.aboutlibraries.util.withContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.delay
 import java.io.File
 
 @Composable
@@ -62,11 +62,11 @@ actual fun rememberDeveloperRuntimeInfo(): DeveloperRuntimeInfo {
             value = runtimeInfo.copy(
                 networkStatus = context.networkStatusText(),
                 powerSaveModeText =
-                when (PowerSaveModeCompat.getPowerSaveMode(context)) {
-                    PowerSaveModeCompat.POWER_SAVE -> "省电模式：已开启"
-                    PowerSaveModeCompat.HUAWEI_POWER_SAVE -> "省电模式：华为傻逼模式已开启"
-                    else -> null
-                },
+                    when (PowerSaveModeCompat.getPowerSaveMode(context)) {
+                        PowerSaveModeCompat.POWER_SAVE -> "省电模式：已开启"
+                        PowerSaveModeCompat.HUAWEI_POWER_SAVE -> "省电模式：华为傻逼模式已开启"
+                        else -> null
+                    },
             )
             delay(1_000L)
         }
