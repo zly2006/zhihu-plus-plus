@@ -28,8 +28,8 @@ actual suspend fun extractFeedKeywords(
 ): List<com.github.zly2006.zhihu.nlp.KeywordWithWeight> = emptyList() // TODO: iOS 关键词提取
 
 @Composable
-actual fun rememberShareDialogRuntime(): ShareDialogRuntime {
+actual fun rememberShareActionExecutor(): ShareActionExecutor {
     val copyPlainText = rememberPlainTextClipboard()
     val userMessages = rememberUserMessageSink()
-    return remember(copyPlainText, userMessages) { clipboardShareDialogRuntime(copyPlainText, userMessages) }
+    return remember(copyPlainText, userMessages) { clipboardShareActionExecutor(copyPlainText, userMessages) }
 }

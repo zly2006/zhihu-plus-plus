@@ -36,10 +36,10 @@ actual suspend fun extractFeedKeywords(
 )
 
 @Composable
-actual fun rememberShareDialogRuntime(): ShareDialogRuntime {
+actual fun rememberShareActionExecutor(): ShareActionExecutor {
     val copyPlainText = rememberPlainTextClipboard()
     val userMessages = rememberUserMessageSink()
-    return remember(copyPlainText, userMessages) { clipboardShareDialogRuntime(copyPlainText, userMessages) }
+    return remember(copyPlainText, userMessages) { clipboardShareActionExecutor(copyPlainText, userMessages) }
 }
 
 private fun extractDesktopKeywordsWithWeight(

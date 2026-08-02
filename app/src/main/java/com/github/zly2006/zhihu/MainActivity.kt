@@ -93,8 +93,9 @@ import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import com.github.zly2006.zhihu.util.telemetry
 import com.github.zly2006.zhihu.viewmodel.ArticleAnswerSwitchData
-import com.github.zly2006.zhihu.viewmodel.filter.AndroidContentFilterRuntime
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterManager
+import com.github.zly2006.zhihu.viewmodel.filter.androidKeywordSemanticMatcher
+import com.github.zly2006.zhihu.viewmodel.filter.androidKeywordWeightExtractor
 import com.github.zly2006.zhihu.viewmodel.filter.contentFilterSettings
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.CoroutineScope
@@ -198,8 +199,8 @@ class MainActivity :
         history = HistoryStorage(this)
         AccountData.loadData(this)
         AndroidThemeSettings.initialize(this)
-        AndroidContentFilterRuntime.semanticMatcher = NlpServiceKeywordSemanticMatcher
-        AndroidContentFilterRuntime.keywordWeightExtractor = KeywordWeightExtractor { text, topN ->
+        androidKeywordSemanticMatcher = NlpServiceKeywordSemanticMatcher
+        androidKeywordWeightExtractor = KeywordWeightExtractor { text, topN ->
             NLPService.extractKeywordsWithWeight(text, topN)
         }
         getContentFilterDatabase(this)

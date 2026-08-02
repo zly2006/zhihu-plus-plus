@@ -41,7 +41,7 @@ import com.github.zly2006.zhihu.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.ui.articleHost
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
-import com.github.zly2006.zhihu.viewmodel.filter.AndroidContentFilterRuntime
+import com.github.zly2006.zhihu.viewmodel.filter.androidKeywordWeightExtractor
 import me.saket.telephoto.zoomable.coil3.ZoomableAsyncImage
 import me.saket.telephoto.zoomable.rememberZoomableImageState
 import me.saket.telephoto.zoomable.rememberZoomableState
@@ -115,40 +115,31 @@ actual suspend fun extractFeedKeywords(
     excerpt = excerpt,
     content = null,
     topN = 10,
-    extractor = AndroidContentFilterRuntime.keywordWeightExtractor,
+    extractor = androidKeywordWeightExtractor,
 )
 
 @Composable
-actual fun rememberShareDialogRuntime(): ShareDialogRuntime {
+actual fun rememberShareActionExecutor(): ShareActionExecutor {
     val context = LocalContext.current
     return remember(context) {
-        ShareDialogRuntime(
-            share = { _, shareText ->
-                val shareIntent = Intent().apply {
-                    action = Intent.ACTION_SEND
-                    type = "text/plain"
-                    putExtra(Intent.EXTRA_TEXT, shareText)
-                }
-                context.startActivity(
-                    Intent.createChooser(shareIntent, "分享到").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                )
-            },
-            directShare = { content, shareText ->
-                val shareIntent = Intent().apply {
-                    action = Intent.ACTION_SEND
-                    type = "text/plain"
-                    putExtra(Intent.EXTRA_TEXT, shareText)
-                    putExtra(Intent.EXTRA_TITLE, getShareTitle(content))
-                }
-                context.startActivity(
-                    Intent.createChooser(shareIntent, "分享到").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                )
-            },
-            copyLink = { content, shareText ->
+        { action, content, shareText ->
+            if (action == ShareAction.CopyLink) {
                 context.articleHost()?.clipboardDestination = content
                 context.clipboardManager.setPrimaryClip(ClipData.newPlainText("Link", shareText))
                 androidUserMessageSink(context).showShortMessage("已复制链接")
-            },
-        )
+            } else {
+                val shareIntent = Intent().apply {
+                    this.action = Intent.ACTION_SEND
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, shareText)
+                    if (action == ShareAction.DirectShare) {
+                        putExtra(Intent.EXTRA_TITLE, getShareTitle(content))
+                    }
+                }
+                context.startActivity(
+                    Intent.createChooser(shareIntent, "分享到").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                )
+            }
+        }
     }
 }

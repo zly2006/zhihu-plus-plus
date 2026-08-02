@@ -62,7 +62,6 @@ import com.github.zly2006.zhihu.util.buildOfflineArticleExportHtml
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.exportCollectionItemsToZip
 import com.github.zly2006.zhihu.util.saveBitmapToGallery
-import com.github.zly2006.zhihu.viewmodel.filter.AndroidContentFilterRuntime
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeywordService
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedQuestionAuthor
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedUser
@@ -71,6 +70,7 @@ import com.github.zly2006.zhihu.viewmodel.filter.ContentType
 import com.github.zly2006.zhihu.viewmodel.filter.FeedContentFilterPipeline
 import com.github.zly2006.zhihu.viewmodel.filter.FeedDisplayFilterPipeline
 import com.github.zly2006.zhihu.viewmodel.filter.ForegroundReadFilterPipeline
+import com.github.zly2006.zhihu.viewmodel.filter.androidKeywordSemanticMatcher
 import com.github.zly2006.zhihu.viewmodel.filter.contentFilterSettings
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
@@ -400,7 +400,7 @@ open class SharedAndroidPaginationEnvironment(
                 blockedKeywordService = BlockedKeywordService(
                     keywordDao = filterDatabase.blockedKeywordDao(),
                     recordDao = filterDatabase.blockedContentRecordDao(),
-                    semanticMatcher = AndroidContentFilterRuntime.semanticMatcher,
+                    semanticMatcher = androidKeywordSemanticMatcher,
                 ),
                 onNlpBlocked = { blockedThisRound ->
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {

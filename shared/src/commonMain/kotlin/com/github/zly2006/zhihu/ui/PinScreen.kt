@@ -92,7 +92,7 @@ import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.VotersSheet
 import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.ui.components.handleShareAction
-import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
+import com.github.zly2006.zhihu.ui.components.rememberShareActionExecutor
 import com.github.zly2006.zhihu.util.formatCompactCount
 import com.github.zly2006.zhihu.util.twoDigitString
 import com.github.zly2006.zhihu.viewmodel.ContentLoadEnvironment
@@ -196,7 +196,7 @@ fun PinScreen(
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
 
     val settings = rememberSettingsStore()
-    val shareRuntime = rememberShareDialogRuntime()
+    val executeShareAction = rememberShareActionExecutor()
     var isLoading by remember(pin.id) { mutableStateOf(true) }
     var errorMessage by remember(pin.id) { mutableStateOf<String?>(null) }
     var pinContent by remember(pin.id) { mutableStateOf<DataHolder.Pin?>(null) }
@@ -288,7 +288,7 @@ fun PinScreen(
                         onClick = {
                             val shareText = getShareText(pin)
                             if (shareText != null) {
-                                handleShareAction(pin, settings, shareRuntime) {
+                                handleShareAction(pin, settings, executeShareAction) {
                                     showShareDialog = true
                                 }
                             }

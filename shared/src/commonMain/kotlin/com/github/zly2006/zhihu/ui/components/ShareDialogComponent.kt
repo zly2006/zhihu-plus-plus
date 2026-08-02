@@ -197,31 +197,28 @@ private fun MenuActionButton(
     }
 }
 
-data class ShareDialogRuntime(
-    val share: (NavDestination, String) -> Unit,
-    val directShare: (NavDestination, String) -> Unit,
-    val copyLink: (NavDestination, String) -> Unit,
-)
+enum class ShareAction {
+    Share,
+    DirectShare,
+    CopyLink,
+}
+
+typealias ShareActionExecutor = (ShareAction, NavDestination, String) -> Unit
 
 @Composable
-expect fun rememberShareDialogRuntime(): ShareDialogRuntime
+expect fun rememberShareActionExecutor(): ShareActionExecutor
 
-internal fun clipboardShareDialogRuntime(
+internal fun clipboardShareActionExecutor(
     copyPlainText: (label: String, text: String) -> Unit,
     userMessages: UserMessageSink,
-): ShareDialogRuntime {
-    fun copyAndNotify(
-        shareText: String,
-        message: String,
-    ) {
+): ShareActionExecutor = { action, _, shareText ->
+    if (action == ShareAction.CopyLink) {
         copyPlainText("Link", shareText)
-        userMessages.showMessage(message)
+        userMessages.showMessage("已复制链接")
+    } else {
+        copyPlainText("Share", shareText)
+        userMessages.showMessage("已复制分享文本")
     }
-    return ShareDialogRuntime(
-        share = { _, shareText -> copyAndNotify(shareText, "已复制分享文本") },
-        directShare = { _, shareText -> copyAndNotify(shareText, "已复制分享文本") },
-        copyLink = { _, shareText -> copyAndNotify(shareText, "已复制链接") },
-    )
 }
 
 @Composable
@@ -232,18 +229,18 @@ fun ShareDialog(
     onDismissRequest: () -> Unit,
 ) {
     val navigator = LocalNavigator.current
-    val runtime = rememberShareDialogRuntime()
+    val executeShareAction = rememberShareActionExecutor()
 
     ShareDialogContent(
         showDialog = showDialog,
         onDismissRequest = onDismissRequest,
         onShareClick = {
             onDismissRequest()
-            runtime.share(content, shareText)
+            executeShareAction(ShareAction.Share, content, shareText)
         },
         onCopyClick = {
             onDismissRequest()
-            runtime.copyLink(content, shareText)
+            executeShareAction(ShareAction.CopyLink, content, shareText)
         },
         onSettingsClick = {
             onDismissRequest()
@@ -261,13 +258,13 @@ fun ShareDialog(
 fun handleShareAction(
     content: NavDestination,
     settings: SettingsStore,
-    runtime: ShareDialogRuntime,
+    executeShareAction: ShareActionExecutor,
     onShowDialog: () -> Unit,
 ) {
     val shareText = getShareText(content) ?: return
     when (settings.getString("shareActionMode", "ask")) {
-        "copy" -> runtime.copyLink(content, shareText)
-        "share" -> runtime.directShare(content, shareText)
+        "copy" -> executeShareAction(ShareAction.CopyLink, content, shareText)
+        "share" -> executeShareAction(ShareAction.DirectShare, content, shareText)
         else -> onShowDialog()
     }
 }

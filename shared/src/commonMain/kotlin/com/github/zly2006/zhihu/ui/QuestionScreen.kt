@@ -92,7 +92,7 @@ import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.ui.components.handleShareAction
-import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
+import com.github.zly2006.zhihu.ui.components.rememberShareActionExecutor
 import com.github.zly2006.zhihu.viewmodel.ContentLoadEnvironment
 import com.github.zly2006.zhihu.viewmodel.addReadHistory
 import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
@@ -139,7 +139,7 @@ fun QuestionScreen(
     question: Question,
 ) {
     val settings = rememberSettingsStore()
-    val shareRuntime = rememberShareDialogRuntime()
+    val executeShareAction = rememberShareActionExecutor()
     val openZhihuWebUrl = rememberZhihuWebUrlOpener()
     val navigator = LocalNavigator.current
     val viewModel: QuestionFeedViewModel = viewModel(key = "question_${question.questionId}") {
@@ -403,7 +403,7 @@ fun QuestionScreen(
                             Button(
                                 onClick = {
                                     if (shareText != null) {
-                                        handleShareAction(question, settings, shareRuntime) {
+                                        handleShareAction(question, settings, executeShareAction) {
                                             showShareDialog = true
                                         }
                                     }
