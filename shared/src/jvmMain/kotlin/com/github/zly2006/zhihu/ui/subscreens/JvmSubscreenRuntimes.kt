@@ -144,7 +144,7 @@ private suspend fun checkDesktopUpdate(
     }
 }
 
-private fun desktopVersionName(): String =
+internal fun desktopVersionName(): String =
     System.getProperty("zhihu.version")
         ?: SystemUpdateRuntime::class.java.`package`?.implementationVersion
         ?: readDesktopVersionFromGradleProperties()

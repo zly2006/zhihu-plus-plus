@@ -342,19 +342,6 @@ actual fun rememberHomeUpdateAnnouncement(): HomeUpdateAnnouncement? {
 }
 
 @Composable
-actual fun rememberHomeInstalledAtLeastThreeHours(): Boolean {
-    val context = LocalContext.current
-    val installTime = remember {
-        try {
-            context.packageManager.getPackageInfo(context.packageName, 0).firstInstallTime
-        } catch (_: Exception) {
-            System.currentTimeMillis()
-        }
-    }
-    return System.currentTimeMillis() - installTime >= 3 * 60 * 60 * 1000L
-}
-
-@Composable
 actual fun rememberHomeIsDebuggable(): Boolean {
     val context = LocalContext.current
     return (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0

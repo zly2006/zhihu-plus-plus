@@ -561,9 +561,6 @@ expect fun rememberHomeFeedStartupCache(recommendationMode: RecommendationMode):
 expect fun rememberHomeUpdateAnnouncement(): HomeUpdateAnnouncement?
 
 @Composable
-expect fun rememberHomeInstalledAtLeastThreeHours(): Boolean
-
-@Composable
 expect fun rememberHomeIsDebuggable(): Boolean
 
 @Composable

@@ -124,9 +124,6 @@ actual fun rememberHomeAccountState(): HomeAccountState = HomeAccountState(
 actual fun rememberHomeUpdateAnnouncement(): HomeUpdateAnnouncement? = null
 
 @Composable
-actual fun rememberHomeInstalledAtLeastThreeHours(): Boolean = false
-
-@Composable
 actual fun rememberHomeIsDebuggable(): Boolean = false
 
 @Composable

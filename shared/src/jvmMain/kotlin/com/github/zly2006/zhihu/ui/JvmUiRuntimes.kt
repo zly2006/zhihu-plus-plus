@@ -46,6 +46,7 @@ import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
 import com.github.zly2006.zhihu.ui.subscreens.desktopSystemUpdateState
+import com.github.zly2006.zhihu.ui.subscreens.desktopVersionName
 import com.github.zly2006.zhihu.viewmodel.DesktopPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
@@ -278,9 +279,6 @@ actual fun rememberHomeFeedStartupCache(recommendationMode: RecommendationMode):
 }
 
 @Composable
-actual fun rememberHomeInstalledAtLeastThreeHours(): Boolean = false
-
-@Composable
 actual fun rememberHomeIsDebuggable(): Boolean = true
 
 @Composable
@@ -388,7 +386,7 @@ actual fun rememberAccountLogoutAction(): () -> Unit = remember {
 }
 
 @Composable
-actual fun rememberAppVersionInfo(): String = "desktop"
+actual fun rememberAppVersionInfo(): String = desktopVersionName()
 
 @Composable
 actual fun rememberMainTabSelector(): (TopLevelDestination) -> Unit = remember {

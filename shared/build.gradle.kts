@@ -141,6 +141,7 @@ kotlin {
             implementation("com.google.zxing:core:3.5.4")
             implementation("io.coil-kt.coil3:coil-gif:3.5.0")
             implementation("io.coil-kt.coil3:coil-network-ktor3-android:3.5.0")
+            implementation("io.ktor:ktor-client-android:3.5.0")
             implementation("me.saket.telephoto:zoomable-image-coil3:0.19.0")
             implementation("org.jsoup:jsoup:1.22.2")
         }

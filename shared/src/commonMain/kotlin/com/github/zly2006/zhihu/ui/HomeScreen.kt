@@ -98,7 +98,12 @@ import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.navigation.WritePin
-import com.github.zly2006.zhihu.shared.aigc.AIGC_MARKING_ENABLED_PREFERENCE_KEY
+import com.github.zly2006.zhihu.shared.announcement.HOME_NOTIFICATION_ACTION_OPEN_PIN
+import com.github.zly2006.zhihu.shared.announcement.HOME_NOTIFICATION_ACTION_OPEN_UPDATE_SETTINGS
+import com.github.zly2006.zhihu.shared.announcement.HOME_NOTIFICATION_ACTION_OPEN_URL
+import com.github.zly2006.zhihu.shared.announcement.HOME_NOTIFICATION_ACTION_SET_SETTING
+import com.github.zly2006.zhihu.shared.announcement.HOME_NOTIFICATION_CHECK_INTERVAL_MILLIS
+import com.github.zly2006.zhihu.shared.announcement.OnlineHomeNotificationRepository
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
@@ -139,12 +144,16 @@ import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.za.MixedHomeFeedViewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 const val PREFERENCE_NAME = "com.github.zly2006.zhihu_preferences"
 const val ARTICLE_USE_WEBVIEW_PREFERENCE_KEY = "webviewRenderLegacy"
-const val QQ_GROUP_DISMISSED_PREFERENCE_KEY = "dismiss_QQ_Channel"
-const val AIGC_MARKING_ANNOUNCEMENT_DISMISSED_PREFERENCE_KEY = "dismissAigcMarkingAnnouncement"
 const val HOME_TOP_ACTIONS_TAG = "home_top_actions"
 const val HOME_SEARCH_BUTTON_TAG = "home_search_button"
 const val HOME_CREATE_FAB_TAG = "home_create_fab"
@@ -157,9 +166,12 @@ const val HOME_ACCOUNT_BUTTON_TAG = "home_account_button"
 const val HOME_FEED_LIST_TAG = "home_feed_list"
 const val HOME_REFRESH_BUTTON_TAG = "home_refresh_button"
 const val HOME_AUTHOR_POLL_ANNOUNCEMENT_TAG = "home_author_poll_announcement"
+const val HOME_ONLINE_NOTIFICATION_TAG = "home_online_notification"
 private const val MAX_HOME_PIN_ANNOUNCEMENTS = 3
 
 fun homeAuthorPollAnnouncementTag(pinId: Long): String = "$HOME_AUTHOR_POLL_ANNOUNCEMENT_TAG:$pinId"
+
+fun homeOnlineNotificationTag(uuid: String): String = "$HOME_ONLINE_NOTIFICATION_TAG:$uuid"
 
 fun homePinAnnouncementReadKey(pinId: Long): String = "readHomePinAnnouncement_$pinId"
 
@@ -167,7 +179,7 @@ fun homePinAnnouncementReadKey(pinId: Long): String = "readHomePinAnnouncement_$
  * 首页信息流页面。
  *
  * 页面顶部承载搜索、通知、账号入口等高频操作，主体是可分页的推荐信息流，底部可按设置显示可拖动刷新 FAB。
- * 设计上首页同时响应推荐算法、Duo3 账号入口迁移、更新公告、问卷提示和未读通知等状态，因此 UI 改动时要同时检查
+ * 设计上首页同时响应推荐算法、Duo3 账号入口迁移、更新公告、在线通知、作者动态和未读通知等状态，因此 UI 改动时要同时检查
  * `recommendationMode`、`duo3_home_account`、`showRefreshFab` 和账号面板相关路径。
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -205,7 +217,11 @@ fun HomeScreen(
 
     val account = rememberHomeAccountState()
     val updateAnnouncement = rememberHomeUpdateAnnouncement()
-    val installedAtLeastThreeHours = rememberHomeInstalledAtLeastThreeHours()
+    val versionName = rememberAppVersionInfo().substringBefore(' ').takeIf { it.firstOrNull()?.isDigit() == true }
+    val onlineNotificationRepository = remember(settings) { OnlineHomeNotificationRepository(settings) }
+    var onlineNotifications by remember(onlineNotificationRepository) {
+        mutableStateOf(onlineNotificationRepository.cachedNotifications())
+    }
     val isDebuggable = rememberHomeIsDebuggable()
     val requestLogin = rememberHomeLoginRequester()
     val feedBlockActions = rememberFeedBlockActions()
@@ -218,29 +234,8 @@ fun HomeScreen(
     }
     val localHomeViewModel = viewModel as? LocalHomeFeedViewModel
 
-    val keySurveyDone = "survey_feedback_done"
-    val installed3Hours = !settings.getBoolean(keySurveyDone, false) && installedAtLeastThreeHours
     var dismissedUpdateVersion by remember { mutableStateOf<String?>(null) }
-    var aigcMarkingEnabled by remember {
-        mutableStateOf(settings.getBoolean(AIGC_MARKING_ENABLED_PREFERENCE_KEY, false))
-    }
-    var showAigcMarkingAnnouncement by remember {
-        mutableStateOf(!settings.getBoolean(AIGC_MARKING_ANNOUNCEMENT_DISMISSED_PREFERENCE_KEY, false))
-    }
     var authorPinAnnouncements by remember { mutableStateOf(emptyList<HomePinAnnouncement>()) }
-
-    // 首次启动提示
-    var showFilterExplainDialog by remember {
-        mutableStateOf(!settings.getBoolean("filterExplainDialogShown", false))
-    }
-    var showQQGroup by remember {
-        mutableStateOf(
-            !settings.getBoolean(
-                QQ_GROUP_DISMISSED_PREFERENCE_KEY,
-                false,
-            ),
-        )
-    }
 
     val listState = rememberLazyListState()
     var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
@@ -315,6 +310,20 @@ fun HomeScreen(
             }
             if (loadedAnnouncements != null) {
                 authorPinAnnouncements = loadedAnnouncements
+            }
+        }
+    }
+
+    LaunchedEffect(lifecycleOwner, paginationEnvironment, versionName) {
+        if (versionName != null) {
+            lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                while (true) {
+                    onlineNotifications = onlineNotificationRepository.load(
+                        versionName = versionName,
+                        httpClient = paginationEnvironment.httpClient(),
+                    )
+                    delay(HOME_NOTIFICATION_CHECK_INTERVAL_MILLIS)
+                }
             }
         }
     }
@@ -548,40 +557,60 @@ fun HomeScreen(
                                 },
                                 colors = AnnouncementCardDefaults.colorsImportant(),
                             )
-                            AnnouncementCard(
-                                visible = showQQGroup,
-                                title = "欢迎加入 QQ 频道",
-                                leadingIcon = { Icon(Icons.Default.MarkUnreadChatAlt, contentDescription = null) },
-                                content = "所有 QQ 群人数都已经达到上限了，不管你之前是否加过群，都可以加一下频道，感谢你的支持！",
-                                accept = { Text("加入") },
-                                onAccept = {
-                                    openExternalUrl("https://pd.qq.com/s/7l31fn0yt?b=9")
-                                },
-                                dismiss = { Text("关闭") },
-                                onDismiss = {
-                                    settings.putBoolean(QQ_GROUP_DISMISSED_PREFERENCE_KEY, true)
-                                    showQQGroup = false
-                                },
-                                colors = AnnouncementCardDefaults.colorsVariant(),
-                            )
-                            AnnouncementCard(
-                                visible = !aigcMarkingEnabled && showAigcMarkingAnnouncement,
-                                title = "AIGC 标记",
-                                leadingIcon = { Icon(Icons.Default.Flag, contentDescription = null) },
-                                content = "为了减轻知乎上 AI 生成的文章对用户的困扰，你可以加入我们一起标记 AIGC。开启后会把你正在浏览的内容发送到我们的服务器，用来显示其他用户是否认为其疑似 AIGC。此功能默认关闭，不会发送隐私信息。",
-                                accept = { Text("开启") },
-                                onAccept = {
-                                    settings.putBoolean(AIGC_MARKING_ENABLED_PREFERENCE_KEY, true)
-                                    settings.putBoolean(AIGC_MARKING_ANNOUNCEMENT_DISMISSED_PREFERENCE_KEY, true)
-                                    aigcMarkingEnabled = true
-                                    showAigcMarkingAnnouncement = false
-                                },
-                                dismiss = { Text("关闭") },
-                                onDismiss = {
-                                    settings.putBoolean(AIGC_MARKING_ANNOUNCEMENT_DISMISSED_PREFERENCE_KEY, true)
-                                    showAigcMarkingAnnouncement = false
-                                },
-                            )
+                            onlineNotifications.forEach { notification ->
+                                val markRead = {
+                                    onlineNotificationRepository.markRead(notification)
+                                    onlineNotifications = onlineNotifications.filterNot { it.uuid == notification.uuid }
+                                }
+                                AnnouncementCard(
+                                    modifier = Modifier.testTag(homeOnlineNotificationTag(notification.uuid)),
+                                    visible = true,
+                                    title = notification.title,
+                                    leadingIcon = { Icon(Icons.Default.Notifications, contentDescription = null) },
+                                    content = notification.content,
+                                    accept = notification.accept?.let { accept ->
+                                        { Text(accept.text) }
+                                    },
+                                    onAccept = {
+                                        val accept = notification.accept
+                                        markRead()
+                                        when (accept?.key) {
+                                            HOME_NOTIFICATION_ACTION_OPEN_URL -> {
+                                                accept.value
+                                                    ?.jsonPrimitive
+                                                    ?.contentOrNull
+                                                    ?.let(openExternalUrl)
+                                            }
+                                            HOME_NOTIFICATION_ACTION_OPEN_UPDATE_SETTINGS -> {
+                                                navigator.onNavigate(Account.SystemAndUpdateSettings)
+                                            }
+                                            HOME_NOTIFICATION_ACTION_OPEN_PIN -> {
+                                                accept.value?.jsonPrimitive?.contentOrNull?.toLongOrNull()?.let {
+                                                    navigator.onNavigate(Pin(it))
+                                                }
+                                            }
+                                            HOME_NOTIFICATION_ACTION_SET_SETTING -> {
+                                                val setting = accept.value?.jsonObject
+                                                val name = setting?.get("setting_name")?.jsonPrimitive?.contentOrNull
+                                                when (setting?.get("value_type")?.jsonPrimitive?.contentOrNull) {
+                                                    "boolean" -> setting["value"]?.jsonPrimitive?.booleanOrNull?.let {
+                                                        settings.putBoolean(name!!, it)
+                                                    }
+                                                    "string" -> setting["value"]?.jsonPrimitive?.contentOrNull?.let {
+                                                        settings.putString(name!!, it)
+                                                    }
+                                                    "int" -> setting["value"]?.jsonPrimitive?.intOrNull?.let {
+                                                        settings.putInt(name!!, it)
+                                                    }
+                                                }
+                                            }
+                                            else -> userMessages.showShortMessage("当前版本不支持此通知操作")
+                                        }
+                                    },
+                                    dismiss = { Text(notification.dismiss) },
+                                    onDismiss = markRead,
+                                )
+                            }
                             authorPinAnnouncements.forEach { announcement ->
                                 AnnouncementCard(
                                     modifier = Modifier.testTag(homeAuthorPollAnnouncementTag(announcement.pinId)),
@@ -626,19 +655,6 @@ fun HomeScreen(
                                     },
                                 )
                             }
-                            AnnouncementCard(
-                                visible = showFilterExplainDialog,
-                                title = "为什么有的内容突然消失了？",
-                                leadingIcon = { Icon(Icons.AutoMirrored.Default.HelpOutline, contentDescription = null) },
-                                content = "知乎++会默认屏蔽知乎盐选、知乎广告平台、知乎学堂、微信公众号文章。" +
-                                    "除此之外，您也可以手动屏蔽的用户、话题、问题等内容。" +
-                                    "由于我们需要更详细的数据来精准屏蔽，而获取数据需要时间，所以他们会闪一下然后消失。",
-                                dismiss = { Text("好") },
-                                onDismiss = {
-                                    settings.putBoolean("filterExplainDialogShown", true)
-                                    showFilterExplainDialog = false
-                                },
-                            )
                         }
                     },
                 ) { item ->
