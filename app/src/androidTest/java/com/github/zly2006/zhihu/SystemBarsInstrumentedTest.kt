@@ -37,9 +37,8 @@ import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.theme.AndroidThemeSettings
 import com.github.zly2006.zhihu.theme.ThemeMode
 import com.github.zly2006.zhihu.theme.ZhihuTheme
-import com.github.zly2006.zhihu.ui.subscreens.IdentityManagementRuntime
-import com.github.zly2006.zhihu.ui.subscreens.rememberIdentityManagementRuntime
-import org.junit.Assert.assertNotNull
+import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -66,18 +65,16 @@ class SystemBarsInstrumentedTest {
     fun identityChangeRestartKeepsDarkThemeStatusBarEdgeToEdge() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val originalActivity = composeRule.activity
-        val runtime = AtomicReference<IdentityManagementRuntime>()
+        val environment = AtomicReference<PaginationEnvironment>()
         instrumentation.runOnMainSync {
             originalActivity.setContent {
                 ZhihuTheme {
-                    val identityRuntime = rememberIdentityManagementRuntime()
-                    runtime.set(identityRuntime)
+                    environment.set(rememberPaginationEnvironment(allowGuestAccess = false))
                     SolidThemeSurface()
                 }
             }
         }
         composeRule.waitForIdle()
-        assertNotNull("Identity management runtime was not composed", runtime.get())
         assertStatusBarColor(originalActivity, "before identity restart")
 
         val relaunchedActivity = AtomicReference<MainActivity>()
@@ -105,7 +102,7 @@ class SystemBarsInstrumentedTest {
         originalActivity.application.registerActivityLifecycleCallbacks(callbacks)
         try {
             instrumentation.runOnMainSync {
-                runtime.get().reloadApplication()
+                environment.get().restartApplication()
             }
             assertTrue(
                 "Identity restart did not launch a fresh MainActivity",

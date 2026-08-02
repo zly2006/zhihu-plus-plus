@@ -224,27 +224,6 @@ private fun desktopProjectRoots(): List<File> =
         .toList()
 
 @Composable
-actual fun rememberHomeAccountState(): HomeAccountState {
-    val accountStore = remember { DesktopAccountStore() }
-    val account by accountStore.accountState.collectAsState()
-    return HomeAccountState(
-        isLoggedIn = account.login,
-        avatarUrl = account.profile?.avatarUrl,
-    )
-}
-
-@Composable
-actual fun rememberHomeUpdateAnnouncement(): HomeUpdateAnnouncement? {
-    val updateState by desktopSystemUpdateState.collectAsState()
-    return (updateState as? SystemUpdateState.UpdateAvailable)?.let {
-        HomeUpdateAnnouncement(
-            version = it.version,
-            isNightly = it.isNightly,
-        )
-    }
-}
-
-@Composable
 actual fun rememberHomeIsDebuggable(): Boolean = true
 
 @Composable

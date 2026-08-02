@@ -227,26 +227,6 @@ actual fun ArticleWebViewContent(
 actual fun Modifier.articleMarkdownSelectionWorkaround(): Modifier = fuckHonorService()
 
 @Composable
-actual fun rememberHomeAccountState(): HomeAccountState {
-    val accountData by AccountData.asState()
-    return HomeAccountState(
-        isLoggedIn = accountData.login,
-        avatarUrl = accountData.self?.avatarUrl,
-    )
-}
-
-@Composable
-actual fun rememberHomeUpdateAnnouncement(): HomeUpdateAnnouncement? {
-    val updateState by UpdateManager.updateState.collectAsState()
-    return (updateState as? UpdateManager.UpdateState.UpdateAvailable)?.let {
-        HomeUpdateAnnouncement(
-            version = it.version.toString(),
-            isNightly = it.isNightly,
-        )
-    }
-}
-
-@Composable
 actual fun rememberHomeIsDebuggable(): Boolean {
     val context = LocalContext.current
     return (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0

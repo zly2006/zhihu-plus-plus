@@ -68,6 +68,8 @@ sealed interface SystemUpdateState {
 expect fun rememberSystemUpdateRuntime(): SystemUpdateRuntime
 
 data class DeveloperRuntimeInfo(
+    val networkStatus: String = "网络状态：未知",
+    val powerSaveModeText: String? = null,
     val continuousUsageDurationMs: Long = 0L,
     val ttsState: TtsState = TtsState.Uninitialized,
     val currentTtsEngineLabel: String = "未初始化",
@@ -78,16 +80,5 @@ interface DeveloperRuntimeInfoProvider {
     val developerRuntimeInfo: DeveloperRuntimeInfo
 }
 
-data class DeveloperSettingsRuntime(
-    val cookies: () -> Map<String, String>,
-    val networkStatus: () -> String,
-    val powerSaveModeText: () -> String?,
-    val runtimeInfo: () -> DeveloperRuntimeInfo,
-    val verifyLogin: suspend (Map<String, String>) -> Boolean,
-    val refreshToken: suspend () -> Unit,
-    val saveCookies: (Map<String, String>) -> Unit,
-    val signedGet: suspend (String) -> String,
-)
-
 @Composable
-expect fun rememberDeveloperSettingsRuntime(): DeveloperSettingsRuntime
+expect fun rememberDeveloperRuntimeInfo(): DeveloperRuntimeInfo

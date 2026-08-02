@@ -500,22 +500,6 @@ fun noopSettingsStore(): SettingsStore = SettingsStore(
 internal const val PEOPLE_PROFILE_INCLUDE_PATH =
     "allow_message,is_followed,is_following,is_org,is_blocking,badge_v2,answer_count,follower_count,following_count,articles_count,question_count,pins_count"
 
-data class HomeAccountState(
-    val isLoggedIn: Boolean,
-    val avatarUrl: String?,
-)
-
-data class HomeUpdateAnnouncement(
-    val version: String,
-    val isNightly: Boolean,
-)
-
-@Composable
-expect fun rememberHomeAccountState(): HomeAccountState
-
-@Composable
-expect fun rememberHomeUpdateAnnouncement(): HomeUpdateAnnouncement?
-
 @Composable
 expect fun rememberHomeIsDebuggable(): Boolean
 

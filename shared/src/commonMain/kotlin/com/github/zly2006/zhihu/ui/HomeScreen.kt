@@ -74,6 +74,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -138,6 +139,8 @@ import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_FAB_OPACITY
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FAB_OPACITY
+import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
+import com.github.zly2006.zhihu.ui.subscreens.rememberSystemUpdateRuntime
 import com.github.zly2006.zhihu.ui.topLevelReselectAction
 import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
@@ -229,8 +232,9 @@ fun HomeScreen(
         Path(appPrivateDirectory, homeFeedStartupCacheFileName(currentRecommendationMode))
     }
 
-    val account = rememberHomeAccountState()
-    val updateAnnouncement = rememberHomeUpdateAnnouncement()
+    val account = rememberAccountSettingsAccountState().value
+    val updateState by rememberSystemUpdateRuntime().state.collectAsState()
+    val updateAnnouncement = updateState as? SystemUpdateState.UpdateAvailable
     val versionName = rememberAppVersionInfo().substringBefore(' ').takeIf { it.firstOrNull()?.isDigit() == true }
     val onlineNotificationRepository = remember(settings, appPrivateDirectory) {
         OnlineHomeNotificationRepository(
@@ -297,8 +301,8 @@ fun HomeScreen(
     }
 
     // 初始加载
-    LaunchedEffect(currentRecommendationMode, account.isLoggedIn, autoRefreshOnStartup) {
-        if (!account.isLoggedIn &&
+    LaunchedEffect(currentRecommendationMode, account.login, autoRefreshOnStartup) {
+        if (!account.login &&
             settings.getBoolean("loginForRecommendation", true)
         ) {
             if (!paginationEnvironment.requestLogin()) {

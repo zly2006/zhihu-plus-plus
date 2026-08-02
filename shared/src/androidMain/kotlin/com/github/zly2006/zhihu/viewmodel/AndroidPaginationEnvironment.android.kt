@@ -148,6 +148,29 @@ open class SharedAndroidPaginationEnvironment(
         AccountData.delete(context)
     }
 
+    override fun currentAccountId(): String = AccountData.data.self?.id.orEmpty()
+
+    override fun identityClient() = AccountData.identityClient(context.applicationContext)
+
+    override fun restartApplication() {
+        val activity = context as? Activity ?: return
+        val launchIntent = activity.packageManager
+            .getLaunchIntentForPackage(activity.packageName)
+            ?: error("无法获取应用启动入口")
+        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        activity.startActivity(launchIntent)
+    }
+
+    override suspend fun verifyLogin(cookies: Map<String, String>): Boolean =
+        AccountData.verifyLogin(context, cookies)
+
+    override fun saveCookies(cookies: Map<String, String>) {
+        AccountData.saveData(
+            context,
+            AccountData.data.copy(cookies = cookies.toMutableMap(), login = true),
+        )
+    }
+
     override fun logout() {
         homeFeedStartupCacheFileNames().forEach { fileName ->
             File(context.filesDir, fileName).delete()

@@ -104,15 +104,6 @@ actual fun commentEmojiInlineKey(placeholder: String): String? = null // TODO: i
 actual fun Modifier.commentSelectionWorkaround(): Modifier = this
 
 @Composable
-actual fun rememberHomeAccountState(): HomeAccountState = HomeAccountState(
-    isLoggedIn = false,
-    avatarUrl = null,
-)
-
-@Composable
-actual fun rememberHomeUpdateAnnouncement(): HomeUpdateAnnouncement? = null
-
-@Composable
 actual fun rememberHomeIsDebuggable(): Boolean = false
 
 @Composable
