@@ -53,12 +53,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
+import com.github.zly2006.zhihu.account.SharedQrLoginPane
+import com.github.zly2006.zhihu.account.ZHIHU_DESKTOP_USER_AGENT
+import com.github.zly2006.zhihu.account.ZHIHU_HOME_URL
+import com.github.zly2006.zhihu.account.ZHIHU_SIGNIN_URL
+import com.github.zly2006.zhihu.account.parseCookieAssignments
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.shared.login.SharedQrLoginPane
-import com.github.zly2006.zhihu.shared.login.ZHIHU_DESKTOP_USER_AGENT
-import com.github.zly2006.zhihu.shared.login.ZHIHU_HOME_URL
-import com.github.zly2006.zhihu.shared.login.ZHIHU_SIGNIN_URL
-import com.github.zly2006.zhihu.shared.login.parseCookieAssignments
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient

@@ -16,16 +16,17 @@
  */
 
 package com.github.zly2006.zhihu.ui.subscreens
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
-import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
-import com.github.zly2006.zhihu.shared.desktop.signedWithResponse
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.updater.SchematicVersion
-import com.github.zly2006.zhihu.shared.updater.extractGithubReleaseNotes
-import com.github.zly2006.zhihu.shared.updater.fetchLatestZhihuRelease
-import com.github.zly2006.zhihu.shared.updater.fetchNightlyZhihuRelease
+import com.github.zly2006.zhihu.desktop.DesktopAccountStore
+import com.github.zly2006.zhihu.desktop.openDesktopExternalUrl
+import com.github.zly2006.zhihu.desktop.signedWithResponse
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.updater.SchematicVersion
+import com.github.zly2006.zhihu.updater.extractGithubReleaseNotes
+import com.github.zly2006.zhihu.updater.fetchLatestZhihuRelease
+import com.github.zly2006.zhihu.updater.fetchNightlyZhihuRelease
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import com.mikepenz.aboutlibraries.Libs
 import io.ktor.client.HttpClient

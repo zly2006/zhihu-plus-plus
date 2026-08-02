@@ -16,6 +16,7 @@
  */
 
 package com.github.zly2006.zhihu.ui
+
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -41,22 +42,19 @@ import androidx.core.net.toUri
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.asApiEnvironment
+import com.github.zly2006.zhihu.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.RecommendationMode
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.RecommendationMode
-import com.github.zly2006.zhihu.shared.data.ZHIHU_ME_URL
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
-import com.github.zly2006.zhihu.shared.platform.UserMessageSink
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.shared.util.Log
-import com.github.zly2006.zhihu.ui.components.CustomWebView
+import com.github.zly2006.zhihu.notification.NotificationSettingsStore
+import com.github.zly2006.zhihu.platform.UserMessageSink
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.ui.article.prepareContentDocument
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.util.EmojiManager
+import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.util.OpenInBrowser
 import com.github.zly2006.zhihu.util.createEmojiInlineContent
 import com.github.zly2006.zhihu.util.fuckHonorService
@@ -73,7 +71,6 @@ import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import java.io.File
 
-private const val LOGIN_ACTIVITY_CLASS = "com.github.zly2006.zhihu.LoginActivity"
 private const val QR_CODE_SCAN_ACTIVITY_CLASS = "com.github.zly2006.zhihu.QRCodeScanActivity"
 private const val WEBVIEW_ACTIVITY_CLASS = "com.github.zly2006.zhihu.WebviewActivity"
 private const val QR_SCAN_RESULT_EXTRA = "scan_result"
@@ -85,29 +82,6 @@ actual fun rememberAccountSettingsAccountState(): androidx.compose.runtime.State
         androidx.compose.runtime.derivedStateOf {
             accountDataState.value.toAccountSettingsAccountState()
         }
-    }
-}
-
-@Composable
-actual fun rememberAccountProfileRefresher(): suspend () -> Unit {
-    val context = LocalContext.current
-    return remember(context) {
-        suspend {
-            val data = AccountData.data
-            if (data.login) {
-                val response = context.asApiEnvironment().fetchJson(ZHIHU_ME_URL, "")!!
-                val self = ZhihuJson.decodeJson<com.github.zly2006.zhihu.shared.data.Person>(response)
-                AccountData.saveData(context, data.copy(self = self))
-            }
-        }
-    }
-}
-
-@Composable
-actual fun rememberAccountLoginRequester(): () -> Unit {
-    val context = LocalContext.current
-    return remember(context) {
-        { context.startActivity(Intent().setClassName(context.packageName, LOGIN_ACTIVITY_CLASS)) }
     }
 }
 
@@ -129,19 +103,6 @@ actual fun rememberAccountQrLoginRequester(): () -> Unit {
     }
     return remember(context, scanActivityLauncher) {
         { scanActivityLauncher.launch(Intent().setClassName(context.packageName, QR_CODE_SCAN_ACTIVITY_CLASS)) }
-    }
-}
-
-@Composable
-actual fun rememberAccountLogoutAction(): () -> Unit {
-    val context = LocalContext.current
-    return remember(context) {
-        {
-            homeFeedStartupCacheFileNames().forEach { fileName ->
-                File(context.filesDir, fileName).delete()
-            }
-            AccountData.delete(context)
-        }
     }
 }
 
@@ -255,32 +216,6 @@ actual fun rememberArticleBrowserOpener(): (Article) -> Unit {
 actual fun rememberArticleHost(): ArticleHost? = LocalContext.current.articleHost()
 
 @Composable
-actual fun ArticlePreviewPreloadEffect(
-    cached: com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent?,
-    isNext: Boolean,
-    title: String,
-    onImageLoadFailed: () -> Unit,
-) {
-    val context = LocalContext.current
-    val articleHost = context.articleHost()
-    LaunchedEffect(cached?.article?.id, isNext, title, articleHost) {
-        cached ?: return@LaunchedEffect
-        val previewWebViewStore = articleHost?.articleAnswerSwitchState as? ArticlePreviewWebViewStore
-            ?: return@LaunchedEffect
-        val wv = previewWebViewStore.getOrCreatePreviewWebView(context, isNext, cached.article.id)
-        val articleId = cached.article.id.toString()
-        if (wv.contentId != articleId) {
-            wv.contentId = articleId
-            wv.loadZhihu(
-                "https://www.zhihu.com/answer/${cached.article.id}",
-                prepareContentDocument(cached.content, onImageLoadFailed),
-                title,
-            )
-        }
-    }
-}
-
-@Composable
 actual fun ArticleWebViewContent(
     article: Article,
     html: String,
@@ -345,17 +280,6 @@ actual fun rememberHomeUpdateAnnouncement(): HomeUpdateAnnouncement? {
 actual fun rememberHomeIsDebuggable(): Boolean {
     val context = LocalContext.current
     return (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
-}
-
-@Composable
-actual fun rememberHomeLoginRequester(): () -> Unit {
-    val context = LocalContext.current
-    return remember(context) {
-        {
-            val intent = Intent().setClassName(context.packageName, "com.github.zly2006.zhihu.LoginActivity")
-            context.startActivity(intent)
-        }
-    }
 }
 
 @Composable
@@ -523,14 +447,6 @@ actual fun rememberNotificationEnvironment(
 actual fun rememberNotificationShowDebugCopy(): Boolean {
     val context = LocalContext.current
     return (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
-}
-
-interface ArticlePreviewWebViewStore {
-    fun getOrCreatePreviewWebView(
-        context: Context,
-        isNext: Boolean,
-        answerId: Long,
-    ): CustomWebView
 }
 
 fun Context.articleHost(): ArticleHost? =

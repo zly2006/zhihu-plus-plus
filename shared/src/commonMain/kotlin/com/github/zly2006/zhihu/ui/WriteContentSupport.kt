@@ -23,7 +23,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import com.github.zly2006.zhihu.shared.util.HttpStatusException
+import com.github.zly2006.zhihu.util.HttpStatusException
 
 @Composable
 internal fun WriteOperationErrorDialog(

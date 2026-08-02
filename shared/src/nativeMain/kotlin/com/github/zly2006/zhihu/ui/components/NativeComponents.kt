@@ -19,8 +19,8 @@ package com.github.zly2006.zhihu.ui.components
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import com.github.zly2006.zhihu.shared.platform.rememberPlainTextClipboard
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.platform.rememberPlainTextClipboard
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 
 @Composable
 actual fun rememberFeedBlockActions(): FeedBlockActions = remember {

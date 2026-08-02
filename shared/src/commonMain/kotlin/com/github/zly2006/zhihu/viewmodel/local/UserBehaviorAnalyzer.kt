@@ -17,11 +17,11 @@
 
 package com.github.zly2006.zhihu.viewmodel.local
 
-import com.github.zly2006.zhihu.shared.recommendation.LocalContentAffinity
-import com.github.zly2006.zhihu.shared.recommendation.LocalContentStats
-import com.github.zly2006.zhihu.shared.recommendation.LocalReasonPreference
-import com.github.zly2006.zhihu.shared.recommendation.LocalReasonStats
-import com.github.zly2006.zhihu.shared.recommendation.buildLocalRecommendationSignal
+import com.github.zly2006.zhihu.viewmodel.local.LocalContentAffinity
+import com.github.zly2006.zhihu.viewmodel.local.LocalContentStats
+import com.github.zly2006.zhihu.viewmodel.local.LocalReasonPreference
+import com.github.zly2006.zhihu.viewmodel.local.LocalReasonStats
+import com.github.zly2006.zhihu.viewmodel.local.buildLocalRecommendationSignal
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.time.Clock

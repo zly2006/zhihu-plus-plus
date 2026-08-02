@@ -19,15 +19,12 @@ package com.github.zly2006.zhihu.ui
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.BringIntoViewSpec
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
-import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,8 +37,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -54,23 +49,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.FilterCenterFocus
-import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.GetApp
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.outlined.DesktopWindows
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -81,23 +68,19 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -105,38 +88,41 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewModelScope
 import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.toRoute
 import coil3.compose.AsyncImage
-import com.fleeksoft.ksoup.Ksoup
-import com.fleeksoft.ksoup.nodes.Element
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.VoteUpState
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
-import com.github.zly2006.zhihu.markdown.RenderVideoBox
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Question
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.Person
-import com.github.zly2006.zhihu.shared.data.ZhihuPaging
-import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
-import com.github.zly2006.zhihu.shared.util.formatCompactCount
-import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.platform.PlatformBackHandler
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
+import com.github.zly2006.zhihu.ui.article.AigcFlagSheet
+import com.github.zly2006.zhihu.ui.article.ArticleActionsMenu
+import com.github.zly2006.zhihu.ui.article.ArticleSummarySheet
+import com.github.zly2006.zhihu.ui.article.ArticleVideoAttachmentContent
+import com.github.zly2006.zhihu.ui.article.CachedAnswerPreview
+import com.github.zly2006.zhihu.ui.article.rememberArticleAnswerNavigationState
+import com.github.zly2006.zhihu.ui.article.rememberArticleBottomBarState
+import com.github.zly2006.zhihu.ui.article.rememberArticleTopBarState
+import com.github.zly2006.zhihu.ui.article.rememberBottomBarAvoidingBringIntoViewSpec
+import com.github.zly2006.zhihu.ui.article.voteUpActiveButtonColors
+import com.github.zly2006.zhihu.ui.article.voteUpNeutralButtonColors
+import com.github.zly2006.zhihu.ui.article.voteUpNeutralContent
+import com.github.zly2006.zhihu.ui.article.voteUpNeutralContentDuo3
 import com.github.zly2006.zhihu.ui.components.AnswerHorizontalOverscroll
 import com.github.zly2006.zhihu.ui.components.AnswerVerticalOverscroll
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
@@ -149,599 +135,23 @@ import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
 import com.github.zly2006.zhihu.ui.components.VotersSheet
 import com.github.zly2006.zhihu.ui.components.ZhihuTwoRowsTopAppBar
 import com.github.zly2006.zhihu.ui.components.rememberPreferCollapsedExitUntilCollapsedScrollBehavior
-import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
+import com.github.zly2006.zhihu.util.formatCompactCount
 import com.github.zly2006.zhihu.util.smoothGradient
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
-import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import com.github.zly2006.zhihu.viewmodel.addReadHistory
 import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import com.materialkolor.ktx.harmonize
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.coroutines.flow.collectLatest
 import org.jetbrains.compose.resources.painterResource
 import zhihu.shared.generated.resources.Res
 import zhihu.shared.generated.resources.ic_vote_down_24dp
 import zhihu.shared.generated.resources.ic_vote_up_24dp
-import kotlin.math.abs
 import kotlin.math.max
 
 private const val SCROLL_THRESHOLD = 10 // 滑动阈值，单位为dp
 private val ScrollThresholdDp = SCROLL_THRESHOLD.dp
-
-/**
- * 修复 noscript 标签中的图片加载问题。
- * 提取为独立函数，确保主 WebView 和预览 WebView 使用相同的文档处理。
- */
-internal fun prepareContentDocument(
-    content: String,
-    onImageLoadFailure: () -> Unit = {},
-): String =
-    Ksoup
-        .parse(content)
-        .apply {
-            select("noscript").forEach { noscript ->
-                (noscript.nextSibling() as? Element)?.let { actualImg ->
-                    if (actualImg.nodeName() == "img") {
-                        if (actualImg.attr("data-actualsrc").isNotEmpty()) {
-                            actualImg.attr("src", actualImg.attr("data-actualsrc"))
-                            actualImg.attr("class", actualImg.attr("class").replace("lazy", ""))
-                            noscript.remove()
-                            return@forEach
-                        }
-                    }
-                }
-                if (noscript.childrenSize() > 0) {
-                    val node = noscript.child(0)
-                    if (node.tagName() == "img") {
-                        if (node.attr("class").contains("content_image")) {
-                            node.attr("src", node.attr("data-thumbnail"))
-                        }
-                        if (node.attr("src").isEmpty()) {
-                            if (node.attr("data-default-watermark-src").isNotEmpty()) {
-                                node.attr("src", node.attr("data-default-watermark-src"))
-                            } else {
-                                onImageLoadFailure()
-                            }
-                        }
-                    }
-                    noscript.after(node)
-                }
-            }
-        }.body()
-        .html()
-
-@Composable
-private fun rememberBottomBarAvoidingBringIntoViewSpec(
-    obscuredBottomPx: Float,
-): BringIntoViewSpec {
-    val density = LocalDensity.current
-    return remember(obscuredBottomPx) {
-        object : BringIntoViewSpec {
-            override fun calculateScrollDistance(
-                offset: Float,
-                size: Float,
-                containerSize: Float,
-            ): Float {
-                val effectiveContainerSize = (containerSize - obscuredBottomPx).coerceAtLeast(0f)
-                val effectiveContainerTop = density.run { 110.dp.toPx() }
-                val trailingEdge = offset + size
-                return when {
-                    offset >= effectiveContainerTop && trailingEdge <= effectiveContainerSize -> 0f
-                    offset < effectiveContainerTop && trailingEdge > effectiveContainerSize -> 0f
-                    abs(offset) < abs(trailingEdge + effectiveContainerTop - effectiveContainerSize) -> offset - effectiveContainerTop
-                    else -> trailingEdge + effectiveContainerTop - effectiveContainerSize
-                }
-            }
-        }
-    }
-}
-
-enum class VoteUpState(
-    val key: String,
-) {
-    Up("up"),
-    Down("down"),
-    Neutral("neutral"),
-}
-
-private val VoteUpNeutralContent = Color(0xFF3671EE)
-private val VoteUpNeutralContentDark = Color(0xFF628DF7)
-
-@Composable
-fun voteUpNeutralContent() = if (ThemeManager.isDarkTheme()) VoteUpNeutralContentDark else VoteUpNeutralContent
-
-@Composable
-fun voteUpNeutralContentDuo3() = if (ThemeManager.isDarkTheme()) {
-    VoteUpNeutralContentDark.harmonize(MaterialTheme.colorScheme.primary)
-} else {
-    VoteUpNeutralContent.harmonize(MaterialTheme.colorScheme.primary)
-}
-
-@Composable
-fun voteUpActiveButtonColors() = ButtonDefaults.buttonColors(
-    containerColor = voteUpNeutralContent(),
-    contentColor = Color.White,
-)
-
-@Composable
-fun voteUpNeutralButtonColors() = ButtonDefaults.buttonColors(
-    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-)
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ArticleSummarySheet(
-    showDialog: Boolean,
-    summaryText: String,
-    loading: Boolean,
-    errorMessage: String?,
-    onDismissRequest: () -> Unit,
-    onRetryRequest: () -> Unit,
-) {
-    if (!showDialog) return
-    val scrollState = rememberScrollState()
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    MyModalBottomSheet(
-        onDismissRequest = onDismissRequest,
-        sheetState = sheetState,
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-                .verticalScroll(scrollState),
-        ) {
-            Text("总结本文", style = MaterialTheme.typography.titleLarge)
-            Spacer(modifier = Modifier.height(12.dp))
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                if (loading && summaryText.isBlank()) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                        Text("正在生成总结...")
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
-
-                if (summaryText.isNotBlank()) {
-                    SelectionContainer {
-                        Text(summaryText)
-                    }
-                }
-
-                if (!errorMessage.isNullOrBlank()) {
-                    if (summaryText.isNotBlank()) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                    }
-                    Text(errorMessage, color = MaterialTheme.colorScheme.error)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                TextButton(onClick = onDismissRequest) {
-                    Text("关闭")
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                if (!loading) {
-                    TextButton(onClick = onRetryRequest) {
-                        Text("重新总结")
-                    }
-                }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun AigcFlagSheet(
-    showDialog: Boolean,
-    viewModel: ArticleViewModel,
-    onDismissRequest: () -> Unit,
-    onSubmitRequest: () -> Unit,
-) {
-    if (!showDialog) return
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    MyModalBottomSheet(
-        onDismissRequest = onDismissRequest,
-        sheetState = sheetState,
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            val canSubmitAigcFlag = viewModel.aigcVoteAvailable &&
-                !viewModel.aigcVoteLoading &&
-                !viewModel.aigcFlagged &&
-                viewModel.aigcVoterName.isNotBlank() &&
-                (
-                    viewModel.aigcCreditBypassAvailable ||
-                        (viewModel.aigcVoteCredit > 0 && viewModel.isAigcFlagEvidenceReady())
-                )
-            Text(
-                text = "标记疑似 AIGC",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(
-                text = "每浏览 20 篇内容获得 1 点投票积分，最多保留 ${viewModel.aigcVoteCap} 点。标记会上传当前正文 HTML、编辑时间和投票人身份，服务端按内容版本统计。",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = if (!viewModel.aigcVoteAvailable) {
-                    "AIGC 标记未启用"
-                } else if (viewModel.aigcVoterName.isBlank()) {
-                    "未登录，无法记名投票"
-                } else {
-                    "投票人：${viewModel.aigcVoterName}"
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = if (viewModel.aigcCreditBypassAvailable) {
-                    "积分 ${viewModel.aigcVoteCredit}/${viewModel.aigcVoteCap} · 当前账号可免积分标记"
-                } else {
-                    "积分 ${viewModel.aigcVoteCredit}/${viewModel.aigcVoteCap} · 进度 ${viewModel.aigcVoteProgress}/20"
-                },
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Text(
-                text = if (viewModel.aigcEffectiveFlagCount > 0) {
-                    "已有 ${viewModel.aigcEffectiveFlagCount} 个有效标记"
-                } else {
-                    "当前还没有有效标记"
-                },
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            if (viewModel.aigcNamedVoters.isNotEmpty()) {
-                Text(
-                    text = "记名投票：" + viewModel.aigcNamedVoters.joinToString("、") { voter ->
-                        if (voter.creditBypassed) {
-                            "${voter.voterName}（免积分）"
-                        } else {
-                            voter.voterName
-                        }
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            viewModel.aigcVoteError?.let { error ->
-                Text(
-                    text = error,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                TextButton(onClick = onDismissRequest) {
-                    Text("关闭")
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Button(
-                    onClick = onSubmitRequest,
-                    enabled = canSubmitAigcFlag,
-                ) {
-                    Text(
-                        when {
-                            !viewModel.aigcVoteAvailable -> "未启用"
-                            viewModel.aigcFlagged -> "已标记"
-                            viewModel.aigcVoteLoading -> "提交中"
-                            viewModel.aigcVoterName.isBlank() -> "需登录"
-                            viewModel.aigcCreditBypassAvailable -> "免积分标记"
-                            viewModel.aigcVoteCredit <= 0 -> "积分不足"
-                            !viewModel.isAigcFlagEvidenceReady() -> "继续阅读"
-                            else -> "消耗 1 点标记"
-                        },
-                    )
-                }
-            }
-        }
-    }
-}
-
-/**
- * 文章附件中的视频入口渲染。
- *
- * 只处理知乎接口里 `attachment.type=video` 的情况，将视频 ID 和缩略图交给统一的视频卡片。普通正文视频仍由 Markdown/WebView 路径处理。
- */
-@Composable
-fun ArticleVideoAttachmentContent(attachment: JsonElement?) {
-    if (attachment
-            ?.jsonObject
-            ?.get("type")
-            ?.jsonPrimitive
-            ?.content == "video"
-    ) {
-        val videoId = attachment
-            .jsonObject["attachmentId"]
-            ?.jsonPrimitive
-            ?.content
-            ?.toLongOrNull()
-        if (videoId != null) {
-            val thumbnail = attachment
-                .jsonObject["video"]!!
-                .jsonObject["videoInfo"]!!
-                .jsonObject["thumbnail"]!!
-                .jsonPrimitive.content
-            RenderVideoBox(
-                videoId = videoId,
-                thumbnailUrl = thumbnail,
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ArticleActionsMenu(
-    article: Article,
-    viewModel: ArticleViewModel,
-    showMenu: Boolean,
-    onDismissRequest: () -> Unit,
-    onSummaryRequest: () -> Unit,
-    onAigcFlagRequest: () -> Unit,
-    onExportRequest: () -> Unit,
-    onSetImmersiveDoubleTap: () -> Unit = {},
-) {
-    val ttsState = rememberArticleTtsState()
-    val toggleSpeech = rememberArticleSpeechToggler()
-    val openArticleInBrowser = rememberArticleBrowserOpener()
-    val shareRuntime = rememberShareDialogRuntime()
-    val coroutineScope = rememberCoroutineScope()
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    @Composable
-    fun MenuActionButton(
-        icon: @Composable () -> Unit,
-        text: String,
-        enabled: Boolean = true,
-        backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant,
-        contentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-        onClick: () -> Unit,
-    ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(enabled = enabled) { onClick() },
-            shape = RoundedCornerShape(12.dp),
-            color = if (enabled) backgroundColor else backgroundColor.copy(alpha = 0.5f),
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(modifier = Modifier.size(24.dp)) {
-                    icon()
-                }
-                Spacer(modifier = Modifier.width(16.dp))
-                Text(
-                    text = text,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = if (enabled) contentColor else contentColor.copy(alpha = 0.5f),
-                )
-            }
-        }
-    }
-
-    @Composable
-    fun MenuActionButton(
-        icon: ImageVector,
-        text: String,
-        enabled: Boolean = true,
-        backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant,
-        contentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-        onClick: () -> Unit,
-    ) {
-        MenuActionButton(
-            icon = {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = contentColor,
-                )
-            },
-            text = text,
-            enabled = enabled,
-            backgroundColor = backgroundColor,
-            contentColor = contentColor,
-            onClick = onClick,
-        )
-    }
-
-    @Composable
-    fun Content() {
-        MenuActionButton(
-            icon = {
-                when (ttsState) {
-                    TtsState.Initializing, TtsState.Uninitialized -> CircularProgressIndicator(
-                        modifier = Modifier.height(24.dp),
-                        strokeWidth = 2.dp,
-                    )
-
-                    else -> Icon(
-                        if (ttsState.isSpeaking) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            },
-            text = if (ttsState.isSpeaking) "停止朗读" else "开始朗读",
-            enabled = ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing),
-            onClick = {
-                onDismissRequest()
-                if (ttsState.isSpeaking) {
-                    toggleSpeech(viewModel.title, viewModel.content)
-                } else if (ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)) {
-                    // 使用协程在后台处理文本提取，避免UI阻塞
-                    viewModel.viewModelScope.launch {
-                        try {
-                            // 在IO线程中处理文本提取
-                            withContext(Dispatchers.Default) {
-                                val textToRead = articleSpeechText(viewModel.title, viewModel.content)
-
-                                // 回到主线程执行TTS
-                                withContext(Dispatchers.Main) {
-                                    if (textToRead.isNotBlank()) {
-                                        toggleSpeech(viewModel.title, viewModel.content)
-                                    }
-                                }
-                            }
-                        } catch (e: Exception) {
-                            withContext(Dispatchers.Main) {
-                                Unit
-                            }
-                        }
-                    }
-                }
-            },
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // 分享按钮
-        MenuActionButton(
-            icon = Icons.Filled.Share,
-            text = "分享",
-            onClick = {
-                onDismissRequest()
-                shareRuntime.share(
-                    article,
-                    articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName),
-                )
-            },
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        MenuActionButton(
-            icon = Icons.AutoMirrored.Filled.Comment,
-            text = "总结本文",
-            onClick = {
-                onDismissRequest()
-                onSummaryRequest()
-            },
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        MenuActionButton(
-            icon = Icons.Filled.Flag,
-            text = "标记疑似 AIGC",
-            onClick = {
-                onDismissRequest()
-                onAigcFlagRequest()
-            },
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // 复制链接按钮
-        MenuActionButton(
-            icon = Icons.Filled.ContentCopy,
-            text = "复制链接",
-            onClick = {
-                onDismissRequest()
-                shareRuntime.copyLink(
-                    article,
-                    articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName),
-                )
-            },
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // 开关沉浸式
-        MenuActionButton(
-            icon = Icons.Filled.FilterCenterFocus,
-            text = "进入沉浸式",
-            onClick = {
-                onDismissRequest()
-                onSetImmersiveDoubleTap()
-            },
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // 导出按钮
-        MenuActionButton(
-            icon = Icons.Filled.GetApp,
-            text = "导出文章 (Markdown、图片、HTML、PDF)",
-            onClick = {
-                onDismissRequest()
-                onExportRequest()
-            },
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        MenuActionButton(
-            icon = Icons.Filled.Share,
-            text = "分享 Markdown 正文",
-            onClick = {
-                onDismissRequest()
-                shareRuntime.directShare(article, viewModel.convertToMarkdown())
-            },
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        MenuActionButton(
-            icon = Icons.Outlined.DesktopWindows,
-            text = "在电脑中打开（我计划使用浏览器插件实现，还在写，点击后请手动前往收藏夹打开）",
-            onClick = {
-                coroutineScope.launch {
-                    openArticleInBrowser(article)
-                    onDismissRequest()
-                }
-            },
-        )
-
-        // 底部安全区域
-        Spacer(modifier = Modifier.height(16.dp))
-    }
-
-    if (showMenu) {
-        MyModalBottomSheet(
-            onDismissRequest = onDismissRequest,
-            sheetState = sheetState,
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-            ) {
-                Content()
-            }
-        }
-    }
-}
 
 /**
  * 文章/回答详情页。
@@ -770,26 +180,8 @@ fun ArticleScreen(
 
     val scrollState = rememberScrollState()
     val articleSettings = rememberArticleScreenSettingsState()
-
-    var isTitleAutoHide by remember { mutableStateOf(articleSettings.isTitleAutoHide) }
-    var autoHideArticleBottomBar by remember {
-        mutableStateOf(articleSettings.autoHideArticleBottomBar)
-    }
-    var answerSwitchMode by remember {
-        mutableStateOf(articleSettings.answerSwitchMode)
-    }
-    var answerSwitchSensitivity by remember {
-        mutableFloatStateOf(articleSettings.answerSwitchSensitivity)
-    }
-    var pinAnswerDate by remember { mutableStateOf(articleSettings.pinAnswerDate) }
     val userMessages = rememberUserMessageSink()
-
-    var previousScrollValue by remember { mutableIntStateOf(0) }
-    var isScrollingUp by remember { mutableStateOf(false) }
-    var navigatingToNextAnswer by remember { mutableStateOf(false) }
     val density = LocalDensity.current
-    val scrollDeltaThreshold = with(density) { ScrollThresholdDp.toPx() }
-    var topBarHeight by remember { mutableIntStateOf(0) }
     var showComments by rememberSaveable(article.type, article.id) { mutableStateOf(false) }
     var showCollectionDialog by remember { mutableStateOf(false) }
     var showActionsMenu by remember { mutableStateOf(false) }
@@ -798,24 +190,44 @@ fun ArticleScreen(
     var showExportDialog by remember { mutableStateOf(false) }
     var showDoubleTapActionDialog by remember { mutableStateOf(false) }
     var showVoters by rememberSaveable(article.type, article.id) { mutableStateOf(false) }
-    val coroutineScope = rememberCoroutineScope()
+    val topBarState = rememberArticleTopBarState(
+        scrollState = scrollState,
+        autoHide = articleSettings.isTitleAutoHide,
+    )
+    val bottomBarState = rememberArticleBottomBarState(
+        scrollState = scrollState,
+        autoHide = articleSettings.autoHideArticleBottomBar,
+        scrollDeltaThreshold = with(density) { ScrollThresholdDp.toPx() },
+        showSlot = backStackEntry?.hasRoute(Article::class) == true || articleHost == null,
+        navigationBarHeightPx = density.run {
+            WindowInsets.navigationBars
+                .asPaddingValues()
+                .calculateBottomPadding()
+                .toPx()
+                .coerceAtLeast(0f)
+        },
+    )
+    val sharedData = if (article.type == ArticleType.Answer) {
+        environment.articleAnswerSwitchState()
+    } else {
+        null
+    }
+    var isImmersiveMode by remember(sharedData) {
+        mutableStateOf(sharedData?.isImmersiveMode ?: false)
+    }
+    val answerNavigationState = rememberArticleAnswerNavigationState(
+        switchState = sharedData,
+        viewModel = viewModel,
+        navigator = navigator,
+        navController = articleHost?.articleNavController,
+        answerSwitchMode = articleSettings.answerSwitchMode,
+    )
     val hapticFeedback = LocalHapticFeedback.current
 
-    val useDuo3ArticleActions = remember { articleSettings.useDuo3ArticleActions }
-    var buttonSkipAnswer by remember { mutableStateOf(articleSettings.buttonSkipAnswer) }
-    var autoHideSkipAnswerButton by remember { mutableStateOf(articleSettings.autoHideSkipAnswerButton) }
-    var answerDoubleTapAction by remember {
-        mutableStateOf(
-            articleSettings.answerDoubleTapAction,
-        )
+    LaunchedEffect(sharedData, isImmersiveMode) {
+        if (sharedData != null) sharedData.isImmersiveMode = isImmersiveMode
     }
-    // 跟手隐藏标题栏和底栏：用滚动增量直接驱动像素偏移。
-    val topBarOffset = remember { Animatable(0f) }
-    val bottomBarOffset = remember { Animatable(0f) }
-    var topBarHeightPx by remember { mutableFloatStateOf(0f) }
-    var bottomBarHeightPx by remember { mutableFloatStateOf(0f) }
-    var previousScrollForBarOffset by remember { mutableIntStateOf(0) }
-    var isBarSnapping by remember { mutableStateOf(false) }
+    ArticleImmersiveModeEffect(isImmersiveMode)
 
     LaunchedEffect(Unit) {
         environment.addReadHistory(
@@ -830,19 +242,6 @@ fun ArticleScreen(
             viewModel.toggleVoteUp(environment, VoteUpState.Up)
         }
     }
-    // 回答切换手势系统
-    val sharedData = if (article.type == ArticleType.Answer) {
-        environment.articleAnswerSwitchState()
-    } else {
-        null
-    }
-
-    // 沉浸式阅读模式
-    var isImmersiveMode by remember(sharedData) {
-        mutableStateOf(sharedData?.isImmersiveMode ?: false)
-    }
-
-    val toggleImmersive: () -> Unit = { isImmersiveMode = !isImmersiveMode }
 
     fun performAnswerDoubleTapAction(action: AnswerDoubleTapAction) {
         when (action) {
@@ -854,26 +253,21 @@ fun ArticleScreen(
                 showComments = true
             }
             AnswerDoubleTapAction.ToggleImmersive -> {
-                toggleImmersive()
+                isImmersiveMode = !isImmersiveMode
             }
         }
     }
 
-    fun saveAnswerDoubleTapAction(action: AnswerDoubleTapAction) {
-        answerDoubleTapAction = action
-        articleSettings.saveAnswerDoubleTapAction(action)
-    }
-
     fun handleAnswerDoubleTap() {
         if (article.type != ArticleType.Answer) return
-        performAnswerDoubleTapAction(answerDoubleTapAction)
+        performAnswerDoubleTapAction(articleSettings.answerDoubleTapAction)
     }
 
     val answerDoubleTapModifier = if (
         article.type == ArticleType.Answer &&
-        answerDoubleTapAction != AnswerDoubleTapAction.None
+        articleSettings.answerDoubleTapAction != AnswerDoubleTapAction.None
     ) {
-        Modifier.pointerInput(answerDoubleTapAction) {
+        Modifier.pointerInput(articleSettings.answerDoubleTapAction) {
             detectTapGestures(
                 onDoubleTap = { handleAnswerDoubleTap() },
             )
@@ -882,213 +276,23 @@ fun ArticleScreen(
         Modifier
     }
 
-    LaunchedEffect(articleSettings.isTitleAutoHide) {
-        isTitleAutoHide = articleSettings.isTitleAutoHide
-    }
-    LaunchedEffect(articleSettings.autoHideArticleBottomBar) {
-        autoHideArticleBottomBar = articleSettings.autoHideArticleBottomBar
-    }
-    LaunchedEffect(articleSettings.buttonSkipAnswer) {
-        buttonSkipAnswer = articleSettings.buttonSkipAnswer
-    }
-    LaunchedEffect(articleSettings.autoHideSkipAnswerButton) {
-        autoHideSkipAnswerButton = articleSettings.autoHideSkipAnswerButton
-    }
-    LaunchedEffect(articleSettings.answerSwitchMode) {
-        answerSwitchMode = articleSettings.answerSwitchMode
-    }
-    LaunchedEffect(articleSettings.answerSwitchSensitivity) {
-        answerSwitchSensitivity = articleSettings.answerSwitchSensitivity
-    }
-    LaunchedEffect(articleSettings.pinAnswerDate) {
-        pinAnswerDate = articleSettings.pinAnswerDate
-    }
-    LaunchedEffect(articleSettings.answerDoubleTapAction) {
-        answerDoubleTapAction = articleSettings.answerDoubleTapAction
-    }
+    LaunchedEffect(scrollState) {
+        snapshotFlow { scrollState.value }.collectLatest { currentScroll ->
+            viewModel.updateAigcReadProgress(currentScroll, scrollState.maxValue)
+            viewModel.syncAigcReadEventIfEligible(environment)
 
-    // 自动隐藏关闭时重置栏位偏移。
-    LaunchedEffect(isTitleAutoHide) {
-        if (!isTitleAutoHide) topBarOffset.snapTo(0f)
-    }
-    LaunchedEffect(autoHideArticleBottomBar) {
-        if (!autoHideArticleBottomBar) bottomBarOffset.snapTo(0f)
-    }
-
-    LaunchedEffect(scrollState.value) {
-        val currentScroll = scrollState.value
-        val scrollDeltaAbs = abs(currentScroll - previousScrollValue)
-        if (scrollDeltaAbs > scrollDeltaThreshold) {
-            isScrollingUp = currentScroll < previousScrollValue
-            previousScrollValue = currentScroll
-        }
-
-        // 吸附动画期间滚动由程序驱动，跳过栏位偏移跟踪。
-        if (!isBarSnapping) {
-            val delta = currentScroll - previousScrollForBarOffset
-            val atTop = currentScroll == 0
-            val atBottom = currentScroll >= scrollState.maxValue
-
-            // 顶栏：顶部强制显示，接近底部时按内容距离逐步露出。
-            if (atTop) {
-                topBarOffset.snapTo(0f)
-            } else if (isTitleAutoHide && topBarHeightPx > 0f) {
-                val deltaBasedOffset = (topBarOffset.value - delta).coerceIn(-topBarHeightPx, 0f)
-                val distanceFromBottom = (scrollState.maxValue - currentScroll).coerceAtLeast(0)
-                if (distanceFromBottom < topBarHeightPx.toInt()) {
-                    // 底部区域取露出更多栏位的偏移，也就是更接近 0 的值。
-                    val distanceBasedOffset = (-distanceFromBottom.toFloat()).coerceIn(-topBarHeightPx, 0f)
-                    topBarOffset.snapTo(maxOf(distanceBasedOffset, deltaBasedOffset))
-                } else {
-                    topBarOffset.snapTo(deltaBasedOffset)
-                }
+            if (viewModel.rememberedScrollYSync) {
+                viewModel.rememberedScrollY = currentScroll
             }
-
-            // 底栏：顶部强制显示，接近底部时按内容距离逐步露出。
-            if (atTop) {
-                bottomBarOffset.snapTo(0f)
-            } else if (autoHideArticleBottomBar && bottomBarHeightPx > 0f) {
-                val deltaBasedOffset = (bottomBarOffset.value + delta).coerceIn(0f, bottomBarHeightPx)
-                val distanceFromBottom = (scrollState.maxValue - currentScroll).coerceAtLeast(0)
-                if (distanceFromBottom < bottomBarHeightPx.toInt()) {
-                    // 底部区域取露出更多栏位的偏移。
-                    val distanceBasedOffset = distanceFromBottom.toFloat().coerceIn(0f, bottomBarHeightPx)
-                    bottomBarOffset.snapTo(minOf(distanceBasedOffset, deltaBasedOffset))
-                } else {
-                    bottomBarOffset.snapTo(deltaBasedOffset)
-                }
-            }
-        }
-        previousScrollForBarOffset = currentScroll
-
-        viewModel.updateAigcReadProgress(currentScroll, scrollState.maxValue)
-        viewModel.syncAigcReadEventIfEligible(environment)
-
-        if (viewModel.rememberedScrollYSync) {
-            viewModel.rememberedScrollY = currentScroll
-        }
-        if (currentScroll == viewModel.rememberedScrollY && scrollState.maxValue != Int.MAX_VALUE) {
-            viewModel.rememberedScrollYSync = true
-        }
-    }
-
-    // 滚动停止时把栏位吸附到完全显示或完全隐藏，并让内容滚动跟随顶栏吸附。
-    LaunchedEffect(scrollState.isScrollInProgress) {
-        if (!scrollState.isScrollInProgress) {
-            val topTarget = if (isTitleAutoHide && topBarHeightPx > 0f) {
-                if (abs(topBarOffset.value) > topBarHeightPx / 2) -topBarHeightPx else 0f
-            } else {
-                topBarOffset.value
-            }
-
-            val bottomTarget = if (autoHideArticleBottomBar && bottomBarHeightPx > 0f) {
-                if (bottomBarOffset.value > bottomBarHeightPx / 2) bottomBarHeightPx else 0f
-            } else {
-                bottomBarOffset.value
-            }
-
-            // 仅在靠近顶部时补偿顶栏吸附导致的内容位移；底栏交给距离触发的露出逻辑处理。
-            val topInNaturalArea = scrollState.value <= topBarHeightPx
-            val topDelta = if (topInNaturalArea) topBarOffset.value - topTarget else 0f
-
-            if (topTarget != topBarOffset.value || bottomTarget != bottomBarOffset.value) {
-                try {
-                    isBarSnapping = true
-                    kotlinx.coroutines.coroutineScope {
-                        launch { topBarOffset.animateTo(topTarget, tween(150)) }
-                        launch { bottomBarOffset.animateTo(bottomTarget, tween(150)) }
-                        if (topDelta != 0f) {
-                            launch { scrollState.animateScrollBy(topDelta, tween(150)) }
-                        }
-                    }
-                } finally {
-                    isBarSnapping = false
-                }
+            if (currentScroll == viewModel.rememberedScrollY && scrollState.maxValue != Int.MAX_VALUE) {
+                viewModel.rememberedScrollYSync = true
             }
         }
     }
 
-    // 主视觉风格的栏位显隐：按滚动方向控制，用于非跟手偏移路径。
-    val showTopBar by remember {
-        derivedStateOf {
-            val canScroll = scrollState.maxValue > topBarHeight
-            val isNearTop = scrollState.value < topBarHeight
-            when {
-                !isTitleAutoHide -> true
-                !canScroll -> true
-                isScrollingUp -> true
-                isNearTop -> true
-                else -> false
-            }
-        }
-    }
-    val showBottomBar by remember {
-        derivedStateOf {
-            val canScroll = scrollState.maxValue > 0
-            val isNearTop = scrollState.value == 0
-            when {
-                !autoHideArticleBottomBar -> true
-                !canScroll -> true
-                isScrollingUp -> true
-                isNearTop -> true
-                else -> false
-            }
-        }
-    }
-    val showBottomBarSlot = backStackEntry?.hasRoute(Article::class) == true || articleHost == null
-    val navigationBarsPadding = WindowInsets.navigationBars.asPaddingValues()
-    val bottomBarObscuredHeightPx by remember(
-        showBottomBarSlot,
-        true,
-        showBottomBar,
-        bottomBarHeightPx,
-        bottomBarOffset.value,
-    ) {
-        derivedStateOf {
-            val navBar = density.run {
-                navigationBarsPadding.calculateBottomPadding().toPx().coerceAtLeast(0f)
-            }
-            val bottonBar = if (!showBottomBarSlot) {
-                0f
-            } else if (true) {
-                (bottomBarHeightPx - bottomBarOffset.value).coerceIn(0f, bottomBarHeightPx)
-            } else if (showBottomBar) {
-                bottomBarHeightPx
-            } else {
-                0f
-            }
-            navBar + bottonBar
-        }
-    }
-    val articleBringIntoViewSpec = rememberBottomBarAvoidingBringIntoViewSpec(bottomBarObscuredHeightPx)
-    LaunchedEffect(sharedData, isImmersiveMode) {
-        if (sharedData != null) sharedData.isImmersiveMode = isImmersiveMode
-    }
-    ArticleImmersiveModeEffect(isImmersiveMode)
-
+    val articleBringIntoViewSpec = rememberBottomBarAvoidingBringIntoViewSpec(bottomBarState.obscuredHeightPx)
     LaunchedEffect(article.id) {
-        // Bug 2: 在主线程检查标志并重置（避免跨线程可见性问题）
-        if (sharedData != null) {
-            if (!sharedData.navigatingFromAnswerSwitch) {
-                sharedData.reset()
-            }
-            sharedData.navigatingFromAnswerSwitch = false
-            sharedData.answerTransitionDirection = ArticleAnswerTransitionDirection.DEFAULT
-
-            // 从 pendingInitialContent 预填充 viewModel，消除空白帧
-            val pending = sharedData.pendingInitialContent
-            if (pending != null) {
-                viewModel.title = pending.title
-                viewModel.authorName = pending.authorName
-                viewModel.authorBio = pending.authorBio
-                viewModel.authorAvatarSrc = pending.authorAvatarUrl
-                viewModel.content = pending.content
-                viewModel.voteUpCount = pending.voteUpCount
-                viewModel.commentCount = pending.commentCount
-                viewModel.endorsements = pending.endorsements
-                sharedData.pendingInitialContent = null
-            }
-        }
+        answerNavigationState.prepareArticle()
         viewModel.loadArticle(environment)
         viewModel.loadCollections(environment)
         viewModel.loadAigcFlagStatus(environment)
@@ -1102,104 +306,10 @@ fun ArticleScreen(
             viewModel.syncAigcReadEventIfEligible(environment)
         }
     }
-    LaunchedEffect(scrollState.maxValue, viewModel.content) {
-        if (viewModel.content.isNotBlank()) {
-            viewModel.updateAigcReadProgress(scrollState.value, scrollState.maxValue)
-        }
-    }
-
-    val navigateToPrevious: () -> Unit = {
-        sharedData?.answerTransitionDirection = if (answerSwitchMode == "horizontal") {
-            ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS
-        } else {
-            ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS
-        }
-        sharedData?.navigatingFromAnswerSwitch = true
-        // 更新当前回答内容到历史
-        sharedData?.navigator?.pushAnswer(viewModel.toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"))
-        val prev = sharedData?.navigator?.goToPrevious()
-        if (prev != null) {
-            sharedData.pendingInitialContent = prev
-            sharedData.promoteForNavigation(sharedData.answerTransitionDirection)
-            val navController = articleHost?.articleNavController
-            if (navController != null) {
-                if (navController.currentBackStackEntry?.hasRoute(Article::class) == true &&
-                    navController.currentBackStackEntry
-                        ?.toRoute<Article>()
-                        ?.type == ArticleType.Answer
-                ) {
-                    navController.popBackStack()
-                }
-            }
-            navigator.onNavigate(prev.article)
-        } else {
-            // 无历史时尝试从来源（如收藏夹）向前加载
-            sharedData?.pendingInitialContent = sharedData.navigator?.previousAnswerPreview
-            sharedData?.promoteForNavigation(sharedData.answerTransitionDirection)
-            coroutineScope.launch {
-                val prevCached = sharedData?.navigator?.loadPrevious()
-                if (prevCached != null) {
-                    sharedData.pendingInitialContent = prevCached
-                    val navController = articleHost?.articleNavController
-                    if (navController != null) {
-                        if (navController.currentBackStackEntry?.hasRoute(Article::class) == true &&
-                            navController.currentBackStackEntry
-                                ?.toRoute<Article>()
-                                ?.type == ArticleType.Answer
-                        ) {
-                            navController.popBackStack()
-                        }
-                    }
-                    navigator.onNavigate(prevCached.article)
-                }
-            }
-        }
-    }
-
-    val navigateToNext: () -> Unit = {
-        sharedData?.answerTransitionDirection = if (answerSwitchMode == "horizontal") {
-            ArticleAnswerTransitionDirection.HORIZONTAL_NEXT
-        } else {
-            ArticleAnswerTransitionDirection.VERTICAL_NEXT
-        }
-        sharedData?.navigatingFromAnswerSwitch = true
-        // 更新当前回答内容到历史
-        sharedData?.navigator?.pushAnswer(viewModel.toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"))
-        // 优先使用前向历史
-        val historyNext = sharedData?.navigator?.goToNext()
-        if (historyNext != null) {
-            sharedData.pendingInitialContent = historyNext
-            sharedData.promoteForNavigation(sharedData.answerTransitionDirection)
-            val navController = articleHost?.articleNavController
-            if (navController != null) {
-                if (navController.currentBackStackEntry?.hasRoute(Article::class) == true &&
-                    navController.currentBackStackEntry
-                        ?.toRoute<Article>()
-                        ?.type == ArticleType.Answer
-                ) {
-                    navController.popBackStack()
-                }
-            }
-            navigator.onNavigate(historyNext.article)
-        } else {
-            // 没有前向历史，从导航器加载
-            sharedData?.pendingInitialContent = sharedData.navigator?.nextAnswer
-            sharedData?.promoteForNavigation(sharedData.answerTransitionDirection)
-            coroutineScope.launch {
-                val nextArticle = sharedData?.navigator?.loadNext()
-                if (nextArticle != null) {
-                    val navController = articleHost?.articleNavController
-                    if (navController != null) {
-                        if (navController.currentBackStackEntry?.hasRoute(Article::class) == true &&
-                            navController.currentBackStackEntry
-                                ?.toRoute<Article>()
-                                ?.type == ArticleType.Answer
-                        ) {
-                            navController.popBackStack()
-                        }
-                    }
-                    navigator.onNavigate(nextArticle)
-                }
+    LaunchedEffect(scrollState, viewModel.content) {
+        snapshotFlow { scrollState.maxValue }.collectLatest { maxValue ->
+            if (viewModel.content.isNotBlank()) {
+                viewModel.updateAigcReadProgress(scrollState.value, maxValue)
             }
         }
     }
@@ -1210,9 +320,11 @@ fun ArticleScreen(
         val scrollBehavior = rememberPreferCollapsedExitUntilCollapsedScrollBehavior()
         // 记录历史最大滚动范围，避免顶栏展开/收起时 maxValue 短暂变化导致 scrollBehavior 抖动。
         var scrollStateMaxValue by remember { mutableIntStateOf(0) }
-        LaunchedEffect(scrollState.maxValue) {
-            if (scrollState.maxValue != Int.MAX_VALUE) {
-                scrollStateMaxValue = max(scrollState.maxValue, scrollStateMaxValue)
+        LaunchedEffect(scrollState) {
+            snapshotFlow { scrollState.maxValue }.collectLatest { maxValue ->
+                if (maxValue != Int.MAX_VALUE) {
+                    scrollStateMaxValue = max(maxValue, scrollStateMaxValue)
+                }
             }
         }
         Scaffold(
@@ -1226,11 +338,10 @@ fun ArticleScreen(
                     Box(
                         modifier = Modifier
                             .onSizeChanged {
-                                topBarHeightPx = it.height.toFloat()
-                                if (it.height >= 10) topBarHeight = it.height
+                                topBarState.heightPx = it.height.toFloat()
                             }.graphicsLayer {
-                                translationY = topBarOffset.value
-                                alpha = if (topBarHeightPx > 0f) 1f + (topBarOffset.value / topBarHeightPx) else 1f
+                                translationY = topBarState.offset.value
+                                alpha = if (topBarState.heightPx > 0f) 1f + (topBarState.offset.value / topBarState.heightPx) else 1f
                             },
                     ) {
                         ZhihuTwoRowsTopAppBar(
@@ -1252,7 +363,7 @@ fun ArticleScreen(
                                 }
                             },
                             actions = {
-                                if (useDuo3ArticleActions) {
+                                if (articleSettings.useDuo3ArticleActions) {
                                     IconButton(
                                         onClick = { showActionsMenu = true },
                                     ) {
@@ -1364,12 +475,10 @@ fun ArticleScreen(
             } else {
                 @Composable {
                     // 防止在导航动画和预测性返回手势过程中，底部操作栏闪烁。
-                    val showBottomBarCondition = backStackEntry?.hasRoute(Article::class) == true || articleHost == null
-
                     // 操作栏内容的共享组合，按 useDuo3ArticleActions 切换两套视觉。
                     @Composable
                     fun ActionBarContent() {
-                        if (!useDuo3ArticleActions) {
+                        if (!articleSettings.useDuo3ArticleActions) {
                             // ── 主视觉：按钮式投票与操作区 ────────────────────────
                             Row(
                                 modifier = Modifier
@@ -1653,13 +762,13 @@ fun ArticleScreen(
                         }
                     }
 
-                    if (showBottomBarCondition) {
+                    if (bottomBarState.showSlot) {
                         Box(
                             modifier = Modifier
-                                .onSizeChanged { bottomBarHeightPx = it.height.toFloat() }
+                                .onSizeChanged { bottomBarState.heightPx = it.height.toFloat() }
                                 .graphicsLayer {
-                                    translationY = bottomBarOffset.value
-                                    alpha = if (bottomBarHeightPx > 0f) 1f - (bottomBarOffset.value / bottomBarHeightPx) else 1f
+                                    translationY = bottomBarState.offset.value
+                                    alpha = if (bottomBarState.heightPx > 0f) 1f - (bottomBarState.offset.value / bottomBarState.heightPx) else 1f
                                 },
                         ) {
                             ActionBarContent()
@@ -1677,6 +786,49 @@ fun ArticleScreen(
                             .padding(innerPadding)
                             .padding(top = 8.dp),
                     ) {
+                        if (isImmersiveMode && viewModel.authorName.isNotBlank()) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        navigator.onNavigate(
+                                            com.github.zly2006.zhihu.navigation.Person(
+                                                id = viewModel.authorId,
+                                                urlToken = viewModel.authorUrlToken,
+                                                name = viewModel.authorName,
+                                            ),
+                                        )
+                                    }.padding(vertical = 8.dp),
+                            ) {
+                                if (viewModel.authorAvatarSrc.isNotBlank()) {
+                                    AsyncImage(
+                                        model = viewModel.authorAvatarSrc,
+                                        contentDescription = "作者头像",
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clip(CircleShape),
+                                    )
+                                } else {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = viewModel.authorName,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+
                         @Suppress("UnusedReceiverParameter") // 确保竖式布局
                         @Composable
                         fun ColumnScope.DateTexts() {
@@ -1737,7 +889,7 @@ fun ArticleScreen(
                         }
 
                         if (viewModel.content.isNotEmpty() || viewModel.attachment != null) {
-                            val hasPinnedDate = pinAnswerDate
+                            val hasPinnedDate = articleSettings.pinAnswerDate
                             val hasSocialCredit = viewModel.votersTotal > 0 || viewModel.aigcSupportVoterCount > 0
                             val endorsements = viewModel.endorsements
                             val hasEndorsements = endorsements.isNotEmpty()
@@ -1783,7 +935,7 @@ fun ArticleScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalAlignment = Alignment.End,
                                 ) {
-                                    if (!pinAnswerDate) {
+                                    if (!articleSettings.pinAnswerDate) {
                                         DateTexts()
                                     }
                                     if (viewModel.ipInfo != null) {
@@ -1809,7 +961,7 @@ fun ArticleScreen(
                                             modifier = Modifier.fillMaxWidth(),
                                             horizontalAlignment = Alignment.End,
                                         ) {
-                                            if (!pinAnswerDate) {
+                                            if (!articleSettings.pinAnswerDate) {
                                                 DateTexts()
                                             }
                                             if (viewModel.ipInfo != null) {
@@ -1840,17 +992,9 @@ fun ArticleScreen(
                 }
             }
         }
-    } // answerSwitchContent 结束。
-
-    val nav = sharedData?.navigator
-    if (article.type == ArticleType.Answer && answerSwitchMode == "horizontal") {
-        ArticlePreviewPreloadEffect(nav?.nextAnswer, isNext = true, viewModel.title) {
-            userMessages.showMessage("图片加载失败，请向开发者反馈")
-        }
-        ArticlePreviewPreloadEffect(nav?.previousAnswer, isNext = false, viewModel.title) {
-            userMessages.showMessage("图片加载失败，请向开发者反馈")
-        }
     }
+
+    val nav = answerNavigationState.answerNavigator
     val progressBarTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp
     val progressBarBottomPadding = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 96.dp
 
@@ -1858,32 +1002,32 @@ fun ArticleScreen(
         modifier = Modifier.fillMaxSize().then(answerDoubleTapModifier),
     ) {
         // 根据模式渲染
-        if (article.type == ArticleType.Answer && answerSwitchMode == "vertical") {
+        if (article.type == ArticleType.Answer && articleSettings.answerSwitchMode == "vertical") {
             AnswerVerticalOverscroll(
                 previousAnswer = nav?.previousAnswer,
                 nextAnswer = nav?.nextAnswer,
-                onNavigatePrevious = navigateToPrevious,
-                onNavigateNext = navigateToNext,
+                onNavigatePrevious = answerNavigationState::navigateToPrevious,
+                onNavigateNext = answerNavigationState::navigateToNext,
                 isAtTop = { scrollState.value == 0 },
                 isAtBottom = { scrollState.value >= scrollState.maxValue },
                 scrollState = scrollState,
-                answerSwitchSensitivity = answerSwitchSensitivity,
+                answerSwitchSensitivity = articleSettings.answerSwitchSensitivity,
             ) {
                 MainContent()
             }
-        } else if (article.type == ArticleType.Answer && answerSwitchMode == "horizontal") {
+        } else if (article.type == ArticleType.Answer && articleSettings.answerSwitchMode == "horizontal") {
             AnswerHorizontalOverscroll(
                 canGoPrevious = nav?.previousAnswer != null,
                 canGoNext = nav?.nextAnswer != null,
-                onNavigatePrevious = navigateToPrevious,
-                onNavigateNext = navigateToNext,
+                onNavigatePrevious = answerNavigationState::navigateToPrevious,
+                onNavigateNext = answerNavigationState::navigateToNext,
                 previousContent = nav?.previousAnswer?.let { cached ->
                     { CachedAnswerPreview(cached) }
                 },
                 nextContent = nav?.nextAnswer?.let { cached ->
                     { CachedAnswerPreview(cached) }
                 },
-                answerSwitchSensitivity = answerSwitchSensitivity,
+                answerSwitchSensitivity = articleSettings.answerSwitchSensitivity,
             ) {
                 MainContent()
             }
@@ -1899,12 +1043,15 @@ fun ArticleScreen(
                     top = progressBarTopPadding,
                     bottom = progressBarBottomPadding,
                     end = 2.dp,
-                ).then(if (isImmersiveMode) Modifier.graphicsLayer { alpha = 0f } else Modifier),
+                ),
         )
 
         // 跳转按钮需要压在问题区和回答区之上。
-        if (article.type == ArticleType.Answer && buttonSkipAnswer && !isImmersiveMode) {
-            val showSkipButton = !autoHideSkipAnswerButton || isScrollingUp || scrollState.value == 0
+        if (article.type == ArticleType.Answer && articleSettings.buttonSkipAnswer && !isImmersiveMode) {
+            val isAtTop by remember(scrollState) {
+                derivedStateOf { scrollState.value == 0 }
+            }
+            val showSkipButton = !articleSettings.autoHideSkipAnswerButton || bottomBarState.isScrollingUp || isAtTop
             val skipButtonAlpha by animateFloatAsState(
                 targetValue = if (showSkipButton) 1f else 0f,
                 animationSpec = tween(200),
@@ -1915,12 +1062,10 @@ fun ArticleScreen(
                 if (fabClickCount > 0) {
                     delay(350)
                     if (fabClickCount >= 2) {
-                        toggleImmersive()
+                        isImmersiveMode = !isImmersiveMode
                     } else {
                         if (showSkipButton) {
-                            navigatingToNextAnswer = true
-                            navigateToNext()
-                            navigatingToNextAnswer = false
+                            answerNavigationState.navigateToNext()
                         }
                     }
                     fabClickCount = 0
@@ -1931,7 +1076,7 @@ fun ArticleScreen(
                 onClick = { fabClickCount++ },
                 preferenceName = "buttonSkipAnswer",
             ) {
-                if (navigatingToNextAnswer) {
+                if (answerNavigationState.navigatingToNextAnswer) {
                     CircularProgressIndicator(modifier = Modifier.size(30.dp))
                 } else {
                     Icon(Icons.Filled.SkipNext, contentDescription = "下一个回答")
@@ -1958,7 +1103,7 @@ fun ArticleScreen(
         onSetImmersiveDoubleTap = {
             showActionsMenu = false
             // 沉浸式模式下，按返回键优先退出沉浸式，不会直接退出回答
-            toggleImmersive()
+            isImmersiveMode = !isImmersiveMode
             userMessages.showMessage("已进入沉浸式，按返回键即可退出")
         },
     )
@@ -1979,7 +1124,7 @@ fun ArticleScreen(
 
     // 沉浸式模式下，返回键优先退出沉浸式
     PlatformBackHandler(enabled = isImmersiveMode) {
-        toggleImmersive()
+        isImmersiveMode = false
     }
 
     PlatformBackHandler(showActionsMenu) {
@@ -2052,7 +1197,7 @@ fun ArticleScreen(
                 Button(
                     onClick = {
                         showDoubleTapActionDialog = false
-                        saveAnswerDoubleTapAction(AnswerDoubleTapAction.None)
+                        articleSettings.saveAnswerDoubleTapAction(AnswerDoubleTapAction.None)
                         userMessages.showMessage("已将双击回答动作设为：${AnswerDoubleTapAction.None.label}")
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -2062,7 +1207,7 @@ fun ArticleScreen(
                 Button(
                     onClick = {
                         showDoubleTapActionDialog = false
-                        saveAnswerDoubleTapAction(AnswerDoubleTapAction.VoteUp)
+                        articleSettings.saveAnswerDoubleTapAction(AnswerDoubleTapAction.VoteUp)
                         upVoteFromDoubleTap()
                         userMessages.showMessage("已将双击回答动作设为：${AnswerDoubleTapAction.VoteUp.label}")
                     },
@@ -2073,7 +1218,7 @@ fun ArticleScreen(
                 Button(
                     onClick = {
                         showDoubleTapActionDialog = false
-                        saveAnswerDoubleTapAction(AnswerDoubleTapAction.OpenComments)
+                        articleSettings.saveAnswerDoubleTapAction(AnswerDoubleTapAction.OpenComments)
                         showComments = true
                         userMessages.showMessage("已将双击回答动作设为：${AnswerDoubleTapAction.OpenComments.label}")
                     },
@@ -2084,8 +1229,8 @@ fun ArticleScreen(
                 Button(
                     onClick = {
                         showDoubleTapActionDialog = false
-                        saveAnswerDoubleTapAction(AnswerDoubleTapAction.ToggleImmersive)
-                        toggleImmersive()
+                        articleSettings.saveAnswerDoubleTapAction(AnswerDoubleTapAction.ToggleImmersive)
+                        isImmersiveMode = !isImmersiveMode
                         userMessages.showMessage("已将双击回答动作设为：${AnswerDoubleTapAction.ToggleImmersive.label}")
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -2113,195 +1258,3 @@ fun ArticleScreen(
         },
     )
 }
-
-/**
- * 渲染缓存的回答完整内容，用于水平滑动预览。
- *
- * 内容来自 [CachedAnswerContent]，包含标题、作者信息、投票/评论计数和 HTML 正文。正文使用 Compose Markdown，
- * 因此这里是轻量预览，不持有 WebView 或答案切换共享状态。
- */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun CachedAnswerPreview(
-    cached: CachedAnswerContent,
-) {
-    Scaffold(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp)
-            .background(
-                color = MaterialTheme.colorScheme.background,
-                shape = RectangleShape,
-            ),
-        topBar = {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.background),
-            ) {
-                Text(
-                    text = cached.title,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    lineHeight = 32.sp,
-                    modifier = Modifier.padding(bottom = 8.dp),
-                )
-            }
-        },
-        bottomBar = {
-            Column {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(36.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(50))
-                            .background(color = Color(0xFF40B6F6)),
-                        horizontalArrangement = Arrangement.Start,
-                    ) {
-                        Button(
-                            onClick = {},
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF40B6F6),
-                                contentColor = Color.Black,
-                            ),
-                            shape = RectangleShape,
-                            contentPadding = PaddingValues(horizontal = 0.dp),
-                        ) {
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Icon(painterResource(Res.drawable.ic_vote_up_24dp), "赞同")
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(text = cached.voteUpCount.toString())
-                        }
-                    }
-                    Button(
-                        onClick = {},
-                        contentPadding = PaddingValues(horizontal = 8.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        ),
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(text = "${cached.commentCount}")
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-        },
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(
-                    start = innerPadding.calculateStartPadding(LocalLayoutDirection.current),
-                    end = innerPadding.calculateEndPadding(LocalLayoutDirection.current),
-                ),
-        ) {
-            Spacer(modifier = Modifier.height(innerPadding.calculateTopPadding()))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                if (cached.authorAvatarUrl.isNotEmpty()) {
-                    AsyncImage(
-                        model = cached.authorAvatarUrl,
-                        contentDescription = "作者头像",
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape),
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(Color.LightGray),
-                    )
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = cached.authorName,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false),
-                        )
-                        if (cached.authorBadge != null) {
-                            Spacer(modifier = Modifier.width(4.dp))
-                            AuthorBadge(
-                                badge = cached.authorBadge,
-                            )
-                        }
-                    }
-                    if (cached.authorBio.isNotEmpty()) {
-                        Text(
-                            text = cached.authorBio,
-                            fontSize = 12.sp,
-                            color = Color.Gray,
-                        )
-                    }
-                }
-            }
-            if (cached.endorsements.isNotEmpty()) {
-                Spacer(Modifier.height(10.dp))
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    cached.endorsements.forEach { endorsement ->
-                        AnswerEndorsementChip(endorsement)
-                    }
-                }
-            }
-            if (cached.content.isNotEmpty()) {
-                Spacer(Modifier.height(10.dp))
-                RenderMarkdown(
-                    html = cached.content,
-                    modifier = Modifier,
-                    selectable = true,
-                    enableScroll = false,
-                    header = {},
-                    footer = {},
-                )
-            }
-            Spacer(modifier = Modifier.height((16 + 36).dp))
-        }
-    }
-}
-
-@Serializable
-data class Collection(
-    val id: String,
-    val isFavorited: Boolean = false,
-    val type: String = "collection",
-    val title: String = "",
-    val isPublic: Boolean = false,
-    val url: String = "",
-    val description: String = "",
-    val followerCount: Int = 0,
-    val answerCount: Int = 0,
-    val itemCount: Int = 0,
-    val likeCount: Int = 0,
-    val viewCount: Int = 0,
-    val commentCount: Int = 0,
-    val isFollowing: Boolean = false,
-    val isLiking: Boolean = false,
-    val createdTime: Long = 0L,
-    val updatedTime: Long = 0L,
-    val creator: Person? = null,
-    val isDefault: Boolean = false,
-)
-
-@Serializable
-data class CollectionResponse(
-    val data: List<Collection>,
-    val paging: ZhihuPaging,
-)

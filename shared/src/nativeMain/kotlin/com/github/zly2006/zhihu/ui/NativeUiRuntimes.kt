@@ -16,19 +16,20 @@
  */
 
 package com.github.zly2006.zhihu.ui
+
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import com.github.zly2006.zhihu.account.IosAccountStore
+import com.github.zly2006.zhihu.data.RecommendationMode
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
-import com.github.zly2006.zhihu.shared.account.IosAccountStore
-import com.github.zly2006.zhihu.shared.data.RecommendationMode
-import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
-import com.github.zly2006.zhihu.shared.platform.UserMessageSink
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.notification.NotificationSettingsStore
+import com.github.zly2006.zhihu.platform.UserMessageSink
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.viewmodel.NotificationEnvironment
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import io.ktor.client.HttpClient
@@ -82,14 +83,6 @@ private class IosNotificationEnvironment(
 actual fun rememberArticleHost(): ArticleHost? = null
 
 @Composable
-actual fun ArticlePreviewPreloadEffect(
-    cached: com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent?,
-    isNext: Boolean,
-    title: String,
-    onImageLoadFailed: () -> Unit,
-) = Unit
-
-@Composable
 actual fun ArticleWebViewContent(
     article: Article,
     html: String,
@@ -127,14 +120,6 @@ actual fun rememberHomeUpdateAnnouncement(): HomeUpdateAnnouncement? = null
 actual fun rememberHomeIsDebuggable(): Boolean = false
 
 @Composable
-actual fun rememberHomeLoginRequester(): () -> Unit {
-    val userMessages = rememberUserMessageSink()
-    return remember(userMessages) {
-        { userMessages.showMessage("iOS 登录暂未实现") } // TODO: iOS 登录
-    }
-}
-
-@Composable
 actual fun rememberHomeFeedStartupCache(recommendationMode: RecommendationMode): HomeFeedStartupCache =
     remember(recommendationMode) {
         HomeFeedStartupCache(
@@ -148,29 +133,11 @@ actual fun rememberAccountSettingsAccountState(): androidx.compose.runtime.State
     remember { mutableStateOf(AccountSettingsAccountState()) }
 
 @Composable
-actual fun rememberAccountProfileRefresher(): suspend () -> Unit = remember {
-    { } // TODO: iOS 刷新用户信息
-}
-
-@Composable
-actual fun rememberAccountLoginRequester(): () -> Unit {
-    val userMessages = rememberUserMessageSink()
-    return remember(userMessages) {
-        { userMessages.showMessage("iOS 登录暂未实现") } // TODO: iOS 登录
-    }
-}
-
-@Composable
 actual fun rememberAccountQrLoginRequester(): () -> Unit {
     val userMessages = rememberUserMessageSink()
     return remember(userMessages) {
         { userMessages.showMessage("iOS 扫码登录暂未实现") } // TODO: iOS 扫码登录
     }
-}
-
-@Composable
-actual fun rememberAccountLogoutAction(): () -> Unit = remember {
-    { } // TODO: iOS 登出
 }
 
 @Composable

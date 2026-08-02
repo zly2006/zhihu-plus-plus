@@ -59,8 +59,8 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
-import com.github.zly2006.zhihu.shared.platform.SettingsStore
-import com.github.zly2006.zhihu.shared.platform.UserMessageSink
+import com.github.zly2006.zhihu.platform.SettingsStore
+import com.github.zly2006.zhihu.platform.UserMessageSink
 
 /**
  * 通用分享弹窗内容。

@@ -17,10 +17,10 @@
 
 package com.github.zly2006.zhihu.viewmodel.feed
 
-import com.github.zly2006.zhihu.shared.data.CommonFeed
-import com.github.zly2006.zhihu.shared.data.Feed
-import com.github.zly2006.zhihu.shared.data.Person
-import com.github.zly2006.zhihu.shared.data.target
+import com.github.zly2006.zhihu.data.CommonFeed
+import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.Person
+import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine

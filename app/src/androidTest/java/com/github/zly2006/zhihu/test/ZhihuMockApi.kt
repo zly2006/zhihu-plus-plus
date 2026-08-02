@@ -19,7 +19,7 @@ package com.github.zly2006.zhihu.test
 
 import android.content.Context
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.shared.announcement.ZHIHU_PLUS_PLUS_HOME_NOTIFICATIONS_URL
+import com.github.zly2006.zhihu.notification.ZHIHU_PLUS_PLUS_HOME_NOTIFICATIONS_URL
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
 import io.ktor.client.engine.mock.respond

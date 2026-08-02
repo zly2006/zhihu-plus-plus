@@ -83,11 +83,10 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.Person
-import com.github.zly2006.zhihu.shared.platform.rememberPlainTextClipboard
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberSystemUrlOpener
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.shared.util.Log
+import com.github.zly2006.zhihu.platform.rememberPlainTextClipboard
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberSystemUrlOpener
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
@@ -96,6 +95,8 @@ import com.github.zly2006.zhihu.ui.subscreens.defaultBottomBarSelectionKeys
 import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarSelection
 import com.github.zly2006.zhihu.ui.subscreens.rememberSystemUpdateRuntime
 import com.github.zly2006.zhihu.ui.subscreens.shouldShowAccountHistoryShortcut
+import com.github.zly2006.zhihu.util.Log
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import org.jetbrains.compose.resources.painterResource
 import zhihu.shared.generated.resources.Res
 import zhihu.shared.generated.resources.ic_github_24dp
@@ -137,11 +138,9 @@ fun AccountSettingScreen(
     testAccountData: AccountSettingsAccountState? = null,
 ) {
     val navigator = LocalNavigator.current
+    val environment = rememberPaginationEnvironment(allowGuestAccess = false)
     val accountState = rememberAccountSettingsAccountState()
-    val refreshProfile = rememberAccountProfileRefresher()
-    val requestLogin = rememberAccountLoginRequester()
     val requestQrLoginScan = rememberAccountQrLoginRequester()
-    val logout = rememberAccountLogoutAction()
     val selectMainTab = rememberMainTabSelector()
     val settings = rememberSettingsStore()
     val copyPlainText = rememberPlainTextClipboard()
@@ -185,7 +184,7 @@ fun AccountSettingScreen(
             LaunchedEffect(data.login, refreshAccountProfileOnEnter) {
                 if (refreshAccountProfileOnEnter && data.login) {
                     try {
-                        refreshProfile()
+                        environment.refreshAccountProfile()
                     } catch (e: Exception) {
                         Log.e("AccountSettingScreen", "Failed to refresh account profile", e)
                         userMessages.showShortMessage("获取用户信息失败")
@@ -261,7 +260,9 @@ fun AccountSettingScreen(
                         icon = { Icon(Icons.AutoMirrored.Filled.Login, null) },
                         modifier = Modifier.testTag(ACCOUNT_SETTINGS_LOGIN_ITEM_TAG),
                         onClick = {
-                            requestLogin()
+                            if (!environment.requestLogin()) {
+                                userMessages.showShortMessage("当前平台暂不支持登录")
+                            }
                         },
                     )
                 }
@@ -563,7 +564,7 @@ fun AccountSettingScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        logout()
+                        environment.logout()
                         showLogoutDialog = false
                     },
                 ) {

@@ -29,9 +29,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.questionAuthor
-import com.github.zly2006.zhihu.shared.data.target
+import com.github.zly2006.zhihu.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.questionAuthor
+import com.github.zly2006.zhihu.data.target
 import kotlin.math.roundToInt
 
 enum class FeedAuthorBlockType {

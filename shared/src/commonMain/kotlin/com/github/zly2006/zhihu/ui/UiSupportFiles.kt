@@ -33,6 +33,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.fleeksoft.ksoup.Ksoup
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.RecommendationMode
+import com.github.zly2006.zhihu.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.AnswerNavigator
 import com.github.zly2006.zhihu.navigation.Article
@@ -41,15 +45,11 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.RecommendationMode
-import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
-import com.github.zly2006.zhihu.shared.platform.SettingsStore
-import com.github.zly2006.zhihu.shared.platform.UserMessageSink
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
-import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
+import com.github.zly2006.zhihu.platform.SettingsStore
+import com.github.zly2006.zhihu.platform.UserMessageSink
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.ui.components.ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.DEFAULT_ANSWER_SWITCH_SENSITIVITY
 import com.github.zly2006.zhihu.ui.components.normalizedAnswerSwitchSensitivity
@@ -256,14 +256,6 @@ private fun SettingsStore.answerDoubleTapAction(): AnswerDoubleTapAction =
 
 @Composable
 expect fun rememberArticleHost(): ArticleHost?
-
-@Composable
-expect fun ArticlePreviewPreloadEffect(
-    cached: CachedAnswerContent?,
-    isNext: Boolean,
-    title: String,
-    onImageLoadFailed: () -> Unit,
-)
 
 @Composable
 expect fun ArticleWebViewContent(
@@ -499,16 +491,7 @@ data class AccountSettingsAccountState(
 expect fun rememberAccountSettingsAccountState(): State<AccountSettingsAccountState>
 
 @Composable
-expect fun rememberAccountProfileRefresher(): suspend () -> Unit
-
-@Composable
-expect fun rememberAccountLoginRequester(): () -> Unit
-
-@Composable
 expect fun rememberAccountQrLoginRequester(): () -> Unit
-
-@Composable
-expect fun rememberAccountLogoutAction(): () -> Unit
 
 @Composable
 expect fun rememberAppVersionInfo(): String
@@ -562,9 +545,6 @@ expect fun rememberHomeUpdateAnnouncement(): HomeUpdateAnnouncement?
 
 @Composable
 expect fun rememberHomeIsDebuggable(): Boolean
-
-@Composable
-expect fun rememberHomeLoginRequester(): () -> Unit
 
 @Composable
 expect fun rememberCommentEmojiInlineContent(emojiKeys: Set<String>): Map<String, InlineTextContent>

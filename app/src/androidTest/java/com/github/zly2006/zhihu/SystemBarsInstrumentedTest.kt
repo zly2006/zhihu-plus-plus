@@ -33,9 +33,9 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.github.zly2006.zhihu.shared.theme.ThemeMode
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.theme.AndroidThemeSettings
+import com.github.zly2006.zhihu.theme.ThemeMode
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.subscreens.IdentityManagementRuntime
 import com.github.zly2006.zhihu.ui.subscreens.rememberIdentityManagementRuntime

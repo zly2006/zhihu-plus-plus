@@ -34,18 +34,18 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.RecommendationMode
+import com.github.zly2006.zhihu.data.ZhihuJson
+import com.github.zly2006.zhihu.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.navigation.WritePin
-import com.github.zly2006.zhihu.shared.announcement.HOME_NOTIFICATION_CACHE_FILE_NAME
-import com.github.zly2006.zhihu.shared.announcement.HOME_NOTIFICATION_LAST_CHECK_PREFERENCE_KEY
-import com.github.zly2006.zhihu.shared.announcement.ZHIHU_PLUS_PLUS_HOME_NOTIFICATIONS_URL
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.RecommendationMode
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
+import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_CACHE_FILE_NAME
+import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_LAST_CHECK_PREFERENCE_KEY
+import com.github.zly2006.zhihu.notification.ZHIHU_PLUS_PLUS_HOME_NOTIFICATIONS_URL
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
 import com.github.zly2006.zhihu.test.ZhihuMockApi
@@ -244,6 +244,7 @@ class HomeScreenInstrumentedTest {
         val recordingNavigator = composeRule.launchHomeScreen(
             duo3HomeAccount = false,
             showRefreshFab = false,
+            useSeededAccountForNetwork = true,
             checkOnlineNotifications = true,
             displayItems = homeFeedFixtureItems(),
         )

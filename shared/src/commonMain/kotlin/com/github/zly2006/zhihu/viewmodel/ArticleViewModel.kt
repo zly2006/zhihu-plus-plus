@@ -26,6 +26,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.github.zly2006.zhihu.data.AigcVoteFlagResponse
+import com.github.zly2006.zhihu.data.AigcVoteFlagStatusResponse
+import com.github.zly2006.zhihu.data.AigcVoteFlagSubmission
+import com.github.zly2006.zhihu.data.AigcVoteNamedVoter
+import com.github.zly2006.zhihu.data.AigcVoteReadEvent
+import com.github.zly2006.zhihu.data.AigcVoteReadEvidence
+import com.github.zly2006.zhihu.data.Collection
+import com.github.zly2006.zhihu.data.CollectionResponse
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.OfficialBadge
+import com.github.zly2006.zhihu.data.VoteUpState
+import com.github.zly2006.zhihu.data.ZhihuJson
+import com.github.zly2006.zhihu.data.decodeZhihuCommentData
+import com.github.zly2006.zhihu.data.officialBadge
 import com.github.zly2006.zhihu.markdown.htmlToMdAst
 import com.github.zly2006.zhihu.markdown.toMarkdown
 import com.github.zly2006.zhihu.navigation.Article
@@ -33,36 +47,22 @@ import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionAnswerNavigator
 import com.github.zly2006.zhihu.navigation.PaginationInfoNavigator
 import com.github.zly2006.zhihu.navigation.QuestionAnswerNavigator
-import com.github.zly2006.zhihu.shared.aigc.AigcVoteFlagResponse
-import com.github.zly2006.zhihu.shared.aigc.AigcVoteFlagStatusResponse
-import com.github.zly2006.zhihu.shared.aigc.AigcVoteFlagSubmission
-import com.github.zly2006.zhihu.shared.aigc.AigcVoteNamedVoter
-import com.github.zly2006.zhihu.shared.aigc.AigcVoteReadEvent
-import com.github.zly2006.zhihu.shared.aigc.AigcVoteReadEvidence
-import com.github.zly2006.zhihu.shared.comment.decodeZhihuCommentData
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.OfficialBadge
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.shared.data.officialBadge
-import com.github.zly2006.zhihu.shared.platform.UserMessageSink
-import com.github.zly2006.zhihu.shared.util.Log
-import com.github.zly2006.zhihu.shared.util.ZhidaSummarySsePayload
-import com.github.zly2006.zhihu.shared.util.ZhihuFetchSignature
-import com.github.zly2006.zhihu.shared.util.applySegmentInfosToHtml
-import com.github.zly2006.zhihu.shared.util.buildZhidaSummaryRequest
-import com.github.zly2006.zhihu.shared.util.decodeZhidaAnswerData
-import com.github.zly2006.zhihu.shared.util.decodeZhidaStreamErrorMessage
-import com.github.zly2006.zhihu.shared.util.mergeSummaryChunk
-import com.github.zly2006.zhihu.shared.util.parseZhidaSsePayload
-import com.github.zly2006.zhihu.shared.util.serializeZhidaSummaryRequest
-import com.github.zly2006.zhihu.shared.util.twoDigitString
-import com.github.zly2006.zhihu.ui.Collection
-import com.github.zly2006.zhihu.ui.CollectionResponse
-import com.github.zly2006.zhihu.ui.VoteUpState
+import com.github.zly2006.zhihu.platform.UserMessageSink
 import com.github.zly2006.zhihu.util.ArticleExportComment
+import com.github.zly2006.zhihu.util.Log
+import com.github.zly2006.zhihu.util.ZhidaSummarySsePayload
+import com.github.zly2006.zhihu.util.ZhihuFetchSignature
+import com.github.zly2006.zhihu.util.applySegmentInfosToHtml
 import com.github.zly2006.zhihu.util.buildArticleExportCommentsHtml
 import com.github.zly2006.zhihu.util.buildArticleExportFileName
+import com.github.zly2006.zhihu.util.buildZhidaSummaryRequest
+import com.github.zly2006.zhihu.util.decodeZhidaAnswerData
+import com.github.zly2006.zhihu.util.decodeZhidaStreamErrorMessage
+import com.github.zly2006.zhihu.util.mergeSummaryChunk
+import com.github.zly2006.zhihu.util.parseZhidaSsePayload
 import com.github.zly2006.zhihu.util.prepareArticleExportComment
+import com.github.zly2006.zhihu.util.serializeZhidaSummaryRequest
+import com.github.zly2006.zhihu.util.twoDigitString
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.accept
@@ -269,12 +269,7 @@ class ArticleViewModel(
                             votersTotal = answer.voteupCount
                             commentCount = answer.commentCount
                             questionId = answer.question.id
-                            voteUpState = when (answer.reaction?.relation?.vote) {
-                                "UP" -> VoteUpState.Up
-                                "DOWN" -> VoteUpState.Down
-                                "Neutral" -> VoteUpState.Neutral
-                                else -> VoteUpState.Neutral
-                            }
+                            voteUpState = VoteUpState.from(answer.reaction?.relation?.vote)
                             updatedAt = answer.updatedTime
                             createdAt = answer.createdTime
                             ipInfo = answer.ipInfo
@@ -345,12 +340,7 @@ class ArticleViewModel(
                             authorBio = article.author.headline
                             authorAvatarSrc = article.author.avatarUrl
                             authorBadge = article.author.badgeV2.officialBadge()
-                            voteUpState = when (article.reaction?.relation?.vote) {
-                                "UP" -> VoteUpState.Up
-                                "DOWN" -> VoteUpState.Down
-                                "Neutral" -> VoteUpState.Neutral
-                                else -> VoteUpState.Neutral
-                            }
+                            voteUpState = VoteUpState.from(article.reaction?.relation?.vote)
                             updatedAt = article.updated
                             createdAt = article.created
                             ipInfo = article.ipInfo

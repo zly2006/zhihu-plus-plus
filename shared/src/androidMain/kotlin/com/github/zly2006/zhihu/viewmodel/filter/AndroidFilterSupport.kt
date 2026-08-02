@@ -18,8 +18,8 @@
 package com.github.zly2006.zhihu.viewmodel.filter
 
 import android.content.Context
-import com.github.zly2006.zhihu.shared.nlp.KeywordWeightExtractor
-import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
+import com.github.zly2006.zhihu.nlp.KeywordWeightExtractor
+import com.github.zly2006.zhihu.platform.androidSettingsStore
 
 object AndroidContentFilterRuntime {
     var semanticMatcher: KeywordSemanticMatcher = KeywordSemanticMatcher { _, _, _ -> emptyList() }

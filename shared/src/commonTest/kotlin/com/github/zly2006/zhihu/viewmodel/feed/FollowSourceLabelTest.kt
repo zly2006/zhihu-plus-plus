@@ -17,11 +17,11 @@
 
 package com.github.zly2006.zhihu.viewmodel.feed
 
-import com.github.zly2006.zhihu.shared.data.CommonFeed
-import com.github.zly2006.zhihu.shared.data.Feed
-import com.github.zly2006.zhihu.shared.data.GroupFeed
-import com.github.zly2006.zhihu.shared.data.Person
-import com.github.zly2006.zhihu.shared.data.sourceLabel
+import com.github.zly2006.zhihu.data.CommonFeed
+import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.GroupFeed
+import com.github.zly2006.zhihu.data.Person
+import com.github.zly2006.zhihu.data.sourceLabel
 import com.github.zly2006.zhihu.viewmodel.FeedDisplayEnvironment
 import kotlin.test.Test
 import kotlin.test.assertEquals

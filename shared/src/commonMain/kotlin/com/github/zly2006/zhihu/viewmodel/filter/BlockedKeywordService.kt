@@ -17,7 +17,7 @@
 
 package com.github.zly2006.zhihu.viewmodel.filter
 
-import com.github.zly2006.zhihu.shared.util.Log
+import com.github.zly2006.zhihu.util.Log
 import kotlinx.serialization.json.Json
 
 fun interface KeywordSemanticMatcher {

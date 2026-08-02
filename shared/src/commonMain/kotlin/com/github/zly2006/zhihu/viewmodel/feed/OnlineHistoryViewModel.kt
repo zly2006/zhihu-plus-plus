@@ -17,14 +17,14 @@
 
 package com.github.zly2006.zhihu.viewmodel.feed
 
+import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.OnlineHistoryDeletePair
+import com.github.zly2006.zhihu.data.OnlineHistoryItem
+import com.github.zly2006.zhihu.data.ZhihuJson.decodeJson
+import com.github.zly2006.zhihu.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.resolveContent
-import com.github.zly2006.zhihu.shared.data.Feed
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.OnlineHistoryDeletePair
-import com.github.zly2006.zhihu.shared.data.OnlineHistoryItem
-import com.github.zly2006.zhihu.shared.data.ZhihuJson.decodeJson
-import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.deleteOnlineHistoryItem
 import kotlinx.serialization.json.JsonArray

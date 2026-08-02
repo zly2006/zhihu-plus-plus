@@ -19,26 +19,28 @@ package com.github.zly2006.zhihu.viewmodel
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.navDestination
+import com.github.zly2006.zhihu.data.target
+import com.github.zly2006.zhihu.desktop.DesktopAccountStore
+import com.github.zly2006.zhihu.desktop.DesktopHistoryStorage
+import com.github.zly2006.zhihu.desktop.DesktopLoginRequests
+import com.github.zly2006.zhihu.desktop.copyDesktopPlainText
+import com.github.zly2006.zhihu.desktop.desktopZhihuDataFile
+import com.github.zly2006.zhihu.desktop.desktopZhihuDownloadsDir
+import com.github.zly2006.zhihu.filter.ContentOpenEventSupport
+import com.github.zly2006.zhihu.filter.ContentOpenFrom
+import com.github.zly2006.zhihu.filter.TrackedContentIdentity
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.Feed
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.navDestination
-import com.github.zly2006.zhihu.shared.data.target
-import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
-import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
-import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
-import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDataFile
-import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDownloadsDir
-import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
-import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
-import com.github.zly2006.zhihu.shared.filter.TrackedContentIdentity
-import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
-import com.github.zly2006.zhihu.shared.notification.desktopNotificationSettingsStore
-import com.github.zly2006.zhihu.shared.platform.desktopSettingsStore
-import com.github.zly2006.zhihu.shared.util.Log
+import com.github.zly2006.zhihu.notification.NotificationSettingsStore
+import com.github.zly2006.zhihu.notification.desktopNotificationSettingsStore
+import com.github.zly2006.zhihu.platform.desktopSettingsStore
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
+import com.github.zly2006.zhihu.ui.homeFeedStartupCacheFileNames
+import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.util.buildArticleExportFileName
 import com.github.zly2006.zhihu.util.buildCollectionExportZipFileName
 import com.github.zly2006.zhihu.util.sanitizeArticleExportFileNamePart
@@ -132,6 +134,26 @@ class DesktopPaginationEnvironment(
     override suspend fun <T> withAuthenticatedClient(
         block: suspend (client: HttpClient, cookies: Map<String, String>) -> T,
     ): T = store.withAuthenticatedClient(block)
+
+    override suspend fun refreshAccountProfile() {
+        store.refreshAndSaveProfile()
+    }
+
+    override fun requestLogin(): Boolean {
+        DesktopLoginRequests.requestLogin()
+        return true
+    }
+
+    override fun clearAccountSession() {
+        store.clear()
+    }
+
+    override fun logout() {
+        homeFeedStartupCacheFileNames().forEach { fileName ->
+            desktopZhihuDataFile(fileName).delete()
+        }
+        clearAccountSession()
+    }
 
     override suspend fun handleFetchFailure(
         tag: String?,

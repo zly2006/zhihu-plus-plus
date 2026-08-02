@@ -17,12 +17,12 @@
 
 package com.github.zly2006.zhihu.viewmodel.local
 
+import com.github.zly2006.zhihu.data.CommonFeed
+import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
-import com.github.zly2006.zhihu.shared.data.CommonFeed
-import com.github.zly2006.zhihu.shared.data.Feed
-import com.github.zly2006.zhihu.shared.recommendation.LocalContentAffinity
-import com.github.zly2006.zhihu.shared.recommendation.LocalReasonPreference
+import com.github.zly2006.zhihu.viewmodel.local.LocalContentAffinity
+import com.github.zly2006.zhihu.viewmodel.local.LocalReasonPreference
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonArray
 import kotlin.io.path.createTempDirectory

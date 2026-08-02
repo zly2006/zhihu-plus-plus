@@ -19,8 +19,8 @@ package com.github.zly2006.zhihu.markdown
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import com.github.zly2006.zhihu.shared.account.IosAccountStore
-import com.github.zly2006.zhihu.shared.data.toCookieHeaderString
+import com.github.zly2006.zhihu.account.IosAccountStore
+import com.github.zly2006.zhihu.data.toCookieHeaderString
 import com.hrm.latex.renderer.font.MathFont
 
 @Composable
