@@ -19,7 +19,6 @@ package com.github.zly2006.zhihu.ui
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -27,7 +26,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.BringIntoViewSpec
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
-import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -91,13 +89,13 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -159,6 +157,7 @@ import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import com.materialkolor.ktx.harmonize
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -770,26 +769,8 @@ fun ArticleScreen(
 
     val scrollState = rememberScrollState()
     val articleSettings = rememberArticleScreenSettingsState()
-
-    var isTitleAutoHide by remember { mutableStateOf(articleSettings.isTitleAutoHide) }
-    var autoHideArticleBottomBar by remember {
-        mutableStateOf(articleSettings.autoHideArticleBottomBar)
-    }
-    var answerSwitchMode by remember {
-        mutableStateOf(articleSettings.answerSwitchMode)
-    }
-    var answerSwitchSensitivity by remember {
-        mutableFloatStateOf(articleSettings.answerSwitchSensitivity)
-    }
-    var pinAnswerDate by remember { mutableStateOf(articleSettings.pinAnswerDate) }
     val userMessages = rememberUserMessageSink()
-
-    var previousScrollValue by remember { mutableIntStateOf(0) }
-    var isScrollingUp by remember { mutableStateOf(false) }
-    var navigatingToNextAnswer by remember { mutableStateOf(false) }
     val density = LocalDensity.current
-    val scrollDeltaThreshold = with(density) { ScrollThresholdDp.toPx() }
-    var topBarHeight by remember { mutableIntStateOf(0) }
     var showComments by rememberSaveable(article.type, article.id) { mutableStateOf(false) }
     var showCollectionDialog by remember { mutableStateOf(false) }
     var showActionsMenu by remember { mutableStateOf(false) }
@@ -798,24 +779,39 @@ fun ArticleScreen(
     var showExportDialog by remember { mutableStateOf(false) }
     var showDoubleTapActionDialog by remember { mutableStateOf(false) }
     var showVoters by rememberSaveable(article.type, article.id) { mutableStateOf(false) }
+    val topBarState = rememberArticleTopBarState(
+        scrollState = scrollState,
+        autoHide = articleSettings.isTitleAutoHide,
+    )
+    val bottomBarState = rememberArticleBottomBarState(
+        scrollState = scrollState,
+        autoHide = articleSettings.autoHideArticleBottomBar,
+        scrollDeltaThreshold = with(density) { ScrollThresholdDp.toPx() },
+        showSlot = backStackEntry?.hasRoute(Article::class) == true || articleHost == null,
+        navigationBarHeightPx = density.run {
+            WindowInsets.navigationBars
+                .asPaddingValues()
+                .calculateBottomPadding()
+                .toPx()
+                .coerceAtLeast(0f)
+        },
+    )
+    val sharedData = if (article.type == ArticleType.Answer) {
+        environment.articleAnswerSwitchState()
+    } else {
+        null
+    }
+    var isImmersiveMode by remember(sharedData) {
+        mutableStateOf(sharedData?.isImmersiveMode ?: false)
+    }
+    var navigatingToNextAnswer by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val hapticFeedback = LocalHapticFeedback.current
 
-    val useDuo3ArticleActions = remember { articleSettings.useDuo3ArticleActions }
-    var buttonSkipAnswer by remember { mutableStateOf(articleSettings.buttonSkipAnswer) }
-    var autoHideSkipAnswerButton by remember { mutableStateOf(articleSettings.autoHideSkipAnswerButton) }
-    var answerDoubleTapAction by remember {
-        mutableStateOf(
-            articleSettings.answerDoubleTapAction,
-        )
+    LaunchedEffect(sharedData, isImmersiveMode) {
+        if (sharedData != null) sharedData.isImmersiveMode = isImmersiveMode
     }
-    // 跟手隐藏标题栏和底栏：用滚动增量直接驱动像素偏移。
-    val topBarOffset = remember { Animatable(0f) }
-    val bottomBarOffset = remember { Animatable(0f) }
-    var topBarHeightPx by remember { mutableFloatStateOf(0f) }
-    var bottomBarHeightPx by remember { mutableFloatStateOf(0f) }
-    var previousScrollForBarOffset by remember { mutableIntStateOf(0) }
-    var isBarSnapping by remember { mutableStateOf(false) }
+    ArticleImmersiveModeEffect(isImmersiveMode)
 
     LaunchedEffect(Unit) {
         environment.addReadHistory(
@@ -830,19 +826,6 @@ fun ArticleScreen(
             viewModel.toggleVoteUp(environment, VoteUpState.Up)
         }
     }
-    // 回答切换手势系统
-    val sharedData = if (article.type == ArticleType.Answer) {
-        environment.articleAnswerSwitchState()
-    } else {
-        null
-    }
-
-    // 沉浸式阅读模式
-    var isImmersiveMode by remember(sharedData) {
-        mutableStateOf(sharedData?.isImmersiveMode ?: false)
-    }
-
-    val toggleImmersive: () -> Unit = { isImmersiveMode = !isImmersiveMode }
 
     fun performAnswerDoubleTapAction(action: AnswerDoubleTapAction) {
         when (action) {
@@ -854,26 +837,21 @@ fun ArticleScreen(
                 showComments = true
             }
             AnswerDoubleTapAction.ToggleImmersive -> {
-                toggleImmersive()
+                isImmersiveMode = !isImmersiveMode
             }
         }
     }
 
-    fun saveAnswerDoubleTapAction(action: AnswerDoubleTapAction) {
-        answerDoubleTapAction = action
-        articleSettings.saveAnswerDoubleTapAction(action)
-    }
-
     fun handleAnswerDoubleTap() {
         if (article.type != ArticleType.Answer) return
-        performAnswerDoubleTapAction(answerDoubleTapAction)
+        performAnswerDoubleTapAction(articleSettings.answerDoubleTapAction)
     }
 
     val answerDoubleTapModifier = if (
         article.type == ArticleType.Answer &&
-        answerDoubleTapAction != AnswerDoubleTapAction.None
+        articleSettings.answerDoubleTapAction != AnswerDoubleTapAction.None
     ) {
-        Modifier.pointerInput(answerDoubleTapAction) {
+        Modifier.pointerInput(articleSettings.answerDoubleTapAction) {
             detectTapGestures(
                 onDoubleTap = { handleAnswerDoubleTap() },
             )
@@ -882,192 +860,22 @@ fun ArticleScreen(
         Modifier
     }
 
-    LaunchedEffect(articleSettings.isTitleAutoHide) {
-        isTitleAutoHide = articleSettings.isTitleAutoHide
-    }
-    LaunchedEffect(articleSettings.autoHideArticleBottomBar) {
-        autoHideArticleBottomBar = articleSettings.autoHideArticleBottomBar
-    }
-    LaunchedEffect(articleSettings.buttonSkipAnswer) {
-        buttonSkipAnswer = articleSettings.buttonSkipAnswer
-    }
-    LaunchedEffect(articleSettings.autoHideSkipAnswerButton) {
-        autoHideSkipAnswerButton = articleSettings.autoHideSkipAnswerButton
-    }
-    LaunchedEffect(articleSettings.answerSwitchMode) {
-        answerSwitchMode = articleSettings.answerSwitchMode
-    }
-    LaunchedEffect(articleSettings.answerSwitchSensitivity) {
-        answerSwitchSensitivity = articleSettings.answerSwitchSensitivity
-    }
-    LaunchedEffect(articleSettings.pinAnswerDate) {
-        pinAnswerDate = articleSettings.pinAnswerDate
-    }
-    LaunchedEffect(articleSettings.answerDoubleTapAction) {
-        answerDoubleTapAction = articleSettings.answerDoubleTapAction
-    }
+    LaunchedEffect(scrollState) {
+        snapshotFlow { scrollState.value }.collectLatest { currentScroll ->
+            viewModel.updateAigcReadProgress(currentScroll, scrollState.maxValue)
+            viewModel.syncAigcReadEventIfEligible(environment)
 
-    // 自动隐藏关闭时重置栏位偏移。
-    LaunchedEffect(isTitleAutoHide) {
-        if (!isTitleAutoHide) topBarOffset.snapTo(0f)
-    }
-    LaunchedEffect(autoHideArticleBottomBar) {
-        if (!autoHideArticleBottomBar) bottomBarOffset.snapTo(0f)
-    }
-
-    LaunchedEffect(scrollState.value) {
-        val currentScroll = scrollState.value
-        val scrollDeltaAbs = abs(currentScroll - previousScrollValue)
-        if (scrollDeltaAbs > scrollDeltaThreshold) {
-            isScrollingUp = currentScroll < previousScrollValue
-            previousScrollValue = currentScroll
-        }
-
-        // 吸附动画期间滚动由程序驱动，跳过栏位偏移跟踪。
-        if (!isBarSnapping) {
-            val delta = currentScroll - previousScrollForBarOffset
-            val atTop = currentScroll == 0
-            val atBottom = currentScroll >= scrollState.maxValue
-
-            // 顶栏：顶部强制显示，接近底部时按内容距离逐步露出。
-            if (atTop) {
-                topBarOffset.snapTo(0f)
-            } else if (isTitleAutoHide && topBarHeightPx > 0f) {
-                val deltaBasedOffset = (topBarOffset.value - delta).coerceIn(-topBarHeightPx, 0f)
-                val distanceFromBottom = (scrollState.maxValue - currentScroll).coerceAtLeast(0)
-                if (distanceFromBottom < topBarHeightPx.toInt()) {
-                    // 底部区域取露出更多栏位的偏移，也就是更接近 0 的值。
-                    val distanceBasedOffset = (-distanceFromBottom.toFloat()).coerceIn(-topBarHeightPx, 0f)
-                    topBarOffset.snapTo(maxOf(distanceBasedOffset, deltaBasedOffset))
-                } else {
-                    topBarOffset.snapTo(deltaBasedOffset)
-                }
+            if (viewModel.rememberedScrollYSync) {
+                viewModel.rememberedScrollY = currentScroll
             }
-
-            // 底栏：顶部强制显示，接近底部时按内容距离逐步露出。
-            if (atTop) {
-                bottomBarOffset.snapTo(0f)
-            } else if (autoHideArticleBottomBar && bottomBarHeightPx > 0f) {
-                val deltaBasedOffset = (bottomBarOffset.value + delta).coerceIn(0f, bottomBarHeightPx)
-                val distanceFromBottom = (scrollState.maxValue - currentScroll).coerceAtLeast(0)
-                if (distanceFromBottom < bottomBarHeightPx.toInt()) {
-                    // 底部区域取露出更多栏位的偏移。
-                    val distanceBasedOffset = distanceFromBottom.toFloat().coerceIn(0f, bottomBarHeightPx)
-                    bottomBarOffset.snapTo(minOf(distanceBasedOffset, deltaBasedOffset))
-                } else {
-                    bottomBarOffset.snapTo(deltaBasedOffset)
-                }
-            }
-        }
-        previousScrollForBarOffset = currentScroll
-
-        viewModel.updateAigcReadProgress(currentScroll, scrollState.maxValue)
-        viewModel.syncAigcReadEventIfEligible(environment)
-
-        if (viewModel.rememberedScrollYSync) {
-            viewModel.rememberedScrollY = currentScroll
-        }
-        if (currentScroll == viewModel.rememberedScrollY && scrollState.maxValue != Int.MAX_VALUE) {
-            viewModel.rememberedScrollYSync = true
-        }
-    }
-
-    // 滚动停止时把栏位吸附到完全显示或完全隐藏，并让内容滚动跟随顶栏吸附。
-    LaunchedEffect(scrollState.isScrollInProgress) {
-        if (!scrollState.isScrollInProgress) {
-            val topTarget = if (isTitleAutoHide && topBarHeightPx > 0f) {
-                if (abs(topBarOffset.value) > topBarHeightPx / 2) -topBarHeightPx else 0f
-            } else {
-                topBarOffset.value
-            }
-
-            val bottomTarget = if (autoHideArticleBottomBar && bottomBarHeightPx > 0f) {
-                if (bottomBarOffset.value > bottomBarHeightPx / 2) bottomBarHeightPx else 0f
-            } else {
-                bottomBarOffset.value
-            }
-
-            // 仅在靠近顶部时补偿顶栏吸附导致的内容位移；底栏交给距离触发的露出逻辑处理。
-            val topInNaturalArea = scrollState.value <= topBarHeightPx
-            val topDelta = if (topInNaturalArea) topBarOffset.value - topTarget else 0f
-
-            if (topTarget != topBarOffset.value || bottomTarget != bottomBarOffset.value) {
-                try {
-                    isBarSnapping = true
-                    kotlinx.coroutines.coroutineScope {
-                        launch { topBarOffset.animateTo(topTarget, tween(150)) }
-                        launch { bottomBarOffset.animateTo(bottomTarget, tween(150)) }
-                        if (topDelta != 0f) {
-                            launch { scrollState.animateScrollBy(topDelta, tween(150)) }
-                        }
-                    }
-                } finally {
-                    isBarSnapping = false
-                }
+            if (currentScroll == viewModel.rememberedScrollY && scrollState.maxValue != Int.MAX_VALUE) {
+                viewModel.rememberedScrollYSync = true
             }
         }
     }
 
-    // 主视觉风格的栏位显隐：按滚动方向控制，用于非跟手偏移路径。
-    val showTopBar by remember {
-        derivedStateOf {
-            val canScroll = scrollState.maxValue > topBarHeight
-            val isNearTop = scrollState.value < topBarHeight
-            when {
-                !isTitleAutoHide -> true
-                !canScroll -> true
-                isScrollingUp -> true
-                isNearTop -> true
-                else -> false
-            }
-        }
-    }
-    val showBottomBar by remember {
-        derivedStateOf {
-            val canScroll = scrollState.maxValue > 0
-            val isNearTop = scrollState.value == 0
-            when {
-                !autoHideArticleBottomBar -> true
-                !canScroll -> true
-                isScrollingUp -> true
-                isNearTop -> true
-                else -> false
-            }
-        }
-    }
-    val showBottomBarSlot = backStackEntry?.hasRoute(Article::class) == true || articleHost == null
-    val navigationBarsPadding = WindowInsets.navigationBars.asPaddingValues()
-    val bottomBarObscuredHeightPx by remember(
-        showBottomBarSlot,
-        true,
-        showBottomBar,
-        bottomBarHeightPx,
-        bottomBarOffset.value,
-    ) {
-        derivedStateOf {
-            val navBar = density.run {
-                navigationBarsPadding.calculateBottomPadding().toPx().coerceAtLeast(0f)
-            }
-            val bottonBar = if (!showBottomBarSlot) {
-                0f
-            } else if (true) {
-                (bottomBarHeightPx - bottomBarOffset.value).coerceIn(0f, bottomBarHeightPx)
-            } else if (showBottomBar) {
-                bottomBarHeightPx
-            } else {
-                0f
-            }
-            navBar + bottonBar
-        }
-    }
-    val articleBringIntoViewSpec = rememberBottomBarAvoidingBringIntoViewSpec(bottomBarObscuredHeightPx)
-    LaunchedEffect(sharedData, isImmersiveMode) {
-        if (sharedData != null) sharedData.isImmersiveMode = isImmersiveMode
-    }
-    ArticleImmersiveModeEffect(isImmersiveMode)
-
+    val articleBringIntoViewSpec = rememberBottomBarAvoidingBringIntoViewSpec(bottomBarState.obscuredHeightPx)
     LaunchedEffect(article.id) {
-        // Bug 2: 在主线程检查标志并重置（避免跨线程可见性问题）
         if (sharedData != null) {
             if (!sharedData.navigatingFromAnswerSwitch) {
                 sharedData.reset()
@@ -1075,7 +883,6 @@ fun ArticleScreen(
             sharedData.navigatingFromAnswerSwitch = false
             sharedData.answerTransitionDirection = ArticleAnswerTransitionDirection.DEFAULT
 
-            // 从 pendingInitialContent 预填充 viewModel，消除空白帧
             val pending = sharedData.pendingInitialContent
             if (pending != null) {
                 viewModel.title = pending.title
@@ -1102,14 +909,16 @@ fun ArticleScreen(
             viewModel.syncAigcReadEventIfEligible(environment)
         }
     }
-    LaunchedEffect(scrollState.maxValue, viewModel.content) {
-        if (viewModel.content.isNotBlank()) {
-            viewModel.updateAigcReadProgress(scrollState.value, scrollState.maxValue)
+    LaunchedEffect(scrollState, viewModel.content) {
+        snapshotFlow { scrollState.maxValue }.collectLatest { maxValue ->
+            if (viewModel.content.isNotBlank()) {
+                viewModel.updateAigcReadProgress(scrollState.value, maxValue)
+            }
         }
     }
 
     val navigateToPrevious: () -> Unit = {
-        sharedData?.answerTransitionDirection = if (answerSwitchMode == "horizontal") {
+        sharedData?.answerTransitionDirection = if (articleSettings.answerSwitchMode == "horizontal") {
             ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS
         } else {
             ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS
@@ -1157,7 +966,7 @@ fun ArticleScreen(
     }
 
     val navigateToNext: () -> Unit = {
-        sharedData?.answerTransitionDirection = if (answerSwitchMode == "horizontal") {
+        sharedData?.answerTransitionDirection = if (articleSettings.answerSwitchMode == "horizontal") {
             ArticleAnswerTransitionDirection.HORIZONTAL_NEXT
         } else {
             ArticleAnswerTransitionDirection.VERTICAL_NEXT
@@ -1210,9 +1019,11 @@ fun ArticleScreen(
         val scrollBehavior = rememberPreferCollapsedExitUntilCollapsedScrollBehavior()
         // 记录历史最大滚动范围，避免顶栏展开/收起时 maxValue 短暂变化导致 scrollBehavior 抖动。
         var scrollStateMaxValue by remember { mutableIntStateOf(0) }
-        LaunchedEffect(scrollState.maxValue) {
-            if (scrollState.maxValue != Int.MAX_VALUE) {
-                scrollStateMaxValue = max(scrollState.maxValue, scrollStateMaxValue)
+        LaunchedEffect(scrollState) {
+            snapshotFlow { scrollState.maxValue }.collectLatest { maxValue ->
+                if (maxValue != Int.MAX_VALUE) {
+                    scrollStateMaxValue = max(maxValue, scrollStateMaxValue)
+                }
             }
         }
         Scaffold(
@@ -1226,11 +1037,10 @@ fun ArticleScreen(
                     Box(
                         modifier = Modifier
                             .onSizeChanged {
-                                topBarHeightPx = it.height.toFloat()
-                                if (it.height >= 10) topBarHeight = it.height
+                                topBarState.heightPx = it.height.toFloat()
                             }.graphicsLayer {
-                                translationY = topBarOffset.value
-                                alpha = if (topBarHeightPx > 0f) 1f + (topBarOffset.value / topBarHeightPx) else 1f
+                                translationY = topBarState.offset.value
+                                alpha = if (topBarState.heightPx > 0f) 1f + (topBarState.offset.value / topBarState.heightPx) else 1f
                             },
                     ) {
                         ZhihuTwoRowsTopAppBar(
@@ -1252,7 +1062,7 @@ fun ArticleScreen(
                                 }
                             },
                             actions = {
-                                if (useDuo3ArticleActions) {
+                                if (articleSettings.useDuo3ArticleActions) {
                                     IconButton(
                                         onClick = { showActionsMenu = true },
                                     ) {
@@ -1364,12 +1174,10 @@ fun ArticleScreen(
             } else {
                 @Composable {
                     // 防止在导航动画和预测性返回手势过程中，底部操作栏闪烁。
-                    val showBottomBarCondition = backStackEntry?.hasRoute(Article::class) == true || articleHost == null
-
                     // 操作栏内容的共享组合，按 useDuo3ArticleActions 切换两套视觉。
                     @Composable
                     fun ActionBarContent() {
-                        if (!useDuo3ArticleActions) {
+                        if (!articleSettings.useDuo3ArticleActions) {
                             // ── 主视觉：按钮式投票与操作区 ────────────────────────
                             Row(
                                 modifier = Modifier
@@ -1653,13 +1461,13 @@ fun ArticleScreen(
                         }
                     }
 
-                    if (showBottomBarCondition) {
+                    if (bottomBarState.showSlot) {
                         Box(
                             modifier = Modifier
-                                .onSizeChanged { bottomBarHeightPx = it.height.toFloat() }
+                                .onSizeChanged { bottomBarState.heightPx = it.height.toFloat() }
                                 .graphicsLayer {
-                                    translationY = bottomBarOffset.value
-                                    alpha = if (bottomBarHeightPx > 0f) 1f - (bottomBarOffset.value / bottomBarHeightPx) else 1f
+                                    translationY = bottomBarState.offset.value
+                                    alpha = if (bottomBarState.heightPx > 0f) 1f - (bottomBarState.offset.value / bottomBarState.heightPx) else 1f
                                 },
                         ) {
                             ActionBarContent()
@@ -1737,7 +1545,7 @@ fun ArticleScreen(
                         }
 
                         if (viewModel.content.isNotEmpty() || viewModel.attachment != null) {
-                            val hasPinnedDate = pinAnswerDate
+                            val hasPinnedDate = articleSettings.pinAnswerDate
                             val hasSocialCredit = viewModel.votersTotal > 0 || viewModel.aigcSupportVoterCount > 0
                             val endorsements = viewModel.endorsements
                             val hasEndorsements = endorsements.isNotEmpty()
@@ -1783,7 +1591,7 @@ fun ArticleScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalAlignment = Alignment.End,
                                 ) {
-                                    if (!pinAnswerDate) {
+                                    if (!articleSettings.pinAnswerDate) {
                                         DateTexts()
                                     }
                                     if (viewModel.ipInfo != null) {
@@ -1809,7 +1617,7 @@ fun ArticleScreen(
                                             modifier = Modifier.fillMaxWidth(),
                                             horizontalAlignment = Alignment.End,
                                         ) {
-                                            if (!pinAnswerDate) {
+                                            if (!articleSettings.pinAnswerDate) {
                                                 DateTexts()
                                             }
                                             if (viewModel.ipInfo != null) {
@@ -1840,7 +1648,7 @@ fun ArticleScreen(
                 }
             }
         }
-    } // answerSwitchContent 结束。
+    }
 
     val nav = sharedData?.navigator
     val progressBarTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp
@@ -1850,7 +1658,7 @@ fun ArticleScreen(
         modifier = Modifier.fillMaxSize().then(answerDoubleTapModifier),
     ) {
         // 根据模式渲染
-        if (article.type == ArticleType.Answer && answerSwitchMode == "vertical") {
+        if (article.type == ArticleType.Answer && articleSettings.answerSwitchMode == "vertical") {
             AnswerVerticalOverscroll(
                 previousAnswer = nav?.previousAnswer,
                 nextAnswer = nav?.nextAnswer,
@@ -1859,11 +1667,11 @@ fun ArticleScreen(
                 isAtTop = { scrollState.value == 0 },
                 isAtBottom = { scrollState.value >= scrollState.maxValue },
                 scrollState = scrollState,
-                answerSwitchSensitivity = answerSwitchSensitivity,
+                answerSwitchSensitivity = articleSettings.answerSwitchSensitivity,
             ) {
                 MainContent()
             }
-        } else if (article.type == ArticleType.Answer && answerSwitchMode == "horizontal") {
+        } else if (article.type == ArticleType.Answer && articleSettings.answerSwitchMode == "horizontal") {
             AnswerHorizontalOverscroll(
                 canGoPrevious = nav?.previousAnswer != null,
                 canGoNext = nav?.nextAnswer != null,
@@ -1875,7 +1683,7 @@ fun ArticleScreen(
                 nextContent = nav?.nextAnswer?.let { cached ->
                     { CachedAnswerPreview(cached) }
                 },
-                answerSwitchSensitivity = answerSwitchSensitivity,
+                answerSwitchSensitivity = articleSettings.answerSwitchSensitivity,
             ) {
                 MainContent()
             }
@@ -1895,8 +1703,11 @@ fun ArticleScreen(
         )
 
         // 跳转按钮需要压在问题区和回答区之上。
-        if (article.type == ArticleType.Answer && buttonSkipAnswer && !isImmersiveMode) {
-            val showSkipButton = !autoHideSkipAnswerButton || isScrollingUp || scrollState.value == 0
+        if (article.type == ArticleType.Answer && articleSettings.buttonSkipAnswer && !isImmersiveMode) {
+            val isAtTop by remember(scrollState) {
+                derivedStateOf { scrollState.value == 0 }
+            }
+            val showSkipButton = !articleSettings.autoHideSkipAnswerButton || bottomBarState.isScrollingUp || isAtTop
             val skipButtonAlpha by animateFloatAsState(
                 targetValue = if (showSkipButton) 1f else 0f,
                 animationSpec = tween(200),
@@ -1907,7 +1718,7 @@ fun ArticleScreen(
                 if (fabClickCount > 0) {
                     delay(350)
                     if (fabClickCount >= 2) {
-                        toggleImmersive()
+                        isImmersiveMode = !isImmersiveMode
                     } else {
                         if (showSkipButton) {
                             navigatingToNextAnswer = true
@@ -1950,7 +1761,7 @@ fun ArticleScreen(
         onSetImmersiveDoubleTap = {
             showActionsMenu = false
             // 沉浸式模式下，按返回键优先退出沉浸式，不会直接退出回答
-            toggleImmersive()
+            isImmersiveMode = !isImmersiveMode
             userMessages.showMessage("已进入沉浸式，按返回键即可退出")
         },
     )
@@ -1971,7 +1782,7 @@ fun ArticleScreen(
 
     // 沉浸式模式下，返回键优先退出沉浸式
     PlatformBackHandler(enabled = isImmersiveMode) {
-        toggleImmersive()
+        isImmersiveMode = false
     }
 
     PlatformBackHandler(showActionsMenu) {
@@ -2044,7 +1855,7 @@ fun ArticleScreen(
                 Button(
                     onClick = {
                         showDoubleTapActionDialog = false
-                        saveAnswerDoubleTapAction(AnswerDoubleTapAction.None)
+                        articleSettings.saveAnswerDoubleTapAction(AnswerDoubleTapAction.None)
                         userMessages.showMessage("已将双击回答动作设为：${AnswerDoubleTapAction.None.label}")
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -2054,7 +1865,7 @@ fun ArticleScreen(
                 Button(
                     onClick = {
                         showDoubleTapActionDialog = false
-                        saveAnswerDoubleTapAction(AnswerDoubleTapAction.VoteUp)
+                        articleSettings.saveAnswerDoubleTapAction(AnswerDoubleTapAction.VoteUp)
                         upVoteFromDoubleTap()
                         userMessages.showMessage("已将双击回答动作设为：${AnswerDoubleTapAction.VoteUp.label}")
                     },
@@ -2065,7 +1876,7 @@ fun ArticleScreen(
                 Button(
                     onClick = {
                         showDoubleTapActionDialog = false
-                        saveAnswerDoubleTapAction(AnswerDoubleTapAction.OpenComments)
+                        articleSettings.saveAnswerDoubleTapAction(AnswerDoubleTapAction.OpenComments)
                         showComments = true
                         userMessages.showMessage("已将双击回答动作设为：${AnswerDoubleTapAction.OpenComments.label}")
                     },
@@ -2076,8 +1887,8 @@ fun ArticleScreen(
                 Button(
                     onClick = {
                         showDoubleTapActionDialog = false
-                        saveAnswerDoubleTapAction(AnswerDoubleTapAction.ToggleImmersive)
-                        toggleImmersive()
+                        articleSettings.saveAnswerDoubleTapAction(AnswerDoubleTapAction.ToggleImmersive)
+                        isImmersiveMode = !isImmersiveMode
                         userMessages.showMessage("已将双击回答动作设为：${AnswerDoubleTapAction.ToggleImmersive.label}")
                     },
                     modifier = Modifier.fillMaxWidth(),
