@@ -163,6 +163,10 @@ object AccountData {
         accountClient(context).clear()
     }
 
+    suspend fun refreshProfile(context: Context) {
+        accountClient(context).refreshAndSaveProfile()
+    }
+
     internal fun identityClient(context: Context): ZhihuIdentityClient {
         val client = accountClient(context)
         return ZhihuIdentityClient(

@@ -19,6 +19,7 @@ package com.github.zly2006.zhihu.viewmodel
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import com.github.zly2006.zhihu.shared.account.IosAccountStore
 import io.ktor.client.HttpClient
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -28,6 +29,12 @@ actual fun rememberPaginationEnvironment(allowGuestAccess: Boolean): PaginationE
     remember(allowGuestAccess) { IosPaginationEnvironment() } // TODO: iOS 分页环境完整实现
 
 private class IosPaginationEnvironment : PaginationEnvironment {
+    private val accountStore = IosAccountStore()
+
+    override fun clearAccountSession() {
+        accountStore.clear()
+    }
+
     override fun httpClient(): HttpClient = error("HTTP client not available on iOS") // TODO: iOS HTTP 客户端
 
     override fun authenticatedCookies(): Map<String, String> = emptyMap()

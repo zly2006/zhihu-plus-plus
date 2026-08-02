@@ -55,6 +55,8 @@ import io.ktor.client.request.get
 import io.ktor.client.statement.HttpResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -74,16 +76,24 @@ import kotlin.io.path.writeText
 
 typealias DesktopAccountData = ZhihuAccountSession
 
+private val defaultDesktopAccountState = MutableStateFlow(ZhihuAccountSession())
+
 private val defaultDesktopAccountClient by lazy {
-    createDesktopAccountClient(desktopZhihuLegacyAccountFile())
+    createDesktopAccountClient(desktopZhihuLegacyAccountFile()) {
+        defaultDesktopAccountState.value = it
+    }
 }
 
-private fun createDesktopAccountClient(accountFile: Path): ZhihuAccountClient =
+private fun createDesktopAccountClient(
+    accountFile: Path,
+    onSessionChanged: (ZhihuAccountSession) -> Unit,
+): ZhihuAccountClient =
     ZhihuAccountClient(
         repository = ZhihuAccountRepository(PathAccountSessionStore(accountFile)),
         createClient = { cookies, session, onCookieChanged, _ ->
             createDesktopHttpClient(cookies, session.userAgent, onCookieChanged)
         },
+        onSessionChanged = onSessionChanged,
     )
 
 private fun createDesktopHttpClient(
@@ -101,12 +111,22 @@ private fun createDesktopHttpClient(
 class DesktopAccountStore(
     accountFile: Path = desktopZhihuLegacyAccountFile(),
 ) {
+    private val usesDefaultAccountFile = accountFile == desktopZhihuLegacyAccountFile()
+    private val mutableAccountState =
+        if (usesDefaultAccountFile) defaultDesktopAccountState else MutableStateFlow(ZhihuAccountSession())
     private val accountClient =
-        if (accountFile == desktopZhihuLegacyAccountFile()) {
+        if (usesDefaultAccountFile) {
             defaultDesktopAccountClient
         } else {
-            createDesktopAccountClient(accountFile)
+            createDesktopAccountClient(accountFile) {
+                mutableAccountState.value = it
+            }
         }
+    val accountState: StateFlow<DesktopAccountData> = mutableAccountState.asStateFlow()
+
+    init {
+        accountClient.load()
+    }
 
     fun load(): DesktopAccountData = accountClient.load()
 

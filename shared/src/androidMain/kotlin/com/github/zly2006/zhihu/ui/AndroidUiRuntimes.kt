@@ -41,13 +41,10 @@ import androidx.core.net.toUri
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.asApiEnvironment
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
-import com.github.zly2006.zhihu.shared.data.ZHIHU_ME_URL
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
@@ -73,7 +70,6 @@ import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import java.io.File
 
-private const val LOGIN_ACTIVITY_CLASS = "com.github.zly2006.zhihu.LoginActivity"
 private const val QR_CODE_SCAN_ACTIVITY_CLASS = "com.github.zly2006.zhihu.QRCodeScanActivity"
 private const val WEBVIEW_ACTIVITY_CLASS = "com.github.zly2006.zhihu.WebviewActivity"
 private const val QR_SCAN_RESULT_EXTRA = "scan_result"
@@ -85,29 +81,6 @@ actual fun rememberAccountSettingsAccountState(): androidx.compose.runtime.State
         androidx.compose.runtime.derivedStateOf {
             accountDataState.value.toAccountSettingsAccountState()
         }
-    }
-}
-
-@Composable
-actual fun rememberAccountProfileRefresher(): suspend () -> Unit {
-    val context = LocalContext.current
-    return remember(context) {
-        suspend {
-            val data = AccountData.data
-            if (data.login) {
-                val response = context.asApiEnvironment().fetchJson(ZHIHU_ME_URL, "")!!
-                val self = ZhihuJson.decodeJson<com.github.zly2006.zhihu.shared.data.Person>(response)
-                AccountData.saveData(context, data.copy(self = self))
-            }
-        }
-    }
-}
-
-@Composable
-actual fun rememberAccountLoginRequester(): () -> Unit {
-    val context = LocalContext.current
-    return remember(context) {
-        { context.startActivity(Intent().setClassName(context.packageName, LOGIN_ACTIVITY_CLASS)) }
     }
 }
 
@@ -129,19 +102,6 @@ actual fun rememberAccountQrLoginRequester(): () -> Unit {
     }
     return remember(context, scanActivityLauncher) {
         { scanActivityLauncher.launch(Intent().setClassName(context.packageName, QR_CODE_SCAN_ACTIVITY_CLASS)) }
-    }
-}
-
-@Composable
-actual fun rememberAccountLogoutAction(): () -> Unit {
-    val context = LocalContext.current
-    return remember(context) {
-        {
-            homeFeedStartupCacheFileNames().forEach { fileName ->
-                File(context.filesDir, fileName).delete()
-            }
-            AccountData.delete(context)
-        }
     }
 }
 
@@ -345,17 +305,6 @@ actual fun rememberHomeUpdateAnnouncement(): HomeUpdateAnnouncement? {
 actual fun rememberHomeIsDebuggable(): Boolean {
     val context = LocalContext.current
     return (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
-}
-
-@Composable
-actual fun rememberHomeLoginRequester(): () -> Unit {
-    val context = LocalContext.current
-    return remember(context) {
-        {
-            val intent = Intent().setClassName(context.packageName, "com.github.zly2006.zhihu.LoginActivity")
-            context.startActivity(intent)
-        }
-    }
 }
 
 @Composable

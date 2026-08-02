@@ -55,6 +55,7 @@ import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
 import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.shared.util.HttpStatusException
 import com.github.zly2006.zhihu.ui.articleHost
+import com.github.zly2006.zhihu.ui.homeFeedStartupCacheFileNames
 import com.github.zly2006.zhihu.util.ResolvedCollectionHtmlExportItem
 import com.github.zly2006.zhihu.util.buildArticleExportFileName
 import com.github.zly2006.zhihu.util.buildOfflineArticleExportHtml
@@ -132,6 +133,26 @@ open class SharedAndroidPaginationEnvironment(
             baseUrl = aigcVoteServerUrl(),
             clientId = aigcVoteClientId(),
         )
+    }
+
+    override suspend fun refreshAccountProfile() {
+        AccountData.refreshProfile(context)
+    }
+
+    override fun requestLogin(): Boolean {
+        context.startLoginActivity()
+        return true
+    }
+
+    override fun clearAccountSession() {
+        AccountData.delete(context)
+    }
+
+    override fun logout() {
+        homeFeedStartupCacheFileNames().forEach { fileName ->
+            File(context.filesDir, fileName).delete()
+        }
+        clearAccountSession()
     }
 
     override fun httpClient(): HttpClient {
@@ -521,13 +542,7 @@ open class SharedAndroidPaginationEnvironment(
                             .setTitle("登录已过期")
                             .setMessage("请重新登录以继续使用完整功能。")
                             .setPositiveButton("重新登录") { _, _ ->
-                                AccountData.delete(context)
-                                context.startActivity(
-                                    Intent().setClassName(
-                                        context.packageName,
-                                        "com.github.zly2006.zhihu.LoginActivity",
-                                    ),
-                                )
+                                requestRelogin()
                             }.setNegativeButton("取消", null)
                             .show()
                     }
@@ -706,4 +721,12 @@ private fun Context.canSafelyShowDialog(): Boolean {
     if (activity.isFinishing || activity.isDestroyed) return false
     val lifecycleOwner = activity as? LifecycleOwner ?: return true
     return lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
+}
+
+private fun Context.startLoginActivity() {
+    val intent = Intent().setClassName(packageName, "com.github.zly2006.zhihu.LoginActivity")
+    if (this !is Activity) {
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    startActivity(intent)
 }

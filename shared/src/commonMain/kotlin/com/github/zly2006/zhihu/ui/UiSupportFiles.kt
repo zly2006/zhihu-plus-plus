@@ -499,16 +499,7 @@ data class AccountSettingsAccountState(
 expect fun rememberAccountSettingsAccountState(): State<AccountSettingsAccountState>
 
 @Composable
-expect fun rememberAccountProfileRefresher(): suspend () -> Unit
-
-@Composable
-expect fun rememberAccountLoginRequester(): () -> Unit
-
-@Composable
 expect fun rememberAccountQrLoginRequester(): () -> Unit
-
-@Composable
-expect fun rememberAccountLogoutAction(): () -> Unit
 
 @Composable
 expect fun rememberAppVersionInfo(): String
@@ -562,9 +553,6 @@ expect fun rememberHomeUpdateAnnouncement(): HomeUpdateAnnouncement?
 
 @Composable
 expect fun rememberHomeIsDebuggable(): Boolean
-
-@Composable
-expect fun rememberHomeLoginRequester(): () -> Unit
 
 @Composable
 expect fun rememberCommentEmojiInlineContent(emojiKeys: Set<String>): Map<String, InlineTextContent>

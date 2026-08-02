@@ -21,6 +21,7 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -229,7 +230,7 @@ private fun desktopProjectRoots(): List<File> =
 @Composable
 actual fun rememberHomeAccountState(): HomeAccountState {
     val accountStore = remember { DesktopAccountStore() }
-    val account = accountStore.load()
+    val account by accountStore.accountState.collectAsState()
     return HomeAccountState(
         isLoggedIn = account.login,
         avatarUrl = account.profile?.avatarUrl,
@@ -280,11 +281,6 @@ actual fun rememberHomeFeedStartupCache(recommendationMode: RecommendationMode):
 
 @Composable
 actual fun rememberHomeIsDebuggable(): Boolean = true
-
-@Composable
-actual fun rememberHomeLoginRequester(): () -> Unit = remember {
-    { DesktopLoginRequests.requestLogin() }
-}
 
 @Composable
 actual fun rememberBlocklistRuleImporter(
@@ -357,32 +353,17 @@ private fun chooseBlocklistImportFile(): File? {
 }
 
 @Composable
-actual fun rememberAccountSettingsAccountState(): androidx.compose.runtime.State<AccountSettingsAccountState> =
-    DesktopAccountSettingsState.accountState
-
-@Composable
-actual fun rememberAccountProfileRefresher(): suspend () -> Unit = remember {
-    {
-        DesktopAccountSettingsState.refreshProfile()
+actual fun rememberAccountSettingsAccountState(): androidx.compose.runtime.State<AccountSettingsAccountState> {
+    val accountStore = remember { DesktopAccountStore() }
+    val account = accountStore.accountState.collectAsState()
+    return remember(account) {
+        derivedStateOf { account.value.toAccountSettingsAccountState() }
     }
 }
 
 @Composable
-actual fun rememberAccountLoginRequester(): () -> Unit = remember {
-    {
-        DesktopLoginRequests.requestLogin()
-        DesktopAccountSettingsState.reload()
-    }
-}
-
-@Composable
-actual fun rememberAccountQrLoginRequester(): () -> Unit = rememberAccountLoginRequester()
-
-@Composable
-actual fun rememberAccountLogoutAction(): () -> Unit = remember {
-    {
-        DesktopAccountSettingsState.clear()
-    }
+actual fun rememberAccountQrLoginRequester(): () -> Unit = remember {
+    { DesktopLoginRequests.requestLogin() }
 }
 
 @Composable
@@ -391,33 +372,6 @@ actual fun rememberAppVersionInfo(): String = desktopVersionName()
 @Composable
 actual fun rememberMainTabSelector(): (TopLevelDestination) -> Unit = remember {
     { _: TopLevelDestination -> }
-}
-
-private object DesktopAccountSettingsState {
-    private val store = DesktopAccountStore()
-    val accountState = mutableStateOf(store.load().toAccountSettingsAccountState())
-
-    suspend fun refreshProfile() {
-        val account = store.load()
-        val refreshed = store.refreshAndSaveProfile()
-        accountState.value = if (refreshed != null) {
-            refreshed.toAccountSettingsAccountState()
-        } else {
-            account.toAccountSettingsAccountState()
-        }
-    }
-
-    fun reload() {
-        accountState.value = store.load().toAccountSettingsAccountState()
-    }
-
-    fun clear() {
-        homeFeedStartupCacheFileNames().forEach { fileName ->
-            desktopZhihuDataFile(fileName).delete()
-        }
-        store.clear()
-        accountState.value = AccountSettingsAccountState()
-    }
 }
 
 private fun com.github.zly2006.zhihu.shared.account.ZhihuAccountSession.toAccountSettingsAccountState(): AccountSettingsAccountState =

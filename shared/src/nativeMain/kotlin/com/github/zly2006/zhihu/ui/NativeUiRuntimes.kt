@@ -127,14 +127,6 @@ actual fun rememberHomeUpdateAnnouncement(): HomeUpdateAnnouncement? = null
 actual fun rememberHomeIsDebuggable(): Boolean = false
 
 @Composable
-actual fun rememberHomeLoginRequester(): () -> Unit {
-    val userMessages = rememberUserMessageSink()
-    return remember(userMessages) {
-        { userMessages.showMessage("iOS 登录暂未实现") } // TODO: iOS 登录
-    }
-}
-
-@Composable
 actual fun rememberHomeFeedStartupCache(recommendationMode: RecommendationMode): HomeFeedStartupCache =
     remember(recommendationMode) {
         HomeFeedStartupCache(
@@ -148,29 +140,11 @@ actual fun rememberAccountSettingsAccountState(): androidx.compose.runtime.State
     remember { mutableStateOf(AccountSettingsAccountState()) }
 
 @Composable
-actual fun rememberAccountProfileRefresher(): suspend () -> Unit = remember {
-    { } // TODO: iOS 刷新用户信息
-}
-
-@Composable
-actual fun rememberAccountLoginRequester(): () -> Unit {
-    val userMessages = rememberUserMessageSink()
-    return remember(userMessages) {
-        { userMessages.showMessage("iOS 登录暂未实现") } // TODO: iOS 登录
-    }
-}
-
-@Composable
 actual fun rememberAccountQrLoginRequester(): () -> Unit {
     val userMessages = rememberUserMessageSink()
     return remember(userMessages) {
         { userMessages.showMessage("iOS 扫码登录暂未实现") } // TODO: iOS 扫码登录
     }
-}
-
-@Composable
-actual fun rememberAccountLogoutAction(): () -> Unit = remember {
-    { } // TODO: iOS 登出
 }
 
 @Composable

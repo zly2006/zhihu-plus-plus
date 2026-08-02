@@ -268,6 +268,21 @@ interface ZhihuApiEnvironment {
     }
 }
 
+interface AccountEnvironment {
+    suspend fun refreshAccountProfile() = Unit
+
+    fun requestLogin(): Boolean = false
+
+    fun clearAccountSession() = Unit
+
+    fun logout() = clearAccountSession()
+
+    fun requestRelogin(): Boolean {
+        clearAccountSession()
+        return requestLogin()
+    }
+}
+
 suspend fun ZhihuApiEnvironment.fetchContentDetail(destination: NavDestination): DataHolder.Content? =
     runCatching {
         fetchZhihuContentDetail(destination) { url, include ->
@@ -510,6 +525,7 @@ interface ArticleLoadEnvironment :
 
 interface PaginationEnvironment :
     ZhihuApiEnvironment,
+    AccountEnvironment,
     MobileHomeFeedEnvironment,
     FeedDisplayEnvironment,
     ContentInteractionEnvironment,

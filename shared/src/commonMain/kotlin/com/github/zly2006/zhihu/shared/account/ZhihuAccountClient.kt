@@ -97,10 +97,15 @@ class ZhihuAccountClient(
     suspend fun refreshAndSaveProfile(): ZhihuAccountSession? {
         val currentSession = load()
         val refreshed = fetchVerifiedZhihuSession(httpClient(), currentSession.cookies, currentSession.userAgent)
-        if (refreshed != null) {
-            save(refreshed)
-        }
-        return refreshed
+            ?: return null
+        val updated = refreshed.copy(
+            mobileAccessToken = currentSession.mobileAccessToken,
+            mobileRefreshToken = currentSession.mobileRefreshToken,
+            mobileTokenType = currentSession.mobileTokenType,
+            mobileTokenExpiresAt = currentSession.mobileTokenExpiresAt,
+        )
+        save(updated)
+        return updated
     }
 
     suspend fun <T> withAuthenticatedClient(

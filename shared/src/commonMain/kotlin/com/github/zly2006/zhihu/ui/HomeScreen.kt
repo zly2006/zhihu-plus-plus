@@ -223,7 +223,6 @@ fun HomeScreen(
         mutableStateOf(onlineNotificationRepository.cachedNotifications())
     }
     val isDebuggable = rememberHomeIsDebuggable()
-    val requestLogin = rememberHomeLoginRequester()
     val feedBlockActions = rememberFeedBlockActions()
     val isLiteVariant = rememberIsLiteVariant()
     val viewModel: BaseFeedViewModel = when (currentRecommendationMode) {
@@ -278,7 +277,9 @@ fun HomeScreen(
         if (!account.isLoggedIn &&
             settings.getBoolean("loginForRecommendation", true)
         ) {
-            requestLogin()
+            if (!paginationEnvironment.requestLogin()) {
+                userMessages.showShortMessage("当前平台暂不支持登录")
+            }
         } else if (viewModel.displayItems.isEmpty()) {
             val cachedItems = if (autoRefreshOnStartup) {
                 emptyList()

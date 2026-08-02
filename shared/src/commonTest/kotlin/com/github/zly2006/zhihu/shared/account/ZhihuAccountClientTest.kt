@@ -24,6 +24,7 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotSame
@@ -116,6 +117,44 @@ class ZhihuAccountClientTest {
         val secondClient = accountClient.httpClient()
         assertNotSame(firstClient, secondClient)
         secondClient.close()
+    }
+
+    @Test
+    fun profileRefreshPreservesMobileTokens() = runTest {
+        val repository = ZhihuAccountRepository(ClientInMemoryAccountSessionStore())
+        repository.save(
+            ZhihuAccountSession(
+                login = true,
+                cookies = mutableMapOf("z_c0" to "token"),
+                mobileAccessToken = "access",
+                mobileRefreshToken = "refresh",
+                mobileTokenType = "bearer",
+                mobileTokenExpiresAt = 1234,
+            ),
+        )
+        val accountClient = ZhihuAccountClient(
+            repository = repository,
+            createClient = { cookies, session, onCookieChanged, _ ->
+                HttpClient(
+                    MockEngine {
+                        respond(
+                            content = """{"id":"1","name":"alice","url_token":"alice","user_type":"people"}""",
+                            status = HttpStatusCode.OK,
+                            headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                        )
+                    },
+                ) {
+                    installZhihuCommonClientConfig(cookies, session.userAgent, onCookieChanged)
+                }
+            },
+        )
+
+        val refreshed = accountClient.refreshAndSaveProfile()
+
+        assertEquals("access", refreshed?.mobileAccessToken)
+        assertEquals("refresh", repository.load().mobileRefreshToken)
+        assertEquals("bearer", repository.load().mobileTokenType)
+        assertEquals(1234, repository.load().mobileTokenExpiresAt)
     }
 
     private fun testHttpClient(
