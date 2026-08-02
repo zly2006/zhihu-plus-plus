@@ -601,21 +601,6 @@ fun ArticleScreen(
                                     ) {
                                         Icon(if (viewModel.isFavorited) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder, contentDescription = "收藏")
                                     }
-                                    val ttsState = articleHost?.articleTtsState
-                                    if (ttsState?.isSpeaking == true) {
-                                        IconButton(
-                                            onClick = {
-                                                articleHost.stopArticleSpeaking()
-                                                userMessages.showMessage("已停止朗读")
-                                            },
-                                            colors = IconButtonDefaults.iconButtonColors(
-                                                containerColor = Color.Green,
-                                                contentColor = Color.White,
-                                            ),
-                                        ) {
-                                            Icon(Icons.AutoMirrored.Filled.VolumeOff, contentDescription = "停止朗读")
-                                        }
-                                    }
                                     Button(
                                         onClick = { showComments = true },
                                         contentPadding = PaddingValues(start = 8.dp, end = 12.dp),
