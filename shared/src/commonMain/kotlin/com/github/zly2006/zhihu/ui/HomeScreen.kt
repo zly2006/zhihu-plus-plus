@@ -136,7 +136,6 @@ import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
-import com.github.zly2006.zhihu.ui.components.rememberFeedBlockActions
 import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_FAB_OPACITY
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FAB_OPACITY
 import com.github.zly2006.zhihu.ui.topLevelReselectAction
@@ -149,8 +148,14 @@ import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.za.MixedHomeFeedViewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import kotlinx.io.buffered
 import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
+import kotlinx.io.readString
+import kotlinx.io.writeString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
@@ -220,7 +225,9 @@ fun HomeScreen(
         RecommendationMode.entries.find {
             it.key == settings.getString("recommendationMode", RecommendationMode.MIXED.key)
         } ?: RecommendationMode.MIXED
-    val startupCache = rememberHomeFeedStartupCache(currentRecommendationMode)
+    val startupCacheFile = remember(appPrivateDirectory, currentRecommendationMode) {
+        Path(appPrivateDirectory, homeFeedStartupCacheFileName(currentRecommendationMode))
+    }
 
     val account = rememberHomeAccountState()
     val updateAnnouncement = rememberHomeUpdateAnnouncement()
@@ -235,7 +242,6 @@ fun HomeScreen(
         mutableStateOf(onlineNotificationRepository.cachedNotifications())
     }
     val isDebuggable = rememberHomeIsDebuggable()
-    val feedBlockActions = rememberFeedBlockActions()
     val isLiteVariant = rememberIsLiteVariant()
     val viewModel: BaseFeedViewModel = when (currentRecommendationMode) {
         RecommendationMode.WEB -> viewModel { HomeFeedViewModel() }
@@ -280,7 +286,13 @@ fun HomeScreen(
     val latestLoadedDisplayItems = viewModel.latestLoadedDisplayItems.value
     LaunchedEffect(latestLoadedDisplayItems) {
         if (latestLoadedDisplayItems.isNotEmpty()) {
-            startupCache.writeHomeFeedStartupCache(latestLoadedDisplayItems)
+            encodeHomeFeedStartupSnapshot(latestLoadedDisplayItems)?.let { serialized ->
+                withContext(Dispatchers.Default) {
+                    runCatching {
+                        SystemFileSystem.sink(startupCacheFile).buffered().use { it.writeString(serialized) }
+                    }
+                }
+            }
         }
     }
 
@@ -296,7 +308,17 @@ fun HomeScreen(
             val cachedItems = if (autoRefreshOnStartup) {
                 emptyList()
             } else {
-                startupCache.readHomeFeedStartupCache()
+                withContext(Dispatchers.Default) {
+                    runCatching {
+                        if (SystemFileSystem.exists(startupCacheFile)) {
+                            SystemFileSystem.source(startupCacheFile).buffered().use { source ->
+                                decodeHomeFeedStartupSnapshot(source.readString())
+                            }
+                        } else {
+                            emptyList()
+                        }
+                    }.getOrDefault(emptyList())
+                }
             }
             if (viewModel.displayItems.isEmpty() && cachedItems.isNotEmpty()) {
                 viewModel.addDisplayItems(cachedItems)
@@ -693,7 +715,7 @@ fun HomeScreen(
                                     text = { Text("按关键词屏蔽") },
                                     onClick = {
                                         dismissMenu()
-                                        feedBlockActions.handleBlockByKeywords(viewModel, item) { (_, contentInfo) ->
+                                        viewModel.handleBlockByKeywords(paginationEnvironment, userMessages, item) { (_, contentInfo) ->
                                             feedToBlockByKeywords = contentInfo.first to contentInfo.second
                                             showBlockByKeywordsDialog = true
                                         }
@@ -704,7 +726,7 @@ fun HomeScreen(
                                 text = { Text("屏蔽用户") },
                                 onClick = {
                                     dismissMenu()
-                                    feedBlockActions.handleBlockUser(viewModel, item) { authorInfo ->
+                                    viewModel.handleBlockUser(paginationEnvironment, userMessages, item) { authorInfo ->
                                         feedAuthorBlockRequest = FeedAuthorBlockRequest(
                                             type = FeedAuthorBlockType.CONTENT_AUTHOR,
                                             userId = authorInfo.first,
@@ -722,7 +744,7 @@ fun HomeScreen(
                                     text = { Text("屏蔽提问者") },
                                     onClick = {
                                         dismissMenu()
-                                        feedBlockActions.handleBlockQuestionAuthor(viewModel, item) { authorInfo ->
+                                        viewModel.handleBlockQuestionAuthor(paginationEnvironment, userMessages, item) { authorInfo ->
                                             feedAuthorBlockRequest = FeedAuthorBlockRequest(
                                                 type = FeedAuthorBlockType.QUESTION_AUTHOR,
                                                 userId = authorInfo.first,
@@ -744,7 +766,7 @@ fun HomeScreen(
                                     text = { Text("屏蔽「${topic.name}」") },
                                     onClick = {
                                         dismissMenu()
-                                        feedBlockActions.handleBlockTopic(viewModel, topic.id, topic.name)
+                                        viewModel.handleBlockTopic(userMessages, topic.id, topic.name)
                                     },
                                 )
                             }

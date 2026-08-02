@@ -624,14 +624,6 @@ fun PeopleScreen(
 
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
-    fun updateAnswersSort(newSort: String) {
-        viewModel.answersFeedModel.changeSortBy(newSort, paginationEnvironment)
-    }
-
-    fun updateArticlesSort(newSort: String) {
-        viewModel.articlesFeedModel.changeSortBy(newSort, paginationEnvironment)
-    }
-
     Scaffold(
         modifier = Modifier
             .testTag(PEOPLE_SCREEN_ROOT_TAG)
@@ -759,7 +751,7 @@ fun PeopleScreen(
                         ) {
                             SortBar(
                                 currentSort = viewModel.answersFeedModel.sortBy,
-                                onSortChange = ::updateAnswersSort,
+                                onSortChange = { viewModel.answersFeedModel.changeSortBy(it, paginationEnvironment) },
                                 hotTag = PEOPLE_SCREEN_ANSWER_SORT_HOT_TAG,
                                 timeTag = PEOPLE_SCREEN_ANSWER_SORT_TIME_TAG,
                             )
@@ -805,7 +797,7 @@ fun PeopleScreen(
                         ) {
                             SortBar(
                                 currentSort = viewModel.articlesFeedModel.sortBy,
-                                onSortChange = ::updateArticlesSort,
+                                onSortChange = { viewModel.articlesFeedModel.changeSortBy(it, paginationEnvironment) },
                                 hotTag = PEOPLE_SCREEN_ARTICLE_SORT_HOT_TAG,
                                 timeTag = PEOPLE_SCREEN_ARTICLE_SORT_TIME_TAG,
                             )

@@ -141,7 +141,6 @@ fun AccountSettingScreen(
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
     val accountState = rememberAccountSettingsAccountState()
     val requestQrLoginScan = rememberAccountQrLoginRequester()
-    val selectMainTab = rememberMainTabSelector()
     val settings = rememberSettingsStore()
     val copyPlainText = rememberPlainTextClipboard()
     val openSystemUrl = rememberSystemUrlOpener()
@@ -374,7 +373,7 @@ fun AccountSettingScreen(
                                     .background(MaterialTheme.colorScheme.primaryContainer)
                                     .clickable {
                                         onDismissRequest()
-                                        selectMainTab(OnlineHistory)
+                                        navigator.onNavigateTopLevel(OnlineHistory)
                                     }.padding(8.dp, 16.dp),
                                 verticalArrangement = Arrangement.Center,
                                 horizontalAlignment = Alignment.CenterHorizontally,

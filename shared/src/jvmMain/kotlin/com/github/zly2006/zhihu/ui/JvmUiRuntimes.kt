@@ -33,15 +33,11 @@ import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.unit.em
-import com.github.zly2006.zhihu.data.FeedDisplayItem
-import com.github.zly2006.zhihu.data.RecommendationMode
 import com.github.zly2006.zhihu.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.desktop.DesktopLoginRequests
-import com.github.zly2006.zhihu.desktop.desktopZhihuDataFile
 import com.github.zly2006.zhihu.desktop.openDesktopExternalUrl
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.platform.UserMessageSink
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
@@ -55,7 +51,6 @@ import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFil
 import com.github.zly2006.zhihu.viewmodel.filter.encodeBlocklistBackup
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.filter.importBlocklistBackupFromJsonText
-import io.ktor.client.HttpClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -250,37 +245,6 @@ actual fun rememberHomeUpdateAnnouncement(): HomeUpdateAnnouncement? {
 }
 
 @Composable
-actual fun rememberHomeFeedStartupCache(recommendationMode: RecommendationMode): HomeFeedStartupCache {
-    val startupCacheFile = remember(recommendationMode) {
-        desktopZhihuDataFile(homeFeedStartupCacheFileName(recommendationMode))
-    }
-    return remember(startupCacheFile) {
-        HomeFeedStartupCache(
-            readHomeFeedStartupCache = {
-                withContext(Dispatchers.IO) {
-                    if (startupCacheFile.exists()) {
-                        decodeHomeFeedStartupSnapshot(startupCacheFile.readText())
-                    } else {
-                        emptyList()
-                    }
-                }
-            },
-            writeHomeFeedStartupCache = { items: List<FeedDisplayItem> ->
-                withContext(Dispatchers.IO) {
-                    val serialized = encodeHomeFeedStartupSnapshot(items)
-                    if (serialized != null) {
-                        runCatching {
-                            startupCacheFile.parentFile?.mkdirs()
-                            startupCacheFile.writeText(serialized)
-                        }
-                    }
-                }
-            },
-        )
-    }
-}
-
-@Composable
 actual fun rememberHomeIsDebuggable(): Boolean = true
 
 @Composable
@@ -370,11 +334,6 @@ actual fun rememberAccountQrLoginRequester(): () -> Unit = remember {
 @Composable
 actual fun rememberAppVersionInfo(): String = desktopVersionName()
 
-@Composable
-actual fun rememberMainTabSelector(): (TopLevelDestination) -> Unit = remember {
-    { _: TopLevelDestination -> }
-}
-
 private fun com.github.zly2006.zhihu.account.ZhihuAccountSession.toAccountSettingsAccountState(): AccountSettingsAccountState =
     AccountSettingsAccountState(
         login = login,
@@ -437,12 +396,6 @@ actual fun rememberNotificationEnvironment(
 
 @Composable
 actual fun rememberNotificationShowDebugCopy(): Boolean = true
-
-@Composable
-actual fun rememberZhihuHttpClient(): HttpClient {
-    val store = remember { DesktopAccountStore() }
-    return store.httpClient()
-}
 
 @Composable
 actual fun QuestionDetailWebViewContent(

@@ -70,9 +70,7 @@ actual fun rememberDeveloperSettingsRuntime(): DeveloperSettingsRuntime {
                 }
             },
             runtimeInfo = { (context as? DeveloperRuntimeInfoProvider)?.developerRuntimeInfo ?: DeveloperRuntimeInfo() },
-            verifyLogin = { cookies ->
-                AccountData.verifyLogin(context, cookies)
-            },
+            verifyLogin = { cookies -> AccountData.verifyLogin(context, cookies) },
             refreshToken = {
                 val httpClient = AccountData.httpClient(context)
                 ZhihuCredentialRefresher.refreshZhihuToken(
@@ -83,15 +81,10 @@ actual fun rememberDeveloperSettingsRuntime(): DeveloperSettingsRuntime {
             saveCookies = { cookies ->
                 AccountData.saveData(
                     context,
-                    AccountData.data.copy(
-                        cookies = cookies.toMutableMap(),
-                        login = true,
-                    ),
+                    AccountData.data.copy(cookies = cookies.toMutableMap(), login = true),
                 )
             },
-            signedGet = { url ->
-                context.asApiEnvironment().fetchJson(url, "").toString()
-            },
+            signedGet = { url -> context.asApiEnvironment().fetchJson(url, "").toString() },
         )
     }
 }

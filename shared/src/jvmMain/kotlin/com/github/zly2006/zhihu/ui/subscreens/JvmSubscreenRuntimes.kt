@@ -174,9 +174,7 @@ actual fun rememberDeveloperSettingsRuntime(): DeveloperSettingsRuntime {
             networkStatus = { "网络状态：桌面端使用系统网络" },
             powerSaveModeText = { null },
             runtimeInfo = { DeveloperRuntimeInfo() },
-            verifyLogin = { cookies ->
-                store.verifyAndSave(cookies.toMutableMap())
-            },
+            verifyLogin = { cookies -> store.verifyAndSave(cookies.toMutableMap()) },
             refreshToken = {
                 val client = store.httpClient()
                 ZhihuCredentialRefresher.refreshZhihuToken(
@@ -185,21 +183,15 @@ actual fun rememberDeveloperSettingsRuntime(): DeveloperSettingsRuntime {
                 )
             },
             saveCookies = { cookies ->
-                val current = store.load()
                 store.save(
-                    current.copy(
-                        login = true,
-                        cookies = cookies.toMutableMap(),
-                    ),
+                    store.load().copy(login = true, cookies = cookies.toMutableMap()),
                 )
             },
             signedGet = { url ->
                 store.signedWithResponse(
                     url = url,
                     block = { method = HttpMethod.Get },
-                ) { response ->
-                    response.bodyAsText()
-                }
+                ) { response -> response.bodyAsText() }
             },
         )
     }

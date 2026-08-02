@@ -313,7 +313,7 @@ private fun RenderMarkdownDocument(
 ) {
     val previewImageUrls = remember(document) { document.previewImageUrls() }
     val navigator = LocalNavigator.current
-    val runtime = rememberMarkdownRuntime()
+    val mathFont = rememberMarkdownMathFont()
     val openExternalUrl = rememberExternalUrlOpener()
     val settings = rememberSettingsStore()
     val fontSize = settings.getInt(PREF_FONT_SIZE, 100)
@@ -328,7 +328,7 @@ private fun RenderMarkdownDocument(
         ),
         blockSpacing = defaultTheme.blockSpacing * (blockSpacing / 100f),
         mathFontSize = 18f * fontSize / 100,
-        mathFont = runtime.mathFont ?: defaultTheme.mathFont,
+        mathFont = mathFont ?: defaultTheme.mathFont,
     )
     var segmentCommentTarget by remember { mutableStateOf<SegmentCommentHolder?>(null) }
     var segmentActionSheetState by remember { mutableStateOf<SegmentActionSheetState?>(null) }

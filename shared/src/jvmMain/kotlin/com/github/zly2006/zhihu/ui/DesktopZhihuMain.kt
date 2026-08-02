@@ -83,8 +83,8 @@ import kotlinx.coroutines.withContext
 @Composable
 fun DesktopZhihuMain() {
     val navController = rememberNavController()
-    val httpClient = rememberZhihuHttpClient()
     val accountStore = remember { DesktopAccountStore() }
+    val httpClient = accountStore.httpClient()
     val coroutineScope = rememberCoroutineScope()
     val userMessages = rememberUserMessageSink()
     var mainTabNavigationTarget by remember { mutableStateOf<TopLevelDestination?>(null) }
@@ -186,52 +186,48 @@ fun DesktopZhihuMain() {
 
     ZhihuMain(
         navController = navController,
-        navigationState = ZhihuMainNavigationState(
-            mainTabNavigationTarget = mainTabNavigationTarget,
-            navigate = ::navigate,
-            setCurrentMainTabOpenFrom = { currentMainTabOpenFrom = it },
-            consumeMainTabNavigationTarget = { destination ->
-                if (mainTabNavigationTarget == destination) {
-                    mainTabNavigationTarget = null
-                }
-            },
-        ),
+        mainTabNavigationTarget = mainTabNavigationTarget,
+        navigate = ::navigate,
+        setCurrentMainTabOpenFrom = { currentMainTabOpenFrom = it },
+        consumeMainTabNavigationTarget = { destination ->
+            if (mainTabNavigationTarget == destination) {
+                mainTabNavigationTarget = null
+            }
+        },
         preferenceState = rememberDesktopZhihuMainPreferenceState(),
         isDarkTheme = ThemeManager.isDarkTheme(),
-        platformAdapter = ZhihuMainPlatformAdapter(
-            articleEnterTransition = {
-                when (desktopArticleAnswerSwitchState.answerTransitionDirection) {
-                    ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
-                        slideInVertically(tween(300)) { it } + fadeIn(tween(300))
-                    ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
-                        slideInVertically(tween(300)) { -it } + fadeIn(tween(300))
-                    ArticleAnswerTransitionDirection.HORIZONTAL_NEXT ->
-                        slideInHorizontally(tween(300)) { it } + fadeIn(tween(300))
-                    ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
-                        slideInHorizontally(tween(300)) { -it } + fadeIn(tween(300))
-                    else -> slideInHorizontally(tween(300)) { it }
-                }
-            },
-            articleExitTransition = {
-                when (desktopArticleAnswerSwitchState.answerTransitionDirection) {
-                    ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
-                        slideOutVertically(tween(300)) { -it } + fadeOut(tween(300))
-                    ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
-                        slideOutVertically(tween(300)) { it } + fadeOut(tween(300))
-                    ArticleAnswerTransitionDirection.HORIZONTAL_NEXT ->
-                        slideOutHorizontally(tween(300)) { -it } + fadeOut(tween(300))
-                    ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
-                        slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
-                    else -> ExitTransition.None
-                }
-            },
-            article = { article: Article, navEntry ->
-                val articleViewModel: ArticleViewModel = viewModel(navEntry) {
-                    ArticleViewModel(article, httpClient, userMessages)
-                }
-                ArticleScreen(article, articleViewModel)
-            },
-        ),
+        articleEnterTransition = {
+            when (desktopArticleAnswerSwitchState.answerTransitionDirection) {
+                ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
+                    slideInVertically(tween(300)) { it } + fadeIn(tween(300))
+                ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
+                    slideInVertically(tween(300)) { -it } + fadeIn(tween(300))
+                ArticleAnswerTransitionDirection.HORIZONTAL_NEXT ->
+                    slideInHorizontally(tween(300)) { it } + fadeIn(tween(300))
+                ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
+                    slideInHorizontally(tween(300)) { -it } + fadeIn(tween(300))
+                else -> slideInHorizontally(tween(300)) { it }
+            }
+        },
+        articleExitTransition = {
+            when (desktopArticleAnswerSwitchState.answerTransitionDirection) {
+                ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
+                    slideOutVertically(tween(300)) { -it } + fadeOut(tween(300))
+                ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
+                    slideOutVertically(tween(300)) { it } + fadeOut(tween(300))
+                ArticleAnswerTransitionDirection.HORIZONTAL_NEXT ->
+                    slideOutHorizontally(tween(300)) { -it } + fadeOut(tween(300))
+                ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
+                    slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
+                else -> ExitTransition.None
+            }
+        },
+        articleContent = { article: Article, navEntry ->
+            val articleViewModel: ArticleViewModel = viewModel(navEntry) {
+                ArticleViewModel(article, httpClient, userMessages)
+            }
+            ArticleScreen(article, articleViewModel)
+        },
     )
 }
 

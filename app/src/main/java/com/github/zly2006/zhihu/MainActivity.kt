@@ -479,7 +479,7 @@ class MainActivity :
 
     fun navigate(route: NavDestination, popup: Boolean = false) {
         if (route is CommentHolder) {
-            preparePendingComment(route)
+            pendingCommentHolder = route
             navigate(route.article, popup)
             return
         }
@@ -541,10 +541,6 @@ class MainActivity :
         }
     }
 
-    internal fun preparePendingComment(holder: CommentHolder) {
-        pendingCommentHolder = holder
-    }
-
     override fun consumePendingContentOpenFrom(destination: NavDestination): String {
         val identity = ContentOpenEventSupport.toTrackedContentIdentity(destination) ?: return ContentOpenFrom.UNKNOWN
         if (identity != pendingContentOpenIdentity) {
@@ -588,11 +584,6 @@ class MainActivity :
                 saveState = true
             }
         }
-    }
-
-    fun navigateMainTab(destination: TopLevelDestination) {
-        mainTabNavigationTarget = destination
-        navigateToMainTabs()
     }
 
     fun setCurrentMainTabOpenFrom(openFrom: String?) {

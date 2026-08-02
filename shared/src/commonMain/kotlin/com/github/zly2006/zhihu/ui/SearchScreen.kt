@@ -88,7 +88,6 @@ import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
-import com.github.zly2006.zhihu.ui.components.rememberFeedBlockActions
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.SearchContentType
 import com.github.zly2006.zhihu.viewmodel.feed.SearchSortOption
@@ -143,7 +142,6 @@ fun SearchScreen(
     val userMessages = rememberUserMessageSink()
     val settings = rememberSettingsStore()
     val viewModel = viewModel { SearchViewModel(search.query, search.restrictedMemberHashId) }
-    val feedBlockActions = rememberFeedBlockActions()
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -573,7 +571,7 @@ fun SearchScreen(
                                     text = { Text("屏蔽用户") },
                                     onClick = {
                                         dismissMenu()
-                                        feedBlockActions.handleBlockUser(viewModel, item) { authorInfo ->
+                                        viewModel.handleBlockUser(paginationEnvironment, userMessages, item) { authorInfo ->
                                             feedAuthorBlockRequest = FeedAuthorBlockRequest(
                                                 FeedAuthorBlockType.CONTENT_AUTHOR,
                                                 authorInfo.first,

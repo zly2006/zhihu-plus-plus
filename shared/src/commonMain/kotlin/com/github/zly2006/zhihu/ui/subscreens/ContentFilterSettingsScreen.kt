@@ -63,7 +63,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.data.RecommendationMode
 import com.github.zly2006.zhihu.filter.ContentFilterStats
-import com.github.zly2006.zhihu.filter.rememberContentFilterMaintenance
+import com.github.zly2006.zhihu.filter.cleanupOldData
+import com.github.zly2006.zhihu.filter.clearAllData
+import com.github.zly2006.zhihu.filter.loadFilterStats
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
@@ -73,6 +75,7 @@ import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
 import com.github.zly2006.zhihu.util.Log
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
@@ -93,7 +96,7 @@ fun ContentFilterSettingsScreen(
     val navigator = LocalNavigator.current
     val coroutineScope = rememberCoroutineScope()
     val settings = rememberSettingsStore()
-    val filterMaintenance = rememberContentFilterMaintenance()
+    val contentFilterDao = remember { getContentFilterDatabase().contentFilterDao() }
     val userMessages = rememberUserMessageSink()
     val highlightedSetting = setting.orEmpty()
 
@@ -480,7 +483,7 @@ fun ContentFilterSettingsScreen(
 
             LaunchedEffect(Unit) {
                 try {
-                    filterStats = filterMaintenance.loadFilterStats()
+                    filterStats = contentFilterDao.loadFilterStats()
                 } catch (e: Exception) {
                     Log.e("ContentFilterSettingsScreen", "Failed to load filter stats", e)
                 }
@@ -518,7 +521,7 @@ fun ContentFilterSettingsScreen(
                                 onClick = {
                                     coroutineScope.launch {
                                         try {
-                                            filterStats = filterMaintenance.cleanupOldData()
+                                            filterStats = contentFilterDao.cleanupOldData()
                                             userMessages.showMessage("已清理过期数据")
                                         } catch (e: Exception) {
                                             // 忽略导出异常。
@@ -533,7 +536,7 @@ fun ContentFilterSettingsScreen(
                                 onClick = {
                                     coroutineScope.launch {
                                         try {
-                                            filterStats = filterMaintenance.clearAllData()
+                                            filterStats = contentFilterDao.clearAllData()
                                             userMessages.showMessage("已重置所有数据")
                                             showStatsDialog = false
                                         } catch (e: Exception) {

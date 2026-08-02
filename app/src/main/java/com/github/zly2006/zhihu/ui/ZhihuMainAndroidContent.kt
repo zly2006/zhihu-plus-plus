@@ -49,69 +49,68 @@ fun AndroidZhihuMain(navController: NavHostController) {
     val activity = LocalActivity.current as MainActivity
     ZhihuMain(
         navController = navController,
-        navigationState = rememberAndroidZhihuMainNavigationState(),
+        mainTabNavigationTarget = activity.mainTabNavigationTarget,
+        navigate = activity::navigate,
+        setCurrentMainTabOpenFrom = activity::setCurrentMainTabOpenFrom,
+        consumeMainTabNavigationTarget = activity::consumeMainTabNavigationTarget,
         preferenceState = rememberAndroidZhihuMainPreferenceState(),
         isDarkTheme = com.github.zly2006.zhihu.theme.ThemeManager.isDarkTheme,
-        platformAdapter = androidZhihuMainPlatformAdapter(activity),
+        articleEnterTransition = {
+            val sharedData = try {
+                ViewModelProvider(activity)[ArticleAnswerSwitchData::class.java]
+            } catch (_: Exception) {
+                null
+            }
+            when (sharedData?.answerTransitionDirection) {
+                ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
+                    slideInVertically(tween(300)) { it } + fadeIn(tween(300))
+                ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
+                    slideInVertically(tween(300)) { -it } + fadeIn(tween(300))
+                ArticleAnswerTransitionDirection.HORIZONTAL_NEXT ->
+                    slideInHorizontally(tween(300)) { it } + fadeIn(tween(300))
+                ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
+                    slideInHorizontally(tween(300)) { -it } + fadeIn(tween(300))
+                else -> slideInHorizontally(tween(300)) { it }
+            }
+        },
+        articleExitTransition = {
+            val sharedData = try {
+                ViewModelProvider(activity)[ArticleAnswerSwitchData::class.java]
+            } catch (_: Exception) {
+                null
+            }
+            when (sharedData?.answerTransitionDirection) {
+                ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
+                    slideOutVertically(tween(300)) { -it } + fadeOut(tween(300))
+                ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
+                    slideOutVertically(tween(300)) { it } + fadeOut(tween(300))
+                ArticleAnswerTransitionDirection.HORIZONTAL_NEXT ->
+                    slideOutHorizontally(tween(300)) { -it } + fadeOut(tween(300))
+                ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
+                    slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
+                else -> ExitTransition.None
+            }
+        },
+        articleContent = { article, navEntry ->
+            val viewModel: ArticleViewModel = viewModel(navEntry) {
+                ArticleViewModel(article, activity.httpClient, androidUserMessageSink(activity)) { onPause ->
+                    navEntry.lifecycle.addObserver(object : DefaultLifecycleObserver {
+                        override fun onPause(owner: LifecycleOwner) {
+                            onPause()
+                        }
+                    })
+                }
+            }
+            ArticleScreen(article, viewModel)
+        },
+        sentenceSimilarityContent = {
+            SentenceSimilarityTestScreen()
+        },
+        blocklistSettingsNlpContent = { onNavigateBack ->
+            NLPKeywordManagementScreen(
+                innerPadding = PaddingValues(),
+                onNavigateBack = onNavigateBack,
+            )
+        },
     )
 }
-
-private fun androidZhihuMainPlatformAdapter(activity: MainActivity) = ZhihuMainPlatformAdapter(
-    articleEnterTransition = {
-        val sharedData = try {
-            ViewModelProvider(activity)[ArticleAnswerSwitchData::class.java]
-        } catch (_: Exception) {
-            null
-        }
-        when (sharedData?.answerTransitionDirection) {
-            ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
-                slideInVertically(tween(300)) { it } + fadeIn(tween(300))
-            ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
-                slideInVertically(tween(300)) { -it } + fadeIn(tween(300))
-            ArticleAnswerTransitionDirection.HORIZONTAL_NEXT ->
-                slideInHorizontally(tween(300)) { it } + fadeIn(tween(300))
-            ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
-                slideInHorizontally(tween(300)) { -it } + fadeIn(tween(300))
-            else -> slideInHorizontally(tween(300)) { it }
-        }
-    },
-    articleExitTransition = {
-        val sharedData = try {
-            ViewModelProvider(activity)[ArticleAnswerSwitchData::class.java]
-        } catch (_: Exception) {
-            null
-        }
-        when (sharedData?.answerTransitionDirection) {
-            ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
-                slideOutVertically(tween(300)) { -it } + fadeOut(tween(300))
-            ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
-                slideOutVertically(tween(300)) { it } + fadeOut(tween(300))
-            ArticleAnswerTransitionDirection.HORIZONTAL_NEXT ->
-                slideOutHorizontally(tween(300)) { -it } + fadeOut(tween(300))
-            ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
-                slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
-            else -> ExitTransition.None
-        }
-    },
-    article = { article, navEntry ->
-        val viewModel: ArticleViewModel = viewModel(navEntry) {
-            ArticleViewModel(article, activity.httpClient, androidUserMessageSink(activity)) { onPause ->
-                navEntry.lifecycle.addObserver(object : DefaultLifecycleObserver {
-                    override fun onPause(owner: LifecycleOwner) {
-                        onPause()
-                    }
-                })
-            }
-        }
-        ArticleScreen(article, viewModel)
-    },
-    sentenceSimilarityTest = {
-        SentenceSimilarityTestScreen()
-    },
-    blocklistSettingsNlpContent = { onNavigateBack ->
-        NLPKeywordManagementScreen(
-            innerPadding = PaddingValues(),
-            onNavigateBack = onNavigateBack,
-        )
-    },
-)

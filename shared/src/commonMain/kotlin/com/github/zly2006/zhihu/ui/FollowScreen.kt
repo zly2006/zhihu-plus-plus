@@ -90,7 +90,6 @@ import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.NoOpPagerNestedScrollConnection
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
-import com.github.zly2006.zhihu.ui.components.rememberFeedBlockActions
 import com.github.zly2006.zhihu.ui.components.rememberNestedHorizontalPagerConnection
 import com.github.zly2006.zhihu.ui.topLevelReselectAction
 import com.github.zly2006.zhihu.viewmodel.feed.FollowRecommendViewModel
@@ -378,7 +377,6 @@ fun FollowRecommendScreen(
     val environment = rememberPaginationEnvironment(allowGuestAccess = viewModel.allowGuestAccess)
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()
-    val feedBlockActions = rememberFeedBlockActions()
     val showRefreshFab = remember { settings.getBoolean("showRefreshFab", true) }
     val listState = rememberLazyListState()
     var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
@@ -434,7 +432,7 @@ fun FollowRecommendScreen(
                             text = { Text("屏蔽用户") },
                             onClick = {
                                 dismissMenu()
-                                feedBlockActions.handleBlockUser(viewModel, item) { authorInfo ->
+                                viewModel.handleBlockUser(environment, userMessages, item) { authorInfo ->
                                     feedAuthorBlockRequest = FeedAuthorBlockRequest(
                                         FeedAuthorBlockType.CONTENT_AUTHOR,
                                         authorInfo.first,
@@ -452,7 +450,7 @@ fun FollowRecommendScreen(
                                 text = { Text("屏蔽提问者") },
                                 onClick = {
                                     dismissMenu()
-                                    feedBlockActions.handleBlockQuestionAuthor(viewModel, item) { authorInfo ->
+                                    viewModel.handleBlockQuestionAuthor(environment, userMessages, item) { authorInfo ->
                                         feedAuthorBlockRequest = FeedAuthorBlockRequest(
                                             FeedAuthorBlockType.QUESTION_AUTHOR,
                                             authorInfo.first,
@@ -474,7 +472,7 @@ fun FollowRecommendScreen(
                                 text = { Text("屏蔽「${topic.name}」") },
                                 onClick = {
                                     dismissMenu()
-                                    feedBlockActions.handleBlockTopic(viewModel, topic.id, topic.name)
+                                    viewModel.handleBlockTopic(userMessages, topic.id, topic.name)
                                 },
                             )
                         }
@@ -521,7 +519,6 @@ fun FollowDynamicScreen(
     val environment = rememberPaginationEnvironment(allowGuestAccess = viewModel.allowGuestAccess)
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()
-    val feedBlockActions = rememberFeedBlockActions()
     val showRefreshFab = remember { settings.getBoolean("showRefreshFab", true) }
     val listState = rememberLazyListState()
     var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
@@ -578,7 +575,7 @@ fun FollowDynamicScreen(
                             text = { Text("屏蔽用户") },
                             onClick = {
                                 dismissMenu()
-                                feedBlockActions.handleBlockUser(viewModel, item) { authorInfo ->
+                                viewModel.handleBlockUser(environment, userMessages, item) { authorInfo ->
                                     feedAuthorBlockRequest = FeedAuthorBlockRequest(
                                         FeedAuthorBlockType.CONTENT_AUTHOR,
                                         authorInfo.first,
@@ -596,7 +593,7 @@ fun FollowDynamicScreen(
                                 text = { Text("屏蔽提问者") },
                                 onClick = {
                                     dismissMenu()
-                                    feedBlockActions.handleBlockQuestionAuthor(viewModel, item) { authorInfo ->
+                                    viewModel.handleBlockQuestionAuthor(environment, userMessages, item) { authorInfo ->
                                         feedAuthorBlockRequest = FeedAuthorBlockRequest(
                                             FeedAuthorBlockType.QUESTION_AUTHOR,
                                             authorInfo.first,
@@ -618,7 +615,7 @@ fun FollowDynamicScreen(
                                 text = { Text("屏蔽「${topic.name}」") },
                                 onClick = {
                                     dismissMenu()
-                                    feedBlockActions.handleBlockTopic(viewModel, topic.id, topic.name)
+                                    viewModel.handleBlockTopic(userMessages, topic.id, topic.name)
                                 },
                             )
                         }

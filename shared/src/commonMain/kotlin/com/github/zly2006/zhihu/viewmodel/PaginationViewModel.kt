@@ -439,11 +439,6 @@ interface ContentBlocklistEnvironment {
         avatarUrl: String? = null,
     ) = Unit
 
-    suspend fun addBlockedTopic(
-        topicId: String,
-        topicName: String,
-    ) = Unit
-
     suspend fun removeBlockedUser(userId: String) = Unit
 
     suspend fun removeBlockedQuestionAuthor(userId: String) = Unit
