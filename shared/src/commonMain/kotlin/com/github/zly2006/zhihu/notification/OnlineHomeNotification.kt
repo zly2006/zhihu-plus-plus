@@ -25,6 +25,11 @@ import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import kotlinx.coroutines.CancellationException
+import kotlinx.io.buffered
+import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
+import kotlinx.io.readString
+import kotlinx.io.writeString
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -37,13 +42,14 @@ import kotlin.time.Clock
 
 const val ZHIHU_PLUS_PLUS_HOME_NOTIFICATIONS_URL = "https://redenmc.com/api/zhihu/notifications"
 const val HOME_NOTIFICATION_LAST_CHECK_PREFERENCE_KEY = "onlineHomeNotificationLastCheck"
-const val HOME_NOTIFICATION_CACHE_PREFERENCE_KEY = "onlineHomeNotificationCache"
-const val HOME_NOTIFICATION_READ_STATE_PREFERENCE_KEY = "onlineHomeNotificationReadState"
+const val HOME_NOTIFICATION_CACHE_FILE_NAME = "online_home_notifications.json"
 const val HOME_NOTIFICATION_CHECK_INTERVAL_MILLIS = 3 * 60 * 60 * 1000L
 
 const val HOME_NOTIFICATION_ACTION_OPEN_URL = "open_url"
 const val HOME_NOTIFICATION_ACTION_OPEN_UPDATE_SETTINGS = "open_update_settings"
 const val HOME_NOTIFICATION_ACTION_OPEN_PIN = "open_pin"
+const val HOME_NOTIFICATION_ACTION_OPEN_ANSWER = "open_answer"
+const val HOME_NOTIFICATION_ACTION_OPEN_ARTICLE = "open_article"
 const val HOME_NOTIFICATION_ACTION_SET_SETTING = "set_setting"
 
 private val homeNotificationUuidPattern = Regex(
@@ -73,8 +79,9 @@ data class OnlineHomeNotificationAccept(
 )
 
 @Serializable
-private data class OnlineHomeNotificationReadState(
-    val expiresAtByUuid: Map<String, Long> = emptyMap(),
+private data class OnlineHomeNotificationCache(
+    val notifications: List<OnlineHomeNotification> = emptyList(),
+    val readUuids: Set<String> = emptySet(),
 )
 
 suspend fun fetchOnlineHomeNotifications(
@@ -88,19 +95,17 @@ suspend fun fetchOnlineHomeNotifications(
 
 class OnlineHomeNotificationRepository(
     private val settings: SettingsStore,
+    private val cacheFile: Path,
 ) {
+    private var cache: OnlineHomeNotificationCache? = null
+
     fun cachedNotifications(): List<OnlineHomeNotification> {
-        val response = settings
-            .getStringOrNull(HOME_NOTIFICATION_CACHE_PREFERENCE_KEY)
-            ?.let { payload ->
-                runCatching { ZhihuJson.json.decodeFromString<OnlineHomeNotificationResponse>(payload) }.getOrNull()
-            } ?: OnlineHomeNotificationResponse()
-        val readState = readState()
-        return response.notifications
+        val currentCache = readCache()
+        return currentCache.notifications
             .asSequence()
             .filter { it.isValid() }
             .distinctBy { it.uuid }
-            .filterNot { readState.expiresAtByUuid.containsKey(it.uuid) }
+            .filterNot { it.uuid in currentCache.readUuids }
             .toList()
     }
 
@@ -130,38 +135,30 @@ class OnlineHomeNotificationRepository(
             .filter { it.isValid() }
             .distinctBy { it.uuid }
             .toList()
-        settings.putString(
-            HOME_NOTIFICATION_CACHE_PREFERENCE_KEY,
-            ZhihuJson.json.encodeToString(OnlineHomeNotificationResponse(notifications)),
-        )
-
-        val currentReadState = readState().expiresAtByUuid.toMutableMap()
-        notifications.forEach { notification ->
-            if (currentReadState.containsKey(notification.uuid)) {
-                currentReadState[notification.uuid] = notification.expiresAt
-            }
-        }
-        writeReadState(currentReadState)
-        return notifications.filterNot { currentReadState.containsKey(it.uuid) }
+        writeCache(readCache().copy(notifications = notifications))
+        return cachedNotifications()
     }
 
     fun markRead(notification: OnlineHomeNotification) {
-        val read = readState().expiresAtByUuid.toMutableMap()
-        read[notification.uuid] = notification.expiresAt
-        writeReadState(read)
+        val currentCache = readCache()
+        writeCache(currentCache.copy(readUuids = currentCache.readUuids + notification.uuid))
     }
 
-    private fun readState(): OnlineHomeNotificationReadState = settings
-        .getStringOrNull(HOME_NOTIFICATION_READ_STATE_PREFERENCE_KEY)
-        ?.let { payload ->
-            runCatching { ZhihuJson.json.decodeFromString<OnlineHomeNotificationReadState>(payload) }.getOrNull()
-        } ?: OnlineHomeNotificationReadState()
+    private fun readCache(): OnlineHomeNotificationCache {
+        cache?.let { return it }
+        return runCatching {
+            if (!SystemFileSystem.exists(cacheFile)) return@runCatching OnlineHomeNotificationCache()
+            SystemFileSystem.source(cacheFile).buffered().use { source ->
+                ZhihuJson.json.decodeFromString<OnlineHomeNotificationCache>(source.readString())
+            }
+        }.getOrDefault(OnlineHomeNotificationCache()).also { cache = it }
+    }
 
-    private fun writeReadState(expiresAtByUuid: Map<String, Long>) {
-        settings.putString(
-            HOME_NOTIFICATION_READ_STATE_PREFERENCE_KEY,
-            ZhihuJson.json.encodeToString(OnlineHomeNotificationReadState(expiresAtByUuid)),
-        )
+    private fun writeCache(updatedCache: OnlineHomeNotificationCache) {
+        cache = updatedCache
+        SystemFileSystem.sink(cacheFile).buffered().use { sink ->
+            sink.writeString(ZhihuJson.json.encodeToString(updatedCache))
+        }
     }
 
     private fun OnlineHomeNotification.isValid(): Boolean =
@@ -174,7 +171,10 @@ class OnlineHomeNotificationRepository(
         when (key) {
             HOME_NOTIFICATION_ACTION_OPEN_URL ->
                 (value as? JsonPrimitive)?.contentOrNull?.startsWith("https://") == true
-            HOME_NOTIFICATION_ACTION_OPEN_PIN ->
+            HOME_NOTIFICATION_ACTION_OPEN_PIN,
+            HOME_NOTIFICATION_ACTION_OPEN_ANSWER,
+            HOME_NOTIFICATION_ACTION_OPEN_ARTICLE,
+            ->
                 (value as? JsonPrimitive)?.contentOrNull?.toLongOrNull() != null
             HOME_NOTIFICATION_ACTION_OPEN_UPDATE_SETTINGS -> value == null
             HOME_NOTIFICATION_ACTION_SET_SETTING -> {

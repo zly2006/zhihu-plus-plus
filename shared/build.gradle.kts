@@ -123,6 +123,7 @@ kotlin {
             implementation(project(":markdown-parser"))
             implementation(project(":markdown-renderer"))
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.8.0")
+            implementation("org.jetbrains.kotlinx:kotlinx-io-core:0.8.1")
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
             implementation("com.mikepenz:aboutlibraries-compose-m3:15.0.0")
         }

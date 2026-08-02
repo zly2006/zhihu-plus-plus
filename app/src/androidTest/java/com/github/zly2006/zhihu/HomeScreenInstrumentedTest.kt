@@ -43,8 +43,8 @@ import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.navigation.WritePin
+import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_CACHE_FILE_NAME
 import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_LAST_CHECK_PREFERENCE_KEY
-import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_READ_STATE_PREFERENCE_KEY
 import com.github.zly2006.zhihu.notification.ZHIHU_PLUS_PLUS_HOME_NOTIFICATIONS_URL
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
@@ -70,6 +70,9 @@ import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
 import io.ktor.http.HttpMethod
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
@@ -85,6 +88,7 @@ class HomeScreenInstrumentedTest {
     fun setUp() {
         composeRule.setScreenContent {}
         composeRule.resetAppPreferences()
+        composeRule.activity.deleteFile(HOME_NOTIFICATION_CACHE_FILE_NAME)
         composeRule.activity.runOnUiThread {
             UpdateManager.updateState.value = UpdateManager.UpdateState.NoUpdate
             clearHomeFeedViewModel()
@@ -254,12 +258,13 @@ class HomeScreenInstrumentedTest {
         composeRule.onNodeWithTag(homeOnlineNotificationTag(notificationUuid)).assertDoesNotExist()
         assertEquals(listOf(Pin(2051253530787370452L)), recordingNavigator.destinations)
         assertEquals(
-            true,
-            composeRule.activity
-                .getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-                .getString(HOME_NOTIFICATION_READ_STATE_PREFERENCE_KEY, null)
-                .orEmpty()
-                .contains(notificationUuid),
+            listOf(notificationUuid),
+            ZhihuJson.json
+                .parseToJsonElement(composeRule.activity.getFileStreamPath(HOME_NOTIFICATION_CACHE_FILE_NAME).readText())
+                .jsonObject
+                .getValue("readUuids")
+                .jsonArray
+                .map { it.jsonPrimitive.content },
         )
     }
 

@@ -21,6 +21,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.ui.noopSettingsStore
 import com.github.zly2006.zhihu.ui.openIosUrl
+import kotlinx.cinterop.BetaInteropApi
+import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.io.files.Path
+import platform.Foundation.NSDocumentDirectory
+import platform.Foundation.NSFileManager
+import platform.Foundation.NSURL
+import platform.Foundation.NSUserDomainMask
 
 @Composable
 actual fun rememberExternalUrlOpener(): (String) -> Unit = remember { ::openIosUrl }
@@ -80,6 +87,14 @@ actual fun PlatformPredictiveBackHandler(
 
 @Composable
 actual fun rememberSettingsStore(): SettingsStore = noopSettingsStore() // TODO: iOS 设置存储
+
+@Composable
+@OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
+actual fun rememberAppPrivateDirectory(): Path = remember {
+    val urls = NSFileManager.defaultManager.URLsForDirectory(NSDocumentDirectory, NSUserDomainMask)
+    val documentsDirectory = (urls.firstOrNull() as? NSURL)?.path ?: error("iOS documents directory unavailable")
+    Path(documentsDirectory)
+}
 
 @Composable
 actual fun rememberIsLiteVariant(): Boolean = false // TODO: iOS 变体判断

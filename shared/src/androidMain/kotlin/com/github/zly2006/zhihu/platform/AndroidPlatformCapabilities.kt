@@ -40,6 +40,7 @@ import com.github.zly2006.zhihu.util.saveImageToGallery
 import com.github.zly2006.zhihu.util.shareImage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import kotlinx.io.files.Path
 
 private const val WEBVIEW_ACTIVITY_CLASS = "com.github.zly2006.zhihu.WebviewActivity"
 
@@ -113,6 +114,12 @@ actual fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit {
 actual fun rememberSettingsStore(): SettingsStore {
     val context = LocalContext.current.applicationContext
     return remember(context) { androidSettingsStore(context) }
+}
+
+@Composable
+actual fun rememberAppPrivateDirectory(): Path {
+    val context = LocalContext.current.applicationContext
+    return remember(context) { Path(context.filesDir.absolutePath) }
 }
 
 fun androidSettingsStore(context: Context): SettingsStore {
