@@ -240,6 +240,7 @@ class HomeScreenInstrumentedTest {
         val recordingNavigator = composeRule.launchHomeScreen(
             duo3HomeAccount = false,
             showRefreshFab = false,
+            useSeededAccountForNetwork = true,
             checkOnlineNotifications = true,
             displayItems = homeFeedFixtureItems(),
         )

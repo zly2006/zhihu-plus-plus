@@ -228,7 +228,7 @@ object AccountData {
         userAgent = userAgent,
         self = self?.let {
             runCatching {
-                json.decodeFromJsonElement<Person>(it)
+                ZhihuJson.decodeJson<Person>(it)
             }.getOrNull()
         },
         mobileAccessToken = mobileAccessToken,
