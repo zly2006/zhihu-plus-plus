@@ -387,14 +387,6 @@ private fun com.github.zly2006.zhihu.shared.account.ZhihuAccountSession.toAccoun
 actual fun rememberArticleHost(): ArticleHost? = null
 
 @Composable
-actual fun ArticlePreviewPreloadEffect(
-    cached: com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent?,
-    isNext: Boolean,
-    title: String,
-    onImageLoadFailed: () -> Unit,
-) = Unit
-
-@Composable
 actual fun ArticleWebViewContent(
     article: Article,
     html: String,

@@ -258,14 +258,6 @@ private fun SettingsStore.answerDoubleTapAction(): AnswerDoubleTapAction =
 expect fun rememberArticleHost(): ArticleHost?
 
 @Composable
-expect fun ArticlePreviewPreloadEffect(
-    cached: CachedAnswerContent?,
-    isNext: Boolean,
-    title: String,
-    onImageLoadFailed: () -> Unit,
-)
-
-@Composable
 expect fun ArticleWebViewContent(
     article: Article,
     html: String,

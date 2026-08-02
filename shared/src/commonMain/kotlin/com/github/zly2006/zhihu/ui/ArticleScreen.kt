@@ -1843,14 +1843,6 @@ fun ArticleScreen(
     } // answerSwitchContent 结束。
 
     val nav = sharedData?.navigator
-    if (article.type == ArticleType.Answer && answerSwitchMode == "horizontal") {
-        ArticlePreviewPreloadEffect(nav?.nextAnswer, isNext = true, viewModel.title) {
-            userMessages.showMessage("图片加载失败，请向开发者反馈")
-        }
-        ArticlePreviewPreloadEffect(nav?.previousAnswer, isNext = false, viewModel.title) {
-            userMessages.showMessage("图片加载失败，请向开发者反馈")
-        }
-    }
     val progressBarTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp
     val progressBarBottomPadding = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 96.dp
 

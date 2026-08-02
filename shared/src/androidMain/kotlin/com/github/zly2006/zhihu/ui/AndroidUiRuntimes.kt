@@ -49,7 +49,6 @@ import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
-import com.github.zly2006.zhihu.ui.components.CustomWebView
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.updater.UpdateManager
@@ -213,32 +212,6 @@ actual fun rememberArticleBrowserOpener(): (Article) -> Unit {
 
 @Composable
 actual fun rememberArticleHost(): ArticleHost? = LocalContext.current.articleHost()
-
-@Composable
-actual fun ArticlePreviewPreloadEffect(
-    cached: com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent?,
-    isNext: Boolean,
-    title: String,
-    onImageLoadFailed: () -> Unit,
-) {
-    val context = LocalContext.current
-    val articleHost = context.articleHost()
-    LaunchedEffect(cached?.article?.id, isNext, title, articleHost) {
-        cached ?: return@LaunchedEffect
-        val previewWebViewStore = articleHost?.articleAnswerSwitchState as? ArticlePreviewWebViewStore
-            ?: return@LaunchedEffect
-        val wv = previewWebViewStore.getOrCreatePreviewWebView(context, isNext, cached.article.id)
-        val articleId = cached.article.id.toString()
-        if (wv.contentId != articleId) {
-            wv.contentId = articleId
-            wv.loadZhihu(
-                "https://www.zhihu.com/answer/${cached.article.id}",
-                prepareContentDocument(cached.content, onImageLoadFailed),
-                title,
-            )
-        }
-    }
-}
 
 @Composable
 actual fun ArticleWebViewContent(
@@ -472,14 +445,6 @@ actual fun rememberNotificationEnvironment(
 actual fun rememberNotificationShowDebugCopy(): Boolean {
     val context = LocalContext.current
     return (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
-}
-
-interface ArticlePreviewWebViewStore {
-    fun getOrCreatePreviewWebView(
-        context: Context,
-        isNext: Boolean,
-        answerId: Long,
-    ): CustomWebView
 }
 
 fun Context.articleHost(): ArticleHost? =
