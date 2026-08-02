@@ -18,11 +18,13 @@
 package com.github.zly2006.zhihu
 
 import android.content.Context
+import android.content.ContextWrapper
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertCountEquals
@@ -65,6 +67,7 @@ import com.github.zly2006.zhihu.test.pressSystemBack
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.seedViewModel
 import com.github.zly2006.zhihu.test.setScreenContent
+import com.github.zly2006.zhihu.ui.ArticleHost
 import com.github.zly2006.zhihu.ui.COMMENT_CANCEL_REPLY_TAG
 import com.github.zly2006.zhihu.ui.COMMENT_DELETE_CANCEL_TAG
 import com.github.zly2006.zhihu.ui.COMMENT_DELETE_CONFIRM_TAG
@@ -184,7 +187,7 @@ class CommentScreenInstrumentedTest {
     }
 
     @Test
-    fun activityCommentHolderOpensChildListAndTargetsNestedComment() {
+    fun articleHostPendingCommentOpensChildListAndTargetsNestedComment() {
         mockCommentDetail(
             commentId = "liked-child-comment",
             resourceType = "answer",
@@ -202,19 +205,23 @@ class CommentScreenInstrumentedTest {
             urlPrefix = "https://www.zhihu.com/api/v4/comment_v5/comment/liked-root-comment/child_comment",
             commentId = "other-child-comment",
         )
-        composeRule.activity.preparePendingComment(
-            CommentHolder(
-                commentId = "liked-child-comment",
-                article = ROOT_ARTICLE,
-            ),
-        )
+        val pendingCommentHost = object : ContextWrapper(composeRule.activity), ArticleHost by composeRule.activity {
+            private var pendingCommentId: String? = "liked-child-comment"
+
+            override fun consumePendingCommentId(destination: NavDestination): String? {
+                if (destination != ROOT_ARTICLE) return null
+                return pendingCommentId.also { pendingCommentId = null }
+            }
+        }
 
         composeRule.setScreenContent {
-            CommentScreenComponent(
-                showComments = false,
-                onDismiss = {},
-                content = ROOT_ARTICLE,
-            )
+            CompositionLocalProvider(LocalContext provides pendingCommentHost) {
+                CommentScreenComponent(
+                    showComments = false,
+                    onDismiss = {},
+                    content = ROOT_ARTICLE,
+                )
+            }
         }
 
         composeRule.waitUntil("Expected pending child comment holder to open both comment sheets", timeoutMillis = 5_000) {
