@@ -18,11 +18,11 @@
 package com.github.zly2006.zhihu.viewmodel.comment
 
 import androidx.lifecycle.viewModelScope
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.navigation.CommentHolder
 import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
+import com.github.zly2006.zhihu.viewmodel.CommentItem
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.comment.RootCommentViewModel.Companion.submitCommentUrl

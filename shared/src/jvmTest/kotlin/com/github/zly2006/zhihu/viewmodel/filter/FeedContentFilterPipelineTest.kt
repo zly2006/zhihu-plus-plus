@@ -17,7 +17,7 @@
 
 package com.github.zly2006.zhihu.viewmodel.filter
 
-import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.data.DataHolder
 import kotlinx.coroutines.test.runTest
 import kotlin.io.path.createTempDirectory
 import kotlin.test.Test

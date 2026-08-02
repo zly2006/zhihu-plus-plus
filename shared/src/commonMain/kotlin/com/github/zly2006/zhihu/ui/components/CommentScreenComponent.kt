@@ -43,19 +43,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.CommentHolder
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.theme.Typography
 import com.github.zly2006.zhihu.ui.CommentScreen
 import com.github.zly2006.zhihu.ui.rememberArticleHost
+import com.github.zly2006.zhihu.viewmodel.CommentItem
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 

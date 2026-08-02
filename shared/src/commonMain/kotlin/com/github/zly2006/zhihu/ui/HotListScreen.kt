@@ -37,17 +37,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.github.zly2006.zhihu.shared.data.HotListFeed
-import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.shared.ui.TopLevelReselectAction
-import com.github.zly2006.zhihu.shared.ui.topLevelReselectAction
+import com.github.zly2006.zhihu.data.HotListFeed
+import com.github.zly2006.zhihu.platform.UserMessageDuration
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.ui.TopLevelReselectAction
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
+import com.github.zly2006.zhihu.ui.topLevelReselectAction
 import com.github.zly2006.zhihu.viewmodel.feed.HotListViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 

@@ -25,7 +25,7 @@ import android.os.Environment
 import android.provider.MediaStore
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.viewmodel.AndroidPreparedExportWebView
 import com.github.zly2006.zhihu.viewmodel.SharedAndroidPaginationEnvironment
 import kotlinx.coroutines.runBlocking

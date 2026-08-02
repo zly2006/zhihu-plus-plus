@@ -31,7 +31,7 @@ import com.github.zly2006.zhihu.navigation.Home
 import com.github.zly2006.zhihu.navigation.HotList
 import com.github.zly2006.zhihu.navigation.MyCollections
 import com.github.zly2006.zhihu.navigation.OnlineHistory
-import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
+import com.github.zly2006.zhihu.platform.androidSettingsStore
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.START_DESTINATION_PREFERENCE_KEY

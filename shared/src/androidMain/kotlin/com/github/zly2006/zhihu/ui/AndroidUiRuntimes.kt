@@ -16,6 +16,7 @@
  */
 
 package com.github.zly2006.zhihu.ui
+
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -41,19 +42,19 @@ import androidx.core.net.toUri
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.RecommendationMode
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.RecommendationMode
-import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
-import com.github.zly2006.zhihu.shared.platform.UserMessageSink
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.shared.util.Log
+import com.github.zly2006.zhihu.notification.NotificationSettingsStore
+import com.github.zly2006.zhihu.platform.UserMessageSink
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.article.prepareContentDocument
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.util.EmojiManager
+import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.util.OpenInBrowser
 import com.github.zly2006.zhihu.util.createEmojiInlineContent
 import com.github.zly2006.zhihu.util.fuckHonorService

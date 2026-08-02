@@ -67,7 +67,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.util.concurrent.atomic.AtomicInteger
-import com.github.zly2006.zhihu.shared.data.Person as AccountPerson
+import com.github.zly2006.zhihu.data.Person as AccountPerson
 
 @RunWith(AndroidJUnit4::class)
 class AccountSettingScreenInstrumentedTest {

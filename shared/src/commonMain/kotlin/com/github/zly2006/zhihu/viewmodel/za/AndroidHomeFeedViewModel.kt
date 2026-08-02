@@ -16,18 +16,19 @@
  */
 
 package com.github.zly2006.zhihu.viewmodel.za
+
 import androidx.lifecycle.viewModelScope
+import com.github.zly2006.zhihu.data.CommonFeed
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.Person
+import com.github.zly2006.zhihu.data.ZhihuJson
+import com.github.zly2006.zhihu.data.target
+import com.github.zly2006.zhihu.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.resolveContent
-import com.github.zly2006.zhihu.shared.data.CommonFeed
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.Feed
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.Person
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.shared.data.target
-import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.viewmodel.ContentInteractionEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel

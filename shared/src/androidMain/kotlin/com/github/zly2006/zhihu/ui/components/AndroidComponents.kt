@@ -36,11 +36,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.graphics.drawable.toDrawable
 import androidx.core.net.toUri
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.shared.data.SegmentInfoMeta
-import com.github.zly2006.zhihu.shared.nlp.KeywordAnalyzerCore
-import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
-import com.github.zly2006.zhihu.shared.util.SegmentHighlightSpan
+import com.github.zly2006.zhihu.data.SegmentInfoMeta
+import com.github.zly2006.zhihu.nlp.KeywordAnalyzerCore
+import com.github.zly2006.zhihu.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.ui.articleHost
+import com.github.zly2006.zhihu.util.SegmentHighlightSpan
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.util.signFetchRequest

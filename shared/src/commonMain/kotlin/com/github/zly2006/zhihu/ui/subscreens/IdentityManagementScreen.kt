@@ -64,9 +64,9 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.account.ZhihuIdentityAccount
 import com.github.zly2006.zhihu.navigation.LocalNavigator
-import com.github.zly2006.zhihu.shared.account.ZhihuIdentityAccount
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import kotlinx.coroutines.flow.MutableStateFlow

@@ -21,8 +21,8 @@ import android.app.AlertDialog
 import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
-import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
-import com.github.zly2006.zhihu.shared.util.ContinuousUsageReminderPolicy
+import com.github.zly2006.zhihu.platform.androidSettingsStore
+import com.github.zly2006.zhihu.util.ContinuousUsageReminderPolicy
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive

@@ -17,9 +17,9 @@
 
 package com.github.zly2006.zhihu.viewmodel.comment
 
+import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine

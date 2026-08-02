@@ -17,8 +17,8 @@
 
 package com.github.zly2006.zhihu.viewmodel.feed
 
-import com.github.zly2006.zhihu.shared.data.Feed
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.viewmodel.FeedDisplayEnvironment
 
 class HotListViewModel : BaseFeedViewModel() {

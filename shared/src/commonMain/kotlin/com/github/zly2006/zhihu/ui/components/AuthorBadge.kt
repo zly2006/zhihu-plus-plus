@@ -25,8 +25,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.OfficialBadge
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.OfficialBadge
 import org.jetbrains.compose.resources.painterResource
 import zhihu.shared.generated.resources.Res
 import zhihu.shared.generated.resources.ic_zh_plus_author_badge

@@ -62,7 +62,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.github.zly2006.zhihu.QRCodeScanActivity.Companion.LOGIN_PREFIX
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat

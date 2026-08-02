@@ -16,6 +16,7 @@
  */
 
 package com.github.zly2006.zhihu.ui
+
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.text.InlineTextContent
@@ -32,22 +33,22 @@ import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.unit.em
+import com.github.zly2006.zhihu.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.RecommendationMode
+import com.github.zly2006.zhihu.desktop.DesktopAccountStore
+import com.github.zly2006.zhihu.desktop.DesktopLoginRequests
+import com.github.zly2006.zhihu.desktop.desktopZhihuDataFile
+import com.github.zly2006.zhihu.desktop.openDesktopExternalUrl
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.RecommendationMode
-import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
-import com.github.zly2006.zhihu.shared.desktop.DesktopLoginRequests
-import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDataFile
-import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
-import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
-import com.github.zly2006.zhihu.shared.platform.UserMessageSink
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.shared.util.Log
+import com.github.zly2006.zhihu.notification.NotificationSettingsStore
+import com.github.zly2006.zhihu.platform.UserMessageSink
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
 import com.github.zly2006.zhihu.ui.subscreens.desktopSystemUpdateState
 import com.github.zly2006.zhihu.ui.subscreens.desktopVersionName
+import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.viewmodel.DesktopPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
@@ -374,7 +375,7 @@ actual fun rememberMainTabSelector(): (TopLevelDestination) -> Unit = remember {
     { _: TopLevelDestination -> }
 }
 
-private fun com.github.zly2006.zhihu.shared.account.ZhihuAccountSession.toAccountSettingsAccountState(): AccountSettingsAccountState =
+private fun com.github.zly2006.zhihu.account.ZhihuAccountSession.toAccountSettingsAccountState(): AccountSettingsAccountState =
     AccountSettingsAccountState(
         login = login,
         username = username,

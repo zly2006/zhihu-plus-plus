@@ -45,13 +45,13 @@ import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.navigation.History
 import com.github.zly2006.zhihu.navigation.LocalNavigator
-import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.shared.ui.TopLevelReselectAction
-import com.github.zly2006.zhihu.shared.ui.topLevelReselectAction
+import com.github.zly2006.zhihu.platform.PlatformBackHandler
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.ui.TopLevelReselectAction
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
+import com.github.zly2006.zhihu.ui.topLevelReselectAction
 import com.github.zly2006.zhihu.viewmodel.feed.OnlineHistoryViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.CancellationException

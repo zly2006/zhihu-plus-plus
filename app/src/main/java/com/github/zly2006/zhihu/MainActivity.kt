@@ -50,6 +50,9 @@ import coil3.memory.MemoryCache
 import coil3.request.crossfade
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.HistoryStorage
+import com.github.zly2006.zhihu.filter.ContentOpenEventSupport
+import com.github.zly2006.zhihu.filter.ContentOpenFrom
+import com.github.zly2006.zhihu.filter.TrackedContentIdentity
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionContent
@@ -64,16 +67,12 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
+import com.github.zly2006.zhihu.nlp.KeywordWeightExtractor
 import com.github.zly2006.zhihu.nlp.NLPService
 import com.github.zly2006.zhihu.nlp.NlpServiceKeywordSemanticMatcher
 import com.github.zly2006.zhihu.nlp.SentenceEmbeddingManager
-import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
-import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
-import com.github.zly2006.zhihu.shared.filter.TrackedContentIdentity
-import com.github.zly2006.zhihu.shared.nlp.KeywordWeightExtractor
-import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
-import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
-import com.github.zly2006.zhihu.shared.util.ZHIHU_WEB_ZSE93
+import com.github.zly2006.zhihu.platform.androidSettingsStore
+import com.github.zly2006.zhihu.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.theme.AndroidThemeSettings
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.AndroidZhihuMain
@@ -87,6 +86,7 @@ import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.util.ContinuousUsageReminderManager
 import com.github.zly2006.zhihu.util.EmojiManager
 import com.github.zly2006.zhihu.util.PowerSaveModeCompat
+import com.github.zly2006.zhihu.util.ZHIHU_WEB_ZSE93
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import com.github.zly2006.zhihu.util.clearShareImageCache
 import com.github.zly2006.zhihu.util.clipboardManager

@@ -17,8 +17,8 @@
 
 package com.github.zly2006.zhihu.data
 
-import com.github.zly2006.zhihu.shared.data.Person
-import com.github.zly2006.zhihu.shared.data.ZhihuPaging
+import com.github.zly2006.zhihu.data.Person
+import com.github.zly2006.zhihu.data.ZhihuPaging
 import kotlinx.serialization.Serializable
 
 @Serializable

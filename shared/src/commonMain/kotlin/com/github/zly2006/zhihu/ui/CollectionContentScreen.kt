@@ -54,12 +54,12 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastJoinToString
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.github.zly2006.zhihu.data.navDestination
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionAnswerNavigator
 import com.github.zly2006.zhihu.navigation.LocalNavigator
-import com.github.zly2006.zhihu.shared.data.navDestination
-import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
+import com.github.zly2006.zhihu.platform.PlatformBackHandler
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter

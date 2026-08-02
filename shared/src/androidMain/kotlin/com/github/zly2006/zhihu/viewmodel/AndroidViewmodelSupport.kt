@@ -16,6 +16,7 @@
  */
 
 package com.github.zly2006.zhihu.viewmodel
+
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -24,7 +25,7 @@ import android.os.Looper
 import android.view.View
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
-import com.github.zly2006.zhihu.shared.util.Log
+import com.github.zly2006.zhihu.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext

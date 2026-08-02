@@ -42,11 +42,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.LocalNavigator
-import com.github.zly2006.zhihu.shared.notification.NotificationType
-import com.github.zly2006.zhihu.shared.notification.rememberNotificationSettingsStore
+import com.github.zly2006.zhihu.notification.NotificationType
+import com.github.zly2006.zhihu.notification.rememberNotificationSettingsStore
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
-import com.github.zly2006.zhihu.shared.notification.matchNotificationType as sharedMatchNotificationType
+import com.github.zly2006.zhihu.notification.matchNotificationType as sharedMatchNotificationType
 
 object NotificationPreferences {
     fun matchNotificationType(verb: String): NotificationType? = sharedMatchNotificationType(verb)

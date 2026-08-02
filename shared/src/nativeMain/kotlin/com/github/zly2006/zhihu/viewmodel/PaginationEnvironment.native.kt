@@ -19,7 +19,7 @@ package com.github.zly2006.zhihu.viewmodel
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import com.github.zly2006.zhihu.shared.account.IosAccountStore
+import com.github.zly2006.zhihu.account.IosAccountStore
 import io.ktor.client.HttpClient
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject

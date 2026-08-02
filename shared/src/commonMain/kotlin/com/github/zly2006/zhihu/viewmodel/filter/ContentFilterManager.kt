@@ -16,8 +16,9 @@
  */
 
 package com.github.zly2006.zhihu.viewmodel.filter
-import com.github.zly2006.zhihu.shared.filter.ContentFilterStats
-import com.github.zly2006.zhihu.shared.filter.createContentFilterMaintenance
+
+import com.github.zly2006.zhihu.filter.ContentFilterStats
+import com.github.zly2006.zhihu.filter.createContentFilterMaintenance
 
 typealias FilterStats = ContentFilterStats
 

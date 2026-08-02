@@ -17,8 +17,8 @@
 
 package com.github.zly2006.zhihu.test
 
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.ZhihuJson
 import io.ktor.http.HttpMethod
 import kotlinx.serialization.encodeToString
 

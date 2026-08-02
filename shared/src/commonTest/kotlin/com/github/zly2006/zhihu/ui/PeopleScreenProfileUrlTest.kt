@@ -17,9 +17,9 @@
 
 package com.github.zly2006.zhihu.ui
 
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.navigation.Person
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.viewmodel.ProfileLoadEnvironment
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.test.runTest

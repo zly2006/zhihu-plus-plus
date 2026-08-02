@@ -34,7 +34,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.github.zly2006.zhihu.MainActivity
-import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
+import com.github.zly2006.zhihu.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.viewmodel.ArticleAnswerSwitchData
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 

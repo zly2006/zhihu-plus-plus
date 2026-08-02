@@ -19,9 +19,9 @@ package com.github.zly2006.zhihu.viewmodel.feed
 
 import android.content.Context
 import androidx.lifecycle.viewModelScope
+import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.data.asApiEnvironment
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
+import com.github.zly2006.zhihu.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedTopic
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.getOrFetchContentDetail

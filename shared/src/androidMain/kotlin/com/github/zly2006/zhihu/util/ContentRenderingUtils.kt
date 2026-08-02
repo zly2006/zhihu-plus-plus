@@ -35,8 +35,8 @@ import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.unit.em
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.platform.androidUserMessageSink
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.readRawBytes

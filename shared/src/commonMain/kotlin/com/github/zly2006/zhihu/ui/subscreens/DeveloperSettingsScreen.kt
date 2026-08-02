@@ -62,13 +62,13 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.data.ZHIHU_ME_URL
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.SentenceSimilarityTest
-import com.github.zly2006.zhihu.shared.data.ZHIHU_ME_URL
-import com.github.zly2006.zhihu.shared.platform.rememberPlainTextClipboard
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.platform.rememberPlainTextClipboard
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.ui.components.SettingItemOverall
 import kotlinx.coroutines.delay

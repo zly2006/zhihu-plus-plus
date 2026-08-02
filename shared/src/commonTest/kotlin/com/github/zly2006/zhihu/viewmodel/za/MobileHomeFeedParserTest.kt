@@ -17,13 +17,13 @@
 
 package com.github.zly2006.zhihu.viewmodel.za
 
+import com.github.zly2006.zhihu.data.CommonFeed
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.navDestination
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.Pin
-import com.github.zly2006.zhihu.shared.data.CommonFeed
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.Feed
-import com.github.zly2006.zhihu.shared.data.navDestination
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
