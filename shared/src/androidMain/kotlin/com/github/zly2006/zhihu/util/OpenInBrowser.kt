@@ -19,12 +19,12 @@ package com.github.zly2006.zhihu.util
 
 import android.content.Context
 import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.data.Collection
 import com.github.zly2006.zhihu.data.asApiEnvironment
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.ui.Collection
 import com.github.zly2006.zhihu.viewmodel.postSigned
 import io.ktor.client.call.body
 import io.ktor.client.request.put

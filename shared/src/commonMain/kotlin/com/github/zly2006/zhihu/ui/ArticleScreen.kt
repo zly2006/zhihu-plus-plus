@@ -24,7 +24,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.BringIntoViewSpec
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -38,8 +37,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -52,23 +49,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.FilterCenterFocus
-import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.GetApp
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.outlined.DesktopWindows
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -79,11 +68,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -92,7 +78,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -103,37 +88,42 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewModelScope
 import androidx.navigation.compose.currentBackStackEntryAsState
 import coil3.compose.AsyncImage
-import com.fleeksoft.ksoup.Ksoup
-import com.fleeksoft.ksoup.nodes.Element
+import com.github.zly2006.zhihu.data.VoteUpState
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
-import com.github.zly2006.zhihu.markdown.RenderVideoBox
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.Person
-import com.github.zly2006.zhihu.shared.data.ZhihuPaging
 import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.shared.util.formatCompactCount
-import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.ui.article.AigcFlagSheet
+import com.github.zly2006.zhihu.ui.article.ArticleActionsMenu
+import com.github.zly2006.zhihu.ui.article.ArticleSummarySheet
+import com.github.zly2006.zhihu.ui.article.ArticleVideoAttachmentContent
+import com.github.zly2006.zhihu.ui.article.CachedAnswerPreview
+import com.github.zly2006.zhihu.ui.article.rememberArticleAnswerNavigationState
+import com.github.zly2006.zhihu.ui.article.rememberArticleBottomBarState
+import com.github.zly2006.zhihu.ui.article.rememberArticleTopBarState
+import com.github.zly2006.zhihu.ui.article.rememberBottomBarAvoidingBringIntoViewSpec
+import com.github.zly2006.zhihu.ui.article.voteUpActiveButtonColors
+import com.github.zly2006.zhihu.ui.article.voteUpNeutralButtonColors
+import com.github.zly2006.zhihu.ui.article.voteUpNeutralContent
+import com.github.zly2006.zhihu.ui.article.voteUpNeutralContentDuo3
 import com.github.zly2006.zhihu.ui.components.AnswerHorizontalOverscroll
 import com.github.zly2006.zhihu.ui.components.AnswerVerticalOverscroll
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
@@ -146,600 +136,22 @@ import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
 import com.github.zly2006.zhihu.ui.components.VotersSheet
 import com.github.zly2006.zhihu.ui.components.ZhihuTwoRowsTopAppBar
 import com.github.zly2006.zhihu.ui.components.rememberPreferCollapsedExitUntilCollapsedScrollBehavior
-import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.util.smoothGradient
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
-import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import com.github.zly2006.zhihu.viewmodel.addReadHistory
 import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import com.materialkolor.ktx.harmonize
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import org.jetbrains.compose.resources.painterResource
 import zhihu.shared.generated.resources.Res
 import zhihu.shared.generated.resources.ic_vote_down_24dp
 import zhihu.shared.generated.resources.ic_vote_up_24dp
-import kotlin.math.abs
 import kotlin.math.max
 
 private const val SCROLL_THRESHOLD = 10 // 滑动阈值，单位为dp
 private val ScrollThresholdDp = SCROLL_THRESHOLD.dp
-
-/**
- * 修复 noscript 标签中的图片加载问题。
- * 提取为独立函数，确保主 WebView 和预览 WebView 使用相同的文档处理。
- */
-internal fun prepareContentDocument(
-    content: String,
-    onImageLoadFailure: () -> Unit = {},
-): String =
-    Ksoup
-        .parse(content)
-        .apply {
-            select("noscript").forEach { noscript ->
-                (noscript.nextSibling() as? Element)?.let { actualImg ->
-                    if (actualImg.nodeName() == "img") {
-                        if (actualImg.attr("data-actualsrc").isNotEmpty()) {
-                            actualImg.attr("src", actualImg.attr("data-actualsrc"))
-                            actualImg.attr("class", actualImg.attr("class").replace("lazy", ""))
-                            noscript.remove()
-                            return@forEach
-                        }
-                    }
-                }
-                if (noscript.childrenSize() > 0) {
-                    val node = noscript.child(0)
-                    if (node.tagName() == "img") {
-                        if (node.attr("class").contains("content_image")) {
-                            node.attr("src", node.attr("data-thumbnail"))
-                        }
-                        if (node.attr("src").isEmpty()) {
-                            if (node.attr("data-default-watermark-src").isNotEmpty()) {
-                                node.attr("src", node.attr("data-default-watermark-src"))
-                            } else {
-                                onImageLoadFailure()
-                            }
-                        }
-                    }
-                    noscript.after(node)
-                }
-            }
-        }.body()
-        .html()
-
-@Composable
-private fun rememberBottomBarAvoidingBringIntoViewSpec(
-    obscuredBottomPx: Float,
-): BringIntoViewSpec {
-    val density = LocalDensity.current
-    return remember(obscuredBottomPx) {
-        object : BringIntoViewSpec {
-            override fun calculateScrollDistance(
-                offset: Float,
-                size: Float,
-                containerSize: Float,
-            ): Float {
-                val effectiveContainerSize = (containerSize - obscuredBottomPx).coerceAtLeast(0f)
-                val effectiveContainerTop = density.run { 110.dp.toPx() }
-                val trailingEdge = offset + size
-                return when {
-                    offset >= effectiveContainerTop && trailingEdge <= effectiveContainerSize -> 0f
-                    offset < effectiveContainerTop && trailingEdge > effectiveContainerSize -> 0f
-                    abs(offset) < abs(trailingEdge + effectiveContainerTop - effectiveContainerSize) -> offset - effectiveContainerTop
-                    else -> trailingEdge + effectiveContainerTop - effectiveContainerSize
-                }
-            }
-        }
-    }
-}
-
-enum class VoteUpState(
-    val key: String,
-) {
-    Up("up"),
-    Down("down"),
-    Neutral("neutral"),
-}
-
-private val VoteUpNeutralContent = Color(0xFF3671EE)
-private val VoteUpNeutralContentDark = Color(0xFF628DF7)
-
-@Composable
-fun voteUpNeutralContent() = if (ThemeManager.isDarkTheme()) VoteUpNeutralContentDark else VoteUpNeutralContent
-
-@Composable
-fun voteUpNeutralContentDuo3() = if (ThemeManager.isDarkTheme()) {
-    VoteUpNeutralContentDark.harmonize(MaterialTheme.colorScheme.primary)
-} else {
-    VoteUpNeutralContent.harmonize(MaterialTheme.colorScheme.primary)
-}
-
-@Composable
-fun voteUpActiveButtonColors() = ButtonDefaults.buttonColors(
-    containerColor = voteUpNeutralContent(),
-    contentColor = Color.White,
-)
-
-@Composable
-fun voteUpNeutralButtonColors() = ButtonDefaults.buttonColors(
-    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-)
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ArticleSummarySheet(
-    showDialog: Boolean,
-    summaryText: String,
-    loading: Boolean,
-    errorMessage: String?,
-    onDismissRequest: () -> Unit,
-    onRetryRequest: () -> Unit,
-) {
-    if (!showDialog) return
-    val scrollState = rememberScrollState()
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    MyModalBottomSheet(
-        onDismissRequest = onDismissRequest,
-        sheetState = sheetState,
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-                .verticalScroll(scrollState),
-        ) {
-            Text("总结本文", style = MaterialTheme.typography.titleLarge)
-            Spacer(modifier = Modifier.height(12.dp))
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                if (loading && summaryText.isBlank()) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                        Text("正在生成总结...")
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
-
-                if (summaryText.isNotBlank()) {
-                    SelectionContainer {
-                        Text(summaryText)
-                    }
-                }
-
-                if (!errorMessage.isNullOrBlank()) {
-                    if (summaryText.isNotBlank()) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                    }
-                    Text(errorMessage, color = MaterialTheme.colorScheme.error)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                TextButton(onClick = onDismissRequest) {
-                    Text("关闭")
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                if (!loading) {
-                    TextButton(onClick = onRetryRequest) {
-                        Text("重新总结")
-                    }
-                }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun AigcFlagSheet(
-    showDialog: Boolean,
-    viewModel: ArticleViewModel,
-    onDismissRequest: () -> Unit,
-    onSubmitRequest: () -> Unit,
-) {
-    if (!showDialog) return
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    MyModalBottomSheet(
-        onDismissRequest = onDismissRequest,
-        sheetState = sheetState,
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            val canSubmitAigcFlag = viewModel.aigcVoteAvailable &&
-                !viewModel.aigcVoteLoading &&
-                !viewModel.aigcFlagged &&
-                viewModel.aigcVoterName.isNotBlank() &&
-                (
-                    viewModel.aigcCreditBypassAvailable ||
-                        (viewModel.aigcVoteCredit > 0 && viewModel.isAigcFlagEvidenceReady())
-                )
-            Text(
-                text = "标记疑似 AIGC",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(
-                text = "每浏览 20 篇内容获得 1 点投票积分，最多保留 ${viewModel.aigcVoteCap} 点。标记会上传当前正文 HTML、编辑时间和投票人身份，服务端按内容版本统计。",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = if (!viewModel.aigcVoteAvailable) {
-                    "AIGC 标记未启用"
-                } else if (viewModel.aigcVoterName.isBlank()) {
-                    "未登录，无法记名投票"
-                } else {
-                    "投票人：${viewModel.aigcVoterName}"
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = if (viewModel.aigcCreditBypassAvailable) {
-                    "积分 ${viewModel.aigcVoteCredit}/${viewModel.aigcVoteCap} · 当前账号可免积分标记"
-                } else {
-                    "积分 ${viewModel.aigcVoteCredit}/${viewModel.aigcVoteCap} · 进度 ${viewModel.aigcVoteProgress}/20"
-                },
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Text(
-                text = if (viewModel.aigcEffectiveFlagCount > 0) {
-                    "已有 ${viewModel.aigcEffectiveFlagCount} 个有效标记"
-                } else {
-                    "当前还没有有效标记"
-                },
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            if (viewModel.aigcNamedVoters.isNotEmpty()) {
-                Text(
-                    text = "记名投票：" + viewModel.aigcNamedVoters.joinToString("、") { voter ->
-                        if (voter.creditBypassed) {
-                            "${voter.voterName}（免积分）"
-                        } else {
-                            voter.voterName
-                        }
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            viewModel.aigcVoteError?.let { error ->
-                Text(
-                    text = error,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                TextButton(onClick = onDismissRequest) {
-                    Text("关闭")
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Button(
-                    onClick = onSubmitRequest,
-                    enabled = canSubmitAigcFlag,
-                ) {
-                    Text(
-                        when {
-                            !viewModel.aigcVoteAvailable -> "未启用"
-                            viewModel.aigcFlagged -> "已标记"
-                            viewModel.aigcVoteLoading -> "提交中"
-                            viewModel.aigcVoterName.isBlank() -> "需登录"
-                            viewModel.aigcCreditBypassAvailable -> "免积分标记"
-                            viewModel.aigcVoteCredit <= 0 -> "积分不足"
-                            !viewModel.isAigcFlagEvidenceReady() -> "继续阅读"
-                            else -> "消耗 1 点标记"
-                        },
-                    )
-                }
-            }
-        }
-    }
-}
-
-/**
- * 文章附件中的视频入口渲染。
- *
- * 只处理知乎接口里 `attachment.type=video` 的情况，将视频 ID 和缩略图交给统一的视频卡片。普通正文视频仍由 Markdown/WebView 路径处理。
- */
-@Composable
-fun ArticleVideoAttachmentContent(attachment: JsonElement?) {
-    if (attachment
-            ?.jsonObject
-            ?.get("type")
-            ?.jsonPrimitive
-            ?.content == "video"
-    ) {
-        val videoId = attachment
-            .jsonObject["attachmentId"]
-            ?.jsonPrimitive
-            ?.content
-            ?.toLongOrNull()
-        if (videoId != null) {
-            val thumbnail = attachment
-                .jsonObject["video"]!!
-                .jsonObject["videoInfo"]!!
-                .jsonObject["thumbnail"]!!
-                .jsonPrimitive.content
-            RenderVideoBox(
-                videoId = videoId,
-                thumbnailUrl = thumbnail,
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ArticleActionsMenu(
-    article: Article,
-    viewModel: ArticleViewModel,
-    showMenu: Boolean,
-    onDismissRequest: () -> Unit,
-    onSummaryRequest: () -> Unit,
-    onAigcFlagRequest: () -> Unit,
-    onExportRequest: () -> Unit,
-    onSetImmersiveDoubleTap: () -> Unit = {},
-) {
-    val ttsState = rememberArticleTtsState()
-    val toggleSpeech = rememberArticleSpeechToggler()
-    val openArticleInBrowser = rememberArticleBrowserOpener()
-    val shareRuntime = rememberShareDialogRuntime()
-    val coroutineScope = rememberCoroutineScope()
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    @Composable
-    fun MenuActionButton(
-        icon: @Composable () -> Unit,
-        text: String,
-        enabled: Boolean = true,
-        backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant,
-        contentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-        onClick: () -> Unit,
-    ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(enabled = enabled) { onClick() },
-            shape = RoundedCornerShape(12.dp),
-            color = if (enabled) backgroundColor else backgroundColor.copy(alpha = 0.5f),
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(modifier = Modifier.size(24.dp)) {
-                    icon()
-                }
-                Spacer(modifier = Modifier.width(16.dp))
-                Text(
-                    text = text,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = if (enabled) contentColor else contentColor.copy(alpha = 0.5f),
-                )
-            }
-        }
-    }
-
-    @Composable
-    fun MenuActionButton(
-        icon: ImageVector,
-        text: String,
-        enabled: Boolean = true,
-        backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant,
-        contentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-        onClick: () -> Unit,
-    ) {
-        MenuActionButton(
-            icon = {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = contentColor,
-                )
-            },
-            text = text,
-            enabled = enabled,
-            backgroundColor = backgroundColor,
-            contentColor = contentColor,
-            onClick = onClick,
-        )
-    }
-
-    @Composable
-    fun Content() {
-        MenuActionButton(
-            icon = {
-                when (ttsState) {
-                    TtsState.Initializing, TtsState.Uninitialized -> CircularProgressIndicator(
-                        modifier = Modifier.height(24.dp),
-                        strokeWidth = 2.dp,
-                    )
-
-                    else -> Icon(
-                        if (ttsState.isSpeaking) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            },
-            text = if (ttsState.isSpeaking) "停止朗读" else "开始朗读",
-            enabled = ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing),
-            onClick = {
-                onDismissRequest()
-                if (ttsState.isSpeaking) {
-                    toggleSpeech(viewModel.title, viewModel.content)
-                } else if (ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)) {
-                    // 使用协程在后台处理文本提取，避免UI阻塞
-                    viewModel.viewModelScope.launch {
-                        try {
-                            // 在IO线程中处理文本提取
-                            withContext(Dispatchers.Default) {
-                                val textToRead = articleSpeechText(viewModel.title, viewModel.content)
-
-                                // 回到主线程执行TTS
-                                withContext(Dispatchers.Main) {
-                                    if (textToRead.isNotBlank()) {
-                                        toggleSpeech(viewModel.title, viewModel.content)
-                                    }
-                                }
-                            }
-                        } catch (e: Exception) {
-                            withContext(Dispatchers.Main) {
-                                Unit
-                            }
-                        }
-                    }
-                }
-            },
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // 分享按钮
-        MenuActionButton(
-            icon = Icons.Filled.Share,
-            text = "分享",
-            onClick = {
-                onDismissRequest()
-                shareRuntime.share(
-                    article,
-                    articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName),
-                )
-            },
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        MenuActionButton(
-            icon = Icons.AutoMirrored.Filled.Comment,
-            text = "总结本文",
-            onClick = {
-                onDismissRequest()
-                onSummaryRequest()
-            },
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        MenuActionButton(
-            icon = Icons.Filled.Flag,
-            text = "标记疑似 AIGC",
-            onClick = {
-                onDismissRequest()
-                onAigcFlagRequest()
-            },
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // 复制链接按钮
-        MenuActionButton(
-            icon = Icons.Filled.ContentCopy,
-            text = "复制链接",
-            onClick = {
-                onDismissRequest()
-                shareRuntime.copyLink(
-                    article,
-                    articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName),
-                )
-            },
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // 开关沉浸式
-        MenuActionButton(
-            icon = Icons.Filled.FilterCenterFocus,
-            text = "进入沉浸式",
-            onClick = {
-                onDismissRequest()
-                onSetImmersiveDoubleTap()
-            },
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // 导出按钮
-        MenuActionButton(
-            icon = Icons.Filled.GetApp,
-            text = "导出文章 (Markdown、图片、HTML、PDF)",
-            onClick = {
-                onDismissRequest()
-                onExportRequest()
-            },
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        MenuActionButton(
-            icon = Icons.Filled.Share,
-            text = "分享 Markdown 正文",
-            onClick = {
-                onDismissRequest()
-                shareRuntime.directShare(article, viewModel.convertToMarkdown())
-            },
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        MenuActionButton(
-            icon = Icons.Outlined.DesktopWindows,
-            text = "在电脑中打开（我计划使用浏览器插件实现，还在写，点击后请手动前往收藏夹打开）",
-            onClick = {
-                coroutineScope.launch {
-                    openArticleInBrowser(article)
-                    onDismissRequest()
-                }
-            },
-        )
-
-        // 底部安全区域
-        Spacer(modifier = Modifier.height(16.dp))
-    }
-
-    if (showMenu) {
-        MyModalBottomSheet(
-            onDismissRequest = onDismissRequest,
-            sheetState = sheetState,
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-            ) {
-                Content()
-            }
-        }
-    }
-}
 
 /**
  * 文章/回答详情页。
@@ -1846,195 +1258,3 @@ fun ArticleScreen(
         },
     )
 }
-
-/**
- * 渲染缓存的回答完整内容，用于水平滑动预览。
- *
- * 内容来自 [CachedAnswerContent]，包含标题、作者信息、投票/评论计数和 HTML 正文。正文使用 Compose Markdown，
- * 因此这里是轻量预览，不持有 WebView 或答案切换共享状态。
- */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun CachedAnswerPreview(
-    cached: CachedAnswerContent,
-) {
-    Scaffold(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp)
-            .background(
-                color = MaterialTheme.colorScheme.background,
-                shape = RectangleShape,
-            ),
-        topBar = {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.background),
-            ) {
-                Text(
-                    text = cached.title,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    lineHeight = 32.sp,
-                    modifier = Modifier.padding(bottom = 8.dp),
-                )
-            }
-        },
-        bottomBar = {
-            Column {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(36.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(50))
-                            .background(color = Color(0xFF40B6F6)),
-                        horizontalArrangement = Arrangement.Start,
-                    ) {
-                        Button(
-                            onClick = {},
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF40B6F6),
-                                contentColor = Color.Black,
-                            ),
-                            shape = RectangleShape,
-                            contentPadding = PaddingValues(horizontal = 0.dp),
-                        ) {
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Icon(painterResource(Res.drawable.ic_vote_up_24dp), "赞同")
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(text = cached.voteUpCount.toString())
-                        }
-                    }
-                    Button(
-                        onClick = {},
-                        contentPadding = PaddingValues(horizontal = 8.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        ),
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(text = "${cached.commentCount}")
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-        },
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(
-                    start = innerPadding.calculateStartPadding(LocalLayoutDirection.current),
-                    end = innerPadding.calculateEndPadding(LocalLayoutDirection.current),
-                ),
-        ) {
-            Spacer(modifier = Modifier.height(innerPadding.calculateTopPadding()))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                if (cached.authorAvatarUrl.isNotEmpty()) {
-                    AsyncImage(
-                        model = cached.authorAvatarUrl,
-                        contentDescription = "作者头像",
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape),
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(Color.LightGray),
-                    )
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = cached.authorName,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false),
-                        )
-                        if (cached.authorBadge != null) {
-                            Spacer(modifier = Modifier.width(4.dp))
-                            AuthorBadge(
-                                badge = cached.authorBadge,
-                            )
-                        }
-                    }
-                    if (cached.authorBio.isNotEmpty()) {
-                        Text(
-                            text = cached.authorBio,
-                            fontSize = 12.sp,
-                            color = Color.Gray,
-                        )
-                    }
-                }
-            }
-            if (cached.endorsements.isNotEmpty()) {
-                Spacer(Modifier.height(10.dp))
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    cached.endorsements.forEach { endorsement ->
-                        AnswerEndorsementChip(endorsement)
-                    }
-                }
-            }
-            if (cached.content.isNotEmpty()) {
-                Spacer(Modifier.height(10.dp))
-                RenderMarkdown(
-                    html = cached.content,
-                    modifier = Modifier,
-                    selectable = true,
-                    enableScroll = false,
-                    header = {},
-                    footer = {},
-                )
-            }
-            Spacer(modifier = Modifier.height((16 + 36).dp))
-        }
-    }
-}
-
-@Serializable
-data class Collection(
-    val id: String,
-    val isFavorited: Boolean = false,
-    val type: String = "collection",
-    val title: String = "",
-    val isPublic: Boolean = false,
-    val url: String = "",
-    val description: String = "",
-    val followerCount: Int = 0,
-    val answerCount: Int = 0,
-    val itemCount: Int = 0,
-    val likeCount: Int = 0,
-    val viewCount: Int = 0,
-    val commentCount: Int = 0,
-    val isFollowing: Boolean = false,
-    val isLiking: Boolean = false,
-    val createdTime: Long = 0L,
-    val updatedTime: Long = 0L,
-    val creator: Person? = null,
-    val isDefault: Boolean = false,
-)
-
-@Serializable
-data class CollectionResponse(
-    val data: List<Collection>,
-    val paging: ZhihuPaging,
-)

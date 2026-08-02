@@ -20,7 +20,7 @@ package com.github.zly2006.zhihu.viewmodel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.github.zly2006.zhihu.ui.Collection
+import com.github.zly2006.zhihu.data.Collection
 import io.ktor.client.call.body
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType

@@ -26,6 +26,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.github.zly2006.zhihu.data.Collection
+import com.github.zly2006.zhihu.data.CollectionResponse
+import com.github.zly2006.zhihu.data.VoteUpState
 import com.github.zly2006.zhihu.markdown.htmlToMdAst
 import com.github.zly2006.zhihu.markdown.toMarkdown
 import com.github.zly2006.zhihu.navigation.Article
@@ -56,9 +59,6 @@ import com.github.zly2006.zhihu.shared.util.mergeSummaryChunk
 import com.github.zly2006.zhihu.shared.util.parseZhidaSsePayload
 import com.github.zly2006.zhihu.shared.util.serializeZhidaSummaryRequest
 import com.github.zly2006.zhihu.shared.util.twoDigitString
-import com.github.zly2006.zhihu.ui.Collection
-import com.github.zly2006.zhihu.ui.CollectionResponse
-import com.github.zly2006.zhihu.ui.VoteUpState
 import com.github.zly2006.zhihu.util.ArticleExportComment
 import com.github.zly2006.zhihu.util.buildArticleExportCommentsHtml
 import com.github.zly2006.zhihu.util.buildArticleExportFileName
@@ -269,12 +269,7 @@ class ArticleViewModel(
                             votersTotal = answer.voteupCount
                             commentCount = answer.commentCount
                             questionId = answer.question.id
-                            voteUpState = when (answer.reaction?.relation?.vote) {
-                                "UP" -> VoteUpState.Up
-                                "DOWN" -> VoteUpState.Down
-                                "Neutral" -> VoteUpState.Neutral
-                                else -> VoteUpState.Neutral
-                            }
+                            voteUpState = VoteUpState.from(answer.reaction?.relation?.vote)
                             updatedAt = answer.updatedTime
                             createdAt = answer.createdTime
                             ipInfo = answer.ipInfo
@@ -345,12 +340,7 @@ class ArticleViewModel(
                             authorBio = article.author.headline
                             authorAvatarSrc = article.author.avatarUrl
                             authorBadge = article.author.badgeV2.officialBadge()
-                            voteUpState = when (article.reaction?.relation?.vote) {
-                                "UP" -> VoteUpState.Up
-                                "DOWN" -> VoteUpState.Down
-                                "Neutral" -> VoteUpState.Neutral
-                                else -> VoteUpState.Neutral
-                            }
+                            voteUpState = VoteUpState.from(article.reaction?.relation?.vote)
                             updatedAt = article.updated
                             createdAt = article.created
                             ipInfo = article.ipInfo

@@ -15,16 +15,15 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.github.zly2006.zhihu.ui
+package com.github.zly2006.zhihu.ui.article
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -33,70 +32,45 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 @Stable
-internal class ArticleBottomBarState {
+internal class ArticleTopBarState {
     val offset = Animatable(0f)
     var heightPx by mutableFloatStateOf(0f)
-    var isScrollingUp by mutableStateOf(false)
-    var showSlot by mutableStateOf(false)
-        internal set
-    internal var navigationBarHeightPx by mutableFloatStateOf(0f)
-    internal var previousDirectionScrollValue by mutableIntStateOf(0)
-    internal var previousOffsetScrollValue by mutableIntStateOf(0)
+    internal var previousScrollValue by mutableIntStateOf(0)
     internal var isSnapping by mutableStateOf(false)
-
-    val obscuredHeightPx by derivedStateOf {
-        val visibleHeight = if (showSlot) {
-            (heightPx - offset.value).coerceIn(0f, heightPx)
-        } else {
-            0f
-        }
-        navigationBarHeightPx + visibleHeight
-    }
 }
 
 @Composable
-internal fun rememberArticleBottomBarState(
+internal fun rememberArticleTopBarState(
     scrollState: ScrollState,
     autoHide: Boolean,
-    scrollDeltaThreshold: Float,
-    showSlot: Boolean,
-    navigationBarHeightPx: Float,
-): ArticleBottomBarState {
-    val state = remember { ArticleBottomBarState() }
+): ArticleTopBarState {
+    val state = remember { ArticleTopBarState() }
 
-    SideEffect {
-        state.showSlot = showSlot
-        state.navigationBarHeightPx = navigationBarHeightPx
-    }
     LaunchedEffect(autoHide) {
         if (!autoHide) state.offset.snapTo(0f)
     }
     LaunchedEffect(scrollState, autoHide) {
         snapshotFlow { scrollState.value }.collectLatest { currentScroll ->
-            if (abs(currentScroll - state.previousDirectionScrollValue) > scrollDeltaThreshold) {
-                state.isScrollingUp = currentScroll < state.previousDirectionScrollValue
-                state.previousDirectionScrollValue = currentScroll
-            }
-
             if (!state.isSnapping) {
-                val delta = currentScroll - state.previousOffsetScrollValue
+                val delta = currentScroll - state.previousScrollValue
                 if (currentScroll == 0) {
                     state.offset.snapTo(0f)
                 } else if (autoHide && state.heightPx > 0f) {
-                    val deltaBasedOffset = (state.offset.value + delta).coerceIn(0f, state.heightPx)
+                    val deltaBasedOffset = (state.offset.value - delta).coerceIn(-state.heightPx, 0f)
                     val distanceFromBottom = (scrollState.maxValue - currentScroll).coerceAtLeast(0)
                     if (distanceFromBottom < state.heightPx.toInt()) {
-                        val distanceBasedOffset = distanceFromBottom.toFloat().coerceIn(0f, state.heightPx)
-                        state.offset.snapTo(minOf(distanceBasedOffset, deltaBasedOffset))
+                        val distanceBasedOffset = (-distanceFromBottom.toFloat()).coerceIn(-state.heightPx, 0f)
+                        state.offset.snapTo(maxOf(distanceBasedOffset, deltaBasedOffset))
                     } else {
                         state.offset.snapTo(deltaBasedOffset)
                     }
                 }
             }
-            state.previousOffsetScrollValue = currentScroll
+            state.previousScrollValue = currentScroll
         }
     }
 
@@ -104,14 +78,20 @@ internal fun rememberArticleBottomBarState(
         snapshotFlow { scrollState.isScrollInProgress }.collectLatest { isScrollInProgress ->
             if (isScrollInProgress) return@collectLatest
             val target = if (autoHide && state.heightPx > 0f) {
-                if (state.offset.value > state.heightPx / 2) state.heightPx else 0f
+                if (abs(state.offset.value) > state.heightPx / 2) -state.heightPx else 0f
             } else {
                 state.offset.value
             }
+            val scrollDelta = if (scrollState.value <= state.heightPx) state.offset.value - target else 0f
             if (target != state.offset.value) {
                 try {
                     state.isSnapping = true
-                    state.offset.animateTo(target, tween(150))
+                    kotlinx.coroutines.coroutineScope {
+                        launch { state.offset.animateTo(target, tween(150)) }
+                        if (scrollDelta != 0f) {
+                            launch { scrollState.animateScrollBy(scrollDelta, tween(150)) }
+                        }
+                    }
                 } finally {
                     state.isSnapping = false
                 }

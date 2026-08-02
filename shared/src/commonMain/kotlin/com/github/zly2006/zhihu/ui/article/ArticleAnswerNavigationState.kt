@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.github.zly2006.zhihu.ui
+package com.github.zly2006.zhihu.ui.article
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
@@ -31,6 +31,9 @@ import com.github.zly2006.zhihu.navigation.AnswerNavigator
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.Navigator
+import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
+import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
+import com.github.zly2006.zhihu.ui.hasRoute
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch

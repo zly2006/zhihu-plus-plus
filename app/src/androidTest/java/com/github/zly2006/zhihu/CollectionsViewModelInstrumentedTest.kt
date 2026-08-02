@@ -18,7 +18,7 @@
 package com.github.zly2006.zhihu
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.github.zly2006.zhihu.ui.Collection
+import com.github.zly2006.zhihu.data.Collection
 import com.github.zly2006.zhihu.viewmodel.CollectionsViewModel
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import io.ktor.client.HttpClient
