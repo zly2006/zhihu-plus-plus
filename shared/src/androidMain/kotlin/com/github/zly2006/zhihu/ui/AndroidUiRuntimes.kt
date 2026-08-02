@@ -42,17 +42,13 @@ import androidx.core.net.toUri
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.FeedDisplayItem
-import com.github.zly2006.zhihu.data.RecommendationMode
 import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.platform.UserMessageSink
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.article.prepareContentDocument
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
-import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.util.EmojiManager
 import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.util.OpenInBrowser
@@ -63,7 +59,6 @@ import com.github.zly2006.zhihu.viewmodel.filter.encodeBlocklistBackup
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.filter.importBlocklistBackupFromJsonText
 import com.github.zly2006.zhihu.viewmodel.notificationEnvironment
-import io.ktor.client.HttpClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -109,14 +104,6 @@ actual fun rememberAccountQrLoginRequester(): () -> Unit {
 @Composable
 actual fun rememberAppVersionInfo(): String = LocalContext.current.zhihuVersionInfo()
 
-@Composable
-actual fun rememberMainTabSelector(): (TopLevelDestination) -> Unit {
-    val context = LocalContext.current
-    return remember(context) {
-        { destination -> context.navigateMainTab(destination) }
-    }
-}
-
 fun AccountData.Data.toAccountSettingsAccountState(): AccountSettingsAccountState = AccountSettingsAccountState(
     login = login,
     username = username,
@@ -138,24 +125,6 @@ private fun Context.zhihuVersionInfo(): String {
         ?: if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) "debug" else "release"
     val gitHash = metaData?.getString("com.github.zly2006.zhihu.GIT_HASH") ?: "unknown"
     return "$versionName $buildType, $gitHash"
-}
-
-private fun Context.navigateMainTab(destination: TopLevelDestination) {
-    val activity = findActivity() ?: return
-    activity
-        .javaClass
-        .methods
-        .firstOrNull { method ->
-            method.name == "navigateMainTab" &&
-                method.parameterTypes.size == 1 &&
-                method.parameterTypes.first().isAssignableFrom(destination::class.java)
-        }?.invoke(activity, destination)
-}
-
-private fun Context.findActivity(): android.app.Activity? = when (this) {
-    is android.app.Activity -> this
-    is ContextWrapper -> baseContext.findActivity()
-    else -> null
 }
 
 @Composable
@@ -257,60 +226,9 @@ actual fun ArticleWebViewContent(
 actual fun Modifier.articleMarkdownSelectionWorkaround(): Modifier = fuckHonorService()
 
 @Composable
-actual fun rememberHomeAccountState(): HomeAccountState {
-    val accountData by AccountData.asState()
-    return HomeAccountState(
-        isLoggedIn = accountData.login,
-        avatarUrl = accountData.self?.avatarUrl,
-    )
-}
-
-@Composable
-actual fun rememberHomeUpdateAnnouncement(): HomeUpdateAnnouncement? {
-    val updateState by UpdateManager.updateState.collectAsState()
-    return (updateState as? UpdateManager.UpdateState.UpdateAvailable)?.let {
-        HomeUpdateAnnouncement(
-            version = it.version.toString(),
-            isNightly = it.isNightly,
-        )
-    }
-}
-
-@Composable
 actual fun rememberHomeIsDebuggable(): Boolean {
     val context = LocalContext.current
     return (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
-}
-
-@Composable
-actual fun rememberHomeFeedStartupCache(recommendationMode: RecommendationMode): HomeFeedStartupCache {
-    val context = LocalContext.current
-    val startupCacheFile = remember(context, recommendationMode) {
-        File(context.filesDir, homeFeedStartupCacheFileName(recommendationMode))
-    }
-    return remember(startupCacheFile) {
-        HomeFeedStartupCache(
-            readHomeFeedStartupCache = {
-                withContext(Dispatchers.IO) {
-                    if (startupCacheFile.exists()) {
-                        decodeHomeFeedStartupSnapshot(startupCacheFile.readText())
-                    } else {
-                        emptyList()
-                    }
-                }
-            },
-            writeHomeFeedStartupCache = { items: List<FeedDisplayItem> ->
-                withContext(Dispatchers.IO) {
-                    val serialized = encodeHomeFeedStartupSnapshot(items)
-                    if (serialized != null) {
-                        runCatching {
-                            startupCacheFile.writeText(serialized)
-                        }
-                    }
-                }
-            },
-        )
-    }
 }
 
 @Composable
@@ -466,9 +384,6 @@ actual fun QuestionDetailWebViewContent(
 }
 
 actual fun supportsQuestionDetailWebView(): Boolean = true
-
-@Composable
-actual fun rememberZhihuHttpClient(): HttpClient = AccountData.httpClient(LocalContext.current)
 
 actual fun Modifier.questionSelectionWorkaround(): Modifier = fuckHonorService()
 

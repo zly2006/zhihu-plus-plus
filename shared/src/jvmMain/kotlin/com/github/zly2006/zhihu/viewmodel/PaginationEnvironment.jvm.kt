@@ -148,6 +148,19 @@ class DesktopPaginationEnvironment(
         store.clear()
     }
 
+    override fun currentAccountId(): String = store
+        .load()
+        .profile
+        ?.id
+        .orEmpty()
+
+    override suspend fun verifyLogin(cookies: Map<String, String>): Boolean =
+        store.verifyAndSave(cookies.toMutableMap())
+
+    override fun saveCookies(cookies: Map<String, String>) {
+        store.save(store.load().copy(login = true, cookies = cookies.toMutableMap()))
+    }
+
     override fun logout() {
         homeFeedStartupCacheFileNames().forEach { fileName ->
             desktopZhihuDataFile(fileName).delete()

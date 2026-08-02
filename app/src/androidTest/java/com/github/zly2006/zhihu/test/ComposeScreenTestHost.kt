@@ -33,6 +33,7 @@ import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Navigator
+import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.AndroidZhihuMain
 import java.util.concurrent.CopyOnWriteArrayList
@@ -43,22 +44,28 @@ typealias MainActivityComposeRule =
 
 class RecordingNavigator {
     private val navigateEvents = CopyOnWriteArrayList<NavDestination>()
+    private val topLevelNavigateEvents = CopyOnWriteArrayList<TopLevelDestination>()
     private val backEvents = AtomicInteger(0)
 
     val destinations: List<NavDestination>
         get() = navigateEvents.toList()
+
+    val topLevelDestinations: List<TopLevelDestination>
+        get() = topLevelNavigateEvents.toList()
 
     val backCount: Int
         get() = backEvents.get()
 
     fun reset() {
         navigateEvents.clear()
+        topLevelNavigateEvents.clear()
         backEvents.set(0)
     }
 
     fun asNavigator(): Navigator = Navigator(
         onNavigate = { destination -> navigateEvents += destination },
         onNavigateBack = { backEvents.incrementAndGet() },
+        onNavigateTopLevel = { destination -> topLevelNavigateEvents += destination },
     )
 }
 

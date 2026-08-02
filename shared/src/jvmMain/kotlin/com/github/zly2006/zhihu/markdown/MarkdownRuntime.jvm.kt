@@ -42,7 +42,7 @@ private val LM_MATH_URLS = listOf(
 )
 
 @Composable
-actual fun rememberMarkdownRuntime(): MarkdownRuntime {
+actual fun rememberMarkdownMathFont(): MathFont? {
     val store = remember { DesktopAccountStore() }
     var mathFont by remember { mutableStateOf<MathFont?>(null) }
 
@@ -52,11 +52,7 @@ actual fun rememberMarkdownRuntime(): MarkdownRuntime {
         }.getOrNull()
     }
 
-    return remember(mathFont) {
-        object : MarkdownRuntime {
-            override val mathFont: MathFont? = mathFont
-        }
-    }
+    return mathFont
 }
 
 @Composable

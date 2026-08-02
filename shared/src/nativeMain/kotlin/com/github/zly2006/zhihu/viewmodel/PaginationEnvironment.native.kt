@@ -41,6 +41,10 @@ private class IosPaginationEnvironment : PaginationEnvironment {
 
     override suspend fun fetchJson(url: String, include: String): JsonObject? = null // TODO: iOS JSON 数据获取
 
+    override suspend fun signedGetText(url: String): String = "iOS 暂不支持"
+
+    override suspend fun refreshToken() = Unit // TODO: iOS token 刷新
+
     override fun logDecodeFailure(tag: String?, item: JsonElement, error: Exception) = Unit // TODO: iOS 解码失败日志
 
     override suspend fun handleFetchFailure(tag: String?, error: Exception) = Unit // TODO: iOS 获取失败处理

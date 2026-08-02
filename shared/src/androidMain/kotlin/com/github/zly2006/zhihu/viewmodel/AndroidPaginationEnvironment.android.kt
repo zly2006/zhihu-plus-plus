@@ -62,7 +62,6 @@ import com.github.zly2006.zhihu.util.buildOfflineArticleExportHtml
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.exportCollectionItemsToZip
 import com.github.zly2006.zhihu.util.saveBitmapToGallery
-import com.github.zly2006.zhihu.viewmodel.filter.AndroidContentFilterRuntime
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeywordService
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedQuestionAuthor
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedUser
@@ -71,6 +70,7 @@ import com.github.zly2006.zhihu.viewmodel.filter.ContentType
 import com.github.zly2006.zhihu.viewmodel.filter.FeedContentFilterPipeline
 import com.github.zly2006.zhihu.viewmodel.filter.FeedDisplayFilterPipeline
 import com.github.zly2006.zhihu.viewmodel.filter.ForegroundReadFilterPipeline
+import com.github.zly2006.zhihu.viewmodel.filter.androidKeywordSemanticMatcher
 import com.github.zly2006.zhihu.viewmodel.filter.contentFilterSettings
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
@@ -146,6 +146,31 @@ open class SharedAndroidPaginationEnvironment(
 
     override fun clearAccountSession() {
         AccountData.delete(context)
+    }
+
+    override fun currentAccountId(): String = AccountData.data.self
+        ?.id
+        .orEmpty()
+
+    override fun identityClient() = AccountData.identityClient(context.applicationContext)
+
+    override fun restartApplication() {
+        val activity = context as? Activity ?: return
+        val launchIntent = activity.packageManager
+            .getLaunchIntentForPackage(activity.packageName)
+            ?: error("无法获取应用启动入口")
+        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        activity.startActivity(launchIntent)
+    }
+
+    override suspend fun verifyLogin(cookies: Map<String, String>): Boolean =
+        AccountData.verifyLogin(context, cookies)
+
+    override fun saveCookies(cookies: Map<String, String>) {
+        AccountData.saveData(
+            context,
+            AccountData.data.copy(cookies = cookies.toMutableMap(), login = true),
+        )
     }
 
     override fun logout() {
@@ -375,7 +400,7 @@ open class SharedAndroidPaginationEnvironment(
                 blockedKeywordService = BlockedKeywordService(
                     keywordDao = filterDatabase.blockedKeywordDao(),
                     recordDao = filterDatabase.blockedContentRecordDao(),
-                    semanticMatcher = AndroidContentFilterRuntime.semanticMatcher,
+                    semanticMatcher = androidKeywordSemanticMatcher,
                 ),
                 onNlpBlocked = { blockedThisRound ->
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {

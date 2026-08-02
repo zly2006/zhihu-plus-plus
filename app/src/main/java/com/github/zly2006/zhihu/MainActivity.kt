@@ -93,8 +93,9 @@ import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import com.github.zly2006.zhihu.util.telemetry
 import com.github.zly2006.zhihu.viewmodel.ArticleAnswerSwitchData
-import com.github.zly2006.zhihu.viewmodel.filter.AndroidContentFilterRuntime
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterManager
+import com.github.zly2006.zhihu.viewmodel.filter.androidKeywordSemanticMatcher
+import com.github.zly2006.zhihu.viewmodel.filter.androidKeywordWeightExtractor
 import com.github.zly2006.zhihu.viewmodel.filter.contentFilterSettings
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.CoroutineScope
@@ -198,8 +199,8 @@ class MainActivity :
         history = HistoryStorage(this)
         AccountData.loadData(this)
         AndroidThemeSettings.initialize(this)
-        AndroidContentFilterRuntime.semanticMatcher = NlpServiceKeywordSemanticMatcher
-        AndroidContentFilterRuntime.keywordWeightExtractor = KeywordWeightExtractor { text, topN ->
+        androidKeywordSemanticMatcher = NlpServiceKeywordSemanticMatcher
+        androidKeywordWeightExtractor = KeywordWeightExtractor { text, topN ->
             NLPService.extractKeywordsWithWeight(text, topN)
         }
         getContentFilterDatabase(this)
@@ -479,7 +480,7 @@ class MainActivity :
 
     fun navigate(route: NavDestination, popup: Boolean = false) {
         if (route is CommentHolder) {
-            preparePendingComment(route)
+            pendingCommentHolder = route
             navigate(route.article, popup)
             return
         }
@@ -541,10 +542,6 @@ class MainActivity :
         }
     }
 
-    internal fun preparePendingComment(holder: CommentHolder) {
-        pendingCommentHolder = holder
-    }
-
     override fun consumePendingContentOpenFrom(destination: NavDestination): String {
         val identity = ContentOpenEventSupport.toTrackedContentIdentity(destination) ?: return ContentOpenFrom.UNKNOWN
         if (identity != pendingContentOpenIdentity) {
@@ -588,11 +585,6 @@ class MainActivity :
                 saveState = true
             }
         }
-    }
-
-    fun navigateMainTab(destination: TopLevelDestination) {
-        mainTabNavigationTarget = destination
-        navigateToMainTabs()
     }
 
     fun setCurrentMainTabOpenFrom(openFrom: String?) {

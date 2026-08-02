@@ -22,34 +22,14 @@ import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.platform.rememberPlainTextClipboard
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 
-@Composable
-actual fun rememberFeedBlockActions(): FeedBlockActions = remember {
-    FeedBlockActions(
-        handleBlockUser = { _, _, _ -> },
-        handleBlockQuestionAuthor = { _, _, _ -> },
-        handleBlockTopic = { _, _, _ -> },
-        handleBlockByKeywords = { _, _, _ -> },
-    )
-} // TODO: iOS Feed 屏蔽操作
+actual suspend fun extractFeedKeywords(
+    title: String,
+    excerpt: String?,
+): List<com.github.zly2006.zhihu.nlp.KeywordWithWeight> = emptyList() // TODO: iOS 关键词提取
 
 @Composable
-actual fun rememberBlockByKeywordsRuntime(): BlockByKeywordsRuntime = remember {
-    BlockByKeywordsRuntime(
-        extractKeywords = { _, _ -> emptyList() },
-        addNlpPhrase = { },
-    )
-} // TODO: iOS 关键词屏蔽运行时
-
-@Composable
-actual fun rememberShareDialogRuntime(): ShareDialogRuntime {
+actual fun rememberShareActionExecutor(): ShareActionExecutor {
     val copyPlainText = rememberPlainTextClipboard()
     val userMessages = rememberUserMessageSink()
-    return remember(copyPlainText, userMessages) { clipboardShareDialogRuntime(copyPlainText, userMessages) }
+    return remember(copyPlainText, userMessages) { clipboardShareActionExecutor(copyPlainText, userMessages) }
 }
-
-@Composable
-actual fun rememberSegmentedTextRuntime(): SegmentedTextRuntime = remember {
-    SegmentedTextRuntime(
-        toggleSegmentLike = { error("Segment like not available on iOS") },
-    )
-} // TODO: iOS 分段文本运行时

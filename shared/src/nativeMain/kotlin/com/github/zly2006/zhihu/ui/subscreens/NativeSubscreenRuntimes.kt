@@ -39,18 +39,8 @@ actual fun rememberSystemUpdateRuntime(): SystemUpdateRuntime = remember {
 } // TODO: iOS 更新检查实现
 
 @Composable
-actual fun rememberDeveloperSettingsRuntime(): DeveloperSettingsRuntime = remember {
-    DeveloperSettingsRuntime(
-        cookies = { emptyMap() }, // TODO: iOS cookies 获取
-        networkStatus = { "网络状态：iOS 端使用系统网络" },
-        powerSaveModeText = { null },
-        runtimeInfo = { DeveloperRuntimeInfo() },
-        verifyLogin = { false }, // TODO: iOS 登录验证
-        refreshToken = { }, // TODO: iOS token 刷新
-        saveCookies = { }, // TODO: iOS cookies 保存
-        signedGet = { "iOS 暂不支持" }, // TODO: iOS signed GET
-    )
-}
+actual fun rememberDeveloperRuntimeInfo(): DeveloperRuntimeInfo =
+    DeveloperRuntimeInfo(networkStatus = "网络状态：iOS 端使用系统网络")
 
 @Composable
 actual fun rememberOpenSourceLicensesLibraries(): Libs = remember { Libs(emptyList(), emptySet()) } // TODO: iOS 开源许可证加载

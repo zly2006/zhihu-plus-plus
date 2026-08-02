@@ -21,17 +21,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.desktop.openDesktopExternalUrl
-import com.github.zly2006.zhihu.desktop.signedWithResponse
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.updater.SchematicVersion
 import com.github.zly2006.zhihu.updater.extractGithubReleaseNotes
 import com.github.zly2006.zhihu.updater.fetchLatestZhihuRelease
 import com.github.zly2006.zhihu.updater.fetchNightlyZhihuRelease
-import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import com.mikepenz.aboutlibraries.Libs
 import io.ktor.client.HttpClient
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.HttpMethod
 import kotlinx.coroutines.flow.MutableStateFlow
 import java.io.File
 import java.util.Properties
@@ -166,44 +162,8 @@ private fun readDesktopVersionFromGradleProperties(): String? {
 }
 
 @Composable
-actual fun rememberDeveloperSettingsRuntime(): DeveloperSettingsRuntime {
-    val store = remember { DesktopAccountStore() }
-    return remember(store) {
-        DeveloperSettingsRuntime(
-            cookies = { store.load().cookies },
-            networkStatus = { "网络状态：桌面端使用系统网络" },
-            powerSaveModeText = { null },
-            runtimeInfo = { DeveloperRuntimeInfo() },
-            verifyLogin = { cookies ->
-                store.verifyAndSave(cookies.toMutableMap())
-            },
-            refreshToken = {
-                val client = store.httpClient()
-                ZhihuCredentialRefresher.refreshZhihuToken(
-                    ZhihuCredentialRefresher.fetchRefreshToken(client),
-                    client,
-                )
-            },
-            saveCookies = { cookies ->
-                val current = store.load()
-                store.save(
-                    current.copy(
-                        login = true,
-                        cookies = cookies.toMutableMap(),
-                    ),
-                )
-            },
-            signedGet = { url ->
-                store.signedWithResponse(
-                    url = url,
-                    block = { method = HttpMethod.Get },
-                ) { response ->
-                    response.bodyAsText()
-                }
-            },
-        )
-    }
-}
+actual fun rememberDeveloperRuntimeInfo(): DeveloperRuntimeInfo =
+    DeveloperRuntimeInfo(networkStatus = "网络状态：桌面端使用系统网络")
 
 @Composable
 actual fun rememberOpenSourceLicensesLibraries(): Libs = remember {

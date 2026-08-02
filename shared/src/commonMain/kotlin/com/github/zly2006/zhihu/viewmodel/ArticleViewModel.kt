@@ -26,8 +26,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.github.zly2006.zhihu.data.AigcVoteFlagResponse
-import com.github.zly2006.zhihu.data.AigcVoteFlagStatusResponse
 import com.github.zly2006.zhihu.data.AigcVoteFlagSubmission
 import com.github.zly2006.zhihu.data.AigcVoteNamedVoter
 import com.github.zly2006.zhihu.data.AigcVoteReadEvent
@@ -637,13 +635,19 @@ class ArticleViewModel(
             aigcVoteLoading = true
             aigcVoteError = null
             try {
-                applyAigcStatus(
-                    client.getFlagStatus(
-                        contentType = aigcContentType(),
-                        contentId = article.id.toString(),
-                        voter = voter,
-                    ),
+                val response = client.getFlagStatus(
+                    contentType = aigcContentType(),
+                    contentId = article.id.toString(),
+                    voter = voter,
                 )
+                aigcFlagged = response.myFlagged
+                aigcVoteCredit = response.credit
+                aigcVoteProgress = response.progress
+                aigcVoteCap = response.cap
+                aigcCreditBypassAvailable = response.creditBypassAvailable
+                aigcEffectiveFlagCount = response.effectiveFlagCount
+                aigcNamedVoters = response.voters
+                zhihuaiAigcSupportVoterCount = response.externalSource?.voterCount ?: 0
             } catch (e: Exception) {
                 Log.e("ArticleViewModel", "Failed to load AIGC vote status", e)
                 aigcVoteError = e.message ?: "AIGC 投票状态加载失败"
@@ -723,20 +727,25 @@ class ArticleViewModel(
             aigcVoteLoading = true
             aigcVoteError = null
             try {
-                applyAigcFlagResponse(
-                    client.submitFlag(
-                        AigcVoteFlagSubmission(
-                            contentType = aigcContentType(),
-                            contentId = article.id.toString(),
-                            voter = voter,
-                            title = title,
-                            authorHash = currentAuthorHash(),
-                            contentHtml = content,
-                            contentUpdatedAt = currentContentUpdatedAt(),
-                            evidence = currentAigcReadEvidence(),
-                        ),
+                val response = client.submitFlag(
+                    AigcVoteFlagSubmission(
+                        contentType = aigcContentType(),
+                        contentId = article.id.toString(),
+                        voter = voter,
+                        title = title,
+                        authorHash = currentAuthorHash(),
+                        contentHtml = content,
+                        contentUpdatedAt = currentContentUpdatedAt(),
+                        evidence = currentAigcReadEvidence(),
                     ),
                 )
+                aigcFlagged = response.myFlagged
+                aigcVoteCredit = response.credit
+                aigcCreditBypassAvailable = response.creditBypassAvailable
+                aigcEffectiveFlagCount = response.effectiveFlagCount
+                aigcCurrentVersionFlagCount = response.currentVersionFlagCount
+                aigcNamedVoters = response.voters
+                zhihuaiAigcSupportVoterCount = response.externalSource?.voterCount ?: 0
                 userMessages.showShortMessage("已标记疑似 AIGC")
             } catch (e: Exception) {
                 Log.e("ArticleViewModel", "AIGC flag failed", e)
@@ -746,27 +755,6 @@ class ArticleViewModel(
                 aigcVoteLoading = false
             }
         }
-    }
-
-    private fun applyAigcStatus(response: AigcVoteFlagStatusResponse) {
-        aigcFlagged = response.myFlagged
-        aigcVoteCredit = response.credit
-        aigcVoteProgress = response.progress
-        aigcVoteCap = response.cap
-        aigcCreditBypassAvailable = response.creditBypassAvailable
-        aigcEffectiveFlagCount = response.effectiveFlagCount
-        aigcNamedVoters = response.voters
-        zhihuaiAigcSupportVoterCount = response.externalSource?.voterCount ?: 0
-    }
-
-    private fun applyAigcFlagResponse(response: AigcVoteFlagResponse) {
-        aigcFlagged = response.myFlagged
-        aigcVoteCredit = response.credit
-        aigcCreditBypassAvailable = response.creditBypassAvailable
-        aigcEffectiveFlagCount = response.effectiveFlagCount
-        aigcCurrentVersionFlagCount = response.currentVersionFlagCount
-        aigcNamedVoters = response.voters
-        zhihuaiAigcSupportVoterCount = response.externalSource?.voterCount ?: 0
     }
 
     private fun currentAigcReadEvidence(): AigcVoteReadEvidence {

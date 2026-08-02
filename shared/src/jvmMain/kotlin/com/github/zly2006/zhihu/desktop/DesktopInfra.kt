@@ -40,7 +40,6 @@ import com.github.zly2006.zhihu.account.ZhihuAccountRepository
 import com.github.zly2006.zhihu.account.ZhihuAccountSession
 import com.github.zly2006.zhihu.account.ZhihuAccountSessionStore
 import com.github.zly2006.zhihu.data.executeZhihuAuthenticatedRequest
-import com.github.zly2006.zhihu.data.fetchZhihuAuthenticatedJson
 import com.github.zly2006.zhihu.data.installZhihuCommonClientConfig
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.theme.ZhihuTheme
@@ -60,7 +59,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
 import java.awt.Desktop
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
@@ -168,22 +166,6 @@ private class PathAccountSessionStore(
         accountFile.deleteIfExists()
     }
 }
-
-/**
- * 签名后发起认证请求的便捷方法。
- * 内部自动加载账号 cookies 并签名，对应 Android 端 fetchGet/fetchPost 模式。
- */
-suspend fun DesktopAccountStore.signedFetchJson(
-    url: String,
-    block: suspend HttpRequestBuilder.() -> Unit = {},
-): JsonObject? =
-    fetchZhihuAuthenticatedJson(
-        client = httpClient(),
-        url = url,
-    ) {
-        signZhihuFetchRequest(load().cookies)
-        block()
-    }
 
 /**
  * 签名后发起认证请求并返回响应的便捷方法。

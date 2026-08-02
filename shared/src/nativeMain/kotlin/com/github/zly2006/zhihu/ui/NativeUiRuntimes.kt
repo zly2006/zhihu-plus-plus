@@ -23,16 +23,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import com.github.zly2006.zhihu.account.IosAccountStore
-import com.github.zly2006.zhihu.data.RecommendationMode
 import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.platform.UserMessageSink
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.viewmodel.NotificationEnvironment
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
-import io.ktor.client.HttpClient
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import platform.Foundation.NSURL
@@ -108,25 +104,7 @@ actual fun commentEmojiInlineKey(placeholder: String): String? = null // TODO: i
 actual fun Modifier.commentSelectionWorkaround(): Modifier = this
 
 @Composable
-actual fun rememberHomeAccountState(): HomeAccountState = HomeAccountState(
-    isLoggedIn = false,
-    avatarUrl = null,
-)
-
-@Composable
-actual fun rememberHomeUpdateAnnouncement(): HomeUpdateAnnouncement? = null
-
-@Composable
 actual fun rememberHomeIsDebuggable(): Boolean = false
-
-@Composable
-actual fun rememberHomeFeedStartupCache(recommendationMode: RecommendationMode): HomeFeedStartupCache =
-    remember(recommendationMode) {
-        HomeFeedStartupCache(
-            readHomeFeedStartupCache = { emptyList() }, // TODO: iOS 首页缓存
-            writeHomeFeedStartupCache = { }, // TODO: iOS 首页缓存
-        )
-    }
 
 @Composable
 actual fun rememberAccountSettingsAccountState(): androidx.compose.runtime.State<AccountSettingsAccountState> =
@@ -144,11 +122,6 @@ actual fun rememberAccountQrLoginRequester(): () -> Unit {
 actual fun rememberAppVersionInfo(): String = "iOS"
 
 @Composable
-actual fun rememberMainTabSelector(): (TopLevelDestination) -> Unit = remember {
-    { } // TODO: iOS 主 Tab 切换
-}
-
-@Composable
 actual fun ZhihuHtmlWebViewContent(html: String) = Unit // TODO: iOS HTML WebView 实现
 
 actual fun supportsZhihuHtmlWebView(): Boolean = false
@@ -163,12 +136,6 @@ actual fun rememberBlocklistRuleImporter(
 @Composable
 actual fun rememberBlocklistRuleExporter(): suspend () -> String = remember {
     { "" } // TODO: iOS 导出规则
-}
-
-@Composable
-actual fun rememberZhihuHttpClient(): HttpClient {
-    val store = remember { IosAccountStore() }
-    return store.httpClient()
 }
 
 internal fun openIosUrl(url: String) {

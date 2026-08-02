@@ -58,7 +58,8 @@ import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.ui.articleActionText
 import com.github.zly2006.zhihu.ui.articleSpeechText
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
-import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
+import com.github.zly2006.zhihu.ui.components.ShareAction
+import com.github.zly2006.zhihu.ui.components.rememberShareActionExecutor
 import com.github.zly2006.zhihu.ui.rememberArticleBrowserOpener
 import com.github.zly2006.zhihu.ui.rememberArticleSpeechToggler
 import com.github.zly2006.zhihu.ui.rememberArticleTtsState
@@ -108,7 +109,7 @@ internal fun ArticleActionsMenu(
     val ttsState = rememberArticleTtsState()
     val toggleSpeech = rememberArticleSpeechToggler()
     val openArticleInBrowser = rememberArticleBrowserOpener()
-    val shareRuntime = rememberShareDialogRuntime()
+    val executeShareAction = rememberShareActionExecutor()
     val coroutineScope = rememberCoroutineScope()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -220,7 +221,8 @@ internal fun ArticleActionsMenu(
             text = "分享",
             onClick = {
                 onDismissRequest()
-                shareRuntime.share(
+                executeShareAction(
+                    ShareAction.Share,
                     article,
                     articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName),
                 )
@@ -253,7 +255,8 @@ internal fun ArticleActionsMenu(
             text = "复制链接",
             onClick = {
                 onDismissRequest()
-                shareRuntime.copyLink(
+                executeShareAction(
+                    ShareAction.CopyLink,
                     article,
                     articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName),
                 )
@@ -286,7 +289,7 @@ internal fun ArticleActionsMenu(
             text = "分享 Markdown 正文",
             onClick = {
                 onDismissRequest()
-                shareRuntime.directShare(article, viewModel.convertToMarkdown())
+                executeShareAction(ShareAction.DirectShare, article, viewModel.convertToMarkdown())
             },
         )
 
