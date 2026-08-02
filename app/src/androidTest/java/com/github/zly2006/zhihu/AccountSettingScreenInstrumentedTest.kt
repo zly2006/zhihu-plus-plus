@@ -220,7 +220,7 @@ class AccountSettingScreenInstrumentedTest {
 
         composeRule.onNodeWithTag(ACCOUNT_SETTINGS_SHORTCUT_HISTORY_TAG).performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) {
-            dismissCount.get() == 2 && composeRule.activity.mainTabNavigationTarget == OnlineHistory
+            dismissCount.get() == 2 && navigator.topLevelDestinations == listOf(OnlineHistory)
         }
 
         assertEquals(
