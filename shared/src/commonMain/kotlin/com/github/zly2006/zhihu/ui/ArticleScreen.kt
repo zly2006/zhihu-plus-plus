@@ -117,7 +117,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.toRoute
 import coil3.compose.AsyncImage
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Element
@@ -804,8 +803,13 @@ fun ArticleScreen(
     var isImmersiveMode by remember(sharedData) {
         mutableStateOf(sharedData?.isImmersiveMode ?: false)
     }
-    var navigatingToNextAnswer by remember { mutableStateOf(false) }
-    val coroutineScope = rememberCoroutineScope()
+    val answerNavigationState = rememberArticleAnswerNavigationState(
+        switchState = sharedData,
+        viewModel = viewModel,
+        navigator = navigator,
+        navController = articleHost?.articleNavController,
+        answerSwitchMode = articleSettings.answerSwitchMode,
+    )
     val hapticFeedback = LocalHapticFeedback.current
 
     LaunchedEffect(sharedData, isImmersiveMode) {
@@ -876,26 +880,7 @@ fun ArticleScreen(
 
     val articleBringIntoViewSpec = rememberBottomBarAvoidingBringIntoViewSpec(bottomBarState.obscuredHeightPx)
     LaunchedEffect(article.id) {
-        if (sharedData != null) {
-            if (!sharedData.navigatingFromAnswerSwitch) {
-                sharedData.reset()
-            }
-            sharedData.navigatingFromAnswerSwitch = false
-            sharedData.answerTransitionDirection = ArticleAnswerTransitionDirection.DEFAULT
-
-            val pending = sharedData.pendingInitialContent
-            if (pending != null) {
-                viewModel.title = pending.title
-                viewModel.authorName = pending.authorName
-                viewModel.authorBio = pending.authorBio
-                viewModel.authorAvatarSrc = pending.authorAvatarUrl
-                viewModel.content = pending.content
-                viewModel.voteUpCount = pending.voteUpCount
-                viewModel.commentCount = pending.commentCount
-                viewModel.endorsements = pending.endorsements
-                sharedData.pendingInitialContent = null
-            }
-        }
+        answerNavigationState.prepareArticle()
         viewModel.loadArticle(environment)
         viewModel.loadCollections(environment)
         viewModel.loadAigcFlagStatus(environment)
@@ -913,102 +898,6 @@ fun ArticleScreen(
         snapshotFlow { scrollState.maxValue }.collectLatest { maxValue ->
             if (viewModel.content.isNotBlank()) {
                 viewModel.updateAigcReadProgress(scrollState.value, maxValue)
-            }
-        }
-    }
-
-    val navigateToPrevious: () -> Unit = {
-        sharedData?.answerTransitionDirection = if (articleSettings.answerSwitchMode == "horizontal") {
-            ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS
-        } else {
-            ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS
-        }
-        sharedData?.navigatingFromAnswerSwitch = true
-        // 更新当前回答内容到历史
-        sharedData?.navigator?.pushAnswer(viewModel.toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"))
-        val prev = sharedData?.navigator?.goToPrevious()
-        if (prev != null) {
-            sharedData.pendingInitialContent = prev
-            sharedData.promoteForNavigation(sharedData.answerTransitionDirection)
-            val navController = articleHost?.articleNavController
-            if (navController != null) {
-                if (navController.currentBackStackEntry?.hasRoute(Article::class) == true &&
-                    navController.currentBackStackEntry
-                        ?.toRoute<Article>()
-                        ?.type == ArticleType.Answer
-                ) {
-                    navController.popBackStack()
-                }
-            }
-            navigator.onNavigate(prev.article)
-        } else {
-            // 无历史时尝试从来源（如收藏夹）向前加载
-            sharedData?.pendingInitialContent = sharedData.navigator?.previousAnswerPreview
-            sharedData?.promoteForNavigation(sharedData.answerTransitionDirection)
-            coroutineScope.launch {
-                val prevCached = sharedData?.navigator?.loadPrevious()
-                if (prevCached != null) {
-                    sharedData.pendingInitialContent = prevCached
-                    val navController = articleHost?.articleNavController
-                    if (navController != null) {
-                        if (navController.currentBackStackEntry?.hasRoute(Article::class) == true &&
-                            navController.currentBackStackEntry
-                                ?.toRoute<Article>()
-                                ?.type == ArticleType.Answer
-                        ) {
-                            navController.popBackStack()
-                        }
-                    }
-                    navigator.onNavigate(prevCached.article)
-                }
-            }
-        }
-    }
-
-    val navigateToNext: () -> Unit = {
-        sharedData?.answerTransitionDirection = if (articleSettings.answerSwitchMode == "horizontal") {
-            ArticleAnswerTransitionDirection.HORIZONTAL_NEXT
-        } else {
-            ArticleAnswerTransitionDirection.VERTICAL_NEXT
-        }
-        sharedData?.navigatingFromAnswerSwitch = true
-        // 更新当前回答内容到历史
-        sharedData?.navigator?.pushAnswer(viewModel.toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"))
-        // 优先使用前向历史
-        val historyNext = sharedData?.navigator?.goToNext()
-        if (historyNext != null) {
-            sharedData.pendingInitialContent = historyNext
-            sharedData.promoteForNavigation(sharedData.answerTransitionDirection)
-            val navController = articleHost?.articleNavController
-            if (navController != null) {
-                if (navController.currentBackStackEntry?.hasRoute(Article::class) == true &&
-                    navController.currentBackStackEntry
-                        ?.toRoute<Article>()
-                        ?.type == ArticleType.Answer
-                ) {
-                    navController.popBackStack()
-                }
-            }
-            navigator.onNavigate(historyNext.article)
-        } else {
-            // 没有前向历史，从导航器加载
-            sharedData?.pendingInitialContent = sharedData.navigator?.nextAnswer
-            sharedData?.promoteForNavigation(sharedData.answerTransitionDirection)
-            coroutineScope.launch {
-                val nextArticle = sharedData?.navigator?.loadNext()
-                if (nextArticle != null) {
-                    val navController = articleHost?.articleNavController
-                    if (navController != null) {
-                        if (navController.currentBackStackEntry?.hasRoute(Article::class) == true &&
-                            navController.currentBackStackEntry
-                                ?.toRoute<Article>()
-                                ?.type == ArticleType.Answer
-                        ) {
-                            navController.popBackStack()
-                        }
-                    }
-                    navigator.onNavigate(nextArticle)
-                }
             }
         }
     }
@@ -1650,7 +1539,7 @@ fun ArticleScreen(
         }
     }
 
-    val nav = sharedData?.navigator
+    val nav = answerNavigationState.answerNavigator
     val progressBarTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp
     val progressBarBottomPadding = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 96.dp
 
@@ -1662,8 +1551,8 @@ fun ArticleScreen(
             AnswerVerticalOverscroll(
                 previousAnswer = nav?.previousAnswer,
                 nextAnswer = nav?.nextAnswer,
-                onNavigatePrevious = navigateToPrevious,
-                onNavigateNext = navigateToNext,
+                onNavigatePrevious = answerNavigationState::navigateToPrevious,
+                onNavigateNext = answerNavigationState::navigateToNext,
                 isAtTop = { scrollState.value == 0 },
                 isAtBottom = { scrollState.value >= scrollState.maxValue },
                 scrollState = scrollState,
@@ -1675,8 +1564,8 @@ fun ArticleScreen(
             AnswerHorizontalOverscroll(
                 canGoPrevious = nav?.previousAnswer != null,
                 canGoNext = nav?.nextAnswer != null,
-                onNavigatePrevious = navigateToPrevious,
-                onNavigateNext = navigateToNext,
+                onNavigatePrevious = answerNavigationState::navigateToPrevious,
+                onNavigateNext = answerNavigationState::navigateToNext,
                 previousContent = nav?.previousAnswer?.let { cached ->
                     { CachedAnswerPreview(cached) }
                 },
@@ -1721,9 +1610,7 @@ fun ArticleScreen(
                         isImmersiveMode = !isImmersiveMode
                     } else {
                         if (showSkipButton) {
-                            navigatingToNextAnswer = true
-                            navigateToNext()
-                            navigatingToNextAnswer = false
+                            answerNavigationState.navigateToNext()
                         }
                     }
                     fabClickCount = 0
@@ -1734,7 +1621,7 @@ fun ArticleScreen(
                 onClick = { fabClickCount++ },
                 preferenceName = "buttonSkipAnswer",
             ) {
-                if (navigatingToNextAnswer) {
+                if (answerNavigationState.navigatingToNextAnswer) {
                     CircularProgressIndicator(modifier = Modifier.size(30.dp))
                 } else {
                     Icon(Icons.Filled.SkipNext, contentDescription = "下一个回答")
