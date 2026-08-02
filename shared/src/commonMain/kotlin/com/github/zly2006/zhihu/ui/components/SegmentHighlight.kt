@@ -48,13 +48,23 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.github.zly2006.zhihu.data.SegmentInfoMeta
 import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
-import com.github.zly2006.zhihu.shared.data.SegmentInfoMeta
-import com.github.zly2006.zhihu.shared.platform.rememberPlainTextClipboard
-import com.github.zly2006.zhihu.shared.util.SegmentHighlightSpan
+import com.github.zly2006.zhihu.platform.rememberPlainTextClipboard
+import com.github.zly2006.zhihu.util.SegmentHighlightSpan
+import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.deleteSigned
+import com.github.zly2006.zhihu.viewmodel.postSigned
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import com.hrm.markdown.parser.ast.SegmentHighlight
 import com.hrm.markdown.renderer.LocalOnSegmentHighlightClick
+import io.ktor.client.call.body
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
@@ -83,10 +93,6 @@ internal data class SegmentActionSheetState(
 internal val LocalSegmentActionSheetHost = staticCompositionLocalOf<(SegmentActionSheetState?) -> Unit> {
     error("LocalSegmentActionSheetHost is not provided")
 }
-
-data class SegmentedTextRuntime(
-    val toggleSegmentLike: suspend (SegmentHighlightSpan) -> SegmentInfoMeta,
-)
 
 fun buildSegmentUnlikeBody(highlight: SegmentHighlightSpan): String = buildJsonObject {
     put("seg_ids", highlight.meta.segIds.joinToString(","))
@@ -144,13 +150,10 @@ fun updateSegmentMetaAfterLike(
 }
 
 @Composable
-expect fun rememberSegmentedTextRuntime(): SegmentedTextRuntime
-
-@Composable
 internal fun SegmentHighlightInteractionHost(
     content: @Composable () -> Unit,
 ) {
-    val runtime = rememberSegmentedTextRuntime()
+    val environment = rememberPaginationEnvironment(allowGuestAccess = false)
     val copyPlainText = rememberPlainTextClipboard()
     val coroutineScope = rememberCoroutineScope()
     val metaStates = remember { mutableStateMapOf<String, SegmentInfoMeta>() }
@@ -184,7 +187,7 @@ internal fun SegmentHighlightInteractionHost(
                 onLikeClick = {
                     coroutineScope.launch {
                         val updatedMeta = runCatching {
-                            runtime.toggleSegmentLike(selected.copy(meta = selectedMeta))
+                            toggleSegmentLike(environment, selected.copy(meta = selectedMeta))
                         }.getOrElse { selectedMeta }
                         metaStates[selectedKey] = updatedMeta
                     }
@@ -208,6 +211,33 @@ internal fun SegmentHighlightInteractionHost(
         onDispose {
             showSegmentActionSheet(null)
         }
+    }
+}
+
+private suspend fun toggleSegmentLike(
+    environment: PaginationEnvironment,
+    highlight: SegmentHighlightSpan,
+): SegmentInfoMeta {
+    val contentId = highlight.contentId ?: return highlight.meta
+    val targetType = highlight.contentType ?: return highlight.meta
+    val url = "https://www.zhihu.com/api/v4/reaction/${targetType}s/$contentId/segment_reaction"
+    if (environment.authenticatedCookies()["d_c0"] == null) return highlight.meta
+
+    return if (highlight.meta.isLike) {
+        environment.deleteSigned(url) {
+            contentType(ContentType.Application.Json)
+            setBody(buildSegmentUnlikeBody(highlight))
+        }
+        updateSegmentMetaAfterUnlike(highlight)
+    } else {
+        val response = environment.postSigned(url) {
+            contentType(ContentType.Application.Json)
+            setBody(buildSegmentLikeBody(highlight))
+        }
+        updateSegmentMetaAfterLike(
+            highlight,
+            if (response.status == HttpStatusCode.NoContent) null else response.body<JsonElement>() as? JsonObject,
+        )
     }
 }
 
@@ -318,5 +348,9 @@ private fun SegmentHighlightSpan.toSegmentCommentHolder(): SegmentCommentHolder?
         contentId = contentId,
         contentType = contentType,
         segmentId = segmentId,
+        segmentContent = text,
+        paragraphId = paragraphId ?: return null,
+        startOffset = startOffset ?: return null,
+        endOffset = endOffset ?: return null,
     )
 }

@@ -19,8 +19,8 @@ package com.github.zly2006.zhihu.editor
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import com.github.zly2006.zhihu.shared.account.IosAccountStore
-import com.github.zly2006.zhihu.shared.util.Log
+import com.github.zly2006.zhihu.account.IosAccountStore
+import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import io.ktor.client.HttpClient
 

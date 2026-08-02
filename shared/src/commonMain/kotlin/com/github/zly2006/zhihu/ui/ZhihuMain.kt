@@ -92,6 +92,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.toRoute
+import com.github.zly2006.zhihu.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
@@ -118,10 +119,9 @@ import com.github.zly2006.zhihu.navigation.SentenceSimilarityTest
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.navigation.WriteAnswer
 import com.github.zly2006.zhihu.navigation.WritePin
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
 import com.github.zly2006.zhihu.reading.saveReadingPlaybackSpeed
-import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.components.CompactReadingPlayerButton
 import com.github.zly2006.zhihu.ui.components.NoOpPagerNestedScrollConnection
 import com.github.zly2006.zhihu.ui.components.ReadingPlayerBar
@@ -164,23 +164,6 @@ private sealed class MainTabPage(
 internal val LocalReadingPlayerOverlayPadding = staticCompositionLocalOf { 0.dp }
 
 /**
- * 共享主壳使用的平台适配层。
- *
- * [ZhihuMain] 负责导航图、底部栏、主 pager 和通用页面路由；Android 和 Desktop 只在这里注入依赖平台服务的内容，
- * 例如文章页 ViewModel、回答切换转场、NLP 管理页和不可用功能的兜底展示。把适配面收窄后，共享 UI 可以专注描述产品结构，
- * 平台代码则继续处理生命周期、浏览器、模型加载等细节。
- */
-data class ZhihuMainPlatformAdapter(
-    val article: @Composable (Article, NavBackStackEntry) -> Unit,
-    val sentenceSimilarityTest: @Composable () -> Unit = {
-        Text("Sentence similarity test is not available on this platform.")
-    },
-    val blocklistSettingsNlpContent: BlocklistSettingsNlpContent? = null,
-    val articleEnterTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition?)? = null,
-    val articleExitTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition?)? = null,
-)
-
-/**
  * Zhihu++ 的共享应用主壳。
  *
  * 这个 composable 是顶层体验的唯一所有者：渲染可配置底部导航栏，承载横向主 tab pager，向子页面提供 [LocalNavigator]，
@@ -196,10 +179,19 @@ data class ZhihuMainPlatformAdapter(
 fun ZhihuMain(
     modifier: Modifier = Modifier,
     navController: NavHostController,
-    navigationState: ZhihuMainNavigationState,
+    mainTabNavigationTarget: TopLevelDestination?,
+    navigate: (NavDestination) -> Unit,
+    setCurrentMainTabOpenFrom: (String?) -> Unit,
+    consumeMainTabNavigationTarget: (TopLevelDestination) -> Unit,
     preferenceState: ZhihuMainPreferenceState,
     isDarkTheme: Boolean,
-    platformAdapter: ZhihuMainPlatformAdapter,
+    articleContent: @Composable (Article, NavBackStackEntry) -> Unit,
+    sentenceSimilarityContent: @Composable () -> Unit = {
+        Text("Sentence similarity test is not available on this platform.")
+    },
+    blocklistSettingsNlpContent: BlocklistSettingsNlpContent? = null,
+    articleEnterTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition?)? = null,
+    articleExitTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition?)? = null,
 ) {
     val bottomPadding = ScaffoldDefaults.contentWindowInsets.asPaddingValues().calculateBottomPadding()
     val duo3HomeAccount = preferenceState.duo3HomeAccount
@@ -218,11 +210,10 @@ fun ZhihuMain(
     val density = LocalDensity.current
 
     val navEntry by navController.currentBackStackEntryAsState()
-    val showMainNavigation = navEntry?.hasRoute(MainTabs::class) == true
-    val isOnReadingDetail = navEntry?.hasRoute(Article::class) == true ||
-        navEntry?.hasRoute(Question::class) == true ||
-        navEntry?.hasRoute(Pin::class) == true
-
+    val showMainNavigation = navEntry?.destination?.hasRoute<MainTabs>() == true
+    val isOnReadingDetail = navEntry?.destination?.hasRoute<Article>() == true ||
+        navEntry?.destination?.hasRoute<Question>() == true ||
+        navEntry?.destination?.hasRoute<Pin>() == true
     val isReadingPlayerExpanded = readingPlayerState.hasSession &&
         (isOnReadingDetail || isReadingPlayerExpandedByUser)
     val shouldCompactPlayerOnBackgroundInteraction by rememberUpdatedState(
@@ -264,17 +255,17 @@ fun ZhihuMain(
             val destination = currentItem.toDestination(readingPlayerState.sourceId)
             if (currentDestination != null && currentDestination != destination) {
                 navController.popBackStack()
-                navigationState.navigate(destination)
+                navigate(destination)
             }
         }
     }
+
+    // 离开文章页时恢复系统状态栏（只在实际切换时触发）
     val isOnArticle = navEntry?.destination?.hasRoute<Article>() == true
     LaunchedEffect(navEntry) {
         isReadingPlayerExpandedByUser = false
         if (!isOnArticle) readingPlayerOverlayOffsetState.revokeOwner()
     }
-
-    // 离开文章页时恢复系统状态栏（只在实际切换时触发）
     var wasOnArticle by remember { mutableStateOf(false) }
     if (!isOnArticle && wasOnArticle) {
         LeaveImmersiveModeCleanup()
@@ -340,7 +331,6 @@ fun ZhihuMain(
     )
     val coroutineScope = rememberCoroutineScope()
 
-    fun currentMainTabPage(): MainTabPage? = mainTabPages.getOrNull(mainPagerState.currentPage)
     var currentMainTabDestination by remember { mutableStateOf(startDestination) }
 
     fun navigateTopLevel(destination: TopLevelDestination) {
@@ -351,19 +341,18 @@ fun ZhihuMain(
     }
 
     LaunchedEffect(mainPagerState.currentPage, mainTabPages) {
-        currentMainTabPage()?.bottomDestination?.let { destination ->
+        mainTabPages.getOrNull(mainPagerState.currentPage)?.bottomDestination?.let { destination ->
             currentMainTabDestination = destination
-            navigationState.setCurrentMainTabOpenFrom(destination.openFrom)
+            setCurrentMainTabOpenFrom(destination.openFrom)
         }
     }
 
-    val mainTabNavigationTarget = navigationState.mainTabNavigationTarget
     LaunchedEffect(mainTabNavigationTarget, mainTabPages) {
         mainTabNavigationTarget?.let { destination ->
             // 平台适配层会把旧的顶层 route 请求映射到 MainTabs。这里消费该请求，
             // 让 deeplink 等调用方仍能选中 Home/Follow 等 tab，而不是把旧 route 压入返回栈。
             mainPagerState.scrollToPage(pageIndexForDestination(destination))
-            navigationState.consumeMainTabNavigationTarget(destination)
+            consumeMainTabNavigationTarget(destination)
         }
     }
 
@@ -425,9 +414,8 @@ fun ZhihuMain(
                     val currentBottomDestination = mainTabPages
                         .getOrNull(mainPagerState.targetPage)
                         ?.bottomDestination
-                    val isMainNavigationVisible = showMainNavigation && (!autoHideBottomBar || isBottomBarVisible)
                     AnimatedVisibility(
-                        visible = isMainNavigationVisible,
+                        visible = showMainNavigation && (!autoHideBottomBar || isBottomBarVisible),
                         enter = slideInVertically(tween(200)) { it },
                         exit = slideOutVertically(tween(200)) { it },
                     ) {
@@ -484,9 +472,10 @@ fun ZhihuMain(
             CompositionLocalProvider(
                 LocalNavigator provides Navigator(
                     onNavigate = { destination ->
-                        navigationState.navigate(destination)
+                        navigate(destination)
                     },
                     onNavigateBack = navController::popBackStack,
+                    onNavigateTopLevel = ::navigateTopLevel,
                 ),
                 LocalReadingPlayerOverlayPadding provides readingPlayerOverlayPadding,
                 LocalReadingPlayerOverlayOffsetState provides readingPlayerOverlayOffsetState,
@@ -549,11 +538,11 @@ fun ZhihuMain(
                     }
                     composable<Article>(
                         typeMap = mapOf(typeOf<ArticleType>() to ArticleTypeNavType),
-                        enterTransition = platformAdapter.articleEnterTransition,
-                        exitTransition = platformAdapter.articleExitTransition,
+                        enterTransition = articleEnterTransition,
+                        exitTransition = articleExitTransition,
                     ) { navEntry ->
                         val article: Article = navEntry.toRoute()
-                        platformAdapter.article(article, navEntry)
+                        articleContent(article, navEntry)
                     }
                     composable<HotList> {
                         HotListScreen(innerPadding)
@@ -623,7 +612,7 @@ fun ZhihuMain(
                         PinScreen(pin)
                     }
                     composable<Account.RecommendSettings.Blocklist> {
-                        BlocklistSettingsScreen(platformAdapter.blocklistSettingsNlpContent)
+                        BlocklistSettingsScreen(blocklistSettingsNlpContent)
                     }
                     composable<Account.RecommendSettings.BlockedFeedHistory> {
                         BlockedFeedHistoryScreen()
@@ -635,7 +624,7 @@ fun ZhihuMain(
                         NotificationSettingsScreen()
                     }
                     composable<SentenceSimilarityTest> {
-                        platformAdapter.sentenceSimilarityTest()
+                        sentenceSimilarityContent()
                     }
                     composable<Account.AppearanceSettings> { navEntry ->
                         val args = navEntry.toRoute<Account.AppearanceSettings>()
@@ -714,14 +703,14 @@ fun ZhihuMain(
                     if (currentDestination != null) {
                         navController.popBackStack()
                     }
-                    navigationState.navigate(destination)
+                    navigate(destination)
                 }
             },
             onOpenSettings = {
                 showReadingQueue = false
                 isReadingPlayerExpandedByUser = false
                 if (navEntry?.destination?.hasRoute<Account.ReadingSettings>() != true) {
-                    navigationState.navigate(Account.ReadingSettings)
+                    navigate(Account.ReadingSettings)
                 }
             },
         )

@@ -17,9 +17,9 @@
 
 package com.github.zly2006.zhihu.ui
 
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.navigation.Person
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.viewmodel.ProfileLoadEnvironment
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.test.runTest
@@ -77,7 +77,7 @@ class PeopleScreenProfileUrlTest {
                     {
                       "icon": "https://example.invalid/github.png",
                       "title": "GitHub·zly2006",
-                      "link": "https://github.com/zly2006",
+                      "link": "zhihu://hybrid?zh_hide_nav_bar=true&zh_url=https:%2F%2Fwww.zhihu.com%2Fappview%2Fgithub%2Fdetail%3Fhash_id=ea09b6c82124e0162caa10d658058c10",
                       "modules": [
                         {"title": "被关注人", "value": "169"},
                         {"title": "公开仓库数", "value": "119"},
@@ -147,6 +147,7 @@ class PeopleScreenProfileUrlTest {
 
         assertTrue(viewModel.isBlocking)
         assertEquals("4.0k", viewModel.githubSocial?.starCount)
+        assertEquals("https://github.com/zly2006", viewModel.githubSocial?.profileUrl)
         assertEquals(
             listOf(
                 "https://api.zhihu.com/people/profile-user" to PEOPLE_PROFILE_INCLUDE_PATH,

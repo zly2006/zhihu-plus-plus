@@ -18,17 +18,17 @@
 package com.github.zly2006.zhihu.viewmodel.filter
 
 import com.fleeksoft.ksoup.Ksoup
+import com.github.zly2006.zhihu.data.AdvertisementFeed
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.navDestination
+import com.github.zly2006.zhihu.data.questionAuthor
+import com.github.zly2006.zhihu.data.target
+import com.github.zly2006.zhihu.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
-import com.github.zly2006.zhihu.shared.data.AdvertisementFeed
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.navDestination
-import com.github.zly2006.zhihu.shared.data.questionAuthor
-import com.github.zly2006.zhihu.shared.data.target
-import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
-import com.github.zly2006.zhihu.shared.platform.SettingsStore
+import com.github.zly2006.zhihu.platform.SettingsStore
 import kotlinx.serialization.json.Json
 
 class ForegroundReadFilterPipeline(

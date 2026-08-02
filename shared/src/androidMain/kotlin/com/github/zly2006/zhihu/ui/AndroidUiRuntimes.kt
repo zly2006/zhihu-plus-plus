@@ -16,6 +16,7 @@
  */
 
 package com.github.zly2006.zhihu.ui
+
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -41,22 +42,15 @@ import androidx.core.net.toUri
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.asApiEnvironment
 import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.TopLevelDestination
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.RecommendationMode
-import com.github.zly2006.zhihu.shared.data.ZHIHU_ME_URL
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
-import com.github.zly2006.zhihu.shared.platform.UserMessageSink
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.shared.util.Log
-import com.github.zly2006.zhihu.ui.components.CustomWebView
+import com.github.zly2006.zhihu.notification.NotificationSettingsStore
+import com.github.zly2006.zhihu.platform.UserMessageSink
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.ui.article.prepareContentDocument
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
-import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.util.EmojiManager
+import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.util.OpenInBrowser
 import com.github.zly2006.zhihu.util.createEmojiInlineContent
 import com.github.zly2006.zhihu.util.fuckHonorService
@@ -65,7 +59,6 @@ import com.github.zly2006.zhihu.viewmodel.filter.encodeBlocklistBackup
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.filter.importBlocklistBackupFromJsonText
 import com.github.zly2006.zhihu.viewmodel.notificationEnvironment
-import io.ktor.client.HttpClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -73,7 +66,6 @@ import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import java.io.File
 
-private const val LOGIN_ACTIVITY_CLASS = "com.github.zly2006.zhihu.LoginActivity"
 private const val QR_CODE_SCAN_ACTIVITY_CLASS = "com.github.zly2006.zhihu.QRCodeScanActivity"
 private const val WEBVIEW_ACTIVITY_CLASS = "com.github.zly2006.zhihu.WebviewActivity"
 private const val QR_SCAN_RESULT_EXTRA = "scan_result"
@@ -85,29 +77,6 @@ actual fun rememberAccountSettingsAccountState(): androidx.compose.runtime.State
         androidx.compose.runtime.derivedStateOf {
             accountDataState.value.toAccountSettingsAccountState()
         }
-    }
-}
-
-@Composable
-actual fun rememberAccountProfileRefresher(): suspend () -> Unit {
-    val context = LocalContext.current
-    return remember(context) {
-        suspend {
-            val data = AccountData.data
-            if (data.login) {
-                val response = context.asApiEnvironment().fetchJson(ZHIHU_ME_URL, "")!!
-                val self = ZhihuJson.decodeJson<com.github.zly2006.zhihu.shared.data.Person>(response)
-                AccountData.saveData(context, data.copy(self = self))
-            }
-        }
-    }
-}
-
-@Composable
-actual fun rememberAccountLoginRequester(): () -> Unit {
-    val context = LocalContext.current
-    return remember(context) {
-        { context.startActivity(Intent().setClassName(context.packageName, LOGIN_ACTIVITY_CLASS)) }
     }
 }
 
@@ -133,28 +102,7 @@ actual fun rememberAccountQrLoginRequester(): () -> Unit {
 }
 
 @Composable
-actual fun rememberAccountLogoutAction(): () -> Unit {
-    val context = LocalContext.current
-    return remember(context) {
-        {
-            homeFeedStartupCacheFileNames().forEach { fileName ->
-                File(context.filesDir, fileName).delete()
-            }
-            AccountData.delete(context)
-        }
-    }
-}
-
-@Composable
 actual fun rememberAppVersionInfo(): String = LocalContext.current.zhihuVersionInfo()
-
-@Composable
-actual fun rememberMainTabSelector(): (TopLevelDestination) -> Unit {
-    val context = LocalContext.current
-    return remember(context) {
-        { destination -> context.navigateMainTab(destination) }
-    }
-}
 
 fun AccountData.Data.toAccountSettingsAccountState(): AccountSettingsAccountState = AccountSettingsAccountState(
     login = login,
@@ -177,24 +125,6 @@ private fun Context.zhihuVersionInfo(): String {
         ?: if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) "debug" else "release"
     val gitHash = metaData?.getString("com.github.zly2006.zhihu.GIT_HASH") ?: "unknown"
     return "$versionName $buildType, $gitHash"
-}
-
-private fun Context.navigateMainTab(destination: TopLevelDestination) {
-    val activity = findActivity() ?: return
-    activity
-        .javaClass
-        .methods
-        .firstOrNull { method ->
-            method.name == "navigateMainTab" &&
-                method.parameterTypes.size == 1 &&
-                method.parameterTypes.first().isAssignableFrom(destination::class.java)
-        }?.invoke(activity, destination)
-}
-
-private fun Context.findActivity(): android.app.Activity? = when (this) {
-    is android.app.Activity -> this
-    is ContextWrapper -> baseContext.findActivity()
-    else -> null
 }
 
 @Composable
@@ -255,32 +185,6 @@ actual fun rememberArticleBrowserOpener(): (Article) -> Unit {
 actual fun rememberArticleHost(): ArticleHost? = LocalContext.current.articleHost()
 
 @Composable
-actual fun ArticlePreviewPreloadEffect(
-    cached: com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent?,
-    isNext: Boolean,
-    title: String,
-    onImageLoadFailed: () -> Unit,
-) {
-    val context = LocalContext.current
-    val articleHost = context.articleHost()
-    LaunchedEffect(cached?.article?.id, isNext, title, articleHost) {
-        cached ?: return@LaunchedEffect
-        val previewWebViewStore = articleHost?.articleAnswerSwitchState as? ArticlePreviewWebViewStore
-            ?: return@LaunchedEffect
-        val wv = previewWebViewStore.getOrCreatePreviewWebView(context, isNext, cached.article.id)
-        val articleId = cached.article.id.toString()
-        if (wv.contentId != articleId) {
-            wv.contentId = articleId
-            wv.loadZhihu(
-                "https://www.zhihu.com/answer/${cached.article.id}",
-                prepareContentDocument(cached.content, onImageLoadFailed),
-                title,
-            )
-        }
-    }
-}
-
-@Composable
 actual fun ArticleWebViewContent(
     article: Article,
     html: String,
@@ -322,84 +226,9 @@ actual fun ArticleWebViewContent(
 actual fun Modifier.articleMarkdownSelectionWorkaround(): Modifier = fuckHonorService()
 
 @Composable
-actual fun rememberHomeAccountState(): HomeAccountState {
-    val accountData by AccountData.asState()
-    return HomeAccountState(
-        isLoggedIn = accountData.login,
-        avatarUrl = accountData.self?.avatarUrl,
-    )
-}
-
-@Composable
-actual fun rememberHomeUpdateAnnouncement(): HomeUpdateAnnouncement? {
-    val updateState by UpdateManager.updateState.collectAsState()
-    return (updateState as? UpdateManager.UpdateState.UpdateAvailable)?.let {
-        HomeUpdateAnnouncement(
-            version = it.version.toString(),
-            isNightly = it.isNightly,
-        )
-    }
-}
-
-@Composable
-actual fun rememberHomeInstalledAtLeastThreeHours(): Boolean {
-    val context = LocalContext.current
-    val installTime = remember {
-        try {
-            context.packageManager.getPackageInfo(context.packageName, 0).firstInstallTime
-        } catch (_: Exception) {
-            System.currentTimeMillis()
-        }
-    }
-    return System.currentTimeMillis() - installTime >= 3 * 60 * 60 * 1000L
-}
-
-@Composable
 actual fun rememberHomeIsDebuggable(): Boolean {
     val context = LocalContext.current
     return (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
-}
-
-@Composable
-actual fun rememberHomeLoginRequester(): () -> Unit {
-    val context = LocalContext.current
-    return remember(context) {
-        {
-            val intent = Intent().setClassName(context.packageName, "com.github.zly2006.zhihu.LoginActivity")
-            context.startActivity(intent)
-        }
-    }
-}
-
-@Composable
-actual fun rememberHomeFeedStartupCache(recommendationMode: RecommendationMode): HomeFeedStartupCache {
-    val context = LocalContext.current
-    val startupCacheFile = remember(context, recommendationMode) {
-        File(context.filesDir, homeFeedStartupCacheFileName(recommendationMode))
-    }
-    return remember(startupCacheFile) {
-        HomeFeedStartupCache(
-            readHomeFeedStartupCache = {
-                withContext(Dispatchers.IO) {
-                    if (startupCacheFile.exists()) {
-                        decodeHomeFeedStartupSnapshot(startupCacheFile.readText())
-                    } else {
-                        emptyList()
-                    }
-                }
-            },
-            writeHomeFeedStartupCache = { items: List<FeedDisplayItem> ->
-                withContext(Dispatchers.IO) {
-                    val serialized = encodeHomeFeedStartupSnapshot(items)
-                    if (serialized != null) {
-                        runCatching {
-                            startupCacheFile.writeText(serialized)
-                        }
-                    }
-                }
-            },
-        )
-    }
 }
 
 @Composable
@@ -501,6 +330,18 @@ actual fun supportsZhihuHtmlWebView(): Boolean = true
 actual fun rememberCommentEmojiInlineContent(emojiKeys: Set<String>): Map<String, InlineTextContent> =
     remember(emojiKeys) { createEmojiInlineContent(emojiKeys) }
 
+@Composable
+actual fun rememberCommentEmojis(): List<CommentEmoji> {
+    val placeholders by EmojiManager.placeholders.collectAsState()
+    return remember(placeholders) {
+        placeholders.mapNotNull { placeholder ->
+            commentEmojiInlineKey(placeholder)?.let { inlineKey ->
+                CommentEmoji(placeholder = placeholder, inlineKey = inlineKey)
+            }
+        }
+    }
+}
+
 actual fun commentEmojiInlineKey(placeholder: String): String? {
     val emojiPath = EmojiManager.getEmojiPath(placeholder) ?: return null
     val emojiFileName = emojiPath.substringAfterLast('/')
@@ -526,14 +367,6 @@ actual fun rememberNotificationShowDebugCopy(): Boolean {
     return (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
 }
 
-interface ArticlePreviewWebViewStore {
-    fun getOrCreatePreviewWebView(
-        context: Context,
-        isNext: Boolean,
-        answerId: Long,
-    ): CustomWebView
-}
-
 fun Context.articleHost(): ArticleHost? =
     (this as? ArticleHost) ?: (this as? ContextWrapper)?.baseContext?.takeIf { it !== this }?.articleHost()
 
@@ -551,9 +384,6 @@ actual fun QuestionDetailWebViewContent(
 }
 
 actual fun supportsQuestionDetailWebView(): Boolean = true
-
-@Composable
-actual fun rememberZhihuHttpClient(): HttpClient = AccountData.httpClient(LocalContext.current)
 
 actual fun Modifier.questionSelectionWorkaround(): Modifier = fuckHonorService()
 

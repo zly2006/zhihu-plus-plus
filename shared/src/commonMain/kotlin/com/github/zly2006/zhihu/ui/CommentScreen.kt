@@ -51,6 +51,9 @@ import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -64,8 +67,13 @@ import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.outlined.EmojiEmotions
+import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material.icons.outlined.ThumbUp
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -79,6 +87,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -91,6 +100,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -106,9 +118,11 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -119,6 +133,7 @@ import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Element
 import com.fleeksoft.ksoup.nodes.Node
 import com.fleeksoft.ksoup.nodes.TextNode
+import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.CommentHolder
 import com.github.zly2006.zhihu.navigation.LocalNavigator
@@ -128,19 +143,20 @@ import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
 import com.github.zly2006.zhihu.navigation.resolveContent
+import com.github.zly2006.zhihu.platform.PlatformBackHandler
+import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
+import com.github.zly2006.zhihu.platform.rememberImagePreviewOpener
+import com.github.zly2006.zhihu.platform.rememberImageSaver
+import com.github.zly2006.zhihu.platform.rememberImageSharer
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.reading.ReadingCommentOrder
 import com.github.zly2006.zhihu.reading.loadReadingPreferences
 import com.github.zly2006.zhihu.reading.saveReadingPreferences
-import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
-import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
-import com.github.zly2006.zhihu.shared.platform.rememberImagePreviewOpener
-import com.github.zly2006.zhihu.shared.platform.rememberImageSaver
-import com.github.zly2006.zhihu.shared.platform.rememberImageSharer
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.util.twoDigitString
-import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
+import com.github.zly2006.zhihu.ui.components.replaceSelection
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
+import com.github.zly2006.zhihu.util.twoDigitString
+import com.github.zly2006.zhihu.viewmodel.CommentItem
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.ChildCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.CommentSortOrder
@@ -164,6 +180,9 @@ const val COMMENT_SCREEN_LIST_TAG = "comment_screen_list"
 const val COMMENT_REPLY_BANNER_TAG = "comment_reply_banner"
 const val COMMENT_CANCEL_REPLY_TAG = "comment_cancel_reply"
 const val COMMENT_INPUT_TAG = "comment_input"
+const val COMMENT_EMOJI_BUTTON_TAG = "comment_emoji_button"
+const val COMMENT_EMOJI_PICKER_TAG = "comment_emoji_picker"
+const val COMMENT_EMOJI_ITEM_TAG_PREFIX = "comment_emoji_item_"
 const val COMMENT_SEND_BUTTON_TAG = "comment_send_button"
 const val COMMENT_SORT_SCORE_TAG = "comment_sort_score"
 const val COMMENT_SORT_TIME_TAG = "comment_sort_time"
@@ -171,6 +190,9 @@ const val COMMENT_IMAGE_MENU_OPEN_TAG = "comment_image_menu_open"
 const val COMMENT_IMAGE_MENU_BROWSER_TAG = "comment_image_menu_browser"
 const val COMMENT_IMAGE_MENU_SAVE_TAG = "comment_image_menu_save"
 const val COMMENT_IMAGE_MENU_SHARE_TAG = "comment_image_menu_share"
+const val COMMENT_DELETE_DIALOG_TAG = "comment_delete_dialog"
+const val COMMENT_DELETE_CONFIRM_TAG = "comment_delete_confirm"
+const val COMMENT_DELETE_CANCEL_TAG = "comment_delete_cancel"
 
 enum class CommentImageMenuAction {
     Open,
@@ -183,6 +205,7 @@ data class CommentScreenTestOverrides(
     val viewModel: BaseCommentViewModel? = null,
     val onArchiveComment: ((CommentModel) -> Unit)? = null,
     val onImageMenuAction: ((CommentImageMenuAction, String) -> Unit)? = null,
+    val commentEmojis: List<CommentEmoji>? = null,
 )
 
 @Composable
@@ -418,12 +441,15 @@ private fun ClickableImageWithMenu(
 @Composable
 fun CommentScreen(
     content: () -> NavDestination,
+    initialCommentId: String? = null,
     activeCommentItem: CommentModel? = null,
     onChildCommentClick: (CommentModel) -> Unit,
     commentInput: String,
     onCommentInputChange: (String) -> Unit,
     listState: LazyListState = rememberLazyListState(),
     testOverrides: CommentScreenTestOverrides? = null,
+    initialComment: DataHolder.Comment? = null,
+    onInitialChildCommentResolved: (CommentModel, DataHolder.Comment) -> Unit = { _, _ -> },
 ) {
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val readingSettings = rememberSettingsStore()
@@ -433,19 +459,51 @@ fun CommentScreen(
     val resolvedContent = content()
     var isSending by remember { mutableStateOf(false) }
     var replyToComment by remember { mutableStateOf<CommentModel?>(null) }
-    val viewModelKey = commentViewModelKey(resolvedContent)
+    var showEmojiPicker by remember { mutableStateOf(false) }
+    var commentPendingDeletion by remember { mutableStateOf<CommentModel?>(null) }
+    var isDeletingComment by remember { mutableStateOf(false) }
+    var deleteCommentError by remember { mutableStateOf<String?>(null) }
+    val initialTargetId = initialCommentId ?: initialComment?.id
+    val viewModelKey = commentViewModelKey(resolvedContent) + initialTargetId?.let { ":initial:$it" }.orEmpty()
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    val commentInputFocusRequester = remember { FocusRequester() }
+    var commentFieldValue by remember(resolvedContent) {
+        mutableStateOf(
+            TextFieldValue(
+                text = commentInput,
+                selection = TextRange(commentInput.length),
+            ),
+        )
+    }
+    val availableCommentEmojis = rememberCommentEmojis()
+    val commentEmojis = testOverrides?.commentEmojis ?: availableCommentEmojis
+    val emojiInlineContent = rememberCommentEmojiInlineContent(
+        remember(commentEmojis) { commentEmojis.mapTo(mutableSetOf(), CommentEmoji::inlineKey) },
+    )
+
+    LaunchedEffect(commentInput) {
+        if (commentInput != commentFieldValue.text) {
+            commentFieldValue = TextFieldValue(
+                text = commentInput,
+                selection = TextRange(commentInput.length),
+            )
+        }
+    }
+
+    PlatformBackHandler(enabled = showEmojiPicker) {
+        showEmojiPicker = false
+    }
 
     // 根据内容类型选择合适的ViewModel
     val viewModel: BaseCommentViewModel = testOverrides?.viewModel ?: when (resolvedContent) {
         is CommentHolder -> remember(viewModelKey) {
             // 子评论不进行状态保存
-            ChildCommentViewModel(resolvedContent)
+            ChildCommentViewModel(resolvedContent, initialComment)
         }
 
         else -> viewModel(key = viewModelKey) {
-            RootCommentViewModel(resolvedContent).apply {
+            RootCommentViewModel(resolvedContent, initialCommentId).apply {
                 sortOrder = when (initialReadingCommentOrder) {
                     ReadingCommentOrder.Score -> CommentSortOrder.SCORE
                     ReadingCommentOrder.Time -> CommentSortOrder.TIME
@@ -474,10 +532,86 @@ fun CommentScreen(
         is CommentHolder -> resolvedContent.article
         else -> resolvedContent
     }
+    val initialChildComment = (viewModel as? RootCommentViewModel)?.initialChildComment
+    var initialChildCommentHandled by remember(viewModelKey) { mutableStateOf(false) }
+    LaunchedEffect(initialChildComment?.id, viewModel.allData.size) {
+        if (!initialChildCommentHandled && initialChildComment != null) {
+            val rootCommentId = initialChildComment.replyRootCommentId
+            val rootComment = viewModel.allData.firstOrNull { it.id == rootCommentId }
+            if (rootComment != null) {
+                initialChildCommentHandled = true
+                onInitialChildCommentResolved(
+                    viewModel.createCommentItem(rootComment, rootContent),
+                    initialChildComment,
+                )
+            }
+        }
+    }
     val commentBackgroundColor = MaterialTheme.colorScheme.surfaceContainerLow
     val commentInputBarColor = MaterialTheme.colorScheme.surfaceContainer
     val actionChipColor = MaterialTheme.colorScheme.surfaceContainerHigh
     val actionChipIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+
+    commentPendingDeletion?.let { target ->
+        AlertDialog(
+            modifier = Modifier.testTag(COMMENT_DELETE_DIALOG_TAG),
+            onDismissRequest = {
+                if (!isDeletingComment) {
+                    commentPendingDeletion = null
+                    deleteCommentError = null
+                }
+            },
+            title = { Text("删除评论") },
+            text = {
+                Column {
+                    Text("删除后无法恢复，确认删除这条评论吗？")
+                    deleteCommentError?.let { message ->
+                        Text(
+                            text = message,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    modifier = Modifier.testTag(COMMENT_DELETE_CONFIRM_TAG),
+                    enabled = !isDeletingComment,
+                    onClick = {
+                        isDeletingComment = true
+                        deleteCommentError = null
+                        viewModel.deleteComment(
+                            commentData = target.item,
+                            environment = paginationEnvironment,
+                            onSuccess = {
+                                isDeletingComment = false
+                                commentPendingDeletion = null
+                            },
+                            onFailure = { message ->
+                                isDeletingComment = false
+                                deleteCommentError = message
+                            },
+                        )
+                    },
+                ) {
+                    Text("删除", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    modifier = Modifier.testTag(COMMENT_DELETE_CANCEL_TAG),
+                    enabled = !isDeletingComment,
+                    onClick = {
+                        commentPendingDeletion = null
+                        deleteCommentError = null
+                    },
+                ) {
+                    Text("取消")
+                }
+            },
+        )
+    }
 
     // 监控滚动位置以实现加载更多
     val loadMore = remember {
@@ -510,19 +644,21 @@ fun CommentScreen(
 
     // 提交评论函数
     fun submitComment() {
-        if (commentInput.isBlank() || isSending) return
+        if (commentFieldValue.text.isBlank() || isSending) return
 
         isSending = true
         viewModel.submitComment(
             content = content(),
-            commentText = commentInput,
+            commentText = commentFieldValue.text,
             environment = paginationEnvironment,
             replyToCommentId = replyToComment?.item?.id,
         ) {
             focusManager.clearFocus(force = true)
             keyboardController?.hide()
+            commentFieldValue = TextFieldValue("")
             onCommentInputChange("")
             replyToComment = null
+            showEmojiPicker = false
             isSending = false
             coroutineScope.launch {
                 listState.animateScrollToItem(
@@ -575,6 +711,7 @@ fun CommentScreen(
                             fun Comment(
                                 commentItem: CommentModel,
                                 modifier: Modifier = Modifier,
+                                allowDelete: Boolean = true,
                                 onChildCommentClick: (CommentModel) -> Unit,
                             ) {
                                 var isLiked by remember { mutableStateOf(commentItem.item.liked) }
@@ -601,6 +738,14 @@ fun CommentScreen(
                                         },
                                         onChildCommentClick = onChildCommentClick,
                                         onImageMenuAction = testOverrides?.onImageMenuAction,
+                                        onDelete = if (allowDelete && commentItem.item.canDelete) {
+                                            {
+                                                commentPendingDeletion = commentItem
+                                                deleteCommentError = null
+                                            }
+                                        } else {
+                                            null
+                                        },
                                     )
 
                                     // 在根评论区时 子评论
@@ -637,6 +782,14 @@ fun CommentScreen(
                                                         },
                                                         onChildCommentClick = onChildCommentClick,
                                                         onImageMenuAction = testOverrides?.onImageMenuAction,
+                                                        onDelete = if (childComment.canDelete) {
+                                                            {
+                                                                commentPendingDeletion = childCommentItem
+                                                                deleteCommentError = null
+                                                            }
+                                                        } else {
+                                                            null
+                                                        },
                                                     )
                                                 }
                                             }
@@ -690,7 +843,7 @@ fun CommentScreen(
                                                 ),
                                             ),
                                         ) {
-                                            Comment(activeCommentItem) { }
+                                            Comment(activeCommentItem, allowDelete = false) { }
                                             HorizontalDivider()
                                             if (viewModel.allData.isEmpty()) {
                                                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -906,15 +1059,57 @@ fun CommentScreen(
                                 .padding(8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
+                            IconButton(
+                                onClick = {
+                                    if (showEmojiPicker) {
+                                        showEmojiPicker = false
+                                        commentInputFocusRequester.requestFocus()
+                                        keyboardController?.show()
+                                    } else {
+                                        focusManager.clearFocus(force = true)
+                                        keyboardController?.hide()
+                                        showEmojiPicker = true
+                                    }
+                                },
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .testTag(COMMENT_EMOJI_BUTTON_TAG),
+                            ) {
+                                Icon(
+                                    imageVector = if (showEmojiPicker) {
+                                        Icons.Outlined.Keyboard
+                                    } else {
+                                        Icons.Outlined.EmojiEmotions
+                                    },
+                                    contentDescription = if (showEmojiPicker) {
+                                        "切换到键盘"
+                                    } else {
+                                        "选择表情"
+                                    },
+                                    tint = if (showEmojiPicker) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(4.dp))
+
                             BasicTextField(
-                                value = commentInput,
-                                onValueChange = onCommentInputChange,
+                                value = commentFieldValue,
+                                onValueChange = {
+                                    commentFieldValue = it
+                                    onCommentInputChange(it.text)
+                                },
                                 modifier = Modifier
                                     .weight(1f)
-                                    .testTag(COMMENT_INPUT_TAG),
+                                    .focusRequester(commentInputFocusRequester)
+                                    .onFocusChanged {
+                                        if (it.isFocused) showEmojiPicker = false
+                                    }.testTag(COMMENT_INPUT_TAG),
                                 decorationBox = { inner ->
                                     Box {
-                                        if (commentInput.isEmpty()) {
+                                        if (commentFieldValue.text.isEmpty()) {
                                             Text(
                                                 if (replyToComment != null) {
                                                     "回复 ${replyToComment?.item?.author?.name}..."
@@ -939,7 +1134,7 @@ fun CommentScreen(
                                 modifier = Modifier
                                     .size(24.dp)
                                     .testTag(COMMENT_SEND_BUTTON_TAG),
-                                enabled = !isSending && commentInput.isNotBlank(),
+                                enabled = !isSending && commentFieldValue.text.isNotBlank(),
                             ) {
                                 if (isSending) {
                                     CircularProgressIndicator(
@@ -951,12 +1146,71 @@ fun CommentScreen(
                                     Icon(
                                         Icons.AutoMirrored.Outlined.Send,
                                         contentDescription = "发送评论",
-                                        tint = if (commentInput.isNotBlank()) {
+                                        tint = if (commentFieldValue.text.isNotBlank()) {
                                             MaterialTheme.colorScheme.primary
                                         } else {
                                             MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                                         },
                                     )
+                                }
+                            }
+                        }
+
+                        AnimatedVisibility(
+                            visible = showEmojiPicker,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut(),
+                        ) {
+                            if (commentEmojis.isEmpty()) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(240.dp)
+                                        .testTag(COMMENT_EMOJI_PICKER_TAG),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(
+                                        text = "暂无可用表情",
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            } else {
+                                LazyVerticalGrid(
+                                    columns = GridCells.Adaptive(minSize = 48.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(240.dp)
+                                        .testTag(COMMENT_EMOJI_PICKER_TAG),
+                                    contentPadding = PaddingValues(8.dp),
+                                ) {
+                                    items(
+                                        items = commentEmojis,
+                                        key = CommentEmoji::placeholder,
+                                    ) { emoji ->
+                                        IconButton(
+                                            onClick = {
+                                                val updatedValue = commentFieldValue.replaceSelection(
+                                                    insert = emoji.placeholder,
+                                                    cursorOffsetInInsert = emoji.placeholder.length,
+                                                )
+                                                commentFieldValue = updatedValue
+                                                onCommentInputChange(updatedValue.text)
+                                            },
+                                            modifier = Modifier
+                                                .size(48.dp)
+                                                .testTag(COMMENT_EMOJI_ITEM_TAG_PREFIX + emoji.placeholder),
+                                        ) {
+                                            Text(
+                                                text = remember(emoji) {
+                                                    buildAnnotatedString {
+                                                        appendInlineContent(emoji.inlineKey, emoji.placeholder)
+                                                    }
+                                                },
+                                                inlineContent = emojiInlineContent,
+                                                fontSize = 28.sp,
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -987,9 +1241,11 @@ private fun CommentItem(
     toggleLike: () -> Unit = {},
     onChildCommentClick: (CommentModel) -> Unit,
     onImageMenuAction: ((CommentImageMenuAction, String) -> Unit)? = null,
+    onDelete: (() -> Unit)? = null,
 ) {
     val navigator = LocalNavigator.current
     val commentData = comment.item
+    var showMoreMenu by remember(commentData.id) { mutableStateOf(false) }
 
     Column(modifier = modifier.fillMaxWidth()) {
         // 作者信息
@@ -1160,6 +1416,45 @@ private fun CommentItem(
             }
 
             Spacer(modifier = Modifier.weight(1f))
+
+            if (onDelete != null) {
+                Box {
+                    IconButton(
+                        onClick = { showMoreMenu = true },
+                        modifier = Modifier
+                            .size(24.dp)
+                            .testTag("comment_more_button_${commentData.id}"),
+                    ) {
+                        Icon(
+                            Icons.Default.MoreVert,
+                            contentDescription = "更多操作",
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showMoreMenu,
+                        onDismissRequest = { showMoreMenu = false },
+                    ) {
+                        DropdownMenuItem(
+                            modifier = Modifier.testTag("comment_delete_menu_item_${commentData.id}"),
+                            text = { Text("删除", color = MaterialTheme.colorScheme.error) },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                )
+                            },
+                            onClick = {
+                                showMoreMenu = false
+                                onDelete()
+                            },
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+            }
 
             // 回复按钮
             Row(

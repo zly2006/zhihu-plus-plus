@@ -19,6 +19,7 @@ package com.github.zly2006.zhihu.test
 
 import android.content.Context
 import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.notification.ZHIHU_PLUS_PLUS_HOME_NOTIFICATIONS_URL
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
 import io.ktor.client.engine.mock.respond
@@ -59,18 +60,7 @@ object ZhihuMockApi {
             AccountData.createConfiguredHttpClient(
                 context = context,
                 cookies = cookies,
-                engine = MockEngine { request ->
-                    requests += RecordedRequest(request.method, request.url.toString())
-                    val route = routes.firstOrNull { it.predicate(request) }
-                    if (route != null) {
-                        route.responder(this, request)
-                    } else {
-                        jsonResponse(
-                            status = HttpStatusCode.NotFound,
-                            body = """{"error":"No mock route registered","url":"${request.url}","method":"${request.method.value}"}""",
-                        )
-                    }
-                },
+                engine = mockEngine(),
             )
         }
     }
@@ -155,6 +145,11 @@ object ZhihuMockApi {
                   ]
                 }
                 """.trimIndent(),
+        )
+        mockJsonPrefix(
+            method = HttpMethod.Get,
+            urlPrefix = "$ZHIHU_PLUS_PLUS_HOME_NOTIFICATIONS_URL?version=",
+            body = """{"notifications":[]}""",
         )
         mockJson(
             method = HttpMethod.Get,
@@ -284,4 +279,17 @@ object ZhihuMockApi {
         status = status,
         headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
     )
+
+    private fun mockEngine() = MockEngine { request ->
+        requests += RecordedRequest(request.method, request.url.toString())
+        val route = routes.firstOrNull { it.predicate(request) }
+        if (route != null) {
+            route.responder(this, request)
+        } else {
+            jsonResponse(
+                status = HttpStatusCode.NotFound,
+                body = """{"error":"No mock route registered","url":"${request.url}","method":"${request.method.value}"}""",
+            )
+        }
+    }
 }

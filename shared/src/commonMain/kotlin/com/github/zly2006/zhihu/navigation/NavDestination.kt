@@ -17,7 +17,7 @@
 
 package com.github.zly2006.zhihu.navigation
 
-import com.github.zly2006.zhihu.shared.util.Log
+import com.github.zly2006.zhihu.util.Log
 import io.ktor.http.Url
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -227,6 +227,10 @@ data class SegmentCommentHolder(
     val contentId: String,
     val contentType: String,
     val segmentId: String,
+    val segmentContent: String,
+    val paragraphId: String,
+    val startOffset: Int,
+    val endOffset: Int,
 ) : NavDestination
 
 @Serializable
@@ -407,7 +411,34 @@ fun resolveContent(url: Url): NavDestination? {
         }
     }
     if (url.protocol.name == "zhihu") {
-        if (url.host == "answers") {
+        if (
+            url.host == "comment" &&
+            segments.size == 3 &&
+            segments[0] == "list"
+        ) {
+            val contentId = segments[2].toLongOrNull() ?: return null
+            val commentId = url.parameters["anchor_comment_id"]
+                ?.takeIf { id -> id.isNotEmpty() && id.all { it in '0'..'9' } }
+                ?: return null
+            val content = when (segments[1]) {
+                "answer" -> Article(
+                    type = ArticleType.Answer,
+                    id = contentId,
+                )
+
+                "article" -> Article(
+                    type = ArticleType.Article,
+                    id = contentId,
+                )
+
+                "pin" -> Pin(id = contentId)
+
+                "question" -> Question(questionId = contentId)
+
+                else -> return null
+            }
+            return CommentHolder(commentId = commentId, article = content)
+        } else if (url.host == "answers") {
             val answerId = segments[0].toLong()
             return Article(type = ArticleType.Answer, id = answerId)
         } else if (url.host == "questions") {

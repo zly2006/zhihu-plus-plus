@@ -123,6 +123,7 @@ kotlin {
             implementation(project(":markdown-parser"))
             implementation(project(":markdown-renderer"))
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.8.0")
+            implementation("org.jetbrains.kotlinx:kotlinx-io-core:0.8.1")
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
             implementation("com.mikepenz:aboutlibraries-compose-m3:15.0.0")
         }
@@ -142,6 +143,7 @@ kotlin {
             implementation("com.google.zxing:core:3.5.4")
             implementation("io.coil-kt.coil3:coil-gif:3.5.0")
             implementation("io.coil-kt.coil3:coil-network-ktor3-android:3.5.0")
+            implementation("io.ktor:ktor-client-android:3.5.0")
             implementation("me.saket.telephoto:zoomable-image-coil3:0.19.0")
             implementation("org.jsoup:jsoup:1.22.2")
         }

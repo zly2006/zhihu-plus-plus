@@ -49,9 +49,13 @@ import coil3.memory.MemoryCache
 import coil3.request.crossfade
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.HistoryStorage
+import com.github.zly2006.zhihu.filter.ContentOpenEventSupport
+import com.github.zly2006.zhihu.filter.ContentOpenFrom
+import com.github.zly2006.zhihu.filter.TrackedContentIdentity
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionContent
+import com.github.zly2006.zhihu.navigation.CommentHolder
 import com.github.zly2006.zhihu.navigation.History
 import com.github.zly2006.zhihu.navigation.Home
 import com.github.zly2006.zhihu.navigation.MainTabs
@@ -62,9 +66,12 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
+import com.github.zly2006.zhihu.nlp.KeywordWeightExtractor
 import com.github.zly2006.zhihu.nlp.NLPService
 import com.github.zly2006.zhihu.nlp.NlpServiceKeywordSemanticMatcher
 import com.github.zly2006.zhihu.nlp.SentenceEmbeddingManager
+import com.github.zly2006.zhihu.platform.androidSettingsStore
+import com.github.zly2006.zhihu.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.reading.AndroidReadingPlayerBridge
 import com.github.zly2006.zhihu.reading.ContentReadingService
 import com.github.zly2006.zhihu.reading.ReadingContentType
@@ -74,13 +81,6 @@ import com.github.zly2006.zhihu.reading.ReadingQueueItem
 import com.github.zly2006.zhihu.reading.ReadingStartRequest
 import com.github.zly2006.zhihu.reading.ReadingTemplateField
 import com.github.zly2006.zhihu.reading.loadReadingPlaybackSpeed
-import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
-import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
-import com.github.zly2006.zhihu.shared.filter.TrackedContentIdentity
-import com.github.zly2006.zhihu.shared.nlp.KeywordWeightExtractor
-import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
-import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
-import com.github.zly2006.zhihu.shared.util.ZHIHU_WEB_ZSE93
 import com.github.zly2006.zhihu.theme.AndroidThemeSettings
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.AndroidZhihuMain
@@ -94,14 +94,16 @@ import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.util.ContinuousUsageReminderManager
 import com.github.zly2006.zhihu.util.EmojiManager
 import com.github.zly2006.zhihu.util.PowerSaveModeCompat
+import com.github.zly2006.zhihu.util.ZHIHU_WEB_ZSE93
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import com.github.zly2006.zhihu.util.clearShareImageCache
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import com.github.zly2006.zhihu.util.telemetry
-import com.github.zly2006.zhihu.viewmodel.AndroidArticlesSharedData
-import com.github.zly2006.zhihu.viewmodel.filter.AndroidContentFilterRuntime
+import com.github.zly2006.zhihu.viewmodel.ArticleAnswerSwitchData
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterManager
+import com.github.zly2006.zhihu.viewmodel.filter.androidKeywordSemanticMatcher
+import com.github.zly2006.zhihu.viewmodel.filter.androidKeywordWeightExtractor
 import com.github.zly2006.zhihu.viewmodel.filter.contentFilterSettings
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.CoroutineScope
@@ -124,7 +126,7 @@ class MainActivity :
     override val articleNavController: NavHostController
         get() = navController
     override val articleAnswerSwitchState: ArticleAnswerSwitchState
-        get() = ViewModelProvider(this)[AndroidArticlesSharedData::class.java]
+        get() = ViewModelProvider(this)[ArticleAnswerSwitchData::class.java]
     override val articleTtsState: TtsState
         get() = ttsState
     override var clipboardDestination: NavDestination?
@@ -152,6 +154,7 @@ class MainActivity :
     private lateinit var continuousUsageReminderManager: ContinuousUsageReminderManager
     private var pendingContentOpenIdentity: TrackedContentIdentity? = null
     private var pendingContentOpenFrom: String? = null
+    private var pendingCommentHolder: CommentHolder? = null
     private var currentMainTabOpenFrom: String? = null
     var mainTabNavigationTarget by mutableStateOf<TopLevelDestination?>(null)
         private set
@@ -189,8 +192,8 @@ class MainActivity :
         history = HistoryStorage(this)
         AccountData.loadData(this)
         AndroidThemeSettings.initialize(this)
-        AndroidContentFilterRuntime.semanticMatcher = NlpServiceKeywordSemanticMatcher
-        AndroidContentFilterRuntime.keywordWeightExtractor = KeywordWeightExtractor { text, topN ->
+        androidKeywordSemanticMatcher = NlpServiceKeywordSemanticMatcher
+        androidKeywordWeightExtractor = KeywordWeightExtractor { text, topN ->
             NLPService.extractKeywordsWithWeight(text, topN)
         }
         getContentFilterDatabase(this)
@@ -405,6 +408,14 @@ class MainActivity :
     }
 
     fun navigate(route: NavDestination, popup: Boolean = false) {
+        if (route is CommentHolder) {
+            pendingCommentHolder = route
+            navigate(route.article, popup)
+            return
+        }
+        if (pendingCommentHolder?.article != route) {
+            pendingCommentHolder = null
+        }
         preparePendingContentOpen(route)
         history.add(route)
         if (route is Video) {
@@ -471,6 +482,12 @@ class MainActivity :
         return openFrom
     }
 
+    override fun consumePendingCommentId(destination: NavDestination): String? {
+        val holder = pendingCommentHolder?.takeIf { it.article == destination } ?: return null
+        pendingCommentHolder = null
+        return holder.commentId
+    }
+
     private fun preparePendingContentOpen(target: NavDestination) {
         val identity = ContentOpenEventSupport.toTrackedContentIdentity(target)
         if (identity == null) {
@@ -497,11 +514,6 @@ class MainActivity :
                 saveState = true
             }
         }
-    }
-
-    fun navigateMainTab(destination: TopLevelDestination) {
-        mainTabNavigationTarget = destination
-        navigateToMainTabs()
     }
 
     fun setCurrentMainTabOpenFrom(openFrom: String?) {

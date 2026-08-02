@@ -17,7 +17,7 @@
 
 package com.github.zly2006.zhihu.util
 
-import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.data.DataHolder
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals

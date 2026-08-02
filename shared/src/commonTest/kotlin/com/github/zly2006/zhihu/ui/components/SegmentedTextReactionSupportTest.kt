@@ -17,8 +17,8 @@
 
 package com.github.zly2006.zhihu.ui.components
 
-import com.github.zly2006.zhihu.shared.data.SegmentInfoMeta
-import com.github.zly2006.zhihu.shared.util.SegmentHighlightSpan
+import com.github.zly2006.zhihu.data.SegmentInfoMeta
+import com.github.zly2006.zhihu.util.SegmentHighlightSpan
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive

@@ -17,7 +17,7 @@
 
 package com.github.zly2006.zhihu.nlp
 
-import com.github.zly2006.zhihu.shared.nlp.KeywordWithWeight
+import com.github.zly2006.zhihu.nlp.KeywordWithWeight
 
 object NLPService {
     suspend fun extractKeywords(text: String, topN: Int = 5): List<String> = emptyList()

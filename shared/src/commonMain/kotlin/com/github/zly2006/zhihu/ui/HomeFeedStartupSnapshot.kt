@@ -17,10 +17,10 @@
 
 package com.github.zly2006.zhihu.ui
 
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.RecommendationMode
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.shared.util.Log
+import com.github.zly2006.zhihu.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.RecommendationMode
+import com.github.zly2006.zhihu.data.ZhihuJson
+import com.github.zly2006.zhihu.util.Log
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 

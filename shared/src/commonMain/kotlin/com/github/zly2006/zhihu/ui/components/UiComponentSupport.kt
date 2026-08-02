@@ -45,15 +45,16 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.DpOffset
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.nlp.KeywordWithWeight
-import com.github.zly2006.zhihu.shared.platform.rememberImageSaver
-import com.github.zly2006.zhihu.shared.platform.rememberImageSharer
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.shared.util.Log
-import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
+import com.github.zly2006.zhihu.data.FeedDisplayItem
+import com.github.zly2006.zhihu.nlp.KeywordWithWeight
+import com.github.zly2006.zhihu.platform.rememberImageSaver
+import com.github.zly2006.zhihu.platform.rememberImageSharer
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.util.Log
+import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeyword
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedQuestionAuthor
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedUser
+import com.github.zly2006.zhihu.viewmodel.filter.KeywordType
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.CancellationException
@@ -61,42 +62,10 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
 
-data class FeedBlockActions(
-    val handleBlockUser: (
-        viewModel: BaseFeedViewModel,
-        feedItem: FeedDisplayItem,
-        onShowDialog: (Pair<String, String>) -> Unit,
-    ) -> Unit,
-    val handleBlockQuestionAuthor: (
-        viewModel: BaseFeedViewModel,
-        feedItem: FeedDisplayItem,
-        onShowDialog: (Pair<String, String>) -> Unit,
-    ) -> Unit,
-    val handleBlockTopic: (
-        viewModel: BaseFeedViewModel,
-        topicId: String,
-        topicName: String,
-    ) -> Unit,
-    val handleBlockByKeywords: (
-        viewModel: BaseFeedViewModel,
-        feedItem: FeedDisplayItem,
-        onShowDialog: (Pair<FeedDisplayItem, Triple<String, String, String?>>) -> Unit,
-    ) -> Unit,
-)
-
-@Composable
-expect fun rememberFeedBlockActions(): FeedBlockActions
-
-data class BlockByKeywordsRuntime(
-    val extractKeywords: suspend (
-        title: String,
-        excerpt: String?,
-    ) -> List<KeywordWithWeight>,
-    val addNlpPhrase: suspend (String) -> Unit,
-)
-
-@Composable
-expect fun rememberBlockByKeywordsRuntime(): BlockByKeywordsRuntime
+expect suspend fun extractFeedKeywords(
+    title: String,
+    excerpt: String?,
+): List<KeywordWithWeight>
 
 @Composable
 fun FeedAuthorBlockConfirmDialog(
@@ -135,7 +104,7 @@ fun FeedAuthorBlockConfirmDialog(
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
-            Log.e("FeedBlockActions", "Failed to load question author activity stats", error)
+            Log.e("FeedBlocking", "Failed to load question author activity stats", error)
             null
         } finally {
             isQuestionAuthorStatsLoading = false
@@ -174,7 +143,7 @@ fun FeedAuthorBlockConfirmDialog(
                     val targetName = if (request.type == FeedAuthorBlockType.QUESTION_AUTHOR) "提问者" else "用户"
                     userMessages.showShortMessage("已屏蔽$targetName：${author.name}")
                 } catch (e: Exception) {
-                    Log.e("FeedBlockActions", "Failed to block feed author", e)
+                    Log.e("FeedBlocking", "Failed to block feed author", e)
                     userMessages.showShortMessage("屏蔽失败: ${e.message}")
                 }
             }
@@ -192,7 +161,7 @@ fun BlockByKeywordsDialog(
 ) {
     val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
-    val runtime = rememberBlockByKeywordsRuntime()
+    val database = remember { getContentFilterDatabase() }
 
     var extractedKeywords by remember { mutableStateOf<List<String>>(emptyList()) }
     var keywordInfoList by remember { mutableStateOf<List<KeywordWithWeight>>(emptyList()) }
@@ -203,11 +172,11 @@ fun BlockByKeywordsDialog(
         if (showDialog) {
             isLoading = true
             try {
-                val keywordsWithWeight = runtime.extractKeywords(feedTitle, feedExcerpt)
+                val keywordsWithWeight = extractFeedKeywords(feedTitle, feedExcerpt)
                 keywordInfoList = keywordsWithWeight
                 extractedKeywords = keywordsWithWeight.take(8).map { it.keyword }
             } catch (e: Exception) {
-                Log.e("FeedBlockActions", "Failed to extract block keywords", e)
+                Log.e("FeedBlocking", "Failed to extract block keywords", e)
                 userMessages.showShortMessage("提取关键词失败: ${e.message}")
             } finally {
                 isLoading = false
@@ -228,11 +197,16 @@ fun BlockByKeywordsDialog(
             isAdding = true
             coroutineScope.launch {
                 try {
-                    runtime.addNlpPhrase(phrase)
+                    database.blockedKeywordDao().insertKeyword(
+                        BlockedKeyword(
+                            keyword = phrase.trim(),
+                            keywordType = KeywordType.NLP_SEMANTIC.name,
+                        ),
+                    )
                     userMessages.showShortMessage("已添加NLP屏蔽短语: $phrase")
                     onConfirm()
                 } catch (e: Exception) {
-                    Log.e("FeedBlockActions", "Failed to add NLP block phrase", e)
+                    Log.e("FeedBlocking", "Failed to add NLP block phrase", e)
                     userMessages.showShortMessage("添加失败: ${e.message}")
                 } finally {
                     isAdding = false

@@ -45,16 +45,17 @@ import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.navigation.History
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.platform.PlatformBackHandler
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
-import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.shared.ui.TopLevelReselectAction
-import com.github.zly2006.zhihu.shared.ui.topLevelReselectAction
+import com.github.zly2006.zhihu.ui.TopLevelReselectAction
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
+import com.github.zly2006.zhihu.ui.topLevelReselectAction
 import com.github.zly2006.zhihu.viewmodel.feed.OnlineHistoryViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 const val ONLINE_HISTORY_OVERFLOW_TAG = "online_history_overflow"
@@ -189,10 +190,29 @@ fun OnlineHistoryScreen(
                 listState = listState,
                 onLoadMore = { viewModel.loadMore(paginationEnvironment) },
                 isEnd = { viewModel.isEnd },
+                key = { item -> item.stableKey },
             ) { item ->
                 FeedCard(
                     item,
                     readingQueueSourceId = readingQueueSourceId.takeIf { isActive },
+                    menuItems = { dismissMenu ->
+                        DropdownMenuItem(
+                            text = { Text("删除该条历史记录") },
+                            onClick = {
+                                dismissMenu()
+                                coroutineScope.launch {
+                                    try {
+                                        viewModel.deleteItem(paginationEnvironment, item)
+                                        userMessages.showShortMessage("已删除")
+                                    } catch (error: CancellationException) {
+                                        throw error
+                                    } catch (_: Exception) {
+                                        userMessages.showShortMessage("操作失败")
+                                    }
+                                }
+                            },
+                        )
+                    },
                 )
             }
         }

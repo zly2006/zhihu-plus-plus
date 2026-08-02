@@ -28,7 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.SwingPanel
-import com.github.zly2006.zhihu.shared.login.ZHIHU_DESKTOP_USER_AGENT
+import com.github.zly2006.zhihu.account.ZHIHU_DESKTOP_USER_AGENT
 import javafx.application.Platform
 import javafx.embed.swing.JFXPanel
 import javafx.scene.Scene

@@ -20,19 +20,14 @@ package com.github.zly2006.zhihu.markdown
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.latex.rememberLatexFonts
-import com.github.zly2006.zhihu.shared.data.toCookieHeaderString
+import com.github.zly2006.zhihu.data.toCookieHeaderString
 import com.hrm.latex.renderer.font.MathFont
 
 @Composable
-actual fun rememberMarkdownRuntime(): MarkdownRuntime {
+actual fun rememberMarkdownMathFont(): MathFont? {
     val context = LocalContext.current
     val httpClient = AccountData.httpClient(context)
-    val fontResult = rememberLatexFonts(context, httpClient)
-
-    return object : MarkdownRuntime {
-        override val mathFont: MathFont? = fontResult.downloaded?.mathFont
-    }
+    return rememberLatexFonts(context, httpClient).downloaded?.mathFont
 }
 
 @Composable

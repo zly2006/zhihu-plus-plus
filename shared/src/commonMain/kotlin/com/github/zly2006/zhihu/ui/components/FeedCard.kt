@@ -23,6 +23,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -65,22 +66,21 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.navDestination
+import com.github.zly2006.zhihu.data.officialBadge
+import com.github.zly2006.zhihu.data.sourceLabel
+import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Navigator
 import com.github.zly2006.zhihu.navigation.withReadingQueueSource
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.Feed
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.navDestination
-import com.github.zly2006.zhihu.shared.data.officialBadge
-import com.github.zly2006.zhihu.shared.data.sourceLabel
-import com.github.zly2006.zhihu.shared.data.target
-import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
-import com.github.zly2006.zhihu.shared.platform.rememberIsLiteVariant
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.platform.UserMessageDuration
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
 import com.github.zly2006.zhihu.util.parseEmphasizedHtmlTextWithTheme
@@ -89,7 +89,7 @@ import com.github.zly2006.zhihu.util.parseEmphasizedHtmlTextWithTheme
  * 信息流卡片的 Material 3 实现。
  *
  * 卡片负责展示标题、摘要、作者、徽章、缩略图和更多菜单，并根据设置支持卡片/分割线两种外观、Duo3 排版和缩略图开关。
- * 默认点击会解析 [FeedDisplayItem] 的导航目标并进入详情页；外部也可以注入屏蔽用户、按关键词屏蔽和屏蔽主题等动作。
+ * 默认点击会解析 [FeedDisplayItem] 的导航目标并进入详情页；页面可以通过 [menuItems] 直接声明自己的业务菜单项。
  *
  * 修改这个组件时要同步复核 `showFeedThumbnail`、`feedCardStyle`、`duo3_card_appearance`、
  * `duo3_card_layout` 和 `duo3_card_large_title` 对各信息流入口的影响。
@@ -103,10 +103,7 @@ fun FeedCard(
     maxHeight: Dp = 240.dp,
     thumbnailUrl: String? = null,
     horizontalPadding: Dp = 16.dp,
-    onBlockUser: ((FeedDisplayItem) -> Unit)? = null,
-    onBlockQuestionAuthor: ((FeedDisplayItem) -> Unit)? = null,
-    onBlockByKeywords: ((FeedDisplayItem) -> Unit)? = null,
-    onBlockTopic: ((topicId: String, topicName: String) -> Unit)? = null,
+    menuItems: @Composable ColumnScope.(dismissMenu: () -> Unit) -> Unit = { _ -> },
     showSourceLabel: Boolean = false,
     /**
      * 默认点击行为：优先跳转到信息流条目的详情页；如果只能识别为外链则打开外链，否则提示暂不支持。
@@ -117,7 +114,6 @@ fun FeedCard(
     val uriHandler = LocalUriHandler.current
     val userMessages = rememberUserMessageSink()
     val settings = rememberSettingsStore()
-    val isLiteVariant = rememberIsLiteVariant()
     var showMenu by remember { mutableStateOf(false) }
     val showFeedThumbnail = remember {
         settings.getBoolean("showFeedThumbnail", true)
@@ -166,10 +162,7 @@ fun FeedCard(
                     pinImages = pinImages,
                     showMenu = showMenu,
                     onShowMenuChange = { showMenu = it },
-                    onBlockUser = onBlockUser,
-                    onBlockQuestionAuthor = onBlockQuestionAuthor,
-                    onBlockByKeywords = if (isLiteVariant) null else onBlockByKeywords,
-                    onBlockTopic = onBlockTopic,
+                    menuItems = menuItems,
                     duo3CardLayout = duo3CardLayout,
                     duo3CardLargeTitle = duo3CardLargeTitle,
                     showSourceLabel = showSourceLabel,
@@ -217,10 +210,7 @@ fun FeedCard(
                         pinImages = pinImages,
                         showMenu = showMenu,
                         onShowMenuChange = { showMenu = it },
-                        onBlockUser = onBlockUser,
-                        onBlockQuestionAuthor = onBlockQuestionAuthor,
-                        onBlockByKeywords = if (isLiteVariant) null else onBlockByKeywords,
-                        onBlockTopic = onBlockTopic,
+                        menuItems = menuItems,
                         duo3CardLayout = duo3CardLayout,
                         duo3CardLargeTitle = duo3CardLargeTitle,
                         showSourceLabel = showSourceLabel,
@@ -234,18 +224,14 @@ fun FeedCard(
 /**
  * 信息流卡片右上角的更多菜单。
  *
- * 菜单集中承载和当前条目相关的轻量操作：按关键词屏蔽、屏蔽用户、屏蔽主题、跳转外观设置，以及对已过滤内容快速关闭质量过滤。
- * 这些入口会把用户带回对应设置项，因此新增菜单动作时要明确它是直接修改内容，还是跳转到设置页继续配置。
+ * 卡片只负责菜单的展开、收起和通用设置项；页面业务动作由 [menuItems] 直接提供。
  */
 @Composable
 private fun FeedCardMenuBox(
     item: FeedDisplayItem,
     showMenu: Boolean,
     onShowMenuChange: (Boolean) -> Unit,
-    onBlockUser: ((FeedDisplayItem) -> Unit)?,
-    onBlockQuestionAuthor: ((FeedDisplayItem) -> Unit)?,
-    onBlockByKeywords: ((FeedDisplayItem) -> Unit)?,
-    onBlockTopic: ((topicId: String, topicName: String) -> Unit)?,
+    menuItems: @Composable ColumnScope.(dismissMenu: () -> Unit) -> Unit,
     navigator: Navigator,
 ) {
     Box {
@@ -264,54 +250,7 @@ private fun FeedCardMenuBox(
             expanded = showMenu,
             onDismissRequest = { onShowMenuChange(false) },
         ) {
-            if (onBlockByKeywords != null) {
-                DropdownMenuItem(
-                    text = { Text("按关键词屏蔽") },
-                    onClick = {
-                        onShowMenuChange(false)
-                        onBlockByKeywords(item)
-                    },
-                )
-            }
-            DropdownMenuItem(
-                text = { Text("屏蔽用户") },
-                onClick = {
-                    onShowMenuChange(false)
-                    onBlockUser?.invoke(item)
-                },
-            )
-            val canBlockQuestionAuthor = onBlockQuestionAuthor != null &&
-                when (item.feed?.target) {
-                    is Feed.AnswerTarget, is Feed.QuestionTarget -> true
-                    else -> item.raw is DataHolder.Answer || item.raw is DataHolder.Question
-                }
-            if (canBlockQuestionAuthor) {
-                DropdownMenuItem(
-                    text = { Text("屏蔽提问者") },
-                    onClick = {
-                        onShowMenuChange(false)
-                        onBlockQuestionAuthor(item)
-                    },
-                )
-            }
-            if (onBlockTopic != null && item.raw != null) {
-                val topics = when (val raw = item.raw) {
-                    is com.github.zly2006.zhihu.shared.data.DataHolder.Answer -> raw.question.topics
-                    is com.github.zly2006.zhihu.shared.data.DataHolder.Question -> raw.topics
-                    is com.github.zly2006.zhihu.shared.data.DataHolder.Article -> raw.topics ?: emptyList()
-                    is com.github.zly2006.zhihu.shared.data.DataHolder.Pin -> raw.topics ?: emptyList()
-                    else -> emptyList()
-                }
-                topics.forEach { topic ->
-                    DropdownMenuItem(
-                        text = { Text("屏蔽「${topic.name}」") },
-                        onClick = {
-                            onShowMenuChange(false)
-                            onBlockTopic(topic.id, topic.name)
-                        },
-                    )
-                }
-            }
+            menuItems { onShowMenuChange(false) }
             DropdownMenuItem(
                 text = { Text("外观设置") },
                 onClick = {
@@ -346,10 +285,7 @@ private fun FeedCardContent(
     pinImages: List<DataHolder.Pin.ContentImage>,
     showMenu: Boolean,
     onShowMenuChange: (Boolean) -> Unit,
-    onBlockUser: ((FeedDisplayItem) -> Unit)?,
-    onBlockQuestionAuthor: ((FeedDisplayItem) -> Unit)?,
-    onBlockByKeywords: ((FeedDisplayItem) -> Unit)?,
-    onBlockTopic: ((topicId: String, topicName: String) -> Unit)?,
+    menuItems: @Composable ColumnScope.(dismissMenu: () -> Unit) -> Unit,
     duo3CardLayout: Boolean,
     duo3CardLargeTitle: Boolean,
     showSourceLabel: Boolean,
@@ -461,7 +397,7 @@ private fun FeedCardContent(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
                         )
-                        FeedCardMenuBox(item, showMenu, onShowMenuChange, onBlockUser, onBlockQuestionAuthor, onBlockByKeywords, onBlockTopic, navigator)
+                        FeedCardMenuBox(item, showMenu, onShowMenuChange, menuItems, navigator)
                     }
                 }
             }
@@ -539,7 +475,7 @@ private fun FeedCardContent(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.weight(1f),
                         )
-                        FeedCardMenuBox(item, showMenu, onShowMenuChange, onBlockUser, onBlockQuestionAuthor, onBlockByKeywords, onBlockTopic, navigator)
+                        FeedCardMenuBox(item, showMenu, onShowMenuChange, menuItems, navigator)
                     }
                 }
             }

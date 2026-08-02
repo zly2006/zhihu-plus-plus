@@ -93,13 +93,13 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.MyCollections
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.shared.theme.ThemeMode
-import com.github.zly2006.zhihu.shared.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
-import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.theme.ThemeMode
+import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.ui.components.ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.ColorPickerDialog
 import com.github.zly2006.zhihu.ui.components.DEFAULT_ANSWER_SWITCH_SENSITIVITY
@@ -272,7 +272,6 @@ fun AppearanceSettingsScreen(
     onExit: () -> Unit,
 ) {
     val settingKey = setting.orEmpty()
-    val runtime = rememberThemeSettingsRuntime()
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()
 
@@ -383,7 +382,8 @@ fun AppearanceSettingsScreen(
                                 val isSelected = currentThemeMode == mode
                                 OutlinedButton(
                                     onClick = {
-                                        runtime.setThemeMode(mode)
+                                        ThemeManager.setThemeMode(mode)
+                                        settings.putString("themeMode", mode.name)
                                         userMessages.showShortMessage("已切换到$label")
                                     },
                                     colors = ButtonDefaults.outlinedButtonColors(
@@ -412,7 +412,8 @@ fun AppearanceSettingsScreen(
                     description = { Text("根据系统壁纸自动提取主题色（Android 12+ 可用）。\n关闭后可以自己设定主题颜色。") },
                     checked = useDynamicColor,
                     onCheckedChange = {
-                        runtime.setUseDynamicColor(it)
+                        ThemeManager.setUseDynamicColor(it)
+                        settings.putBoolean("useDynamicColor", it)
                         userMessages.showShortMessage("已${if (it) "启用" else "禁用"}动态取色")
                     },
                     settingKey = "dynamicColor",
@@ -445,7 +446,8 @@ fun AppearanceSettingsScreen(
                         initialColor = customColor,
                         onDismiss = { showColorPicker = false },
                         onColorSelected = { color ->
-                            runtime.setCustomColor(color)
+                            ThemeManager.setCustomColor(color)
+                            settings.putInt("customThemeColor", color.toArgb())
                             userMessages.showShortMessage("主题色已保存")
                             showColorPicker = false
                         },
@@ -523,7 +525,11 @@ fun AppearanceSettingsScreen(
                         ),
                         onDismiss = { showBackgroundColorPicker = false },
                         onColorSelected = { color ->
-                            runtime.setBackgroundColor(color, currentIsDarkTheme)
+                            ThemeManager.setBackgroundColor(color, currentIsDarkTheme)
+                            settings.putInt(
+                                if (currentIsDarkTheme) "backgroundColorDark" else "backgroundColorLight",
+                                color.toArgb(),
+                            )
                             userMessages.showShortMessage("背景颜色已保存")
                             showBackgroundColorPicker = false
                         },

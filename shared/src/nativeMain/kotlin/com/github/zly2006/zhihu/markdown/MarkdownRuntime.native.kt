@@ -18,17 +18,12 @@
 package com.github.zly2006.zhihu.markdown
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import com.github.zly2006.zhihu.shared.account.IosAccountStore
-import com.github.zly2006.zhihu.shared.data.toCookieHeaderString
+import com.github.zly2006.zhihu.account.IosAccountStore
+import com.github.zly2006.zhihu.data.toCookieHeaderString
 import com.hrm.latex.renderer.font.MathFont
 
 @Composable
-actual fun rememberMarkdownRuntime(): MarkdownRuntime = remember {
-    object : MarkdownRuntime {
-        override val mathFont: MathFont? = null
-    }
-} // TODO: iOS Markdown 运行时完整实现
+actual fun rememberMarkdownMathFont(): MathFont? = null // TODO: iOS Markdown 数学字体
 
 @Composable
 actual fun rememberMarkdownImageRequestHeaders(): MarkdownImageRequestHeaders {

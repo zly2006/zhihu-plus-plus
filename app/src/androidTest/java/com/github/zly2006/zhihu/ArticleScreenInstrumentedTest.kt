@@ -58,9 +58,11 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.markdown.RenderImage
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.markdown.RenderMarkdownText
@@ -74,16 +76,15 @@ import com.github.zly2006.zhihu.reading.ReadingPlaybackStatus
 import com.github.zly2006.zhihu.reading.ReadingPlayerState
 import com.github.zly2006.zhihu.reading.ReadingQueueItem
 import com.github.zly2006.zhihu.reading.ReadingQueueSourceRegistry
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
-import com.github.zly2006.zhihu.ui.ArticleActionsMenu
+import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.ui.ArticleScreen
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.TtsState
+import com.github.zly2006.zhihu.ui.article.ArticleActionsMenu
 import com.github.zly2006.zhihu.ui.rememberArticleTtsState
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
@@ -323,6 +324,7 @@ class ArticleScreenInstrumentedTest {
             composeRule
                 .onNodeWithText(HIGHLIGHTED_PARAGRAPH)
                 .performTouchInput { longClick() }
+            composeRule.onNodeWithText("划线片段").assertDoesNotExist()
 
             val selectionImage = composeRule
                 .onNodeWithTag("highlighted-selection-article")
@@ -460,6 +462,77 @@ class ArticleScreenInstrumentedTest {
             .performTouchInput { click() }
         composeRule.onNodeWithText("划线片段").assertIsDisplayed()
         composeRule.onNodeWithText("“$HIGHLIGHTED_PARAGRAPH”").assertIsDisplayed()
+    }
+
+    @Test
+    fun highlightedTextUsesVisibleLayoutForTapTarget() {
+        composeRule.setScreenContent {
+            RenderMarkdown(
+                html = FORMATTED_HIGHLIGHT_PARAGRAPH_HTML,
+                modifier = androidx.compose.ui.Modifier
+                    .width(240.dp),
+                enableScroll = false,
+            )
+        }
+
+        val paragraph = composeRule.onNodeWithText(FORMATTED_HIGHLIGHT_PARAGRAPH)
+        var highlightCenter = Offset.Unspecified
+        paragraph.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { getTextLayoutResult ->
+            val results = mutableListOf<TextLayoutResult>()
+            assertTrue(getTextLayoutResult(results))
+            highlightCenter = results
+                .single()
+                .getBoundingBox(FORMATTED_HIGHLIGHT_PREFIX.length)
+                .center
+        }
+        paragraph.performTouchInput { click(highlightCenter) }
+
+        composeRule.onNodeWithText("划线片段").assertIsDisplayed()
+        composeRule.onNodeWithText("“$FORMATTED_HIGHLIGHT”").assertIsDisplayed()
+    }
+
+    @Test
+    fun highlightedParagraphTapOpensActionsInsideAnswerScreen() {
+        val viewModel = seededAnswerViewModel(ANSWER)
+        composeRule.activity.runOnUiThread {
+            viewModel.content = HIGHLIGHTED_PARAGRAPH_HTML
+        }
+        composeRule.setScreenContent {
+            Scaffold(
+                modifier = androidx.compose.ui.Modifier
+                    .fillMaxSize(),
+            ) { _ ->
+                ArticleScreen(
+                    article = ANSWER,
+                    viewModel = viewModel,
+                )
+            }
+        }
+
+        composeRule
+            .onNodeWithText(HIGHLIGHTED_PARAGRAPH)
+            .performTouchInput { click() }
+        composeRule.onNodeWithText("划线片段").assertIsDisplayed()
+        composeRule.onNodeWithText("“$HIGHLIGHTED_PARAGRAPH”").assertIsDisplayed()
+    }
+
+    @Test
+    fun highlightedParagraphDragDoesNotOpenActions() {
+        composeRule.setScreenContent {
+            RenderMarkdown(
+                html = HIGHLIGHTED_PARAGRAPH_HTML,
+                enableScroll = false,
+            )
+        }
+
+        composeRule
+            .onNodeWithText(HIGHLIGHTED_PARAGRAPH)
+            .performTouchInput {
+                down(center)
+                moveBy(Offset(0f, -100f))
+                up()
+            }
+        composeRule.onNodeWithText("划线片段").assertDoesNotExist()
     }
 
     @OptIn(ExperimentalFoundationApi::class)
@@ -1238,6 +1311,9 @@ class ArticleScreenInstrumentedTest {
         const val HIGHLIGHTED_PARAGRAPH =
             "目前灰度机制是在OpenCode上，被选中的账号调用deepseek-v4-pro或deepseek-v4-flash有机会拿到GA版。"
         const val HIGHLIGHT_SELECTION_TARGET = "后续普通段落用于验证拖动手柄跨越文字块。"
+        const val FORMATTED_HIGHLIGHT_PREFIX = "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW"
+        const val FORMATTED_HIGHLIGHT = "划线命中"
+        const val FORMATTED_HIGHLIGHT_PARAGRAPH = "$FORMATTED_HIGHLIGHT_PREFIX$FORMATTED_HIGHLIGHT 后缀"
         val HIGHLIGHTED_PARAGRAPH_HTML =
             """
             <p data-pid="WGd4cbq-"><span class="highlight-wrap other has-comments"
@@ -1252,6 +1328,15 @@ class ArticleScreenInstrumentedTest {
                 data-highlight-pid="WGd4cbq-"
                 data-highlight-start-offset="0"
                 data-highlight-end-offset="68">$HIGHLIGHTED_PARAGRAPH</span></p>
+            """.trimIndent()
+        val FORMATTED_HIGHLIGHT_PARAGRAPH_HTML =
+            """
+            <p><strong>$FORMATTED_HIGHLIGHT_PREFIX</strong><span class="highlight-wrap other has-comments"
+                data-highlight-id="formatted-highlight"
+                data-highlight-like-count="1"
+                data-highlight-comment-count="1"
+                data-highlight-content-id="777"
+                data-highlight-content-type="answer">$FORMATTED_HIGHLIGHT</span> 后缀</p>
             """.trimIndent()
 
         val ARTICLE = Article(

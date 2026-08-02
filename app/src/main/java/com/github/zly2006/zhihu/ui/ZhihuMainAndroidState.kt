@@ -19,11 +19,9 @@
 
 package com.github.zly2006.zhihu.ui
 
-import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
-import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Daily
 import com.github.zly2006.zhihu.navigation.Follow
@@ -31,7 +29,7 @@ import com.github.zly2006.zhihu.navigation.Home
 import com.github.zly2006.zhihu.navigation.HotList
 import com.github.zly2006.zhihu.navigation.MyCollections
 import com.github.zly2006.zhihu.navigation.OnlineHistory
-import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
+import com.github.zly2006.zhihu.platform.androidSettingsStore
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.START_DESTINATION_PREFERENCE_KEY
@@ -83,21 +81,4 @@ fun rememberAndroidZhihuMainPreferenceState(): ZhihuMainPreferenceState {
             ),
         )
     }
-}
-
-/**
- * 把 [MainActivity] 的导航能力包装成 common 主壳可消费的状态。
- *
- * Android 侧负责处理 deep link、剪贴板跳转、历史记录、视频打开和内容来源归因；common UI 只通过返回的
- * [ZhihuMainNavigationState] 发起导航。
- */
-@Composable
-fun rememberAndroidZhihuMainNavigationState(): ZhihuMainNavigationState {
-    val activity = LocalActivity.current as MainActivity
-    return ZhihuMainNavigationState(
-        mainTabNavigationTarget = activity.mainTabNavigationTarget,
-        navigate = activity::navigate,
-        setCurrentMainTabOpenFrom = activity::setCurrentMainTabOpenFrom,
-        consumeMainTabNavigationTarget = activity::consumeMainTabNavigationTarget,
-    )
 }

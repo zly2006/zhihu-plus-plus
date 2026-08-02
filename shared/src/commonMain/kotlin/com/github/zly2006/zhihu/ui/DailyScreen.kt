@@ -78,15 +78,16 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.fleeksoft.ksoup.Ksoup
+import com.github.zly2006.zhihu.data.DailySection
+import com.github.zly2006.zhihu.data.DailyStory
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.resolveContent
-import com.github.zly2006.zhihu.shared.data.DailySection
-import com.github.zly2006.zhihu.shared.data.DailyStory
-import com.github.zly2006.zhihu.shared.ui.TopLevelReselectAction
-import com.github.zly2006.zhihu.shared.ui.topLevelReselectAction
-import com.github.zly2006.zhihu.shared.util.formatDailyDate
-import com.github.zly2006.zhihu.shared.util.twoDigitString
-import com.github.zly2006.zhihu.shared.viewmodel.DailyViewModel
+import com.github.zly2006.zhihu.ui.TopLevelReselectAction
+import com.github.zly2006.zhihu.ui.topLevelReselectAction
+import com.github.zly2006.zhihu.util.formatDailyDate
+import com.github.zly2006.zhihu.util.twoDigitString
+import com.github.zly2006.zhihu.viewmodel.DailyViewModel
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import kotlinx.coroutines.Dispatchers
@@ -113,7 +114,7 @@ fun DailyScreen(
     isActive: Boolean = true,
 ) {
     val navigator = LocalNavigator.current
-    val httpClient = rememberZhihuHttpClient()
+    val httpClient = rememberPaginationEnvironment(allowGuestAccess = false).httpClient()
     val uriHandler = LocalUriHandler.current
     val viewModel = viewModel { DailyViewModel() }
     var isRefreshing by remember { mutableStateOf(false) }

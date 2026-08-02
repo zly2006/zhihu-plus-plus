@@ -17,17 +17,14 @@
 
 package com.github.zly2006.zhihu.ui
 
+import com.github.zly2006.zhihu.data.CommonFeed
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.Person
+import com.github.zly2006.zhihu.data.RecommendationMode
+import com.github.zly2006.zhihu.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.navigation.Search
-import com.github.zly2006.zhihu.shared.data.CommonFeed
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.Feed
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.Person
-import com.github.zly2006.zhihu.shared.data.RecommendationMode
-import com.github.zly2006.zhihu.shared.data.SegmentInfoMark
-import com.github.zly2006.zhihu.shared.data.SegmentInfoMeta
-import com.github.zly2006.zhihu.shared.data.SegmentInfoParagraph
-import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -80,24 +77,6 @@ class HomeFeedStartupSnapshotTest {
             isFiltered = false,
             content = "https://example.com/content",
             raw = DataHolder.DummyContent,
-            localContentId = "content-1",
-            localFeedId = "home-cache-1",
-            localReason = "离线推荐",
-            sourceLabel = "朋友赞同",
-            segmentInfos = listOf(
-                SegmentInfoParagraph(
-                    pid = "0",
-                    text = "段评文本",
-                    marks = listOf(
-                        SegmentInfoMark(
-                            startIndex = 0,
-                            endIndex = 2,
-                            segInfo = SegmentInfoMeta(segIds = listOf("seg-1"), likeCount = 3),
-                        ),
-                    ),
-                ),
-            ),
-            segmentSourceUrl = "https://www.zhihu.com/question/1/answer/2",
         )
 
         val payload = assertNotNull(encodeHomeFeedStartupSnapshot(listOf(item)))
@@ -115,12 +94,6 @@ class HomeFeedStartupSnapshotTest {
         assertEquals(item.isFiltered, restored.single().isFiltered)
         assertEquals(item.content, restored.single().content)
         assertNull(restored.single().raw)
-        assertEquals(item.localContentId, restored.single().localContentId)
-        assertEquals(item.localFeedId, restored.single().localFeedId)
-        assertEquals(item.localReason, restored.single().localReason)
-        assertEquals(item.sourceLabel, restored.single().sourceLabel)
-        assertEquals(item.segmentInfos, restored.single().segmentInfos)
-        assertEquals(item.segmentSourceUrl, restored.single().segmentSourceUrl)
     }
 
     @Test
@@ -145,7 +118,6 @@ class HomeFeedStartupSnapshotTest {
                     ),
                 ),
             ),
-            localFeedId = "home-cache-null-author",
         )
 
         val payload = assertNotNull(encodeHomeFeedStartupSnapshot(listOf(item)))
@@ -163,15 +135,14 @@ class HomeFeedStartupSnapshotTest {
                 summary = null,
                 details = "详情",
                 feed = null,
-                localFeedId = "item-$index",
             )
         }
 
         val restored = decodeHomeFeedStartupSnapshot(assertNotNull(encodeHomeFeedStartupSnapshot(items)))
 
         assertEquals(10, restored.size)
-        assertEquals("item-0", restored.first().localFeedId)
-        assertEquals("item-9", restored.last().localFeedId)
+        assertEquals("条目 0", restored.first().title)
+        assertEquals("条目 9", restored.last().title)
     }
 
     @Test
@@ -192,7 +163,7 @@ class HomeFeedStartupSnapshotTest {
             freshItems.addAll(cachedItems)
         }
 
-        assertEquals(listOf("fresh"), freshItems.map { it.localFeedId })
+        assertEquals(listOf("fresh"), freshItems.map { it.title })
     }
 
     @Test
@@ -203,7 +174,7 @@ class HomeFeedStartupSnapshotTest {
             items.addAll(cachedItems)
         }
 
-        assertEquals(listOf("cached"), items.map { it.localFeedId })
+        assertEquals(listOf("cached"), items.map { it.title })
     }
 
     @Test
@@ -242,6 +213,5 @@ class HomeFeedStartupSnapshotTest {
         summary = null,
         details = "详情",
         feed = null,
-        localFeedId = id,
     )
 }

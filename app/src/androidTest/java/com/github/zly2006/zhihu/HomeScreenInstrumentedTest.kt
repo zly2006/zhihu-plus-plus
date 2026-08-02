@@ -34,22 +34,24 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.RecommendationMode
+import com.github.zly2006.zhihu.data.ZhihuJson
+import com.github.zly2006.zhihu.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.navigation.WritePin
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.RecommendationMode
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
+import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_CACHE_FILE_NAME
+import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_LAST_CHECK_PREFERENCE_KEY
+import com.github.zly2006.zhihu.notification.ZHIHU_PLUS_PLUS_HOME_NOTIFICATIONS_URL
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
 import com.github.zly2006.zhihu.test.ZhihuMockApi
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
-import com.github.zly2006.zhihu.ui.AIGC_MARKING_ANNOUNCEMENT_DISMISSED_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.HOME_ACCOUNT_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.HOME_CREATE_FAB_TAG
 import com.github.zly2006.zhihu.ui.HOME_CREATE_MENU_TAG
@@ -60,14 +62,17 @@ import com.github.zly2006.zhihu.ui.HOME_SEARCH_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.HOME_TOP_ACTIONS_TAG
 import com.github.zly2006.zhihu.ui.HomeScreen
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
-import com.github.zly2006.zhihu.ui.QQ_GROUP_DISMISSED_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.ZHIHU_PLUS_AUTHOR_PINS_URL
 import com.github.zly2006.zhihu.ui.homeAuthorPollAnnouncementTag
+import com.github.zly2006.zhihu.ui.homeOnlineNotificationTag
 import com.github.zly2006.zhihu.ui.homePinAnnouncementReadKey
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
 import io.ktor.http.HttpMethod
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
@@ -83,6 +88,7 @@ class HomeScreenInstrumentedTest {
     fun setUp() {
         composeRule.setScreenContent {}
         composeRule.resetAppPreferences()
+        composeRule.activity.deleteFile(HOME_NOTIFICATION_CACHE_FILE_NAME)
         composeRule.activity.runOnUiThread {
             UpdateManager.updateState.value = UpdateManager.UpdateState.NoUpdate
             clearHomeFeedViewModel()
@@ -207,6 +213,59 @@ class HomeScreenInstrumentedTest {
 
         assertEquals(listOf(WritePin), recordingNavigator.destinations)
         assertEquals(0, recordingNavigator.backCount)
+    }
+
+    @Test
+    fun onlineNotification_usesBackendFieldsAndStoresReadUuidLocally() {
+        val notificationUuid = "da811fe3-858a-4655-afd4-a63024b74dbb"
+        ZhihuMockApi.mockJsonPrefix(
+            method = HttpMethod.Get,
+            urlPrefix = "$ZHIHU_PLUS_PLUS_HOME_NOTIFICATIONS_URL?version=",
+            body =
+                """
+                {
+                  "notifications": [
+                    {
+                      "uuid": "$notificationUuid",
+                      "expiresAt": 2101305599000,
+                      "title": "服务端标题",
+                      "content": "服务端正文",
+                      "accept": {
+                        "text": "查看想法",
+                        "key": "open_pin",
+                        "value": "2051253530787370452"
+                      },
+                      "dismiss": "稍后"
+                    }
+                  ]
+                }
+                """.trimIndent(),
+        )
+        val recordingNavigator = composeRule.launchHomeScreen(
+            duo3HomeAccount = false,
+            showRefreshFab = false,
+            useSeededAccountForNetwork = true,
+            checkOnlineNotifications = true,
+            displayItems = homeFeedFixtureItems(),
+        )
+
+        composeRule.waitUntilRequestCount(HttpMethod.Get, ZHIHU_PLUS_PLUS_HOME_NOTIFICATIONS_URL, 1)
+        composeRule.waitUntilHomeFeedTagExists(homeOnlineNotificationTag(notificationUuid))
+        composeRule.onNodeWithText("服务端标题").assertIsDisplayed()
+        composeRule.onNodeWithText("服务端正文").assertIsDisplayed()
+        composeRule.onNodeWithText("查看想法").performClick()
+
+        composeRule.onNodeWithTag(homeOnlineNotificationTag(notificationUuid)).assertDoesNotExist()
+        assertEquals(listOf(Pin(2051253530787370452L)), recordingNavigator.destinations)
+        assertEquals(
+            listOf(notificationUuid),
+            ZhihuJson.json
+                .parseToJsonElement(composeRule.activity.getFileStreamPath(HOME_NOTIFICATION_CACHE_FILE_NAME).readText())
+                .jsonObject
+                .getValue("readUuids")
+                .jsonArray
+                .map { it.jsonPrimitive.content },
+        )
     }
 
     @Test
@@ -337,6 +396,7 @@ class HomeScreenInstrumentedTest {
         duo3HomeAccount: Boolean,
         showRefreshFab: Boolean,
         useSeededAccountForNetwork: Boolean = false,
+        checkOnlineNotifications: Boolean = false,
         displayItems: List<FeedDisplayItem>,
     ): RecordingNavigator {
         setScreenContent {}
@@ -344,12 +404,12 @@ class HomeScreenInstrumentedTest {
             putBoolean("duo3_home_account", duo3HomeAccount)
             putBoolean("showRefreshFab", showRefreshFab)
             putBoolean("loginForRecommendation", useSeededAccountForNetwork)
-            putBoolean("filterExplainDialogShown", true)
-            putBoolean(AIGC_MARKING_ANNOUNCEMENT_DISMISSED_PREFERENCE_KEY, true)
-            putBoolean(QQ_GROUP_DISMISSED_PREFERENCE_KEY, true)
             putBoolean("survey_feedback_done", true)
             putBoolean("autoCheckUpdates", false)
             putString("recommendationMode", RecommendationMode.WEB.key)
+            if (!checkOnlineNotifications) {
+                putLong(HOME_NOTIFICATION_LAST_CHECK_PREFERENCE_KEY, System.currentTimeMillis())
+            }
         }
         activity.runOnUiThread {
             if (!useSeededAccountForNetwork) {

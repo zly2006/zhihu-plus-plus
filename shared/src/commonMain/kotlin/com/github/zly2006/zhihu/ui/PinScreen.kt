@@ -75,7 +75,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.fleeksoft.ksoup.Ksoup
+import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.decodePinContentDetail
+import com.github.zly2006.zhihu.data.officialBadge
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
@@ -84,6 +86,8 @@ import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.resolveContent
+import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.reading.ReadingPlaybackStatus
 import com.github.zly2006.zhihu.reading.ReadingQueueSourceRegistry
 import com.github.zly2006.zhihu.reading.ReadingStartRequest
@@ -92,19 +96,15 @@ import com.github.zly2006.zhihu.reading.loadReadingPlaybackSpeed
 import com.github.zly2006.zhihu.reading.loadReadingPreferences
 import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
 import com.github.zly2006.zhihu.reading.toReadingQueueItem
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.officialBadge
-import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.util.formatCompactCount
-import com.github.zly2006.zhihu.shared.util.twoDigitString
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.VotersSheet
 import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.ui.components.handleShareAction
-import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
+import com.github.zly2006.zhihu.ui.components.rememberShareActionExecutor
+import com.github.zly2006.zhihu.util.formatCompactCount
+import com.github.zly2006.zhihu.util.twoDigitString
 import com.github.zly2006.zhihu.viewmodel.ContentLoadEnvironment
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.addReadHistory
@@ -211,7 +211,7 @@ fun PinScreen(
     val readingPlaybackSpeed = loadReadingPlaybackSpeed(settings)
     val readingPlayer = rememberReadingPlayerController()
     val readingPlayerState by readingPlayer.state
-    val shareRuntime = rememberShareDialogRuntime()
+    val executeShareAction = rememberShareActionExecutor()
     var isLoading by remember(pin.id) { mutableStateOf(true) }
     var errorMessage by remember(pin.id) { mutableStateOf<String?>(null) }
     var pinContent by remember(pin.id) { mutableStateOf<DataHolder.Pin?>(null) }
@@ -347,7 +347,7 @@ fun PinScreen(
                         onClick = {
                             val shareText = getShareText(pin)
                             if (shareText != null) {
-                                handleShareAction(pin, settings, shareRuntime) {
+                                handleShareAction(pin, settings, executeShareAction) {
                                     showShareDialog = true
                                 }
                             }

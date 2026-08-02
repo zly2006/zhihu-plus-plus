@@ -17,7 +17,7 @@
 
 package com.github.zly2006.zhihu.ui.components
 
-import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.data.DataHolder
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull

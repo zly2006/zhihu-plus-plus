@@ -16,6 +16,7 @@
  */
 
 package com.github.zly2006.zhihu.ui.subscreens
+
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -32,67 +33,44 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.asApiEnvironment
-import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
-import com.github.zly2006.zhihu.shared.platform.rememberIsLiteVariant
+import com.github.zly2006.zhihu.platform.androidUserMessageSink
+import com.github.zly2006.zhihu.platform.rememberIsLiteVariant
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
 import com.github.zly2006.zhihu.util.PowerSaveModeCompat
-import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import com.mikepenz.aboutlibraries.Libs
 import com.mikepenz.aboutlibraries.util.withContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import java.io.File
 
 @Composable
-actual fun rememberDeveloperSettingsRuntime(): DeveloperSettingsRuntime {
+actual fun rememberDeveloperRuntimeInfo(): DeveloperRuntimeInfo {
     val context = LocalContext.current
-    val dataState by AccountData.asState()
-    return remember(context, dataState) {
-        DeveloperSettingsRuntime(
-            cookies = { dataState.cookies },
-            networkStatus = { context.networkStatusText() },
-            powerSaveModeText = {
-                when (PowerSaveModeCompat.getPowerSaveMode(context)) {
-                    PowerSaveModeCompat.POWER_SAVE -> "省电模式：已开启"
-                    PowerSaveModeCompat.HUAWEI_POWER_SAVE -> "省电模式：华为傻逼模式已开启"
-                    else -> null
-                }
-            },
-            runtimeInfo = { (context as? DeveloperRuntimeInfoProvider)?.developerRuntimeInfo ?: DeveloperRuntimeInfo() },
-            verifyLogin = { cookies ->
-                AccountData.verifyLogin(context, cookies)
-            },
-            refreshToken = {
-                val httpClient = AccountData.httpClient(context)
-                ZhihuCredentialRefresher.refreshZhihuToken(
-                    ZhihuCredentialRefresher.fetchRefreshToken(httpClient),
-                    httpClient,
-                )
-            },
-            saveCookies = { cookies ->
-                AccountData.saveData(
-                    context,
-                    AccountData.data.copy(
-                        cookies = cookies.toMutableMap(),
-                        login = true,
-                    ),
-                )
-            },
-            signedGet = { url ->
-                context.asApiEnvironment().fetchJson(url, "").toString()
-            },
-        )
-    }
+    return produceState(initialValue = DeveloperRuntimeInfo(), context) {
+        while (true) {
+            val runtimeInfo = (context as? DeveloperRuntimeInfoProvider)?.developerRuntimeInfo
+                ?: DeveloperRuntimeInfo()
+            value = runtimeInfo.copy(
+                networkStatus = context.networkStatusText(),
+                powerSaveModeText =
+                    when (PowerSaveModeCompat.getPowerSaveMode(context)) {
+                        PowerSaveModeCompat.POWER_SAVE -> "省电模式：已开启"
+                        PowerSaveModeCompat.HUAWEI_POWER_SAVE -> "省电模式：华为傻逼模式已开启"
+                        else -> null
+                    },
+            )
+            delay(1_000L)
+        }
+    }.value
 }
 
 private fun Context.networkStatusText(): String {

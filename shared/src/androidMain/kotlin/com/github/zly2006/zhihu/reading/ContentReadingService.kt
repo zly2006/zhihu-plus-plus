@@ -42,8 +42,8 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.media.app.NotificationCompat.MediaStyle
 import com.fleeksoft.ksoup.Ksoup
-import com.github.zly2006.zhihu.shared.comment.decodeZhihuCommentData
-import com.github.zly2006.zhihu.shared.util.Log
+import com.github.zly2006.zhihu.data.decodeZhihuCommentData
+import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.viewmodel.SharedAndroidPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.getOrFetchContentDetail
 import kotlinx.coroutines.CancellationException

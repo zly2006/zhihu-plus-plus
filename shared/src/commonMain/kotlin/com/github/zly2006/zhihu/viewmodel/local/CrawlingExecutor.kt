@@ -17,9 +17,9 @@
 
 package com.github.zly2006.zhihu.viewmodel.local
 
+import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.navigation.zhihuQuestionFeedsUrl
-import com.github.zly2006.zhihu.shared.data.Feed
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray

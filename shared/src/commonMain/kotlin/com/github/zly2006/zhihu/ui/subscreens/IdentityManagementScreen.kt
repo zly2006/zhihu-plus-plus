@@ -51,7 +51,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,13 +63,12 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.account.ZhihuIdentityAccount
 import com.github.zly2006.zhihu.navigation.LocalNavigator
-import com.github.zly2006.zhihu.shared.account.ZhihuIdentityAccount
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
 
 const val IDENTITY_MANAGEMENT_SCREEN_TAG = "identityManagement.screen"
@@ -98,55 +96,53 @@ data class IdentityManagementState(
             }
 }
 
-data class IdentityManagementRuntime(
-    val state: StateFlow<IdentityManagementState>,
-    val refresh: suspend () -> Unit,
-    val switchAccount: suspend (targetAccountId: String) -> Unit,
-    val createSubAccount: suspend () -> Unit,
-    val reloadApplication: () -> Unit,
-)
-
-@Composable
-expect fun rememberIdentityManagementRuntime(): IdentityManagementRuntime
-
-fun unsupportedIdentityManagementRuntime(message: String): IdentityManagementRuntime {
-    val state = MutableStateFlow(
-        IdentityManagementState(
-            supported = false,
-            errorMessage = message,
-        ),
-    )
-    return IdentityManagementRuntime(
-        state = state,
-        refresh = {},
-        switchAccount = { throw UnsupportedOperationException(message) },
-        createSubAccount = { throw UnsupportedOperationException(message) },
-        reloadApplication = {},
-    )
-}
-
 /**
  * “身份管理”页面。
  *
- * 账号列表来自 `/people/account/list`。切换和创建都会签发一套新的会话凭证，平台 runtime 保存凭证后由
- * [IdentityManagementRuntime.reloadApplication] 重建主壳，确保推荐流、历史、通知和个人资料不会继续复用旧账号缓存。
+ * 账号列表来自 `/people/account/list`。切换和创建都会签发一套新的会话凭证，保存凭证后重建主壳，确保推荐流、
+ * 历史、通知和个人资料不会继续复用旧账号缓存。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun IdentityManagementScreen() {
     val navigator = LocalNavigator.current
-    val runtime = rememberIdentityManagementRuntime()
-    val state by runtime.state.collectAsState()
+    val environment = rememberPaginationEnvironment(allowGuestAccess = false)
+    val identityClient = remember(environment) { environment.identityClient() }
     val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    var state by remember(identityClient) {
+        mutableStateOf(
+            IdentityManagementState(
+                supported = identityClient != null,
+                currentAccountId = environment.currentAccountId(),
+                loading = identityClient != null,
+                errorMessage = if (identityClient == null) "请在 Android 客户端使用身份管理" else null,
+            ),
+        )
+    }
 
     var switchTarget by remember { mutableStateOf<ZhihuIdentityAccount?>(null) }
     var showCreateDialog by remember { mutableStateOf(false) }
     var acceptedCreateRules by remember { mutableStateOf(false) }
 
-    LaunchedEffect(runtime) {
-        runtime.refresh()
+    suspend fun refresh() {
+        val client = identityClient ?: return
+        if (state.switchingToAccountId != null || state.creating) return
+        state = state.copy(loading = true, errorMessage = null)
+        state = try {
+            state.copy(
+                accounts = client.listAccounts(),
+                currentAccountId = environment.currentAccountId(),
+                loading = false,
+            )
+        } catch (e: Exception) {
+            state.copy(loading = false, errorMessage = e.message ?: "获取身份列表失败")
+        }
+    }
+
+    LaunchedEffect(identityClient) {
+        refresh()
     }
 
     Scaffold(
@@ -217,7 +213,7 @@ fun IdentityManagementScreen() {
                         enabled = !state.busy,
                         onClick = {
                             coroutineScope.launch {
-                                runtime.refresh()
+                                refresh()
                             }
                         },
                     )
@@ -337,10 +333,25 @@ fun IdentityManagementScreen() {
                         switchTarget = null
                         coroutineScope.launch {
                             runCatching {
-                                runtime.switchAccount(account.id)
+                                val client = checkNotNull(identityClient)
+                                check(!state.busy) { "另一个账号操作正在进行" }
+                                state = state.copy(switchingToAccountId = account.id, errorMessage = null)
+                                try {
+                                    val result = client.switchAccount(account.id)
+                                    state = state.copy(
+                                        currentAccountId = result.account.id,
+                                        switchingToAccountId = null,
+                                    )
+                                } catch (e: Exception) {
+                                    state = state.copy(
+                                        switchingToAccountId = null,
+                                        errorMessage = e.message ?: "切换账号失败",
+                                    )
+                                    throw e
+                                }
                             }.onSuccess {
                                 userMessages.showShortMessage("已切换到 ${account.name}")
-                                runtime.reloadApplication()
+                                environment.restartApplication()
                             }.onFailure {
                                 userMessages.showLongMessage(it.message ?: "切换账号失败")
                             }
@@ -399,10 +410,27 @@ fun IdentityManagementScreen() {
                         showCreateDialog = false
                         coroutineScope.launch {
                             runCatching {
-                                runtime.createSubAccount()
+                                val client = checkNotNull(identityClient)
+                                check(!state.busy) { "另一个账号操作正在进行" }
+                                check(state.canCreateSubAccount) { "当前账号暂不能创建新账号" }
+                                state = state.copy(creating = true, errorMessage = null)
+                                try {
+                                    val result = client.createSubAccount()
+                                    state = state.copy(
+                                        accounts = state.accounts + result.account,
+                                        currentAccountId = result.account.id,
+                                        creating = false,
+                                    )
+                                } catch (e: Exception) {
+                                    state = state.copy(
+                                        creating = false,
+                                        errorMessage = e.message ?: "创建新账号失败",
+                                    )
+                                    throw e
+                                }
                             }.onSuccess {
                                 userMessages.showLongMessage("新账号已创建并初始化，正在重新加载")
-                                runtime.reloadApplication()
+                                environment.restartApplication()
                             }.onFailure {
                                 userMessages.showLongMessage(it.message ?: "创建新账号失败")
                             }

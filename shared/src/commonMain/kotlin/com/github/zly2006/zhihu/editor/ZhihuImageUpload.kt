@@ -17,10 +17,10 @@
 
 package com.github.zly2006.zhihu.editor
 
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.shared.util.ZhihuFetchSignature
-import com.github.zly2006.zhihu.shared.util.raiseForStatus
-import com.github.zly2006.zhihu.shared.util.twoDigitString
+import com.github.zly2006.zhihu.data.ZhihuJson
+import com.github.zly2006.zhihu.util.ZhihuFetchSignature
+import com.github.zly2006.zhihu.util.raiseForStatus
+import com.github.zly2006.zhihu.util.twoDigitString
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body

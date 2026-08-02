@@ -17,7 +17,7 @@
 
 package com.github.zly2006.zhihu.viewmodel.filter
 
-import com.github.zly2006.zhihu.shared.platform.SettingsStore
+import com.github.zly2006.zhihu.platform.SettingsStore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

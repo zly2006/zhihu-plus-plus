@@ -69,6 +69,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import coil3.compose.AsyncImage
 import com.fleeksoft.ksoup.Ksoup
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.OfficialBadge
+import com.github.zly2006.zhihu.data.ZhihuJson
+import com.github.zly2006.zhihu.data.officialBadge
+import com.github.zly2006.zhihu.data.officialBadgeDetails
+import com.github.zly2006.zhihu.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionContent
@@ -76,24 +83,17 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
+import com.github.zly2006.zhihu.platform.rememberImagePreviewOpener
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.platform.rememberZhihuWebUrlOpener
 import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.OfficialBadge
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.shared.data.officialBadge
-import com.github.zly2006.zhihu.shared.data.officialBadgeDetails
-import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
-import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
-import com.github.zly2006.zhihu.shared.platform.rememberImagePreviewOpener
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.shared.platform.rememberZhihuWebUrlOpener
-import com.github.zly2006.zhihu.shared.util.Log
-import com.github.zly2006.zhihu.shared.util.raiseForStatus
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
+import com.github.zly2006.zhihu.util.Log
+import com.github.zly2006.zhihu.util.raiseForStatus
 import com.github.zly2006.zhihu.viewmodel.ContentBlocklistEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
@@ -610,8 +610,19 @@ internal fun DataHolder.People.githubSocialUiState(): GithubSocialUiState? = soc
         ?.value
         ?.takeIf { it.isNotBlank() }
         ?: return@firstNotNullOfOrNull null
-    val profileUrl = media.link.takeIf { it.isNotBlank() }
+    val profileLink = media.link.takeIf { it.isNotBlank() }
         ?: return@firstNotNullOfOrNull null
+    val profileUrl = if (profileLink.startsWith("zhihu://", ignoreCase = true)) {
+        // link 是知乎内部 AppView，GitHub 用户名来自同一条社交资料的标题。
+        val username = media.title
+            .substringAfter('·', missingDelimiterValue = "")
+            .trim()
+            .takeIf { it.isNotBlank() }
+            ?: return@firstNotNullOfOrNull null
+        "https://github.com/$username"
+    } else {
+        profileLink
+    }
 
     GithubSocialUiState(
         title = media.title,
@@ -691,14 +702,6 @@ fun PeopleScreen(
     }
 
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-
-    fun updateAnswersSort(newSort: String) {
-        viewModel.answersFeedModel.changeSortBy(newSort, paginationEnvironment)
-    }
-
-    fun updateArticlesSort(newSort: String) {
-        viewModel.articlesFeedModel.changeSortBy(newSort, paginationEnvironment)
-    }
 
     Scaffold(
         modifier = Modifier
@@ -827,7 +830,7 @@ fun PeopleScreen(
                         ) {
                             SortBar(
                                 currentSort = viewModel.answersFeedModel.sortBy,
-                                onSortChange = ::updateAnswersSort,
+                                onSortChange = { viewModel.answersFeedModel.changeSortBy(it, paginationEnvironment) },
                                 hotTag = PEOPLE_SCREEN_ANSWER_SORT_HOT_TAG,
                                 timeTag = PEOPLE_SCREEN_ANSWER_SORT_TIME_TAG,
                             )
@@ -862,7 +865,7 @@ fun PeopleScreen(
                         ) {
                             SortBar(
                                 currentSort = viewModel.articlesFeedModel.sortBy,
-                                onSortChange = ::updateArticlesSort,
+                                onSortChange = { viewModel.articlesFeedModel.changeSortBy(it, paginationEnvironment) },
                                 hotTag = PEOPLE_SCREEN_ARTICLE_SORT_HOT_TAG,
                                 timeTag = PEOPLE_SCREEN_ARTICLE_SORT_TIME_TAG,
                             )

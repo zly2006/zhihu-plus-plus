@@ -19,114 +19,27 @@ package com.github.zly2006.zhihu.ui.components
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.lifecycle.viewModelScope
-import com.github.zly2006.zhihu.shared.data.SegmentInfoMeta
-import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
-import com.github.zly2006.zhihu.shared.desktop.signedFetchJson
-import com.github.zly2006.zhihu.shared.nlp.KeywordAnalyzerCore
-import com.github.zly2006.zhihu.shared.nlp.KeywordWithWeight
-import com.github.zly2006.zhihu.shared.platform.rememberPlainTextClipboard
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.shared.util.SegmentHighlightSpan
-import com.github.zly2006.zhihu.viewmodel.DesktopPaginationEnvironment
-import com.github.zly2006.zhihu.viewmodel.feed.removeFeedItemsByBlockedTopic
-import com.github.zly2006.zhihu.viewmodel.feed.resolveFeedBlockAuthorInfo
-import com.github.zly2006.zhihu.viewmodel.feed.resolveFeedKeywordBlockingContent
-import com.github.zly2006.zhihu.viewmodel.feed.resolveFeedQuestionAuthorInfo
-import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeyword
-import com.github.zly2006.zhihu.viewmodel.filter.BlockedTopic
-import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
-import com.github.zly2006.zhihu.viewmodel.filter.KeywordType
-import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
-import com.github.zly2006.zhihu.viewmodel.getOrFetchContentDetail
-import io.ktor.client.request.setBody
-import io.ktor.http.ContentType
-import io.ktor.http.HttpMethod
-import io.ktor.http.contentType
-import kotlinx.coroutines.launch
+import com.github.zly2006.zhihu.nlp.KeywordAnalyzerCore
+import com.github.zly2006.zhihu.nlp.KeywordWithWeight
+import com.github.zly2006.zhihu.platform.rememberPlainTextClipboard
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+
+actual suspend fun extractFeedKeywords(
+    title: String,
+    excerpt: String?,
+): List<KeywordWithWeight> = KeywordAnalyzerCore.extractFromFeedWithWeight(
+    title = title,
+    excerpt = excerpt,
+    content = null,
+    topN = 10,
+    extractor = ::extractDesktopKeywordsWithWeight,
+)
 
 @Composable
-actual fun rememberFeedBlockActions(): FeedBlockActions {
-    val database = remember { getContentFilterDatabase() }
+actual fun rememberShareActionExecutor(): ShareActionExecutor {
+    val copyPlainText = rememberPlainTextClipboard()
     val userMessages = rememberUserMessageSink()
-    val store = remember { DesktopAccountStore() }
-    val contentDetailProvider = remember(store) { desktopFeedBlockContentDetailProvider(store) }
-    return remember(database, userMessages, contentDetailProvider) {
-        FeedBlockActions(
-            handleBlockUser = { viewModel, feedItem, onShowDialog ->
-                viewModel.viewModelScope.launch {
-                    val authorInfo = resolveFeedBlockAuthorInfo(feedItem, contentDetailProvider)
-                    if (authorInfo != null) {
-                        onShowDialog(authorInfo)
-                    } else {
-                        userMessages.showShortMessage("无法获取屏蔽用户所需的数据，请尝试进入内容详情页操作")
-                    }
-                }
-            },
-            handleBlockQuestionAuthor = { viewModel, feedItem, onShowDialog ->
-                viewModel.viewModelScope.launch {
-                    val authorInfo = resolveFeedQuestionAuthorInfo(feedItem, contentDetailProvider)
-                    if (authorInfo != null) {
-                        onShowDialog(authorInfo)
-                    } else {
-                        userMessages.showShortMessage("当前条目没有可用的提问者数据，无法屏蔽提问者")
-                    }
-                }
-            },
-            handleBlockTopic = { viewModel, topicId, topicName ->
-                viewModel.viewModelScope.launch {
-                    try {
-                        database.blockedTopicDao().insertTopic(BlockedTopic(topicId = topicId, topicName = topicName))
-                        userMessages.showShortMessage("已屏蔽主题「$topicName」")
-                        removeFeedItemsByBlockedTopic(viewModel, topicId)
-                    } catch (e: Exception) {
-                        userMessages.showShortMessage("屏蔽失败: ${e.message}")
-                    }
-                }
-            },
-            handleBlockByKeywords = { viewModel, feedItem, onShowDialog ->
-                viewModel.viewModelScope.launch {
-                    val contentInfo = resolveFeedKeywordBlockingContent(feedItem, contentDetailProvider)
-                    if (contentInfo != null) {
-                        onShowDialog(feedItem to contentInfo)
-                    } else {
-                        userMessages.showShortMessage("无法获取关键词屏蔽所需的数据，请尝试进入内容详情页操作")
-                    }
-                }
-            },
-        )
-    }
-}
-
-@Composable
-actual fun rememberBlockByKeywordsRuntime(): BlockByKeywordsRuntime = remember {
-    val database = getContentFilterDatabase()
-    BlockByKeywordsRuntime(
-        extractKeywords = { title, excerpt ->
-            KeywordAnalyzerCore.extractFromFeedWithWeight(
-                title = title,
-                excerpt = excerpt,
-                content = null,
-                topN = 10,
-                extractor = ::extractDesktopKeywordsWithWeight,
-            )
-        },
-        addNlpPhrase = { phrase ->
-            database.blockedKeywordDao().insertKeyword(
-                BlockedKeyword(
-                    keyword = phrase.trim(),
-                    keywordType = KeywordType.NLP_SEMANTIC.name,
-                ),
-            )
-        },
-    )
-}
-
-private fun desktopFeedBlockContentDetailProvider(
-    store: DesktopAccountStore,
-): ContentDetailProvider {
-    val environment = DesktopPaginationEnvironment(store)
-    return ContentDetailProvider { destination -> environment.getOrFetchContentDetail(destination) }
+    return remember(copyPlainText, userMessages) { clipboardShareActionExecutor(copyPlainText, userMessages) }
 }
 
 private fun extractDesktopKeywordsWithWeight(
@@ -146,49 +59,4 @@ private fun extractDesktopKeywordsWithWeight(
         .map { (keyword, count) -> KeywordWithWeight(keyword, count.toDouble()) }
         .sortedByDescending { it.weight }
         .take(topN)
-}
-
-@Composable
-actual fun rememberSegmentedTextRuntime(): SegmentedTextRuntime = remember {
-    val store = DesktopAccountStore()
-    SegmentedTextRuntime(
-        toggleSegmentLike = { highlight ->
-            toggleSegmentLike(store, highlight)
-        },
-    )
-}
-
-private suspend fun toggleSegmentLike(
-    store: DesktopAccountStore,
-    highlight: SegmentHighlightSpan,
-): SegmentInfoMeta {
-    val contentId = highlight.contentId ?: return highlight.meta
-    val targetType = highlight.contentType ?: return highlight.meta
-    val url = "https://www.zhihu.com/api/v4/reaction/${targetType}s/$contentId/segment_reaction"
-    if (store.load().cookies["d_c0"] == null) return highlight.meta
-
-    return if (highlight.meta.isLike) {
-        val body = buildSegmentUnlikeBody(highlight)
-        store.signedFetchJson(url) {
-            method = HttpMethod.Delete
-            contentType(ContentType.Application.Json)
-            setBody(body)
-        }
-        updateSegmentMetaAfterUnlike(highlight)
-    } else {
-        val body = buildSegmentLikeBody(highlight)
-        val response = store.signedFetchJson(url) {
-            method = HttpMethod.Post
-            contentType(ContentType.Application.Json)
-            setBody(body)
-        }
-        updateSegmentMetaAfterLike(highlight, response)
-    }
-}
-
-@Composable
-actual fun rememberShareDialogRuntime(): ShareDialogRuntime {
-    val copyPlainText = rememberPlainTextClipboard()
-    val userMessages = rememberUserMessageSink()
-    return remember(copyPlainText, userMessages) { clipboardShareDialogRuntime(copyPlainText, userMessages) }
 }

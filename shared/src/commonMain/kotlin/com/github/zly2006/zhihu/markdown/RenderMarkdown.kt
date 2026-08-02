@@ -63,11 +63,11 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
 import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
-import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
-import com.github.zly2006.zhihu.shared.platform.rememberImageGalleryOpener
-import com.github.zly2006.zhihu.shared.platform.rememberImageSaver
-import com.github.zly2006.zhihu.shared.platform.rememberImageSharer
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
+import com.github.zly2006.zhihu.platform.rememberImageGalleryOpener
+import com.github.zly2006.zhihu.platform.rememberImageSaver
+import com.github.zly2006.zhihu.platform.rememberImageSharer
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.LocalSegmentActionSheetHost
 import com.github.zly2006.zhihu.ui.components.LocalSegmentCommentHost
@@ -313,7 +313,7 @@ private fun RenderMarkdownDocument(
 ) {
     val previewImageUrls = remember(document) { document.previewImageUrls() }
     val navigator = LocalNavigator.current
-    val runtime = rememberMarkdownRuntime()
+    val mathFont = rememberMarkdownMathFont()
     val openExternalUrl = rememberExternalUrlOpener()
     val settings = rememberSettingsStore()
     val fontSize = settings.getInt(PREF_FONT_SIZE, 100)
@@ -328,7 +328,7 @@ private fun RenderMarkdownDocument(
         ),
         blockSpacing = defaultTheme.blockSpacing * (blockSpacing / 100f),
         mathFontSize = 18f * fontSize / 100,
-        mathFont = runtime.mathFont ?: defaultTheme.mathFont,
+        mathFont = mathFont ?: defaultTheme.mathFont,
     )
     var segmentCommentTarget by remember { mutableStateOf<SegmentCommentHolder?>(null) }
     var segmentActionSheetState by remember { mutableStateOf<SegmentActionSheetState?>(null) }
@@ -369,7 +369,7 @@ private fun RenderMarkdownDocument(
     CommentScreenComponent(
         showComments = segmentCommentTarget != null,
         onDismiss = { segmentCommentTarget = null },
-        content = segmentCommentTarget ?: SegmentCommentHolder("dummy", "dummy", "dummy"),
+        content = segmentCommentTarget ?: SegmentCommentHolder("dummy", "dummy", "dummy", "", "", 0, 0),
     )
     segmentActionSheetState?.let { state ->
         SegmentActionSheet(state)

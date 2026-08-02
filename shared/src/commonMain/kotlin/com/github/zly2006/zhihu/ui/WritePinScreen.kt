@@ -71,9 +71,9 @@ import com.github.zly2006.zhihu.editor.uploadZhihuImage
 import com.github.zly2006.zhihu.markdown.rememberMarkdownImageModel
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Pin
-import com.github.zly2006.zhihu.shared.platform.rememberPlainTextClipboard
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.platform.rememberPlainTextClipboard
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.components.WriteContentFabColumn
 import com.github.zly2006.zhihu.ui.components.WriteContentMarkdownEditor
 import com.github.zly2006.zhihu.ui.components.WriteContentPreviewSheet
