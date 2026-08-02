@@ -1374,6 +1374,49 @@ fun ArticleScreen(
                             .padding(innerPadding)
                             .padding(top = 8.dp),
                     ) {
+                        if (isImmersiveMode && viewModel.authorName.isNotBlank()) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        navigator.onNavigate(
+                                            com.github.zly2006.zhihu.navigation.Person(
+                                                id = viewModel.authorId,
+                                                urlToken = viewModel.authorUrlToken,
+                                                name = viewModel.authorName,
+                                            ),
+                                        )
+                                    }.padding(vertical = 8.dp),
+                            ) {
+                                if (viewModel.authorAvatarSrc.isNotBlank()) {
+                                    AsyncImage(
+                                        model = viewModel.authorAvatarSrc,
+                                        contentDescription = "作者头像",
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clip(CircleShape),
+                                    )
+                                } else {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = viewModel.authorName,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+
                         @Suppress("UnusedReceiverParameter") // 确保竖式布局
                         @Composable
                         fun ColumnScope.DateTexts() {
@@ -1588,7 +1631,7 @@ fun ArticleScreen(
                     top = progressBarTopPadding,
                     bottom = progressBarBottomPadding,
                     end = 2.dp,
-                ).then(if (isImmersiveMode) Modifier.graphicsLayer { alpha = 0f } else Modifier),
+                ),
         )
 
         // 跳转按钮需要压在问题区和回答区之上。
