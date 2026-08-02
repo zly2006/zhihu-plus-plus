@@ -608,6 +608,10 @@ fun ArticleScreen(
                                                 articleHost.stopArticleSpeaking()
                                                 userMessages.showMessage("已停止朗读")
                                             },
+                                            colors = IconButtonDefaults.iconButtonColors(
+                                                containerColor = Color.Green,
+                                                contentColor = Color.White,
+                                            ),
                                         ) {
                                             Icon(Icons.AutoMirrored.Filled.VolumeOff, contentDescription = "停止朗读")
                                         }
