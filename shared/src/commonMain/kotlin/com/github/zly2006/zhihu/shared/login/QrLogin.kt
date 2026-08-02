@@ -64,6 +64,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonElement
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.seconds
 
 const val ZHIHU_HOME_URL = "https://www.zhihu.com/"
 const val ZHIHU_SIGNIN_URL = "https://www.zhihu.com/signin?next=%2F"
@@ -80,7 +81,7 @@ private const val DESKTOP_SEC_CH_UA_PLATFORM = "\"Windows\""
 private const val DEFAULT_QR_LOGIN_DEADLINE_MILLIS = 120_000L
 private const val MAX_QR_LOGIN_TTL_SECONDS = 86_400L
 private const val MAX_QR_LOGIN_TTL_MILLIS = MAX_QR_LOGIN_TTL_SECONDS * 1000
-private const val QR_LOGIN_REQUEST_TIMEOUT_MILLIS = 10_000L
+private val QR_LOGIN_REQUEST_TIMEOUT = 10.seconds
 
 @Serializable
 data class ZhihuQrCodeResponse(
@@ -177,7 +178,7 @@ suspend fun pollQrCodeLogin(
         currentCoroutineContext().ensureActive()
 
         try {
-            val response = withTimeoutOrNull(QR_LOGIN_REQUEST_TIMEOUT_MILLIS) {
+            val response = withTimeoutOrNull(QR_LOGIN_REQUEST_TIMEOUT) {
                 client.get("$QRCODE_URL/$token/scan_info") {
                     createZhihuLoginHeaders(cookies, ZHIHU_SIGNIN_URL, isPolling = true).forEach { (key, value) ->
                         header(key, value)
@@ -403,10 +404,10 @@ fun SharedQrLoginPane(
         isWorking = true
 
         try {
-            withTimeoutOrNull(QR_LOGIN_REQUEST_TIMEOUT_MILLIS) {
+            withTimeoutOrNull(QR_LOGIN_REQUEST_TIMEOUT) {
                 prefetchQrLoginContext(client, cookies)
             } ?: throw IllegalStateException("二维码登录初始化超时，请重试")
-            val qrCode = withTimeoutOrNull(QR_LOGIN_REQUEST_TIMEOUT_MILLIS) {
+            val qrCode = withTimeoutOrNull(QR_LOGIN_REQUEST_TIMEOUT) {
                 requestQrCode(client, cookies)
             } ?: throw IllegalStateException("二维码获取超时，请重试")
             sessionCookies = cookies.toMap()
