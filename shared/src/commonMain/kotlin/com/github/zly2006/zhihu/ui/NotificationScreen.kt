@@ -35,7 +35,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Comment
-import androidx.compose.material.icons.filled.CopyAll
 import androidx.compose.material.icons.filled.MarkChatRead
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.ContactPage
@@ -58,6 +57,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -65,6 +65,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -84,8 +85,8 @@ import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.notification.rememberNotificationSettingsStore
+import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.util.formatRelativeTime
@@ -96,7 +97,6 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
-import kotlinx.serialization.json.Json
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
@@ -104,9 +104,6 @@ import kotlin.time.Instant
 expect fun rememberNotificationEnvironment(
     settingsStore: NotificationSettingsStore,
 ): NotificationEnvironment
-
-@Composable
-expect fun rememberNotificationShowDebugCopy(): Boolean
 
 /**
  * 通知主页复用官方 Android `message/v3` 的信息层级：四个分类、邀请回答入口和私信会话列表。
@@ -119,7 +116,6 @@ fun NotificationScreen() {
     val settingsStore = rememberNotificationSettingsStore()
     val viewModel = viewModel { NotificationViewModel() }
     val environment = rememberNotificationEnvironment(settingsStore)
-    val showDebugCopy = rememberNotificationShowDebugCopy()
     val coroutineScope = rememberCoroutineScope()
     val userMessages = rememberUserMessageSink()
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -214,19 +210,6 @@ fun NotificationScreen() {
                             ?: userMessages.showMessage("暂不支持打开此消息")
                     },
                 )
-            }
-
-            if (showDebugCopy) {
-                DraggableRefreshButton(
-                    onClick = {
-                        val data = Json.encodeToString(viewModel.debugData)
-                        environment.setPlainTextClipboard("data", data)
-                        userMessages.showMessage("已复制调试数据")
-                    },
-                    preferenceName = "copyAll",
-                ) {
-                    Icon(Icons.Default.CopyAll, contentDescription = "复制")
-                }
             }
         }
     }
@@ -425,6 +408,7 @@ fun NotificationItemView(
     notification: MobileNotificationTimelineItem,
     onClick: () -> Unit,
 ) {
+    val navigator = LocalNavigator.current
     val backgroundColor = if (notification.isRead) {
         Color.Transparent
     } else {
@@ -491,15 +475,41 @@ fun NotificationItemView(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
+                    val emojisUsed = remember { mutableSetOf<String>() }
                     val displayText = if (notification.content?.subTitle == "喜欢了你的评论") {
-                        Ksoup.parse(notification.content.subText).text()
+                        buildAnnotatedString {
+                            append(Ksoup.parse(notification.content.subText).text())
+                        }
+                    } else if (notification.content?.subTitle?.contains("评论了") == true ) {
+                        val document = Ksoup.parseBodyFragment(notification.content.abstractText)
+                        val openExternalUrl = rememberExternalUrlOpener()
+                        val string = remember(notification.content.abstractText) {
+                            emojisUsed.clear()
+                            buildAnnotatedString {
+                                dfsSimple(
+                                    node = document.body(),
+                                    onNavigate = navigator.onNavigate,
+                                    openExternalUrl = openExternalUrl,
+                                    componentUsed = emojisUsed,
+                                )
+                            }
+                        }
+
+                        string
                     } else {
-                        Ksoup.parse(notification.content?.text.orEmpty()).text()
+                        buildAnnotatedString {
+                            append(Ksoup.parse(notification.content?.text.orEmpty()).text())
+                        }
                     }
+
+                    // 创建inlineContent映射
+                    val inlineContent = rememberCommentEmojiInlineContent(emojisUsed)
+
                     if (displayText.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = displayText,
+                            inlineContent = inlineContent,
                             style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 3,
