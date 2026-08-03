@@ -92,10 +92,20 @@ class NotificationViewModel :
     var unreadCount: Int by mutableIntStateOf(0)
         private set
 
+    private var refreshingFirstPage = false
+
     init {
         MobileNotificationCategory.entries.forEach {
             categoryUnreadCounts[it] = 0
         }
+    }
+
+    override fun refresh(environment: PaginationEnvironment) {
+        if (isLoading) return
+        errorMessage = null
+        lastPaging = null
+        refreshingFirstPage = true
+        loadMore(environment)
     }
 
     override suspend fun fetchFeeds(environment: PaginationEnvironment) {
@@ -118,17 +128,34 @@ class NotificationViewModel :
                 unreadCount = categoryUnreadCounts.values.sum()
             }
 
-            val existingIds = allData.mapTo(mutableSetOf()) { it.stableId }
-            processResponse(
-                environment,
-                page.data.filter { it.type != "empty" && existingIds.add(it.stableId) },
-                rawData,
-            )
+            val pageData = page.data.filter { it.type != "empty" }
+            if (refreshingFirstPage) {
+                pageData.forEachIndexed { index, item ->
+                    if (index < allData.size) {
+                        allData[index] = item
+                    } else {
+                        allData.add(item)
+                    }
+                }
+                while (allData.size > pageData.size) {
+                    allData.removeAt(allData.lastIndex)
+                }
+                debugData.clear()
+                debugData.addAll(rawData)
+            } else {
+                val existingIds = allData.mapTo(mutableSetOf()) { it.stableId }
+                processResponse(
+                    environment,
+                    pageData.filter { existingIds.add(it.stableId) },
+                    rawData,
+                )
+            }
             lastPaging = page.paging ?: ZhihuPaging(isEnd = true, next = "")
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             environment.handleFetchFailure(this::class.simpleName, e)
         } finally {
+            refreshingFirstPage = false
             isLoading = false
         }
     }
