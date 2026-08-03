@@ -20,6 +20,7 @@ package com.github.zly2006.zhihu
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -175,6 +176,13 @@ class CollectionScreenInstrumentedTest {
 
         composeRule.onNodeWithTag(COLLECTION_BROWSE_PULL_TO_REFRESH_TAG).assertIsDisplayed()
         composeRule.onNodeWithTag(COLLECTION_BROWSE_MODE_BUTTON_TAG).assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("当前为顺序模式，点击切换为随机模式").assertIsDisplayed()
+        composeRule.onNodeWithTag(COLLECTION_BROWSE_RANDOM_REFRESH_BUTTON_TAG).assertDoesNotExist()
+        composeRule.onNodeWithTag(COLLECTION_BROWSE_MODE_BUTTON_TAG).performClick()
+        composeRule.onNodeWithContentDescription("当前为随机模式，点击切换为顺序模式").assertIsDisplayed()
+        composeRule.onNodeWithTag(COLLECTION_BROWSE_RANDOM_REFRESH_BUTTON_TAG).assertIsDisplayed().performClick()
+        composeRule.onNodeWithTag(COLLECTION_BROWSE_MODE_BUTTON_TAG).performClick()
+        composeRule.onNodeWithTag(COLLECTION_BROWSE_RANDOM_REFRESH_BUTTON_TAG).assertDoesNotExist()
         composeRule.onNodeWithTag(COLLECTION_BROWSE_FOLDER_SWITCH_BUTTON_TAG).performClick()
         composeRule.onNodeWithTag(collectionBrowseDeleteButtonTag(defaultCollection.id)).assertDoesNotExist()
         composeRule.onNodeWithTag(collectionBrowseDeleteButtonTag(deletableCollection.id)).performClick()
@@ -215,6 +223,7 @@ class CollectionScreenInstrumentedTest {
         const val COLLECTION_BROWSE_PULL_TO_REFRESH_TAG = "collection_browse_pull_to_refresh"
         const val COLLECTION_BROWSE_FOLDER_SWITCH_BUTTON_TAG = "collection_browse_folder_switch_button"
         const val COLLECTION_BROWSE_MODE_BUTTON_TAG = "collection_browse_mode_button"
+        const val COLLECTION_BROWSE_RANDOM_REFRESH_BUTTON_TAG = "collection_browse_random_refresh_button"
 
         fun collectionItemTag(collectionId: String) = "collection_screen_item_$collectionId"
 

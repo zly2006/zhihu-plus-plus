@@ -22,12 +22,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -36,6 +39,8 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -60,6 +65,7 @@ import com.github.zly2006.zhihu.data.Collection
 import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.viewmodel.CollectionContentEnvironment
 import com.github.zly2006.zhihu.viewmodel.CollectionContentViewModel
 import com.github.zly2006.zhihu.viewmodel.CollectionsViewModel
@@ -227,18 +233,30 @@ fun CollectionBrowseScreen(
                             }
                         }
                     }
-                    IconButton(
-                        onClick = {
-                            randomMode = !randomMode
-                            if (randomMode) randomSeed = Random.nextInt()
-                            userMessages.showShortMessage(if (randomMode) "已切换为随机模式" else "已切换为顺序模式")
+                    IconToggleButton(
+                        checked = randomMode,
+                        onCheckedChange = { enabled ->
+                            randomMode = enabled
+                            if (enabled) randomSeed = Random.nextInt()
+                            userMessages.showShortMessage(if (enabled) "已切换为随机模式" else "已切换为顺序模式")
                         },
                         modifier = Modifier.testTag(COLLECTION_BROWSE_MODE_BUTTON_TAG),
+                        colors = IconButtonDefaults.iconToggleButtonColors(
+                            checkedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            checkedContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        ),
                     ) {
                         Icon(
-                            Icons.Filled.Shuffle,
-                            contentDescription = if (randomMode) "切换为顺序模式" else "切换为随机模式",
-                            tint = if (randomMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            imageVector = if (randomMode) {
+                                Icons.Filled.Shuffle
+                            } else {
+                                Icons.AutoMirrored.Filled.FormatListBulleted
+                            },
+                            contentDescription = if (randomMode) {
+                                "当前为随机模式，点击切换为顺序模式"
+                            } else {
+                                "当前为顺序模式，点击切换为随机模式"
+                            },
                         )
                     }
                 },
@@ -300,6 +318,24 @@ fun CollectionBrowseScreen(
                             tagPrefix = "collection_browse",
                             displayItems = orderedDisplayItems,
                         )
+                    }
+                    if (randomMode) {
+                        DraggableRefreshButton(
+                            modifier = Modifier.testTag(COLLECTION_BROWSE_RANDOM_REFRESH_BUTTON_TAG),
+                            preferenceName = "collectionRandomRefresh",
+                            onClick = {
+                                randomSeed = Random.nextInt()
+                                if (!useTestCollections) {
+                                    contentViewModel.refresh(contentEnvironment)
+                                }
+                            },
+                        ) {
+                            if (contentViewModel.isLoading) {
+                                CircularProgressIndicator(modifier = Modifier.size(30.dp))
+                            } else {
+                                Icon(Icons.Filled.Refresh, contentDescription = "重新随机加载")
+                            }
+                        }
                     }
                 }
             }
@@ -390,3 +426,4 @@ private const val COLLECTION_BROWSE_LOADING_COLLECTIONS_TAG = "collection_browse
 private const val COLLECTION_BROWSE_EMPTY_CONTENT_TAG = "collection_browse_empty_content"
 private const val COLLECTION_BROWSE_PULL_TO_REFRESH_TAG = "collection_browse_pull_to_refresh"
 private const val COLLECTION_BROWSE_MODE_BUTTON_TAG = "collection_browse_mode_button"
+private const val COLLECTION_BROWSE_RANDOM_REFRESH_BUTTON_TAG = "collection_browse_random_refresh_button"
