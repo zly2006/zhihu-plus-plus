@@ -135,31 +135,35 @@ class SystemBarsInstrumentedTest {
     ) {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val deadline = SystemClock.uptimeMillis() + 5_000
-        var statusBarColor: Int
+        var statusBarColors: List<Int>
         do {
             instrumentation.waitForIdleSync()
             SystemClock.sleep(16)
-            statusBarColor = sampleStatusBarColor(activity)
+            statusBarColors = sampleStatusBarColors(activity)
         } while (
-            statusBarColor != SOLID_SURFACE_COLOR &&
+            statusBarColors.any { it != SOLID_SURFACE_COLOR } &&
             SystemClock.uptimeMillis() < deadline
         )
         assertTrue(
             "$stage: expected status bar ${SOLID_SURFACE_COLOR.toUInt().toString(16)}, " +
-                "but was ${statusBarColor.toUInt().toString(16)}",
-            statusBarColor == SOLID_SURFACE_COLOR,
+                "but sampled ${statusBarColors.joinToString { it.toUInt().toString(16) }}",
+            statusBarColors.all { it == SOLID_SURFACE_COLOR },
         )
     }
 
-    private fun sampleStatusBarColor(activity: MainActivity): Int {
+    private fun sampleStatusBarColors(activity: MainActivity): List<Int> {
         val screenshot = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
         val statusBarHeight = ViewCompat
             .getRootWindowInsets(activity.window.decorView)
             ?.getInsets(WindowInsetsCompat.Type.statusBars())
             ?.top
             ?: error("Status bar insets unavailable")
-        val x = screenshot.width / 2
-        return screenshot.getPixel(x, statusBarHeight / 2)
+        val y = statusBarHeight / 2
+        // Pixel 7 CI devices have a centered camera cutout, so verify exact colors on both sides of it.
+        return listOf(
+            screenshot.getPixel(screenshot.width / 3, y),
+            screenshot.getPixel(screenshot.width * 2 / 3, y),
+        )
     }
 }
 

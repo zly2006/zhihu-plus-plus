@@ -293,11 +293,27 @@ class ArticleScreenInstrumentedTest {
                 text = "末段必须被全选",
                 failureMessage = "Select all did not remain visible after deferred markdown blocks materialized",
             )
+            val clipboard = composeRule.activity.getSystemService(android.content.ClipboardManager::class.java)
+            clipboard.clearPrimaryClip()
+            composeRule.waitUntil(
+                "System clipboard did not clear before copying the selection",
+                timeoutMillis = 5_000,
+            ) {
+                !clipboard.hasPrimaryClip()
+            }
             composeRule.runOnIdle {
                 requireNotNull(textToolbar.onCopyRequested).invoke()
             }
+            composeRule.waitUntil(
+                "Copy did not publish the selected markdown to the system clipboard",
+                timeoutMillis = 5_000,
+            ) {
+                clipboard.primaryClip
+                    ?.getItemAt(0)
+                    ?.coerceToText(composeRule.activity)
+                    ?.isNotEmpty() == true
+            }
 
-            val clipboard = composeRule.activity.getSystemService(android.content.ClipboardManager::class.java)
             val copiedText = clipboard.primaryClip
                 ?.getItemAt(0)
                 ?.coerceToText(composeRule.activity)
