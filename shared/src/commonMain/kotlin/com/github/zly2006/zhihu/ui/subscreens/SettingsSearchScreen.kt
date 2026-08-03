@@ -38,6 +38,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,6 +54,7 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.notification.NotificationType
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.SettingItem
@@ -252,9 +254,23 @@ private val settingsSearchEntries = buildList {
 @Composable
 fun SettingsSearchScreen() {
     val navigator = LocalNavigator.current
+    val settings = rememberSettingsStore()
     var query by rememberSaveable { mutableStateOf("") }
-    val results = remember(query) {
-        settingsSearchEntries.filter { it.matches(query) }
+    var developerModeEnabled by remember {
+        mutableStateOf(settings.getBoolean("developer", false))
+    }
+    DisposableEffect(settings) {
+        val unregister = settings.observeKeyChanges { key ->
+            if (key == "developer") {
+                developerModeEnabled = settings.getBoolean("developer", false)
+            }
+        }
+        onDispose(unregister)
+    }
+    val results = remember(query, developerModeEnabled) {
+        settingsSearchEntries
+            .filter { entry -> entry.id != "developer.page" || developerModeEnabled }
+            .filter { entry -> entry.matches(query) }
     }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
@@ -334,7 +350,11 @@ fun SettingsSearchScreen() {
                             description = {
                                 Text(entry.description)
                             },
-                            onClick = { navigator.onNavigate(entry.destination) },
+                            onClick = {
+                                if (entry.id != "developer.page" || settings.getBoolean("developer", false)) {
+                                    navigator.onNavigate(entry.destination)
+                                }
+                            },
                             endAction = {
                                 Icon(
                                     Icons.AutoMirrored.Filled.ArrowForward,

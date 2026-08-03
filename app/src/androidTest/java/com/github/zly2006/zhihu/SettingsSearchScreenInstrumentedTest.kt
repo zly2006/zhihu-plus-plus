@@ -32,6 +32,7 @@ import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
+import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.subscreens.SETTINGS_SEARCH_INPUT_TAG
 import com.github.zly2006.zhihu.ui.subscreens.SettingsSearchScreen
 import org.junit.Assert.assertEquals
@@ -105,6 +106,35 @@ class SettingsSearchScreenInstrumentedTest {
             ),
             navigator.destinations,
         )
+    }
+
+    @Test
+    fun searchScreen_onlyExposesDeveloperEntryWhenDeveloperModeIsEnabled() {
+        val hiddenNavigator = setSearchScreenContent()
+
+        composeRule
+            .onNodeWithTag(SETTINGS_SEARCH_INPUT_TAG)
+            .performTextInput("签名请求")
+        composeRule
+            .onAllNodesWithTag("settingsSearch.result.developer.page")
+            .assertCountEquals(0)
+        assertEquals(0, hiddenNavigator.destinations.size)
+
+        composeRule.activity
+            .getSharedPreferences(PREFERENCE_NAME, 0)
+            .edit()
+            .putBoolean("developer", true)
+            .apply()
+        val enabledNavigator = setSearchScreenContent()
+
+        composeRule
+            .onNodeWithTag(SETTINGS_SEARCH_INPUT_TAG)
+            .performTextInput("签名请求")
+        composeRule
+            .onNodeWithTag("settingsSearch.result.developer.page")
+            .assertIsDisplayed()
+            .performClick()
+        assertEquals(listOf(Account.DeveloperSettings), enabledNavigator.destinations)
     }
 
     private fun setSearchScreenContent(): RecordingNavigator =
