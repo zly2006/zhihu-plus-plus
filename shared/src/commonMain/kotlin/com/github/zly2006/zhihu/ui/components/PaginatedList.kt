@@ -117,6 +117,7 @@ fun <T> PaginatedList(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(0.dp),
     listState: LazyListState = rememberLazyListState(),
+    reverseLayout: Boolean = false,
     isEnd: () -> Boolean = { false },
     footer: @Composable ((LazyListState) -> Unit)? = null,
     key: ((T) -> Any)? = null,
@@ -148,6 +149,7 @@ fun <T> PaginatedList(
         state = listState,
         modifier = modifier,
         contentPadding = contentPadding,
+        reverseLayout = reverseLayout,
     ) {
         topContent(this)
 

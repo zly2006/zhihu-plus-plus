@@ -54,11 +54,10 @@ import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.util.OpenInBrowser
 import com.github.zly2006.zhihu.util.createEmojiInlineContent
 import com.github.zly2006.zhihu.util.fuckHonorService
-import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
+import com.github.zly2006.zhihu.viewmodel.SharedAndroidNotificationEnvironment
 import com.github.zly2006.zhihu.viewmodel.filter.encodeBlocklistBackup
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.filter.importBlocklistBackupFromJsonText
-import com.github.zly2006.zhihu.viewmodel.notificationEnvironment
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -352,19 +351,12 @@ actual fun Modifier.commentSelectionWorkaround(): Modifier = fuckHonorService()
 
 @Composable
 actual fun rememberNotificationEnvironment(
-    viewModel: NotificationViewModel,
     settingsStore: NotificationSettingsStore,
 ): com.github.zly2006.zhihu.viewmodel.NotificationEnvironment {
     val context = LocalContext.current
-    return remember(context, settingsStore, viewModel) {
-        viewModel.notificationEnvironment(context, settingsStore)
+    return remember(context, settingsStore) {
+        SharedAndroidNotificationEnvironment(context, false, settingsStore)
     }
-}
-
-@Composable
-actual fun rememberNotificationShowDebugCopy(): Boolean {
-    val context = LocalContext.current
-    return (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
 }
 
 fun Context.articleHost(): ArticleHost? =

@@ -724,12 +724,6 @@ actual fun rememberPaginationEnvironment(allowGuestAccess: Boolean): PaginationE
     return remember(context, allowGuestAccess) { SharedAndroidPaginationEnvironment(context, allowGuestAccess) }
 }
 
-fun PaginationViewModel<*>.notificationEnvironment(
-    context: Context,
-    notificationSettingsStore: NotificationSettingsStore,
-): NotificationEnvironment =
-    SharedAndroidNotificationEnvironment(context, allowGuestAccess, notificationSettingsStore)
-
 fun PaginationViewModel<*>.refresh(context: Context) {
     refresh(paginationEnvironment(context))
 }
