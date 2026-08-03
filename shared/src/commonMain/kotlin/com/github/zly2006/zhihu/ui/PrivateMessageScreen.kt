@@ -25,6 +25,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -32,13 +34,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.outlined.AddCircleOutline
+import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.SentimentSatisfied
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -46,6 +49,11 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,10 +67,12 @@ import com.github.zly2006.zhihu.data.ZhihuPrivateMessage
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.notification.rememberNotificationSettingsStore
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.util.formatRelativeTime
 import com.github.zly2006.zhihu.viewmodel.PrivateMessageViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,6 +84,9 @@ fun PrivateMessageScreen(destination: Notification.Message) {
     }
     val peerName = viewModel.peer?.name?.ifBlank { destination.name } ?: destination.name
     val peerAvatar = viewModel.peer?.avatarUrl?.ifBlank { destination.avatarUrl } ?: destination.avatarUrl
+    val coroutineScope = rememberCoroutineScope()
+    val userMessages = rememberUserMessageSink()
+    var draft by rememberSaveable(destination.peerId) { mutableStateOf("") }
 
     LaunchedEffect(destination.peerId) {
         if (viewModel.allData.isEmpty()) {
@@ -122,32 +135,46 @@ fun PrivateMessageScreen(destination: Notification.Message) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .imePadding()
                         .padding(horizontal = 16.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Surface(
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(10.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerLow,
-                    ) {
-                        Text(
-                            text = "私信仅供查看",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                        )
-                    }
+                    OutlinedTextField(
+                        value = draft,
+                        onValueChange = { draft = it },
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("private_message_input"),
+                        placeholder = { Text("发私信") },
+                        enabled = !viewModel.isSending,
+                        maxLines = 4,
+                        shape = RoundedCornerShape(12.dp),
+                    )
                     IconButton(onClick = {}, enabled = false) {
                         Icon(
                             Icons.Outlined.SentimentSatisfied,
-                            contentDescription = "表情（查看模式不可用）",
+                            contentDescription = "表情（暂不可用）",
                             tint = MaterialTheme.colorScheme.outline,
                         )
                     }
-                    IconButton(onClick = {}, enabled = false) {
+                    IconButton(
+                        onClick = {
+                            val content = draft
+                            coroutineScope.launch {
+                                if (viewModel.sendMessage(content, environment)) {
+                                    draft = ""
+                                } else {
+                                    userMessages.showMessage(viewModel.errorMessage ?: "发送失败")
+                                }
+                            }
+                        },
+                        enabled = draft.isNotBlank() && !viewModel.isSending,
+                        modifier = Modifier.testTag("private_message_send"),
+                    ) {
                         Icon(
-                            Icons.Outlined.AddCircleOutline,
-                            contentDescription = "附件（查看模式不可用）",
-                            tint = MaterialTheme.colorScheme.outline,
+                            Icons.AutoMirrored.Outlined.Send,
+                            contentDescription = "发送",
                         )
                     }
                 }
@@ -185,8 +212,10 @@ private fun PrivateMessageBubble(
     message: ZhihuPrivateMessage,
     incoming: Boolean,
 ) {
-    val displayText = message.plugin?.excerpt?.takeIf { it.isNotBlank() }
-        ?: message.content.takeIf { it.isNotBlank() }?.let { Ksoup.parse(it).text() }
+    val displayText = (
+        message.plugin?.excerpt?.takeIf { it.isNotBlank() }
+            ?: message.content.takeIf { it.isNotBlank() }
+    )?.let { Ksoup.parse(it).text() }
         ?: "暂不支持显示这条消息"
     Row(
         modifier = Modifier
@@ -208,10 +237,11 @@ private fun PrivateMessageBubble(
             Spacer(Modifier.width(8.dp))
         }
         Column(
+            modifier = Modifier.weight(1f),
             horizontalAlignment = if (incoming) Alignment.Start else Alignment.End,
         ) {
             Surface(
-                modifier = Modifier.fillMaxWidth(0.78f),
+                modifier = Modifier.fillMaxWidth(if (incoming) 1f else 0.88f),
                 shape = RoundedCornerShape(
                     topStart = 16.dp,
                     topEnd = 16.dp,

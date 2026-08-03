@@ -33,15 +33,25 @@ import com.github.zly2006.zhihu.data.ZhihuPrivateMessagePage
 import com.github.zly2006.zhihu.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.notification.matchNotificationType
 import com.github.zly2006.zhihu.util.Log
+import com.github.zly2006.zhihu.util.ZhihuMessageBodyEncryptor
 import io.ktor.client.call.body
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.Parameters
+import io.ktor.http.contentType
+import io.ktor.http.formUrlEncode
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.reflect.typeOf
 
@@ -254,6 +264,62 @@ class PrivateMessageViewModel(
 
     var peer: MobileNotificationAuthor? by mutableStateOf(null)
         private set
+
+    var isSending by mutableStateOf(false)
+        private set
+
+    suspend fun sendMessage(
+        content: String,
+        environment: MobileHomeFeedEnvironment,
+    ): Boolean {
+        if (content.isBlank() || isSending) return false
+
+        isSending = true
+        errorMessage = null
+        return try {
+            val response = environment.mobileHomeFeedHttpClient().post(MOBILE_PRIVATE_MESSAGE_URL) {
+                contentType(ContentType.Application.FormUrlEncoded)
+                header("X-Zse-93", "101_1_1.0")
+                val form = Parameters
+                    .build {
+                        append("receiver_id", peerId)
+                        append("content", content)
+                        append("content_type", "0")
+                        append("source_type", "message_list")
+                    }.formUrlEncode()
+                setBody(ZhihuMessageBodyEncryptor.encrypt(form))
+            }
+            if (!response.status.isSuccess()) {
+                val responseText = response.bodyAsText()
+                errorMessage = runCatching {
+                    ZhihuJson.json
+                        .parseToJsonElement(responseText)
+                        .jsonObject["error"]
+                        ?.jsonObject
+                        ?.get("message")
+                        ?.jsonPrimitive
+                        ?.content
+                }.getOrNull() ?: "发送失败（${response.status.value}）"
+                Log.e("PrivateMessageViewModel", "Failed to send private message: ${response.status}, $errorMessage")
+                false
+            } else {
+                val message = ZhihuJson.decodeJson<ZhihuPrivateMessage>(
+                    ZhihuJson.json.parseToJsonElement(response.bodyAsText()),
+                )
+                if (allData.none { it.stableId == message.stableId }) {
+                    allData.add(0, message)
+                }
+                true
+            }
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            Log.e("PrivateMessageViewModel", "Failed to send private message", e)
+            errorMessage = e.message ?: "发送失败"
+            false
+        } finally {
+            isSending = false
+        }
+    }
 
     override suspend fun fetchFeeds(environment: PaginationEnvironment) {
         try {
