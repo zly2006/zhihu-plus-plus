@@ -480,7 +480,7 @@ fun NotificationItemView(
                         buildAnnotatedString {
                             append(Ksoup.parse(notification.content.subText).text())
                         }
-                    } else if (notification.content?.subTitle?.contains("评论了") == true ) {
+                    } else if (notification.content?.subTitle?.contains("评论了") == true) {
                         val document = Ksoup.parseBodyFragment(notification.content.abstractText)
                         val openExternalUrl = rememberExternalUrlOpener()
                         val string = remember(notification.content.abstractText) {
