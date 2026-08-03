@@ -185,7 +185,6 @@ internal fun CollectionContentBody(
     listState: LazyListState = rememberLazyListState(),
     tagPrefix: String,
     displayItems: List<FeedDisplayItem> = viewModel.displayItems,
-    emptyMessage: String? = null,
 ) {
     val navigator = LocalNavigator.current
     val sharedData = environment.articleAnswerSwitchState()
@@ -222,18 +221,6 @@ internal fun CollectionContentBody(
                         .testTag("${tagPrefix}_stats"),
                     textAlign = TextAlign.Center,
                 )
-            }
-            if (displayItems.isEmpty() && emptyMessage != null) {
-                item(1) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(emptyMessage, modifier = Modifier.testTag("${tagPrefix}_empty_filter"))
-                    }
-                }
             }
         },
     ) { item ->

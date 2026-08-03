@@ -22,6 +22,7 @@ import com.github.zly2006.zhihu.data.FeedDisplayItem
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -89,36 +90,24 @@ class CollectionBrowseSelectionTest {
     }
 
     @Test
-    fun searchesLoadedCollectionItemsAcrossVisibleText() {
-        val items = listOf(
-            displayItem("Kotlin 协程", summary = "异步编程", authorName = "Alice"),
-            displayItem("Compose 布局", summary = "界面开发", authorName = "Bob"),
-        )
-
-        assertEquals(listOf("Kotlin 协程"), filterAndOrderCollectionItems(items, "异步", false, 0).map { it.title })
-        assertEquals(listOf("Compose 布局"), filterAndOrderCollectionItems(items, "bob", false, 0).map { it.title })
-    }
-
-    @Test
     fun randomModeIsStableAndKeepsEveryLoadedItem() {
         val items = List(12) { index -> displayItem("item-$index") }
 
-        val first = filterAndOrderCollectionItems(items, "", true, 42)
-        val second = filterAndOrderCollectionItems(items, "", true, 42)
+        val first = orderCollectionItems(items, true, 42)
+        val second = orderCollectionItems(items, true, 42)
+        val nextRound = orderCollectionItems(items, true, 43)
 
         assertEquals(first, second)
         assertEquals(items.map { it.stableKey }.toSet(), first.map { it.stableKey }.toSet())
+        assertNotEquals(first, nextRound)
     }
 
     private fun displayItem(
         title: String,
-        summary: String? = null,
-        authorName: String? = null,
     ) = FeedDisplayItem(
         title = title,
-        summary = summary,
+        summary = null,
         details = "details-$title",
         feed = null,
-        authorName = authorName,
     )
 }

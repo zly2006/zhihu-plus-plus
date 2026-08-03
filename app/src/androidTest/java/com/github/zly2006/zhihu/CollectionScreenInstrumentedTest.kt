@@ -174,8 +174,6 @@ class CollectionScreenInstrumentedTest {
         }
 
         composeRule.onNodeWithTag(COLLECTION_BROWSE_PULL_TO_REFRESH_TAG).assertIsDisplayed()
-        composeRule.onNodeWithTag(COLLECTION_BROWSE_SEARCH_BUTTON_TAG).performClick()
-        composeRule.onNodeWithTag(COLLECTION_BROWSE_SEARCH_FIELD_TAG).assertIsDisplayed()
         composeRule.onNodeWithTag(COLLECTION_BROWSE_MODE_BUTTON_TAG).assertIsDisplayed()
         composeRule.onNodeWithTag(COLLECTION_BROWSE_FOLDER_SWITCH_BUTTON_TAG).performClick()
         composeRule.onNodeWithTag(collectionBrowseDeleteButtonTag(defaultCollection.id)).assertDoesNotExist()
@@ -216,8 +214,6 @@ class CollectionScreenInstrumentedTest {
         const val CREATE_COLLECTION_TITLE_INPUT_TAG = "create_collection_title_input"
         const val COLLECTION_BROWSE_PULL_TO_REFRESH_TAG = "collection_browse_pull_to_refresh"
         const val COLLECTION_BROWSE_FOLDER_SWITCH_BUTTON_TAG = "collection_browse_folder_switch_button"
-        const val COLLECTION_BROWSE_SEARCH_BUTTON_TAG = "collection_browse_search_button"
-        const val COLLECTION_BROWSE_SEARCH_FIELD_TAG = "collection_browse_search_field"
         const val COLLECTION_BROWSE_MODE_BUTTON_TAG = "collection_browse_mode_button"
 
         fun collectionItemTag(collectionId: String) = "collection_screen_item_$collectionId"

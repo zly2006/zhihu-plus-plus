@@ -1189,7 +1189,7 @@ fun AppearanceSettingsScreen(
                     modifier = Modifier.testTag(APPEARANCE_SETTINGS_COLLECTION_DIRECT_BROWSE_TAG),
                     title = { Text("收藏直达浏览（测试）") },
                     description = {
-                        Text("测试功能，可能存在问题，请谨慎开启。开启后，底部「收藏夹」会直接展示收藏内容，支持切换与删除收藏夹、下拉刷新、搜索已加载内容及顺序/随机模式；欢迎通过 Issue 反馈。")
+                        Text("测试功能，可能存在问题，请谨慎开启。开启后，底部「收藏夹」会直接展示收藏内容，支持切换与删除收藏夹、下拉刷新及顺序/随机模式；欢迎通过 Issue 反馈。")
                     },
                     checked = collectionDirectBrowse.value,
                     onCheckedChange = {
