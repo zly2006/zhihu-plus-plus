@@ -106,11 +106,6 @@ private val readingPlaybackSpeedOptions = listOf(
     2f to "2.0×",
 )
 
-private fun playbackSpeedLabel(speed: Float): String = readingPlaybackSpeedOptions
-    .firstOrNull { (option, _) -> abs(option - speed) < 0.001f }
-    ?.second
-    ?: "$speed×"
-
 @Composable
 fun ReadingPlayerBar(
     state: ReadingPlayerState,
@@ -278,7 +273,10 @@ private fun ReadingPlaybackSpeedMenu(
     onDismissRequest: () -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val currentLabel = playbackSpeedLabel(speed)
+    val currentLabel = readingPlaybackSpeedOptions
+        .firstOrNull { (option, _) -> abs(option - speed) < 0.001f }
+        ?.second
+        ?: "$speed×"
     Box {
         Surface(
             onClick = { expanded = true },

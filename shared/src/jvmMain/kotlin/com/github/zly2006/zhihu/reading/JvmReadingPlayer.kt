@@ -18,28 +18,6 @@
 package com.github.zly2006.zhihu.reading
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.State
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 
 @Composable
-actual fun rememberReadingPlayerController(): ReadingPlayerController = remember {
-    object : ReadingPlayerController {
-        override val state: State<ReadingPlayerState> = mutableStateOf(ReadingPlayerState())
-        override val isSupported: Boolean = false
-
-        override fun start(request: ReadingStartRequest) = Unit
-
-        override fun togglePlayPause() = Unit
-
-        override fun playPrevious() = Unit
-
-        override fun playNext() = Unit
-
-        override fun playAt(index: Int) = Unit
-
-        override fun setPlaybackSpeed(speed: Float) = Unit
-
-        override fun stop() = Unit
-    }
-}
+actual fun rememberReadingPlayerController(): ReadingPlayerController = UnsupportedReadingPlayerController

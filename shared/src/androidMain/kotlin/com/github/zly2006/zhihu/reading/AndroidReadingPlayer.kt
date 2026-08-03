@@ -34,9 +34,17 @@ object AndroidReadingPlayerBridge {
     @Volatile
     private var pendingStartRequest: ReadingStartRequest? = null
 
-    @Synchronized
-    fun prepareStart(request: ReadingStartRequest) {
-        pendingStartRequest = request
+    fun start(
+        context: Context,
+        request: ReadingStartRequest,
+    ) {
+        synchronized(this) {
+            pendingStartRequest = request
+        }
+        ContextCompat.startForegroundService(
+            context,
+            ContentReadingService.commandIntent(context, ContentReadingService.ACTION_START),
+        )
     }
 
     @Synchronized
@@ -62,17 +70,14 @@ private class AndroidReadingPlayerController(
             .take(normalizedPreferences.queueLimit)
         if (normalizedQueue.isEmpty()) return
 
-        AndroidReadingPlayerBridge.prepareStart(
+        AndroidReadingPlayerBridge.start(
+            context,
             request.copy(
                 queue = normalizedQueue,
                 preferences = normalizedPreferences,
                 startIndex = request.startIndex.coerceIn(normalizedQueue.indices),
                 playbackSpeed = normalizeReadingPlaybackSpeed(request.playbackSpeed),
             ),
-        )
-        ContextCompat.startForegroundService(
-            context,
-            ContentReadingService.commandIntent(context, ContentReadingService.ACTION_START),
         )
     }
 
