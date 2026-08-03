@@ -19,6 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -171,7 +172,9 @@ private fun DeferredMarkdownBlock(
     val density = LocalDensity.current
     val viewportHeightPx = LocalWindowInfo.current.containerSize.height.toFloat()
     var materialized by remember(node) { mutableStateOf(false) }
-    var measuredHeightDp by remember(node) { mutableStateOf<Float?>(null) }
+    // 父 LazyColumn 回收整个 Markdown 条目后，若丢失实测高度，重新进入视口时估算高度与真实高度会
+    // 反复改变父列表布局，表现为长问题详情空白和按钮抖动（#615）。这里只保存高度，仍保留离屏延迟渲染。
+    var measuredHeightDp by rememberSaveable(node.stableKey) { mutableStateOf<Float?>(null) }
     val requestedByNavigation =
         footnoteNavigationState?.let { navigationState ->
             (node is FootnoteDefinition && navigationState.isDefinitionRequested(node.label)) ||
