@@ -41,6 +41,7 @@ import com.github.zly2006.zhihu.navigation.Daily
 import com.github.zly2006.zhihu.navigation.Follow
 import com.github.zly2006.zhihu.navigation.Home
 import com.github.zly2006.zhihu.navigation.MainTabs
+import com.github.zly2006.zhihu.navigation.MyCollections
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.resetAppPreferences
@@ -48,6 +49,7 @@ import com.github.zly2006.zhihu.test.setZhihuMainContent
 import com.github.zly2006.zhihu.ui.FOLLOW_SCREEN_PAGER_TAG
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.subscreens.COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.START_DESTINATION_PREFERENCE_KEY
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -241,9 +243,35 @@ class ZhihuMainNavigationInstrumentedTest {
         assertEquals(ContentOpenFrom.HOME_FEED, openFrom)
     }
 
+    @Test
+    fun collectionsTabKeepsLegacyListByDefault() {
+        composeRule.launchZhihuMain(
+            startDestination = MyCollections.name,
+            bottomBarItems = collectionBottomBarItems,
+        )
+
+        composeRule.waitUntilTabSelected("nav_tab_mycollections")
+        composeRule.onNodeWithTag("collection_screen_title").assertIsDisplayed()
+        composeRule.onNodeWithTag("collection_browse_title").assertDoesNotExist()
+    }
+
+    @Test
+    fun collectionsTabUsesDirectBrowseOnlyWhenEnabled() {
+        composeRule.launchZhihuMain(
+            startDestination = MyCollections.name,
+            bottomBarItems = collectionBottomBarItems,
+            collectionDirectBrowseEnabled = true,
+        )
+
+        composeRule.waitUntilTabSelected("nav_tab_mycollections")
+        composeRule.onNodeWithTag("collection_browse_title").assertIsDisplayed()
+        composeRule.onNodeWithTag("collection_screen_title").assertDoesNotExist()
+    }
+
     private fun MainActivityComposeRule.launchZhihuMain(
         startDestination: String,
         bottomBarItems: Set<String> = deterministicBottomBarItems,
+        collectionDirectBrowseEnabled: Boolean = false,
     ) {
         activity.getSharedPreferences(PREFERENCE_NAME, android.content.Context.MODE_PRIVATE).edit(commit = true) {
             putString(START_DESTINATION_PREFERENCE_KEY, startDestination)
@@ -251,9 +279,17 @@ class ZhihuMainNavigationInstrumentedTest {
             putBoolean("duo3_home_account", false)
             putBoolean("bottomBarTapScrollToTop", false)
             putBoolean("autoHideBottomBar", false)
+            putBoolean(COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY, collectionDirectBrowseEnabled)
         }
         setZhihuMainContent()
     }
+
+    private val collectionBottomBarItems = linkedSetOf(
+        Home.name,
+        Follow.name,
+        MyCollections.name,
+        Account.name,
+    )
 
     private fun MainActivityComposeRule.waitUntilTabSelected(tag: String) {
         waitUntil(timeoutMillis = 5_000) {

@@ -30,6 +30,7 @@ import com.github.zly2006.zhihu.navigation.CollectionContent
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
+import com.github.zly2006.zhihu.ui.CollectionBrowseScreen
 import com.github.zly2006.zhihu.ui.CollectionScreen
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -154,6 +155,39 @@ class CollectionScreenInstrumentedTest {
             .assertIsDisplayed()
     }
 
+    @Test
+    fun directBrowseSupportsPullRefreshAndDeleteConfirmation() {
+        val defaultCollection = Collection(
+            id = "direct-default",
+            title = "直达默认收藏夹",
+            isDefault = true,
+        )
+        val deletableCollection = Collection(
+            id = "direct-deletable",
+            title = "直达待删除收藏夹",
+        )
+        composeRule.setScreenContent {
+            CollectionBrowseScreen(
+                urlToken = "offline-test-user",
+                testCollections = listOf(defaultCollection, deletableCollection),
+            )
+        }
+
+        composeRule.onNodeWithTag(COLLECTION_BROWSE_PULL_TO_REFRESH_TAG).assertIsDisplayed()
+        composeRule.onNodeWithTag(COLLECTION_BROWSE_SEARCH_BUTTON_TAG).performClick()
+        composeRule.onNodeWithTag(COLLECTION_BROWSE_SEARCH_FIELD_TAG).assertIsDisplayed()
+        composeRule.onNodeWithTag(COLLECTION_BROWSE_MODE_BUTTON_TAG).assertIsDisplayed()
+        composeRule.onNodeWithTag(COLLECTION_BROWSE_FOLDER_SWITCH_BUTTON_TAG).performClick()
+        composeRule.onNodeWithTag(collectionBrowseDeleteButtonTag(defaultCollection.id)).assertDoesNotExist()
+        composeRule.onNodeWithTag(collectionBrowseDeleteButtonTag(deletableCollection.id)).performClick()
+
+        composeRule.onNodeWithTag(collectionBrowseDeleteDialogTag(deletableCollection.id)).assertIsDisplayed()
+        composeRule.onNodeWithTag(collectionBrowseDeleteConfirmTag(deletableCollection.id)).assertIsDisplayed()
+        composeRule
+            .onNodeWithText("删除后无法恢复，确认删除收藏夹“${deletableCollection.title}”吗？")
+            .assertIsDisplayed()
+    }
+
     private fun setCollectionScreen(testCollections: List<Collection>) = composeRule.setScreenContent {
         CollectionScreen(
             urlToken = "offline-test-user",
@@ -180,6 +214,11 @@ class CollectionScreenInstrumentedTest {
         const val COLLECTION_SCREEN_CREATE_BUTTON_TAG = "collection_screen_create_button"
         const val CREATE_COLLECTION_DIALOG_TAG = "create_collection_dialog"
         const val CREATE_COLLECTION_TITLE_INPUT_TAG = "create_collection_title_input"
+        const val COLLECTION_BROWSE_PULL_TO_REFRESH_TAG = "collection_browse_pull_to_refresh"
+        const val COLLECTION_BROWSE_FOLDER_SWITCH_BUTTON_TAG = "collection_browse_folder_switch_button"
+        const val COLLECTION_BROWSE_SEARCH_BUTTON_TAG = "collection_browse_search_button"
+        const val COLLECTION_BROWSE_SEARCH_FIELD_TAG = "collection_browse_search_field"
+        const val COLLECTION_BROWSE_MODE_BUTTON_TAG = "collection_browse_mode_button"
 
         fun collectionItemTag(collectionId: String) = "collection_screen_item_$collectionId"
 
@@ -188,5 +227,11 @@ class CollectionScreenInstrumentedTest {
         fun collectionDeleteDialogTag(collectionId: String) = "collection_screen_delete_dialog_$collectionId"
 
         fun collectionDeleteConfirmTag(collectionId: String) = "collection_screen_delete_confirm_$collectionId"
+
+        fun collectionBrowseDeleteButtonTag(collectionId: String) = "collection_browse_delete_button_$collectionId"
+
+        fun collectionBrowseDeleteDialogTag(collectionId: String) = "collection_browse_delete_dialog_$collectionId"
+
+        fun collectionBrowseDeleteConfirmTag(collectionId: String) = "collection_browse_delete_confirm_$collectionId"
     }
 }

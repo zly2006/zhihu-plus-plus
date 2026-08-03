@@ -128,10 +128,12 @@ const val APPEARANCE_SETTINGS_USE_WEBVIEW_TAG = "appearanceSettings.useWebView"
 const val APPEARANCE_SETTINGS_WEBVIEW_FONT_TAG = "appearanceSettings.webViewFont"
 const val APPEARANCE_SETTINGS_WEBVIEW_OPTIONS_TAG = "appearanceSettings.webViewOptions"
 const val APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY = "appearanceSettings.bottomBarSection"
+const val APPEARANCE_SETTINGS_COLLECTION_DIRECT_BROWSE_TAG = "appearanceSettings.collectionDirectBrowse"
 
 const val START_DESTINATION_PREFERENCE_KEY = "startDestination"
 const val BOTTOM_BAR_ITEMS_PREFERENCE_KEY = "bottom_bar_items"
 const val BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY = "bottom_bar_item_order"
+const val COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY = "collectionDirectBrowse"
 private const val BOTTOM_BAR_ITEM_ORDER_SEPARATOR = ","
 private val bottomBarSettingItemHeight = 64.dp
 private val bottomBarSettingItemSpacing = 4.dp
@@ -1178,6 +1180,25 @@ fun AppearanceSettingsScreen(
                             }
                         }
                     },
+                )
+
+                val collectionDirectBrowse = remember {
+                    mutableStateOf(settings.getBoolean(COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY, false))
+                }
+                SettingItemWithSwitch(
+                    modifier = Modifier.testTag(APPEARANCE_SETTINGS_COLLECTION_DIRECT_BROWSE_TAG),
+                    title = { Text("收藏直达浏览（测试）") },
+                    description = {
+                        Text("测试功能，可能存在问题，请谨慎开启。开启后，底部「收藏夹」会直接展示收藏内容，支持切换与删除收藏夹、下拉刷新、搜索已加载内容及顺序/随机模式；欢迎通过 Issue 反馈。")
+                    },
+                    checked = collectionDirectBrowse.value,
+                    onCheckedChange = {
+                        collectionDirectBrowse.value = it
+                        settings.putBoolean(COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY, it)
+                    },
+                    settingKey = COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY,
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor(COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY),
                 )
 
                 val tapToRefresh = remember { mutableStateOf(settings.getBoolean("bottomBarTapScrollToTop", true)) }
