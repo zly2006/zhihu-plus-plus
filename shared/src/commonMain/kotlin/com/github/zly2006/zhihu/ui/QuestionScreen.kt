@@ -200,14 +200,14 @@ fun QuestionScreen(
     }
     val questionContentPreview = remember(questionContent) { Ksoup.parse(questionContent).text().trim() }
     val shareText = getShareText(question, title)
-    val readingItem = loadedQuestion?.toReadingQueueItem(question)
-    val isCurrentReadingItem = readingItem?.key == readingPlayerState.currentItem?.key
-    val readingButtonText = when {
-        !isCurrentReadingItem -> "开始连续朗读"
-        readingPlayerState.isActivelyPlaying -> "暂停朗读"
-        readingPlayerState.status == ReadingPlaybackStatus.Paused -> "继续朗读"
-        else -> "重新朗读"
-    }
+//    val readingItem = loadedQuestion?.toReadingQueueItem(question)
+//    val isCurrentReadingItem = readingItem?.key == readingPlayerState.currentItem?.key
+//    val readingButtonText = when {
+//        !isCurrentReadingItem -> "开始连续朗读"
+//        readingPlayerState.isActivelyPlaying -> "暂停朗读"
+//        readingPlayerState.status == ReadingPlaybackStatus.Paused -> "继续朗读"
+//        else -> "重新朗读"
+//    }
 
     // 加载问题详情和答案
     LaunchedEffect(question.questionId, viewModel) {
@@ -422,52 +422,52 @@ fun QuestionScreen(
                             itemVerticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
-                            Button(
-                                onClick = {
-                                    val item = readingItem ?: return@Button
-                                    if (isCurrentReadingItem) {
-                                        readingPlayer.togglePlayPause()
-                                    } else {
-                                        readingPlayer.start(
-                                            ReadingStartRequest(
-                                                queue = ReadingQueueSourceRegistry.queueStartingAt(
-                                                    current = item,
-                                                    sourceId = question.readingQueueSourceId,
-                                                    limit = readingPreferences.queueLimit,
-                                                ),
-                                                preferences = readingPreferences,
-                                                sourceId = question.readingQueueSourceId,
-                                                playbackSpeed = readingPlaybackSpeed,
-                                            ),
-                                        )
-                                    }
-                                },
-                                enabled = readingPlayer.isSupported &&
-                                    readingItem?.hasReadableFields(readingPreferences) == true,
-                                modifier = Modifier.testTag(QUESTION_SCREEN_READING_BUTTON_TAG),
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                            ) {
-                                when {
-                                    isCurrentReadingItem &&
-                                        readingPlayerState.status in setOf(
-                                            ReadingPlaybackStatus.Initializing,
-                                            ReadingPlaybackStatus.Loading,
-                                        ) -> CircularProgressIndicator(
-                                        modifier = Modifier.size(18.dp),
-                                        strokeWidth = 2.dp,
-                                    )
-                                    isCurrentReadingItem && readingPlayerState.isActivelyPlaying -> Icon(
-                                        Icons.Filled.Pause,
-                                        contentDescription = "暂停朗读",
-                                    )
-                                    else -> Icon(
-                                        Icons.AutoMirrored.Filled.VolumeUp,
-                                        contentDescription = readingButtonText,
-                                    )
-                                }
-                                Spacer(Modifier.width(8.dp))
-                                Text(readingButtonText)
-                            }
+//                            Button(
+//                                onClick = {
+//                                    val item = readingItem ?: return@Button
+//                                    if (isCurrentReadingItem) {
+//                                        readingPlayer.togglePlayPause()
+//                                    } else {
+//                                        readingPlayer.start(
+//                                            ReadingStartRequest(
+//                                                queue = ReadingQueueSourceRegistry.queueStartingAt(
+//                                                    current = item,
+//                                                    sourceId = question.readingQueueSourceId,
+//                                                    limit = readingPreferences.queueLimit,
+//                                                ),
+//                                                preferences = readingPreferences,
+//                                                sourceId = question.readingQueueSourceId,
+//                                                playbackSpeed = readingPlaybackSpeed,
+//                                            ),
+//                                        )
+//                                    }
+//                                },
+//                                enabled = readingPlayer.isSupported &&
+//                                    readingItem?.hasReadableFields(readingPreferences) == true,
+//                                modifier = Modifier.testTag(QUESTION_SCREEN_READING_BUTTON_TAG),
+//                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+//                            ) {
+//                                when {
+//                                    isCurrentReadingItem &&
+//                                        readingPlayerState.status in setOf(
+//                                            ReadingPlaybackStatus.Initializing,
+//                                            ReadingPlaybackStatus.Loading,
+//                                        ) -> CircularProgressIndicator(
+//                                        modifier = Modifier.size(18.dp),
+//                                        strokeWidth = 2.dp,
+//                                    )
+//                                    isCurrentReadingItem && readingPlayerState.isActivelyPlaying -> Icon(
+//                                        Icons.Filled.Pause,
+//                                        contentDescription = "暂停朗读",
+//                                    )
+//                                    else -> Icon(
+//                                        Icons.AutoMirrored.Filled.VolumeUp,
+//                                        contentDescription = readingButtonText,
+//                                    )
+//                                }
+//                                Spacer(Modifier.width(8.dp))
+//                                Text(readingButtonText)
+//                            }
 
                             Button(
                                 onClick = {
