@@ -84,9 +84,6 @@ import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.platform.rememberZhihuWebUrlOpener
 import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
-import com.github.zly2006.zhihu.reading.loadReadingPlaybackSpeed
-import com.github.zly2006.zhihu.reading.loadReadingPreferences
-import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
@@ -111,7 +108,6 @@ const val QUESTION_SORT_DEFAULT_TAG = "question_sort_default"
 const val QUESTION_SORT_UPDATED_TAG = "question_sort_updated"
 const val QUESTION_FOLLOW_BUTTON_TAG = "question_follow_button"
 const val QUESTION_VIEW_LOG_BUTTON_TAG = "question_view_log_button"
-const val QUESTION_SCREEN_READING_BUTTON_TAG = "question_screen_reading_button"
 const val QUESTION_SHARE_BUTTON_TAG = "question_share_button"
 const val QUESTION_WRITE_ANSWER_BUTTON_TAG = "question_write_answer_button"
 const val QUESTION_COMMENTS_BUTTON_TAG = "question_comments_button"
@@ -147,10 +143,6 @@ fun QuestionScreen(
     val executeShareAction = rememberShareActionExecutor()
     val openZhihuWebUrl = rememberZhihuWebUrlOpener()
     val navigator = LocalNavigator.current
-    val readingPreferences = loadReadingPreferences(settings)
-    val readingPlaybackSpeed = loadReadingPlaybackSpeed(settings)
-    val readingPlayer = rememberReadingPlayerController()
-    val readingPlayerState by readingPlayer.state
     val viewModel: QuestionFeedViewModel = viewModel(key = "question_${question.questionId}") {
         QuestionFeedViewModel(question.questionId)
     }
@@ -163,9 +155,6 @@ fun QuestionScreen(
     val answerSwitchState = paginationEnvironment.articleAnswerSwitchState()
     var questionContent by remember(question.questionId) {
         mutableStateOf("")
-    }
-    var loadedQuestion by remember(question.questionId) {
-        mutableStateOf<DataHolder.Question?>(null)
     }
     var answerCount by remember(question.questionId) {
         mutableIntStateOf(0)
@@ -191,14 +180,6 @@ fun QuestionScreen(
     }
     val questionContentPreview = remember(questionContent) { Ksoup.parse(questionContent).text().trim() }
     val shareText = getShareText(question, title)
-//    val readingItem = loadedQuestion?.toReadingQueueItem(question)
-//    val isCurrentReadingItem = readingItem?.key == readingPlayerState.currentItem?.key
-//    val readingButtonText = when {
-//        !isCurrentReadingItem -> "开始连续朗读"
-//        readingPlayerState.isActivelyPlaying -> "暂停朗读"
-//        readingPlayerState.status == ReadingPlaybackStatus.Paused -> "继续朗读"
-//        else -> "重新朗读"
-//    }
 
     // 加载问题详情和答案
     LaunchedEffect(question.questionId, viewModel) {
@@ -210,7 +191,6 @@ fun QuestionScreen(
         try {
             val questionData = loadQuestion(paginationEnvironment, question)
             if (questionData != null) {
-                loadedQuestion = questionData
                 questionContent = questionData.detail
                 title = questionData.title
                 answerCount = questionData.answerCount
@@ -413,53 +393,6 @@ fun QuestionScreen(
                             itemVerticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
-//                            Button(
-//                                onClick = {
-//                                    val item = readingItem ?: return@Button
-//                                    if (isCurrentReadingItem) {
-//                                        readingPlayer.togglePlayPause()
-//                                    } else {
-//                                        readingPlayer.start(
-//                                            ReadingStartRequest(
-//                                                queue = ReadingQueueSourceRegistry.queueStartingAt(
-//                                                    current = item,
-//                                                    sourceId = question.readingQueueSourceId,
-//                                                    limit = readingPreferences.queueLimit,
-//                                                ),
-//                                                preferences = readingPreferences,
-//                                                sourceId = question.readingQueueSourceId,
-//                                                playbackSpeed = readingPlaybackSpeed,
-//                                            ),
-//                                        )
-//                                    }
-//                                },
-//                                enabled = readingPlayer.isSupported &&
-//                                    readingItem?.hasReadableFields(readingPreferences) == true,
-//                                modifier = Modifier.testTag(QUESTION_SCREEN_READING_BUTTON_TAG),
-//                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-//                            ) {
-//                                when {
-//                                    isCurrentReadingItem &&
-//                                        readingPlayerState.status in setOf(
-//                                            ReadingPlaybackStatus.Initializing,
-//                                            ReadingPlaybackStatus.Loading,
-//                                        ) -> CircularProgressIndicator(
-//                                        modifier = Modifier.size(18.dp),
-//                                        strokeWidth = 2.dp,
-//                                    )
-//                                    isCurrentReadingItem && readingPlayerState.isActivelyPlaying -> Icon(
-//                                        Icons.Filled.Pause,
-//                                        contentDescription = "暂停朗读",
-//                                    )
-//                                    else -> Icon(
-//                                        Icons.AutoMirrored.Filled.VolumeUp,
-//                                        contentDescription = readingButtonText,
-//                                    )
-//                                }
-//                                Spacer(Modifier.width(8.dp))
-//                                Text(readingButtonText)
-//                            }
-
                             Button(
                                 onClick = {
                                     try {
