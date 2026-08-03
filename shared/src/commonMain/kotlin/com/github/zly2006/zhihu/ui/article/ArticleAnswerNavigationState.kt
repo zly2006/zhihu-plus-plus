@@ -31,6 +31,7 @@ import com.github.zly2006.zhihu.navigation.AnswerNavigator
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.Navigator
+import com.github.zly2006.zhihu.navigation.withReadingQueueSource
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
 import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
 import com.github.zly2006.zhihu.ui.hasRoute
@@ -45,6 +46,7 @@ internal class ArticleAnswerNavigationState(
     private val navigator: Navigator,
     private val navController: NavHostController?,
     private val coroutineScope: CoroutineScope,
+    private val readingQueueSourceId: String?,
     answerSwitchMode: String,
 ) {
     var answerSwitchMode by mutableStateOf(answerSwitchMode)
@@ -141,7 +143,7 @@ internal class ArticleAnswerNavigationState(
         ) {
             navController.popBackStack()
         }
-        navigator.onNavigate(article)
+        navigator.onNavigate(article.withReadingQueueSource(readingQueueSourceId))
     }
 }
 
@@ -152,15 +154,17 @@ internal fun rememberArticleAnswerNavigationState(
     navigator: Navigator,
     navController: NavHostController?,
     answerSwitchMode: String,
+    readingQueueSourceId: String?,
 ): ArticleAnswerNavigationState {
     val coroutineScope = rememberCoroutineScope()
-    val state = remember(switchState, viewModel, navigator, navController, coroutineScope) {
+    val state = remember(switchState, viewModel, navigator, navController, coroutineScope, readingQueueSourceId) {
         ArticleAnswerNavigationState(
             switchState = switchState,
             viewModel = viewModel,
             navigator = navigator,
             navController = navController,
             coroutineScope = coroutineScope,
+            readingQueueSourceId = readingQueueSourceId,
             answerSwitchMode = answerSwitchMode,
         )
     }

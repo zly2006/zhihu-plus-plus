@@ -149,6 +149,9 @@ import com.github.zly2006.zhihu.platform.rememberImagePreviewOpener
 import com.github.zly2006.zhihu.platform.rememberImageSaver
 import com.github.zly2006.zhihu.platform.rememberImageSharer
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.reading.ReadingCommentOrder
+import com.github.zly2006.zhihu.reading.loadReadingPreferences
+import com.github.zly2006.zhihu.reading.saveReadingPreferences
 import com.github.zly2006.zhihu.ui.components.replaceSelection
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
@@ -449,6 +452,10 @@ fun CommentScreen(
     onInitialChildCommentResolved: (CommentModel, DataHolder.Comment) -> Unit = { _, _ -> },
 ) {
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
+    val readingSettings = rememberSettingsStore()
+    val initialReadingCommentOrder = remember(readingSettings) {
+        loadReadingPreferences(readingSettings).commentOrder
+    }
     val resolvedContent = content()
     var isSending by remember { mutableStateOf(false) }
     var replyToComment by remember { mutableStateOf<CommentModel?>(null) }
@@ -496,7 +503,12 @@ fun CommentScreen(
         }
 
         else -> viewModel(key = viewModelKey) {
-            RootCommentViewModel(resolvedContent, initialCommentId)
+            RootCommentViewModel(resolvedContent, initialCommentId).apply {
+                sortOrder = when (initialReadingCommentOrder) {
+                    ReadingCommentOrder.Score -> CommentSortOrder.SCORE
+                    ReadingCommentOrder.Time -> CommentSortOrder.TIME
+                }
+            }
         }
     }
     val restoredListPosition = remember(resolvedContent) {
@@ -882,6 +894,12 @@ fun CommentScreen(
                                                 },
                                                 onClick = {
                                                     viewModel.changeSortOrder(CommentSortOrder.SCORE, paginationEnvironment)
+                                                    saveReadingPreferences(
+                                                        readingSettings,
+                                                        loadReadingPreferences(readingSettings).copy(
+                                                            commentOrder = ReadingCommentOrder.Score,
+                                                        ),
+                                                    )
                                                 },
                                             )
                                             Spacer(Modifier.width(12.dp))
@@ -904,6 +922,12 @@ fun CommentScreen(
                                                 },
                                                 onClick = {
                                                     viewModel.changeSortOrder(CommentSortOrder.TIME, paginationEnvironment)
+                                                    saveReadingPreferences(
+                                                        readingSettings,
+                                                        loadReadingPreferences(readingSettings).copy(
+                                                            commentOrder = ReadingCommentOrder.Time,
+                                                        ),
+                                                    )
                                                 },
                                             )
                                         }

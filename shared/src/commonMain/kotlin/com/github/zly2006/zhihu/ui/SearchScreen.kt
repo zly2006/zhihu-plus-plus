@@ -80,6 +80,7 @@ import com.github.zly2006.zhihu.platform.SettingsStore
 import com.github.zly2006.zhihu.platform.UserMessageDuration
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockConfirmDialog
 import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockRequest
@@ -142,6 +143,22 @@ fun SearchScreen(
     val userMessages = rememberUserMessageSink()
     val settings = rememberSettingsStore()
     val viewModel = viewModel { SearchViewModel(search.query, search.restrictedMemberHashId) }
+    val readingQueueSourceId = buildString {
+        append("search:")
+        append(search.restrictedMemberHashId)
+        append(':')
+        append(viewModel.sortOption.name)
+        append(':')
+        append(viewModel.contentType.name)
+        append(':')
+        append(viewModel.timeRange.name)
+        append(':')
+        append(search.query)
+    }
+    RegisterReadingQueueSource(
+        sourceId = readingQueueSourceId,
+        items = viewModel.displayItems,
+    )
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -566,6 +583,7 @@ fun SearchScreen(
                     ) { item ->
                         FeedCard(
                             item = item,
+                            readingQueueSourceId = readingQueueSourceId,
                             menuItems = { dismissMenu ->
                                 DropdownMenuItem(
                                     text = { Text("屏蔽用户") },

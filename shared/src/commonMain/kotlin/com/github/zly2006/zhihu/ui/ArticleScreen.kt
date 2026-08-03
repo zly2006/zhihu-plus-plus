@@ -72,12 +72,14 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -173,6 +175,8 @@ fun ArticleScreen(
     viewModel: ArticleViewModel,
 ) {
     val navigator = LocalNavigator.current
+    val readingPlayerOverlayPadding = LocalReadingPlayerOverlayPadding.current
+    val readingPlayerOverlayOffsetState = LocalReadingPlayerOverlayOffsetState.current
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
     val articleHost = rememberArticleHost()
     val backStackEntry by articleHost?.articleNavController?.currentBackStackEntryAsState()
@@ -182,6 +186,17 @@ fun ArticleScreen(
     val articleSettings = rememberArticleScreenSettingsState()
     val userMessages = rememberUserMessageSink()
     val density = LocalDensity.current
+    val readingPlayerOverlayPaddingPx = with(density) { readingPlayerOverlayPadding.roundToPx() }
+    val effectiveScrollMaxValue by remember(readingPlayerOverlayPaddingPx) {
+        derivedStateOf {
+            if (scrollState.maxValue == Int.MAX_VALUE) {
+                Int.MAX_VALUE
+            } else {
+                (scrollState.maxValue - readingPlayerOverlayPaddingPx).coerceAtLeast(0)
+            }
+        }
+    }
+    val latestEffectiveScrollMaxValue by rememberUpdatedState(effectiveScrollMaxValue)
     var showComments by rememberSaveable(article.type, article.id) { mutableStateOf(false) }
     var showCollectionDialog by remember { mutableStateOf(false) }
     var showActionsMenu by remember { mutableStateOf(false) }
@@ -221,8 +236,27 @@ fun ArticleScreen(
         navigator = navigator,
         navController = articleHost?.articleNavController,
         answerSwitchMode = articleSettings.answerSwitchMode,
+        readingQueueSourceId = article.readingQueueSourceId,
     )
     val hapticFeedback = LocalHapticFeedback.current
+    val readingPlayerOverlayOwner = remember(article.type, article.id) { Any() }
+    val usesVerticalAnswerSwitch = article.type == ArticleType.Answer && articleSettings.answerSwitchMode == "vertical"
+    DisposableEffect(readingPlayerOverlayOffsetState, readingPlayerOverlayOwner, usesVerticalAnswerSwitch) {
+        if (usesVerticalAnswerSwitch) {
+            readingPlayerOverlayOffsetState?.activate(readingPlayerOverlayOwner)
+        }
+        onDispose {
+            if (usesVerticalAnswerSwitch) {
+                readingPlayerOverlayOffsetState?.deactivate(readingPlayerOverlayOwner)
+            }
+        }
+    }
+    val updateReadingPlayerOverlayOffset = remember(readingPlayerOverlayOffsetState, readingPlayerOverlayOwner) {
+        { offsetPx: Float ->
+            readingPlayerOverlayOffsetState?.update(readingPlayerOverlayOwner, offsetPx)
+            Unit
+        }
+    }
 
     LaunchedEffect(sharedData, isImmersiveMode) {
         if (sharedData != null) sharedData.isImmersiveMode = isImmersiveMode
@@ -278,7 +312,7 @@ fun ArticleScreen(
 
     LaunchedEffect(scrollState) {
         snapshotFlow { scrollState.value }.collectLatest { currentScroll ->
-            viewModel.updateAigcReadProgress(currentScroll, scrollState.maxValue)
+            viewModel.updateAigcReadProgress(currentScroll, effectiveScrollMaxValue)
             viewModel.syncAigcReadEventIfEligible(environment)
 
             if (viewModel.rememberedScrollYSync) {
@@ -290,7 +324,9 @@ fun ArticleScreen(
         }
     }
 
-    val articleBringIntoViewSpec = rememberBottomBarAvoidingBringIntoViewSpec(bottomBarState.obscuredHeightPx)
+    val articleBringIntoViewSpec = rememberBottomBarAvoidingBringIntoViewSpec(
+        bottomBarState.obscuredHeightPx + readingPlayerOverlayPaddingPx,
+    )
     LaunchedEffect(article.id) {
         answerNavigationState.prepareArticle()
         viewModel.loadArticle(environment)
@@ -300,14 +336,14 @@ fun ArticleScreen(
 
     LaunchedEffect(article.type, article.id, viewModel.content) {
         if (viewModel.content.isNotBlank()) {
-            viewModel.updateAigcReadProgress(scrollState.value, scrollState.maxValue)
+            viewModel.updateAigcReadProgress(scrollState.value, latestEffectiveScrollMaxValue)
             delay(15_000)
-            viewModel.updateAigcReadProgress(scrollState.value, scrollState.maxValue)
+            viewModel.updateAigcReadProgress(scrollState.value, latestEffectiveScrollMaxValue)
             viewModel.syncAigcReadEventIfEligible(environment)
         }
     }
     LaunchedEffect(scrollState, viewModel.content) {
-        snapshotFlow { scrollState.maxValue }.collectLatest { maxValue ->
+        snapshotFlow { effectiveScrollMaxValue }.collectLatest { maxValue ->
             if (viewModel.content.isNotBlank()) {
                 viewModel.updateAigcReadProgress(scrollState.value, maxValue)
             }
@@ -565,17 +601,6 @@ fun ArticleScreen(
                                     ) {
                                         Icon(if (viewModel.isFavorited) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder, contentDescription = "收藏")
                                     }
-                                    val ttsState = articleHost?.articleTtsState
-                                    if (ttsState?.isSpeaking == true) {
-                                        IconButton(
-                                            onClick = {
-                                                articleHost.stopArticleSpeaking()
-                                                userMessages.showMessage("已停止朗读")
-                                            },
-                                        ) {
-                                            Icon(Icons.AutoMirrored.Filled.VolumeOff, contentDescription = "停止朗读")
-                                        }
-                                    }
                                     Button(
                                         onClick = { showComments = true },
                                         contentPadding = PaddingValues(start = 8.dp, end = 12.dp),
@@ -762,17 +787,24 @@ fun ArticleScreen(
                         }
                     }
 
-                    if (bottomBarState.showSlot) {
-                        Box(
-                            modifier = Modifier
-                                .onSizeChanged { bottomBarState.heightPx = it.height.toFloat() }
-                                .graphicsLayer {
-                                    translationY = bottomBarState.offset.value
-                                    alpha = if (bottomBarState.heightPx > 0f) 1f - (bottomBarState.offset.value / bottomBarState.heightPx) else 1f
-                                },
-                        ) {
-                            ActionBarContent()
+                    Column {
+                        if (bottomBarState.showSlot) {
+                            Box(
+                                modifier = Modifier
+                                    .onSizeChanged { bottomBarState.heightPx = it.height.toFloat() }
+                                    .graphicsLayer {
+                                        translationY = bottomBarState.offset.value
+                                        alpha = if (bottomBarState.heightPx > 0f) {
+                                            1f - (bottomBarState.offset.value / bottomBarState.heightPx)
+                                        } else {
+                                            1f
+                                        }
+                                    },
+                            ) {
+                                ActionBarContent()
+                            }
                         }
+                        Spacer(modifier = Modifier.height(readingPlayerOverlayPadding))
                     }
                 }
             },
@@ -1009,9 +1041,10 @@ fun ArticleScreen(
                 onNavigatePrevious = answerNavigationState::navigateToPrevious,
                 onNavigateNext = answerNavigationState::navigateToNext,
                 isAtTop = { scrollState.value == 0 },
-                isAtBottom = { scrollState.value >= scrollState.maxValue },
+                isAtBottom = { scrollState.value >= effectiveScrollMaxValue },
                 scrollState = scrollState,
                 answerSwitchSensitivity = articleSettings.answerSwitchSensitivity,
+                onOverscrollOffsetChange = updateReadingPlayerOverlayOffset,
             ) {
                 MainContent()
             }
@@ -1089,6 +1122,9 @@ fun ArticleScreen(
     ArticleActionsMenu(
         article = article,
         viewModel = viewModel,
+        answerQueueFallbackProvider = sharedData?.navigator?.let { answerNavigator ->
+            { limit -> answerNavigator.remainingAnswersSnapshot(article.id, limit) }
+        },
         showMenu = showActionsMenu,
         onDismissRequest = { showActionsMenu = false },
         onSummaryRequest = {

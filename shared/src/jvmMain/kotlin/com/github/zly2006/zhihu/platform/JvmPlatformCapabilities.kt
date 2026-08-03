@@ -20,6 +20,7 @@ package com.github.zly2006.zhihu.platform
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Modifier
 import com.github.zly2006.zhihu.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.desktop.DesktopPropertiesFile
 import com.github.zly2006.zhihu.desktop.copyDesktopPlainText
@@ -31,6 +32,8 @@ import kotlinx.io.files.Path
 
 @Composable
 actual fun rememberSettingsStore(): SettingsStore = remember { desktopSettingsStore() }
+
+actual fun Modifier.exportTestTagsForUiAutomation(): Modifier = this
 
 @Composable
 actual fun rememberAppPrivateDirectory(): Path = remember { Path(desktopZhihuDataDir().absolutePath) }

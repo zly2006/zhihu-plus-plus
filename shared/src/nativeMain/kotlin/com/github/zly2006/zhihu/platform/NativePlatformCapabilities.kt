@@ -19,6 +19,7 @@ package com.github.zly2006.zhihu.platform
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import com.github.zly2006.zhihu.ui.noopSettingsStore
 import com.github.zly2006.zhihu.ui.openIosUrl
 import kotlinx.cinterop.BetaInteropApi
@@ -87,6 +88,8 @@ actual fun PlatformPredictiveBackHandler(
 
 @Composable
 actual fun rememberSettingsStore(): SettingsStore = noopSettingsStore() // TODO: iOS 设置存储
+
+actual fun Modifier.exportTestTagsForUiAutomation(): Modifier = this
 
 @Composable
 @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)

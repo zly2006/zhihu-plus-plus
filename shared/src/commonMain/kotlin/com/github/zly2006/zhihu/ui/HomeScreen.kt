@@ -99,7 +99,6 @@ import com.github.zly2006.zhihu.data.RecommendationMode
 import com.github.zly2006.zhihu.data.ZHIHU_ME_URL
 import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.data.ZhihuMeNotifications
-import com.github.zly2006.zhihu.data.navDestination
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Article
@@ -125,6 +124,7 @@ import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.platform.rememberIsLiteVariant
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
 import com.github.zly2006.zhihu.ui.components.AnnouncementCard
 import com.github.zly2006.zhihu.ui.components.AnnouncementCardDefaults
 import com.github.zly2006.zhihu.ui.components.BlockByKeywordsDialog
@@ -202,6 +202,7 @@ fun HomeScreen(
     scrollToTopTrigger: Int,
     innerPadding: PaddingValues,
 ) {
+    val readingPlayerOverlayPadding = LocalReadingPlayerOverlayPadding.current
     val navigator = LocalNavigator.current
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = true)
     val settings = rememberSettingsStore()
@@ -254,6 +255,11 @@ fun HomeScreen(
         RecommendationMode.MIXED -> viewModel { MixedHomeFeedViewModel() }
     }
     val localHomeViewModel = viewModel as? LocalHomeFeedViewModel
+    val readingQueueSourceId = "home:${currentRecommendationMode.name}"
+    RegisterReadingQueueSource(
+        sourceId = readingQueueSourceId,
+        items = viewModel.displayItems,
+    )
 
     var dismissedUpdateVersion by remember { mutableStateOf<String?>(null) }
     var authorPinAnnouncements by remember { mutableStateOf(emptyList<HomePinAnnouncement>()) }
@@ -571,7 +577,7 @@ fun HomeScreen(
                     modifier = Modifier.testTag(HOME_FEED_LIST_TAG),
                     contentPadding = PaddingValues(
                         top = scaffoldPadding.calculateTopPadding() + 8.dp,
-                        bottom = innerPadding.calculateBottomPadding(),
+                        bottom = innerPadding.calculateBottomPadding() + readingPlayerOverlayPadding,
                     ),
                     onLoadMore = { viewModel.loadMore(paginationEnvironment) },
                     footer = ProgressIndicatorFooter,
@@ -709,6 +715,7 @@ fun HomeScreen(
                 ) { item ->
                     FeedCard(
                         item,
+                        readingQueueSourceId = readingQueueSourceId,
                         thumbnailUrl = when (val target = item.feed?.target) {
                             is Feed.AnswerTarget -> target.thumbnail
                             else -> null
@@ -775,14 +782,14 @@ fun HomeScreen(
                                 )
                             }
                         },
-                    ) {
-                        val feed = this.feed
-                        val destination = navDestination
+                    ) { clickedItem, destination ->
+                        val feed = clickedItem.feed
                         if (feed != null) {
 //                            DataHolder.putFeed(feed)
-                            (viewModel as? HomeFeedInteractionViewModel)?.onUiContentClick(paginationEnvironment, feed, item)
+                            (viewModel as? HomeFeedInteractionViewModel)
+                                ?.onUiContentClick(paginationEnvironment, feed, clickedItem)
                         } else {
-                            localHomeViewModel?.onLocalItemOpened(item)
+                            localHomeViewModel?.onLocalItemOpened(clickedItem)
                         }
                         if (destination != null) {
                             navigator.onNavigate(destination)
@@ -799,12 +806,14 @@ fun HomeScreen(
                                 userMessages.showShortMessage("已复制调试数据")
                             },
                             preferenceName = "copyAll",
+                            bottomAvoidance = readingPlayerOverlayPadding,
                         ) {
                             Icon(Icons.Default.CopyAll, contentDescription = "复制")
                         }
                     }
                     DraggableRefreshButton(
                         modifier = Modifier.testTag(HOME_REFRESH_BUTTON_TAG),
+                        bottomAvoidance = readingPlayerOverlayPadding,
                         onClick = { viewModel.refresh(paginationEnvironment) },
                     ) {
                         if (viewModel.isLoading) {
@@ -840,7 +849,7 @@ fun HomeScreen(
                 .align(Alignment.BottomEnd)
                 .padding(
                     end = 16.dp,
-                    bottom = innerPadding.calculateBottomPadding() + 16.dp,
+                    bottom = innerPadding.calculateBottomPadding() + readingPlayerOverlayPadding + 16.dp,
                 ),
             horizontalAlignment = Alignment.End,
         ) {

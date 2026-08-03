@@ -46,6 +46,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -53,6 +54,16 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.reading.ReadingContentType
+import com.github.zly2006.zhihu.reading.ReadingQueueItem
+import com.github.zly2006.zhihu.reading.ReadingQueueSourceRegistry
+import com.github.zly2006.zhihu.reading.ReadingStartRequest
+import com.github.zly2006.zhihu.reading.hasReadableFields
+import com.github.zly2006.zhihu.reading.loadReadingPlaybackSpeed
+import com.github.zly2006.zhihu.reading.loadReadingPreferences
+import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.ui.articleActionText
@@ -63,8 +74,10 @@ import com.github.zly2006.zhihu.ui.components.rememberShareActionExecutor
 import com.github.zly2006.zhihu.ui.rememberArticleBrowserOpener
 import com.github.zly2006.zhihu.ui.rememberArticleSpeechToggler
 import com.github.zly2006.zhihu.ui.rememberArticleTtsState
+import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.materialkolor.ktx.harmonize
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -96,9 +109,10 @@ internal fun voteUpNeutralButtonColors() = ButtonDefaults.buttonColors(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun ArticleActionsMenu(
+fun ArticleActionsMenu(
     article: Article,
     viewModel: ArticleViewModel,
+    answerQueueFallbackProvider: (suspend (limit: Int) -> List<Article>)? = null,
     showMenu: Boolean,
     onDismissRequest: () -> Unit,
     onSummaryRequest: () -> Unit,
@@ -108,9 +122,30 @@ internal fun ArticleActionsMenu(
 ) {
     val ttsState = rememberArticleTtsState()
     val toggleSpeech = rememberArticleSpeechToggler()
+    val readingPlayer = rememberReadingPlayerController()
+    val readingPlayerState by readingPlayer.state
+    val readingSettings = rememberSettingsStore()
     val openArticleInBrowser = rememberArticleBrowserOpener()
     val executeShareAction = rememberShareActionExecutor()
     val coroutineScope = rememberCoroutineScope()
+    val readingItem = ReadingQueueItem(
+        contentType = when (article.type) {
+            ArticleType.Answer -> ReadingContentType.Answer
+            ArticleType.Article -> ReadingContentType.Article
+        },
+        id = article.id,
+        title = viewModel.title,
+        author = viewModel.authorName,
+        questionId = viewModel.questionId.takeIf { it > 0 },
+        bodyHtml = viewModel.content.takeIf(String::isNotBlank),
+        publishedAt = viewModel.createdAt,
+        updatedAt = viewModel.updatedAt,
+        voteUpCount = viewModel.voteUpCount,
+        commentCount = viewModel.commentCount,
+    )
+    val readingPreferences = loadReadingPreferences(readingSettings)
+    val readingPlaybackSpeed = loadReadingPlaybackSpeed(readingSettings)
+    val hasReadingSession = readingPlayerState.hasSession
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     @Composable
@@ -177,24 +212,110 @@ internal fun ArticleActionsMenu(
     fun Content() {
         MenuActionButton(
             icon = {
-                when (ttsState) {
-                    TtsState.Initializing, TtsState.Uninitialized -> CircularProgressIndicator(
-                        modifier = Modifier.height(24.dp),
-                        strokeWidth = 2.dp,
-                    )
-
-                    else -> Icon(
-                        if (ttsState.isSpeaking) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                if (readingPlayer.isSupported && hasReadingSession) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.VolumeOff,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                } else {
+                    when (ttsState) {
+                        TtsState.Initializing, TtsState.Uninitialized -> CircularProgressIndicator(
+                            modifier = Modifier.height(24.dp),
+                            strokeWidth = 2.dp,
+                        )
+
+                        else -> Icon(
+                            if (!readingPlayer.isSupported && ttsState.isSpeaking) {
+                                Icons.AutoMirrored.Filled.VolumeOff
+                            } else {
+                                Icons.AutoMirrored.Filled.VolumeUp
+                            },
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             },
-            text = if (ttsState.isSpeaking) "停止朗读" else "开始朗读",
-            enabled = ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing),
+            text = if (readingPlayer.isSupported) {
+                if (hasReadingSession) "停止朗读" else "开始连续朗读"
+            } else if (ttsState.isSpeaking) {
+                "停止朗读"
+            } else {
+                "开始朗读"
+            },
+            enabled = if (readingPlayer.isSupported) {
+                hasReadingSession || readingItem.hasReadableFields(readingPreferences)
+            } else {
+                ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)
+            },
             onClick = {
                 onDismissRequest()
-                if (ttsState.isSpeaking) {
+                if (readingPlayer.isSupported) {
+                    if (hasReadingSession) {
+                        readingPlayer.stop()
+                    } else {
+                        coroutineScope.launch {
+                            val originQueue = ReadingQueueSourceRegistry.queueStartingAt(
+                                current = readingItem,
+                                sourceId = article.readingQueueSourceId,
+                                limit = readingPreferences.queueLimit,
+                            )
+                            val queue = if (
+                                article.type == ArticleType.Answer &&
+                                originQueue.size < readingPreferences.queueLimit &&
+                                readingPreferences.queueLimit > 1
+                            ) {
+                                val fallbackAfterCurrent = try {
+                                    val fallbackArticles = answerQueueFallbackProvider
+                                        ?.invoke(readingPreferences.queueLimit - 1)
+                                        ?: viewModel.answerNextIds.map { answerId ->
+                                            Article(
+                                                type = ArticleType.Answer,
+                                                id = answerId,
+                                                title = viewModel.title,
+                                            )
+                                        }
+                                    fallbackArticles.map { fallback ->
+                                        ReadingQueueItem(
+                                            contentType = ReadingContentType.Answer,
+                                            id = fallback.id,
+                                            title = fallback.title
+                                                .takeUnless { it == "loading..." }
+                                                .orEmpty()
+                                                .ifBlank { viewModel.title },
+                                            author = fallback.authorName
+                                                .takeUnless { it == "loading..." }
+                                                .orEmpty(),
+                                            questionId = viewModel.questionId.takeIf { it > 0 },
+                                        )
+                                    }
+                                } catch (error: CancellationException) {
+                                    throw error
+                                } catch (error: Exception) {
+                                    Log.w("ArticleActionsMenu", "Failed to load the remaining reading queue", error)
+                                    emptyList()
+                                }
+                                ReadingQueueSourceRegistry.queueStartingAt(
+                                    current = readingItem,
+                                    sourceId = article.readingQueueSourceId,
+                                    limit = readingPreferences.queueLimit,
+                                    fallbackAfterCurrent = fallbackAfterCurrent,
+                                )
+                            } else {
+                                originQueue
+                            }
+                            readingPlayer.start(
+                                ReadingStartRequest(
+                                    queue = queue,
+                                    preferences = readingPreferences,
+                                    sourceId = article.readingQueueSourceId,
+                                    playbackSpeed = readingPlaybackSpeed,
+                                ),
+                            )
+                        }
+                    }
+                } else if (ttsState.isSpeaking) {
                     toggleSpeech(viewModel.title, viewModel.content)
                 } else if (ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)) {
                     viewModel.viewModelScope.launch {
