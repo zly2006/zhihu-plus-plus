@@ -24,11 +24,13 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -141,7 +143,11 @@ class AppearanceSettingsScreenInstrumentedTest {
             expected = setOf(Home.name, Follow.name, Daily.name, HotList.name, Account.name),
         )
 
-        composeRule.onNodeWithTag(APPEARANCE_SETTINGS_START_DESTINATION_TAG).performClick()
+        scrollContainer().performScrollToNode(hasTestTag(APPEARANCE_SETTINGS_START_DESTINATION_TAG))
+        composeRule
+            .onNodeWithTag(APPEARANCE_SETTINGS_START_DESTINATION_TAG)
+            .assertIsDisplayed()
+            .performClick()
         composeRule.onNodeWithTag("appearanceSettings:startDestination:option:${HotList.name}").performClick()
 
         waitUntilStringPreference(START_DESTINATION_PREFERENCE_KEY, expected = HotList.name)
