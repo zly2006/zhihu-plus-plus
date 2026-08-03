@@ -19,6 +19,7 @@ package com.github.zly2006.zhihu
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
@@ -31,6 +32,7 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -147,8 +149,10 @@ class AppearanceSettingsScreenInstrumentedTest {
         composeRule
             .onNodeWithTag(APPEARANCE_SETTINGS_START_DESTINATION_TAG)
             .assertIsDisplayed()
-            .performClick()
-        composeRule.onNodeWithTag("appearanceSettings:startDestination:option:${HotList.name}").performClick()
+            .performSemanticsAction(SemanticsActions.OnClick)
+        val hotListOptionTag = "appearanceSettings:startDestination:option:${HotList.name}"
+        waitUntilTagDisplayed(hotListOptionTag)
+        composeRule.onNodeWithTag(hotListOptionTag).performClick()
 
         waitUntilStringPreference(START_DESTINATION_PREFERENCE_KEY, expected = HotList.name)
         scrollContainer().performVerticalSwipeCycle()

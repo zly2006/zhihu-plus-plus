@@ -19,11 +19,14 @@ package com.github.zly2006.zhihu
 
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.data.MobileNotificationContent
@@ -160,10 +163,19 @@ class NotificationScreenInstrumentedTest {
                 targetLink = "zhihu://comment/list/pin/8?anchor_comment_id=9&is_child=false",
             ),
         )
-        val recordingNavigator = setNotificationScreenContent(notifications)
+        val scrollGuardNotifications = List(8) { index ->
+            notificationFixture(
+                id = "scroll-guard-$index",
+                title = "占位通知 $index",
+                subTitle = "测试占位",
+            )
+        }
+        val recordingNavigator = setNotificationScreenContent(notifications + scrollGuardNotifications)
 
         notifications.forEach { notification ->
-            composeRule.onNodeWithText(notification.content!!.title).performClick()
+            val title = notification.content!!.title
+            composeRule.onNode(hasScrollAction()).performScrollToNode(hasText(title))
+            composeRule.onNodeWithText(title).performClick()
         }
 
         assertEquals(4, recordingNavigator.destinations.size)
