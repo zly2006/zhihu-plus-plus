@@ -135,4 +135,35 @@ class NavDestinationTest {
         assertEquals(ArticleType.Article, article.type)
         assertEquals(1981671287999981270L, article.id)
     }
+
+    @Test
+    fun resolvesNotificationTimelineEntryFromOfficialMessageLink() {
+        val destination = resolveContent(
+            "https://www.zhihu.com/notifications/v3/timeline/entry/system?title=%E7%B3%BB%E7%BB%9F%E6%B6%88%E6%81%AF",
+        )
+
+        val entry = assertIs<Notification.Entry>(destination)
+        assertEquals("system", entry.entryName)
+        assertEquals("系统消息", entry.title)
+    }
+
+    @Test
+    fun resolvesInvitationAnswerPageFromOfficialMessageLink() {
+        val destination = resolveContent(
+            "https://www.zhihu.com/compose_answer_tab?default_selected_page=2&title=%E9%82%80%E8%AF%B7%E5%9B%9E%E7%AD%94",
+        )
+
+        assertEquals(Notification.Invitations, destination)
+    }
+
+    @Test
+    fun resolvesPrivateMessageFromOfficialInboxLink() {
+        val destination = resolveContent(
+            "https://www.zhihu.com/inbox/peer-token?title=%E7%9F%A5%E4%B9%8E%E5%B0%8F%E7%AE%A1%E5%AE%B6&source_type=message_list",
+        )
+
+        val message = assertIs<Notification.Message>(destination)
+        assertEquals("peer-token", message.peerId)
+        assertEquals("知乎小管家", message.name)
+    }
 }

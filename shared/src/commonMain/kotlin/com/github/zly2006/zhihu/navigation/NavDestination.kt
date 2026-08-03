@@ -162,6 +162,22 @@ data object Daily : TopLevelDestination {
 data object Notification : NavDestination {
     @Serializable
     data object NotificationSettings : NavDestination
+
+    @Serializable
+    data class Entry(
+        val entryName: String,
+        val title: String,
+    ) : NavDestination
+
+    @Serializable
+    data object Invitations : NavDestination
+
+    @Serializable
+    data class Message(
+        val peerId: String,
+        val name: String = "",
+        val avatarUrl: String = "",
+    ) : NavDestination
 }
 
 @Serializable
@@ -337,7 +353,25 @@ fun resolveContent(url: Url): NavDestination? {
     val segments = url.segments
     if (url.protocol.name == "http" || url.protocol.name == "https") {
         if (url.host == "zhihu.com" || url.host == "www.zhihu.com") {
-            if (segments.size == 4 &&
+            if (segments.size == 1 && segments[0] == "compose_answer_tab") {
+                return Notification.Invitations
+            } else if (segments.size == 2 && segments[0] == "inbox") {
+                return Notification.Message(
+                    peerId = segments[1],
+                    name = url.parameters["title"].orEmpty(),
+                )
+            } else if (
+                segments.size == 5 &&
+                segments[0] == "notifications" &&
+                segments[1] == "v3" &&
+                segments[2] == "timeline" &&
+                segments[3] == "entry"
+            ) {
+                return Notification.Entry(
+                    entryName = segments[4],
+                    title = url.parameters["title"].orEmpty().ifBlank { "消息" },
+                )
+            } else if (segments.size == 4 &&
                 segments[0] == "question" &&
                 segments[2] == "answer"
             ) {

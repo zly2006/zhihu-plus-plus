@@ -56,12 +56,34 @@ data class NotificationItem(
 @Serializable
 data class MobileNotificationMessageOverview(
     val head: List<MobileNotificationHeadEntry> = emptyList(),
+    val columnHead: List<MobileNotificationColumnHead> = emptyList(),
+    val data: List<MobileNotificationTimelineItem> = emptyList(),
+    val paging: ZhihuPaging? = null,
 )
 
 @Serializable
 data class MobileNotificationHeadEntry(
     val detailTitle: String = "",
     val unreadCount: Int = 0,
+)
+
+@Serializable
+data class MobileNotificationColumnHead(
+    val id: String = "",
+    val title: String = "",
+    val textPrefix: String = "",
+    val text: String = "",
+    val targetLink: String = "",
+    val avatarUrls: List<MobileNotificationImage> = emptyList(),
+    val images: List<String> = emptyList(),
+    val unreadCount: Int = 0,
+    val created: Long = 0,
+)
+
+@Serializable
+data class MobileNotificationImage(
+    val url: String = "",
+    val nightUrl: String = "",
 )
 
 @Serializable
@@ -79,6 +101,8 @@ data class MobileNotificationTimelineItem(
     val content: MobileNotificationContent? = null,
     val targetSource: MobileNotificationTargetSource? = null,
     val target: MobileNotificationTarget? = null,
+    val emptyInfo: MobileNotificationEmptyInfo? = null,
+    val additionalInfo: List<MobileNotificationAdditionalInfo> = emptyList(),
 ) {
     val stableId: String
         get() = uniqueId.ifBlank { id.ifBlank { "$created-$cardType-$detailTitle" } }
@@ -90,6 +114,12 @@ data class MobileNotificationHead(
     val avatarUrl: String = "",
     val targetLink: String = "",
     val avatarUrls: List<String> = emptyList(),
+    val labels: List<MobileNotificationLabel> = emptyList(),
+)
+
+@Serializable
+data class MobileNotificationLabel(
+    val text: String = "",
 )
 
 @Serializable
@@ -99,6 +129,10 @@ data class MobileNotificationAuthor(
     val urlToken: String = "",
     val headline: String = "",
     val avatarUrl: String = "",
+    val messageUserType: String = "",
+    val messageUserSubType: String = "",
+    val isForbidden: Boolean = false,
+    val muteStatus: Boolean = false,
 )
 
 @Serializable
@@ -135,10 +169,55 @@ data class MobileNotificationTarget(
     val id: String = "",
     val type: String = "",
     val name: String = "",
+    val title: String = "",
     val urlToken: String = "",
     val headline: String = "",
     val avatarUrl: String = "",
     val url: String = "",
+    val myAnswerUrl: String = "",
+    val hasAnswer: Boolean = false,
+    val followNum: Int = 0,
+)
+
+@Serializable
+data class MobileNotificationEmptyInfo(
+    val text: String = "",
+    val number: Int = 0,
+)
+
+@Serializable
+data class MobileNotificationAdditionalInfo(
+    val id: Int = 0,
+    val text: String = "",
+    val icon: String = "",
+)
+
+@Serializable
+data class ZhihuPrivateMessagePage(
+    val data: List<ZhihuPrivateMessage> = emptyList(),
+    val paging: ZhihuPaging,
+)
+
+@Serializable
+data class ZhihuPrivateMessage(
+    val id: String = "",
+    val type: String = "",
+    val contentType: Int = 0,
+    val content: String = "",
+    val createdTime: Long = 0,
+    val sender: MobileNotificationAuthor? = null,
+    val receiver: MobileNotificationAuthor? = null,
+    val plugin: ZhihuPrivateMessagePlugin? = null,
+) {
+    val stableId: String
+        get() = id.ifBlank { "$createdTime-${sender?.id}-${receiver?.id}" }
+}
+
+@Serializable
+data class ZhihuPrivateMessagePlugin(
+    val pluginType: String = "",
+    val pluginContent: String = "",
+    val excerpt: String = "",
 )
 
 object NotificationActorsSerializer : KSerializer<List<NotificationActor>> {

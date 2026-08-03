@@ -112,6 +112,26 @@ https://www.zhihu.com/api/v4/comment_v5/{contentType}/{contentId}/root_comment
 
 不同执行面的证据必须分别归属：API 请求只证明字段与请求契约，Web 页面只证明 Web 产品行为，官方客户端 AVD 才能证明官方 Android UI 与交互。最终实现说明应分别列出每层证据及其限制，不能用一层结果冒充另一层已经验证。
 
+### 本地 writable-system AVD 与 Reqable 抓包
+
+用户明确允许使用本地已下载的 system image 时，可以新建独立 AVD 做官方客户端取证。先记录 image、API 级别、ABI 和 AVD 名称，再用 `-writable-system` 启动；官方 APK 必须来自知乎官方分发入口，并通过包管理器记录 `com.zhihu.android` 的 `versionName` / `versionCode`。不要用 Zhihu++ APK、旧缓存包或未核对来源的第三方 APK 冒充当前官方客户端。
+
+需要 HTTPS 抓包时，按下面的顺序配置 Reqable：
+
+1. 安装与 AVD ABI 匹配的 Reqable APK，在 Reqable 中选择独立模式，并把抓包应用限制为 `com.zhihu.android`。
+2. 从 Reqable 的证书管理页导出 Android CA `.0` 文件到默认目录 `/storage/emulated/0/Download/Reqable`。桌面 Reqable 的 CA 与移动端当前生成的 CA 可能不同，不能直接假设两者可互换。
+3. 使用仓库脚本安装证书，不能手工复制后只看文件存在：
+
+   ```bash
+   ANDROID_SERIAL=emulator-5554 python3 misc/install-avd-system-cert.py
+   ```
+
+   输出必须确认目标是 emulator、证书具有正确 owner / mode / SELinux context，并显示 `Install mode: persistent`；如果得到 temporary，说明 AVD 没有真正以 writable system 运行，重启后证书会丢失。
+4. 在 Reqable 中启动 VPN 录制，再启动官方知乎。登录由用户在官方客户端界面完成；不得向官方 App 数据目录注入账号凭据。
+5. UI 搜索适合快速定位单条请求，但完整协议分析应优先从 Reqable 导出 HAR，再用 `adb pull` 拉到本机。解析 HAR 时只输出方法、URL、查询参数、状态码、顶层字段和必要的类型/数量；私信正文、账号标识、cookie、token 与完整原始响应不得出现在对话或提交中。
+
+抓包完成后应停止录制；若 AVD 只是临时取证环境，再按当前任务约定关闭或清理。不能因为抓包成功就省略官方 UI 的截图、hierarchy 和关键交互证据。
+
 ## 5. API 与数据模型设计
 
 落数据模型前，先写清楚字段来源：

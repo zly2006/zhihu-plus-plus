@@ -28,7 +28,6 @@ import com.github.zly2006.zhihu.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.platform.UserMessageSink
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.viewmodel.NotificationEnvironment
-import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import platform.Foundation.NSURL
@@ -52,7 +51,6 @@ actual fun rememberArticleBrowserOpener(): (Article) -> Unit = remember {
 
 @Composable
 actual fun rememberNotificationEnvironment(
-    viewModel: NotificationViewModel,
     settingsStore: NotificationSettingsStore,
 ): NotificationEnvironment = remember(settingsStore) {
     IosNotificationEnvironment(settingsStore)
