@@ -232,6 +232,7 @@ class ArticleScreenInstrumentedTest {
         ComposeFoundationFlags.isNewContextMenuEnabled = false
         try {
             val textToolbar = CapturingTextToolbar()
+            val selectionColor = Color.Magenta
             val markdown = buildString {
                 appendLine("第一段可见正文")
                 appendLine()
@@ -242,7 +243,13 @@ class ArticleScreenInstrumentedTest {
                 appendLine("末段必须被全选")
             }
             composeRule.setScreenContent {
-                CompositionLocalProvider(LocalTextToolbar provides textToolbar) {
+                CompositionLocalProvider(
+                    LocalTextToolbar provides textToolbar,
+                    LocalTextSelectionColors provides TextSelectionColors(
+                        handleColor = selectionColor,
+                        backgroundColor = selectionColor,
+                    ),
+                ) {
                     RenderMarkdownText(markdown = markdown)
                 }
             }
@@ -253,22 +260,39 @@ class ArticleScreenInstrumentedTest {
             composeRule.runOnIdle {
                 requireNotNull(textToolbar.onSelectAllRequested).invoke()
             }
+            waitUntilSelectionHighlight(
+                text = "第一段可见正文",
+                failureMessage = "Select all did not become visible on the first markdown block",
+            )
             // 全选后滚到底部，覆盖离屏投影与真实 Markdown 块互换时的选择稳定性。
             val scrollContainer = composeRule.onNode(
                 SemanticsMatcher("has vertical scroll axis") { node ->
                     node.config.contains(SemanticsProperties.VerticalScrollAxisRange)
                 },
             )
-            repeat(40) {
+            var scrollAttempts = 0
+            while (scrollAttempts < 40) {
                 val range = scrollContainer
                     .fetchSemanticsNode()
                     .config[SemanticsProperties.VerticalScrollAxisRange]
-                if (range.maxValue() - range.value() <= 1f) return@repeat
+                if (range.maxValue() - range.value() <= 1f) break
                 scrollContainer.performSemanticsAction(SemanticsActions.ScrollBy) { scrollBy ->
                     scrollBy(0f, 4_000f)
                 }
                 composeRule.waitForIdle()
+                scrollAttempts++
             }
+            val finalRange = scrollContainer
+                .fetchSemanticsNode()
+                .config[SemanticsProperties.VerticalScrollAxisRange]
+            assertTrue(
+                "Long markdown did not reach the bottom before copying the selection",
+                finalRange.maxValue() - finalRange.value() <= 1f,
+            )
+            waitUntilSelectionHighlight(
+                text = "末段必须被全选",
+                failureMessage = "Select all did not remain visible after deferred markdown blocks materialized",
+            )
             composeRule.runOnIdle {
                 requireNotNull(textToolbar.onCopyRequested).invoke()
             }
@@ -292,6 +316,28 @@ class ArticleScreenInstrumentedTest {
             )
         } finally {
             ComposeFoundationFlags.isNewContextMenuEnabled = previousContextMenuFlag
+        }
+    }
+
+    private fun waitUntilSelectionHighlight(
+        text: String,
+        failureMessage: String,
+    ) {
+        composeRule.waitUntil(failureMessage, timeoutMillis = 5_000) {
+            runCatching {
+                composeRule
+                    .onNodeWithText(text)
+                    .captureToImage()
+                    .toPixelMap()
+                    .let { pixels ->
+                        (0 until pixels.height).any { y ->
+                            (0 until pixels.width).any { x ->
+                                val pixel = pixels[x, y]
+                                pixel.red > 0.9f && pixel.blue > 0.9f && pixel.green < 0.1f
+                            }
+                        }
+                    }
+            }.getOrDefault(false)
         }
     }
 

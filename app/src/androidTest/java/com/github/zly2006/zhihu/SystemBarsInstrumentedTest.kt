@@ -75,7 +75,7 @@ class SystemBarsInstrumentedTest {
             }
         }
         composeRule.waitForIdle()
-        assertStatusBarColor(originalActivity, "before identity restart")
+        waitUntilStatusBarColor(originalActivity, "before identity restart")
 
         val relaunchedActivity = AtomicReference<MainActivity>()
         val resumedLatch = CountDownLatch(1)
@@ -121,15 +121,7 @@ class SystemBarsInstrumentedTest {
             }
         }
         instrumentation.waitForIdleSync()
-
-        val deadline = SystemClock.uptimeMillis() + 5_000
-        while (
-            sampleStatusBarColor(activity) != SOLID_SURFACE_COLOR &&
-            SystemClock.uptimeMillis() < deadline
-        ) {
-            instrumentation.waitForIdleSync()
-        }
-        assertStatusBarColor(activity, "after identity restart")
+        waitUntilStatusBarColor(activity, "after identity restart")
 
         val screenshot = instrumentation.uiAutomation.takeScreenshot()
         FileOutputStream(activity.cacheDir.resolve("system-bars-after-identity-restart.png")).use {
@@ -137,11 +129,21 @@ class SystemBarsInstrumentedTest {
         }
     }
 
-    private fun assertStatusBarColor(
+    private fun waitUntilStatusBarColor(
         activity: MainActivity,
         stage: String,
     ) {
-        val statusBarColor = sampleStatusBarColor(activity)
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val deadline = SystemClock.uptimeMillis() + 5_000
+        var statusBarColor: Int
+        do {
+            instrumentation.waitForIdleSync()
+            SystemClock.sleep(16)
+            statusBarColor = sampleStatusBarColor(activity)
+        } while (
+            statusBarColor != SOLID_SURFACE_COLOR &&
+            SystemClock.uptimeMillis() < deadline
+        )
         assertTrue(
             "$stage: expected status bar ${SOLID_SURFACE_COLOR.toUInt().toString(16)}, " +
                 "but was ${statusBarColor.toUInt().toString(16)}",
