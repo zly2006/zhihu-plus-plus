@@ -54,6 +54,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -102,16 +103,24 @@ fun CollectionBrowseScreen(
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
-    var randomSeed by remember { mutableIntStateOf(Random.nextInt()) }
-    var selectedCollectionId by remember { mutableStateOf<String?>(null) }
+    var randomSeed by rememberSaveable { mutableIntStateOf(Random.nextInt()) }
+    var selectedCollectionId by rememberSaveable { mutableStateOf<String?>(null) }
     var folderMenuExpanded by remember { mutableStateOf(false) }
-    var randomMode by remember { mutableStateOf(false) }
+    var randomMode by rememberSaveable { mutableStateOf(false) }
+    var refreshCollectionsOnNextActivation by rememberSaveable { mutableStateOf(true) }
     var collectionPendingDeletion by remember { mutableStateOf<Collection?>(null) }
 
     LaunchedEffect(isActive) {
-        if (shouldRefreshCollectionDataOnActivation(isActive, useTestCollections)) {
+        if (
+            shouldRefreshCollectionDataOnActivation(
+                isActive = isActive,
+                useTestCollections = useTestCollections,
+                refreshOnNextActivation = refreshCollectionsOnNextActivation,
+            )
+        ) {
             collectionsViewModel.refresh(environment)
         }
+        refreshCollectionsOnNextActivation = !isActive
     }
     LaunchedEffect(collections.map { it.id }, collectionsViewModel.isLoading) {
         if (collections.isNotEmpty() && collections.none { it.id == selectedCollectionId }) {
@@ -121,24 +130,44 @@ fun CollectionBrowseScreen(
         }
     }
 
+    val selectedCollection = collections.firstOrNull { it.id == selectedCollectionId }
     val contentViewModel: CollectionContentViewModel? = selectedCollectionId?.let { collectionId ->
         viewModel(key = collectionId) { CollectionContentViewModel(collectionId) }
     }
+    val selectedCollectionItemCount = selectedCollection
+        ?.itemCount
+        ?.takeIf { it > 0 }
+        ?: contentViewModel?.collection?.itemCount
+        ?: 0
     val sourceDisplayItems = contentViewModel?.displayItems?.toList().orEmpty()
     val orderedDisplayItems = remember(
         sourceDisplayItems,
         randomMode,
         randomSeed,
+        contentViewModel,
     ) {
-        orderCollectionItems(
+        val items = orderCollectionItems(
             items = sourceDisplayItems,
             randomMode = randomMode,
             randomSeed = randomSeed,
+            previousRandomOrderKeys = contentViewModel?.retainedRandomOrderKeys.orEmpty(),
         )
+        if (randomMode) {
+            contentViewModel?.retainRandomDisplayOrder(items.map { it.stableKey })
+        }
+        items
     }
-    LaunchedEffect(contentViewModel, isActive) {
+    LaunchedEffect(contentViewModel, isActive, randomMode, randomSeed, selectedCollectionItemCount) {
         if (isActive && !useTestCollections && contentViewModel != null) {
-            contentViewModel.refresh(contentEnvironment)
+            if (randomMode) {
+                contentViewModel.refreshRandom(
+                    environment = contentEnvironment,
+                    itemCount = selectedCollectionItemCount,
+                    randomSeed = randomSeed,
+                )
+            } else {
+                contentViewModel.refresh(contentEnvironment)
+            }
         }
     }
     LaunchedEffect(scrollToTopTrigger) {
@@ -151,7 +180,11 @@ fun CollectionBrowseScreen(
             TopLevelReselectAction.Refresh -> {
                 if (!useTestCollections) {
                     collectionsViewModel.refresh(environment)
-                    contentViewModel?.refresh(contentEnvironment)
+                    if (randomMode) {
+                        randomSeed = Random.nextInt()
+                    } else {
+                        contentViewModel?.refresh(contentEnvironment)
+                    }
                 }
             }
             TopLevelReselectAction.ScrollToTop -> listState.animateScrollToItem(0)
@@ -290,7 +323,11 @@ fun CollectionBrowseScreen(
                     onRefresh = {
                         if (!useTestCollections) {
                             collectionsViewModel.refresh(environment)
-                            contentViewModel.refresh(contentEnvironment)
+                            if (randomMode) {
+                                randomSeed = Random.nextInt()
+                            } else {
+                                contentViewModel.refresh(contentEnvironment)
+                            }
                         }
                     },
                     modifier = Modifier
@@ -325,9 +362,6 @@ fun CollectionBrowseScreen(
                             preferenceName = "collectionRandomRefresh",
                             onClick = {
                                 randomSeed = Random.nextInt()
-                                if (!useTestCollections) {
-                                    contentViewModel.refresh(contentEnvironment)
-                                }
                             },
                         ) {
                             if (contentViewModel.isLoading) {
@@ -405,14 +439,33 @@ internal fun pickDefaultCollectionId(collections: List<Collection>): String? =
 internal fun shouldRefreshCollectionDataOnActivation(
     isActive: Boolean,
     useTestCollections: Boolean,
-): Boolean = isActive && !useTestCollections
+    refreshOnNextActivation: Boolean = true,
+): Boolean = isActive && !useTestCollections && refreshOnNextActivation
 
 internal fun orderCollectionItems(
     items: List<FeedDisplayItem>,
     randomMode: Boolean,
     randomSeed: Int,
+    previousRandomOrderKeys: List<String> = emptyList(),
 ): List<FeedDisplayItem> = if (randomMode) {
-    items.shuffled(Random(randomSeed))
+    val itemsByKey = items.associateBy { it.stableKey }
+    val retainedKeys = previousRandomOrderKeys.distinct().filter(itemsByKey::containsKey)
+    val retainedKeySet = retainedKeys.toSet()
+    val newItems = items
+        .distinctBy { it.stableKey }
+        .filterNot { it.stableKey in retainedKeySet }
+        .map { item ->
+            val rank = item.stableKey.fold(COLLECTION_RANDOM_ORDER_OFFSET_BASIS xor randomSeed.toLong()) { hash, char ->
+                (hash xor char.code.toLong()) * COLLECTION_RANDOM_ORDER_PRIME
+            }
+            item to rank
+        }.sortedWith(
+            compareBy<Pair<FeedDisplayItem, Long>>(
+                { it.second },
+                { it.first.stableKey },
+            ),
+        ).map { it.first }
+    retainedKeys.mapNotNull(itemsByKey::get) + newItems
 } else {
     items
 }
@@ -427,3 +480,5 @@ private const val COLLECTION_BROWSE_EMPTY_CONTENT_TAG = "collection_browse_empty
 private const val COLLECTION_BROWSE_PULL_TO_REFRESH_TAG = "collection_browse_pull_to_refresh"
 private const val COLLECTION_BROWSE_MODE_BUTTON_TAG = "collection_browse_mode_button"
 private const val COLLECTION_BROWSE_RANDOM_REFRESH_BUTTON_TAG = "collection_browse_random_refresh_button"
+private const val COLLECTION_RANDOM_ORDER_OFFSET_BASIS = -3750763034362895579L
+private const val COLLECTION_RANDOM_ORDER_PRIME = 1099511628211L
