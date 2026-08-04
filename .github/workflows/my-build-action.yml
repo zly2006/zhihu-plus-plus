@@ -223,7 +223,7 @@ jobs:
               });
               core.info(`Deleted tag ${tagName}`);
             } catch (error) {
-              if (error.status === 404) {
+              if (error.status === 422) {
                 core.info(`Tag ${tagName} does not exist`);
               } else {
                 throw error;
