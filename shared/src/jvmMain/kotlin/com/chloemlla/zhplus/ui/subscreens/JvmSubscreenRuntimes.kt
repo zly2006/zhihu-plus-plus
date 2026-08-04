@@ -38,6 +38,10 @@ import java.util.Properties
 internal val desktopSystemUpdateState = MutableStateFlow<SystemUpdateState>(SystemUpdateState.NoUpdate)
 
 @Composable
+actual fun rememberIdentityManagementRuntime(): IdentityManagementRuntime =
+    unsupportedIdentityManagementRuntime("桌面端暂不支持身份管理")
+
+@Composable
 actual fun rememberClashPartnerSettingsRuntime(): ClashPartnerSettingsRuntime = remember {
     ClashPartnerSettingsRuntime(
         supported = false,

@@ -42,6 +42,20 @@ private val LM_MATH_URLS = listOf(
 )
 
 @Composable
+actual fun rememberMarkdownMathFont(): MathFont? {
+    val store = remember { DesktopAccountStore() }
+    var mathFont by remember { mutableStateOf<MathFont?>(null) }
+
+    LaunchedEffect(store) {
+        mathFont = runCatching {
+            loadDesktopMathFont(store)
+        }.getOrNull()
+    }
+
+    return mathFont
+}
+
+@Composable
 actual fun rememberMarkdownRuntime(): MarkdownRuntime {
     val store = remember { DesktopAccountStore() }
     var mathFont by remember { mutableStateOf<MathFont?>(null) }
