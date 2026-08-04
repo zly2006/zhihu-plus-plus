@@ -55,7 +55,6 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.QuestionAnswer
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -277,7 +276,6 @@ fun QuestionScreen(
                         ) {
                             QuestionHeaderSection(
                                 title = title,
-                                answerCount = answerCount,
                                 visitCount = visitCount,
                                 commentCount = commentCount,
                                 followerCount = followerCount,
@@ -309,6 +307,7 @@ fun QuestionScreen(
                                             ),
                                         )
                                     },
+                                    answerCount = answerCount,
                                     currentSort = viewModel.sortOrder,
                                     onSortChange = { sortOrder ->
                                         viewModel.updateSortOrder(sortOrder)
@@ -398,7 +397,6 @@ private fun QuestionTopBar(
 @Composable
 private fun QuestionHeaderSection(
     title: String,
-    answerCount: Int,
     visitCount: Int,
     commentCount: Int,
     followerCount: Int,
@@ -423,7 +421,6 @@ private fun QuestionHeaderSection(
                 horizontalArrangement = Arrangement.spacedBy(16.dp), // 水平间距
                 verticalArrangement = Arrangement.spacedBy(8.dp), // 垂直间距
             ) {
-                StatItem(icon = Icons.Outlined.QuestionAnswer, text = "$answerCount 回答")
                 StatItem(icon = Icons.Outlined.Visibility, text = "$visitCount 浏览")
                 StatItem(icon = Icons.Outlined.ChatBubbleOutline, text = "$commentCount 评论")
                 StatItem(icon = Icons.Outlined.FavoriteBorder, text = "$followerCount 关注")
@@ -450,6 +447,7 @@ private fun QuestionAnimatedBodyHeader(
     isFollowing: Boolean,
     onFollowClick: () -> Unit,
     onWriteAnswerClick: () -> Unit,
+    answerCount: Int,
     currentSort: String,
     onSortChange: (String) -> Unit,
 ) {
@@ -535,10 +533,36 @@ private fun QuestionAnimatedBodyHeader(
                         onFollowClick = onFollowClick,
                         onWriteAnswerClick = onWriteAnswerClick,
                     )
-                    QuestionSortBar(
-                        currentSort = currentSort,
-                        onSortChange = onSortChange,
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "$answerCount 回答",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                        )
+                        Spacer(Modifier.weight(1f))
+                        FilterChip(
+                            selected = currentSort == "default",
+                            onClick = { onSortChange("default") },
+                            modifier =
+                                Modifier.testTag(QUESTION_SORT_DEFAULT_TAG).semantics {
+                                    selected = currentSort == "default"
+                                },
+                            label = { Text("默认") },
+                        )
+                        FilterChip(
+                            selected = currentSort == "updated",
+                            onClick = { onSortChange("updated") },
+                            modifier =
+                                Modifier.testTag(QUESTION_SORT_UPDATED_TAG).semantics {
+                                    selected = currentSort == "updated"
+                                },
+                            label = { Text("最新") },
+                        )
+                    }
                 }
             }.single().measure(looseConstraints)
         val totalHeight = detailPlaceable.height + sectionSpacingPx + controlsPlaceable.height
@@ -740,40 +764,6 @@ private fun QuestionPrimaryActions(
             Spacer(Modifier.width(8.dp))
             Text(if (isFollowing) "已关注" else "关注问题")
         }
-    }
-}
-
-@Composable
-private fun QuestionSortBar(currentSort: String, onSortChange: (String) -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = "回答排序",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Medium,
-        )
-        Spacer(Modifier.weight(1f))
-        FilterChip(
-            selected = currentSort == "default",
-            onClick = { onSortChange("default") },
-            modifier =
-                Modifier.testTag(QUESTION_SORT_DEFAULT_TAG).semantics {
-                    selected = currentSort == "default"
-                },
-            label = { Text("默认") },
-        )
-        FilterChip(
-            selected = currentSort == "updated",
-            onClick = { onSortChange("updated") },
-            modifier =
-                Modifier.testTag(QUESTION_SORT_UPDATED_TAG).semantics {
-                    selected = currentSort == "updated"
-                },
-            label = { Text("最新") },
-        )
     }
 }
 
