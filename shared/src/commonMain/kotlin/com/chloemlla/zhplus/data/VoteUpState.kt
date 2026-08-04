@@ -15,13 +15,21 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.chloemlla.zhplus.shared.filter
+package com.chloemlla.zhplus.data
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import com.chloemlla.zhplus.viewmodel.filter.desktopContentFilterDatabaseFile
-import com.chloemlla.zhplus.viewmodel.filter.getContentFilterDatabase
+enum class VoteUpState(
+    val key: String,
+) {
+    Up("up"),
+    Down("down"),
+    Neutral("neutral"),
+    ;
 
-@Composable
-actual fun rememberContentFilterMaintenance(): ContentFilterMaintenance =
-    remember { createContentFilterMaintenance(getContentFilterDatabase(desktopContentFilterDatabaseFile()).contentFilterDao()) }
+    companion object {
+        fun from(key: String?): VoteUpState {
+            if (key == null) return Neutral
+            val key = key.lowercase()
+            return VoteUpState.entries.find { it.key == key } ?: Neutral
+        }
+    }
+}

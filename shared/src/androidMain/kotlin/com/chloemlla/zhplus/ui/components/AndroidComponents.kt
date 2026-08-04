@@ -44,14 +44,11 @@ import com.chloemlla.zhplus.ui.articleHost
 import com.chloemlla.zhplus.util.clipboardManager
 import com.chloemlla.zhplus.util.luoTianYiUrlLauncher
 import com.chloemlla.zhplus.util.signFetchRequest
-import com.chloemlla.zhplus.viewmodel.feed.handleBlockByKeywords
-import com.chloemlla.zhplus.viewmodel.feed.handleBlockQuestionAuthor
-import com.chloemlla.zhplus.viewmodel.feed.handleBlockTopic
-import com.chloemlla.zhplus.viewmodel.feed.handleBlockUser
 import com.chloemlla.zhplus.viewmodel.filter.AndroidContentFilterRuntime
 import com.chloemlla.zhplus.viewmodel.filter.BlockedKeyword
 import com.chloemlla.zhplus.viewmodel.filter.KeywordType
 import com.chloemlla.zhplus.viewmodel.filter.getContentFilterDatabase
+import com.chloemlla.zhplus.viewmodel.rememberPaginationEnvironment
 import io.ktor.client.call.body
 import io.ktor.client.request.delete
 import io.ktor.client.request.post
@@ -237,20 +234,20 @@ actual fun rememberBlockByKeywordsRuntime(): BlockByKeywordsRuntime {
 
 @Composable
 actual fun rememberFeedBlockActions(): FeedBlockActions {
-    val context = LocalContext.current
-    return remember(context) {
+    val env = rememberPaginationEnvironment(allowGuestAccess = false)
+    return remember(env) {
         FeedBlockActions(
             handleBlockUser = { viewModel, feedItem, onShowDialog ->
-                viewModel.handleBlockUser(context, feedItem, onShowDialog)
+                viewModel.handleBlockUser(env, feedItem, onShowDialog)
             },
             handleBlockQuestionAuthor = { viewModel, feedItem, onShowDialog ->
-                viewModel.handleBlockQuestionAuthor(context, feedItem, onShowDialog)
+                viewModel.handleBlockQuestionAuthor(env, feedItem, onShowDialog)
             },
             handleBlockTopic = { viewModel, topicId, topicName ->
-                viewModel.handleBlockTopic(context, topicId, topicName)
+                viewModel.handleBlockTopic(env, topicId, topicName)
             },
             handleBlockByKeywords = { viewModel, feedItem, onShowDialog ->
-                viewModel.handleBlockByKeywords(context, feedItem, onShowDialog)
+                viewModel.handleBlockByKeywords(env, feedItem, onShowDialog)
             },
         )
     }

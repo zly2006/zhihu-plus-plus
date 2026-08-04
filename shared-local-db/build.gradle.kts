@@ -32,7 +32,7 @@ kotlin {
         freeCompilerArgs.add("-Xexpect-actual-classes")
     }
 
-    androidLibrary {
+    android {
         namespace = "com.chloemlla.zhplus.shared.localdb"
         compileSdk = 37
         minSdk = 27

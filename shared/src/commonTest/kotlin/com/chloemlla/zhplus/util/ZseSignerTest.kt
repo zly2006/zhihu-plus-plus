@@ -15,6 +15,28 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.chloemlla.zhplus.shared
+package com.chloemlla.zhplus.util
 
-internal actual val platformName: String = "JVM"
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
+import kotlin.test.assertTrue
+
+class ZseSignerTest {
+    @Test
+    fun encryptZseV4IsDeterministic() {
+        val first = ZseSigner.encryptZseV4("hello")
+        val second = ZseSigner.encryptZseV4("hello")
+
+        assertEquals(first, second)
+        assertTrue(first.isNotBlank())
+    }
+
+    @Test
+    fun encryptZseV4ChangesWithInput() {
+        assertNotEquals(
+            ZseSigner.encryptZseV4("hello"),
+            ZseSigner.encryptZseV4("world"),
+        )
+    }
+}

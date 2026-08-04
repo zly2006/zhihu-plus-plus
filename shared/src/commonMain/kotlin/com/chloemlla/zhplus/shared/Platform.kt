@@ -15,15 +15,6 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.chloemlla.zhplus.shared.filter
+package com.chloemlla.zhplus.shared
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
-import com.chloemlla.zhplus.viewmodel.filter.getContentFilterDatabase
-
-@Composable
-actual fun rememberContentFilterMaintenance(): ContentFilterMaintenance {
-    val context = LocalContext.current.applicationContext
-    return remember(context) { createContentFilterMaintenance(getContentFilterDatabase(context).contentFilterDao()) }
-}
+internal expect val platformName: String

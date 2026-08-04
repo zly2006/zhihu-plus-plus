@@ -184,23 +184,6 @@ object AnnouncementCardDefaults {
     )
 
     @Composable
-    fun colorsVariant(
-        containerColor: Color = MaterialTheme.colorScheme.tertiaryContainer,
-        contentColor: Color = MaterialTheme.colorScheme.onTertiaryContainer,
-        iconContainerColor: Color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.2f),
-        iconColor: Color = MaterialTheme.colorScheme.onTertiaryContainer,
-        buttonContainerColor: Color = MaterialTheme.colorScheme.onTertiaryContainer,
-        buttonContentColor: Color = MaterialTheme.colorScheme.tertiaryContainer,
-    ): AnnouncementCardColors = AnnouncementCardColors(
-        containerColor = containerColor,
-        contentColor = contentColor,
-        iconContainerColor = iconContainerColor,
-        iconColor = iconColor,
-        buttonContainerColor = buttonContainerColor,
-        buttonContentColor = buttonContentColor,
-    )
-
-    @Composable
     fun colorsImportant(
         containerColor: Color = MaterialTheme.colorScheme.primary,
         contentColor: Color = MaterialTheme.colorScheme.onPrimary,

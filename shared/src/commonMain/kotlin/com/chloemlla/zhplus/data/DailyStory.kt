@@ -15,12 +15,27 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.chloemlla.zhplus.ui.subscreens
+package com.chloemlla.zhplus.data
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import kotlinx.serialization.Serializable
 
-@Composable
-actual fun rememberIdentityManagementRuntime(): IdentityManagementRuntime = remember {
-    unsupportedIdentityManagementRuntime("请在 Android 客户端使用身份管理")
-}
+@Serializable
+data class DailyStoriesResponse(
+    val date: String,
+    val stories: List<DailyStory>,
+)
+
+@Serializable
+data class DailyStory(
+    val id: Long,
+    val title: String,
+    val url: String,
+    val hint: String,
+    val images: List<String>,
+    val type: Int,
+)
+
+data class DailySection(
+    val date: String,
+    val stories: List<DailyStory>,
+)

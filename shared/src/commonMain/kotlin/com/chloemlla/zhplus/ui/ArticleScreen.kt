@@ -143,7 +143,6 @@ import com.chloemlla.zhplus.ui.components.CommentScreenComponent
 import com.chloemlla.zhplus.ui.components.DraggableRefreshButton
 import com.chloemlla.zhplus.ui.components.ExportDialogComponent
 import com.chloemlla.zhplus.ui.components.MyModalBottomSheet
-import com.chloemlla.zhplus.ui.components.VerticalReadingProgressBar
 import com.chloemlla.zhplus.ui.components.VotersSheet
 import com.chloemlla.zhplus.ui.components.ZhihuTwoRowsTopAppBar
 import com.chloemlla.zhplus.ui.components.rememberPreferCollapsedExitUntilCollapsedScrollBehavior
@@ -1890,17 +1889,6 @@ fun ArticleScreen(
         } else {
             MainContent()
         }
-
-        VerticalReadingProgressBar(
-            scrollState = scrollState,
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(
-                    top = progressBarTopPadding,
-                    bottom = progressBarBottomPadding,
-                    end = 2.dp,
-                ).then(if (isImmersiveMode) Modifier.graphicsLayer { alpha = 0f } else Modifier),
-        )
 
         // 跳转按钮需要压在问题区和回答区之上。
         if (article.type == ArticleType.Answer && buttonSkipAnswer && !isImmersiveMode) {

@@ -15,12 +15,15 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.chloemlla.zhplus.ui.subscreens
+package com.chloemlla.zhplus.data
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-
-@Composable
-actual fun rememberIdentityManagementRuntime(): IdentityManagementRuntime = remember {
-    unsupportedIdentityManagementRuntime("请在 Android 客户端使用身份管理")
+enum class RecommendationMode(
+    val displayName: String,
+    val key: String,
+    val description: String,
+) {
+    WEB("Web 端推荐", "server", "使用知乎网页端的推荐算法"),
+    ANDROID("安卓端推荐", "android", "使用知乎安卓端的推荐算法"),
+    LOCAL("本地推荐", "local", "基于本地数据的推荐算法"),
+    MIXED("混合推荐", "mixed", "融合安卓和网页端推荐算法，并过滤盐选内容"),
 }

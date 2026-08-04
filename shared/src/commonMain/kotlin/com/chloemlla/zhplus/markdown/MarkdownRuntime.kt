@@ -33,6 +33,9 @@ interface MarkdownRuntime {
 expect fun rememberMarkdownRuntime(): MarkdownRuntime
 
 @Composable
+expect fun rememberMarkdownMathFont(): MathFont?
+
+@Composable
 fun rememberMarkdownImageModel(url: String): Any {
     val context = LocalPlatformContext.current
     val headerData = rememberMarkdownImageRequestHeaders()

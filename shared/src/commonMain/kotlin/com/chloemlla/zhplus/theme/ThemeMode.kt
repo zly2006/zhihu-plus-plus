@@ -15,16 +15,10 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.chloemlla.zhplus.shared.filter
+package com.chloemlla.zhplus.theme
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-
-@Composable
-actual fun rememberContentFilterMaintenance(): ContentFilterMaintenance = remember {
-    ContentFilterMaintenance(
-        loadFilterStats = { null },
-        cleanupOldData = { null },
-        clearAllData = { null },
-    )
-} // TODO: iOS 内容过滤维护完整实现
+enum class ThemeMode {
+    LIGHT,
+    DARK,
+    SYSTEM,
+}

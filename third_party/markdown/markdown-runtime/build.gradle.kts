@@ -7,7 +7,7 @@ plugins {
 }
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "com.hrm.markdown.runtime"
         compileSdk = 37
         minSdk = 27

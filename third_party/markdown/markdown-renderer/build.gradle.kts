@@ -8,7 +8,7 @@ plugins {
 }
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "com.hrm.markdown.renderer"
         compileSdk = 37
         minSdk = 27

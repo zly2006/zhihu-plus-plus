@@ -15,6 +15,12 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.chloemlla.zhplus.shared
+package com.chloemlla.zhplus.viewmodel
 
-internal actual val platformName: String = "iOS"
+import com.chloemlla.zhplus.data.DataHolder
+import com.chloemlla.zhplus.navigation.CommentHolder
+
+data class CommentItem(
+    val item: DataHolder.Comment,
+    val clickTarget: CommentHolder?,
+)

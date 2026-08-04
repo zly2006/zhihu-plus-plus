@@ -562,7 +562,7 @@ fun HomeScreen(
                                     settings.putBoolean(QQ_GROUP_DISMISSED_PREFERENCE_KEY, true)
                                     showQQGroup = false
                                 },
-                                colors = AnnouncementCardDefaults.colorsVariant(),
+                                colors = AnnouncementCardDefaults.colors(),
                             )
                             AnnouncementCard(
                                 visible = !aigcMarkingEnabled && showAigcMarkingAnnouncement,

@@ -28,6 +28,9 @@ import com.chloemlla.zhplus.viewmodel.FeedDisplayEnvironment
 import com.chloemlla.zhplus.viewmodel.HomeFeedFilterResult
 import com.chloemlla.zhplus.viewmodel.PaginationEnvironment
 import com.chloemlla.zhplus.viewmodel.PaginationViewModel
+import com.chloemlla.zhplus.viewmodel.filter.ContentDetailProvider
+import com.chloemlla.zhplus.viewmodel.getOrFetchContentDetail
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonArray
 import kotlin.reflect.typeOf
 
@@ -90,6 +93,22 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
         onShowDialog: (Pair<String, String>) -> Unit,
     ) {
         // TODO: 实现需要 ContentDetailCache.getOrFetch 和 UserMessageSink
+    }
+
+    fun handleBlockQuestionAuthor(
+        environment: PaginationEnvironment,
+        feedItem: FeedDisplayItem,
+        onShowDialog: (Pair<String, String>) -> Unit,
+    ) {
+        viewModelScope.launch {
+            val authorInfo = resolveFeedQuestionAuthorInfo(
+                feedItem,
+                ContentDetailProvider(environment::getOrFetchContentDetail),
+            )
+            if (authorInfo != null) {
+                onShowDialog(authorInfo)
+            }
+        }
     }
 
     // TODO: handleBlockByKeywords - 需要 UserMessageSink 支持

@@ -74,12 +74,10 @@ fun parseEmphasizedHtmlText(
                                     codePoint <= 0xFFFF -> codePoint.toChar().toString()
                                     else -> {
                                         val offset = codePoint - 0x10000
-                                        String(
-                                            charArrayOf(
-                                                ((offset shr 10) + 0xD800).toChar(),
-                                                ((offset and 0x3FF) + 0xDC00).toChar(),
-                                            ),
-                                        )
+                                        charArrayOf(
+                                            ((offset shr 10) + 0xD800).toChar(),
+                                            ((offset and 0x3FF) + 0xDC00).toChar(),
+                                        ).concatToString()
                                     }
                                 }
                             }
