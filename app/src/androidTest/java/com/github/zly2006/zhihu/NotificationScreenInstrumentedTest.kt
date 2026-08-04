@@ -19,11 +19,14 @@ package com.github.zly2006.zhihu
 
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.data.MobileNotificationContent
@@ -160,9 +163,12 @@ class NotificationScreenInstrumentedTest {
             ),
         )
         val recordingNavigator = setNotificationScreenContent(notifications)
+        val notificationList = composeRule.onNode(hasScrollAction())
 
         notifications.forEach { notification ->
-            composeRule.onNodeWithText(notification.content!!.title).performClick()
+            val title = notification.content!!.title
+            notificationList.performScrollToNode(hasText(title))
+            composeRule.onNodeWithText(title).assertIsDisplayed().performClick()
         }
 
         assertEquals(4, recordingNavigator.destinations.size)
@@ -284,6 +290,14 @@ class NotificationScreenInstrumentedTest {
         unreadCounts: Map<MobileNotificationCategory, Int> = emptyMap(),
         notifications: List<MobileNotificationTimelineItem> = listOf(notificationFixture()),
     ) {
+        waitUntil(
+            "Notification screen did not finish its initial refresh",
+            timeoutMillis = 5_000,
+        ) {
+            ViewModelProvider(activity)[NotificationViewModel::class.java].let { viewModel ->
+                !viewModel.isLoading && viewModel.isEnd
+            }
+        }
         activity.runOnUiThread {
             val viewModel = ViewModelProvider(activity)[NotificationViewModel::class.java]
             viewModel.allData.clear()

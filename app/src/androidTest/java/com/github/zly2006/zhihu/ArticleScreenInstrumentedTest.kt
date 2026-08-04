@@ -301,17 +301,28 @@ class ArticleScreenInstrumentedTest {
             ) {
                 !clipboard.hasPrimaryClip()
             }
+            composeRule.waitUntil(
+                "Activity window did not have focus before copying the selection",
+                timeoutMillis = 5_000,
+            ) {
+                composeRule.activity.window.decorView
+                    .hasWindowFocus()
+            }
             composeRule.runOnIdle {
                 requireNotNull(textToolbar.onCopyRequested).invoke()
             }
             composeRule.waitUntil(
-                "Copy did not publish the selected markdown to the system clipboard",
-                timeoutMillis = 5_000,
+                "Copy did not publish the complete selected markdown to the system clipboard",
+                timeoutMillis = 10_000,
             ) {
-                clipboard.primaryClip
+                val currentText = clipboard.primaryClip
                     ?.getItemAt(0)
                     ?.coerceToText(composeRule.activity)
-                    ?.isNotEmpty() == true
+                    ?.toString()
+                    .orEmpty()
+                currentText.contains("第一段可见正文") &&
+                    currentText.contains("末段必须被全选") &&
+                    Regex("第 (\\d+) 段长文填充正文").findAll(currentText).count() == 120
             }
 
             val copiedText = clipboard.primaryClip
