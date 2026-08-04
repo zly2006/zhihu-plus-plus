@@ -25,6 +25,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.github.zly2006.zhihu.data.CommonFeed
@@ -221,6 +223,50 @@ class QuestionScreenInstrumentedTest {
     }
 
     @Test
+    fun longQuestionDetailRemainsVisibleAfterSlowReturnFromAnswerList() {
+        val detail = (1..36).joinToString("") { index ->
+            "<p>问题详情回归段落 $index：这是一段足够长的正文，用于覆盖超过屏幕高度的问题描述滚动场景。</p>"
+        }
+        mockQuestionDetail(detail = detail)
+        val viewModel = seedQuestionViewModel(itemCount = 24)
+        val farAnswerTag = "question_feed_item_${viewModel.displayItems[12].stableKey}"
+        setScreen()
+
+        composeRule.waitUntilTextExists("12 个回答  345 次浏览  7 条评论  89 人关注")
+        composeRule
+            .onNodeWithTag(QUESTION_SCREEN_LIST_TAG)
+            .performScrollToNode(hasTestTag(QUESTION_DETAIL_CONTENT_TAG))
+        composeRule.waitUntilTagIsDisplayed(QUESTION_DETAIL_CONTENT_TAG)
+        composeRule
+            .onNodeWithTag(QUESTION_SCREEN_LIST_TAG)
+            .performScrollToNode(hasTestTag(farAnswerTag))
+        composeRule.onNodeWithTag(farAnswerTag).assertIsDisplayed()
+
+        val list = composeRule.onNodeWithTag(QUESTION_SCREEN_LIST_TAG)
+        var detailVisible = false
+        for (ignored in 0 until 40) {
+            list.performTouchInput {
+                swipeDown(
+                    startY = height * 0.35f,
+                    endY = height * 0.65f,
+                    durationMillis = 600,
+                )
+            }
+            detailVisible = runCatching {
+                composeRule.onNodeWithTag(QUESTION_DETAIL_CONTENT_TAG).assertIsDisplayed()
+                true
+            }.getOrDefault(false)
+            if (detailVisible) break
+        }
+
+        assertTrue("长问题详情应在低速返回时重新进入视口", detailVisible)
+        composeRule
+            .onNodeWithText(
+                "问题详情回归段落 36：这是一段足够长的正文，用于覆盖超过屏幕高度的问题描述滚动场景。",
+            ).assertIsDisplayed()
+    }
+
+    @Test
     fun blockedUserAnswersAreRemovedFromQuestionFeedProcessing() {
         /*
          * Expected behavior:
@@ -273,11 +319,14 @@ class QuestionScreenInstrumentedTest {
         return viewModel
     }
 
-    private fun mockQuestionDetail(questionId: Long = 123456789L) {
+    private fun mockQuestionDetail(
+        questionId: Long = 123456789L,
+        detail: String = "<p>离线问题详情用于 QuestionScreen instrumented test。</p>",
+    ) {
         ZhihuMockApi.mockJsonPrefix(
             method = HttpMethod.Get,
             urlPrefix = "https://www.zhihu.com/api/v4/questions/$questionId?",
-            body = ZhihuJson.json.encodeToString(seededQuestionDetail(questionId)),
+            body = ZhihuJson.json.encodeToString(seededQuestionDetail(questionId, detail)),
         )
     }
 
@@ -323,7 +372,10 @@ class QuestionScreenInstrumentedTest {
         }
     }
 
-    private fun seededQuestionDetail(questionId: Long): DataHolder.Question = DataHolder.Question(
+    private fun seededQuestionDetail(
+        questionId: Long,
+        detail: String,
+    ): DataHolder.Question = DataHolder.Question(
         type = "question",
         id = questionId,
         title = "离线问题标题",
@@ -335,7 +387,7 @@ class QuestionScreenInstrumentedTest {
         visitCount = 345,
         commentCount = 7,
         followerCount = 89,
-        detail = "<p>离线问题详情用于 QuestionScreen instrumented test。</p>",
+        detail = detail,
         relationship = DataHolder.QuestionRelationship(isFollowing = false),
         topics = emptyList(),
         author = DataHolder.Author(

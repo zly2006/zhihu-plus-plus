@@ -207,4 +207,144 @@ class ZhihuNotificationClientTest {
         assertEquals("测试用户 评论了你的回答", notification.content?.title)
         assertEquals("测试回答标题", notification.targetSource?.text)
     }
+
+    @Test
+    fun decodesOfficialNotificationHomePage() {
+        val page: MobileNotificationMessageOverview = ZhihuJson.decodeJson(
+            ZhihuJson.json.parseToJsonElement(
+                """
+                {
+                  "head": [{"detail_title": "评论转发@", "unread_count": 3}],
+                  "column_head": [{
+                    "id": "invite",
+                    "title": "邀请回答",
+                    "text_prefix": "测试用户",
+                    "text": "等人邀请你回答问题",
+                    "target_link": "https://www.zhihu.com/compose_answer_tab",
+                    "avatar_urls": [{"url": "https://pic.example/1.jpg", "night_url": "https://pic.example/1-night.jpg"}],
+                    "images": [],
+                    "unread_count": 2
+                  }],
+                  "data": [{
+                    "id": "conversation",
+                    "type": "aggregate_notification",
+                    "created_str": "07-31",
+                    "unread_count": 1,
+                    "content": {
+                      "title": "系统消息",
+                      "text": "消息预览",
+                      "target_link": "https://www.zhihu.com/notifications/v3/timeline/entry/system"
+                    }
+                  }],
+                  "paging": {
+                    "is_end": false,
+                    "next": "https://api.zhihu.com/notifications/v3/message/v3?limit=20&offset=1"
+                  }
+                }
+                """.trimIndent(),
+            ),
+        )
+
+        assertEquals(3, page.head.single().unreadCount)
+        assertEquals("邀请回答", page.columnHead.single().title)
+        assertEquals(2, page.columnHead.single().unreadCount)
+        assertEquals(
+            "系统消息",
+            page.data
+                .single()
+                .content
+                ?.title,
+        )
+        assertEquals(false, page.paging?.isEnd)
+    }
+
+    @Test
+    fun decodesInvitationCardAndDateHeader() {
+        val dateHeader: MobileNotificationTimelineItem = ZhihuJson.decodeJson(
+            ZhihuJson.json.parseToJsonElement(
+                """{"type":"empty","created":1,"empty_info":{"text":"今天","number":2}}""",
+            ),
+        )
+        val invitation: MobileNotificationTimelineItem = ZhihuJson.decodeJson(
+            ZhihuJson.json.parseToJsonElement(
+                """
+                {
+                  "id": "invitation",
+                  "type": "aggregate_notification",
+                  "head": {
+                    "author": {"id":null,"name":"","avatar_url":""},
+                    "avatar_url":"https://pic.example/avatar.jpg",
+                    "labels": [{"text":"关注你"}]
+                  },
+                  "content": {"title":"邀请者","sub_title":"邀请你回答","text":"测试问题"},
+                  "target_source": {"text":"测试问题","sub_text":"46 回答 · 101 关注"},
+                  "target": {"id":"42","type":"question","title":"测试问题","follow_num":101},
+                  "additional_info": [
+                    {"id":301,"text":"回答该<b>测试</b>问题，创作分额外 +20 分","icon":""}
+                  ]
+                }
+                """.trimIndent(),
+            ),
+        )
+
+        assertEquals("今天", dateHeader.emptyInfo?.text)
+        assertEquals(
+            "关注你",
+            invitation.head
+                ?.labels
+                ?.single()
+                ?.text,
+        )
+        assertEquals("邀请者", invitation.content?.title)
+        assertEquals("测试问题", invitation.target?.title)
+        assertEquals("46 回答 · 101 关注", invitation.targetSource?.subText)
+        assertEquals(301, invitation.additionalInfo.single().id)
+    }
+
+    @Test
+    fun decodesPrivateMessagePageWithPluginMessage() {
+        val page: ZhihuPrivateMessagePage = ZhihuJson.decodeJson(
+            ZhihuJson.json.parseToJsonElement(
+                """
+                {
+                  "data": [{
+                    "id": "message-1",
+                    "type": "message",
+                    "content_type": 7,
+                    "content": "",
+                    "created_time": 1785742000,
+                    "sender": {"id":"peer","name":"知乎小管家","url_token":"helper"},
+                    "receiver": {"id":"me","name":"我","url_token":"me"},
+                    "plugin": {
+                      "plugin_type": "GUESS_YOU_WANT_ASK",
+                      "plugin_content": "[]",
+                      "excerpt": "猜你想问"
+                    }
+                  }],
+                  "paging": {
+                    "is_end": false,
+                    "next": "https://api.zhihu.com/messages?sender_id=peer&after_id=1&limit=20"
+                  }
+                }
+                """.trimIndent(),
+            ),
+        )
+
+        assertEquals(7, page.data.single().contentType)
+        assertEquals(
+            "GUESS_YOU_WANT_ASK",
+            page.data
+                .single()
+                .plugin
+                ?.pluginType,
+        )
+        assertEquals(
+            "知乎小管家",
+            page.data
+                .single()
+                .sender
+                ?.name,
+        )
+        assertEquals(false, page.paging.isEnd)
+    }
 }

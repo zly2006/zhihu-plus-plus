@@ -22,19 +22,31 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateMap
-import androidx.lifecycle.viewModelScope
+import com.github.zly2006.zhihu.data.MobileNotificationAuthor
+import com.github.zly2006.zhihu.data.MobileNotificationColumnHead
 import com.github.zly2006.zhihu.data.MobileNotificationMessageOverview
 import com.github.zly2006.zhihu.data.MobileNotificationTimelineItem
 import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.data.ZhihuPaging
+import com.github.zly2006.zhihu.data.ZhihuPrivateMessage
+import com.github.zly2006.zhihu.data.ZhihuPrivateMessagePage
 import com.github.zly2006.zhihu.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.notification.matchNotificationType
 import com.github.zly2006.zhihu.util.Log
+import com.github.zly2006.zhihu.util.ZhihuMessageBodyEncryptor
 import io.ktor.client.call.body
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.Parameters
+import io.ktor.http.contentType
+import io.ktor.http.formUrlEncode
 import io.ktor.http.isSuccess
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
@@ -61,30 +73,26 @@ enum class MobileNotificationCategory(
     Follow("follow", "关注订阅"),
     ;
 
-    val initialUrl: String
-        get() = "https://api.zhihu.com/notifications/v3/timeline/entry/$entryName?limit=20"
-
     val readAllUrl: String
-        get() = "https://api.zhihu.com/notifications/v3/timeline/entry/$entryName/actions/readall"
+        get() = "$MOBILE_NOTIFICATION_TIMELINE_URL/$entryName/actions/readall"
 }
 
 class NotificationViewModel :
     PaginationViewModel<MobileNotificationTimelineItem>(
         dataType = typeOf<MobileNotificationTimelineItem>(),
     ) {
-    override val initialUrl = MobileNotificationCategory.Comment.initialUrl
+    override val initialUrl = "$MOBILE_NOTIFICATION_MESSAGE_URL?limit=20"
     override val include = ""
-    private val categoryPaging = mutableMapOf<MobileNotificationCategory, ZhihuPaging?>()
-    private val categoryData = MobileNotificationCategory.entries.associateWith { mutableListOf<MobileNotificationTimelineItem>() }.toMutableMap()
-    private val endedCategories = mutableSetOf<MobileNotificationCategory>()
-    private var loadingCategory = MobileNotificationCategory.Comment
-    override val isEnd: Boolean
-        get() = selectedCategory in endedCategories
-
-    var selectedCategory: MobileNotificationCategory by mutableStateOf(MobileNotificationCategory.Comment)
-        private set
 
     val categoryUnreadCounts = SnapshotStateMap<MobileNotificationCategory, Int>()
+
+    var invitation: MobileNotificationColumnHead? by mutableStateOf(null)
+        private set
+
+    var unreadCount: Int by mutableIntStateOf(0)
+        private set
+
+    private var refreshingFirstPage = false
 
     init {
         MobileNotificationCategory.entries.forEach {
@@ -92,122 +100,63 @@ class NotificationViewModel :
         }
     }
 
-    // 未读消息数量
-    var unreadCount: Int by mutableIntStateOf(0)
-        private set
-
-    fun selectCategory(
-        category: MobileNotificationCategory,
-        environment: NotificationEnvironment,
-    ) {
-        if (selectedCategory == category) return
-        selectedCategory = category
-        allData.clear()
-        allData.addAll(categoryData.getValue(category))
-        if (allData.isEmpty() && category !in endedCategories) {
-            loadMore(environment)
-        } else if (environment.notificationSettingsStore.getAutoMarkAsReadEnabled()) {
-            viewModelScope.launch {
-                markCategoryAsRead(category, environment)
-            }
-        }
+    override fun refresh(environment: PaginationEnvironment) {
+        if (isLoading) return
+        errorMessage = null
+        lastPaging = null
+        refreshingFirstPage = true
+        loadMore(environment)
     }
 
-    @Suppress("HttpUrlsUsage")
     override suspend fun fetchFeeds(environment: PaginationEnvironment) {
-        val category = selectedCategory
         try {
-            val notificationSettingsEnvironment = environment as? NotificationSettingsEnvironment
-                ?: error("NotificationSettingsStore is required for notification pagination")
-            updateUnreadCounts(environment)
-
-            loadingCategory = category
-            val url = categoryPaging[category]?.next ?: category.initialUrl
+            val url = lastPaging?.next ?: initialUrl
             val json = environment
                 .mobileHomeFeedHttpClient()
                 .get(url.replace("http://", "https://"))
                 .body<JsonObject>()
-            val jsonArray = json["data"]?.jsonArray ?: JsonArray(emptyList())
-            val decodedData = jsonArray.mapNotNull {
-                if (it.jsonObject["type"]?.jsonPrimitive?.content == "empty") {
-                    return@mapNotNull null
+            val page = ZhihuJson.decodeJson<MobileNotificationMessageOverview>(json)
+            val rawData = json["data"]?.jsonArray ?: JsonArray(emptyList())
+
+            if (lastPaging == null) {
+                invitation = page.columnHead.firstOrNull()
+                MobileNotificationCategory.entries.forEach { category ->
+                    categoryUnreadCounts[category] = page.head
+                        .firstOrNull { it.detailTitle == category.detailTitle }
+                        ?.unreadCount ?: 0
                 }
-                try {
-                    ZhihuJson.decodeJson<MobileNotificationTimelineItem>(it)
-                } catch (e: Exception) {
-                    if (shouldLogDecodeFailures) {
-                        environment.logDecodeFailure(this::class.simpleName, it, e)
+                unreadCount = categoryUnreadCounts.values.sum()
+            }
+
+            val pageData = page.data.filter { it.type != "empty" }
+            if (refreshingFirstPage) {
+                pageData.forEachIndexed { index, item ->
+                    if (index < allData.size) {
+                        allData[index] = item
+                    } else {
+                        allData.add(item)
                     }
-                    null
                 }
+                while (allData.size > pageData.size) {
+                    allData.removeAt(allData.lastIndex)
+                }
+                debugData.clear()
+                debugData.addAll(rawData)
+            } else {
+                val existingIds = allData.mapTo(mutableSetOf()) { it.stableId }
+                processResponse(
+                    environment,
+                    pageData.filter { existingIds.add(it.stableId) },
+                    rawData,
+                )
             }
-
-            processResponse(
-                environment,
-                decodedData,
-                jsonArray,
-            )
-
-            val paging = json["paging"]?.let { ZhihuJson.decodeJson<ZhihuPaging>(it) }
-            categoryPaging[category] = paging
-            if (paging == null || paging.isEnd) {
-                endedCategories += category
-            }
-            if (
-                selectedCategory == category &&
-                notificationSettingsEnvironment.notificationSettingsStore.getAutoMarkAsReadEnabled()
-            ) {
-                markCategoryAsRead(category, environment)
-            }
+            lastPaging = page.paging ?: ZhihuPaging(isEnd = true, next = "")
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             environment.handleFetchFailure(this::class.simpleName, e)
         } finally {
+            refreshingFirstPage = false
             isLoading = false
-            if (
-                selectedCategory != category &&
-                categoryData.getValue(selectedCategory).isEmpty() &&
-                selectedCategory !in endedCategories
-            ) {
-                loadMore(environment)
-            }
-        }
-    }
-
-    override fun refresh(environment: PaginationEnvironment) {
-        categoryPaging.remove(selectedCategory)
-        categoryData.getValue(selectedCategory).clear()
-        endedCategories.remove(selectedCategory)
-        super.refresh(environment)
-    }
-
-    override fun processResponse(environment: PaginationEnvironment, data: List<MobileNotificationTimelineItem>, rawData: JsonArray) {
-        debugData.addAll(rawData)
-        val cachedData = categoryData.getValue(loadingCategory)
-        val existingIds = cachedData.mapTo(mutableSetOf()) { it.stableId }
-        val merged = (cachedData + data.filter { existingIds.add(it.stableId) })
-            .sortedByDescending { it.created }
-        cachedData.clear()
-        cachedData.addAll(merged)
-        if (loadingCategory == selectedCategory) {
-            allData.clear()
-            allData.addAll(merged)
-        }
-    }
-
-    /**
-     * 检查是否需要显示通知
-     */
-    fun shouldShowNotification(settingsStore: NotificationSettingsStore, notification: MobileNotificationTimelineItem): Boolean {
-        val content = notification.content ?: return true
-        val verb = listOf(content.title, content.subTitle, content.text)
-            .firstOrNull { it.isNotBlank() }
-            .orEmpty()
-        val type = matchNotificationType(verb)
-        return if (type != null) {
-            settingsStore.getDisplayInAppEnabled(type)
-        } else {
-            true
         }
     }
 
@@ -243,32 +192,212 @@ class NotificationViewModel :
         }
         return succeeded
     }
+}
 
-    private suspend fun updateUnreadCounts(environment: PaginationEnvironment) {
+class NotificationTimelineViewModel(
+    val entryName: String,
+) : PaginationViewModel<MobileNotificationTimelineItem>(
+        dataType = typeOf<MobileNotificationTimelineItem>(),
+    ) {
+    override val initialUrl = buildString {
+        append("$MOBILE_NOTIFICATION_TIMELINE_URL/$entryName?")
+        if (entryName == INVITATION_ENTRY_NAME) {
+            append("invite_with_time_slice=1&")
+        }
+        append("limit=20")
+    }
+    override val include = ""
+    private var markedAsRead = false
+
+    val readAllUrl: String
+        get() = "$MOBILE_NOTIFICATION_TIMELINE_URL/$entryName/actions/readall"
+
+    override suspend fun fetchFeeds(environment: PaginationEnvironment) {
         try {
-            val overview = environment
+            val notificationEnvironment = environment as? NotificationEnvironment
+                ?: error("NotificationSettingsStore is required for notification pagination")
+            val url = lastPaging?.next ?: initialUrl
+            val json = environment
                 .mobileHomeFeedHttpClient()
-                .get(MOBILE_NOTIFICATION_MESSAGE_URL)
+                .get(url.replace("http://", "https://"))
                 .body<JsonObject>()
-                .let { ZhihuJson.decodeJson<MobileNotificationMessageOverview>(it) }
-            val nextCounts = MobileNotificationCategory.entries.associateWith { category ->
-                overview
-                    .head
-                    .firstOrNull { it.detailTitle == category.detailTitle }
-                    ?.unreadCount ?: 0
-            }
-            for ((key, ov) in categoryUnreadCounts) {
-                if ((nextCounts[key] ?: 0) > ov) {
-                    categoryUnreadCounts
-                    categoryUnreadCounts[key] = nextCounts[key] ?: 0
+            val rawData = json["data"]?.jsonArray ?: JsonArray(emptyList())
+            val data = rawData.mapNotNull {
+                try {
+                    ZhihuJson.decodeJson<MobileNotificationTimelineItem>(it)
+                } catch (e: Exception) {
+                    if (shouldLogDecodeFailures) {
+                        environment.logDecodeFailure(this::class.simpleName, it, e)
+                    }
+                    null
                 }
             }
-            unreadCount = nextCounts.values.sum()
+
+            val existingIds = allData.mapTo(mutableSetOf()) { it.stableId }
+            processResponse(
+                environment,
+                data.filter { existingIds.add(it.stableId) },
+                rawData,
+            )
+            lastPaging = json["paging"]
+                ?.let { ZhihuJson.decodeJson<ZhihuPaging>(it) }
+                ?: ZhihuPaging(isEnd = true, next = "")
+
+            if (!markedAsRead && notificationEnvironment.notificationSettingsStore.getAutoMarkAsReadEnabled()) {
+                markedAsRead = markAsRead(environment)
+            }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
-            Log.e("NotificationViewModel", "Failed to fetch mobile notification unread counts", e)
+            environment.handleFetchFailure(this::class.simpleName, e)
+        } finally {
+            isLoading = false
+        }
+    }
+
+    fun shouldShowNotification(
+        settingsStore: NotificationSettingsStore,
+        notification: MobileNotificationTimelineItem,
+    ): Boolean {
+        val content = notification.content ?: return true
+        val verb = listOf(content.title, content.subTitle, content.text)
+            .firstOrNull { it.isNotBlank() }
+            .orEmpty()
+        val type = matchNotificationType(verb)
+        return type == null || settingsStore.getDisplayInAppEnabled(type)
+    }
+
+    suspend fun markAsRead(environment: MobileHomeFeedEnvironment): Boolean = try {
+        val response = environment.mobileHomeFeedHttpClient().post(readAllUrl)
+        if (!response.status.isSuccess()) {
+            Log.e("NotificationTimelineViewModel", "Failed to mark $entryName notifications as read: ${response.status}")
+            false
+        } else {
+            true
+        }
+    } catch (e: Exception) {
+        if (e is CancellationException) throw e
+        Log.e("NotificationTimelineViewModel", "Failed to mark $entryName notifications as read", e)
+        false
+    }
+}
+
+class PrivateMessageViewModel(
+    private val peerId: String,
+) : PaginationViewModel<ZhihuPrivateMessage>(
+        dataType = typeOf<ZhihuPrivateMessage>(),
+    ) {
+    override val initialUrl = "$MOBILE_PRIVATE_MESSAGE_URL?limit=20&sender_id=$peerId"
+    override val include = ""
+
+    var peer: MobileNotificationAuthor? by mutableStateOf(null)
+        private set
+
+    var isSending by mutableStateOf(false)
+        private set
+
+    suspend fun sendMessage(
+        content: String,
+        environment: MobileHomeFeedEnvironment,
+    ): Boolean {
+        if (content.isBlank() || isSending) return false
+
+        isSending = true
+        errorMessage = null
+        return try {
+            val response = environment.mobileHomeFeedHttpClient().post(MOBILE_PRIVATE_MESSAGE_URL) {
+                contentType(ContentType.Application.FormUrlEncoded)
+                header("X-Zse-93", "101_1_1.0")
+                val form = Parameters
+                    .build {
+                        append("receiver_id", peerId)
+                        append("content", content)
+                        append("content_type", "0")
+                        append("source_type", "message_list")
+                    }.formUrlEncode()
+                setBody(ZhihuMessageBodyEncryptor.encrypt(form))
+            }
+            if (!response.status.isSuccess()) {
+                val responseText = response.bodyAsText()
+                errorMessage = runCatching {
+                    ZhihuJson.json
+                        .parseToJsonElement(responseText)
+                        .jsonObject["error"]
+                        ?.jsonObject
+                        ?.get("message")
+                        ?.jsonPrimitive
+                        ?.content
+                }.getOrNull() ?: "发送失败（${response.status.value}）"
+                Log.e("PrivateMessageViewModel", "Failed to send private message: ${response.status}, $errorMessage")
+                false
+            } else {
+                val message = ZhihuJson.decodeJson<ZhihuPrivateMessage>(
+                    ZhihuJson.json.parseToJsonElement(response.bodyAsText()),
+                )
+                if (allData.none { it.stableId == message.stableId }) {
+                    allData.add(0, message)
+                }
+                true
+            }
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            Log.e("PrivateMessageViewModel", "Failed to send private message", e)
+            errorMessage = e.message ?: "发送失败"
+            false
+        } finally {
+            isSending = false
+        }
+    }
+
+    override suspend fun fetchFeeds(environment: PaginationEnvironment) {
+        try {
+            coroutineScope {
+                val client = environment.mobileHomeFeedHttpClient()
+                val peerRequest = if (peer == null) {
+                    async {
+                        client
+                            .get("$MOBILE_PRIVATE_MESSAGE_USER_URL/$peerId")
+                            .body<JsonObject>()
+                    }
+                } else {
+                    null
+                }
+                val pageRequest = async {
+                    client
+                        .get((lastPaging?.next ?: initialUrl).replace("http://", "https://"))
+                        .body<JsonObject>()
+                }
+
+                val json = pageRequest.await()
+                val page = ZhihuJson.decodeJson<ZhihuPrivateMessagePage>(json)
+                val rawData = json["data"]?.jsonArray ?: JsonArray(emptyList())
+                val existingIds = allData.mapTo(mutableSetOf()) { it.stableId }
+                processResponse(
+                    environment,
+                    page.data.filter { existingIds.add(it.stableId) },
+                    rawData,
+                )
+                lastPaging = page.paging
+
+                peerRequest?.let { request ->
+                    runCatching {
+                        peer = ZhihuJson.decodeJson<MobileNotificationAuthor>(request.await())
+                    }.onFailure { error ->
+                        if (error is CancellationException) throw error
+                        Log.e("PrivateMessageViewModel", "Failed to load private-message peer", error)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            environment.handleFetchFailure(this::class.simpleName, e)
+        } finally {
+            isLoading = false
         }
     }
 }
 
-private const val MOBILE_NOTIFICATION_MESSAGE_URL = "https://api.zhihu.com/notifications/v3/message/v3?limit=20"
+private const val INVITATION_ENTRY_NAME = "invite"
+private const val MOBILE_NOTIFICATION_MESSAGE_URL = "https://api.zhihu.com/notifications/v3/message/v3"
+private const val MOBILE_NOTIFICATION_TIMELINE_URL = "https://api.zhihu.com/notifications/v3/timeline/entry"
+private const val MOBILE_PRIVATE_MESSAGE_URL = "https://api.zhihu.com/messages"
+private const val MOBILE_PRIVATE_MESSAGE_USER_URL = "https://api.zhihu.com/messages/user"

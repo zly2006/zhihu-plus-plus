@@ -66,8 +66,7 @@ class NotificationScreenInstrumentedTest {
     fun notificationScreen_showsStableToolbarActionsWithoutLiveData() {
         /*
          * Expected behavior:
-         * 1. The test preloads one local notification before composing the screen so NotificationScreen
-         *    does not need to fetch live notification data just to render its scaffold.
+         * 1. The test waits for the screen's initial lifecycle refresh, then seeds one local notification.
          * 2. The toolbar should always show the page title plus clickable back and settings actions.
          * 3. The "mark all as read" action should stay hidden while unreadCount remains at its default zero.
          */
@@ -125,12 +124,12 @@ class NotificationScreenInstrumentedTest {
          * 2. The top category row should render that count as a visible badge on the matching category.
          * 3. The badge should be part of the category button, not a separate toolbar count.
          */
-        composeRule.seedNotificationViewModel(
-            unreadCounts = mapOf(MobileNotificationCategory.Like to 2),
-        )
         composeRule.setScreenContent {
             NotificationScreen()
         }
+        composeRule.seedNotificationViewModel(
+            unreadCounts = mapOf(MobileNotificationCategory.Like to 2),
+        )
 
         composeRule.onNodeWithText("2").assertIsDisplayed()
     }
@@ -269,10 +268,11 @@ class NotificationScreenInstrumentedTest {
     private fun setNotificationScreenContent(
         notifications: List<MobileNotificationTimelineItem> = listOf(notificationFixture()),
     ): RecordingNavigator {
-        composeRule.seedNotificationViewModel(notifications = notifications)
-        return composeRule.setScreenContent {
+        val recordingNavigator = composeRule.setScreenContent {
             NotificationScreen()
         }
+        composeRule.seedNotificationViewModel(notifications = notifications)
+        return recordingNavigator
     }
 
     private fun notificationFixture(

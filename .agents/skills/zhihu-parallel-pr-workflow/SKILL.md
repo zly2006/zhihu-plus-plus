@@ -62,6 +62,8 @@ Choose issues critically, not literally. Rank by user impact, feasibility, curre
 
 ## Worktree Rules
 
+`.worktrees/` 是项目级硬约束，不只适用于并行 worker。主 agent 为单个 issue 创建隔离 worktree 时，也必须放在当前仓库的 `.worktrees/<short-name>`；不得放到仓库同级目录或自行选择其他外部路径。创建前应先解析并核对目标绝对路径确实位于 `<repo>/.worktrees/`。
+
 Create one worktree per worker from current `origin/master`.
 
 ```bash

@@ -1591,7 +1591,7 @@ private fun AnnotatedString.Builder.processTextWithEmoji(
     }
 }
 
-private fun AnnotatedString.Builder.dfsSimple(
+fun AnnotatedString.Builder.dfsSimple(
     node: Node,
     onNavigate: (NavDestination) -> Unit,
     openExternalUrl: (String) -> Unit,
