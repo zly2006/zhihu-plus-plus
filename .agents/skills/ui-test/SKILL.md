@@ -9,9 +9,9 @@ license: CC BY-NC-SA 4.0
 ## 执行环境优先级
 
 - 调用本 skill 的 UI 自动化 agent 或 subagent 时，尽量使用 `gpt-5.4-mini`；复杂视觉或流程判断再使用 `gpt-5.4`，避免使用反应较慢的模型拖慢 AVD 交互。
-- 若 `/Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/SKILL.md` 存在，必须优先按 `$off-android-avd-ci-debug` 使用远端 `off` AVD runner，不要默认启动本地 AVD。
-- 远端 runner 只用于短生命周期 UI/AVD 验证：先运行 `status` / `boot-check` 确认健康；`boot-check` 会自行清理模拟器，真实 UI 交互要在 `off` 的远端 ADB 环境中启动短生命周期 AVD 后执行；验证结束后运行 `kill` 清理。
-- 只有 `$off-android-avd-ci-debug` 不存在，或远端 runner 明确不可用时，才退回本地 AVD。
+- 先选择当前健康、目标 API 匹配且启动成本最低的 AVD；本地 AVD 和 `$off-android-avd-ci-debug` 都可以，不能仅因远端 skill 存在就强制启动 `off`。
+- 选择远端 runner 时，它只用于短生命周期 UI/AVD 验证：按需运行 `status` / `boot-check`；真实 UI 交互要在 `off` 的远端 ADB 环境中执行；验证结束后运行 `kill` 清理。
+- 已有本地 AVD 更快、目标 API 更匹配或远端交互入口不完整时，可以直接使用本地 AVD。
 
 ```bash
 /Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/scripts/off-avd-ci-debug.sh status
@@ -21,6 +21,10 @@ license: CC BY-NC-SA 4.0
 
 ## 失败经验
 
+### 本地没有 AVD 时禁止擅自创建
+
+“优先复用健康的本地 AVD”只适用于本机已经存在、用户允许使用的 AVD。`emulator -list-avds` 为空时，不能为了完成验证自行下载 system image、创建 AVD 或改变本机 Android 设备状态；如果任务指定远程执行面，必须继续修复或等待远程执行面，远程暂时不可用时应明确报告阻塞，不能把它降级成擅自创建本地 AVD。例子：远程 runner 的 SSH 端口临时拒绝连接时，可以重试并检查远程入口，但不能据此用本机已有 system image 新建一个测试 AVD。
+
 ### 先判断布局占位是否破坏原有中心
 
 在已有头部或居中布局里新增按钮时，必须先看新增控件是否占用了布局槽位并挤压原内容，而不是只评价图标本身好不好看。例子：个人页头部放在 `TopAppBar` title 区时，右侧 `actions` 会额外占据横向空间，导致头像、昵称、统计和操作按钮整体被压窄或偏离原来的视觉中心；这类问题的根因是新增按钮破坏了正常空间分配和居中关系，不是简单的“右上角是否能放搜索”。
@@ -28,6 +32,10 @@ license: CC BY-NC-SA 4.0
 ### 参考图和实际截图必须逐项对齐
 
 按参考图实现 UI 时，不能只验证自己理解的某个技术根因已经解决，还要把参考图和实际截图并排核对关键元素的位置、大小、间距和对齐关系。例子：搜索按钮即使已经不再挤压 `TopAppBar` 的 title 区，如果实际截图里的按钮比参考图明显更低、更靠内容中线，仍然没有照图实现；这类偏差必须继续调整，不能用“没有挤压居中”替代“位置一致”。
+
+### Feed 卡片富媒体必须先定义尺寸预算
+
+给已有 Feed 卡片增加图片时，不能让原图宽高比直接决定卡片高度；必须先按卡片信息密度定义媒体区域的宽高预算，再用真实截图确认标题、摘要、图片和操作区仍保持主次关系。多图数量增加也不能线性撑高卡片，应切换到受限网格。例子：横向单图或多图预览的高度上限可以约为卡片可用宽度的三分之一；如果图片占据大半屏，即使裁切和加载都正常，也属于破坏 Feed 浏览效率的实现错误。
 
 ## 脚本入口
 
@@ -198,9 +206,9 @@ python3 .agents/skills/ui-test/llm_test_helper.py screenshot /tmp/result.png
 
 ## 标准测试流程模板
 
-远端路径和本地回退路径必须分开执行。选择 `$off-android-avd-ci-debug` 时，后续 `adb` / `llm_test_helper.py` 都必须在能访问远端 emulator 的 `off` 环境中运行；裸 `adb` 只属于本地回退路径。如果远端 skill 当前只有 `status` / `boot-check` / `kill`，没有能保持 emulator 运行的交互入口，不能把 `boot-check` 后面接本机 `adb`；应先补远端交互脚本，或把远端 runner 明确标记为当前不可用后再走本地回退。
+远端路径和本地路径必须分开执行。选择 `$off-android-avd-ci-debug` 时，后续 `adb` / `llm_test_helper.py` 都必须在能访问远端 emulator 的 `off` 环境中运行；选择本地 AVD 时才使用本机裸 `adb`。远端交互入口不完整时可以改选本地 AVD，不能把远端 `boot-check` 后面接本机裸 `adb`。
 
-### 远端优先流程
+### 远端流程（选择 `off` 时）
 
 ```bash
 # 1. 先检查 off runner 健康状态
@@ -226,9 +234,7 @@ adb devices
 /Users/zhaoliyan/.agents/skills/off-android-avd-ci-debug/scripts/off-avd-ci-debug.sh kill
 ```
 
-### 本地回退流程
-
-仅当 `$off-android-avd-ci-debug` 不存在，或远端 runner 明确不可用时执行：
+### 本地流程（选择本地 AVD 时）
 
 ```bash
 # 1. 启动本地 AVD

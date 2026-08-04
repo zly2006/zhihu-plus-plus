@@ -38,6 +38,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -72,30 +73,21 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.fleeksoft.ksoup.Ksoup
+import com.github.zly2006.zhihu.data.DailySection
+import com.github.zly2006.zhihu.data.DailyStory
 import com.github.zly2006.zhihu.navigation.LocalNavigator
-import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.resolveContent
-import com.github.zly2006.zhihu.shared.data.DailySection
-import com.github.zly2006.zhihu.shared.data.DailyStory
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.ui.TopLevelReselectAction
-import com.github.zly2006.zhihu.shared.ui.topLevelReselectAction
-import com.github.zly2006.zhihu.shared.util.formatDailyDate
-import com.github.zly2006.zhihu.shared.util.twoDigitString
-import com.github.zly2006.zhihu.shared.viewmodel.DailyViewModel
-import com.github.zly2006.zhihu.ui.components.PageTurnGuideOverlay
-import com.github.zly2006.zhihu.ui.components.PageTurnGuideState
-import com.github.zly2006.zhihu.ui.components.PageTurnLazyListEffect
-import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_PAGE_TURN_PERCENT
-import com.github.zly2006.zhihu.ui.subscreens.PREF_PAGE_TURN_PERCENT
-import com.github.zly2006.zhihu.ui.subscreens.PREF_SHOW_PAGE_TURN_GUIDE
-import io.ktor.client.HttpClient
+import com.github.zly2006.zhihu.ui.TopLevelReselectAction
+import com.github.zly2006.zhihu.ui.topLevelReselectAction
+import com.github.zly2006.zhihu.util.formatDailyDate
+import com.github.zly2006.zhihu.util.twoDigitString
+import com.github.zly2006.zhihu.viewmodel.DailyViewModel
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import kotlinx.coroutines.Dispatchers
@@ -120,28 +112,18 @@ import kotlin.time.Instant
 fun DailyScreen(
     scrollToTopTrigger: Int = 0,
     isActive: Boolean = true,
-    outerBottomPadding: Dp = 0.dp,
 ) {
     val navigator = LocalNavigator.current
-    val httpClient = rememberZhihuHttpClient()
+    val httpClient = rememberPaginationEnvironment(allowGuestAccess = false).httpClient()
     val uriHandler = LocalUriHandler.current
     val viewModel = viewModel { DailyViewModel() }
     var isRefreshing by remember { mutableStateOf(false) }
     var currentViewingDate by remember { mutableStateOf("") }
     var showDatePicker by remember { mutableStateOf(false) }
+    var missingOriginStoryUrl by remember { mutableStateOf<String?>(null) }
     var pendingDateSelection by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
-    val dailySettings = rememberSettingsStore()
-    val showPageTurnGuide = remember { dailySettings.getBoolean(PREF_SHOW_PAGE_TURN_GUIDE, false) }
-    val pageTurnPercent = remember { dailySettings.getInt(PREF_PAGE_TURN_PERCENT, DEFAULT_PAGE_TURN_PERCENT) }
-    val guideState = remember { PageTurnGuideState() }
-    PageTurnLazyListEffect(listState, pageTurnPercent, guideState)
-
-    if (showPageTurnGuide && guideState.lastDirection != 0 && listState.isScrollInProgress && !guideState.isScrolling) {
-        guideState.lastDirection = 0
-    }
-
     var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
     LaunchedEffect(listState, viewModel.sections) {
         currentViewingDate = resolveViewingDate(
@@ -232,6 +214,26 @@ fun DailyScreen(
         ) {
             DatePicker(state = datePickerState)
         }
+    }
+
+    missingOriginStoryUrl?.let { storyUrl ->
+        AlertDialog(
+            onDismissRequest = { missingOriginStoryUrl = null },
+            text = { Text("由于知乎的 Bug，无法找到原文") },
+            confirmButton = {
+                TextButton(onClick = {
+                    missingOriginStoryUrl = null
+                    uriHandler.openUri(storyUrl)
+                }) {
+                    Text("在浏览器中打开")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { missingOriginStoryUrl = null }) {
+                    Text("知道了")
+                }
+            },
+        )
     }
 
     Scaffold(
@@ -337,10 +339,7 @@ fun DailyScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .testTag(DAILY_SCREEN_LIST_TAG),
-                        contentPadding = PaddingValues(
-                            top = 8.dp,
-                            bottom = 8.dp + outerBottomPadding,
-                        ),
+                        contentPadding = PaddingValues(vertical = 8.dp),
                     ) {
                         viewModel.sections.forEach { section ->
                             // 日期分组标题。
@@ -357,11 +356,28 @@ fun DailyScreen(
                                     modifier = Modifier.testTag("daily_screen_story_${story.id}"),
                                     onClick = {
                                         scope.launch {
-                                            val destination = fetchDailyStoryDestination(httpClient, story.id)
+                                            val response: JsonObject = withContext(Dispatchers.Default) {
+                                                httpClient
+                                                    .get("https://daily.zhihu.com/api/7/story/${story.id}")
+                                                    .body()
+                                            }
+                                            val body = response["body"]?.jsonPrimitive?.content
+                                            if (body == null) {
+                                                missingOriginStoryUrl = story.url
+                                                return@launch
+                                            }
+                                            val doc = Ksoup.parse(body)
+                                            val originUrl = doc.selectFirst("a.originUrl")?.attr("href")
+                                            val destination = originUrl
+                                                ?.let(::resolveContent)
+                                                ?: doc
+                                                    .selectFirst("div.view-more a")
+                                                    ?.attr("href")
+                                                    ?.let(::resolveContent)
                                             if (destination != null) {
                                                 navigator.onNavigate(destination)
                                             } else {
-                                                uriHandler.openUri(story.url)
+                                                missingOriginStoryUrl = story.url
                                             }
                                         }
                                     },
@@ -386,15 +402,6 @@ fun DailyScreen(
                         }
                     }
                 }
-            }
-
-            if (showPageTurnGuide) {
-                PageTurnGuideOverlay(
-                    pageTurnPercent,
-                    topInsetPx = listState.layoutInfo.beforeContentPadding.toFloat(),
-                    bottomInsetPx = listState.layoutInfo.afterContentPadding.toFloat(),
-                    lastDirection = guideState.lastDirection,
-                )
             }
         }
     }
@@ -536,26 +543,6 @@ private fun formatDailyDatePickerSelection(millis: Long): String {
     return date.year.toString().padStart(4, '0') +
         (date.month.ordinal + 1).twoDigitString() +
         date.day.twoDigitString()
-}
-
-private suspend fun fetchDailyStoryDestination(
-    httpClient: HttpClient,
-    storyId: Long,
-): NavDestination? = withContext(Dispatchers.Default) {
-    val response: JsonObject = httpClient
-        .get("https://daily.zhihu.com/api/7/story/$storyId")
-        .body()
-    val body = response["body"]?.jsonPrimitive?.content ?: return@withContext null
-    val doc = Ksoup.parse(body)
-    return@withContext doc
-        .selectFirst("a.originUrl")
-        ?.attr("href")
-        ?.let(::resolveContent)
-        ?: doc
-            .selectFirst("div.view-more")
-            ?.selectFirst("a")
-            ?.attr("href")
-            ?.let(::resolveContent)
 }
 
 private const val DAILY_SCREEN_TITLE_TAG = "daily_screen_title"

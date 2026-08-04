@@ -65,8 +65,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.buildAnnotatedString
@@ -75,15 +73,14 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.data.AIGC_MARKING_ENABLED_PREFERENCE_KEY
 import com.github.zly2006.zhihu.navigation.LocalNavigator
-import com.github.zly2006.zhihu.shared.aigc.AIGC_MARKING_ENABLED_PREFERENCE_KEY
-import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.util.ContinuousUsageReminderPolicy
-import com.github.zly2006.zhihu.ui.components.PageTurnScrollEffect
+import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
+import com.github.zly2006.zhihu.util.ContinuousUsageReminderPolicy
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import zhihu.shared.generated.resources.Res
@@ -137,16 +134,9 @@ fun SystemAndUpdateSettingsScreen() {
         },
     ) { innerPadding ->
         val scrollState = rememberScrollState()
-        val density = LocalDensity.current
-        var rawViewportHeight by remember { mutableIntStateOf(0) }
-        val topPx = with(density) { innerPadding.calculateTopPadding().toPx().toInt() }
-        val bottomPx = with(density) { innerPadding.calculateBottomPadding().toPx().toInt() }
-        val viewportHeight = (rawViewportHeight - topPx - bottomPx).coerceAtLeast(0)
-        PageTurnScrollEffect(scrollState, viewportHeight, scrollBehavior.state)
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .onSizeChanged { rawViewportHeight = it.height }
                 .verticalScroll(scrollState)
                 .padding(innerPadding)
                 .padding(vertical = 16.dp),

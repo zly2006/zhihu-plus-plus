@@ -18,21 +18,19 @@
 package com.github.zly2006.zhihu.ui.components
 
 import androidx.compose.animation.ExperimentalSharedTransitionApi
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
@@ -40,9 +38,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -54,157 +50,119 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.navDestination
+import com.github.zly2006.zhihu.data.officialBadge
+import com.github.zly2006.zhihu.data.sourceLabel
+import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Navigator
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.navDestination
-import com.github.zly2006.zhihu.shared.data.officialBadge
-import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
-import com.github.zly2006.zhihu.shared.platform.rememberIsLiteVariant
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.navigation.withReadingQueueSource
+import com.github.zly2006.zhihu.platform.UserMessageDuration
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
-import com.github.zly2006.zhihu.util.parseHtmlTextWithTheme
-import kotlinx.coroutines.launch
-import kotlin.math.abs
-import kotlin.math.max
-import kotlin.math.min
+import com.github.zly2006.zhihu.util.parseEmphasizedHtmlTextWithTheme
 
 /**
  * 信息流卡片的 Material 3 实现。
  *
- * 卡片负责展示标题、摘要、作者、徽章、缩略图和更多菜单，并根据设置支持卡片/分割线两种外观、Duo3 排版、缩略图开关和滑动反馈。
- * 默认点击会解析 [FeedDisplayItem] 的导航目标并进入详情页；外部也可以注入喜欢/不喜欢、屏蔽用户、按关键词屏蔽和屏蔽主题等动作。
+ * 卡片负责展示标题、摘要、作者、徽章、缩略图和更多菜单，并根据设置支持卡片/分割线两种外观、Duo3 排版和缩略图开关。
+ * 默认点击会解析 [FeedDisplayItem] 的导航目标并进入详情页；页面可以通过 [menuItems] 直接声明自己的业务菜单项。
  *
  * 修改这个组件时要同步复核 `showFeedThumbnail`、`feedCardStyle`、`duo3_card_appearance`、
- * `duo3_card_layout`、`duo3_card_large_title` 和 `enableSwipeReaction` 对各信息流入口的影响。
+ * `duo3_card_layout` 和 `duo3_card_large_title` 对各信息流入口的影响。
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun FeedCard(
     item: FeedDisplayItem,
     modifier: Modifier = Modifier,
+    readingQueueSourceId: String? = null,
     maxHeight: Dp = 240.dp,
     thumbnailUrl: String? = null,
     horizontalPadding: Dp = 16.dp,
-    onLike: ((FeedDisplayItem) -> Unit)? = null,
-    onDislike: ((FeedDisplayItem) -> Unit)? = null,
-    onBlockUser: ((FeedDisplayItem) -> Unit)? = null,
-    onBlockByKeywords: ((FeedDisplayItem) -> Unit)? = null,
-    onBlockTopic: ((topicId: String, topicName: String) -> Unit)? = null,
+    menuItems: @Composable ColumnScope.(dismissMenu: () -> Unit) -> Unit = { _ -> },
     showSourceLabel: Boolean = false,
     /**
      * 默认点击行为：优先跳转到信息流条目的详情页；如果只能识别为外链则打开外链，否则提示暂不支持。
      */
-    onClick: (FeedDisplayItem.() -> Unit)? = null,
+    onClick: ((item: FeedDisplayItem, destination: NavDestination?) -> Unit)? = null,
 ) {
-    val density = LocalDensity.current
     val navigator = LocalNavigator.current
     val uriHandler = LocalUriHandler.current
     val userMessages = rememberUserMessageSink()
     val settings = rememberSettingsStore()
-    val isLiteVariant = rememberIsLiteVariant()
-    var offsetX by remember { mutableFloatStateOf(0f) }
-    var currentY by remember { mutableFloatStateOf(0f) } // 当前手指Y位置
-    var startY by remember { mutableFloatStateOf(0f) } // 开始滑动时的Y位置
-    var isDragging by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
-    val coroutineScope = rememberCoroutineScope()
-    val enableSwipeReaction = remember {
-        settings.getBoolean("enableSwipeReaction", false)
-    } &&
-        onLike != null &&
-        onDislike != null
     val showFeedThumbnail = remember {
         settings.getBoolean("showFeedThumbnail", true)
     }
     val feedCardStyle = remember {
-        settings.getString("feedCardStyle", "card")
+        settings.getString("feedCardStyle", "divider")
     }
     val duo3CardAppearance = remember { settings.getBoolean("duo3_card_appearance", false) }
     val duo3CardLayout = remember { settings.getBoolean("duo3_card_layout", false) }
     val duo3CardLargeTitle = remember { settings.getBoolean("duo3_card_large_title", true) }
-    val onClick = onClick ?: {
-        this.navDestination?.let {
-            navigator.onNavigate(it)
-        } ?: run {
-            if (this.content?.startsWith("http") == true) {
-                uriHandler.openUri(this@run.content)
-            } else {
-                userMessages.showMessage("暂不支持打开该内容", UserMessageDuration.Short)
+    val pinImages = (item.feed?.target as? Feed.PinTarget)
+        ?.content
+        ?.filterIsInstance<DataHolder.Pin.ContentImage>()
+        .orEmpty()
+    val showPinImages = showFeedThumbnail && pinImages.isNotEmpty() && !item.isFiltered
+    val performClick: (FeedDisplayItem) -> Unit = { clickedItem ->
+        val destination = clickedItem.navDestination?.withReadingQueueSource(readingQueueSourceId)
+        if (onClick != null) {
+            onClick(clickedItem, destination)
+        } else {
+            destination?.let(navigator.onNavigate) ?: run {
+                if (clickedItem.content?.startsWith("http") == true) {
+                    uriHandler.openUri(clickedItem.content)
+                } else {
+                    userMessages.showMessage("暂不支持打开该内容", UserMessageDuration.Short)
+                }
             }
         }
     }
-
-    // 动画偏移量
-    val animatedOffsetX by animateFloatAsState(
-        targetValue = if (isDragging) offsetX else 0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMediumLow,
-        ),
-        label = "offsetAnimation",
-    )
-
-    // 操作区域的透明度动画
-    val actionAlpha by animateFloatAsState(
-        targetValue = if (abs(animatedOffsetX) > 50f) (abs(animatedOffsetX) - 50f) / 100f else 0f,
-        animationSpec = tween(150),
-        label = "actionAlpha",
-    )
-
-    // 根据横向滑动距离和纵向位置确定当前操作类型
-    val currentAction = when {
-        abs(animatedOffsetX) < 75f -> "none" // 横向滑动不够，无操作
-        currentY - startY < -30f -> "like" // 手指向上，喜欢
-        currentY - startY > 30f -> "dislike" // 手指向下，不喜欢
-        else -> "neutral" // 中间位置，待定
-    }
-
     if (feedCardStyle == "divider") {
         Column(
             modifier = modifier
                 .fillMaxWidth()
-                .heightIn(max = maxHeight),
+                .then(if (showPinImages) Modifier else Modifier.heightIn(max = maxHeight)),
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onClick(item) }
+                    .clickable { performClick(item) }
                     .padding(horizontal = horizontalPadding, vertical = 12.dp),
             ) {
                 FeedCardContent(
                     item = item,
                     showFeedThumbnail = showFeedThumbnail,
                     thumbnailUrl = thumbnailUrl,
+                    pinImages = pinImages,
                     showMenu = showMenu,
                     onShowMenuChange = { showMenu = it },
-                    onBlockUser = onBlockUser,
-                    onBlockByKeywords = if (isLiteVariant) null else onBlockByKeywords,
-                    onBlockTopic = onBlockTopic,
+                    menuItems = menuItems,
                     duo3CardLayout = duo3CardLayout,
                     duo3CardLargeTitle = duo3CardLargeTitle,
                     showSourceLabel = showSourceLabel,
@@ -216,7 +174,7 @@ fun FeedCard(
         Box(
             modifier = modifier
                 .fillMaxWidth()
-                .heightIn(max = maxHeight)
+                .then(if (showPinImages) Modifier else Modifier.heightIn(max = maxHeight))
                 .padding(horizontal = horizontalPadding, vertical = 8.dp),
         ) {
             Card(
@@ -230,52 +188,12 @@ fun FeedCard(
                 shape = if (duo3CardAppearance) RoundedCornerShape(24.dp) else CardDefaults.shape,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .alpha(1 - min(actionAlpha, 0.5f))
-                    .offset(x = with(density) { animatedOffsetX.toDp() })
                     .let { if (duo3CardAppearance) it.clip(RoundedCornerShape(24.dp)) else it }
-                    .clickable {
-                        if (!isDragging && abs(animatedOffsetX) < 10f) {
-                            onClick(item)
-                        }
-                    }.let {
-                        if (enableSwipeReaction) {
-                            it.pointerInput(Unit) {
-                                detectHorizontalDragGestures(
-                                    onDragStart = { offset ->
-                                        isDragging = true
-                                        startY = offset.y
-                                        currentY = offset.y
-                                    },
-                                    onDragEnd = {
-                                        isDragging = false
-                                        when {
-                                            abs(offsetX) >= 75f && currentY - startY < -30f && onLike != null -> {
-                                                onLike(item)
-                                            }
-                                            abs(offsetX) >= 75f && currentY - startY > 30f && onDislike != null -> {
-                                                onDislike(item)
-                                            }
-                                        }
-                                        coroutineScope.launch {
-                                            offsetX = 0f
-                                            currentY = 0f
-                                            startY = 0f
-                                        }
-                                    },
-                                ) { change, dragAmount ->
-                                    currentY = change.position.y
-                                    val newOffset = offsetX + dragAmount
-                                    offsetX = max(newOffset, -250f).coerceAtMost(0f)
-                                }
-                            }
-                        } else {
-                            it
-                        }
-                    },
+                    .clickable { performClick(item) },
                 elevation = if (duo3CardAppearance) {
                     CardDefaults.cardElevation()
                 } else {
-                    CardDefaults.cardElevation(defaultElevation = if (isDragging) 8.dp else 2.dp)
+                    CardDefaults.cardElevation(defaultElevation = 2.dp)
                 },
             ) {
                 Column(
@@ -289,89 +207,14 @@ fun FeedCard(
                         item = item,
                         showFeedThumbnail = showFeedThumbnail,
                         thumbnailUrl = thumbnailUrl,
+                        pinImages = pinImages,
                         showMenu = showMenu,
                         onShowMenuChange = { showMenu = it },
-                        onBlockUser = onBlockUser,
-                        onBlockByKeywords = if (isLiteVariant) null else onBlockByKeywords,
-                        onBlockTopic = onBlockTopic,
+                        menuItems = menuItems,
                         duo3CardLayout = duo3CardLayout,
                         duo3CardLargeTitle = duo3CardLargeTitle,
                         showSourceLabel = showSourceLabel,
                     )
-                }
-            }
-
-            if (actionAlpha > 0f && enableSwipeReaction) {
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .background(
-                            color = when (currentAction) {
-                                "like" -> Color(0xFF4CAF50).copy(alpha = actionAlpha * 0.2f)
-                                "dislike" -> Color(0xFFFF5722).copy(alpha = actionAlpha * 0.2f)
-                                "neutral" -> Color(0xFF9E9E9E).copy(alpha = actionAlpha * 0.1f)
-                                else -> Color.Transparent
-                            },
-                            shape = RoundedCornerShape(12.dp),
-                        ),
-                    contentAlignment = when (currentAction) {
-                        "like" -> Alignment.TopStart
-                        "dislike" -> Alignment.BottomStart
-                        else -> Alignment.CenterStart
-                    },
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
-                    ) {
-                        when (currentAction) {
-                            "like" -> {
-                                Icon(
-                                    imageVector = Icons.Default.Favorite,
-                                    contentDescription = "喜欢",
-                                    tint = Color(0xFF4CAF50),
-                                    modifier = Modifier
-                                        .size(32.dp)
-                                        .scale(1f + actionAlpha * 0.3f),
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text(
-                                    text = "向上滑动 - 喜欢",
-                                    color = Color(0xFF4CAF50),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp,
-                                    modifier = Modifier.scale(1f + actionAlpha * 0.2f),
-                                )
-                            }
-                            "dislike" -> {
-                                Icon(
-                                    imageVector = Icons.Default.ThumbDown,
-                                    contentDescription = "不喜欢",
-                                    tint = Color(0xFFFF5722),
-                                    modifier = Modifier
-                                        .size(32.dp)
-                                        .scale(1f + actionAlpha * 0.3f),
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text(
-                                    text = "向下滑动 - 不喜欢",
-                                    color = Color(0xFFFF5722),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp,
-                                    modifier = Modifier.scale(1f + actionAlpha * 0.2f),
-                                )
-                            }
-                            "neutral" -> {
-                                Text(
-                                    text = "上下滑动选择",
-                                    color = Color(0xFF9E9E9E),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp,
-                                    modifier = Modifier.scale(1f + actionAlpha * 0.2f),
-                                )
-                            }
-                        }
-                    }
                 }
             }
         }
@@ -381,17 +224,14 @@ fun FeedCard(
 /**
  * 信息流卡片右上角的更多菜单。
  *
- * 菜单集中承载和当前条目相关的轻量操作：按关键词屏蔽、屏蔽用户、屏蔽主题、跳转外观设置，以及对已过滤内容快速关闭质量过滤。
- * 这些入口会把用户带回对应设置项，因此新增菜单动作时要明确它是直接修改内容，还是跳转到设置页继续配置。
+ * 卡片只负责菜单的展开、收起和通用设置项；页面业务动作由 [menuItems] 直接提供。
  */
 @Composable
 private fun FeedCardMenuBox(
     item: FeedDisplayItem,
     showMenu: Boolean,
     onShowMenuChange: (Boolean) -> Unit,
-    onBlockUser: ((FeedDisplayItem) -> Unit)?,
-    onBlockByKeywords: ((FeedDisplayItem) -> Unit)?,
-    onBlockTopic: ((topicId: String, topicName: String) -> Unit)?,
+    menuItems: @Composable ColumnScope.(dismissMenu: () -> Unit) -> Unit,
     navigator: Navigator,
 ) {
     Box {
@@ -410,40 +250,7 @@ private fun FeedCardMenuBox(
             expanded = showMenu,
             onDismissRequest = { onShowMenuChange(false) },
         ) {
-            if (onBlockByKeywords != null) {
-                DropdownMenuItem(
-                    text = { Text("按关键词屏蔽") },
-                    onClick = {
-                        onShowMenuChange(false)
-                        onBlockByKeywords(item)
-                    },
-                )
-            }
-            DropdownMenuItem(
-                text = { Text("屏蔽用户") },
-                onClick = {
-                    onShowMenuChange(false)
-                    onBlockUser?.invoke(item)
-                },
-            )
-            if (onBlockTopic != null && item.raw != null) {
-                val topics = when (val raw = item.raw) {
-                    is com.github.zly2006.zhihu.shared.data.DataHolder.Answer -> raw.question.topics
-                    is com.github.zly2006.zhihu.shared.data.DataHolder.Question -> raw.topics
-                    is com.github.zly2006.zhihu.shared.data.DataHolder.Article -> raw.topics ?: emptyList()
-                    is com.github.zly2006.zhihu.shared.data.DataHolder.Pin -> raw.topics ?: emptyList()
-                    else -> emptyList()
-                }
-                topics.forEach { topic ->
-                    DropdownMenuItem(
-                        text = { Text("屏蔽「${topic.name}」") },
-                        onClick = {
-                            onShowMenuChange(false)
-                            onBlockTopic(topic.id, topic.name)
-                        },
-                    )
-                }
-            }
+            menuItems { onShowMenuChange(false) }
             DropdownMenuItem(
                 text = { Text("外观设置") },
                 onClick = {
@@ -475,11 +282,10 @@ private fun FeedCardContent(
     item: FeedDisplayItem,
     showFeedThumbnail: Boolean,
     thumbnailUrl: String?,
+    pinImages: List<DataHolder.Pin.ContentImage>,
     showMenu: Boolean,
     onShowMenuChange: (Boolean) -> Unit,
-    onBlockUser: ((FeedDisplayItem) -> Unit)?,
-    onBlockByKeywords: ((FeedDisplayItem) -> Unit)?,
-    onBlockTopic: ((topicId: String, topicName: String) -> Unit)?,
+    menuItems: @Composable ColumnScope.(dismissMenu: () -> Unit) -> Unit,
     duo3CardLayout: Boolean,
     duo3CardLargeTitle: Boolean,
     showSourceLabel: Boolean,
@@ -488,15 +294,17 @@ private fun FeedCardContent(
     val fontSizePercent = remember { settings.getInt(PREF_FONT_SIZE, 100) }
     val lineHeightPercent = remember { settings.getInt(PREF_LINE_HEIGHT, 160) }
     val navigator = LocalNavigator.current
+    val visiblePinImages = pinImages.takeIf { showFeedThumbnail && !item.isFiltered }.orEmpty()
+    val sourceLabel = item.feed?.sourceLabel.takeUnless { item.isFiltered }
     if (duo3CardLayout) {
         // ── 新排版（duo3）────────────────────────────────────────────────────
         if (showSourceLabel) {
-            FeedCardSourceLabel(item.sourceLabel)
+            FeedCardSourceLabel(sourceLabel)
         }
         if (!item.title.isEmpty()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = parseHtmlTextWithTheme(item.title),
+                    text = parseEmphasizedHtmlTextWithTheme(item.title),
                     style = if (duo3CardLargeTitle) {
                         MaterialTheme.typography.titleLarge
                     } else {
@@ -513,7 +321,7 @@ private fun FeedCardContent(
         Column {
             Row {
                 Text(
-                    text = parseHtmlTextWithTheme(item.summary ?: ""),
+                    text = parseEmphasizedHtmlTextWithTheme(item.summary ?: ""),
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontSize = 14.sp * fontSizePercent / 100,
                         lineHeight = 14.sp * fontSizePercent / 100 * lineHeightPercent / 100,
@@ -536,6 +344,10 @@ private fun FeedCardContent(
                     )
                 }
             }
+            PinFeedImages(
+                images = visiblePinImages,
+                modifier = Modifier.padding(top = 8.dp),
+            )
             if (item.details.isNotEmpty() || (item.avatarSrc != null && item.authorName != null)) {
                 Row(
                     modifier = Modifier
@@ -585,7 +397,7 @@ private fun FeedCardContent(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
                         )
-                        FeedCardMenuBox(item, showMenu, onShowMenuChange, onBlockUser, onBlockByKeywords, onBlockTopic, navigator)
+                        FeedCardMenuBox(item, showMenu, onShowMenuChange, menuItems, navigator)
                     }
                 }
             }
@@ -593,12 +405,12 @@ private fun FeedCardContent(
     } else {
         // ── 原始排版（master）────────────────────────────────────────────────
         if (showSourceLabel) {
-            FeedCardSourceLabel(item.sourceLabel)
+            FeedCardSourceLabel(sourceLabel)
         }
         if (!item.title.isEmpty() && !item.isFiltered) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = parseHtmlTextWithTheme(item.title),
+                    text = parseEmphasizedHtmlTextWithTheme(item.title),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 2,
@@ -640,12 +452,16 @@ private fun FeedCardContent(
         Row {
             Column(modifier = Modifier.weight(2f)) {
                 Text(
-                    text = parseHtmlTextWithTheme(item.summary ?: ""),
+                    text = parseEmphasizedHtmlTextWithTheme(item.summary ?: ""),
                     fontSize = 14.sp * fontSizePercent / 100,
                     lineHeight = 14.sp * fontSizePercent / 100 * lineHeightPercent / 100,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = if (item.isFiltered) 0.dp else 3.dp),
+                )
+                PinFeedImages(
+                    images = visiblePinImages,
+                    modifier = Modifier.padding(top = 8.dp),
                 )
                 if (item.details.isNotEmpty()) {
                     Row(
@@ -659,7 +475,7 @@ private fun FeedCardContent(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.weight(1f),
                         )
-                        FeedCardMenuBox(item, showMenu, onShowMenuChange, onBlockUser, onBlockByKeywords, onBlockTopic, navigator)
+                        FeedCardMenuBox(item, showMenu, onShowMenuChange, menuItems, navigator)
                     }
                 }
             }
@@ -678,11 +494,148 @@ private fun FeedCardContent(
     }
 }
 
+internal enum class PinFeedImageLayout {
+    SINGLE,
+    MULTI_ROW,
+    NINE_GRID,
+}
+
+internal fun pinFeedImageLayout(imageCount: Int): PinFeedImageLayout? = when (imageCount) {
+    0 -> null
+    1 -> PinFeedImageLayout.SINGLE
+    in 2..4 -> PinFeedImageLayout.MULTI_ROW
+    else -> PinFeedImageLayout.NINE_GRID
+}
+
+@Composable
+private fun PinFeedImages(
+    images: List<DataHolder.Pin.ContentImage>,
+    modifier: Modifier = Modifier,
+) {
+    when (pinFeedImageLayout(images.size)) {
+        null -> return
+        PinFeedImageLayout.SINGLE -> {
+            val image = images.single()
+            AsyncImage(
+                model = image.feedThumbnailUrl,
+                contentDescription = "想法图片 1/1",
+                modifier = modifier
+                    .fillMaxWidth(1f / 3f)
+                    .aspectRatio(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .testTag("pin_feed_image_0"),
+                contentScale = ContentScale.Crop,
+            )
+        }
+        PinFeedImageLayout.MULTI_ROW -> {
+            Row(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .testTag("pin_feed_images"),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                images.forEachIndexed { index, image ->
+                    PinFeedImage(
+                        image = image,
+                        index = index,
+                        totalCount = images.size,
+                        modifier = Modifier
+                            .weight(1f)
+                            .aspectRatio(1f),
+                    )
+                }
+                repeat((3 - images.size).coerceAtLeast(0)) {
+                    Spacer(
+                        modifier = Modifier
+                            .weight(1f)
+                            .aspectRatio(1f),
+                    )
+                }
+            }
+        }
+        PinFeedImageLayout.NINE_GRID -> {
+            val visibleImages = images.take(9)
+            Column(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .testTag("pin_feed_images"),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                visibleImages.chunked(3).forEachIndexed { rowIndex, rowImages ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        rowImages.forEachIndexed { columnIndex, image ->
+                            val index = rowIndex * 3 + columnIndex
+                            PinFeedImage(
+                                image = image,
+                                index = index,
+                                totalCount = images.size,
+                                remainingCount = (images.size - 9).takeIf { index == 8 && it > 0 },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .aspectRatio(1f),
+                            )
+                        }
+                        repeat(3 - rowImages.size) {
+                            Spacer(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .aspectRatio(1f),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PinFeedImage(
+    image: DataHolder.Pin.ContentImage,
+    index: Int,
+    totalCount: Int,
+    remainingCount: Int? = null,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .testTag("pin_feed_image_$index"),
+    ) {
+        AsyncImage(
+            model = image.feedThumbnailUrl,
+            contentDescription = "想法图片 ${index + 1}/$totalCount",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+        )
+        if (remainingCount != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.55f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "+$remainingCount",
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleLarge,
+                )
+            }
+        }
+    }
+}
+
+internal val DataHolder.Pin.ContentImage.feedThumbnailUrl: String
+    get() = thumbnail.ifBlank { url }
+
 @Composable
 private fun FeedCardSourceLabel(sourceLabel: String?) {
     val label = sourceLabel?.takeIf { it.isNotBlank() } ?: return
     Text(
-        text = parseHtmlTextWithTheme(label),
+        text = label,
         style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.primary,
         maxLines = 1,

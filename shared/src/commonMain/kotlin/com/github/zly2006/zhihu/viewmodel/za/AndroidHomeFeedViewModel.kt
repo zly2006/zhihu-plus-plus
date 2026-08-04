@@ -16,14 +16,19 @@
  */
 
 package com.github.zly2006.zhihu.viewmodel.za
+
 import androidx.lifecycle.viewModelScope
+import com.github.zly2006.zhihu.data.CommonFeed
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.Person
+import com.github.zly2006.zhihu.data.ZhihuJson
+import com.github.zly2006.zhihu.data.target
+import com.github.zly2006.zhihu.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.resolveContent
-import com.github.zly2006.zhihu.shared.data.Feed
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.shared.data.target
-import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.viewmodel.ContentInteractionEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
@@ -42,12 +47,15 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 
 class AndroidHomeFeedViewModel :
     BaseFeedViewModel(),
@@ -91,6 +99,7 @@ class AndroidHomeFeedViewModel :
                 // 移除被过滤的条目，并更新已保留条目的 raw 内容
                 withContext(Dispatchers.Main) {
                     displayItems.replaceHomeFeedItemsWithFilteredResult(filterResult)
+                    latestLoadedDisplayItems.value = filterResult.filteredItems
                 }
 
                 lastPaging = if ("paging" in jojo) {
@@ -139,6 +148,7 @@ class AndroidHomeFeedViewModel :
     }
 }
 
+@OptIn(ExperimentalEncodingApi::class)
 fun parseMobileHomeFeedDisplayItem(card: JsonObject): FeedDisplayItem? {
     if (card["type"]?.jsonPrimitive?.content != "ComponentCard") {
         return null
@@ -148,19 +158,52 @@ fun parseMobileHomeFeedDisplayItem(card: JsonObject): FeedDisplayItem? {
             .jsonObject["parameter"]!!
             .jsonPrimitive.content
             .substringAfter("route_url=")
-    val routeDest = resolveContent(route.decodeURLPart()) ?: return null
+    val routeUrl = route.decodeURLPart()
+    val routeDest = resolveContent(routeUrl) ?: return null
     val children = card["children"]?.jsonArray?.map { it.jsonObject } ?: return null
-    val title = children.joStrMatch("id", "Text")["text"]!!.jsonPrimitive.content
+    val extra = if (routeDest is Pin) {
+        card["extra"]?.let { ZhihuJson.decodeJson<MobileHomeCardExtra>(it) }
+    } else {
+        null
+    }
+    val originalContent = extra
+        ?.businessExtMap
+        ?.oriContent
+        ?.takeIf { it.isNotBlank() }
+        ?.let { encoded ->
+            runCatching {
+                ZhihuJson.decodeJson<MobileHomeOriginalContent>(
+                    ZhihuJson.json.parseToJsonElement(Base64.Default.decode(encoded).decodeToString()),
+                )
+            }.getOrNull()
+        }
+    val title = if (routeDest is Pin) {
+        extra
+            ?.passthroughInfo
+            ?.content
+            ?.title
+            ?.takeIf { it.isNotBlank() }
+            ?: children
+                .firstOrNull { it["id"]?.jsonPrimitive?.content == "Text" }
+                ?.get("text")
+                ?.jsonPrimitive
+                ?.content
+                .orEmpty()
+    } else {
+        children.joStrMatch("id", "Text")["text"]!!.jsonPrimitive.content
+    }
     val summary = children.joStrMatch("id", "text_pin_summary")["text"]!!.jsonPrimitive.content
     val footer = children.filter { it["type"]!!.jsonPrimitive.content == "Line" }.getOrNull(1) ?: return null
-    val footerText = if (footer["style"]!!.jsonPrimitive.content == "LineFooterReaction_feed_v3") {
-        val footerLine = footer["elements"]!!.jsonArray.map { it.jsonObject }
-        val voteUp = footerLine.joStrMatch("reaction", "Vote")["count"]!!.jsonPrimitive.int
-        val comment = footerLine.joStrMatch("reaction", "Comment")["count"]!!.jsonPrimitive.int
-        val collect = footerLine.joStrMatch("reaction", "Collect")["count"]!!.jsonPrimitive.int
-        "$voteUp 赞同 · $comment 评论 · $collect 收藏"
+    val footerLine = footer["elements"]!!.jsonArray.map { it.jsonObject }
+    val voteUp = footerLine.firstOrNull { it["reaction"]?.jsonPrimitive?.content == "Vote" }
+    val comment = footerLine.firstOrNull { it["reaction"]?.jsonPrimitive?.content == "Comment" }
+    val collect = footerLine.firstOrNull { it["reaction"]?.jsonPrimitive?.content == "Collect" }
+    val footerText = if (voteUp != null && comment != null && collect != null) {
+        val voteUpCount = voteUp["count"]!!.jsonPrimitive.int
+        val commentCount = comment["count"]!!.jsonPrimitive.int
+        val collectCount = collect["count"]!!.jsonPrimitive.int
+        "$voteUpCount 赞同 · $commentCount 评论 · $collectCount 收藏"
     } else {
-        val footerLine = footer["elements"]!!.jsonArray.map { it.jsonObject }
         footerLine.joStrMatch("type", "Text")["text"]!!.jsonPrimitive.content
     }
     val lineAuthor =
@@ -181,6 +224,53 @@ fun parseMobileHomeFeedDisplayItem(card: JsonObject): FeedDisplayItem? {
         routeDest.title = title
         routeDest.avatarSrc = avatar
     }
+    val feed = if (routeDest is Pin) {
+        val author = extra?.passthroughInfo?.author
+        CommonFeed(
+            id = card["id"]?.jsonPrimitive?.content.orEmpty(),
+            target = Feed.PinTarget(
+                id = routeDest.id,
+                url = routeUrl,
+                author = Person(
+                    id = author?.id.orEmpty(),
+                    url = author?.url.orEmpty(),
+                    userType = "people",
+                    urlToken = author?.urlToken,
+                    name = authorName,
+                    headline = "",
+                    avatarUrl = avatar,
+                    isFollowing = author?.isFollowing == true,
+                    isFollowed = author?.isFollowed == true,
+                ),
+                content = buildList {
+                    add(DataHolder.Pin.ContentText(title = title, content = summary))
+                    originalContent
+                        ?.mediaInfo
+                        ?.images
+                        .orEmpty()
+                        .filter { it.url.isNotBlank() }
+                        .forEachIndexed { index, image ->
+                            add(
+                                DataHolder.Pin.ContentImage(
+                                    url = image.url,
+                                    thumbnail = extra
+                                        ?.businessExtMap
+                                        ?.images
+                                        ?.getOrNull(index)
+                                        ?.url
+                                        .orEmpty(),
+                                    width = image.width,
+                                    height = image.height,
+                                ),
+                            )
+                        }
+                },
+                excerptTitle = summary,
+            ),
+        )
+    } else {
+        null
+    }
 
     return FeedDisplayItem(
         navDestinationJson = routeDest.toFeedDisplayItemNavDestinationJson(),
@@ -189,9 +279,58 @@ fun parseMobileHomeFeedDisplayItem(card: JsonObject): FeedDisplayItem? {
         summary = summary,
         title = title,
         details = "$footerText · 手机版推荐",
-        feed = null,
+        feed = feed,
     )
 }
+
+@Serializable
+private data class MobileHomeCardExtra(
+    val businessExtMap: MobileHomeBusinessExtMap = MobileHomeBusinessExtMap(),
+    val passthroughInfo: MobileHomePassthroughInfo? = null,
+)
+
+@Serializable
+private data class MobileHomeBusinessExtMap(
+    val oriContent: String = "",
+    val images: List<MobileHomeImage> = emptyList(),
+)
+
+@Serializable
+private data class MobileHomePassthroughInfo(
+    val author: MobileHomeAuthor? = null,
+    val content: MobileHomeContent? = null,
+)
+
+@Serializable
+private data class MobileHomeAuthor(
+    val id: String = "",
+    val url: String = "",
+    val urlToken: String? = null,
+    val isFollowing: Boolean = false,
+    val isFollowed: Boolean = false,
+)
+
+@Serializable
+private data class MobileHomeContent(
+    val title: String? = null,
+)
+
+@Serializable
+private data class MobileHomeOriginalContent(
+    val mediaInfo: MobileHomeMediaInfo? = null,
+)
+
+@Serializable
+private data class MobileHomeMediaInfo(
+    val images: List<MobileHomeImage> = emptyList(),
+)
+
+@Serializable
+private data class MobileHomeImage(
+    val url: String = "",
+    val width: Int = 0,
+    val height: Int = 0,
+)
 
 /**
  * Find the first JsonObject in the list where the value associated with [key] matches [value].

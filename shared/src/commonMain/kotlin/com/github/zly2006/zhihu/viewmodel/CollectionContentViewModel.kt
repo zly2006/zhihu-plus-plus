@@ -24,13 +24,13 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
-import com.github.zly2006.zhihu.shared.data.Feed
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.shared.data.ZhihuPaging
-import com.github.zly2006.zhihu.shared.data.navDestination
-import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
-import com.github.zly2006.zhihu.ui.Collection
+import com.github.zly2006.zhihu.data.Collection
+import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.ZhihuJson
+import com.github.zly2006.zhihu.data.ZhihuPaging
+import com.github.zly2006.zhihu.data.navDestination
+import com.github.zly2006.zhihu.data.toFeedDisplayItemNavDestinationJson
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -88,6 +88,9 @@ class CollectionContentViewModel(
     override val initialUrl: String
         get() = "https://www.zhihu.com/api/v4/collections/$collectionId/items"
 
+    val nextPageUrl: String
+        get() = lastPaging?.next.orEmpty()
+
     override fun processResponse(environment: PaginationEnvironment, data: List<CollectionItem>, rawData: JsonArray) {
         super.processResponse(environment, data, rawData)
         displayItems.addAll(data.map { createDisplayItem(it) }) // 展示用的已flatten数据
@@ -99,6 +102,7 @@ class CollectionContentViewModel(
         details = item.content.detailsText,
         navDestinationJson = item.content.navDestination?.toFeedDisplayItemNavDestinationJson(),
         feed = null,
+        authorName = item.content.author?.name,
         avatarSrc = when (item.content) {
             is Feed.AnswerTarget -> item.content.author?.avatarUrl
             is Feed.ArticleTarget -> item.content.author.avatarUrl

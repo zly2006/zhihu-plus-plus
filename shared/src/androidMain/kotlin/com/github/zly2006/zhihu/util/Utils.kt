@@ -23,8 +23,8 @@ import androidx.browser.customtabs.CustomTabColorSchemeParams
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.core.net.toUri
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
-import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
+import com.github.zly2006.zhihu.platform.androidSettingsStore
+import com.github.zly2006.zhihu.util.signZhihuFetchRequest
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.header
 import io.ktor.client.request.post

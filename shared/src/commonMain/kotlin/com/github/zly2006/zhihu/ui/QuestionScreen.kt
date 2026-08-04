@@ -100,15 +100,15 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.fleeksoft.ksoup.Ksoup
+import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.decodeQuestionContentDetail
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.WriteAnswer
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.navDestination
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.shared.platform.rememberZhihuWebUrlOpener
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.platform.rememberZhihuWebUrlOpener
+import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
@@ -117,7 +117,7 @@ import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.ui.components.handleShareAction
-import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
+import com.github.zly2006.zhihu.ui.components.rememberShareActionExecutor
 import com.github.zly2006.zhihu.viewmodel.ContentLoadEnvironment
 import com.github.zly2006.zhihu.viewmodel.addReadHistory
 import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
@@ -167,15 +167,22 @@ private suspend fun loadQuestion(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun QuestionScreen(question: Question) {
+fun QuestionScreen(
+    question: Question,
+) {
+    val readingPlayerOverlayPadding = LocalReadingPlayerOverlayPadding.current
     val settings = rememberSettingsStore()
-    val shareRuntime = rememberShareDialogRuntime()
+    val executeShareAction = rememberShareActionExecutor()
     val openZhihuWebUrl = rememberZhihuWebUrlOpener()
     val navigator = LocalNavigator.current
-    val viewModel: QuestionFeedViewModel =
-        viewModel(key = "question_${question.questionId}") {
-            QuestionFeedViewModel(question.questionId)
-        }
+    val viewModel: QuestionFeedViewModel = viewModel(key = "question_${question.questionId}") {
+        QuestionFeedViewModel(question.questionId)
+    }
+    val answerReadingQueueSourceId = "question:${question.questionId}:answers:${viewModel.sortOrder}"
+    RegisterReadingQueueSource(
+        sourceId = answerReadingQueueSourceId,
+        items = viewModel.displayItems,
+    )
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val answerSwitchState = paginationEnvironment.articleAnswerSwitchState()
     val listState = rememberLazyListState()
@@ -240,7 +247,7 @@ fun QuestionScreen(question: Question) {
                 },
                 onShare = {
                     if (shareText != null) {
-                        handleShareAction(question, settings, shareRuntime) { showShareDialog = true }
+                        handleShareAction(question, settings, executeShareAction) { showShareDialog = true }
                     }
                 },
                 canShare = shareText != null,
@@ -257,12 +264,10 @@ fun QuestionScreen(question: Question) {
                 isEnd = { viewModel.isEnd },
                 key = { it.stableKey },
                 listState = listState,
-                modifier = Modifier.testTag(QUESTION_SCREEN_LIST_TAG),
-                contentPadding =
-                    PaddingValues(
-                        top = innerPadding.calculateTopPadding() + 8.dp,
-                        bottom = innerPadding.calculateBottomPadding(),
-                    ),
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .testTag(QUESTION_SCREEN_LIST_TAG),
+                contentPadding = PaddingValues(bottom = readingPlayerOverlayPadding),
                 footer = ProgressIndicatorFooter,
                 topContent = {
                     item {
@@ -315,11 +320,13 @@ fun QuestionScreen(question: Question) {
                     }
                 },
             ) { item ->
-                FeedCard(item = item, modifier = Modifier.testTag("question_feed_item_${item.stableKey}")) {
-                    val dest = navDestination
-                    answerSwitchState?.pendingNavigator =
-                        viewModel.createAnswerNavigatorFor(item, paginationEnvironment)
-                    dest?.let { navigator.onNavigate(it) }
+                FeedCard(
+                    item = item,
+                    readingQueueSourceId = answerReadingQueueSourceId,
+                    modifier = Modifier.testTag("question_feed_item_${item.stableKey}"),
+                ) { _, destination ->
+                    answerSwitchState?.pendingNavigator = viewModel.createAnswerNavigatorFor(item, paginationEnvironment)
+                    destination?.let(navigator.onNavigate)
                 }
             }
         }

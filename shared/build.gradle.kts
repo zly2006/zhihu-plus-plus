@@ -119,10 +119,11 @@ kotlin {
             implementation("io.ktor:ktor-serialization-kotlinx-json:3.5.0")
             implementation("com.materialkolor:material-kolor:4.1.1")
             implementation("com.fleeksoft.ksoup:ksoup:0.2.6")
-            implementation("io.github.zly2006:latex-renderer:1.4.6-zly")
-            implementation("io.github.zly2006:markdown-parser:0.0.1-alpha.11")
-            implementation("io.github.zly2006:markdown-renderer:0.0.1-alpha.11")
+            implementation("io.github.zly2006:latex-renderer:0.0.1-alpha4")
+            implementation(project(":markdown-parser"))
+            implementation(project(":markdown-renderer"))
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.8.0")
+            implementation("org.jetbrains.kotlinx:kotlinx-io-core:0.8.1")
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
             implementation("com.mikepenz:aboutlibraries-compose-m3:15.0.0")
         }
@@ -136,11 +137,13 @@ kotlin {
             implementation("androidx.browser:browser:1.10.0")
             implementation("androidx.core:core-ktx:1.19.0")
             implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.11.0")
+            implementation("androidx.media:media:1.7.1")
             implementation("androidx.webkit:webkit:1.16.0")
             implementation("com.journeyapps:zxing-android-embedded:4.3.0")
             implementation("com.google.zxing:core:3.5.4")
             implementation("io.coil-kt.coil3:coil-gif:3.5.0")
             implementation("io.coil-kt.coil3:coil-network-ktor3-android:3.5.0")
+            implementation("io.ktor:ktor-client-android:3.5.0")
             implementation("me.saket.telephoto:zoomable-image-coil3:0.19.0")
             implementation("org.jsoup:jsoup:1.22.2")
         }
@@ -150,6 +153,30 @@ kotlin {
             implementation("com.google.zxing:core:3.5.4")
             implementation("io.ktor:ktor-client-cio:3.5.0")
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.11.0")
+            // JavaFX WebView 用于桌面端内嵌风控验证页面。
+            // JavaFX 模块依赖关系：
+            //   javafx-web → javafx-controls → javafx-graphics → javafx-base
+            //              → javafx-media → javafx-graphics
+            //   javafx-swing → javafx-graphics
+            //   Platform 在 javafx-graphics 中，Scene 也在 javafx-graphics 中
+            // JavaFX POM 使用 ${javafx.platform} classifier，Gradle 不会自动解析，
+            // 需要显式指定平台 classifier 以获取含实际类的 jar（裸 jar 只含空 MANIFEST）。
+            val osName = System.getProperty("os.name").lowercase()
+            val osArch = System.getProperty("os.arch").lowercase()
+            val fxClassifier =
+                when {
+                    osName.contains("mac") && (osArch == "aarch64" || osArch == "arm64") -> "mac-aarch64"
+                    osName.contains("mac") -> "mac"
+                    osName.contains("win") -> "win"
+                    osName.contains("linux") && (osArch == "aarch64" || osArch == "arm64") -> "linux-aarch64"
+                    else -> "linux"
+                }
+            // 使用 compileOnly 避免将 JavaFX 传递给依赖 shared 的其他模块
+            compileOnly("org.openjfx:javafx-base:21.0.2:$fxClassifier")
+            compileOnly("org.openjfx:javafx-graphics:21.0.2:$fxClassifier")
+            compileOnly("org.openjfx:javafx-controls:21.0.2:$fxClassifier")
+            compileOnly("org.openjfx:javafx-web:21.0.2:$fxClassifier")
+            compileOnly("org.openjfx:javafx-swing:21.0.2:$fxClassifier")
         }
         jvmTest.dependencies {
             implementation("org.jsoup:jsoup:1.22.2")

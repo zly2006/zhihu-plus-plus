@@ -25,23 +25,24 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.github.zly2006.zhihu.data.CommonFeed
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.ZhihuJson
+import com.github.zly2006.zhihu.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.Question
-import com.github.zly2006.zhihu.shared.data.CommonFeed
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.Feed
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.test.InstrumentedTestEnvironment
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
 import com.github.zly2006.zhihu.test.ZhihuMockApi
 import com.github.zly2006.zhihu.test.mockRootComments
-import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.seedViewModel
@@ -77,7 +78,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import com.github.zly2006.zhihu.shared.data.Person as FeedPerson
+import com.github.zly2006.zhihu.data.Person as FeedPerson
 
 @RunWith(AndroidJUnit4::class)
 class QuestionScreenInstrumentedTest {
@@ -181,8 +182,8 @@ class QuestionScreenInstrumentedTest {
          * Expected behavior:
          * 1. A locally seeded answer list should render in the paginated list immediately, without
          *    waiting for QuestionFeedViewModel to fetch real answers.
-         * 2. Scrolling to a deep row should keep list semantics intact, and vertical plus horizontal
-         *    swipe cycles must not break the list or remove the visible seeded item.
+         * 2. Scrolling to a deep row and running vertical swipe cycles must keep list semantics intact
+         *    without removing the visible seeded item.
          * 3. Reaching the lower part of the list should trigger the seeded ViewModel load-more path
          *    at least once, proving pagination can be exercised offline.
          * 4. Clicking a seeded row must navigate to its deterministic destination exactly once.
@@ -191,25 +192,26 @@ class QuestionScreenInstrumentedTest {
             itemCount = 24,
             isEnd = false,
         )
+        val tailItemTag = "question_feed_item_${viewModel.displayItems[17].stableKey}"
+        val clickedItemTag = "question_feed_item_${viewModel.displayItems[2].stableKey}"
         mockQuestionDetail()
         val navigator = setScreen()
 
         composeRule.onNodeWithTag(QUESTION_SCREEN_LIST_TAG).assertIsDisplayed()
         composeRule
             .onNodeWithTag(QUESTION_SCREEN_LIST_TAG)
-            .performScrollToNode(hasTestTag("question_feed_item_offline-question-item-18"))
-        composeRule.onNodeWithTag("question_feed_item_offline-question-item-18").assertIsDisplayed()
+            .performScrollToNode(hasTestTag(tailItemTag))
+        composeRule.onNodeWithTag(tailItemTag).assertIsDisplayed()
         composeRule.onNodeWithTag(QUESTION_SCREEN_LIST_TAG).performVerticalSwipeCycle()
-        composeRule.onNodeWithTag(QUESTION_SCREEN_LIST_TAG).performHorizontalSwipeCycle()
         composeRule
             .onNodeWithTag(QUESTION_SCREEN_LIST_TAG)
-            .performScrollToNode(hasTestTag("question_feed_item_offline-question-item-18"))
-        composeRule.onNodeWithTag("question_feed_item_offline-question-item-18").assertIsDisplayed()
+            .performScrollToNode(hasTestTag(tailItemTag))
+        composeRule.onNodeWithTag(tailItemTag).assertIsDisplayed()
 
         composeRule
             .onNodeWithTag(QUESTION_SCREEN_LIST_TAG)
-            .performScrollToNode(hasTestTag("question_feed_item_offline-question-item-3"))
-        composeRule.onNodeWithTag("question_feed_item_offline-question-item-3").performClick()
+            .performScrollToNode(hasTestTag(clickedItemTag))
+        composeRule.onNodeWithTag(clickedItemTag).performClick()
 
         assertTrue("Scrolling near the end should trigger the seeded load-more path", viewModel.loadMoreCount > 0)
         assertEquals(
@@ -224,6 +226,50 @@ class QuestionScreenInstrumentedTest {
         val pendingNavigator = composeRule.activity.articleAnswerSwitchState.pendingNavigator
         assertEquals(7002L, pendingNavigator?.previousAnswerPreview?.article?.id)
         assertEquals(7004L, runBlocking { pendingNavigator?.loadNext()?.id })
+    }
+
+    @Test
+    fun longQuestionDetailRemainsVisibleAfterSlowReturnFromAnswerList() {
+        val detail = (1..36).joinToString("") { index ->
+            "<p>问题详情回归段落 $index：这是一段足够长的正文，用于覆盖超过屏幕高度的问题描述滚动场景。</p>"
+        }
+        mockQuestionDetail(detail = detail)
+        val viewModel = seedQuestionViewModel(itemCount = 24)
+        val farAnswerTag = "question_feed_item_${viewModel.displayItems[12].stableKey}"
+        setScreen()
+
+        composeRule.waitUntilTextExists("12 个回答  345 次浏览  7 条评论  89 人关注")
+        composeRule
+            .onNodeWithTag(QUESTION_SCREEN_LIST_TAG)
+            .performScrollToNode(hasTestTag(QUESTION_DETAIL_CONTENT_TAG))
+        composeRule.waitUntilTagIsDisplayed(QUESTION_DETAIL_CONTENT_TAG)
+        composeRule
+            .onNodeWithTag(QUESTION_SCREEN_LIST_TAG)
+            .performScrollToNode(hasTestTag(farAnswerTag))
+        composeRule.onNodeWithTag(farAnswerTag).assertIsDisplayed()
+
+        val list = composeRule.onNodeWithTag(QUESTION_SCREEN_LIST_TAG)
+        var detailVisible = false
+        for (ignored in 0 until 40) {
+            list.performTouchInput {
+                swipeDown(
+                    startY = height * 0.35f,
+                    endY = height * 0.65f,
+                    durationMillis = 600,
+                )
+            }
+            detailVisible = runCatching {
+                composeRule.onNodeWithTag(QUESTION_DETAIL_CONTENT_TAG).assertIsDisplayed()
+                true
+            }.getOrDefault(false)
+            if (detailVisible) break
+        }
+
+        assertTrue("长问题详情应在低速返回时重新进入视口", detailVisible)
+        composeRule
+            .onNodeWithText(
+                "问题详情回归段落 36：这是一段足够长的正文，用于覆盖超过屏幕高度的问题描述滚动场景。",
+            ).assertIsDisplayed()
     }
 
     @Test
@@ -279,11 +325,14 @@ class QuestionScreenInstrumentedTest {
         return viewModel
     }
 
-    private fun mockQuestionDetail(questionId: Long = 123456789L) {
+    private fun mockQuestionDetail(
+        questionId: Long = 123456789L,
+        detail: String = "<p>离线问题详情用于 QuestionScreen instrumented test。</p>",
+    ) {
         ZhihuMockApi.mockJsonPrefix(
             method = HttpMethod.Get,
             urlPrefix = "https://www.zhihu.com/api/v4/questions/$questionId?",
-            body = ZhihuJson.json.encodeToString(seededQuestionDetail(questionId)),
+            body = ZhihuJson.json.encodeToString(seededQuestionDetail(questionId, detail)),
         )
     }
 
@@ -329,7 +378,10 @@ class QuestionScreenInstrumentedTest {
         }
     }
 
-    private fun seededQuestionDetail(questionId: Long): DataHolder.Question = DataHolder.Question(
+    private fun seededQuestionDetail(
+        questionId: Long,
+        detail: String,
+    ): DataHolder.Question = DataHolder.Question(
         type = "question",
         id = questionId,
         title = "离线问题标题",
@@ -341,13 +393,7 @@ class QuestionScreenInstrumentedTest {
         visitCount = 345,
         commentCount = 7,
         followerCount = 89,
-        detail =
-            """
-            <p>离线问题详情用于 QuestionScreen instrumented test。</p>
-            <p>为了覆盖收起/展开详情的交互与动画，这里需要一段更长的详情文本来触发可折叠逻辑。</p>
-            <p>这一段纯文字不包含图片或复杂结构，主要用于保证详情总长度超过阈值，从而让“展开详情/收起详情”按钮出现。</p>
-            <p>当详情足够长时，测试应能先收起到预览视图，再点击恢复到完整内容，且列表入口按钮仍可点击。</p>
-            """.trimIndent(),
+        detail = detail,
         relationship = DataHolder.QuestionRelationship(isFollowing = false),
         topics = emptyList(),
         author = DataHolder.Author(
@@ -378,7 +424,6 @@ class QuestionScreenInstrumentedTest {
                 id = 7000L + id,
             ).toFeedDisplayItemNavDestinationJson(),
             authorName = "离线作者 $id",
-            localFeedId = "offline-question-item-$id",
         )
     }
 

@@ -64,20 +64,27 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Search
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.shared.platform.SettingsStore
-import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.platform.SettingsStore
+import com.github.zly2006.zhihu.platform.UserMessageDuration
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
+import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockConfirmDialog
+import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockRequest
+import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockType
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
@@ -90,6 +97,7 @@ import com.github.zly2006.zhihu.viewmodel.feed.SearchViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.ZHIHU_HOT_SEARCH_URL
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.yield
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonArray
@@ -135,13 +143,32 @@ fun SearchScreen(
     val userMessages = rememberUserMessageSink()
     val settings = rememberSettingsStore()
     val viewModel = viewModel { SearchViewModel(search.query, search.restrictedMemberHashId) }
+    val readingQueueSourceId = buildString {
+        append("search:")
+        append(search.restrictedMemberHashId)
+        append(':')
+        append(viewModel.sortOption.name)
+        append(':')
+        append(viewModel.contentType.name)
+        append(':')
+        append(viewModel.timeRange.name)
+        append(':')
+        append(search.query)
+    }
+    RegisterReadingQueueSource(
+        sourceId = readingQueueSourceId,
+        items = viewModel.displayItems,
+    )
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
+    val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    val searchInputFocusRequester = remember { FocusRequester() }
     var searchText by remember { mutableStateOf(search.query) }
     val coroutineScope = rememberCoroutineScope()
     val isMemberSearch = search.isRestrictedToMember
     val memberSearchName = search.restrictedMemberName.ifBlank { "TA" }
     val searchPlaceholder = if (isMemberSearch) "搜索 $memberSearchName 的创作" else "搜索内容"
+    val shouldAutoFocusSearchInput = search.query.isBlank()
 
     val showHotSearch = remember { mutableStateOf(!isMemberSearch && settings.getBoolean("showSearchHotSearch", true)) }
     val hotSearchItems = remember(testHotSearchQueries) {
@@ -152,6 +179,7 @@ fun SearchScreen(
     var hotSearchMoreMenuExpanded by remember { mutableStateOf(false) }
     var historyMoreMenuExpanded by remember { mutableStateOf(false) }
     var filterMenuExpanded by remember { mutableStateOf(false) }
+    var feedAuthorBlockRequest by remember { mutableStateOf<FeedAuthorBlockRequest?>(null) }
     val useTestHotSearchQueries = testHotSearchQueries != null
     val showSearchHistory = remember { mutableStateOf(!isMemberSearch && settings.getBoolean("showSearchHistory", true)) }
     val searchHistoryItems = remember {
@@ -165,6 +193,8 @@ fun SearchScreen(
     fun submitSearch(query: String) {
         val trimmedQuery = query.trim()
         if (trimmedQuery.isEmpty()) return
+        focusManager.clearFocus(force = true)
+        keyboardController?.hide()
         if (showSearchHistory.value) {
             searchHistoryItems.remove(trimmedQuery)
             searchHistoryItems.add(0, trimmedQuery)
@@ -243,6 +273,15 @@ fun SearchScreen(
         }
     }
 
+    LaunchedEffect(shouldAutoFocusSearchInput) {
+        if (shouldAutoFocusSearchInput) {
+            // 等待导航切换后的第一帧，让搜索框以“进入即输入”的状态出现，而不是先切页再补抢焦点。
+            yield()
+            searchInputFocusRequester.requestFocus()
+            keyboardController?.show()
+        }
+    }
+
     LaunchedEffect(viewModel.errorMessage) {
         viewModel.errorMessage?.let {
             userMessages.showMessage(it, UserMessageDuration.Long)
@@ -283,6 +322,7 @@ fun SearchScreen(
                                     onValueChange = { searchText = it },
                                     modifier = Modifier
                                         .weight(1f)
+                                        .focusRequester(searchInputFocusRequester)
                                         .testTag("search_input"),
                                     textStyle = MaterialTheme.typography.bodyLarge.copy(
                                         color = MaterialTheme.colorScheme.onSurface,
@@ -541,7 +581,25 @@ fun SearchScreen(
                         },
                         footer = ProgressIndicatorFooter,
                     ) { item ->
-                        FeedCard(item)
+                        FeedCard(
+                            item = item,
+                            readingQueueSourceId = readingQueueSourceId,
+                            menuItems = { dismissMenu ->
+                                DropdownMenuItem(
+                                    text = { Text("屏蔽用户") },
+                                    onClick = {
+                                        dismissMenu()
+                                        viewModel.handleBlockUser(paginationEnvironment, userMessages, item) { authorInfo ->
+                                            feedAuthorBlockRequest = FeedAuthorBlockRequest(
+                                                FeedAuthorBlockType.CONTENT_AUTHOR,
+                                                authorInfo.first,
+                                                authorInfo.second,
+                                            )
+                                        }
+                                    },
+                                )
+                            },
+                        )
                     }
 
                     val showRefreshFab = remember { settings.getBoolean("showRefreshFab", true) }
@@ -562,6 +620,16 @@ fun SearchScreen(
             }
         }
     }
+
+    FeedAuthorBlockConfirmDialog(
+        request = feedAuthorBlockRequest,
+        displayItems = viewModel.displayItems,
+        onDismiss = { feedAuthorBlockRequest = null },
+        onConfirm = {
+            viewModel.refresh(paginationEnvironment)
+            feedAuthorBlockRequest = null
+        },
+    )
 }
 
 @Composable

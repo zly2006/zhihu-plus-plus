@@ -69,6 +69,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import coil3.compose.AsyncImage
 import com.fleeksoft.ksoup.Ksoup
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.OfficialBadge
+import com.github.zly2006.zhihu.data.ZhihuJson
+import com.github.zly2006.zhihu.data.officialBadge
+import com.github.zly2006.zhihu.data.officialBadgeDetails
+import com.github.zly2006.zhihu.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionContent
@@ -76,20 +83,17 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.OfficialBadge
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.shared.data.officialBadge
-import com.github.zly2006.zhihu.shared.data.officialBadgeDetails
-import com.github.zly2006.zhihu.shared.platform.rememberImagePreviewOpener
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.shared.platform.rememberZhihuWebUrlOpener
-import com.github.zly2006.zhihu.shared.util.raiseForStatus
+import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
+import com.github.zly2006.zhihu.platform.rememberImagePreviewOpener
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.platform.rememberZhihuWebUrlOpener
+import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
+import com.github.zly2006.zhihu.util.Log
+import com.github.zly2006.zhihu.util.raiseForStatus
 import com.github.zly2006.zhihu.viewmodel.ContentBlocklistEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
@@ -101,6 +105,7 @@ import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.postSigned
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import io.ktor.client.call.body
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
@@ -335,6 +340,7 @@ class PersonViewModel(
     var headline by mutableStateOf("")
     var officialBadge by mutableStateOf<OfficialBadge?>(null)
     var officialBadgeDetails by mutableStateOf<List<OfficialBadge>>(emptyList())
+    var githubSocial by mutableStateOf<GithubSocialUiState?>(null)
     var followerCount by mutableIntStateOf(0)
     var followingCount by mutableIntStateOf(0)
     var answerCount by mutableIntStateOf(0)
@@ -342,6 +348,7 @@ class PersonViewModel(
     var isFollowing by mutableStateOf(false)
     var isBlocking by mutableStateOf(false)
     var isBlockedInRecommendations by mutableStateOf(false)
+    var isBlockedAsQuestionAuthor by mutableStateOf(false)
     var memberHashId by mutableStateOf(person.id)
 
     // 只实现已有数据类型的 ViewModel
@@ -409,6 +416,21 @@ class PersonViewModel(
         }
     }
 
+    suspend fun toggleQuestionAuthorBlock(environment: ContentBlocklistEnvironment) {
+        if (isBlockedAsQuestionAuthor) {
+            environment.removeBlockedQuestionAuthor(person.id)
+            isBlockedAsQuestionAuthor = false
+        } else {
+            environment.addBlockedQuestionAuthor(
+                userId = person.id,
+                userName = name,
+                urlToken = person.urlToken,
+                avatarUrl = avatar,
+            )
+            isBlockedAsQuestionAuthor = true
+        }
+    }
+
     suspend fun load(environment: ProfileLoadEnvironment) {
         environment.addReadHistory(person.id, "profile")
 
@@ -438,12 +460,76 @@ class PersonViewModel(
         this.isFollowing = loadedPerson.isFollowing
         this.isBlocking = loadedPerson.isBlocking
         this.isBlockedInRecommendations = environment.isUserBlocked(loadedPerson.id)
+        this.isBlockedAsQuestionAuthor = environment.isQuestionAuthorBlocked(loadedPerson.id)
         this.memberHashId = loadedPerson.id
         this.person.id = loadedPerson.id
         if (urlToken != null) {
             this.person.urlToken = urlToken
         }
+
+        this.githubSocial = try {
+            environment
+                .fetchJson("${peopleProfileUrl(person)}/profile/detail", "")
+                ?.let { ZhihuJson.decodeJson<DataHolder.People>(it).githubSocialUiState() }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            Log.e("PersonViewModel", "Failed to load optional social media profile detail", error)
+            null
+        }
     }
+}
+
+private fun DataHolder.Answer.toPeopleAnswerDisplayItem(): FeedDisplayItem {
+    val destination = Article(
+        type = ArticleType.Answer,
+        id = id,
+        title = question.title,
+        authorName = author.name,
+        authorBio = author.headline,
+        avatarSrc = author.avatarUrl,
+        excerpt = excerpt,
+    )
+    return FeedDisplayItem(
+        title = question.title,
+        summary = excerpt,
+        details = "回答 · $voteupCount 赞同 · $commentCount 评论",
+        feed = null,
+        navDestinationJson = destination.toFeedDisplayItemNavDestinationJson(),
+        raw = this,
+    )
+}
+
+private fun DataHolder.Article.toPeopleArticleDisplayItem(): FeedDisplayItem {
+    val destination = Article(
+        type = ArticleType.Article,
+        id = id,
+        title = title,
+        authorName = author.name,
+        authorBio = author.headline,
+        avatarSrc = author.avatarUrl,
+        excerpt = excerpt,
+    )
+    return FeedDisplayItem(
+        title = title,
+        summary = excerpt,
+        details = "文章 · $voteupCount 赞同 · $commentCount 评论",
+        feed = null,
+        navDestinationJson = destination.toFeedDisplayItemNavDestinationJson(),
+        raw = this,
+    )
+}
+
+private fun DataHolder.Pin.toPeoplePinDisplayItem(): FeedDisplayItem? {
+    val pinId = id.toLongOrNull() ?: return null
+    return FeedDisplayItem(
+        title = Ksoup.parse(excerptTitle).text(),
+        summary = null,
+        details = "想法 · $likeCount 赞 · $commentCount 评论",
+        feed = null,
+        navDestinationJson = Pin(id = pinId, authorName = author.name).toFeedDisplayItemNavDestinationJson(),
+        raw = this,
+    )
 }
 
 private val PEOPLE_SCREEN_TITLES = listOf(
@@ -489,7 +575,9 @@ const val PEOPLE_SCREEN_FOLLOWING_COUNT_TAG = "people_screen_stat_following"
 const val PEOPLE_SCREEN_FOLLOW_BUTTON_TAG = "people_screen_follow_button"
 const val PEOPLE_SCREEN_BLOCK_BUTTON_TAG = "people_screen_block_button"
 const val PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG = "people_screen_recommendation_block_button"
+const val PEOPLE_SCREEN_QUESTION_AUTHOR_BLOCK_BUTTON_TAG = "people_screen_question_author_block_button"
 const val PEOPLE_SCREEN_SEARCH_BUTTON_TAG = "people_screen_search_button"
+const val PEOPLE_SCREEN_GITHUB_STARS_TAG = "people_screen_github_stars"
 const val PEOPLE_SCREEN_ANSWER_SORT_HOT_TAG = "people_screen_answer_sort_voteups"
 const val PEOPLE_SCREEN_ANSWER_SORT_TIME_TAG = "people_screen_answer_sort_created"
 const val PEOPLE_SCREEN_ARTICLE_SORT_HOT_TAG = "people_screen_article_sort_voteups"
@@ -504,6 +592,44 @@ private fun peopleScreenInitialPage(person: Person): Int {
 internal fun peopleProfileUrl(person: Person): String {
     val identifier = person.urlToken.takeIf { it.isNotBlank() } ?: person.id
     return "https://api.zhihu.com/people/$identifier"
+}
+
+data class GithubSocialUiState(
+    val title: String,
+    val starCount: String,
+    val profileUrl: String,
+    val iconUrl: String? = null,
+)
+
+internal fun DataHolder.People.githubSocialUiState(): GithubSocialUiState? = socialMedias.firstNotNullOfOrNull { media ->
+    if (!media.title.startsWith("GitHub", ignoreCase = true)) {
+        return@firstNotNullOfOrNull null
+    }
+    val starCount = media.modules
+        .firstOrNull { it.title.equals("stars", ignoreCase = true) }
+        ?.value
+        ?.takeIf { it.isNotBlank() }
+        ?: return@firstNotNullOfOrNull null
+    val profileLink = media.link.takeIf { it.isNotBlank() }
+        ?: return@firstNotNullOfOrNull null
+    val profileUrl = if (profileLink.startsWith("zhihu://", ignoreCase = true)) {
+        // link 是知乎内部 AppView，GitHub 用户名来自同一条社交资料的标题。
+        val username = media.title
+            .substringAfter('·', missingDelimiterValue = "")
+            .trim()
+            .takeIf { it.isNotBlank() }
+            ?: return@firstNotNullOfOrNull null
+        "https://github.com/$username"
+    } else {
+        profileLink
+    }
+
+    GithubSocialUiState(
+        title = media.title,
+        starCount = starCount,
+        profileUrl = profileUrl,
+        iconUrl = media.icon.takeIf { it.isNotBlank() },
+    )
 }
 
 /**
@@ -526,6 +652,31 @@ fun PeopleScreen(
         initialPage = peopleScreenInitialPage(person),
         pageCount = { PEOPLE_SCREEN_TITLES.size },
     )
+    val readingQueueSourceId = when (pagerState.currentPage) {
+        0 -> "people:${person.userTokenOrId}:answers:${viewModel.answersFeedModel.sortBy}"
+        1 -> "people:${person.userTokenOrId}:articles:${viewModel.articlesFeedModel.sortBy}"
+        2 -> "people:${person.userTokenOrId}:activities:${viewModel.activitiesFeedModel.sort}"
+        5 -> "people:${person.userTokenOrId}:pins"
+        else -> null
+    }
+    when (pagerState.currentPage) {
+        0 -> RegisterReadingQueueSource(
+            sourceId = requireNotNull(readingQueueSourceId),
+            items = viewModel.answersFeedModel.allData.map(DataHolder.Answer::toPeopleAnswerDisplayItem),
+        )
+        1 -> RegisterReadingQueueSource(
+            sourceId = requireNotNull(readingQueueSourceId),
+            items = viewModel.articlesFeedModel.allData.map(DataHolder.Article::toPeopleArticleDisplayItem),
+        )
+        2 -> RegisterReadingQueueSource(
+            sourceId = requireNotNull(readingQueueSourceId),
+            items = viewModel.activitiesFeedModel.displayItems,
+        )
+        5 -> RegisterReadingQueueSource(
+            sourceId = requireNotNull(readingQueueSourceId),
+            items = viewModel.pinsFeedModel.allData.mapNotNull(DataHolder.Pin::toPeoplePinDisplayItem),
+        )
+    }
 
     LaunchedEffect(viewModel) {
         try {
@@ -551,14 +702,6 @@ fun PeopleScreen(
     }
 
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-
-    fun updateAnswersSort(newSort: String) {
-        viewModel.answersFeedModel.changeSortBy(newSort, paginationEnvironment)
-    }
-
-    fun updateArticlesSort(newSort: String) {
-        viewModel.articlesFeedModel.changeSortBy(newSort, paginationEnvironment)
-    }
 
     Scaffold(
         modifier = Modifier
@@ -603,13 +746,23 @@ fun PeopleScreen(
                                     }
                                 }
                             },
+                            onQuestionAuthorBlockToggle = {
+                                coroutineScope.launch {
+                                    try {
+                                        viewModel.toggleQuestionAuthorBlock(paginationEnvironment)
+                                        userMessages.showShortMessage(if (viewModel.isBlockedAsQuestionAuthor) "已屏蔽其提问" else "已取消屏蔽其提问")
+                                    } catch (e: Exception) {
+                                        userMessages.showShortMessage("操作失败: ${e.message}")
+                                    }
+                                }
+                            },
                         )
                     },
                     colors = TopAppBarDefaults.topAppBarColors().copy(
                         scrolledContainerColor = MaterialTheme.colorScheme.surface,
                     ),
                     scrollBehavior = scrollBehavior,
-                    expandedHeight = 200.dp,
+                    expandedHeight = 240.dp,
                 )
                 if (viewModel.memberHashId.isNotBlank() && viewModel.memberHashId != Person.EMPTY_ID) {
                     IconButton(
@@ -677,7 +830,7 @@ fun PeopleScreen(
                         ) {
                             SortBar(
                                 currentSort = viewModel.answersFeedModel.sortBy,
-                                onSortChange = ::updateAnswersSort,
+                                onSortChange = { viewModel.answersFeedModel.changeSortBy(it, paginationEnvironment) },
                                 hotTag = PEOPLE_SCREEN_ANSWER_SORT_HOT_TAG,
                                 timeTag = PEOPLE_SCREEN_ANSWER_SORT_TIME_TAG,
                             )
@@ -692,23 +845,12 @@ fun PeopleScreen(
                                 key = { it.id },
                             ) {
                                 FeedCard(
-                                    FeedDisplayItem(
-                                        title = it.question.title,
-                                        summary = it.excerpt,
-                                        details = "回答 · ${it.voteupCount} 赞同 · ${it.commentCount} 评论",
-                                        feed = null,
-                                    ),
+                                    it.toPeopleAnswerDisplayItem(),
+                                    readingQueueSourceId = readingQueueSourceId,
                                     modifier = Modifier.testTag("people_screen_answer_item_${it.id}"),
                                     horizontalPadding = 4.dp,
-                                ) {
-                                    navigator.onNavigate(
-                                        Article(
-                                            type = ArticleType.Answer,
-                                            id = it.id,
-                                            title = it.question.title,
-                                            excerpt = it.excerpt,
-                                        ),
-                                    )
+                                ) { _, destination ->
+                                    destination?.let(navigator.onNavigate)
                                 }
                             }
                         }
@@ -723,7 +865,7 @@ fun PeopleScreen(
                         ) {
                             SortBar(
                                 currentSort = viewModel.articlesFeedModel.sortBy,
-                                onSortChange = ::updateArticlesSort,
+                                onSortChange = { viewModel.articlesFeedModel.changeSortBy(it, paginationEnvironment) },
                                 hotTag = PEOPLE_SCREEN_ARTICLE_SORT_HOT_TAG,
                                 timeTag = PEOPLE_SCREEN_ARTICLE_SORT_TIME_TAG,
                             )
@@ -738,23 +880,12 @@ fun PeopleScreen(
                                 key = { it.id },
                             ) {
                                 FeedCard(
-                                    FeedDisplayItem(
-                                        title = it.title,
-                                        summary = it.excerpt,
-                                        details = "文章 · ${it.voteupCount} 赞同 · ${it.commentCount} 评论",
-                                        feed = null,
-                                    ),
+                                    it.toPeopleArticleDisplayItem(),
+                                    readingQueueSourceId = readingQueueSourceId,
                                     modifier = Modifier.testTag("people_screen_article_item_${it.id}"),
                                     horizontalPadding = 4.dp,
-                                ) {
-                                    navigator.onNavigate(
-                                        Article(
-                                            type = ArticleType.Article,
-                                            id = it.id,
-                                            title = it.title,
-                                            excerpt = it.excerpt,
-                                        ),
-                                    )
+                                ) { _, destination ->
+                                    destination?.let(navigator.onNavigate)
                                 }
                             }
                         }
@@ -773,7 +904,8 @@ fun PeopleScreen(
                         ) {
                             FeedCard(
                                 it,
-                                modifier = Modifier.testTag("people_screen_activity_item_${it.localFeedId ?: it.title}"),
+                                readingQueueSourceId = readingQueueSourceId,
+                                modifier = Modifier.testTag("people_screen_activity_item_${it.stableKey}"),
                                 horizontalPadding = 4.dp,
                             )
                         }
@@ -832,6 +964,7 @@ fun PeopleScreen(
                             PinListItem(
                                 pin = pin,
                                 itemTag = "people_screen_pin_item_${pin.id}",
+                                readingQueueSourceId = readingQueueSourceId,
                             )
                         }
                     }
@@ -1078,6 +1211,7 @@ private fun QuestionListItem(
 private fun PinListItem(
     pin: DataHolder.Pin,
     itemTag: String? = null,
+    readingQueueSourceId: String? = null,
 ) {
     val navigator = LocalNavigator.current
     Column(
@@ -1085,7 +1219,13 @@ private fun PinListItem(
             .fillMaxWidth()
             .then(if (itemTag != null) Modifier.testTag(itemTag) else Modifier)
             .clickable {
-                navigator.onNavigate(Pin(pin.id.toLong()))
+                navigator.onNavigate(
+                    Pin(
+                        id = pin.id.toLong(),
+                        authorName = pin.author.name,
+                        readingQueueSourceId = readingQueueSourceId,
+                    ),
+                )
             }.padding(vertical = 8.dp, horizontal = 4.dp),
     ) {
         val text = remember { Ksoup.parse(pin.excerptTitle).text() }
@@ -1403,7 +1543,7 @@ private fun SortBar(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
 private fun UserInfoHeader(
     viewModel: PersonViewModel,
@@ -1412,9 +1552,11 @@ private fun UserInfoHeader(
     onFollowToggle: () -> Unit,
     onBlockToggle: () -> Unit,
     onRecommendationBlockToggle: () -> Unit,
+    onQuestionAuthorBlockToggle: () -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val openImagePreview = rememberImagePreviewOpener()
+    val openExternalUrl = rememberExternalUrlOpener()
     Column(
         modifier = modifier.padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1463,6 +1605,38 @@ private fun UserInfoHeader(
                     badges = viewModel.officialBadgeDetails,
                     modifier = Modifier.padding(top = 6.dp),
                 )
+                viewModel.githubSocial?.let { githubSocial ->
+                    Row(
+                        modifier = Modifier
+                            .padding(top = 4.dp)
+                            .testTag(PEOPLE_SCREEN_GITHUB_STARS_TAG)
+                            .clickable { openExternalUrl(githubSocial.profileUrl) },
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        githubSocial.iconUrl?.let { iconUrl ->
+                            AsyncImage(
+                                model = iconUrl,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
+                        Text(
+                            text = githubSocial.title,
+                            modifier = Modifier.weight(1f, fill = false),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = "· ${githubSocial.starCount} stars",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                        )
+                    }
+                }
             }
         }
         Row(
@@ -1492,11 +1666,12 @@ private fun UserInfoHeader(
                 }
             }, tag = PEOPLE_SCREEN_FOLLOWING_COUNT_TAG)
         }
-        Row(
+        FlowRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             OutlinedButton(
                 onClick = onFollowToggle,
@@ -1515,6 +1690,12 @@ private fun UserInfoHeader(
                 modifier = Modifier.testTag(PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG),
             ) {
                 Text(if (viewModel.isBlockedInRecommendations) "取消屏蔽推荐" else "屏蔽推荐")
+            }
+            OutlinedButton(
+                onClick = onQuestionAuthorBlockToggle,
+                modifier = Modifier.testTag(PEOPLE_SCREEN_QUESTION_AUTHOR_BLOCK_BUTTON_TAG),
+            ) {
+                Text(if (viewModel.isBlockedAsQuestionAuthor) "取消屏蔽其提问" else "屏蔽其提问")
             }
         }
     }

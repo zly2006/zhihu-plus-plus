@@ -25,6 +25,7 @@ import androidx.compose.runtime.compositionLocalOf
 data class Navigator(
     val onNavigate: (NavDestination) -> Unit,
     val onNavigateBack: () -> Unit,
+    val onNavigateTopLevel: (TopLevelDestination) -> Unit = {},
 )
 
 /**

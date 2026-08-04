@@ -17,7 +17,7 @@
 
 package com.github.zly2006.zhihu.editor
 
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
+import com.github.zly2006.zhihu.data.ZhihuJson
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject

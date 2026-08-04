@@ -18,11 +18,12 @@
 package com.github.zly2006.zhihu.viewmodel.comment
 
 import androidx.lifecycle.viewModelScope
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.navigation.CommentHolder
 import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
+import com.github.zly2006.zhihu.viewmodel.CommentItem
+import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.comment.RootCommentViewModel.Companion.submitCommentUrl
 import com.github.zly2006.zhihu.viewmodel.postSigned
@@ -32,6 +33,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -41,11 +43,26 @@ import kotlinx.serialization.json.put
  */
 class ChildCommentViewModel(
     content: NavDestination,
+    private val initialComment: DataHolder.Comment? = null,
 ) : BaseCommentViewModel(content) {
+    private var initialCommentLoaded = false
+
     override val initialUrl: String = when (content) {
         is CommentHolder -> "https://www.zhihu.com/api/v4/comment_v5/comment/${content.commentId}/child_comment"
 
         else -> ""
+    }
+
+    override suspend fun fetchFeeds(environment: PaginationEnvironment) {
+        if (!initialCommentLoaded && initialComment != null) {
+            initialCommentLoaded = true
+            processResponse(
+                environment = environment,
+                data = listOf(initialComment),
+                rawData = JsonArray(emptyList()),
+            )
+        }
+        super.fetchFeeds(environment)
     }
 
     override fun createCommentItem(comment: DataHolder.Comment, article: NavDestination): CommentItem {

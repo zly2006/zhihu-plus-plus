@@ -21,6 +21,8 @@ import android.content.Context
 import android.util.Base64
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -58,6 +60,11 @@ object EmojiManager {
 
     // emoji文件名到本地缓存路径的映射
     private val emojiCache = mutableMapOf<String, String>()
+
+    private val mutablePlaceholders = MutableStateFlow<List<String>>(emptyList())
+
+    /** 当前已经缓存、可以用于输入和展示的表情占位符。 */
+    val placeholders = mutablePlaceholders.asStateFlow()
 
     private var isInitialized = false
 
@@ -165,6 +172,7 @@ object EmojiManager {
 
             emojiMapping.clear()
             emojiMapping.putAll(newMapping)
+            mutablePlaceholders.value = newMapping.keys.toList()
 
             Log.i(TAG, "Downloaded and cached $downloadCount emojis")
         } finally {
@@ -190,6 +198,7 @@ object EmojiManager {
                 emojiCache[fileName] = file.absolutePath
             }
         }
+        mutablePlaceholders.value = mapping.filterValues(emojiCache::containsKey).keys.toList()
     }
 
     /**

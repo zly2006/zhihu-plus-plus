@@ -40,6 +40,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.ArrowOutward
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
@@ -51,6 +52,7 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SwitchAccount
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -73,7 +75,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -83,12 +84,11 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.Person
-import com.github.zly2006.zhihu.shared.platform.rememberPlainTextClipboard
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberSystemUrlOpener
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.shared.util.Log
-import com.github.zly2006.zhihu.ui.components.PageTurnScrollEffect
+import com.github.zly2006.zhihu.platform.rememberPlainTextClipboard
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberSystemUrlOpener
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
@@ -97,6 +97,8 @@ import com.github.zly2006.zhihu.ui.subscreens.defaultBottomBarSelectionKeys
 import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarSelection
 import com.github.zly2006.zhihu.ui.subscreens.rememberSystemUpdateRuntime
 import com.github.zly2006.zhihu.ui.subscreens.shouldShowAccountHistoryShortcut
+import com.github.zly2006.zhihu.util.Log
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import org.jetbrains.compose.resources.painterResource
 import zhihu.shared.generated.resources.Res
 import zhihu.shared.generated.resources.ic_github_24dp
@@ -112,10 +114,12 @@ const val ACCOUNT_SETTINGS_SHORTCUT_SUBSCRIPTIONS_TAG = "accountSettings.shortcu
 const val ACCOUNT_SETTINGS_SHORTCUT_NOTIFICATION_TAG = "accountSettings.shortcutNotification"
 const val ACCOUNT_SETTINGS_SHORTCUT_HISTORY_TAG = "accountSettings.shortcutHistory"
 const val ACCOUNT_SETTINGS_APPEARANCE_TAG = "accountSettings.appearance"
+const val ACCOUNT_SETTINGS_READING_TAG = "accountSettings.reading"
 const val ACCOUNT_SETTINGS_RECOMMEND_TAG = "accountSettings.recommend"
 const val ACCOUNT_SETTINGS_SYSTEM_TAG = "accountSettings.system"
 const val ACCOUNT_SETTINGS_DEVELOPER_TAG = "accountSettings.developer"
 const val ACCOUNT_SETTINGS_LICENSES_TAG = "accountSettings.licenses"
+const val ACCOUNT_SETTINGS_IDENTITY_MANAGEMENT_TAG = "accountSettings.identityManagement"
 
 /**
  * 账号与设置入口页。
@@ -137,18 +141,16 @@ fun AccountSettingScreen(
     testAccountData: AccountSettingsAccountState? = null,
 ) {
     val navigator = LocalNavigator.current
+    val environment = rememberPaginationEnvironment(allowGuestAccess = false)
     val accountState = rememberAccountSettingsAccountState()
-    val refreshProfile = rememberAccountProfileRefresher()
-    val requestLogin = rememberAccountLoginRequester()
     val requestQrLoginScan = rememberAccountQrLoginRequester()
-    val logout = rememberAccountLogoutAction()
-    val selectMainTab = rememberMainTabSelector()
     val settings = rememberSettingsStore()
     val copyPlainText = rememberPlainTextClipboard()
     val openSystemUrl = rememberSystemUrlOpener()
     val userMessages = rememberUserMessageSink()
     val updateRuntime = rememberSystemUpdateRuntime()
     val versionInfo = rememberAppVersionInfo()
+    val readingPlayerSupported = rememberReadingPlayerController().isSupported
 
     val useDuo3HomeAccount = remember { settings.getBoolean("duo3_home_account", false) }
     val selectedBottomBarItemKeys = remember {
@@ -174,22 +176,18 @@ fun AccountSettingScreen(
         modifier = Modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
     ) { padding ->
-        val scrollState = rememberScrollState()
-        var viewportHeight by remember { mutableIntStateOf(0) }
-        PageTurnScrollEffect(scrollState, viewportHeight)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(innerPadding)
                 .testTag(ACCOUNT_SETTINGS_SCROLL_TAG)
-                .onSizeChanged { viewportHeight = it.height }
-                .verticalScroll(scrollState)
+                .verticalScroll(rememberScrollState())
                 .padding(padding),
         ) {
             LaunchedEffect(data.login, refreshAccountProfileOnEnter) {
                 if (refreshAccountProfileOnEnter && data.login) {
                     try {
-                        refreshProfile()
+                        environment.refreshAccountProfile()
                     } catch (e: Exception) {
                         Log.e("AccountSettingScreen", "Failed to refresh account profile", e)
                         userMessages.showShortMessage("获取用户信息失败")
@@ -265,7 +263,9 @@ fun AccountSettingScreen(
                         icon = { Icon(Icons.AutoMirrored.Filled.Login, null) },
                         modifier = Modifier.testTag(ACCOUNT_SETTINGS_LOGIN_ITEM_TAG),
                         onClick = {
-                            requestLogin()
+                            if (!environment.requestLogin()) {
+                                userMessages.showShortMessage("当前平台暂不支持登录")
+                            }
                         },
                     )
                 }
@@ -377,7 +377,7 @@ fun AccountSettingScreen(
                                     .background(MaterialTheme.colorScheme.primaryContainer)
                                     .clickable {
                                         onDismissRequest()
-                                        selectMainTab(OnlineHistory)
+                                        navigator.onNavigateTopLevel(OnlineHistory)
                                     }.padding(8.dp, 16.dp),
                                 verticalArrangement = Arrangement.Center,
                                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -429,6 +429,16 @@ fun AccountSettingScreen(
             }
 
             SettingItemGroup {
+                if (data.login && data.identityManagementSupported) {
+                    SettingItem(
+                        title = { Text("身份管理") },
+                        description = { Text("创建马甲号或切换当前账号") },
+                        icon = { Icon(Icons.Default.SwitchAccount, null) },
+                        modifier = Modifier.testTag(ACCOUNT_SETTINGS_IDENTITY_MANAGEMENT_TAG),
+                        onClick = { navigator.onNavigate(Account.IdentityManagement) },
+                    )
+                }
+
                 SettingItem(
                     title = { Text("外观与阅读体验") },
                     description = { Text("主题颜色、字体大小等") },
@@ -436,6 +446,16 @@ fun AccountSettingScreen(
                     modifier = Modifier.testTag(ACCOUNT_SETTINGS_APPEARANCE_TAG),
                     onClick = { navigator.onNavigate(Account.AppearanceSettings()) },
                 )
+
+                if (readingPlayerSupported) {
+                    SettingItem(
+                        title = { Text("朗读与播放") },
+                        description = { Text("朗读内容、播放队列与条目过渡") },
+                        icon = { Icon(Icons.AutoMirrored.Filled.VolumeUp, null) },
+                        modifier = Modifier.testTag(ACCOUNT_SETTINGS_READING_TAG),
+                        onClick = { navigator.onNavigate(Account.ReadingSettings) },
+                    )
+                }
 
                 SettingItem(
                     title = { Text("推荐系统与内容过滤") },
@@ -557,7 +577,7 @@ fun AccountSettingScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        logout()
+                        environment.logout()
                         showLogoutDialog = false
                     },
                 ) {

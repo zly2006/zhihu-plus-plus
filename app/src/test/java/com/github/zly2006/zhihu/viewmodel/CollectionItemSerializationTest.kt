@@ -17,8 +17,8 @@
 
 package com.github.zly2006.zhihu.viewmodel
 
-import com.github.zly2006.zhihu.shared.data.Feed
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
+import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.ZhihuJson
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.serializer
 import org.junit.Assert.assertEquals

@@ -17,11 +17,12 @@
 
 package com.github.zly2006.zhihu.viewmodel.feed
 
+import com.github.zly2006.zhihu.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 
 class HistoryViewModel : BaseFeedViewModel() {
@@ -64,6 +65,16 @@ class HistoryViewModel : BaseFeedViewModel() {
                     FeedDisplayItem(
                         title = dest.name,
                         details = "用户",
+                        feed = null,
+                        navDestinationJson = dest.toFeedDisplayItemNavDestinationJson(),
+                        summary = "",
+                    )
+                }
+                is Pin -> {
+                    FeedDisplayItem(
+                        title = "想法",
+                        details = "想法",
+                        authorName = dest.authorName,
                         feed = null,
                         navDestinationJson = dest.toFeedDisplayItemNavDestinationJson(),
                         summary = "",

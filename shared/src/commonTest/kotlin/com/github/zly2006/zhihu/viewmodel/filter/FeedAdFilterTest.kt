@@ -17,7 +17,7 @@
 
 package com.github.zly2006.zhihu.viewmodel.filter
 
-import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.data.DataHolder
 import kotlinx.serialization.json.buildJsonObject
 import kotlin.test.Test
 import kotlin.test.assertEquals

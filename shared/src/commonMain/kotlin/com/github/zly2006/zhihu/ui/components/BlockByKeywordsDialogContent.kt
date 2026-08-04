@@ -54,7 +54,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.github.zly2006.zhihu.shared.nlp.KeywordWithWeight
+import com.github.zly2006.zhihu.nlp.KeywordWithWeight
 import kotlin.math.roundToInt
 
 /**

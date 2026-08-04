@@ -16,6 +16,7 @@
  */
 
 package com.github.zly2006.zhihu.viewmodel
+
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -24,12 +25,7 @@ import android.os.Looper
 import android.view.View
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
-import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
-import com.github.zly2006.zhihu.shared.util.Log
-import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
-import com.github.zly2006.zhihu.ui.ArticlePreviewWebViewStore
-import com.github.zly2006.zhihu.ui.components.CustomWebView
-import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
+import com.github.zly2006.zhihu.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -259,125 +255,5 @@ class AndroidArticleExportRenderer(
 
     override fun recycleExportBitmap(bitmap: Any) {
         (bitmap as Bitmap).recycle()
-    }
-}
-
-class AndroidArticlePreviewWebViewStore : ArticlePreviewWebViewStore {
-    var mainWebView: CustomWebView? = null
-        private set
-    var previousPreviewWebView: CustomWebView? = null
-        private set
-    var nextPreviewWebView: CustomWebView? = null
-        private set
-
-    var mainTag: String? = null
-        private set
-    var prevTag: String? = null
-        private set
-    var nextTag: String? = null
-        private set
-
-    fun promoteForNavigation(direction: ArticleAnswerTransitionDirection) {
-        when (direction) {
-            ArticleAnswerTransitionDirection.HORIZONTAL_NEXT, ArticleAnswerTransitionDirection.VERTICAL_NEXT -> {
-                previousPreviewWebView?.destroy()
-                previousPreviewWebView = mainWebView
-                prevTag = mainTag
-                mainWebView = nextPreviewWebView
-                mainTag = nextTag
-                nextPreviewWebView = null
-                nextTag = null
-            }
-            ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS, ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS -> {
-                nextPreviewWebView?.destroy()
-                nextPreviewWebView = mainWebView
-                nextTag = mainTag
-                mainWebView = previousPreviewWebView
-                mainTag = prevTag
-                previousPreviewWebView = null
-                prevTag = null
-            }
-            else -> {}
-        }
-    }
-
-    override fun getOrCreatePreviewWebView(
-        context: Context,
-        isNext: Boolean,
-        answerId: Long,
-    ): CustomWebView {
-        val existing = if (isNext) nextPreviewWebView else previousPreviewWebView
-        if (existing != null) return existing
-        return createCachedWebView(context)
-            .also {
-                if (isNext) {
-                    nextPreviewWebView = it
-                    nextTag = "wv_next_$answerId"
-                    it.tag = nextTag
-                } else {
-                    previousPreviewWebView = it
-                    prevTag = "wv_prev_$answerId"
-                    it.tag = prevTag
-                }
-            }
-    }
-
-    fun destroyAll() {
-        mainWebView?.destroy()
-        mainWebView = null
-        mainTag = null
-        previousPreviewWebView?.destroy()
-        previousPreviewWebView = null
-        prevTag = null
-        nextPreviewWebView?.destroy()
-        nextPreviewWebView = null
-        nextTag = null
-    }
-
-    private fun createCachedWebView(context: Context): CustomWebView {
-        val useHardwareAcceleration = androidSettingsStore(context).getBoolean("webviewHardwareAcceleration", true)
-        return CustomWebView(context)
-            .apply {
-                if (useHardwareAcceleration) {
-                    setLayerType(WebView.LAYER_TYPE_HARDWARE, null)
-                } else {
-                    setLayerType(WebView.LAYER_TYPE_SOFTWARE, null)
-                }
-                setupUpWebviewClient()
-            }
-    }
-}
-
-class AndroidArticlesSharedData :
-    ArticleViewModel.ArticlesSharedData(),
-    ArticlePreviewWebViewStore {
-    private val previewWebViews = AndroidArticlePreviewWebViewStore()
-
-    /**
-     * 导航时旋转三个 WebView：
-     * NEXT: prev→destroy, main→prev, next→main
-     * PREVIOUS: next→destroy, main→next, prev→main
-     */
-    override fun promoteForNavigation(direction: ArticleAnswerTransitionDirection) {
-        super.promoteForNavigation(direction)
-        previewWebViews.promoteForNavigation(direction)
-    }
-
-    override fun getOrCreatePreviewWebView(
-        context: Context,
-        isNext: Boolean,
-        answerId: Long,
-    ) = previewWebViews.getOrCreatePreviewWebView(context, isNext, answerId)
-
-    override fun reset() {
-        super.reset()
-        previewWebViews.mainWebView?.contentId = null
-        previewWebViews.previousPreviewWebView?.contentId = null
-        previewWebViews.nextPreviewWebView?.contentId = null
-    }
-
-    override fun onCleared() {
-        previewWebViews.destroyAll()
-        super.onCleared()
     }
 }

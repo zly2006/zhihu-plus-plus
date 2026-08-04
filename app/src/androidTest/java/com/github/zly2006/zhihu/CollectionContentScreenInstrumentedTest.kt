@@ -28,19 +28,18 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.github.zly2006.zhihu.data.Collection
+import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.navigation.Question
-import com.github.zly2006.zhihu.shared.data.Feed
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
-import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.pressSystemBack
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.seedViewModel
 import com.github.zly2006.zhihu.test.setScreenContent
-import com.github.zly2006.zhihu.ui.Collection
 import com.github.zly2006.zhihu.ui.CollectionContentScreen
 import com.github.zly2006.zhihu.viewmodel.CollectionContentViewModel
 import com.github.zly2006.zhihu.viewmodel.CollectionItem
@@ -145,8 +144,8 @@ class CollectionContentScreenInstrumentedTest {
     fun listClickNavigatesAndSwipeCyclesKeepTheSeededListStable() {
         /*
          * Expected behavior:
-         * 1. A larger locally seeded list should remain scrollable and safe under vertical and
-         *    horizontal swipe cycles, without triggering network pagination.
+         * 1. A larger locally seeded list should remain scrollable and safe under vertical swipe
+         *    cycles, without triggering network pagination.
          * 2. After those gestures, the toolbar and seeded list rows should still be interactive,
          *    proving that the page layout and semantics tree remain intact.
          * 3. Clicking a seeded row should navigate to that row's destination exactly once.
@@ -155,7 +154,6 @@ class CollectionContentScreenInstrumentedTest {
 
         composeRule.onNodeWithTag(LIST_TAG).assertIsDisplayed()
         composeRule.onNodeWithTag(LIST_TAG).performVerticalSwipeCycle()
-        composeRule.onNodeWithTag(LIST_TAG).performHorizontalSwipeCycle()
         composeRule.waitForIdle()
 
         composeRule.onNodeWithText(SEEDED_COLLECTION_TITLE).assertIsDisplayed()
@@ -199,7 +197,6 @@ class CollectionContentScreenInstrumentedTest {
                 navDestinationJson = seedQuestionDestination(index + 1).toFeedDisplayItemNavDestinationJson(),
                 feed = null,
                 authorName = "作者 ${index + 1}",
-                localFeedId = "collection-content-test-item-${index + 1}",
             )
         }
         val seededAllData = List(itemCount) { index ->

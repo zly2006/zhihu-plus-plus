@@ -17,9 +17,9 @@
 
 package com.github.zly2006.zhihu.viewmodel
 
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.shared.data.ZhihuVotersResponse
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.ZhihuJson
+import com.github.zly2006.zhihu.data.ZhihuVotersResponse
 
 suspend fun loadVotersPage(
     environment: ZhihuApiEnvironment,

@@ -19,8 +19,8 @@ package com.github.zly2006.zhihu.util
 
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Element
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.util.twoDigitString
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.util.twoDigitString
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.readRawBytes
@@ -563,7 +563,7 @@ private fun buildArticleExportFooterPlaceholders(footerData: ArticleExportFooter
 }
 
 private fun extractArticleExportImageUrl(image: Element): String? =
-    com.github.zly2006.zhihu.shared.util
+    com.github.zly2006.zhihu.util
         .extractImageUrl(image::attr)
         ?.takeIf { !it.startsWith("data:") }
 

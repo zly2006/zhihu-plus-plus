@@ -19,26 +19,28 @@ package com.github.zly2006.zhihu.viewmodel
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.navDestination
+import com.github.zly2006.zhihu.data.target
+import com.github.zly2006.zhihu.desktop.DesktopAccountStore
+import com.github.zly2006.zhihu.desktop.DesktopHistoryStorage
+import com.github.zly2006.zhihu.desktop.DesktopLoginRequests
+import com.github.zly2006.zhihu.desktop.copyDesktopPlainText
+import com.github.zly2006.zhihu.desktop.desktopZhihuDataFile
+import com.github.zly2006.zhihu.desktop.desktopZhihuDownloadsDir
+import com.github.zly2006.zhihu.filter.ContentOpenEventSupport
+import com.github.zly2006.zhihu.filter.ContentOpenFrom
+import com.github.zly2006.zhihu.filter.TrackedContentIdentity
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.Feed
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.navDestination
-import com.github.zly2006.zhihu.shared.data.target
-import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
-import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
-import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
-import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDataFile
-import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDownloadsDir
-import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
-import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
-import com.github.zly2006.zhihu.shared.filter.TrackedContentIdentity
-import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
-import com.github.zly2006.zhihu.shared.notification.desktopNotificationSettingsStore
-import com.github.zly2006.zhihu.shared.platform.desktopSettingsStore
-import com.github.zly2006.zhihu.shared.util.Log
+import com.github.zly2006.zhihu.notification.NotificationSettingsStore
+import com.github.zly2006.zhihu.notification.desktopNotificationSettingsStore
+import com.github.zly2006.zhihu.platform.desktopSettingsStore
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
+import com.github.zly2006.zhihu.ui.homeFeedStartupCacheFileNames
+import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.util.buildArticleExportFileName
 import com.github.zly2006.zhihu.util.buildCollectionExportZipFileName
 import com.github.zly2006.zhihu.util.sanitizeArticleExportFileNamePart
@@ -133,6 +135,39 @@ class DesktopPaginationEnvironment(
         block: suspend (client: HttpClient, cookies: Map<String, String>) -> T,
     ): T = store.withAuthenticatedClient(block)
 
+    override suspend fun refreshAccountProfile() {
+        store.refreshAndSaveProfile()
+    }
+
+    override fun requestLogin(): Boolean {
+        DesktopLoginRequests.requestLogin()
+        return true
+    }
+
+    override fun clearAccountSession() {
+        store.clear()
+    }
+
+    override fun currentAccountId(): String = store
+        .load()
+        .profile
+        ?.id
+        .orEmpty()
+
+    override suspend fun verifyLogin(cookies: Map<String, String>): Boolean =
+        store.verifyAndSave(cookies.toMutableMap())
+
+    override fun saveCookies(cookies: Map<String, String>) {
+        store.save(store.load().copy(login = true, cookies = cookies.toMutableMap()))
+    }
+
+    override fun logout() {
+        homeFeedStartupCacheFileNames().forEach { fileName ->
+            desktopZhihuDataFile(fileName).delete()
+        }
+        clearAccountSession()
+    }
+
     override suspend fun handleFetchFailure(
         tag: String?,
         error: Exception,
@@ -165,6 +200,9 @@ class DesktopPaginationEnvironment(
     override suspend fun isUserBlocked(userId: String): Boolean =
         contentFilterDb.blockedUserDao().isUserBlocked(userId)
 
+    override suspend fun isQuestionAuthorBlocked(userId: String): Boolean =
+        contentFilterDb.blockedQuestionAuthorDao().isUserBlocked(userId)
+
     override fun blockedUserIds(): Set<String> =
         runBlocking {
             contentFilterDb
@@ -190,8 +228,28 @@ class DesktopPaginationEnvironment(
         )
     }
 
+    override suspend fun addBlockedQuestionAuthor(
+        userId: String,
+        userName: String,
+        urlToken: String?,
+        avatarUrl: String?,
+    ) {
+        contentFilterDb.blockedQuestionAuthorDao().insertUser(
+            com.github.zly2006.zhihu.viewmodel.filter.BlockedQuestionAuthor(
+                userId = userId,
+                userName = userName,
+                urlToken = urlToken,
+                avatarUrl = avatarUrl,
+            ),
+        )
+    }
+
     override suspend fun removeBlockedUser(userId: String) {
         contentFilterDb.blockedUserDao().deleteUserById(userId)
+    }
+
+    override suspend fun removeBlockedQuestionAuthor(userId: String) {
+        contentFilterDb.blockedQuestionAuthorDao().deleteUserById(userId)
     }
 
     override suspend fun recordContentOpenEvent(
@@ -231,6 +289,7 @@ class DesktopPaginationEnvironment(
                 settings = settings,
                 blockedKeywordDao = contentFilterDb.blockedKeywordDao(),
                 blockedUserDao = contentFilterDb.blockedUserDao(),
+                blockedQuestionAuthorDao = contentFilterDb.blockedQuestionAuthorDao(),
                 blockedTopicDao = contentFilterDb.blockedTopicDao(),
                 blockedKeywordService = BlockedKeywordService(
                     keywordDao = contentFilterDb.blockedKeywordDao(),

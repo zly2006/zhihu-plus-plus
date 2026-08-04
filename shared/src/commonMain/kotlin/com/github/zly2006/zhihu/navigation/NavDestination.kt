@@ -17,7 +17,7 @@
 
 package com.github.zly2006.zhihu.navigation
 
-import com.github.zly2006.zhihu.shared.util.Log
+import com.github.zly2006.zhihu.util.Log
 import io.ktor.http.Url
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -120,6 +120,9 @@ data object Account : TopLevelDestination {
     ) : NavDestination
 
     @Serializable
+    data object ReadingSettings : NavDestination
+
+    @Serializable
     data class RecommendSettings(
         val setting: String = "",
     ) : NavDestination {
@@ -129,6 +132,9 @@ data object Account : TopLevelDestination {
         @Serializable
         data object BlockedFeedHistory : NavDestination
     }
+
+    @Serializable
+    data object IdentityManagement : NavDestination
 
     @Serializable
     data object SystemAndUpdateSettings : NavDestination
@@ -156,6 +162,22 @@ data object Daily : TopLevelDestination {
 data object Notification : NavDestination {
     @Serializable
     data object NotificationSettings : NavDestination
+
+    @Serializable
+    data class Entry(
+        val entryName: String,
+        val title: String,
+    ) : NavDestination
+
+    @Serializable
+    data object Invitations : NavDestination
+
+    @Serializable
+    data class Message(
+        val peerId: String,
+        val name: String = "",
+        val avatarUrl: String = "",
+    ) : NavDestination
 }
 
 @Serializable
@@ -203,6 +225,7 @@ data class Article(
     var authorBio: String = "loading...",
     var avatarSrc: String? = null,
     var excerpt: String? = null,
+    val readingQueueSourceId: String? = null,
 ) : NavDestination {
     override fun hashCode(): Int = id.hashCode()
 
@@ -220,12 +243,17 @@ data class SegmentCommentHolder(
     val contentId: String,
     val contentType: String,
     val segmentId: String,
+    val segmentContent: String,
+    val paragraphId: String,
+    val startOffset: Int,
+    val endOffset: Int,
 ) : NavDestination
 
 @Serializable
 data class Question(
     val questionId: Long,
     val title: String = "loading...",
+    val readingQueueSourceId: String? = null,
 ) : NavDestination {
     override fun hashCode(): Int = questionId.hashCode()
 
@@ -304,10 +332,19 @@ data class Video(
 @Serializable
 data class Pin(
     val id: Long,
+    val authorName: String = "",
+    val readingQueueSourceId: String? = null,
 ) : NavDestination {
     override fun hashCode(): Int = id.hashCode()
 
     override fun equals(other: Any?): Boolean = other is Pin && other.id == id
+}
+
+fun NavDestination.withReadingQueueSource(sourceId: String?): NavDestination = when (this) {
+    is Article -> copy(readingQueueSourceId = sourceId)
+    is Pin -> copy(readingQueueSourceId = sourceId)
+    is Question -> copy(readingQueueSourceId = sourceId)
+    else -> this
 }
 
 fun resolveContent(url: String): NavDestination? = runCatching { resolveContent(Url(url)) }.getOrNull()
@@ -316,7 +353,25 @@ fun resolveContent(url: Url): NavDestination? {
     val segments = url.segments
     if (url.protocol.name == "http" || url.protocol.name == "https") {
         if (url.host == "zhihu.com" || url.host == "www.zhihu.com") {
-            if (segments.size == 4 &&
+            if (segments.size == 1 && segments[0] == "compose_answer_tab") {
+                return Notification.Invitations
+            } else if (segments.size == 2 && segments[0] == "inbox") {
+                return Notification.Message(
+                    peerId = segments[1],
+                    name = url.parameters["title"].orEmpty(),
+                )
+            } else if (
+                segments.size == 5 &&
+                segments[0] == "notifications" &&
+                segments[1] == "v3" &&
+                segments[2] == "timeline" &&
+                segments[3] == "entry"
+            ) {
+                return Notification.Entry(
+                    entryName = segments[4],
+                    title = url.parameters["title"].orEmpty().ifBlank { "消息" },
+                )
+            } else if (segments.size == 4 &&
                 segments[0] == "question" &&
                 segments[2] == "answer"
             ) {
@@ -353,12 +408,28 @@ fun resolveContent(url: Url): NavDestination? {
             } else if (segments.size == 2 && segments[0] == "pin") {
                 val pinId = segments[1].toLongOrNull() ?: return null
                 return Pin(id = pinId)
+            } else if (segments.size == 3 && segments[0] == "appview") {
+                val contentId = segments[2].toLongOrNull() ?: return null
+                return when (segments[1]) {
+                    "pin" -> Pin(id = contentId)
+                    "answer" -> Article(type = ArticleType.Answer, id = contentId)
+                    "p" -> Article(type = ArticleType.Article, id = contentId)
+                    else -> null
+                }
             } else if (segments.size == 1 &&
                 segments[0] == "search"
             ) {
                 val query = url.parameters["q"] ?: ""
                 return Search(query)
             }
+            /*
+             * 尚未支持的 destination，等待后续补充对应的 NavDestination：
+             * - https://www.zhihu.com/appview/roundtable -> https://www.zhihu.com/roundtable
+             * - https://www.zhihu.com/appview/special -> https://www.zhihu.com/special/all
+             * - https://www.zhihu.com/column/{columnToken}
+             * - https://daily.zhihu.com/story/{storyId}
+             * - https://www.zhihu.com/special/{specialId}
+             */
             Log.w("NavDestination", "Cannot resolve content from url: $url")
         } else if (url.host == "zhuanlan.zhihu.com") {
             if (segments.size == 2 &&
@@ -374,7 +445,34 @@ fun resolveContent(url: Url): NavDestination? {
         }
     }
     if (url.protocol.name == "zhihu") {
-        if (url.host == "answers") {
+        if (
+            url.host == "comment" &&
+            segments.size == 3 &&
+            segments[0] == "list"
+        ) {
+            val contentId = segments[2].toLongOrNull() ?: return null
+            val commentId = url.parameters["anchor_comment_id"]
+                ?.takeIf { id -> id.isNotEmpty() && id.all { it in '0'..'9' } }
+                ?: return null
+            val content = when (segments[1]) {
+                "answer" -> Article(
+                    type = ArticleType.Answer,
+                    id = contentId,
+                )
+
+                "article" -> Article(
+                    type = ArticleType.Article,
+                    id = contentId,
+                )
+
+                "pin" -> Pin(id = contentId)
+
+                "question" -> Question(questionId = contentId)
+
+                else -> return null
+            }
+            return CommentHolder(commentId = commentId, article = content)
+        } else if (url.host == "answers") {
             val answerId = segments[0].toLong()
             return Article(type = ArticleType.Answer, id = answerId)
         } else if (url.host == "questions") {

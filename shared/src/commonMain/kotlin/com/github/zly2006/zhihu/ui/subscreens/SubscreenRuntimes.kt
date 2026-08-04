@@ -16,47 +16,10 @@
  */
 
 package com.github.zly2006.zhihu.ui.subscreens
+
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.theme.ThemeMode
-import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.TtsState
 import kotlinx.coroutines.flow.StateFlow
-
-data class ThemeSettingsRuntime(
-    val setThemeMode: (ThemeMode) -> Unit,
-    val setUseDynamicColor: (Boolean) -> Unit,
-    val setCustomColor: (Color) -> Unit,
-    val setBackgroundColor: (Color, Boolean) -> Unit,
-)
-
-@Composable
-fun rememberThemeSettingsRuntime(): ThemeSettingsRuntime {
-    val settings = rememberSettingsStore()
-    return remember(settings) {
-        ThemeSettingsRuntime(
-            setThemeMode = { mode ->
-                ThemeManager.setThemeMode(mode)
-                settings.putString("themeMode", mode.name)
-            },
-            setUseDynamicColor = { enabled ->
-                ThemeManager.setUseDynamicColor(enabled)
-                settings.putBoolean("useDynamicColor", enabled)
-            },
-            setCustomColor = { color ->
-                ThemeManager.setCustomColor(color)
-                settings.putInt("customThemeColor", color.toArgb())
-            },
-            setBackgroundColor = { color, isDark ->
-                ThemeManager.setBackgroundColor(color, isDark)
-                settings.putInt(if (isDark) "backgroundColorDark" else "backgroundColorLight", color.toArgb())
-            },
-        )
-    }
-}
 
 @Composable
 expect fun WebViewCustomFontSettings(
@@ -105,6 +68,8 @@ sealed interface SystemUpdateState {
 expect fun rememberSystemUpdateRuntime(): SystemUpdateRuntime
 
 data class DeveloperRuntimeInfo(
+    val networkStatus: String = "网络状态：未知",
+    val powerSaveModeText: String? = null,
     val continuousUsageDurationMs: Long = 0L,
     val ttsState: TtsState = TtsState.Uninitialized,
     val currentTtsEngineLabel: String = "未初始化",
@@ -115,16 +80,5 @@ interface DeveloperRuntimeInfoProvider {
     val developerRuntimeInfo: DeveloperRuntimeInfo
 }
 
-data class DeveloperSettingsRuntime(
-    val cookies: () -> Map<String, String>,
-    val networkStatus: () -> String,
-    val powerSaveModeText: () -> String?,
-    val runtimeInfo: () -> DeveloperRuntimeInfo,
-    val verifyLogin: suspend (Map<String, String>) -> Boolean,
-    val refreshToken: suspend () -> Unit,
-    val saveCookies: (Map<String, String>) -> Unit,
-    val signedGet: suspend (String) -> String,
-)
-
 @Composable
-expect fun rememberDeveloperSettingsRuntime(): DeveloperSettingsRuntime
+expect fun rememberDeveloperRuntimeInfo(): DeveloperRuntimeInfo

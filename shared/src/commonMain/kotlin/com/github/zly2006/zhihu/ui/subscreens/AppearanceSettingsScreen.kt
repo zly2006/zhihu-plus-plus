@@ -76,8 +76,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.buildAnnotatedString
@@ -95,26 +93,23 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.MyCollections
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.shared.theme.ThemeMode
-import com.github.zly2006.zhihu.shared.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
-import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.theme.ThemeMode
+import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.ui.components.ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.ColorPickerDialog
 import com.github.zly2006.zhihu.ui.components.DEFAULT_ANSWER_SWITCH_SENSITIVITY
 import com.github.zly2006.zhihu.ui.components.MAX_ANSWER_SWITCH_SENSITIVITY
 import com.github.zly2006.zhihu.ui.components.MIN_ANSWER_SWITCH_SENSITIVITY
-import com.github.zly2006.zhihu.ui.components.PageTurnScrollEffect
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemOverall
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
-import com.github.zly2006.zhihu.ui.components.fabOpacityPercent
 import com.github.zly2006.zhihu.ui.components.normalizedAnswerSwitchSensitivity
-import com.github.zly2006.zhihu.ui.components.pageTurnFabVisible
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
@@ -123,11 +118,6 @@ const val DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY = "duo3_card_large_title"
 const val PREF_FONT_SIZE = "contentFontSize"
 const val PREF_LINE_HEIGHT = "contentLineHeight"
 const val PREF_BLOCK_SPACING = "contentBlockSpacing"
-const val PREF_PAGE_TURN_PERCENT = "pageTurnPercent"
-const val DEFAULT_PAGE_TURN_PERCENT = 90
-const val PREF_VOLUME_KEY_PAGE_TURN = "volumeKeyPageTurn"
-const val PREF_SHOW_PAGE_TURN_FAB = "showPageTurnFab"
-const val PREF_SHOW_PAGE_TURN_GUIDE = "showPageTurnGuide"
 const val PREF_FAB_OPACITY = "fabOpacity"
 const val DEFAULT_FAB_OPACITY = 100
 const val APPEARANCE_SETTINGS_SCROLL_TAG = "appearanceSettings.scroll"
@@ -282,7 +272,6 @@ fun AppearanceSettingsScreen(
     onExit: () -> Unit,
 ) {
     val settingKey = setting.orEmpty()
-    val runtime = rememberThemeSettingsRuntime()
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()
 
@@ -357,16 +346,9 @@ fun AppearanceSettingsScreen(
             )
         },
     ) { innerPadding ->
-        val density = LocalDensity.current
-        var rawViewportHeight by remember { mutableIntStateOf(0) }
-        val topPx = with(density) { innerPadding.calculateTopPadding().toPx().toInt() }
-        val bottomPx = with(density) { innerPadding.calculateBottomPadding().toPx().toInt() }
-        val viewportHeight = (rawViewportHeight - topPx - bottomPx).coerceAtLeast(0)
-        PageTurnScrollEffect(scrollState, viewportHeight, scrollBehavior.state)
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .onSizeChanged { rawViewportHeight = it.height }
                 .verticalScroll(scrollState)
                 .testTag(APPEARANCE_SETTINGS_SCROLL_TAG)
                 .padding(innerPadding)
@@ -400,7 +382,8 @@ fun AppearanceSettingsScreen(
                                 val isSelected = currentThemeMode == mode
                                 OutlinedButton(
                                     onClick = {
-                                        runtime.setThemeMode(mode)
+                                        ThemeManager.setThemeMode(mode)
+                                        settings.putString("themeMode", mode.name)
                                         userMessages.showShortMessage("已切换到$label")
                                     },
                                     colors = ButtonDefaults.outlinedButtonColors(
@@ -429,7 +412,8 @@ fun AppearanceSettingsScreen(
                     description = { Text("根据系统壁纸自动提取主题色（Android 12+ 可用）。\n关闭后可以自己设定主题颜色。") },
                     checked = useDynamicColor,
                     onCheckedChange = {
-                        runtime.setUseDynamicColor(it)
+                        ThemeManager.setUseDynamicColor(it)
+                        settings.putBoolean("useDynamicColor", it)
                         userMessages.showShortMessage("已${if (it) "启用" else "禁用"}动态取色")
                     },
                     settingKey = "dynamicColor",
@@ -462,7 +446,8 @@ fun AppearanceSettingsScreen(
                         initialColor = customColor,
                         onDismiss = { showColorPicker = false },
                         onColorSelected = { color ->
-                            runtime.setCustomColor(color)
+                            ThemeManager.setCustomColor(color)
+                            settings.putInt("customThemeColor", color.toArgb())
                             userMessages.showShortMessage("主题色已保存")
                             showColorPicker = false
                         },
@@ -540,7 +525,11 @@ fun AppearanceSettingsScreen(
                         ),
                         onDismiss = { showBackgroundColorPicker = false },
                         onColorSelected = { color ->
-                            runtime.setBackgroundColor(color, currentIsDarkTheme)
+                            ThemeManager.setBackgroundColor(color, currentIsDarkTheme)
+                            settings.putInt(
+                                if (currentIsDarkTheme) "backgroundColorDark" else "backgroundColorLight",
+                                color.toArgb(),
+                            )
                             userMessages.showShortMessage("背景颜色已保存")
                             showBackgroundColorPicker = false
                         },
@@ -559,7 +548,6 @@ fun AppearanceSettingsScreen(
                             onValueChange = {
                                 val v = (it / 5).roundToInt() * 5
                                 fabOpacity = v
-                                fabOpacityPercent.intValue = v
                                 settings.putInt(PREF_FAB_OPACITY, v)
                             },
                             valueRange = 10f..100f,
@@ -635,76 +623,6 @@ fun AppearanceSettingsScreen(
                 )
             }
 
-            // ── 翻页 ───────────────────────────────────────────────────────────
-            SettingItemGroup(
-                title = "翻页",
-                header = {
-                    Text(
-                        "适合墨水屏电纸书等无触屏滑动体验的设备。",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                    )
-                },
-            ) {
-                var pageTurnPercent by remember {
-                    mutableIntStateOf(settings.getInt(PREF_PAGE_TURN_PERCENT, DEFAULT_PAGE_TURN_PERCENT))
-                }
-                SettingItem(
-                    title = { Text("翻页百分比") },
-                    description = { Text("每次翻页滚动的屏幕比例 ($pageTurnPercent%)，降低可避免悬浮栏遮挡内容。") },
-                    bottomAction = {
-                        Slider(
-                            value = pageTurnPercent.toFloat(),
-                            onValueChange = {
-                                val pct = (it / 5).roundToInt() * 5
-                                pageTurnPercent = pct
-                                settings.putInt(PREF_PAGE_TURN_PERCENT, pct)
-                            },
-                            valueRange = 30f..100f,
-                            steps = 13,
-                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                        )
-                    },
-                )
-
-                val volumeKeyPageTurn = remember {
-                    mutableStateOf(settings.getBoolean(PREF_VOLUME_KEY_PAGE_TURN, false))
-                }
-                SettingItemWithSwitch(
-                    title = { Text("使用音量键翻页") },
-                    description = { Text("按音量键时翻页而非调节音量。") },
-                    checked = volumeKeyPageTurn.value,
-                    onCheckedChange = {
-                        volumeKeyPageTurn.value = it
-                        settings.putBoolean(PREF_VOLUME_KEY_PAGE_TURN, it)
-                    },
-                )
-
-                SettingItemWithSwitch(
-                    title = { Text("显示翻页悬浮按钮") },
-                    description = { Text("在页面上显示可拖动的上下翻页按钮。") },
-                    checked = pageTurnFabVisible.value,
-                    onCheckedChange = {
-                        pageTurnFabVisible.value = it
-                        settings.putBoolean(PREF_SHOW_PAGE_TURN_FAB, it)
-                    },
-                )
-
-                val showPageTurnGuide = remember {
-                    mutableStateOf(settings.getBoolean(PREF_SHOW_PAGE_TURN_GUIDE, false))
-                }
-                SettingItemWithSwitch(
-                    title = { Text("显示翻页范围标记") },
-                    description = { Text("用两条虚线标记翻页边界，帮助定位翻页后的阅读位置。") },
-                    checked = showPageTurnGuide.value,
-                    onCheckedChange = {
-                        showPageTurnGuide.value = it
-                        settings.putBoolean(PREF_SHOW_PAGE_TURN_GUIDE, it)
-                    },
-                )
-            }
-
             // ── 信息流 ──────────────────────────────────────────────────────────
             val showRefreshFab = remember { mutableStateOf(settings.getBoolean("showRefreshFab", true)) }
             SettingItemGroup(
@@ -733,7 +651,7 @@ fun AppearanceSettingsScreen(
 
                 var feedCardStyleExpanded by remember { mutableStateOf(false) }
                 val feedCardStyle = remember {
-                    mutableStateOf(settings.getString("feedCardStyle", "card"))
+                    mutableStateOf(settings.getString("feedCardStyle", "divider"))
                 }
                 val feedCardStyleOptions = listOf(
                     "card" to "卡片样式",
@@ -789,7 +707,7 @@ fun AppearanceSettingsScreen(
                 SettingItemWithSwitch(
                     modifier = Modifier.testTag(APPEARANCE_SETTINGS_USE_WEBVIEW_TAG),
                     title = { Text("使用 WebView 显示文章") },
-                    description = { Text("关闭后使用 Compose 渲染，支持代码高亮等高级功能。") },
+                    description = { Text("关闭后使用 Compose 渲染，支持代码高亮等高级功能。警告：这个渲染模式不再推荐，非专业人士请不要开启！") },
                     checked = articleUseWebview.value,
                     onCheckedChange = {
                         articleUseWebview.value = it
@@ -1403,7 +1321,6 @@ fun AppearanceSettingsScreen(
 
             // 先声明所有子开关状态，以便主开关可以批量操作
             val duo3All = remember { mutableStateOf(settings.getBoolean("duo3_all", false)) }
-            val duo3NavStyle = remember { mutableStateOf(settings.getBoolean("duo3_nav_style", false)) }
             val duo3CardAppearance = remember { mutableStateOf(settings.getBoolean("duo3_card_appearance", false)) }
             val duo3CardLayout = remember { mutableStateOf(settings.getBoolean("duo3_card_layout", false)) }
             val duo3CardLargeTitle = remember {
@@ -1414,7 +1331,6 @@ fun AppearanceSettingsScreen(
 
             fun enableAllSubs() {
                 settings.putBoolean("duo3_home_account", true)
-                settings.putBoolean("duo3_nav_style", true)
                 settings.putBoolean("duo3_card_appearance", true)
                 settings.putBoolean("duo3_card_layout", true)
                 settings.putBoolean("duo3_article_bar", true)
@@ -1422,7 +1338,6 @@ fun AppearanceSettingsScreen(
                 settings.putBoolean("showRefreshFab", false)
                 settings.putBoolean("buttonSkipAnswer", false)
                 duo3HomeAccount.value = true
-                duo3NavStyle.value = true
                 duo3CardAppearance.value = true
                 duo3CardLayout.value = true
                 duo3ArticleBar.value = true
@@ -1440,13 +1355,11 @@ fun AppearanceSettingsScreen(
 
             fun disableAllSubs() {
                 settings.putBoolean("duo3_home_account", false)
-                settings.putBoolean("duo3_nav_style", false)
                 settings.putBoolean("duo3_card_appearance", false)
                 settings.putBoolean("duo3_card_layout", false)
                 settings.putBoolean("duo3_article_bar", false)
                 settings.putBoolean("duo3_article_actions", false)
                 duo3HomeAccount.value = false
-                duo3NavStyle.value = false
                 duo3CardAppearance.value = false
                 duo3CardLayout.value = false
                 duo3ArticleBar.value = false
@@ -1508,16 +1421,6 @@ fun AppearanceSettingsScreen(
                             selectedBottomBarItemKeys.value
                         }
                         persistBottomBarSelection(updatedSelection, it)
-                    },
-                )
-
-                SettingItemWithSwitch(
-                    title = { Text("底部导航栏：改为 Material 样式") },
-                    description = { Text("移除自定义样式；更改「关注」按钮图标。") },
-                    checked = duo3NavStyle.value,
-                    onCheckedChange = {
-                        duo3NavStyle.value = it
-                        settings.putBoolean("duo3_nav_style", it)
                     },
                 )
 

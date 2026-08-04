@@ -17,21 +17,27 @@
 
 package com.github.zly2006.zhihu.viewmodel.feed
 
+import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.OnlineHistoryDeletePair
+import com.github.zly2006.zhihu.data.OnlineHistoryItem
+import com.github.zly2006.zhihu.data.ZhihuJson.decodeJson
+import com.github.zly2006.zhihu.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.resolveContent
-import com.github.zly2006.zhihu.shared.data.Feed
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.OnlineHistoryItem
-import com.github.zly2006.zhihu.shared.data.ZhihuJson.decodeJson
-import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.deleteOnlineHistoryItem
 import kotlinx.serialization.json.JsonArray
 
 class OnlineHistoryViewModel : BaseFeedViewModel() {
     override val initialUrl: String = "https://api.zhihu.com/unify-consumption/read_history?offset=0&limit=10"
     override val shouldLogDecodeFailures: Boolean = false
+    private val deletionPairs = mutableMapOf<FeedDisplayItem, OnlineHistoryDeletePair>()
 
     override fun processResponse(environment: PaginationEnvironment, data: List<Feed>, rawData: JsonArray) {
+        if (displayItems.isEmpty()) {
+            deletionPairs.clear()
+        }
         val response = rawData.mapNotNull { item ->
             runCatching { decodeJson<OnlineHistoryItem>(item) }.getOrNull()
         }
@@ -64,7 +70,18 @@ class OnlineHistoryViewModel : BaseFeedViewModel() {
                 },
                 authorName = item.data.content?.authorName,
             )
+            deletionPairs[displayItem] = OnlineHistoryDeletePair(
+                contentToken = item.data.extra.contentToken,
+                contentType = item.data.extra.contentType,
+            )
             displayItems.add(displayItem)
         }
+    }
+
+    suspend fun deleteItem(environment: PaginationEnvironment, item: FeedDisplayItem) {
+        val pair = checkNotNull(deletionPairs[item]) { "在线历史记录缺少删除标识" }
+        environment.deleteOnlineHistoryItem(pair)
+        displayItems.remove(item)
+        deletionPairs.remove(item)
     }
 }
