@@ -2,6 +2,9 @@ name: Pull Request Check
 
 on:
   pull_request:
+  push:
+    branches-ignore:
+      - master
   workflow_dispatch:
 
 concurrency:
@@ -44,9 +47,20 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.event.after }}
         run: |
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             echo "required=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ "$EVENT_NAME" == "push" ]]; then
+            if git diff --name-only "$PUSH_BEFORE" "$PUSH_AFTER" | grep -Eq '^(app/|shared/|\.github/scripts/run-instrumented-shard\.sh$|\.github/workflows/(instrument-test|pr)\.yml$|build\.gradle\.kts$|settings\.gradle\.kts$|gradle\.properties$|gradle/)'; then
+              echo "required=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "required=false" >> "$GITHUB_OUTPUT"
+            fi
             exit 0
           fi
 
@@ -66,10 +80,25 @@ jobs:
       - name: Change wrapper permissions
         run: chmod +x ./gradlew
 
+      - name: Setup rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          override: true
+
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk || true
+
+      - name: Add Android Rust targets
+        run: |
+          rustup target add aarch64-linux-android
+          rustup target add armv7-linux-androideabi
+          rustup target add i686-linux-android
+          rustup target add x86_64-linux-android
+
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Build Lite APKs
+      - name: Build APKs
         env:
           CI_BUILD_MINIFY: false
           RUN_INSTRUMENTED_TESTS: ${{ steps.instrumented_changes.outputs.required }}
@@ -79,6 +108,7 @@ jobs:
             tasks+=(:app:assembleLiteDebugAndroidTest)
           fi
           ./gradlew "${tasks[@]}" --max-workers=2
+          bash ./gradlew assembleFullDebug
 
       - name: Upload Gradle build cache
         uses: actions/upload-artifact@v4
@@ -88,10 +118,11 @@ jobs:
           include-hidden-files: true
           retention-days: 1
 
-      - name: Prepare Lite debug APK
+      - name: Prepare debug APKs
         run: |
           mkdir -p app/build/upload
           cp app/build/outputs/apk/lite/debug/app-lite-debug.apk app/build/upload/zhihu++-lite-debug.apk
+          cp app/build/outputs/apk/full/debug/app-full-debug.apk app/build/upload/zhihu++-full-debug.apk
 
       - name: Upload Lite debug APK
         uses: actions/upload-artifact@v4
