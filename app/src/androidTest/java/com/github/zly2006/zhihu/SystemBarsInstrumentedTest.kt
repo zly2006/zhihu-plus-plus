@@ -134,20 +134,30 @@ class SystemBarsInstrumentedTest {
         stage: String,
     ) {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
-        val deadline = SystemClock.uptimeMillis() + 5_000
-        var statusBarColors: List<Int>
+        val deadline = SystemClock.uptimeMillis() + 10_000
+        while (!activity.window.decorView.hasWindowFocus() && SystemClock.uptimeMillis() < deadline) {
+            instrumentation.waitForIdleSync()
+            SystemClock.sleep(16)
+        }
+        assertTrue("$stage: activity window did not gain focus", activity.window.decorView.hasWindowFocus())
+
+        var consecutiveMatchingFrames = 0
+        var statusBarColors = emptyList<Int>()
         do {
             instrumentation.waitForIdleSync()
             SystemClock.sleep(16)
             statusBarColors = sampleStatusBarColors(activity)
-        } while (
-            statusBarColors.any { it != SOLID_SURFACE_COLOR } &&
-            SystemClock.uptimeMillis() < deadline
-        )
+            consecutiveMatchingFrames =
+                if (statusBarColors.all { it == SOLID_SURFACE_COLOR }) {
+                    consecutiveMatchingFrames + 1
+                } else {
+                    0
+                }
+        } while (consecutiveMatchingFrames < REQUIRED_MATCHING_FRAMES && SystemClock.uptimeMillis() < deadline)
         assertTrue(
             "$stage: expected status bar ${SOLID_SURFACE_COLOR.toUInt().toString(16)}, " +
                 "but sampled ${statusBarColors.joinToString { it.toUInt().toString(16) }}",
-            statusBarColors.all { it == SOLID_SURFACE_COLOR },
+            consecutiveMatchingFrames >= REQUIRED_MATCHING_FRAMES,
         )
     }
 
@@ -177,3 +187,4 @@ private fun SolidThemeSurface() {
 }
 
 private const val SOLID_SURFACE_COLOR = 0xFF121212.toInt()
+private const val REQUIRED_MATCHING_FRAMES = 3

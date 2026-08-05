@@ -170,11 +170,12 @@ class NotificationScreenInstrumentedTest {
             )
         }
         val recordingNavigator = setNotificationScreenContent(notifications + scrollGuardNotifications)
+        val notificationList = composeRule.onNode(hasScrollAction())
 
         notifications.forEach { notification ->
             val title = notification.content!!.title
-            composeRule.onNode(hasScrollAction()).performScrollToNode(hasText(title))
-            composeRule.onNodeWithText(title).performClick()
+            notificationList.performScrollToNode(hasText(title))
+            composeRule.onNodeWithText(title).assertIsDisplayed().performClick()
         }
 
         assertEquals(4, recordingNavigator.destinations.size)
@@ -296,6 +297,14 @@ class NotificationScreenInstrumentedTest {
         unreadCounts: Map<MobileNotificationCategory, Int> = emptyMap(),
         notifications: List<MobileNotificationTimelineItem> = listOf(notificationFixture()),
     ) {
+        waitUntil(
+            "Notification screen did not finish its initial refresh",
+            timeoutMillis = 5_000,
+        ) {
+            ViewModelProvider(activity)[NotificationViewModel::class.java].let { viewModel ->
+                !viewModel.isLoading && viewModel.isEnd
+            }
+        }
         activity.runOnUiThread {
             val viewModel = ViewModelProvider(activity)[NotificationViewModel::class.java]
             viewModel.allData.clear()
