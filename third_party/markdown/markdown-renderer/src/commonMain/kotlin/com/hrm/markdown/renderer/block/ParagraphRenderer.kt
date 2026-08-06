@@ -164,8 +164,16 @@ private fun highlightedLineRects(
     return (startLine..endLine).map { line ->
         val lineStart = maxOf(safeStart, layout.getLineStart(line))
         val lineEnd = minOf(safeEnd, layout.getLineEnd(line, visibleEnd = true))
-        val left = if (lineStart < lineEnd) layout.getHorizontalPosition(lineStart, usePrimaryDirection = true) else 0f
-        val right = if (lineStart < lineEnd) layout.getHorizontalPosition(lineEnd, usePrimaryDirection = true) else left
+        val left = when {
+            lineStart >= lineEnd -> 0f
+            line == startLine -> layout.getHorizontalPosition(lineStart, usePrimaryDirection = true)
+            else -> layout.getLineLeft(line)
+        }
+        val right = when {
+            lineStart >= lineEnd -> left
+            line == endLine -> layout.getHorizontalPosition(lineEnd, usePrimaryDirection = true)
+            else -> layout.getLineRight(line)
+        }
         androidx.compose.ui.geometry.Rect(
             left = minOf(left, right),
             top = layout.getLineTop(line),

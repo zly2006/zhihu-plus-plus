@@ -19,6 +19,7 @@ package com.github.zly2006.zhihu
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.os.SystemClock
 import android.util.Log
 import androidx.compose.foundation.ComposeFoundationFlags
@@ -30,13 +31,16 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.MutableState
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.LocalTextToolbar
 import androidx.compose.ui.platform.TextToolbar
@@ -99,6 +103,8 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.io.File
+import java.io.FileOutputStream
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
@@ -562,6 +568,64 @@ class ArticleScreenInstrumentedTest {
 
         composeRule.onNodeWithText("划线片段").assertIsDisplayed()
         composeRule.onNodeWithText("“$FORMATTED_HIGHLIGHT”").assertIsDisplayed()
+    }
+
+    @Test
+    fun highlightedTextDrawsDashesAcrossEveryWrappedLine() {
+        composeRule.setScreenContent {
+            MaterialTheme(
+                colorScheme = lightColorScheme(
+                    outlineVariant = Color.Magenta,
+                ),
+            ) {
+                RenderMarkdown(
+                    html = WRAPPED_HIGHLIGHT_PARAGRAPH_HTML,
+                    modifier = androidx.compose.ui.Modifier
+                        .width(220.dp)
+                        .testTag("wrapped-highlight-article"),
+                    enableScroll = false,
+                )
+            }
+        }
+
+        val paragraph = composeRule.onNodeWithText(WRAPPED_HIGHLIGHT_PARAGRAPH)
+        val layouts = mutableListOf<TextLayoutResult>()
+        paragraph.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { getTextLayoutResult ->
+            assertTrue(getTextLayoutResult(layouts))
+        }
+        val layout = layouts.single()
+        val highlightStart = WRAPPED_HIGHLIGHT_PREFIX.length
+        val highlightEnd = highlightStart + WRAPPED_HIGHLIGHT.length
+        val startLine = layout.getLineForOffset(highlightStart)
+        val endLine = layout.getLineForOffset(highlightEnd - 1)
+        assertTrue("Fixture must wrap the highlighted text onto at least three lines", endLine - startLine >= 2)
+
+        val image = composeRule
+            .onNodeWithTag("wrapped-highlight-article")
+            .captureToImage()
+        val output = File(
+            requireNotNull(InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null)),
+            "segment-highlight-wrapped.png",
+        )
+        FileOutputStream(output).use { stream ->
+            image.asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, stream)
+        }
+
+        val pixels = image.toPixelMap()
+        for (line in startLine..endLine) {
+            val top = (layout.getLineBottom(line) - 6f).toInt().coerceAtLeast(0)
+            val bottom = (layout.getLineBottom(line) + 2f).toInt().coerceAtMost(pixels.height - 1)
+            val magentaPixels = (top..bottom).sumOf { y ->
+                (0 until pixels.width).count { x ->
+                    val color = pixels[x, y]
+                    color.red > 0.8f && color.green < 0.2f && color.blue > 0.8f
+                }
+            }
+            assertTrue(
+                "Highlighted visual line $line must contain visible dash pixels; found $magentaPixels. Screenshot: ${output.absolutePath}",
+                magentaPixels >= 4,
+            )
+        }
     }
 
     @Test
@@ -1387,6 +1451,12 @@ class ArticleScreenInstrumentedTest {
         const val FORMATTED_HIGHLIGHT_PREFIX = "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW"
         const val FORMATTED_HIGHLIGHT = "划线命中"
         const val FORMATTED_HIGHLIGHT_PARAGRAPH = "$FORMATTED_HIGHLIGHT_PREFIX$FORMATTED_HIGHLIGHT 后缀"
+        const val WRAPPED_HIGHLIGHT_PREFIX = "普通前缀 "
+        const val WRAPPED_HIGHLIGHT =
+            "这是位于段落中间并且需要跨越多个视觉行的划线内容，用于验证每一行都能完整绘制虚线。"
+        const val WRAPPED_HIGHLIGHT_SUFFIX = " 普通后缀"
+        const val WRAPPED_HIGHLIGHT_PARAGRAPH =
+            "$WRAPPED_HIGHLIGHT_PREFIX$WRAPPED_HIGHLIGHT$WRAPPED_HIGHLIGHT_SUFFIX"
         val HIGHLIGHTED_PARAGRAPH_HTML =
             """
             <p data-pid="WGd4cbq-"><span class="highlight-wrap other has-comments"
@@ -1410,6 +1480,15 @@ class ArticleScreenInstrumentedTest {
                 data-highlight-comment-count="1"
                 data-highlight-content-id="777"
                 data-highlight-content-type="answer">$FORMATTED_HIGHLIGHT</span> 后缀</p>
+            """.trimIndent()
+        val WRAPPED_HIGHLIGHT_PARAGRAPH_HTML =
+            """
+            <p>$WRAPPED_HIGHLIGHT_PREFIX<span class="highlight-wrap other has-comments"
+                data-highlight-id="wrapped-highlight"
+                data-highlight-like-count="1"
+                data-highlight-comment-count="1"
+                data-highlight-content-id="778"
+                data-highlight-content-type="answer">$WRAPPED_HIGHLIGHT</span>$WRAPPED_HIGHLIGHT_SUFFIX</p>
             """.trimIndent()
 
         val ARTICLE = Article(
