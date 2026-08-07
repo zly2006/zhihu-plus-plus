@@ -35,13 +35,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Comment
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MarkChatRead
+import androidx.compose.material.icons.filled.PersonAddAlt1
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.ContactPage
-import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -299,20 +299,6 @@ private fun NotificationInvitationRow(
             )
             Spacer(Modifier.height(3.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                invitation.avatarUrls.take(2).forEachIndexed { index, avatar ->
-                    AsyncImage(
-                        model = avatar.url,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .padding(start = if (index == 0) 0.dp else 2.dp)
-                            .size(22.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                    )
-                }
-                if (invitation.avatarUrls.isNotEmpty()) {
-                    Spacer(Modifier.width(6.dp))
-                }
                 Text(
                     text = invitation.textPrefix + invitation.text,
                     style = MaterialTheme.typography.bodyMedium,
@@ -549,9 +535,9 @@ fun NotificationItemView(
 
 private fun MobileNotificationCategory.homeIcon(): ImageVector = when (this) {
     MobileNotificationCategory.Comment -> Icons.AutoMirrored.Outlined.Comment
-    MobileNotificationCategory.Like -> Icons.Outlined.FavoriteBorder
-    MobileNotificationCategory.Favorite -> Icons.Outlined.StarOutline
-    MobileNotificationCategory.Follow -> Icons.Outlined.Info
+    MobileNotificationCategory.Like -> Icons.Filled.Favorite
+    MobileNotificationCategory.Favorite -> Icons.Filled.Bookmark
+    MobileNotificationCategory.Follow -> Icons.Filled.PersonAddAlt1
 }
 
 internal fun MobileNotificationTimelineItem.displayTitle(): String =
