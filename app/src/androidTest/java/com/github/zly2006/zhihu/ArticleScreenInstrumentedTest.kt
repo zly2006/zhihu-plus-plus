@@ -547,15 +547,20 @@ class ArticleScreenInstrumentedTest {
                 .boundsInWindow
             val handleBounds = endHandle.fetchSemanticsNode().boundsInWindow
             endHandle.performTouchInput {
-                down(center)
-                advanceEventTime(100)
-                moveTo(
-                    Offset(
-                        x = targetBounds.right - handleBounds.left - 1f,
-                        y = targetBounds.bottom - handleBounds.top - 1f,
-                    ),
-                    delayMillis = 500,
+                val start = center
+                val destination = Offset(
+                    x = targetBounds.right - handleBounds.left - 1f,
+                    y = targetBounds.bottom - handleBounds.top - 1f,
                 )
+                down(start)
+                advanceEventTime(100)
+                repeat(10) { step ->
+                    val fraction = (step + 1) / 10f
+                    moveTo(
+                        start + (destination - start) * fraction,
+                        delayMillis = 50,
+                    )
+                }
                 up()
             }
             val selectedPixels = composeRule
@@ -862,15 +867,20 @@ class ArticleScreenInstrumentedTest {
                 .boundsInWindow
             val handleBounds = endHandle.fetchSemanticsNode().boundsInWindow
             endHandle.performTouchInput {
-                down(center)
-                advanceEventTime(100)
-                moveTo(
-                    Offset(
-                        x = targetBounds.right - handleBounds.left - 1f,
-                        y = targetBounds.bottom - handleBounds.top - 1f,
-                    ),
-                    delayMillis = 500,
+                val start = center
+                val destination = Offset(
+                    x = targetBounds.right - handleBounds.left - 1f,
+                    y = targetBounds.bottom - handleBounds.top - 1f,
                 )
+                down(start)
+                advanceEventTime(100)
+                repeat(10) { step ->
+                    val fraction = (step + 1) / 10f
+                    moveTo(
+                        start + (destination - start) * fraction,
+                        delayMillis = 50,
+                    )
+                }
                 up()
             }
             waitUntilSelectionHighlight(

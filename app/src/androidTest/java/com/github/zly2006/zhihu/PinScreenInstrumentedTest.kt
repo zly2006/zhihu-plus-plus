@@ -17,7 +17,6 @@
 
 package com.github.zly2006.zhihu
 
-import android.view.KeyEvent
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -227,8 +226,8 @@ class PinScreenInstrumentedTest {
         composeRule.waitUntilTagExists(COMMENT_INPUT_TAG)
         composeRule.onNodeWithTag(COMMENT_INPUT_TAG).performTextInput(draft)
         val decorView = composeRule.activity.window.decorView
-        val instrumentation = InstrumentationRegistry.getInstrumentation()
-        instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+        val uiAutomation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        uiAutomation.executeShellCommand("input keyevent BACK").close()
         composeRule.waitUntil(
             "System back neither hid the IME nor dismissed the comment sheet",
             timeoutMillis = 5_000,
@@ -237,7 +236,7 @@ class PinScreenInstrumentedTest {
                 composeRule.onAllNodesWithTag(COMMENT_SCREEN_LIST_TAG).fetchSemanticsNodes().isEmpty()
         }
         if (composeRule.onAllNodesWithTag(COMMENT_SCREEN_LIST_TAG).fetchSemanticsNodes().isNotEmpty()) {
-            instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+            uiAutomation.executeShellCommand("input keyevent BACK").close()
         }
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(COMMENT_SCREEN_LIST_TAG).fetchSemanticsNodes().isEmpty()
