@@ -637,6 +637,9 @@ fun AppearanceSettingsScreen(
                         showFeedThumbnail.value = it
                         settings.putBoolean("showFeedThumbnail", it)
                     },
+                    settingKey = "showFeedThumbnail",
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor("showFeedThumbnail"),
                 )
 
                 SettingItemWithSwitch(
@@ -647,6 +650,9 @@ fun AppearanceSettingsScreen(
                         showRefreshFab.value = it
                         settings.putBoolean("showRefreshFab", it)
                     },
+                    settingKey = "showRefreshFab",
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor("showRefreshFab"),
                 )
 
                 var feedCardStyleExpanded by remember { mutableStateOf(false) }
@@ -660,6 +666,9 @@ fun AppearanceSettingsScreen(
                 SettingItem(
                     title = { Text("信息流样式") },
                     description = { Text("卡片样式使用圆角卡片展示，分割线样式使用细线分隔条目。") },
+                    settingKey = "feedCardStyle",
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor("feedCardStyle"),
                     endAction = {
                         ExposedDropdownMenuBox(
                             expanded = feedCardStyleExpanded,
@@ -772,6 +781,9 @@ fun AppearanceSettingsScreen(
                         isTitleAutoHide.value = it
                         settings.putBoolean("titleAutoHide", it)
                     },
+                    settingKey = "titleAutoHide",
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor("titleAutoHide"),
                 )
 
                 val autoHideArticleBottomBar = remember {
@@ -785,6 +797,9 @@ fun AppearanceSettingsScreen(
                         autoHideArticleBottomBar.value = it
                         settings.putBoolean("autoHideArticleBottomBar", it)
                     },
+                    settingKey = "autoHideArticleBottomBar",
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor("autoHideArticleBottomBar"),
                 )
 
                 SettingItemWithSwitch(
@@ -795,6 +810,9 @@ fun AppearanceSettingsScreen(
                         buttonSkipAnswer.value = it
                         settings.putBoolean("buttonSkipAnswer", it)
                     },
+                    settingKey = "buttonSkipAnswer",
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor("buttonSkipAnswer"),
                 )
 
                 val autoHideSkipAnswerButton = remember { mutableStateOf(settings.getBoolean("autoHideSkipAnswerButton", true)) }
@@ -819,6 +837,9 @@ fun AppearanceSettingsScreen(
                         pinAnswerDate.value = it
                         settings.putBoolean("pinAnswerDate", it)
                     },
+                    settingKey = "pinAnswerDate",
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor("pinAnswerDate"),
                 )
 
                 var answerSwitchExpanded by remember { mutableStateOf(false) }
@@ -833,6 +854,9 @@ fun AppearanceSettingsScreen(
                 SettingItem(
                     title = { Text("回答切换手势") },
                     description = { Text("在回答页面通过手势切换同一问题下的其他回答。") },
+                    settingKey = "answerSwitchMode",
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor("answerSwitchMode"),
                     endAction = {
                         ExposedDropdownMenuBox(
                             expanded = answerSwitchExpanded,
@@ -1304,6 +1328,9 @@ fun AppearanceSettingsScreen(
                         settings.putBoolean("use_custom_nav_host", it)
                         userMessages.showShortMessage("需要重启应用生效")
                     },
+                    settingKey = "use_custom_nav_host",
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor("use_custom_nav_host"),
                 )
 
                 val enablePredictiveBack = remember { mutableStateOf(settings.getBoolean("enable_predictive_back", true)) }
@@ -1315,6 +1342,9 @@ fun AppearanceSettingsScreen(
                         enablePredictiveBack.value = it
                         settings.putBoolean("enable_predictive_back", it)
                     },
+                    settingKey = "enable_predictive_back",
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor("enable_predictive_back"),
                 )
             }
             // ── 123duo3 UI 改进 ─────────────────────────────────────────────────

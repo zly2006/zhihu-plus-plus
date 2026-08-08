@@ -592,7 +592,7 @@ fun HomeScreen(
                                 leadingIcon = { Icon(Icons.Default.ArrowCircleUp, contentDescription = null) },
                                 accept = { Text("查看更新") },
                                 onAccept = {
-                                    navigator.onNavigate(Account.SystemAndUpdateSettings)
+                                    navigator.onNavigate(Account.SystemAndUpdateSettings())
                                 },
                                 dismiss = { Text("以后") },
                                 onDismiss = {
@@ -627,7 +627,7 @@ fun HomeScreen(
                                                     ?.let(openExternalUrl)
                                             }
                                             HOME_NOTIFICATION_ACTION_OPEN_UPDATE_SETTINGS -> {
-                                                navigator.onNavigate(Account.SystemAndUpdateSettings)
+                                                navigator.onNavigate(Account.SystemAndUpdateSettings())
                                             }
                                             HOME_NOTIFICATION_ACTION_OPEN_PIN -> {
                                                 accept.value?.jsonPrimitive?.contentOrNull?.toLongOrNull()?.let {
