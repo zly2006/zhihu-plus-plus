@@ -20,7 +20,6 @@ package com.github.zly2006.zhihu.ui.article
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -32,7 +31,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 @Stable
@@ -82,16 +80,13 @@ internal fun rememberArticleTopBarState(
             } else {
                 state.offset.value
             }
-            val scrollDelta = if (scrollState.value <= state.heightPx) state.offset.value - target else 0f
             if (target != state.offset.value) {
                 try {
                     state.isSnapping = true
-                    kotlinx.coroutines.coroutineScope {
-                        launch { state.offset.animateTo(target, tween(150)) }
-                        if (scrollDelta != 0f) {
-                            launch { scrollState.animateScrollBy(scrollDelta, tween(150)) }
-                        }
-                    }
+                    // This collector observes ScrollState.isScrollInProgress. Mutating that same
+                    // ScrollState while settling would restart the flow and trap input dispatch
+                    // in a cancellation loop, so snapping is limited to the app bar itself.
+                    state.offset.animateTo(target, tween(150))
                 } finally {
                     state.isSnapping = false
                 }
