@@ -574,13 +574,33 @@ class ArticleScreenInstrumentedTest {
                 "Dragging out of a highlighted paragraph must keep the cross-block selection visible; found $selectedPixels selected pixels",
                 selectedPixels >= 1_000,
             )
+            waitUntilSelectionHighlight(
+                text = HIGHLIGHT_SELECTION_TARGET,
+                failureMessage = "Selection did not reach the following block after dragging the handle",
+            )
+            val clipboard = composeRule.activity
+                .getSystemService(android.content.ClipboardManager::class.java)
+            clipboard.clearPrimaryClip()
+            composeRule.waitUntil(
+                "System clipboard did not clear before copying the cross-block selection",
+                timeoutMillis = 5_000,
+            ) {
+                !clipboard.hasPrimaryClip()
+            }
             composeRule.runOnIdle {
                 requireNotNull(textToolbar.onCopyRequested).invoke()
             }
-
-            val copiedText = composeRule.activity
-                .getSystemService(android.content.ClipboardManager::class.java)
-                .primaryClip
+            composeRule.waitUntil(
+                "Copy did not publish the cross-block selection to the system clipboard",
+                timeoutMillis = 5_000,
+            ) {
+                clipboard.primaryClip
+                    ?.getItemAt(0)
+                    ?.coerceToText(composeRule.activity)
+                    ?.toString()
+                    ?.contains(HIGHLIGHT_SELECTION_TARGET) == true
+            }
+            val copiedText = clipboard.primaryClip
                 ?.getItemAt(0)
                 ?.coerceToText(composeRule.activity)
                 ?.toString()
@@ -853,13 +873,35 @@ class ArticleScreenInstrumentedTest {
                 )
                 up()
             }
+            waitUntilSelectionHighlight(
+                text = "末段拖动必须到达这里。",
+                failureMessage = "Selection did not reach the final block after dragging the handle",
+            )
+            val clipboard = composeRule.activity
+                .getSystemService(android.content.ClipboardManager::class.java)
+            clipboard.clearPrimaryClip()
+            composeRule.waitUntil(
+                "System clipboard did not clear before copying the complete text layer selection",
+                timeoutMillis = 5_000,
+            ) {
+                !clipboard.hasPrimaryClip()
+            }
             composeRule.runOnIdle {
                 requireNotNull(textToolbar.onCopyRequested).invoke()
             }
-
-            val copiedText = composeRule.activity
-                .getSystemService(android.content.ClipboardManager::class.java)
-                .primaryClip
+            composeRule.waitUntil(
+                "Copy did not publish the complete text layer selection to the system clipboard",
+                timeoutMillis = 5_000,
+            ) {
+                clipboard.primaryClip
+                    ?.getItemAt(0)
+                    ?.coerceToText(composeRule.activity)
+                    ?.toString()
+                    ?.let { copied ->
+                        copied.contains("起始段落") && copied.contains("末段拖动必须到达这里")
+                    } == true
+            }
+            val copiedText = clipboard.primaryClip
                 ?.getItemAt(0)
                 ?.coerceToText(composeRule.activity)
                 ?.toString()

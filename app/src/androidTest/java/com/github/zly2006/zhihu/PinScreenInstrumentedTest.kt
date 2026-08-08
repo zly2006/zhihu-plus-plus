@@ -26,7 +26,9 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
-import androidx.test.espresso.Espresso.closeSoftKeyboard
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.test.espresso.Espresso.pressBack
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.data.DataHolder
@@ -226,7 +228,26 @@ class PinScreenInstrumentedTest {
         composeRule.onNodeWithTag(PIN_SCREEN_COMMENT_BUTTON_TAG).performClick()
         composeRule.waitUntilTagExists(COMMENT_INPUT_TAG)
         composeRule.onNodeWithTag(COMMENT_INPUT_TAG).performTextInput(draft)
-        closeSoftKeyboard()
+        val decorView = composeRule.activity.window.decorView
+        composeRule.runOnIdle {
+            WindowCompat
+                .getInsetsController(composeRule.activity.window, decorView)
+                .hide(WindowInsetsCompat.Type.ime())
+        }
+        composeRule.waitUntil(
+            "IME did not finish hiding before dismissing the comment sheet",
+            timeoutMillis = 5_000,
+        ) {
+            ViewCompat
+                .getRootWindowInsets(decorView)
+                ?.isVisible(WindowInsetsCompat.Type.ime()) == false
+        }
+        composeRule.waitUntil(
+            "Activity window did not regain focus after hiding the IME",
+            timeoutMillis = 5_000,
+        ) {
+            decorView.hasWindowFocus()
+        }
         pressBack()
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(COMMENT_SCREEN_LIST_TAG).fetchSemanticsNodes().isEmpty()
