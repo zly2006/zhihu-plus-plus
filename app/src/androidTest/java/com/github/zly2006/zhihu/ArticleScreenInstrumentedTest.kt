@@ -830,7 +830,13 @@ class ArticleScreenInstrumentedTest {
         try {
             val textToolbar = CapturingTextToolbar()
             composeRule.setScreenContent {
-                CompositionLocalProvider(LocalTextToolbar provides textToolbar) {
+                CompositionLocalProvider(
+                    LocalTextToolbar provides textToolbar,
+                    LocalTextSelectionColors provides TextSelectionColors(
+                        handleColor = Color.Magenta,
+                        backgroundColor = Color.Magenta,
+                    ),
+                ) {
                     RenderMarkdownText(
                         markdown =
                             """
