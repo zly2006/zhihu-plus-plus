@@ -68,6 +68,7 @@ fun CollectionScreen(
     urlToken: String?,
     testCollections: List<Collection>? = null,
     showBackButton: Boolean = true,
+    isActive: Boolean = true,
 ) {
     val navigator = LocalNavigator.current
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
@@ -82,8 +83,8 @@ fun CollectionScreen(
     var showCreateCollectionDialog by remember { mutableStateOf(false) }
     var collectionPendingDeletion by remember { mutableStateOf<Collection?>(null) }
 
-    LaunchedEffect(useTestCollections) {
-        if (!useTestCollections && viewModel.allData.isEmpty()) {
+    LaunchedEffect(isActive) {
+        if (shouldRefreshCollectionDataOnActivation(isActive, useTestCollections)) {
             viewModel.refresh(environment)
         }
     }
@@ -135,7 +136,6 @@ fun CollectionScreen(
             listState = listState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp)
                 .padding(innerPadding)
                 .testTag(COLLECTION_SCREEN_LIST_TAG),
             footer = ProgressIndicatorFooter,

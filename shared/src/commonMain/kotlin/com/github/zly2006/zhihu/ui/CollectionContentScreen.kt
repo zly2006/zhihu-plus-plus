@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -51,9 +52,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastJoinToString
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionAnswerNavigator
@@ -76,16 +79,10 @@ fun CollectionContentScreen(
 ) {
     val navigator = LocalNavigator.current
     val screenViewModel = viewModel { CollectionContentViewModel(collectionId) }
-    val readingQueueSourceId = "collection:$collectionId:contents"
-    RegisterReadingQueueSource(
-        sourceId = readingQueueSourceId,
-        items = screenViewModel.displayItems,
-    )
     val collectionEnvironment = rememberPaginationEnvironment(allowGuestAccess = false) as CollectionContentEnvironment
     val listState = rememberLazyListState()
     var showActionsMenu by remember { mutableStateOf(false) }
     var showExportOptionsDialog by remember { mutableStateOf(false) }
-    val sharedData = collectionEnvironment.articleAnswerSwitchState()
 
     LaunchedEffect(screenViewModel) {
         if (screenViewModel.allData.isEmpty()) {
@@ -166,54 +163,89 @@ fun CollectionContentScreen(
                 onDismiss = screenViewModel::dismissExportDialog,
             )
         }
-        PaginatedList(
-            items = screenViewModel.displayItems,
-            onLoadMore = { screenViewModel.loadMore(collectionEnvironment) },
-            isEnd = { screenViewModel.isEnd },
-            listState = listState,
+        CollectionContentBody(
+            viewModel = screenViewModel,
+            environment = collectionEnvironment,
+            collectionId = collectionId,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp)
-                .padding(innerPadding)
-                .testTag("collection_content_list"),
-            footer = ProgressIndicatorFooter,
-            topContent = {
-                item(0) {
-                    Text(
-                        listOfNotNull(
-                            "${screenViewModel.collection?.itemCount} 条收藏",
-                            "${screenViewModel.collection?.likeCount} 个赞同",
-                            "${screenViewModel.collection?.commentCount} 条评论",
-                            screenViewModel.collection?.updatedTime?.let { "${formatArticleDateTime(it)} 更新" },
-                        ).fastJoinToString(" · "),
-                        modifier = Modifier.testTag("collection_content_stats"),
-                    )
-                }
-            },
-        ) { item ->
-            FeedCard(
-                item = item,
-                readingQueueSourceId = readingQueueSourceId,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp)
-                    .testTag("collection_content_item_${item.stableKey}"),
-            ) { _, destination ->
-                if (destination is Article && destination.type == ArticleType.Answer && sharedData != null) {
-                    val idx = screenViewModel.displayItems.indexOf(item)
-                    val nextItems = if (idx >= 0) screenViewModel.allData.drop(idx + 1) else emptyList()
-                    val prevItems = if (idx > 0) screenViewModel.allData.take(idx).reversed() else emptyList()
-                    sharedData.pendingNavigator = CollectionAnswerNavigator(
-                        collectionId = collectionId,
-                        collectionTitle = screenViewModel.title,
-                        initialNextItems = nextItems,
-                        initialPreviousItems = prevItems,
-                        initialNextUrl = screenViewModel.nextPageUrl,
-                        environment = collectionEnvironment,
-                    )
-                }
-                destination?.let(navigator.onNavigate)
+                .padding(innerPadding),
+            listState = listState,
+            tagPrefix = "collection_content",
+        )
+    }
+}
+
+@Composable
+internal fun CollectionContentBody(
+    viewModel: CollectionContentViewModel,
+    environment: CollectionContentEnvironment,
+    collectionId: String,
+    modifier: Modifier = Modifier,
+    listState: LazyListState = rememberLazyListState(),
+    tagPrefix: String,
+    displayItems: List<FeedDisplayItem> = viewModel.displayItems,
+) {
+    val navigator = LocalNavigator.current
+    val sharedData = environment.articleAnswerSwitchState()
+    val readingQueueSourceId = "collection:$collectionId:contents"
+    RegisterReadingQueueSource(
+        sourceId = readingQueueSourceId,
+        items = displayItems,
+    )
+
+    val visibleCollectionItems = displayItems.mapNotNull { displayItem ->
+        val sourceIndex = viewModel.displayItems.indexOf(displayItem)
+        viewModel.allData.getOrNull(sourceIndex)
+    }
+
+    PaginatedList(
+        items = displayItems,
+        onLoadMore = { viewModel.loadMore(environment) },
+        isEnd = { viewModel.isEnd },
+        listState = listState,
+        modifier = modifier.testTag("${tagPrefix}_list"),
+        footer = ProgressIndicatorFooter,
+        topContent = {
+            item(0) {
+                Text(
+                    text = listOfNotNull(
+                        viewModel.collection?.itemCount?.let { "$it 条收藏" },
+                        viewModel.collection?.likeCount?.let { "$it 个赞同" },
+                        viewModel.collection?.commentCount?.let { "$it 条评论" },
+                        viewModel.collection?.updatedTime?.let { "${formatArticleDateTime(it)} 更新" },
+                    ).fastJoinToString(" · "),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .testTag("${tagPrefix}_stats"),
+                    textAlign = TextAlign.Center,
+                )
             }
+        },
+    ) { item ->
+        FeedCard(
+            item = item,
+            readingQueueSourceId = readingQueueSourceId,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
+                .testTag("${tagPrefix}_item_${item.stableKey}"),
+        ) { _, destination ->
+            if (destination is Article && destination.type == ArticleType.Answer && sharedData != null) {
+                val index = displayItems.indexOf(item)
+                val nextItems = if (index >= 0) visibleCollectionItems.drop(index + 1) else emptyList()
+                val previousItems = if (index > 0) visibleCollectionItems.take(index).reversed() else emptyList()
+                sharedData.pendingNavigator = CollectionAnswerNavigator(
+                    collectionId = collectionId,
+                    collectionTitle = viewModel.title,
+                    initialNextItems = nextItems,
+                    initialPreviousItems = previousItems,
+                    initialNextUrl = viewModel.nextPageUrl,
+                    environment = environment,
+                )
+            }
+            destination?.let(navigator.onNavigate)
         }
     }
 }

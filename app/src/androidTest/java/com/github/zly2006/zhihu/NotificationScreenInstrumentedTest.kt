@@ -162,7 +162,14 @@ class NotificationScreenInstrumentedTest {
                 targetLink = "zhihu://comment/list/pin/8?anchor_comment_id=9&is_child=false",
             ),
         )
-        val recordingNavigator = setNotificationScreenContent(notifications)
+        val scrollGuardNotifications = List(8) { index ->
+            notificationFixture(
+                id = "scroll-guard-$index",
+                title = "占位通知 $index",
+                subTitle = "测试占位",
+            )
+        }
+        val recordingNavigator = setNotificationScreenContent(notifications + scrollGuardNotifications)
         val notificationList = composeRule.onNode(hasScrollAction())
 
         notifications.forEach { notification ->
