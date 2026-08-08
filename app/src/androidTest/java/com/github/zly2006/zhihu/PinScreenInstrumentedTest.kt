@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu
 
+import android.view.KeyEvent
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -26,11 +27,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.test.espresso.Espresso.pressBack
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.navigation.Person
@@ -229,26 +227,18 @@ class PinScreenInstrumentedTest {
         composeRule.waitUntilTagExists(COMMENT_INPUT_TAG)
         composeRule.onNodeWithTag(COMMENT_INPUT_TAG).performTextInput(draft)
         val decorView = composeRule.activity.window.decorView
-        composeRule.runOnIdle {
-            WindowCompat
-                .getInsetsController(composeRule.activity.window, decorView)
-                .hide(WindowInsetsCompat.Type.ime())
-        }
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
         composeRule.waitUntil(
-            "IME did not finish hiding before dismissing the comment sheet",
+            "System back neither hid the IME nor dismissed the comment sheet",
             timeoutMillis = 5_000,
         ) {
-            ViewCompat
-                .getRootWindowInsets(decorView)
-                ?.isVisible(WindowInsetsCompat.Type.ime()) == false
+            decorView.hasWindowFocus() ||
+                composeRule.onAllNodesWithTag(COMMENT_SCREEN_LIST_TAG).fetchSemanticsNodes().isEmpty()
         }
-        composeRule.waitUntil(
-            "Activity window did not regain focus after hiding the IME",
-            timeoutMillis = 5_000,
-        ) {
-            decorView.hasWindowFocus()
+        if (composeRule.onAllNodesWithTag(COMMENT_SCREEN_LIST_TAG).fetchSemanticsNodes().isNotEmpty()) {
+            instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
         }
-        pressBack()
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(COMMENT_SCREEN_LIST_TAG).fetchSemanticsNodes().isEmpty()
         }

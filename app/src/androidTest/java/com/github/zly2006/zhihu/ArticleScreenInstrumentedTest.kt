@@ -544,8 +544,8 @@ class ArticleScreenInstrumentedTest {
             val targetBounds = composeRule
                 .onNodeWithText(HIGHLIGHT_SELECTION_TARGET)
                 .fetchSemanticsNode()
-                .boundsInRoot
-            val handleBounds = endHandle.fetchSemanticsNode().boundsInRoot
+                .boundsInWindow
+            val handleBounds = endHandle.fetchSemanticsNode().boundsInWindow
             endHandle.performTouchInput {
                 down(center)
                 advanceEventTime(100)
@@ -859,8 +859,8 @@ class ArticleScreenInstrumentedTest {
             val targetBounds = composeRule
                 .onNodeWithText("末段拖动必须到达这里。")
                 .fetchSemanticsNode()
-                .boundsInRoot
-            val handleBounds = endHandle.fetchSemanticsNode().boundsInRoot
+                .boundsInWindow
+            val handleBounds = endHandle.fetchSemanticsNode().boundsInWindow
             endHandle.performTouchInput {
                 down(center)
                 advanceEventTime(100)
