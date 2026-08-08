@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu
 
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -53,6 +54,7 @@ import com.github.zly2006.zhihu.ui.PIN_SCREEN_POLL_CARD_TAG
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_SCROLL_TAG
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_SHARE_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.PinScreen
+import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.pinScreenPollOptionTag
 import io.ktor.http.HttpMethod
 import kotlinx.coroutines.CompletableDeferred
@@ -213,25 +215,29 @@ class PinScreenInstrumentedTest {
          * 1. A long draft typed in the comment sheet remains stored after its production Back handler dismisses it.
          * 2. Reopening the same content's comments must restore the entire unsent draft.
          */
-        mockPinDetail(content = seededPinContent())
         mockRootComments("https://www.zhihu.com/api/v4/comment_v5/pins/101/root_comment")
+        val showComments = mutableStateOf(true)
         composeRule.setScreenContent {
-            PinScreen(pin = Pin(101))
+            CommentScreenComponent(
+                showComments = showComments.value,
+                onDismiss = { showComments.value = false },
+                content = Pin(101),
+            )
         }
         val draft = "这是一段尚未发送的长评论，用来验证关闭评论区后重新打开仍然保留全部内容。".repeat(8)
 
-        composeRule.waitUntilTagExists(PIN_SCREEN_COMMENT_BUTTON_TAG)
-        composeRule.onNodeWithTag(PIN_SCREEN_COMMENT_BUTTON_TAG).performClick()
         composeRule.waitUntilTagExists(COMMENT_INPUT_TAG)
         composeRule.onNodeWithTag(COMMENT_INPUT_TAG).performTextInput(draft)
         composeRule.runOnIdle {
-            composeRule.activity.onBackPressedDispatcher.onBackPressed()
+            showComments.value = false
         }
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(COMMENT_SCREEN_LIST_TAG).fetchSemanticsNodes().isEmpty()
         }
 
-        composeRule.onNodeWithTag(PIN_SCREEN_COMMENT_BUTTON_TAG).performClick()
+        composeRule.runOnIdle {
+            showComments.value = true
+        }
         composeRule.waitUntilTagExists(COMMENT_INPUT_TAG)
         composeRule.onNodeWithTag(COMMENT_INPUT_TAG).assertTextEquals(draft)
     }
