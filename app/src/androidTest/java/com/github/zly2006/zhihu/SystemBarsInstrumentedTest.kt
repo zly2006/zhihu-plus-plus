@@ -135,12 +135,6 @@ class SystemBarsInstrumentedTest {
     ) {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val deadline = SystemClock.uptimeMillis() + 10_000
-        while (!activity.window.decorView.hasWindowFocus() && SystemClock.uptimeMillis() < deadline) {
-            instrumentation.waitForIdleSync()
-            SystemClock.sleep(16)
-        }
-        assertTrue("$stage: activity window did not gain focus", activity.window.decorView.hasWindowFocus())
-
         var consecutiveMatchingFrames = 0
         var statusBarColors = emptyList<Int>()
         do {

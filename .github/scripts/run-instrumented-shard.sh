@@ -28,9 +28,6 @@ capture_diagnostics() {
 }
 trap capture_diagnostics EXIT
 
-adb -s "$device_serial" shell input keyevent KEYCODE_WAKEUP
-adb -s "$device_serial" shell wm dismiss-keyguard
-adb -s "$device_serial" shell cmd statusbar collapse
 adb -s "$device_serial" install -r -t "$app_apk"
 adb -s "$device_serial" install -r -t "$test_apk"
 adb -s "$device_serial" shell am instrument -w \

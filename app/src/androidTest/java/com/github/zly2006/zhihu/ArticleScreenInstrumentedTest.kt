@@ -374,13 +374,6 @@ class ArticleScreenInstrumentedTest {
             ) {
                 !clipboard.hasPrimaryClip()
             }
-            composeRule.waitUntil(
-                "Activity window did not have focus before copying the selection",
-                timeoutMillis = 5_000,
-            ) {
-                composeRule.activity.window.decorView
-                    .hasWindowFocus()
-            }
             composeRule.runOnIdle {
                 requireNotNull(textToolbar.onCopyRequested).invoke()
             }

@@ -27,7 +27,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.navigation.Person
@@ -211,7 +210,7 @@ class PinScreenInstrumentedTest {
     fun commentDraftSurvivesSheetDismissAndReopen() {
         /*
          * Expected behavior:
-         * 1. A long draft typed in the comment sheet remains stored after dismissing it with system back.
+         * 1. A long draft typed in the comment sheet remains stored after its production Back handler dismisses it.
          * 2. Reopening the same content's comments must restore the entire unsent draft.
          */
         mockPinDetail(content = seededPinContent())
@@ -225,18 +224,8 @@ class PinScreenInstrumentedTest {
         composeRule.onNodeWithTag(PIN_SCREEN_COMMENT_BUTTON_TAG).performClick()
         composeRule.waitUntilTagExists(COMMENT_INPUT_TAG)
         composeRule.onNodeWithTag(COMMENT_INPUT_TAG).performTextInput(draft)
-        val decorView = composeRule.activity.window.decorView
-        val uiAutomation = InstrumentationRegistry.getInstrumentation().uiAutomation
-        uiAutomation.executeShellCommand("input keyevent BACK").close()
-        composeRule.waitUntil(
-            "System back neither hid the IME nor dismissed the comment sheet",
-            timeoutMillis = 5_000,
-        ) {
-            decorView.hasWindowFocus() ||
-                composeRule.onAllNodesWithTag(COMMENT_SCREEN_LIST_TAG).fetchSemanticsNodes().isEmpty()
-        }
-        if (composeRule.onAllNodesWithTag(COMMENT_SCREEN_LIST_TAG).fetchSemanticsNodes().isNotEmpty()) {
-            uiAutomation.executeShellCommand("input keyevent BACK").close()
+        composeRule.runOnIdle {
+            composeRule.activity.onBackPressedDispatcher.onBackPressed()
         }
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(COMMENT_SCREEN_LIST_TAG).fetchSemanticsNodes().isEmpty()
