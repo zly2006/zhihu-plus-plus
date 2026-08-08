@@ -22,6 +22,8 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.os.SystemClock
 import android.util.Log
+import android.view.InputDevice
+import android.view.MotionEvent
 import androidx.compose.foundation.ComposeFoundationFlags
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Column
@@ -105,6 +107,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
 import java.io.FileOutputStream
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
@@ -167,6 +171,69 @@ class ArticleScreenInstrumentedTest {
         composeRule.onNodeWithText("离线作者").assertIsDisplayed()
         composeRule.onNodeWithText("IP属地：上海").assertExists()
         composeRule.onNodeWithText("第 1 段离线正文", substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun autoHideTitleRemainsResponsiveWhenDirectionChangesDuringHideAnimation() {
+        setArticleScreen()
+
+        val rootBounds = composeRule.onRoot().fetchSemanticsNode().boundsInRoot
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+
+        fun injectSwipe(
+            startYFraction: Float,
+            endYFraction: Float,
+            durationMillis: Long,
+        ) {
+            val downTime = SystemClock.uptimeMillis()
+            val x = rootBounds.center.x
+            val startY = rootBounds.height * startYFraction
+            val endY = rootBounds.height * endYFraction
+            val steps = maxOf((durationMillis / 15).toInt(), 1)
+
+            for (step in 0..steps) {
+                val eventTime = SystemClock.uptimeMillis()
+                val action = when (step) {
+                    0 -> MotionEvent.ACTION_DOWN
+                    steps -> MotionEvent.ACTION_UP
+                    else -> MotionEvent.ACTION_MOVE
+                }
+                val fraction = step.toFloat() / steps
+                val event = MotionEvent.obtain(
+                    downTime,
+                    eventTime,
+                    action,
+                    x,
+                    startY + (endY - startY) * fraction,
+                    0,
+                )
+                event.source = InputDevice.SOURCE_TOUCHSCREEN
+                try {
+                    assertTrue(instrumentation.uiAutomation.injectInputEvent(event, true))
+                } finally {
+                    event.recycle()
+                }
+                if (step < steps) SystemClock.sleep(durationMillis / steps)
+            }
+        }
+
+        injectSwipe(0.64f, 0.49f, 600)
+        repeat(4) {
+            injectSwipe(0.57f, 0.51f, 90)
+            injectSwipe(0.51f, 0.58f, 90)
+        }
+
+        val mainThreadResponsive = CountDownLatch(1)
+        composeRule.activity.runOnUiThread { mainThreadResponsive.countDown() }
+        assertTrue(
+            "Main thread stopped responding after reversing scroll during title hide animation",
+            mainThreadResponsive.await(3, TimeUnit.SECONDS),
+        )
+
+        injectSwipe(0.3f, 0.8f, 240)
+        composeRule.waitForIdle()
+        composeRule.onNodeWithContentDescription("更多选项").assertIsDisplayed().performClick()
+        composeRule.onNodeWithText("复制链接").assertIsDisplayed()
     }
 
     @Test
