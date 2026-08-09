@@ -43,8 +43,7 @@ import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.navigation.WritePin
-import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_CACHE_FILE_NAME
-import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_LAST_CHECK_PREFERENCE_KEY
+import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_READ_UUIDS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.notification.ZHIHU_PLUS_PLUS_HOME_NOTIFICATIONS_URL
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
@@ -70,9 +69,6 @@ import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
 import io.ktor.http.HttpMethod
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
@@ -88,7 +84,9 @@ class HomeScreenInstrumentedTest {
     fun setUp() {
         composeRule.setScreenContent {}
         composeRule.resetAppPreferences()
-        composeRule.activity.deleteFile(HOME_NOTIFICATION_CACHE_FILE_NAME)
+        composeRule.activity
+            .getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+            .edit(commit = true) { remove(HOME_NOTIFICATION_READ_UUIDS_PREFERENCE_KEY) }
         composeRule.activity.runOnUiThread {
             UpdateManager.updateState.value = UpdateManager.UpdateState.NoUpdate
             clearHomeFeedViewModel()
@@ -245,7 +243,6 @@ class HomeScreenInstrumentedTest {
             duo3HomeAccount = false,
             showRefreshFab = false,
             useSeededAccountForNetwork = true,
-            checkOnlineNotifications = true,
             displayItems = homeFeedFixtureItems(),
         )
 
@@ -258,13 +255,10 @@ class HomeScreenInstrumentedTest {
         composeRule.onNodeWithTag(homeOnlineNotificationTag(notificationUuid)).assertDoesNotExist()
         assertEquals(listOf(Pin(2051253530787370452L)), recordingNavigator.destinations)
         assertEquals(
-            listOf(notificationUuid),
-            ZhihuJson.json
-                .parseToJsonElement(composeRule.activity.getFileStreamPath(HOME_NOTIFICATION_CACHE_FILE_NAME).readText())
-                .jsonObject
-                .getValue("readUuids")
-                .jsonArray
-                .map { it.jsonPrimitive.content },
+            setOf(notificationUuid),
+            composeRule.activity
+                .getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+                .getStringSet(HOME_NOTIFICATION_READ_UUIDS_PREFERENCE_KEY, emptySet()),
         )
     }
 
@@ -396,7 +390,6 @@ class HomeScreenInstrumentedTest {
         duo3HomeAccount: Boolean,
         showRefreshFab: Boolean,
         useSeededAccountForNetwork: Boolean = false,
-        checkOnlineNotifications: Boolean = false,
         displayItems: List<FeedDisplayItem>,
     ): RecordingNavigator {
         setScreenContent {}
@@ -407,9 +400,6 @@ class HomeScreenInstrumentedTest {
             putBoolean("survey_feedback_done", true)
             putBoolean("autoCheckUpdates", false)
             putString("recommendationMode", RecommendationMode.WEB.key)
-            if (!checkOnlineNotifications) {
-                putLong(HOME_NOTIFICATION_LAST_CHECK_PREFERENCE_KEY, System.currentTimeMillis())
-            }
         }
         activity.runOnUiThread {
             if (!useSeededAccountForNetwork) {

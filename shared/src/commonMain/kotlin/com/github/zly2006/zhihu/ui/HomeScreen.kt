@@ -114,8 +114,8 @@ import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_PIN
 import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_UPDATE_SETTINGS
 import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_URL
 import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_SET_SETTING
-import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_CACHE_FILE_NAME
-import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_CHECK_INTERVAL_MILLIS
+import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_REFRESH_INTERVAL_MILLIS
+import com.github.zly2006.zhihu.notification.OnlineHomeNotification
 import com.github.zly2006.zhihu.notification.OnlineHomeNotificationRepository
 import com.github.zly2006.zhihu.notification.rememberNotificationSettingsStore
 import com.github.zly2006.zhihu.platform.UserMessageDuration
@@ -237,15 +237,10 @@ fun HomeScreen(
     val updateState by rememberSystemUpdateRuntime().state.collectAsState()
     val updateAnnouncement = updateState as? SystemUpdateState.UpdateAvailable
     val versionName = rememberAppVersionInfo().substringBefore(' ').takeIf { it.firstOrNull()?.isDigit() == true }
-    val onlineNotificationRepository = remember(settings, appPrivateDirectory) {
-        OnlineHomeNotificationRepository(
-            settings,
-            Path(appPrivateDirectory, HOME_NOTIFICATION_CACHE_FILE_NAME),
-        )
+    val onlineNotificationRepository = remember(settings) {
+        OnlineHomeNotificationRepository(settings)
     }
-    var onlineNotifications by remember(onlineNotificationRepository) {
-        mutableStateOf(onlineNotificationRepository.cachedNotifications())
-    }
+    var onlineNotifications by remember { mutableStateOf(emptyList<OnlineHomeNotification>()) }
     val isDebuggable = rememberHomeIsDebuggable()
     val isLiteVariant = rememberIsLiteVariant()
     val viewModel: BaseFeedViewModel = when (currentRecommendationMode) {
@@ -363,11 +358,17 @@ fun HomeScreen(
         if (versionName != null) {
             lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
                 while (true) {
-                    onlineNotifications = onlineNotificationRepository.load(
-                        versionName = versionName,
-                        httpClient = paginationEnvironment.httpClient(),
-                    )
-                    delay(HOME_NOTIFICATION_CHECK_INTERVAL_MILLIS)
+                    try {
+                        onlineNotifications = onlineNotificationRepository.load(
+                            versionName = versionName,
+                            httpClient = paginationEnvironment.httpClient(),
+                        )
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Log.e("HomeScreen", "Failed to load online notifications", e)
+                    }
+                    delay(HOME_NOTIFICATION_REFRESH_INTERVAL_MILLIS)
                 }
             }
         }
