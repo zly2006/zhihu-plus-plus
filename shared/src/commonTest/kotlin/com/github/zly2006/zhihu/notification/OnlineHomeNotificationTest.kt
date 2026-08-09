@@ -28,25 +28,16 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.test.runTest
-import kotlinx.io.buffered
-import kotlinx.io.files.Path
-import kotlinx.io.files.SystemFileSystem
-import kotlinx.io.files.SystemTemporaryDirectory
-import kotlinx.io.readString
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class OnlineHomeNotificationTest {
     @Test
-    fun repositoryCachesForThreeHours() = runTest {
+    fun repositoryFetchesLatestNotificationsOnEveryLoad() = runTest {
         val values = mutableMapOf<String, Any>()
-        val cacheFile = temporaryCacheFile()
-        val repository = OnlineHomeNotificationRepository(mapBackedSettingsStore(values), cacheFile)
+        val repository = OnlineHomeNotificationRepository(mapBackedSettingsStore(values))
         val notification = OnlineHomeNotification(
             uuid = "da811fe3-858a-4655-afd4-a63024b74dbb",
             expiresAt = 500,
@@ -70,22 +61,16 @@ class OnlineHomeNotificationTest {
             }
         }
 
-        try {
-            assertEquals(listOf(notification), repository.load("0.26", client, now = 1_000))
-            assertEquals(listOf(notification), repository.load("0.26", client, now = 1_000 + HOME_NOTIFICATION_CHECK_INTERVAL_MILLIS - 1))
-            assertEquals(1, requests)
-            assertEquals(listOf(notification), repository.load("0.26", client, now = 1_000 + HOME_NOTIFICATION_CHECK_INTERVAL_MILLIS))
-            assertEquals(2, requests)
-        } finally {
-            SystemFileSystem.delete(cacheFile, mustExist = false)
-        }
+        assertEquals(listOf(notification), repository.load("0.26", client))
+        assertEquals(listOf(notification), repository.load("0.26", client))
+        assertEquals(2, requests)
+        assertEquals(emptySet(), values.keys)
     }
 
     @Test
-    fun readStateUsesUuidIndependentlyAndIsStoredInCacheFile() = runTest {
+    fun readStateUsesUuidIndependentlyAndIsStoredAsPreference() = runTest {
         val values = mutableMapOf<String, Any>()
-        val cacheFile = temporaryCacheFile()
-        val repository = OnlineHomeNotificationRepository(mapBackedSettingsStore(values), cacheFile)
+        val repository = OnlineHomeNotificationRepository(mapBackedSettingsStore(values))
         val readNotification = OnlineHomeNotification(
             uuid = "da811fe3-858a-4655-afd4-a63024b74dbb",
             expiresAt = 500,
@@ -100,24 +85,14 @@ class OnlineHomeNotificationTest {
         )
         val client = notificationClient(listOf(readNotification, unreadNotification))
 
-        try {
-            repository.load("0.26", client, now = 1_000)
-            repository.markRead(readNotification)
+        repository.markRead(readNotification)
 
-            assertEquals(listOf(unreadNotification), repository.cachedNotifications())
-            val readUuids = SystemFileSystem.source(cacheFile).buffered().use { source ->
-                ZhihuJson.json
-                    .parseToJsonElement(source.readString())
-                    .jsonObject
-                    .getValue("readUuids")
-                    .jsonArray
-                    .map { it.jsonPrimitive.content }
-            }
-            assertEquals(listOf(readNotification.uuid), readUuids)
-            assertEquals(setOf(HOME_NOTIFICATION_LAST_CHECK_PREFERENCE_KEY), values.keys)
-        } finally {
-            SystemFileSystem.delete(cacheFile, mustExist = false)
-        }
+        assertEquals(listOf(unreadNotification), repository.load("0.26", client))
+        assertEquals(
+            setOf(readNotification.uuid),
+            values[HOME_NOTIFICATION_READ_UUIDS_PREFERENCE_KEY],
+        )
+        assertEquals(setOf(HOME_NOTIFICATION_READ_UUIDS_PREFERENCE_KEY), values.keys)
     }
 
     @Test
@@ -138,16 +113,11 @@ class OnlineHomeNotificationTest {
                 dismiss = "关闭",
             ),
         )
-        val cacheFile = temporaryCacheFile()
-        try {
-            assertEquals(
-                notifications,
-                OnlineHomeNotificationRepository(mapBackedSettingsStore(mutableMapOf()), cacheFile)
-                    .load("0.26", notificationClient(notifications), now = 1_000),
-            )
-        } finally {
-            SystemFileSystem.delete(cacheFile, mustExist = false)
-        }
+        assertEquals(
+            notifications,
+            OnlineHomeNotificationRepository(mapBackedSettingsStore(mutableMapOf()))
+                .load("0.26", notificationClient(notifications)),
+        )
     }
 
     @Test
@@ -196,9 +166,6 @@ class OnlineHomeNotificationTest {
         putFloat = { key, value -> values[key] = value },
         remove = values::remove,
     )
-
-    private fun temporaryCacheFile(): Path =
-        Path(SystemTemporaryDirectory, "online-home-notifications-${Random.nextLong()}.json")
 
     private fun notificationClient(notifications: List<OnlineHomeNotification>): HttpClient = HttpClient(
         MockEngine {
