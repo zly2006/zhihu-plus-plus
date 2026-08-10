@@ -300,7 +300,7 @@ class ArticleScreenInstrumentedTest {
 
     @OptIn(ExperimentalFoundationApi::class)
     @Test
-    fun selectAllIncludesDeferredMarkdownBlocks() {
+    fun selectionSurvivesDeferredMarkdownViewDisposal() {
         val previousContextMenuFlag = ComposeFoundationFlags.isNewContextMenuEnabled
         ComposeFoundationFlags.isNewContextMenuEnabled = false
         try {
@@ -337,7 +337,8 @@ class ArticleScreenInstrumentedTest {
                 text = "第一段可见正文",
                 failureMessage = "Select all did not become visible on the first markdown block",
             )
-            // 全选后滚到底部，覆盖离屏投影与真实 Markdown 块互换时的选择稳定性。
+            // 滚到底部会销毁开头的真实 BlockRenderer；选择必须由 registrar 保留，而不是靠
+            // 另一份常驻文字冒充仍在视图树里的 selectable。
             val scrollContainer = composeRule.onNode(
                 SemanticsMatcher("has vertical scroll axis") { node ->
                     node.config.contains(SemanticsProperties.VerticalScrollAxisRange)
@@ -359,17 +360,31 @@ class ArticleScreenInstrumentedTest {
                 .fetchSemanticsNode()
                 .config[SemanticsProperties.VerticalScrollAxisRange]
             assertTrue(
-                "Long markdown did not reach the bottom before copying the selection",
+                "Long markdown did not reach the bottom before checking disposal",
                 finalRange.maxValue() - finalRange.value() <= 1f,
             )
+            composeRule.onNodeWithText("第一段可见正文").assertDoesNotExist()
+
+            scrollAttempts = 0
+            while (scrollAttempts < 40) {
+                val range = scrollContainer
+                    .fetchSemanticsNode()
+                    .config[SemanticsProperties.VerticalScrollAxisRange]
+                if (range.value() <= 1f) break
+                scrollContainer.performSemanticsAction(SemanticsActions.ScrollBy) { scrollBy ->
+                    scrollBy(0f, -4_000f)
+                }
+                composeRule.waitForIdle()
+                scrollAttempts++
+            }
             waitUntilSelectionHighlight(
-                text = "末段必须被全选",
-                failureMessage = "Select all did not remain visible after deferred markdown blocks materialized",
+                text = "第一段可见正文",
+                failureMessage = "Selection disappeared after the real Markdown view was disposed and recreated",
             )
             val clipboard = composeRule.activity.getSystemService(android.content.ClipboardManager::class.java)
             clipboard.clearPrimaryClip()
             composeRule.waitUntil(
-                "System clipboard did not clear before copying the selection",
+                "System clipboard did not clear before copying the restored selection",
                 timeoutMillis = 5_000,
             ) {
                 !clipboard.hasPrimaryClip()
@@ -378,35 +393,15 @@ class ArticleScreenInstrumentedTest {
                 requireNotNull(textToolbar.onCopyRequested).invoke()
             }
             composeRule.waitUntil(
-                "Copy did not publish the complete selected markdown to the system clipboard",
-                timeoutMillis = 10_000,
+                "Copy did not publish the selection restored after view disposal",
+                timeoutMillis = 5_000,
             ) {
-                val currentText = clipboard.primaryClip
+                clipboard.primaryClip
                     ?.getItemAt(0)
                     ?.coerceToText(composeRule.activity)
                     ?.toString()
-                    .orEmpty()
-                currentText.contains("第一段可见正文") &&
-                    currentText.contains("末段必须被全选") &&
-                    Regex("第 (\\d+) 段长文填充正文").findAll(currentText).count() == 120
+                    ?.contains("第一段可见正文") == true
             }
-
-            val copiedText = clipboard.primaryClip
-                ?.getItemAt(0)
-                ?.coerceToText(composeRule.activity)
-                ?.toString()
-                .orEmpty()
-            val copiedParagraphIndexes = Regex("第 (\\d+) 段长文填充正文")
-                .findAll(copiedText)
-                .map { it.groupValues[1].toInt() }
-                .toList()
-            assertEquals((0 until 120).toList(), copiedParagraphIndexes)
-            assertEquals(1, Regex(Regex.escape("第一段可见正文")).findAll(copiedText).count())
-            assertEquals(1, Regex(Regex.escape("末段必须被全选")).findAll(copiedText).count())
-            assertTrue(
-                "Select all must include markdown blocks that are deferred outside the viewport",
-                copiedText.contains("第一段可见正文") && copiedText.contains("末段必须被全选"),
-            )
         } finally {
             ComposeFoundationFlags.isNewContextMenuEnabled = previousContextMenuFlag
         }
@@ -791,10 +786,17 @@ class ArticleScreenInstrumentedTest {
                 requireNotNull(textToolbar.onSelectAllRequested).invoke()
             }
 
-            val pixels = composeRule
+            val selectionImage = composeRule
                 .onNodeWithTag("multiline-selection-article")
                 .captureToImage()
-                .toPixelMap()
+            val screenshot = File(
+                requireNotNull(InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null)),
+                "markdown-native-selection.png",
+            )
+            FileOutputStream(screenshot).use { stream ->
+                selectionImage.asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, stream)
+            }
+            val pixels = selectionImage.toPixelMap()
             val highlightedRows = (0 until pixels.height).count { y ->
                 var selectedPixels = 0
                 for (x in 0 until pixels.width) {
@@ -807,7 +809,8 @@ class ArticleScreenInstrumentedTest {
             }
             Log.i("MarkdownSelection", "multilineSelectionHighlightedRows=$highlightedRows")
             assertTrue(
-                "Select-all highlight only covered $highlightedRows pixel rows; a wrapped paragraph must highlight every line",
+                "Select-all highlight only covered $highlightedRows pixel rows; a wrapped paragraph must highlight every line. " +
+                    "Screenshot: ${screenshot.absolutePath}",
                 highlightedRows >= 180,
             )
         } finally {

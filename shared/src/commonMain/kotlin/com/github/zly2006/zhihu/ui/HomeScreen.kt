@@ -603,11 +603,13 @@ fun HomeScreen(
                                 },
                                 colors = AnnouncementCardDefaults.colorsImportant(),
                             )
-                            onlineNotifications.forEach { notification ->
-                                val markRead = {
-                                    onlineNotificationRepository.markRead(notification)
-                                    onlineNotifications = onlineNotifications.filterNot { it.uuid == notification.uuid }
-                                }
+                        }
+                        onlineNotifications.forEach { notification ->
+                            val markRead = {
+                                onlineNotificationRepository.markRead(notification)
+                                onlineNotifications = onlineNotifications.filterNot { it.uuid == notification.uuid }
+                            }
+                            item(notification.uuid) {
                                 AnnouncementCard(
                                     modifier = Modifier.testTag(homeOnlineNotificationTag(notification.uuid)),
                                     visible = true,
@@ -667,7 +669,9 @@ fun HomeScreen(
                                     onDismiss = markRead,
                                 )
                             }
-                            authorPinAnnouncements.forEach { announcement ->
+                        }
+                        authorPinAnnouncements.forEach { announcement ->
+                            item(announcement) {
                                 AnnouncementCard(
                                     modifier = Modifier.testTag(homeAuthorPollAnnouncementTag(announcement.pinId)),
                                     visible = true,
