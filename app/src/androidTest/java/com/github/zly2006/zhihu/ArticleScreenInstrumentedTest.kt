@@ -67,7 +67,6 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.text.TextLayoutResult
@@ -540,13 +539,17 @@ class ArticleScreenInstrumentedTest {
         text: String,
     ) {
         scrollToBoundary(scrollContainer, end = false)
+        val scrollStep = composeRule.onRoot().fetchSemanticsNode().boundsInRoot.height / 2f
         repeat(80) {
-            if (composeRule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()) {
-                composeRule.onNodeWithText(text).performScrollTo().assertIsDisplayed()
+            val target = composeRule.onNodeWithText(text)
+            if (
+                composeRule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() &&
+                runCatching { target.assertIsDisplayed() }.isSuccess
+            ) {
                 return
             }
             scrollContainer.performSemanticsAction(SemanticsActions.ScrollBy) { scrollBy ->
-                scrollBy(0f, 2_000f)
+                scrollBy(0f, scrollStep)
             }
             composeRule.waitForIdle()
         }
