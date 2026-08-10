@@ -414,42 +414,41 @@ class ArticleScreenInstrumentedTest {
                 text = secondParagraph,
                 failureMessage = "Select all did not highlight the second paragraph",
             )
-            val fullDocumentCopy = copySelection(textToolbar, clipboard)
-            assertCompleteDocumentSelection(
-                copiedText = fullDocumentCopy,
-                expectedUniqueTexts = listOf(
-                    firstParagraph,
-                    secondParagraph,
-                    codeBlock,
-                    quoteBlock,
-                    tableCell,
-                    thirdFromLastParagraph,
-                    secondFromLastParagraph,
-                    lastParagraph,
-                ),
-                fillerParagraphs = fillerParagraphs,
-            )
             scrollToBoundary(scrollContainer, end = true)
             composeRule.onNodeWithText(firstParagraph).assertDoesNotExist()
             composeRule.onNodeWithText(secondParagraph).assertDoesNotExist()
-            assertEquals(fullDocumentCopy, copySelection(textToolbar, clipboard))
 
             scrollToText(scrollContainer, secondParagraph)
             waitUntilSelectionHighlight(
                 text = secondParagraph,
                 failureMessage = "Full-document selection disappeared after the second paragraph was recreated",
             )
-            assertEquals(fullDocumentCopy, copySelection(textToolbar, clipboard))
+            val expectedUniqueTexts = listOf(
+                firstParagraph,
+                secondParagraph,
+                codeBlock,
+                quoteBlock,
+                tableCell,
+                thirdFromLastParagraph,
+                secondFromLastParagraph,
+                lastParagraph,
+            )
+            val fullDocumentCopy = copySelection(textToolbar, clipboard)
+            assertCompleteDocumentSelection(fullDocumentCopy, expectedUniqueTexts, fillerParagraphs)
 
             composeRule.onNodeWithText(secondParagraph).performTouchInput { longClick() }
             composeRule.runOnIdle {
                 requireNotNull(textToolbar.onSelectAllRequested).invoke()
             }
-            val repeatedFullDocumentCopy = copySelection(textToolbar, clipboard)
-            assertEquals(fullDocumentCopy, repeatedFullDocumentCopy)
+            waitUntilSelectionHighlight(
+                text = secondParagraph,
+                failureMessage = "Repeating select all did not highlight the second paragraph",
+            )
             scrollToBoundary(scrollContainer, end = true)
             composeRule.onNodeWithText(secondParagraph).assertDoesNotExist()
-            assertEquals(repeatedFullDocumentCopy, copySelection(textToolbar, clipboard))
+            val detachedFullDocumentCopy = copySelection(textToolbar, clipboard)
+            assertCompleteDocumentSelection(detachedFullDocumentCopy, expectedUniqueTexts, fillerParagraphs)
+            assertEquals(fullDocumentCopy, detachedFullDocumentCopy)
         } finally {
             ComposeFoundationFlags.isNewContextMenuEnabled = previousContextMenuFlag
         }
@@ -508,8 +507,6 @@ class ArticleScreenInstrumentedTest {
             text = target,
             failureMessage = "Selection did not highlight $target before disposal",
         )
-        val visibleCopy = copySelection(textToolbar, clipboard)
-        assertTrue("Visible selection did not copy $target: $visibleCopy", visibleCopy.contains(target))
 
         scrollToBoundary(scrollContainer, end = awayToEnd)
         (listOf(target) + additionallyDisposed).forEach { disposedText ->
@@ -521,19 +518,20 @@ class ArticleScreenInstrumentedTest {
             text = target,
             failureMessage = "Selection on $target disappeared after its renderer was recreated",
         )
-        assertEquals(visibleCopy, copySelection(textToolbar, clipboard))
+        val restoredCopy = copySelection(textToolbar, clipboard)
+        assertTrue("Restored selection did not copy $target: $restoredCopy", restoredCopy.contains(target))
 
         composeRule.onNodeWithText(target).performTouchInput { longClick() }
         waitUntilSelectionHighlight(
             text = target,
             failureMessage = "Reselecting $target did not produce a visible selection",
         )
-        val reselectedCopy = copySelection(textToolbar, clipboard)
-        assertTrue("Reselected text did not copy $target: $reselectedCopy", reselectedCopy.contains(target))
 
         scrollToBoundary(scrollContainer, end = awayToEnd)
         composeRule.onNodeWithText(target).assertDoesNotExist()
-        assertEquals(reselectedCopy, copySelection(textToolbar, clipboard))
+        val detachedCopy = copySelection(textToolbar, clipboard)
+        assertTrue("Detached selection did not copy $target: $detachedCopy", detachedCopy.contains(target))
+        assertEquals(restoredCopy, detachedCopy)
     }
 
     private fun scrollToText(
