@@ -76,6 +76,7 @@ fun PersistentSelectionContainer(
 @Composable
 internal fun PersistentSelectionScope(
     scopeKey: Any,
+    fallbackCoordinates: LayoutCoordinates? = null,
     content: @Composable () -> Unit,
 ) {
     val registrar = LocalSelectionRegistrar.current
@@ -92,6 +93,7 @@ internal fun PersistentSelectionScope(
     val scopedRegistrar = remember(persistentRegistrar, scopeKey) {
         persistentRegistrar.scoped(scopeKey).also { it.beginComposition() }
     }
+    scopedRegistrar.fallbackCoordinates = fallbackCoordinates
     CompositionLocalProvider(
         LocalSelectionRegistrar provides scopedRegistrar,
         content = content,
@@ -110,12 +112,23 @@ private class PersistentSelectionRegistrar(
     override val subselections: LongObjectMap<Selection>
         get() = androidxRegistrar.subselections
 
-    override fun subscribe(selectable: Selectable): Selectable {
-        selectables[selectable.selectableId]?.attach(selectable)
-            ?: PersistentSelectable(selectable).also {
+    override fun subscribe(selectable: Selectable): Selectable =
+        subscribe(selectable) { null }
+
+    fun subscribe(
+        selectable: Selectable,
+        fallbackCoordinates: () -> LayoutCoordinates?,
+    ): Selectable {
+        val persistentSelectable = selectables[selectable.selectableId]
+        if (persistentSelectable != null) {
+            persistentSelectable.attach(selectable)
+            persistentSelectable.setFallbackCoordinates(fallbackCoordinates)
+        } else {
+            PersistentSelectable(selectable, fallbackCoordinates).also {
                 selectables[selectable.selectableId] = it
                 androidxRegistrar.subscribe(it)
             }
+        }
         // SelectionController keeps the value returned here for drawing and unsubscribe. Returning
         // the persistent proxy would make the real text node retain another node's lifecycle.
         return selectable
@@ -179,6 +192,7 @@ private class ScopedPersistentSelectionRegistrar(
 ) : SelectionRegistrar by persistentRegistrar {
     private val selectableIds = mutableListOf<Long>()
     private var allocationIndex = 0
+    var fallbackCoordinates: LayoutCoordinates? = null
 
     fun beginComposition() {
         allocationIndex = 0
@@ -195,13 +209,18 @@ private class ScopedPersistentSelectionRegistrar(
         }
     }
 
+    override fun subscribe(selectable: Selectable): Selectable =
+        persistentRegistrar.subscribe(selectable) { fallbackCoordinates }
+
 }
 
 private class PersistentSelectable(
     delegate: Selectable,
+    fallbackCoordinates: () -> LayoutCoordinates?,
 ) : Selectable {
     override val selectableId = delegate.selectableId
     private var delegate: Selectable? = delegate
+    private var fallbackCoordinates = fallbackCoordinates
     private var text = delegate.getText()
     private var selectAllSelection = delegate.getSelectAllSelection()
 
@@ -209,6 +228,10 @@ private class PersistentSelectable(
         delegate = selectable
         text = selectable.getText()
         selectAllSelection = selectable.getSelectAllSelection()
+    }
+
+    fun setFallbackCoordinates(fallbackCoordinates: () -> LayoutCoordinates?) {
+        this.fallbackCoordinates = fallbackCoordinates
     }
 
     fun detach(selectable: Selectable) {
@@ -230,6 +253,7 @@ private class PersistentSelectable(
 
     override fun getLayoutCoordinates(): LayoutCoordinates? =
         delegate?.getLayoutCoordinates()?.takeIf { it.isAttached }
+            ?: fallbackCoordinates().takeIf { it?.isAttached == true }
 
     override fun textLayoutResult(): TextLayoutResult? = delegate?.textLayoutResult()
 

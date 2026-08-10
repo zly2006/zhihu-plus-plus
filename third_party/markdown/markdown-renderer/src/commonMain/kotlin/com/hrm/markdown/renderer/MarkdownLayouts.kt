@@ -22,6 +22,7 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
@@ -165,6 +166,7 @@ private fun DeferredMarkdownBlock(
     val density = LocalDensity.current
     val viewportHeightPx = LocalWindowInfo.current.containerSize.height.toFloat()
     var materialized by remember(node) { mutableStateOf(false) }
+    var blockCoordinates by remember(node) { mutableStateOf<LayoutCoordinates?>(null) }
     // 父 LazyColumn 回收整个 Markdown 条目后，若丢失实测高度，重新进入视口时估算高度与真实高度会
     // 反复改变父列表布局，表现为长问题详情空白和按钮抖动（#615）。这里只保存高度，仍保留离屏延迟渲染。
     var measuredHeightDp by rememberSaveable(node.stableKey) { mutableStateOf<Float?>(null) }
@@ -178,6 +180,7 @@ private fun DeferredMarkdownBlock(
         modifier = Modifier
             .fillMaxWidth()
             .onGloballyPositioned { coordinates ->
+                blockCoordinates = coordinates
                 if (viewportHeightPx > 0f) {
                     val top = coordinates.positionInWindow().y
                     val bottom = top + coordinates.size.height
@@ -194,7 +197,7 @@ private fun DeferredMarkdownBlock(
     ) {
         if (renderBlock) {
             deferredBlockStates.SaveableStateProvider(node.stableKey) {
-                PersistentSelectionScope(node::class to node.stableKey) {
+                PersistentSelectionScope(node::class to node.stableKey, blockCoordinates) {
                     BlockRenderer(
                         node = node,
                         renderRevision = blockRenderRevision(node),
