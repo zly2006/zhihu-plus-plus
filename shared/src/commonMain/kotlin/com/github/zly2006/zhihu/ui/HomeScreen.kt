@@ -671,7 +671,7 @@ fun HomeScreen(
                             }
                         }
                         authorPinAnnouncements.forEach { announcement ->
-                            item(announcement) {
+                            item(announcement.pinId) {
                                 AnnouncementCard(
                                     modifier = Modifier.testTag(homeAuthorPollAnnouncementTag(announcement.pinId)),
                                     visible = true,

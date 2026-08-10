@@ -73,14 +73,19 @@ private class PersistentSelectionRegistrar(
         get() = androidxRegistrar.subselections
 
     override fun subscribe(selectable: Selectable): Selectable {
-        return selectables[selectable.selectableId]?.also { it.delegate = selectable }
+        selectables[selectable.selectableId]?.attach(selectable)
             ?: PersistentSelectable(selectable).also {
                 selectables[selectable.selectableId] = it
                 androidxRegistrar.subscribe(it)
             }
+        // SelectionController keeps the value returned here for drawing and unsubscribe. Returning
+        // the persistent proxy would make the real text node retain another node's lifecycle.
+        return selectable
     }
 
-    override fun unsubscribe(selectable: Selectable) = Unit
+    override fun unsubscribe(selectable: Selectable) {
+        selectables[selectable.selectableId]?.detach(selectable)
+    }
 
     override fun nextSelectableId(): Long = androidxRegistrar.nextSelectableId()
 
@@ -132,39 +137,56 @@ private class PersistentSelectionRegistrar(
 }
 
 private class PersistentSelectable(
-    var delegate: Selectable,
+    delegate: Selectable,
 ) : Selectable {
-    override val selectableId: Long
-        get() = delegate.selectableId
+    override val selectableId = delegate.selectableId
+    private var delegate: Selectable? = delegate
+    private var text = delegate.getText()
+    private var selectAllSelection = delegate.getSelectAllSelection()
 
-    override fun appendSelectableInfoToBuilder(builder: SelectionLayoutBuilder) {
-        delegate.appendSelectableInfoToBuilder(builder)
+    fun attach(selectable: Selectable) {
+        delegate = selectable
+        text = selectable.getText()
+        selectAllSelection = selectable.getSelectAllSelection()
     }
 
-    override fun getSelectAllSelection(): Selection? = delegate.getSelectAllSelection()
+    fun detach(selectable: Selectable) {
+        if (delegate !== selectable) return
+        text = selectable.getText()
+        selectAllSelection = selectable.getSelectAllSelection()
+        delegate = null
+    }
+
+    override fun appendSelectableInfoToBuilder(builder: SelectionLayoutBuilder) {
+        delegate?.appendSelectableInfoToBuilder(builder)
+    }
+
+    override fun getSelectAllSelection(): Selection? =
+        delegate?.getSelectAllSelection() ?: selectAllSelection
 
     override fun getHandlePosition(selection: Selection, isStartHandle: Boolean): Offset =
-        delegate.getHandlePosition(selection, isStartHandle)
+        delegate?.getHandlePosition(selection, isStartHandle) ?: Offset.Unspecified
 
     override fun getLayoutCoordinates(): LayoutCoordinates? =
-        delegate.getLayoutCoordinates()?.takeIf { it.isAttached }
+        delegate?.getLayoutCoordinates()?.takeIf { it.isAttached }
 
-    override fun textLayoutResult(): TextLayoutResult? = delegate.textLayoutResult()
+    override fun textLayoutResult(): TextLayoutResult? = delegate?.textLayoutResult()
 
-    override fun getText(): AnnotatedString = delegate.getText()
+    override fun getText(): AnnotatedString = delegate?.getText() ?: text
 
-    override fun getBoundingBox(offset: Int): Rect = delegate.getBoundingBox(offset)
+    override fun getBoundingBox(offset: Int): Rect = delegate?.getBoundingBox(offset) ?: Rect.Zero
 
-    override fun getLineLeft(offset: Int): Float = delegate.getLineLeft(offset)
+    override fun getLineLeft(offset: Int): Float = delegate?.getLineLeft(offset) ?: -1f
 
-    override fun getLineRight(offset: Int): Float = delegate.getLineRight(offset)
+    override fun getLineRight(offset: Int): Float = delegate?.getLineRight(offset) ?: -1f
 
-    override fun getCenterYForOffset(offset: Int): Float = delegate.getCenterYForOffset(offset)
+    override fun getCenterYForOffset(offset: Int): Float =
+        delegate?.getCenterYForOffset(offset) ?: -1f
 
     override fun getRangeOfLineContaining(offset: Int): TextRange =
-        delegate.getRangeOfLineContaining(offset)
+        delegate?.getRangeOfLineContaining(offset) ?: TextRange.Zero
 
-    override fun getLastVisibleOffset(): Int = delegate.getLastVisibleOffset()
+    override fun getLastVisibleOffset(): Int = delegate?.getLastVisibleOffset() ?: text.length
 
-    override fun getLineHeight(offset: Int): Float = delegate.getLineHeight(offset)
+    override fun getLineHeight(offset: Int): Float = delegate?.getLineHeight(offset) ?: 0f
 }
