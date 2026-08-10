@@ -67,6 +67,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.text.TextLayoutResult
@@ -540,7 +541,10 @@ class ArticleScreenInstrumentedTest {
     ) {
         scrollToBoundary(scrollContainer, end = false)
         repeat(80) {
-            if (composeRule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()) return
+            if (composeRule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()) {
+                composeRule.onNodeWithText(text).performScrollTo().assertIsDisplayed()
+                return
+            }
             scrollContainer.performSemanticsAction(SemanticsActions.ScrollBy) { scrollBy ->
                 scrollBy(0f, 2_000f)
             }
