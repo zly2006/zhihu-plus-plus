@@ -49,6 +49,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
@@ -57,6 +59,7 @@ import com.github.zly2006.zhihu.account.SharedQrLoginPane
 import com.github.zly2006.zhihu.account.ZHIHU_DESKTOP_USER_AGENT
 import com.github.zly2006.zhihu.account.ZHIHU_HOME_URL
 import com.github.zly2006.zhihu.account.ZHIHU_SIGNIN_URL
+import com.github.zly2006.zhihu.account.ZhihuMobileLoginToken
 import com.github.zly2006.zhihu.account.parseCookieAssignments
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.theme.ZhihuTheme
@@ -69,6 +72,7 @@ import kotlinx.coroutines.launch
 
 private const val LOGIN_MODE_WEB = 0
 private const val LOGIN_MODE_QR = 1
+private const val LOGIN_MODE_PHONE = 2
 
 class LoginActivity : ComponentActivity() {
     private var isCompletingLogin = false
@@ -80,11 +84,12 @@ class LoginActivity : ComponentActivity() {
         setContent {
             ZhihuTheme {
                 var currentNoticeStep by rememberSaveable { mutableIntStateOf(0) }
-                var loginMode by rememberSaveable { mutableIntStateOf(LOGIN_MODE_WEB) }
+                var loginMode by rememberSaveable { mutableIntStateOf(LOGIN_MODE_PHONE) }
 
                 Surface(
                     modifier = Modifier
                         .fillMaxSize()
+                        .semantics { testTagsAsResourceId = true }
                         .systemBarsPadding(),
                 ) {
                     if (currentNoticeStep >= 3) {
@@ -214,13 +219,23 @@ class LoginActivity : ComponentActivity() {
         }
     }
 
-    suspend fun finalizeLoginFromCookies(cookies: Map<String, String>): Boolean {
+    suspend fun finalizeLoginFromCookies(cookies: Map<String, String>): Boolean =
+        finalizeLogin {
+            AccountData.verifyLogin(this, cookies)
+        }
+
+    suspend fun finalizeMobileLogin(token: ZhihuMobileLoginToken): Boolean =
+        finalizeLogin {
+            AccountData.verifyMobileLogin(this, token)
+        }
+
+    private suspend fun finalizeLogin(verifyLogin: suspend () -> Boolean): Boolean {
         if (isCompletingLogin) {
             return false
         }
         isCompletingLogin = true
         return try {
-            if (AccountData.verifyLogin(this, cookies)) {
+            if (verifyLogin()) {
                 val data = AccountData.loadData(this)
                 AlertDialog
                     .Builder(this)
@@ -269,11 +284,11 @@ private fun LoginModeScreen(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             LoginModeButton(
-                text = "网页登录",
-                selected = loginMode == LOGIN_MODE_WEB,
-                tag = "login_mode_web",
+                text = "手机号登录",
+                selected = loginMode == LOGIN_MODE_PHONE,
+                tag = "login_mode_phone",
                 modifier = Modifier.weight(1f),
-                onClick = { onModeChanged(LOGIN_MODE_WEB) },
+                onClick = { onModeChanged(LOGIN_MODE_PHONE) },
             )
             LoginModeButton(
                 text = "扫码登录",
@@ -282,6 +297,13 @@ private fun LoginModeScreen(
                 modifier = Modifier.weight(1f),
                 onClick = { onModeChanged(LOGIN_MODE_QR) },
             )
+            LoginModeButton(
+                text = "备用网页登录",
+                selected = loginMode == LOGIN_MODE_WEB,
+                tag = "login_mode_web",
+                modifier = Modifier.weight(1f),
+                onClick = { onModeChanged(LOGIN_MODE_WEB) },
+            )
         }
 
         Box(
@@ -289,15 +311,18 @@ private fun LoginModeScreen(
                 .fillMaxWidth()
                 .weight(1f),
         ) {
-            if (loginMode == LOGIN_MODE_WEB) {
-                WebviewComp(
-                    modifier = Modifier.fillMaxSize(),
-                    onLoad = { webView ->
-                        activity.configureWebLogin(webView)
-                    },
-                )
-            } else {
-                QrLoginPane(activity = activity)
+            when (loginMode) {
+                LOGIN_MODE_WEB -> {
+                    WebviewComp(
+                        modifier = Modifier.fillMaxSize(),
+                        onLoad = { webView ->
+                            activity.configureWebLogin(webView)
+                        },
+                    )
+                }
+
+                LOGIN_MODE_QR -> QrLoginPane(activity = activity)
+                LOGIN_MODE_PHONE -> PhoneLoginPane(activity = activity)
             }
         }
     }
