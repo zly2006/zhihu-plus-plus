@@ -317,9 +317,9 @@ class ArticleScreenInstrumentedTest {
             val codeBlock = "CODE_TARGET"
             val quoteBlock = "QUOTE_TARGET"
             val tableCell = "TABLE_TARGET"
-            val thirdFromLastParagraph = "THIRD_FROM_LAST_TARGET"
-            val secondFromLastParagraph = "SECOND_FROM_LAST_TARGET"
-            val lastParagraph = "LAST_TARGET"
+            val thirdFromLastParagraph = "TAIL_THIRD_TARGET"
+            val secondFromLastParagraph = "TAIL_PENULTIMATE_TARGET"
+            val lastParagraph = "TAIL_FINAL_TARGET"
             val fillerParagraphs = (0 until 200).map { "FILLER_$it" }
             val markdown = buildString {
                 appendLine(firstParagraph)
