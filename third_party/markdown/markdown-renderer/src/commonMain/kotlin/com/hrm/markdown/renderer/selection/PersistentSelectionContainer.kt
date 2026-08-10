@@ -70,8 +70,8 @@ fun PersistentSelectionContainer(
  * AndroidX only saves a selectable id while that selectable is part of the active selection. A
  * completely unrelated paragraph therefore receives a new id after an off-screen round trip. The
  * outer registrar must not keep both generations, otherwise full-document selection copies the
- * paragraph repeatedly. A block scope reuses ids by composition order while reserving ids that
- * AndroidX is already restoring for the active selection.
+ * paragraph repeatedly. A block scope reuses ids by composition order while reserving only ids
+ * that were selected when the block was disposed and will therefore be restored by AndroidX.
  */
 @Composable
 internal fun PersistentSelectionScope(
@@ -135,8 +135,11 @@ private class PersistentSelectionRegistrar(
     }
 
     override fun unsubscribe(selectable: Selectable) {
-        selectables[selectable.selectableId]?.detach(selectable)
+        detach(selectable)
     }
+
+    fun detach(selectable: Selectable): Boolean =
+        selectables[selectable.selectableId]?.detach(selectable) == true
 
     override fun nextSelectableId(): Long = androidxRegistrar.nextSelectableId()
 
@@ -191,17 +194,21 @@ private class ScopedPersistentSelectionRegistrar(
     val persistentRegistrar: PersistentSelectionRegistrar,
 ) : SelectionRegistrar by persistentRegistrar {
     private val selectableIds = mutableListOf<Long>()
+    private val selectedIdsAtDisposal = mutableSetOf<Long>()
+    private var idsRestoredThisComposition = emptySet<Long>()
     private var allocationIndex = 0
     var fallbackCoordinates: LayoutCoordinates? = null
 
     fun beginComposition() {
         allocationIndex = 0
+        idsRestoredThisComposition = selectedIdsAtDisposal.toSet()
+        selectedIdsAtDisposal.clear()
     }
 
     override fun nextSelectableId(): Long {
         while (allocationIndex < selectableIds.size) {
             val selectableId = selectableIds[allocationIndex++]
-            if (!persistentRegistrar.subselections.containsKey(selectableId)) return selectableId
+            if (selectableId !in idsRestoredThisComposition) return selectableId
         }
         return persistentRegistrar.nextSelectableId().also { selectableId ->
             selectableIds += selectableId
@@ -211,6 +218,16 @@ private class ScopedPersistentSelectionRegistrar(
 
     override fun subscribe(selectable: Selectable): Selectable =
         persistentRegistrar.subscribe(selectable) { fallbackCoordinates }
+
+    override fun unsubscribe(selectable: Selectable) {
+        val wasSelected = persistentRegistrar.subselections.containsKey(selectable.selectableId)
+        if (!persistentRegistrar.detach(selectable)) return
+        if (wasSelected) {
+            selectedIdsAtDisposal += selectable.selectableId
+        } else {
+            selectedIdsAtDisposal -= selectable.selectableId
+        }
+    }
 
 }
 
@@ -234,11 +251,12 @@ private class PersistentSelectable(
         this.fallbackCoordinates = fallbackCoordinates
     }
 
-    fun detach(selectable: Selectable) {
-        if (delegate !== selectable) return
+    fun detach(selectable: Selectable): Boolean {
+        if (delegate !== selectable) return false
         text = selectable.getText()
         selectAllSelection = selectable.getSelectAllSelection()
         delegate = null
+        return true
     }
 
     override fun appendSelectableInfoToBuilder(builder: SelectionLayoutBuilder) {
