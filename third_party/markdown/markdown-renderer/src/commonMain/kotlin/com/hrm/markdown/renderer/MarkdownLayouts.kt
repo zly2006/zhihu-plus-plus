@@ -10,31 +10,27 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.BasicText
-import androidx.compose.foundation.text.selection.DisableSelection
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.SaveableStateHolder
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 import com.hrm.markdown.parser.ast.AbbreviationDefinition
 import com.hrm.markdown.parser.ast.BlankLine
-import com.hrm.markdown.parser.ast.CitationReference
 import com.hrm.markdown.parser.ast.ContainerNode
-import com.hrm.markdown.parser.ast.Emoji
 import com.hrm.markdown.parser.ast.FencedCodeBlock
 import com.hrm.markdown.parser.ast.Figure
 import com.hrm.markdown.parser.ast.FootnoteDefinition
@@ -42,12 +38,10 @@ import com.hrm.markdown.parser.ast.FootnoteReference
 import com.hrm.markdown.parser.ast.FrontMatter
 import com.hrm.markdown.parser.ast.HardLineBreak
 import com.hrm.markdown.parser.ast.Heading
-import com.hrm.markdown.parser.ast.HtmlEntity
 import com.hrm.markdown.parser.ast.Image
 import com.hrm.markdown.parser.ast.InlineCode
 import com.hrm.markdown.parser.ast.InlineMath
 import com.hrm.markdown.parser.ast.LinkReferenceDefinition
-import com.hrm.markdown.parser.ast.LeafNode
 import com.hrm.markdown.parser.ast.MathBlock
 import com.hrm.markdown.parser.ast.Node
 import com.hrm.markdown.parser.ast.Paragraph
@@ -57,6 +51,8 @@ import com.hrm.markdown.parser.ast.Text
 import com.hrm.markdown.parser.ast.ThematicBreak
 import com.hrm.markdown.renderer.block.BlockRenderer
 import com.hrm.markdown.renderer.block.blockRenderRevision
+import com.hrm.markdown.renderer.selection.PersistentSelectionContainer
+import com.hrm.markdown.renderer.selection.PersistentSelectionScope
 import kotlin.math.ceil
 
 @Composable
@@ -88,7 +84,6 @@ internal fun MarkdownDocumentLayout(
                 MarkdownBlockColumn(
                     blocks = renderState.renderBlocks,
                     deferOffscreenBlocks = deferOffscreenBlocks,
-                    preserveSelectionAcrossDeferredBlocks = renderMode == MarkdownRenderMode.SelectableColumn,
                 )
             }
             val theme = LocalMarkdownTheme.current
@@ -100,7 +95,7 @@ internal fun MarkdownDocumentLayout(
             ) {
                 header?.invoke()
                 if (renderMode == MarkdownRenderMode.SelectableColumn) {
-                    SelectionContainer {
+                    PersistentSelectionContainer {
                         markdownBody()
                     }
                 } else {
@@ -122,7 +117,6 @@ internal fun MarkdownBlockChildren(
         blocks = blockNodes,
         modifier = modifier,
         deferOffscreenBlocks = false,
-        preserveSelectionAcrossDeferredBlocks = false,
     )
 }
 
@@ -131,14 +125,14 @@ internal fun MarkdownBlockColumn(
     blocks: List<Node>,
     modifier: Modifier = Modifier,
     deferOffscreenBlocks: Boolean,
-    preserveSelectionAcrossDeferredBlocks: Boolean,
 ) {
     val theme = LocalMarkdownTheme.current
+    val deferredBlockStates = rememberSaveableStateHolder()
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(theme.blockSpacing),
     ) {
-        MarkdownBlockItems(blocks, deferOffscreenBlocks, preserveSelectionAcrossDeferredBlocks)
+        MarkdownBlockItems(blocks, deferOffscreenBlocks, deferredBlockStates)
     }
 }
 
@@ -146,12 +140,12 @@ internal fun MarkdownBlockColumn(
 private fun MarkdownBlockItems(
     blocks: List<Node>,
     deferOffscreenBlocks: Boolean,
-    preserveSelectionAcrossDeferredBlocks: Boolean,
+    deferredBlockStates: SaveableStateHolder,
 ) {
     for (node in blocks) {
         key(node::class, node.stableKey) {
             if (deferOffscreenBlocks) {
-                DeferredMarkdownBlock(node, preserveSelectionAcrossDeferredBlocks)
+                DeferredMarkdownBlock(node, deferredBlockStates)
             } else {
                 BlockRenderer(
                     node = node,
@@ -165,13 +159,14 @@ private fun MarkdownBlockItems(
 @Composable
 private fun DeferredMarkdownBlock(
     node: Node,
-    preserveSelectionAcrossDeferredBlocks: Boolean,
+    deferredBlockStates: SaveableStateHolder,
 ) {
     val theme = LocalMarkdownTheme.current
     val footnoteNavigationState = LocalFootnoteNavigationState.current
     val density = LocalDensity.current
     val viewportHeightPx = LocalWindowInfo.current.containerSize.height.toFloat()
     var materialized by remember(node) { mutableStateOf(false) }
+    var blockCoordinates by remember(node) { mutableStateOf<LayoutCoordinates?>(null) }
     // 父 LazyColumn 回收整个 Markdown 条目后，若丢失实测高度，重新进入视口时估算高度与真实高度会
     // 反复改变父列表布局，表现为长问题详情空白和按钮抖动（#615）。这里只保存高度，仍保留离屏延迟渲染。
     var measuredHeightDp by rememberSaveable(node.stableKey) { mutableStateOf<Float?>(null) }
@@ -181,13 +176,11 @@ private fun DeferredMarkdownBlock(
                 node.hasRequestedFootnoteReference(navigationState)
         } == true
     val renderBlock = materialized || requestedByNavigation
-    val selectionProjectionText = remember(node, preserveSelectionAcrossDeferredBlocks) {
-        if (preserveSelectionAcrossDeferredBlocks) node.selectionProjectionText() else ""
-    }
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
             .onGloballyPositioned { coordinates ->
+                blockCoordinates = coordinates
                 if (viewportHeightPx > 0f) {
                     val top = coordinates.positionInWindow().y
                     val bottom = top + coordinates.size.height
@@ -202,40 +195,14 @@ private fun DeferredMarkdownBlock(
                 }
             },
     ) {
-        if (selectionProjectionText.isNotEmpty()) {
-            val selectionLineHeightSp = theme.bodyStyle.lineHeight.value
-                .takeIf { it.isFinite() && it > 0f }
-                ?: theme.bodyStyle.fontSize.value.coerceAtLeast(1f) * 1.5f
-            val selectionLineHeightDp = selectionLineHeightSp * density.fontScale
-            val selectionLayoutHeightDp = measuredHeightDp
-                ?: estimateMarkdownBlockHeightDp(node, maxWidth.value, theme)
-            val selectionLayoutLineCapacity = ceil(selectionLayoutHeightDp / selectionLineHeightDp)
-                .toInt()
-                .coerceAtLeast(1)
-            // AndroidX 没有公开的离屏 Selectable 注册 API，且 selectable 在注销后会丢失已有选择。
-            // 因此同一个完整多行文字层始终留在视觉内容下方，它是长按、拖动、全选和复制共享的
-            // 唯一选择源。上层富内容不再注册第二份文字，只负责可见绘制和链接等交互，避免复制重复。
-            // maxLines 不能低于可见块的行容量：文字虽仍能全部复制，选中路径却只包含已布局的行；
-            // 固定成 1 就会导致多行段落只有第一行显示选中背景。按块高计算容量可以保留完整高亮，
-            // 同时避免对超出该块可见高度的展平文字做无意义布局。
-            // 长文基准中，改为在全选时完整物化富文本首次耗时约 3.4 秒；反复重建约 34 秒后，
-            // 包含大量公式的 instrument 测试在约 200 MB 堆上 OOM，因此不能用全量物化替代此投影。
-            // https://developer.android.com/reference/kotlin/androidx/compose/foundation/text/selection/package-summary#SelectionContainer(androidx.compose.ui.Modifier,kotlin.Function0)
-            BasicText(
-                text = selectionProjectionText,
-                modifier = Modifier
-                    .matchParentSize()
-                    .clearAndSetSemantics { },
-                style = theme.bodyStyle.copy(color = Color.Transparent),
-                maxLines = selectionLayoutLineCapacity,
-            )
-        }
         if (renderBlock) {
-            DisableSelection {
-                BlockRenderer(
-                    node = node,
-                    renderRevision = blockRenderRevision(node),
-                )
+            deferredBlockStates.SaveableStateProvider(node.stableKey) {
+                PersistentSelectionScope(node::class to node.stableKey, blockCoordinates) {
+                    BlockRenderer(
+                        node = node,
+                        renderRevision = blockRenderRevision(node),
+                    )
+                }
             }
         } else {
             Box(
@@ -247,16 +214,6 @@ private fun DeferredMarkdownBlock(
             )
         }
     }
-}
-
-private fun Node.selectionProjectionText(): String = when (this) {
-    is FrontMatter, is LinkReferenceDefinition, is AbbreviationDefinition, is BlankLine -> ""
-    is FootnoteReference -> "[$index]"
-    is CitationReference -> "[$key]"
-    is HtmlEntity -> resolved.ifEmpty { literal }
-    is Emoji -> unicode ?: literal.ifEmpty { ":$shortcode:" }
-    is ContainerNode -> children.joinToString("") { it.selectionProjectionText() }
-    is LeafNode -> literal
 }
 
 private fun Node.hasRequestedFootnoteReference(navigationState: FootnoteNavigationState): Boolean = when (this) {

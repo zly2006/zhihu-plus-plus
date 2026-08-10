@@ -44,13 +44,18 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.Clipboard
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalTextToolbar
+import androidx.compose.ui.platform.NativeClipboard
 import androidx.compose.ui.platform.TextToolbar
 import androidx.compose.ui.platform.TextToolbarStatus
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.click
@@ -300,23 +305,62 @@ class ArticleScreenInstrumentedTest {
 
     @OptIn(ExperimentalFoundationApi::class)
     @Test
-    fun selectAllIncludesDeferredMarkdownBlocks() {
+    fun selectionSurvivesDeferredMarkdownViewDisposal() {
         val previousContextMenuFlag = ComposeFoundationFlags.isNewContextMenuEnabled
         ComposeFoundationFlags.isNewContextMenuEnabled = false
         try {
             val textToolbar = CapturingTextToolbar()
+            val clipboard = RecordingClipboard()
             val selectionColor = Color.Magenta
+            val firstParagraph = "FIRST_TARGET"
+            val secondParagraph = "SECOND_TARGET"
+            val codeBlock = "CODE_TARGET"
+            val quoteBlock = "QUOTE_TARGET"
+            val tableCell = "TABLE_TARGET"
+            val thirdFromLastParagraph = "TAIL_THIRD_TARGET"
+            val secondFromLastParagraph = "TAIL_PENULTIMATE_TARGET"
+            val lastParagraph = "TAIL_FINAL_TARGET"
+            val fillerParagraphs = (0 until 200).map { "FILLER_$it" }
             val markdown = buildString {
-                appendLine("第一段可见正文")
+                appendLine(firstParagraph)
                 appendLine()
-                repeat(120) { index ->
-                    appendLine("第 $index 段长文填充正文，用于把末段推到视口之外。")
+                appendLine(secondParagraph)
+                appendLine()
+                fillerParagraphs.take(40).forEach {
+                    appendLine(it)
                     appendLine()
                 }
-                appendLine("末段必须被全选")
+                appendLine("```text")
+                appendLine(codeBlock)
+                appendLine("```")
+                appendLine()
+                fillerParagraphs.drop(40).take(40).forEach {
+                    appendLine(it)
+                    appendLine()
+                }
+                appendLine("> $quoteBlock")
+                appendLine()
+                fillerParagraphs.drop(80).take(40).forEach {
+                    appendLine(it)
+                    appendLine()
+                }
+                appendLine("| 测试列 |")
+                appendLine("| --- |")
+                appendLine("| $tableCell |")
+                appendLine()
+                fillerParagraphs.drop(120).forEach {
+                    appendLine(it)
+                    appendLine()
+                }
+                appendLine(thirdFromLastParagraph)
+                appendLine()
+                appendLine(secondFromLastParagraph)
+                appendLine()
+                appendLine(lastParagraph)
             }
             composeRule.setScreenContent {
                 CompositionLocalProvider(
+                    LocalClipboard provides clipboard,
                     LocalTextToolbar provides textToolbar,
                     LocalTextSelectionColors provides TextSelectionColors(
                         handleColor = selectionColor,
@@ -327,86 +371,84 @@ class ArticleScreenInstrumentedTest {
                 }
             }
 
-            composeRule
-                .onNodeWithText("第一段可见正文")
-                .performTouchInput { longClick() }
-            composeRule.runOnIdle {
-                requireNotNull(textToolbar.onSelectAllRequested).invoke()
-            }
-            waitUntilSelectionHighlight(
-                text = "第一段可见正文",
-                failureMessage = "Select all did not become visible on the first markdown block",
-            )
-            // 全选后滚到底部，覆盖离屏投影与真实 Markdown 块互换时的选择稳定性。
             val scrollContainer = composeRule.onNode(
                 SemanticsMatcher("has vertical scroll axis") { node ->
                     node.config.contains(SemanticsProperties.VerticalScrollAxisRange)
                 },
             )
-            var scrollAttempts = 0
-            while (scrollAttempts < 40) {
-                val range = scrollContainer
-                    .fetchSemanticsNode()
-                    .config[SemanticsProperties.VerticalScrollAxisRange]
-                if (range.maxValue() - range.value() <= 1f) break
-                scrollContainer.performSemanticsAction(SemanticsActions.ScrollBy) { scrollBy ->
-                    scrollBy(0f, 4_000f)
-                }
-                composeRule.waitForIdle()
-                scrollAttempts++
-            }
-            val finalRange = scrollContainer
-                .fetchSemanticsNode()
-                .config[SemanticsProperties.VerticalScrollAxisRange]
-            assertTrue(
-                "Long markdown did not reach the bottom before copying the selection",
-                finalRange.maxValue() - finalRange.value() <= 1f,
-            )
-            waitUntilSelectionHighlight(
-                text = "末段必须被全选",
-                failureMessage = "Select all did not remain visible after deferred markdown blocks materialized",
-            )
-            val clipboard = composeRule.activity.getSystemService(android.content.ClipboardManager::class.java)
-            clipboard.clearPrimaryClip()
-            composeRule.waitUntil(
-                "System clipboard did not clear before copying the selection",
-                timeoutMillis = 5_000,
-            ) {
-                !clipboard.hasPrimaryClip()
-            }
-            composeRule.runOnIdle {
-                requireNotNull(textToolbar.onCopyRequested).invoke()
-            }
-            composeRule.waitUntil(
-                "Copy did not publish the complete selected markdown to the system clipboard",
-                timeoutMillis = 10_000,
-            ) {
-                val currentText = clipboard.primaryClip
-                    ?.getItemAt(0)
-                    ?.coerceToText(composeRule.activity)
-                    ?.toString()
-                    .orEmpty()
-                currentText.contains("第一段可见正文") &&
-                    currentText.contains("末段必须被全选") &&
-                    Regex("第 (\\d+) 段长文填充正文").findAll(currentText).count() == 120
-            }
 
-            val copiedText = clipboard.primaryClip
-                ?.getItemAt(0)
-                ?.coerceToText(composeRule.activity)
-                ?.toString()
-                .orEmpty()
-            val copiedParagraphIndexes = Regex("第 (\\d+) 段长文填充正文")
-                .findAll(copiedText)
-                .map { it.groupValues[1].toInt() }
-                .toList()
-            assertEquals((0 until 120).toList(), copiedParagraphIndexes)
-            assertEquals(1, Regex(Regex.escape("第一段可见正文")).findAll(copiedText).count())
-            assertEquals(1, Regex(Regex.escape("末段必须被全选")).findAll(copiedText).count())
-            assertTrue(
-                "Select all must include markdown blocks that are deferred outside the viewport",
-                copiedText.contains("第一段可见正文") && copiedText.contains("末段必须被全选"),
+            assertSelectionSurvivesDisposal(
+                target = secondParagraph,
+                additionallyDisposed = listOf(firstParagraph),
+                awayToEnd = true,
+                scrollContainer = scrollContainer,
+                textToolbar = textToolbar,
+                clipboard = clipboard,
             )
+            listOf(codeBlock, quoteBlock, tableCell).forEach { target ->
+                assertSelectionSurvivesDisposal(
+                    target = target,
+                    awayToEnd = true,
+                    scrollContainer = scrollContainer,
+                    textToolbar = textToolbar,
+                    clipboard = clipboard,
+                )
+            }
+            assertSelectionSurvivesDisposal(
+                target = thirdFromLastParagraph,
+                additionallyDisposed = listOf(secondFromLastParagraph, lastParagraph),
+                awayToEnd = false,
+                scrollContainer = scrollContainer,
+                textToolbar = textToolbar,
+                clipboard = clipboard,
+            )
+
+            // 逐项滚动已经让整篇文档的真实 BlockRenderer 至少注册过一次；全选必须覆盖全部
+            // 内容，随后首部节点的销毁、重建和第二次销毁都不能改变高亮或复制结果。
+            scrollToText(scrollContainer, secondParagraph)
+            composeRule.onNodeWithText(secondParagraph).performTouchInput { longClick() }
+            composeRule.runOnIdle {
+                requireNotNull(textToolbar.onSelectAllRequested).invoke()
+            }
+            waitUntilSelectionHighlight(
+                text = secondParagraph,
+                failureMessage = "Select all did not highlight the second paragraph",
+            )
+            scrollToBoundary(scrollContainer, end = true)
+            composeRule.onNodeWithText(firstParagraph).assertDoesNotExist()
+            composeRule.onNodeWithText(secondParagraph).assertDoesNotExist()
+
+            scrollToText(scrollContainer, secondParagraph)
+            waitUntilSelectionHighlight(
+                text = secondParagraph,
+                failureMessage = "Full-document selection disappeared after the second paragraph was recreated",
+            )
+            val expectedUniqueTexts = listOf(
+                firstParagraph,
+                secondParagraph,
+                codeBlock,
+                quoteBlock,
+                tableCell,
+                thirdFromLastParagraph,
+                secondFromLastParagraph,
+                lastParagraph,
+            )
+            val fullDocumentCopy = copySelection(textToolbar, clipboard)
+            assertCompleteDocumentSelection(fullDocumentCopy, expectedUniqueTexts, fillerParagraphs)
+
+            composeRule.onNodeWithText(secondParagraph).performTouchInput { longClick() }
+            composeRule.runOnIdle {
+                requireNotNull(textToolbar.onSelectAllRequested).invoke()
+            }
+            waitUntilSelectionHighlight(
+                text = secondParagraph,
+                failureMessage = "Repeating select all did not highlight the second paragraph",
+            )
+            scrollToBoundary(scrollContainer, end = true)
+            composeRule.onNodeWithText(secondParagraph).assertDoesNotExist()
+            val detachedFullDocumentCopy = copySelection(textToolbar, clipboard)
+            assertCompleteDocumentSelection(detachedFullDocumentCopy, expectedUniqueTexts, fillerParagraphs)
+            assertEquals(fullDocumentCopy, detachedFullDocumentCopy)
         } finally {
             ComposeFoundationFlags.isNewContextMenuEnabled = previousContextMenuFlag
         }
@@ -434,6 +476,130 @@ class ArticleScreenInstrumentedTest {
         }
     }
 
+    private fun copySelection(
+        textToolbar: CapturingTextToolbar,
+        clipboard: RecordingClipboard,
+    ): String {
+        clipboard.clear()
+        composeRule.runOnIdle {
+            requireNotNull(textToolbar.onCopyRequested).invoke()
+        }
+        composeRule.waitUntil(
+            "Selection did not publish text to the Compose clipboard",
+            timeoutMillis = 5_000,
+        ) {
+            clipboard.text != null
+        }
+        return requireNotNull(clipboard.text)
+    }
+
+    private fun assertSelectionSurvivesDisposal(
+        target: String,
+        awayToEnd: Boolean,
+        scrollContainer: SemanticsNodeInteraction,
+        textToolbar: CapturingTextToolbar,
+        clipboard: RecordingClipboard,
+        additionallyDisposed: List<String> = emptyList(),
+    ) {
+        scrollToText(scrollContainer, target)
+        composeRule.onNodeWithText(target).performTouchInput { longClick() }
+        waitUntilSelectionHighlight(
+            text = target,
+            failureMessage = "Selection did not highlight $target before disposal",
+        )
+
+        scrollToBoundary(scrollContainer, end = awayToEnd)
+        (listOf(target) + additionallyDisposed).forEach { disposedText ->
+            composeRule.onNodeWithText(disposedText).assertDoesNotExist()
+        }
+
+        scrollToText(scrollContainer, target)
+        waitUntilSelectionHighlight(
+            text = target,
+            failureMessage = "Selection on $target disappeared after its renderer was recreated",
+        )
+        val restoredCopy = copySelection(textToolbar, clipboard)
+        assertTrue("Restored selection did not copy $target: $restoredCopy", restoredCopy.contains(target))
+
+        composeRule.onNodeWithText(target).performTouchInput { longClick() }
+        waitUntilSelectionHighlight(
+            text = target,
+            failureMessage = "Reselecting $target did not produce a visible selection",
+        )
+
+        scrollToBoundary(scrollContainer, end = awayToEnd)
+        composeRule.onNodeWithText(target).assertDoesNotExist()
+        val detachedCopy = copySelection(textToolbar, clipboard)
+        assertTrue("Detached selection did not copy $target: $detachedCopy", detachedCopy.contains(target))
+        assertEquals(restoredCopy, detachedCopy)
+    }
+
+    private fun scrollToText(
+        scrollContainer: SemanticsNodeInteraction,
+        text: String,
+    ) {
+        scrollToBoundary(scrollContainer, end = false)
+        val scrollStep = scrollContainer
+            .fetchSemanticsNode()
+            .boundsInRoot
+            .height
+        repeat(80) {
+            val target = composeRule.onNodeWithText(text)
+            if (
+                composeRule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() &&
+                runCatching { target.assertIsDisplayed() }.isSuccess
+            ) {
+                return
+            }
+            scrollContainer.performSemanticsAction(SemanticsActions.ScrollBy) { scrollBy ->
+                scrollBy(0f, scrollStep)
+            }
+            composeRule.waitForIdle()
+        }
+        assertTrue("Markdown did not materialize $text while scrolling", false)
+    }
+
+    private fun scrollToBoundary(
+        scrollContainer: SemanticsNodeInteraction,
+        end: Boolean,
+    ) {
+        repeat(80) {
+            val range = scrollContainer
+                .fetchSemanticsNode()
+                .config[SemanticsProperties.VerticalScrollAxisRange]
+            val reachedBoundary = if (end) {
+                range.maxValue() - range.value() <= 1f
+            } else {
+                range.value() <= 1f
+            }
+            if (reachedBoundary) return
+            scrollContainer.performSemanticsAction(SemanticsActions.ScrollBy) { scrollBy ->
+                scrollBy(0f, if (end) 4_000f else -4_000f)
+            }
+            composeRule.waitForIdle()
+        }
+        assertTrue("Markdown did not reach the ${if (end) "end" else "start"}", false)
+    }
+
+    private fun assertCompleteDocumentSelection(
+        copiedText: String,
+        expectedUniqueTexts: List<String>,
+        fillerParagraphs: List<String>,
+    ) {
+        expectedUniqueTexts.forEach { expected ->
+            assertEquals(
+                "$expected must occur exactly once in the full-document copy",
+                1,
+                Regex(Regex.escape(expected)).findAll(copiedText).count(),
+            )
+        }
+        val copiedFillerIndexes = Regex("FILLER_(\\d+)")
+            .findAll(copiedText)
+            .map { it.groupValues[1].toInt() }
+            .toList()
+        assertEquals(fillerParagraphs.indices.toList(), copiedFillerIndexes)
+    }
+
     @OptIn(ExperimentalFoundationApi::class)
     @Test
     fun highlightedParagraphRemainsSelectable() {
@@ -441,9 +607,11 @@ class ArticleScreenInstrumentedTest {
         ComposeFoundationFlags.isNewContextMenuEnabled = false
         try {
             val textToolbar = CapturingTextToolbar()
+            val clipboard = RecordingClipboard()
             val selectionColor = Color.Magenta
             composeRule.setScreenContent {
                 CompositionLocalProvider(
+                    LocalClipboard provides clipboard,
                     LocalTextToolbar provides textToolbar,
                     LocalTextSelectionColors provides TextSelectionColors(
                         handleColor = selectionColor,
@@ -482,16 +650,9 @@ class ArticleScreenInstrumentedTest {
             )
             composeRule.runOnIdle {
                 requireNotNull(textToolbar.onSelectAllRequested).invoke()
-                requireNotNull(textToolbar.onCopyRequested).invoke()
             }
 
-            val copiedText = composeRule.activity
-                .getSystemService(android.content.ClipboardManager::class.java)
-                .primaryClip
-                ?.getItemAt(0)
-                ?.coerceToText(composeRule.activity)
-                ?.toString()
-                .orEmpty()
+            val copiedText = copySelection(textToolbar, clipboard)
             assertEquals(HIGHLIGHTED_PARAGRAPH, copiedText)
         } finally {
             ComposeFoundationFlags.isNewContextMenuEnabled = previousContextMenuFlag
@@ -505,9 +666,11 @@ class ArticleScreenInstrumentedTest {
         ComposeFoundationFlags.isNewContextMenuEnabled = false
         try {
             val textToolbar = CapturingTextToolbar()
+            val clipboard = RecordingClipboard()
             val selectionColor = Color.Magenta
             composeRule.setScreenContent {
                 CompositionLocalProvider(
+                    LocalClipboard provides clipboard,
                     LocalTextToolbar provides textToolbar,
                     LocalTextSelectionColors provides TextSelectionColors(
                         handleColor = selectionColor,
@@ -576,33 +739,7 @@ class ArticleScreenInstrumentedTest {
                 text = HIGHLIGHT_SELECTION_TARGET,
                 failureMessage = "Selection did not reach the following block after dragging the handle",
             )
-            val clipboard = composeRule.activity
-                .getSystemService(android.content.ClipboardManager::class.java)
-            clipboard.clearPrimaryClip()
-            composeRule.waitUntil(
-                "System clipboard did not clear before copying the cross-block selection",
-                timeoutMillis = 5_000,
-            ) {
-                !clipboard.hasPrimaryClip()
-            }
-            composeRule.runOnIdle {
-                requireNotNull(textToolbar.onCopyRequested).invoke()
-            }
-            composeRule.waitUntil(
-                "Copy did not publish the cross-block selection to the system clipboard",
-                timeoutMillis = 5_000,
-            ) {
-                clipboard.primaryClip
-                    ?.getItemAt(0)
-                    ?.coerceToText(composeRule.activity)
-                    ?.toString()
-                    ?.contains(HIGHLIGHT_SELECTION_TARGET) == true
-            }
-            val copiedText = clipboard.primaryClip
-                ?.getItemAt(0)
-                ?.coerceToText(composeRule.activity)
-                ?.toString()
-                .orEmpty()
+            val copiedText = copySelection(textToolbar, clipboard)
             assertTrue(
                 "The standard selection handle must extend from a highlighted paragraph into the following block",
                 copiedText.contains(HIGHLIGHT_SELECTION_TARGET),
@@ -791,10 +928,17 @@ class ArticleScreenInstrumentedTest {
                 requireNotNull(textToolbar.onSelectAllRequested).invoke()
             }
 
-            val pixels = composeRule
+            val selectionImage = composeRule
                 .onNodeWithTag("multiline-selection-article")
                 .captureToImage()
-                .toPixelMap()
+            val screenshot = File(
+                requireNotNull(InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null)),
+                "markdown-native-selection.png",
+            )
+            FileOutputStream(screenshot).use { stream ->
+                selectionImage.asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, stream)
+            }
+            val pixels = selectionImage.toPixelMap()
             val highlightedRows = (0 until pixels.height).count { y ->
                 var selectedPixels = 0
                 for (x in 0 until pixels.width) {
@@ -807,7 +951,8 @@ class ArticleScreenInstrumentedTest {
             }
             Log.i("MarkdownSelection", "multilineSelectionHighlightedRows=$highlightedRows")
             assertTrue(
-                "Select-all highlight only covered $highlightedRows pixel rows; a wrapped paragraph must highlight every line",
+                "Select-all highlight only covered $highlightedRows pixel rows; a wrapped paragraph must highlight every line. " +
+                    "Screenshot: ${screenshot.absolutePath}",
                 highlightedRows >= 180,
             )
         } finally {
@@ -822,8 +967,10 @@ class ArticleScreenInstrumentedTest {
         ComposeFoundationFlags.isNewContextMenuEnabled = false
         try {
             val textToolbar = CapturingTextToolbar()
+            val clipboard = RecordingClipboard()
             composeRule.setScreenContent {
                 CompositionLocalProvider(
+                    LocalClipboard provides clipboard,
                     LocalTextToolbar provides textToolbar,
                     LocalTextSelectionColors provides TextSelectionColors(
                         handleColor = Color.Magenta,
@@ -886,35 +1033,7 @@ class ArticleScreenInstrumentedTest {
                 text = "末段拖动必须到达这里。",
                 failureMessage = "Selection did not reach the final block after dragging the handle",
             )
-            val clipboard = composeRule.activity
-                .getSystemService(android.content.ClipboardManager::class.java)
-            clipboard.clearPrimaryClip()
-            composeRule.waitUntil(
-                "System clipboard did not clear before copying the complete text layer selection",
-                timeoutMillis = 5_000,
-            ) {
-                !clipboard.hasPrimaryClip()
-            }
-            composeRule.runOnIdle {
-                requireNotNull(textToolbar.onCopyRequested).invoke()
-            }
-            composeRule.waitUntil(
-                "Copy did not publish the complete text layer selection to the system clipboard",
-                timeoutMillis = 5_000,
-            ) {
-                clipboard.primaryClip
-                    ?.getItemAt(0)
-                    ?.coerceToText(composeRule.activity)
-                    ?.toString()
-                    ?.let { copied ->
-                        copied.contains("起始段落") && copied.contains("末段拖动必须到达这里")
-                    } == true
-            }
-            val copiedText = clipboard.primaryClip
-                ?.getItemAt(0)
-                ?.coerceToText(composeRule.activity)
-                ?.toString()
-                .orEmpty()
+            val copiedText = copySelection(textToolbar, clipboard)
             assertTrue(
                 "Dragging the standard selection handle must reach later blocks through the same selection layer",
                 copiedText.contains("起始段落") && copiedText.contains("末段拖动必须到达这里"),
@@ -1659,5 +1778,32 @@ private class CapturingTextToolbar : TextToolbar {
 
     override fun hide() {
         status = TextToolbarStatus.Hidden
+    }
+}
+
+private class RecordingClipboard : Clipboard {
+    private var clipEntry: ClipEntry? = null
+
+    var text: String? = null
+        private set
+
+    override suspend fun getClipEntry(): ClipEntry? = clipEntry
+
+    override suspend fun setClipEntry(clipEntry: ClipEntry?) {
+        this.clipEntry = clipEntry
+        text = clipEntry
+            ?.clipData
+            ?.takeIf { it.itemCount > 0 }
+            ?.getItemAt(0)
+            ?.text
+            ?.toString()
+    }
+
+    override val nativeClipboard: NativeClipboard
+        get() = error("RecordingClipboard does not expose a native clipboard")
+
+    fun clear() {
+        clipEntry = null
+        text = null
     }
 }
