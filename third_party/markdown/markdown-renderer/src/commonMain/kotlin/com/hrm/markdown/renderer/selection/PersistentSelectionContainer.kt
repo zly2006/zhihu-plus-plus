@@ -89,8 +89,9 @@ internal fun PersistentSelectionScope(
         return
     }
 
-    val scopedRegistrar = persistentRegistrar.scoped(scopeKey)
-    scopedRegistrar.beginComposition()
+    val scopedRegistrar = remember(persistentRegistrar, scopeKey) {
+        persistentRegistrar.scoped(scopeKey).also { it.beginComposition() }
+    }
     CompositionLocalProvider(
         LocalSelectionRegistrar provides scopedRegistrar,
         content = content,
@@ -177,11 +178,10 @@ private class ScopedPersistentSelectionRegistrar(
     val persistentRegistrar: PersistentSelectionRegistrar,
 ) : SelectionRegistrar by persistentRegistrar {
     private val selectableIds = mutableListOf<Long>()
-    private val activeSelectableIds = mutableSetOf<Long>()
     private var allocationIndex = 0
 
     fun beginComposition() {
-        if (activeSelectableIds.isEmpty()) allocationIndex = 0
+        allocationIndex = 0
     }
 
     override fun nextSelectableId(): Long {
@@ -195,17 +195,6 @@ private class ScopedPersistentSelectionRegistrar(
         }
     }
 
-    override fun subscribe(selectable: Selectable): Selectable {
-        check(activeSelectableIds.add(selectable.selectableId)) {
-            "Selectable ${selectable.selectableId} subscribed twice in one persistent block"
-        }
-        return persistentRegistrar.subscribe(selectable)
-    }
-
-    override fun unsubscribe(selectable: Selectable) {
-        persistentRegistrar.unsubscribe(selectable)
-        activeSelectableIds.remove(selectable.selectableId)
-    }
 }
 
 private class PersistentSelectable(
