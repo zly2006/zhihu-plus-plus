@@ -31,6 +31,7 @@ import com.github.zly2006.zhihu.account.ZhihuAccountRepository
 import com.github.zly2006.zhihu.account.ZhihuAccountSession
 import com.github.zly2006.zhihu.account.ZhihuAccountSessionStore
 import com.github.zly2006.zhihu.account.ZhihuIdentityClient
+import com.github.zly2006.zhihu.account.ZhihuMobileLoginToken
 import com.github.zly2006.zhihu.data.Person
 import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.data.installZhihuCommonClientConfig
@@ -158,6 +159,11 @@ object AccountData {
 
     suspend fun verifyLogin(context: Context, cookies: Map<String, String>): Boolean =
         accountClient(context).verifyAndSave(cookies.toMutableMap())
+
+    suspend fun verifyMobileLogin(
+        context: Context,
+        token: ZhihuMobileLoginToken,
+    ): Boolean = accountClient(context).verifyMobileAndSave(token)
 
     fun delete(context: Context) {
         accountClient(context).clear()

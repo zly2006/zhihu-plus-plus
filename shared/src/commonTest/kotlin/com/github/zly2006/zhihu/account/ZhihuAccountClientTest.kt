@@ -157,6 +157,52 @@ class ZhihuAccountClientTest {
         assertEquals(1234, repository.load().mobileTokenExpiresAt)
     }
 
+    @Test
+    fun mobileLoginVerifiesProfileAndSavesCookiesAndTokensTogether() = runTest {
+        val store = ClientInMemoryAccountSessionStore()
+        val repository = ZhihuAccountRepository(store)
+        val accountClient = ZhihuAccountClient(
+            repository = repository,
+            createClient = { cookies, session, onCookieChanged, _ ->
+                HttpClient(
+                    MockEngine { request ->
+                        assertEquals("/api/v4/me", request.url.encodedPath)
+                        respond(
+                            content = """{"id":"1","name":"alice","url_token":"alice","user_type":"people"}""",
+                            status = HttpStatusCode.OK,
+                            headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                        )
+                    },
+                ) {
+                    installZhihuCommonClientConfig(cookies, session.userAgent, onCookieChanged)
+                }
+            },
+        )
+
+        val verified = accountClient.verifyMobileAndSave(
+            ZhihuMobileLoginToken(
+                accessToken = "mobile-access",
+                refreshToken = "mobile-refresh",
+                tokenType = "bearer",
+                expiresAt = 1_700_003_600L,
+                cookies = mapOf(
+                    "q_c0" to "q-cookie",
+                    "z_c0" to "z-cookie",
+                ),
+            ),
+        )
+
+        val saved = repository.load()
+        assertEquals(true, verified)
+        assertEquals(1, store.writeCount)
+        assertEquals("alice", saved.username)
+        assertEquals("z-cookie", saved.cookies["z_c0"])
+        assertEquals("mobile-access", saved.mobileAccessToken)
+        assertEquals("mobile-refresh", saved.mobileRefreshToken)
+        assertEquals("bearer", saved.mobileTokenType)
+        assertEquals(1_700_003_600L, saved.mobileTokenExpiresAt)
+    }
+
     private fun testHttpClient(
         cookies: MutableMap<String, String>,
         session: ZhihuAccountSession,
@@ -181,10 +227,13 @@ class ZhihuAccountClientTest {
 private class ClientInMemoryAccountSessionStore(
     var text: String? = null,
 ) : ZhihuAccountSessionStore {
+    var writeCount: Int = 0
+
     override fun readText(): String? = text
 
     override fun writeText(text: String) {
         this.text = text
+        writeCount++
     }
 
     override fun delete() {
