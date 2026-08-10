@@ -320,7 +320,7 @@ class ArticleScreenInstrumentedTest {
             val thirdFromLastParagraph = "THIRD_FROM_LAST_TARGET"
             val secondFromLastParagraph = "SECOND_FROM_LAST_TARGET"
             val lastParagraph = "LAST_TARGET"
-            val fillerParagraphs = (0 until 160).map { "FILLER_$it" }
+            val fillerParagraphs = (0 until 200).map { "FILLER_$it" }
             val markdown = buildString {
                 appendLine(firstParagraph)
                 appendLine()
