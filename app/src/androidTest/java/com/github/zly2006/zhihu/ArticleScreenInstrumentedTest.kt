@@ -320,13 +320,13 @@ class ArticleScreenInstrumentedTest {
             val thirdFromLastParagraph = "THIRD_FROM_LAST_TARGET"
             val secondFromLastParagraph = "SECOND_FROM_LAST_TARGET"
             val lastParagraph = "LAST_TARGET"
-            val fillerParagraphs = (0 until 48).map { "FILLER_$it" }
+            val fillerParagraphs = (0 until 160).map { "FILLER_$it" }
             val markdown = buildString {
                 appendLine(firstParagraph)
                 appendLine()
                 appendLine(secondParagraph)
                 appendLine()
-                fillerParagraphs.take(12).forEach {
+                fillerParagraphs.take(40).forEach {
                     appendLine(it)
                     appendLine()
                 }
@@ -334,13 +334,13 @@ class ArticleScreenInstrumentedTest {
                 appendLine(codeBlock)
                 appendLine("```")
                 appendLine()
-                fillerParagraphs.drop(12).take(12).forEach {
+                fillerParagraphs.drop(40).take(40).forEach {
                     appendLine(it)
                     appendLine()
                 }
                 appendLine("> $quoteBlock")
                 appendLine()
-                fillerParagraphs.drop(24).take(12).forEach {
+                fillerParagraphs.drop(80).take(40).forEach {
                     appendLine(it)
                     appendLine()
                 }
@@ -348,7 +348,7 @@ class ArticleScreenInstrumentedTest {
                 appendLine("| --- |")
                 appendLine("| $tableCell |")
                 appendLine()
-                fillerParagraphs.drop(36).forEach {
+                fillerParagraphs.drop(120).forEach {
                     appendLine(it)
                     appendLine()
                 }
