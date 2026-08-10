@@ -51,6 +51,7 @@ import com.hrm.markdown.parser.ast.ThematicBreak
 import com.hrm.markdown.renderer.block.BlockRenderer
 import com.hrm.markdown.renderer.block.blockRenderRevision
 import com.hrm.markdown.renderer.selection.PersistentSelectionContainer
+import com.hrm.markdown.renderer.selection.PersistentSelectionScope
 import kotlin.math.ceil
 
 @Composable
@@ -193,10 +194,12 @@ private fun DeferredMarkdownBlock(
     ) {
         if (renderBlock) {
             deferredBlockStates.SaveableStateProvider(node.stableKey) {
-                BlockRenderer(
-                    node = node,
-                    renderRevision = blockRenderRevision(node),
-                )
+                PersistentSelectionScope(node::class to node.stableKey) {
+                    BlockRenderer(
+                        node = node,
+                        renderRevision = blockRenderRevision(node),
+                    )
+                }
             }
         } else {
             Box(

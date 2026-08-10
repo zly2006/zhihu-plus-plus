@@ -64,10 +64,47 @@ fun PersistentSelectionContainer(
     }
 }
 
+/**
+ * Gives every selectable in one deferred Markdown block a stable slot across disposal.
+ *
+ * AndroidX only saves a selectable id while that selectable is part of the active selection. A
+ * completely unrelated paragraph therefore receives a new id after an off-screen round trip. The
+ * outer registrar must not keep both generations, otherwise full-document selection copies the
+ * paragraph repeatedly. A block scope reuses ids by composition order while reserving ids that
+ * AndroidX is already restoring for the active selection.
+ */
+@Composable
+internal fun PersistentSelectionScope(
+    scopeKey: Any,
+    content: @Composable () -> Unit,
+) {
+    val registrar = LocalSelectionRegistrar.current
+    val persistentRegistrar = when (registrar) {
+        is PersistentSelectionRegistrar -> registrar
+        is ScopedPersistentSelectionRegistrar -> registrar.persistentRegistrar
+        else -> null
+    }
+    if (persistentRegistrar == null) {
+        content()
+        return
+    }
+
+    val scopedRegistrar = persistentRegistrar.scoped(scopeKey)
+    scopedRegistrar.beginComposition()
+    CompositionLocalProvider(
+        LocalSelectionRegistrar provides scopedRegistrar,
+        content = content,
+    )
+}
+
 private class PersistentSelectionRegistrar(
     private val androidxRegistrar: SelectionRegistrar,
 ) : SelectionRegistrar {
     private val selectables = mutableMapOf<Long, PersistentSelectable>()
+    private val scopes = mutableMapOf<Any, ScopedPersistentSelectionRegistrar>()
+
+    fun scoped(scopeKey: Any): ScopedPersistentSelectionRegistrar =
+        scopes.getOrPut(scopeKey) { ScopedPersistentSelectionRegistrar(this) }
 
     override val subselections: LongObjectMap<Selection>
         get() = androidxRegistrar.subselections
@@ -133,6 +170,41 @@ private class PersistentSelectionRegistrar(
 
     override fun notifySelectableChange(selectableId: Long) {
         androidxRegistrar.notifySelectableChange(selectableId)
+    }
+}
+
+private class ScopedPersistentSelectionRegistrar(
+    val persistentRegistrar: PersistentSelectionRegistrar,
+) : SelectionRegistrar by persistentRegistrar {
+    private val selectableIds = mutableListOf<Long>()
+    private val activeSelectableIds = mutableSetOf<Long>()
+    private var allocationIndex = 0
+
+    fun beginComposition() {
+        if (activeSelectableIds.isEmpty()) allocationIndex = 0
+    }
+
+    override fun nextSelectableId(): Long {
+        while (allocationIndex < selectableIds.size) {
+            val selectableId = selectableIds[allocationIndex++]
+            if (!persistentRegistrar.subselections.containsKey(selectableId)) return selectableId
+        }
+        return persistentRegistrar.nextSelectableId().also { selectableId ->
+            selectableIds += selectableId
+            allocationIndex = selectableIds.size
+        }
+    }
+
+    override fun subscribe(selectable: Selectable): Selectable {
+        check(activeSelectableIds.add(selectable.selectableId)) {
+            "Selectable ${selectable.selectableId} subscribed twice in one persistent block"
+        }
+        return persistentRegistrar.subscribe(selectable)
+    }
+
+    override fun unsubscribe(selectable: Selectable) {
+        persistentRegistrar.unsubscribe(selectable)
+        activeSelectableIds.remove(selectable.selectableId)
     }
 }
 
