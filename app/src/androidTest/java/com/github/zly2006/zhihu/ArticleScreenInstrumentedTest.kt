@@ -539,7 +539,10 @@ class ArticleScreenInstrumentedTest {
         text: String,
     ) {
         scrollToBoundary(scrollContainer, end = false)
-        val scrollStep = composeRule.onRoot().fetchSemanticsNode().boundsInRoot.height / 2f
+        val scrollStep = scrollContainer
+            .fetchSemanticsNode()
+            .boundsInRoot
+            .height / 2f
         repeat(80) {
             val target = composeRule.onNodeWithText(text)
             if (
