@@ -73,6 +73,7 @@ import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.github.zly2006.zhihu.data.DataHolder
@@ -460,23 +461,14 @@ class ArticleScreenInstrumentedTest {
                 textToolbar = textToolbar,
                 clipboard = clipboard,
             )
-            listOf(codeBlock, quoteBlock, tableCell).forEach { target ->
-                assertSelectionSurvivesDisposal(
-                    target = target,
-                    awayToEnd = true,
-                    scrollContainer = scrollContainer,
-                    textToolbar = textToolbar,
-                    clipboard = clipboard,
-                )
+
+            // Visit the remaining renderer shapes once in document order. The paragraph above
+            // exercises detach/reattach directly; the full-document selection below verifies that
+            // code, quote, table and tail proxies retain their text after the same disposal.
+            scrollToBoundary(scrollContainer, end = false)
+            listOf(codeBlock, quoteBlock, tableCell, lastParagraph).forEach { target ->
+                scrollForwardToText(scrollContainer, target)
             }
-            assertSelectionSurvivesDisposal(
-                target = thirdFromLastParagraph,
-                additionallyDisposed = listOf(secondFromLastParagraph, lastParagraph),
-                awayToEnd = false,
-                scrollContainer = scrollContainer,
-                textToolbar = textToolbar,
-                clipboard = clipboard,
-            )
 
             // 逐项滚动已经让整篇文档的真实 BlockRenderer 至少注册过一次；全选必须覆盖全部
             // 内容，随后首部节点的销毁、重建和第二次销毁都不能改变高亮或复制结果。
@@ -527,6 +519,21 @@ class ArticleScreenInstrumentedTest {
         } finally {
             ComposeFoundationFlags.isNewContextMenuEnabled = previousContextMenuFlag
         }
+    }
+
+    @Test
+    fun deferredMarkdownSaveStateUsesBundleSafeKeys() {
+        val markdown = (0 until 80).joinToString("\n\n") { index -> "SAVEABLE_BLOCK_$index" }
+        composeRule.setScreenContent {
+            RenderMarkdownText(markdown = markdown)
+        }
+        composeRule.onNodeWithText("SAVEABLE_BLOCK_0").assertIsDisplayed()
+
+        composeRule.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+        composeRule.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+        composeRule.activityRule.scenario.recreate()
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync()
     }
 
     private fun waitUntilSelectionHighlight(
@@ -614,6 +621,13 @@ class ArticleScreenInstrumentedTest {
         text: String,
     ) {
         scrollToBoundary(scrollContainer, end = false)
+        scrollForwardToText(scrollContainer, text)
+    }
+
+    private fun scrollForwardToText(
+        scrollContainer: SemanticsNodeInteraction,
+        text: String,
+    ) {
         val scrollStep = scrollContainer
             .fetchSemanticsNode()
             .boundsInRoot

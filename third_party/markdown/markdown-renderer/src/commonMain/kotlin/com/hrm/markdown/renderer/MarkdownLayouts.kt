@@ -25,6 +25,7 @@ import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.hrm.markdown.parser.ast.AbbreviationDefinition
 import com.hrm.markdown.parser.ast.BlankLine
@@ -50,6 +51,7 @@ import com.hrm.markdown.parser.ast.ThematicBreak
 import com.hrm.markdown.renderer.block.BlockRenderer
 import com.hrm.markdown.renderer.block.blockRenderRevision
 import com.hrm.markdown.renderer.selection.PersistentSelectionContainer
+import com.hrm.markdown.renderer.selection.PersistentSelectionGroup
 import com.hrm.markdown.renderer.selection.PersistentSelectionScope
 import kotlin.math.ceil
 
@@ -89,7 +91,7 @@ internal fun MarkdownDocumentLayout(
             ) {
                 header?.invoke()
                 if (renderMode == MarkdownRenderMode.SelectableColumn) {
-                    PersistentSelectionContainer {
+                    PersistentSelectionContainer(documentKey = LocalRendererDocument.current) {
                         markdownBody()
                     }
                 } else {
@@ -118,13 +120,49 @@ internal fun MarkdownBlockColumn(
     blocks: List<Node>,
     modifier: Modifier = Modifier,
 ) {
-    DeferredMarkdownBlockLayout(blocks, modifier)
+    DeferredMarkdownColumn(
+        blocks = blocks,
+        modifier = modifier,
+    ) { _, node ->
+        BlockRenderer(
+            node = node,
+            renderRevision = blockRenderRevision(node),
+        )
+    }
 }
 
 @Composable
-private fun DeferredMarkdownBlockLayout(
-    blocks: List<Node>,
+internal fun <T : Node> DeferredMarkdownColumn(
+    blocks: List<T>,
+    modifier: Modifier = Modifier,
+    blockSpacing: Dp? = null,
+    prefetchViewports: Float? = null,
+    estimateHeightDp: (T, Float, MarkdownTheme) -> Float = ::estimateMarkdownBlockHeightDp,
+    blockContent: @Composable (Int, T) -> Unit,
+) {
+    val groupKey = blocks.firstOrNull()?.parent ?: blocks
+    PersistentSelectionGroup(groupKey) { groupOrder ->
+        DeferredMarkdownBlockLayout(
+            blocks = blocks,
+            groupOrder = groupOrder,
+            modifier = modifier,
+            blockSpacing = blockSpacing,
+            prefetchViewports = prefetchViewports,
+            estimateHeightDp = estimateHeightDp,
+            blockContent = blockContent,
+        )
+    }
+}
+
+@Composable
+private fun <T : Node> DeferredMarkdownBlockLayout(
+    blocks: List<T>,
+    groupOrder: List<Int>,
     modifier: Modifier,
+    blockSpacing: Dp?,
+    prefetchViewports: Float?,
+    estimateHeightDp: (T, Float, MarkdownTheme) -> Float,
+    blockContent: @Composable (Int, T) -> Unit,
 ) {
     val theme = LocalMarkdownTheme.current
     val footnoteNavigationState = LocalFootnoteNavigationState.current
@@ -135,6 +173,9 @@ private fun DeferredMarkdownBlockLayout(
     val blockKeys = remember(blocks) { blocks.map { it::class to it.stableKey } }
     val estimatedHeightsByWidth = remember(blocks, theme, density.density, density.fontScale) {
         mutableMapOf<Int, List<Int>>()
+    }
+    val effectivePrefetchViewports = prefetchViewports ?: remember(blocks) {
+        if (blocks.any(Node::containsBlockMath)) 1.5f else 0.5f
     }
     var topInWindowPx by remember { mutableFloatStateOf(0f) }
 
@@ -152,11 +193,11 @@ private fun DeferredMarkdownBlockLayout(
                 if (topInWindowPx != newTop) topInWindowPx = newTop
             },
     ) { constraints ->
-        val spacingPx = with(density) { theme.blockSpacing.roundToPx() }
+        val spacingPx = with(density) { (blockSpacing ?: theme.blockSpacing).roundToPx() }
         val estimatedHeightsPx = estimatedHeightsByWidth.getOrPut(constraints.maxWidth) {
             val widthDp = with(density) { constraints.maxWidth.toDp().value }
             blocks.map { node ->
-                with(density) { estimateMarkdownBlockHeightDp(node, widthDp, theme).dp.roundToPx() }
+                with(density) { estimateHeightDp(node, widthDp, theme).dp.roundToPx() }
             }
         }
         val blockHeights = blocks.indices.map { index ->
@@ -170,11 +211,11 @@ private fun DeferredMarkdownBlockLayout(
             totalHeight += height
             if (index != blocks.lastIndex) totalHeight += spacingPx
         }
-        // LaTeX parsing and layout are prepared off the UI thread. Keep one and a half viewports
-        // composed ahead so a normal swipe reaches cached formula layout instead of starting cold
-        // work at the visible boundary. Reducing this to one viewport raised the same stress corpus'
-        // forward-scroll maximum from about 95 ms to 151 ms, so this margin is intentional.
-        val prefetchPx = viewportHeightPx * 1.5f
+        // LaTeX parsing and layout are prepared off the UI thread. Formula documents keep one and
+        // a half viewports ahead: one viewport raised the same stress corpus' forward-scroll peak
+        // from about 95 ms to 151 ms. Plain content uses half a viewport so first layout does not
+        // eagerly compose two and a half screens that provide no asynchronous preparation benefit.
+        val prefetchPx = viewportHeightPx * effectivePrefetchViewports
         val visibleTop = -topInWindowPx - prefetchPx
         val visibleBottom = viewportHeightPx - topInWindowPx + prefetchPx
         val childConstraints = constraints.copy(minHeight = 0, maxHeight = Constraints.Infinity)
@@ -189,8 +230,11 @@ private fun DeferredMarkdownBlockLayout(
                 if (bottom >= visibleTop && top <= visibleBottom || requestedByNavigation) {
                     val blockKey = blockKeys[index]
                     val placeable = subcompose(blockKey) {
-                        deferredBlockStates.SaveableStateProvider(blockKey) {
-                            PersistentSelectionScope(blockKey) {
+                        deferredBlockStates.SaveableStateProvider(node.stableKey) {
+                            PersistentSelectionScope(
+                                scopeKey = blockKey,
+                                documentOrder = groupOrder + index,
+                            ) {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -200,10 +244,7 @@ private fun DeferredMarkdownBlockLayout(
                                             }
                                         },
                                 ) {
-                                    BlockRenderer(
-                                        node = node,
-                                        renderRevision = blockRenderRevision(node),
-                                    )
+                                    blockContent(index, node)
                                 }
                             }
                         }
@@ -219,6 +260,12 @@ private fun DeferredMarkdownBlockLayout(
             placeables.forEach { (top, placeable) -> placeable.placeRelative(0, top) }
         }
     }
+}
+
+private fun Node.containsBlockMath(): Boolean = when (this) {
+    is MathBlock -> true
+    is ContainerNode -> children.any(Node::containsBlockMath)
+    else -> false
 }
 
 private fun Node.hasRequestedFootnoteReference(navigationState: FootnoteNavigationState): Boolean = when (this) {
@@ -238,7 +285,7 @@ internal fun estimateMarkdownBlockHeightDp(
     return when (node) {
         is BlankLine, is FrontMatter, is LinkReferenceDefinition, is AbbreviationDefinition -> 0f
         is Paragraph -> {
-            val widthUnits = node.estimatedInlineWidthUnits(fontSize, safeWidth)
+            val widthUnits = node.estimatedInlineWidthDp(fontSize, safeWidth)
             val forcedLines = node.countLineBreaks()
             (ceil(widthUnits / safeWidth).toInt().coerceAtLeast(1) + forcedLines) * lineHeight
         }
@@ -271,15 +318,24 @@ internal fun estimateMarkdownBlockHeightDp(
     }.coerceAtLeast(0f)
 }
 
-private fun Node.estimatedInlineWidthUnits(
+internal fun Node.estimatedInlineWidthDp(
     fontSize: Float,
     availableWidth: Float,
 ): Float = when (this) {
-    is Text -> literal.sumOf { character -> if (character.code > 0x7f) 1.0 else 0.55 }.toFloat() * fontSize
+    is Text ->
+        literal.sumOf { character ->
+            when {
+                character.code > 0x7f -> 1.0
+                character.isWhitespace() -> 0.35
+                character in "ilI.,'`:;!|" -> 0.3
+                character in "MW@#%&" -> 0.9
+                else -> 0.6
+            }
+        }.toFloat() * fontSize
     is InlineMath -> (literal.length * 0.7f).coerceIn(1.5f, 20f) * fontSize * 1.125f
     is InlineCode -> literal.length.coerceAtLeast(1) * fontSize * 0.65f
     is Image, is HardLineBreak, is SoftLineBreak -> availableWidth
-    is ContainerNode -> children.sumOf { it.estimatedInlineWidthUnits(fontSize, availableWidth).toDouble() }.toFloat()
+    is ContainerNode -> children.sumOf { it.estimatedInlineWidthDp(fontSize, availableWidth).toDouble() }.toFloat()
     else -> 0f
 }
 

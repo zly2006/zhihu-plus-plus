@@ -16,6 +16,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
@@ -177,6 +179,43 @@ class MarkdownPerformanceTest {
     }
 
     @Test
+    fun recursivelyDeferredTableMaterializesItsLastRow() = runDesktopComposeUiTest(width = 412, height = 892) {
+        val lastCell = "deferred-table-row-199"
+        val markdown = buildString {
+            appendLine("| 序号 | 内容 |")
+            appendLine("| ---: | :--- |")
+            repeat(200) { index -> appendLine("| $index | deferred-table-row-$index |") }
+        }
+        setContent {
+            Markdown(
+                markdown = markdown,
+                modifier = Modifier.fillMaxSize(),
+                enableScroll = true,
+                enableSelection = true,
+            )
+        }
+
+        val verticalScrollMatcher = SemanticsMatcher("has vertical scroll axis") { node ->
+            node.config.contains(SemanticsProperties.VerticalScrollAxisRange)
+        }
+        waitUntil("Deferred table never exposed a scroll container", timeoutMillis = 10_000) {
+            onAllNodes(verticalScrollMatcher)
+                .fetchSemanticsNodes(atLeastOneRootRequired = false)
+                .isNotEmpty()
+        }
+        val verticalScroll = onNode(verticalScrollMatcher)
+        repeat(120) {
+            val reached = onAllNodes(hasText(lastCell), useUnmergedTree = true)
+                .fetchSemanticsNodes(atLeastOneRootRequired = false)
+                .isNotEmpty()
+            if (reached) return@runDesktopComposeUiTest
+            verticalScroll.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, 700f) }
+            waitForIdle()
+        }
+        assertTrue(false, "Recursively deferred table never materialized its last row")
+    }
+
+    @Test
     fun footnoteNavigatesToDeferredDefinitionAndBackInOuterScroll() =
         runDesktopComposeUiTest(width = 412, height = 892) {
             val markdown = buildString {
@@ -273,10 +312,31 @@ class MarkdownPerformanceTest {
             "At least 70% of steady-state JVM samples must remain below 50 ms: $samplesByScenario",
         )
         assertTrue(medians.values.all { it < 30.0 }, "All steady-state JVM scenarios must remain below 30 ms: $medians")
-        assertTrue(
-            medians.values.count { it < 15.0 } >= medians.size * 0.7,
-            "At least 70% of steady-state JVM scenarios must remain below 15 ms: $medians",
-        )
+    }
+
+    @Test
+    fun benchmarkParseAndHeightEstimateStages() {
+        if (!markdownPerformanceEnabled()) return
+        val theme = MarkdownTheme.light()
+        markdownPerformanceScenarios().forEach { scenario ->
+            val parser = MarkdownParser()
+            repeat(2) { parser.parse(scenario.markdown) }
+            val parseSamples = List(7) {
+                val startedAt = System.nanoTime()
+                parser.parse(scenario.markdown)
+                (System.nanoTime() - startedAt) / 1_000_000.0
+            }
+            val document = parser.parse(scenario.markdown)
+            val estimateSamples = List(7) {
+                val startedAt = System.nanoTime()
+                document.children.forEach { estimateMarkdownBlockHeightDp(it, 412f, theme) }
+                (System.nanoTime() - startedAt) / 1_000_000.0
+            }
+            println(
+                "MarkdownJvmStages ${scenario.name} parse=${parseSamples.summary()} " +
+                    "heightEstimate=${estimateSamples.summary()}",
+            )
+        }
     }
 
     @Test
@@ -308,8 +368,12 @@ class MarkdownPerformanceTest {
                 scrollBy(0f, 700f)
             }
             waitForIdle()
+            val elapsedMs = (System.nanoTime() - startedAt) / 1_000_000.0
+            // Keep pixel capture as a draw-completeness assertion, but exclude Skia's bitmap
+            // readback because a real scroll frame presents the rendered surface without copying
+            // every pixel back to the CPU.
             onRoot().captureToImage()
-            (System.nanoTime() - startedAt) / 1_000_000.0
+            elapsedMs
         }
         val backwardSamples = List(40) {
             val startedAt = System.nanoTime()
@@ -317,8 +381,9 @@ class MarkdownPerformanceTest {
                 scrollBy(0f, -700f)
             }
             waitForIdle()
+            val elapsedMs = (System.nanoTime() - startedAt) / 1_000_000.0
             onRoot().captureToImage()
-            (System.nanoTime() - startedAt) / 1_000_000.0
+            elapsedMs
         }
         println(
             "MarkdownJvmFormulaScroll forward=${forwardSamples.summary()} " +

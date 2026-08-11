@@ -36,6 +36,8 @@ kotlin {
         }
     }
 
+    applyDefaultHierarchyTemplate()
+
     sourceSets {
         commonMain.dependencies {
             api(project(":markdown-parser"))
@@ -56,14 +58,23 @@ kotlin {
             implementation("io.coil-kt.coil3:coil-compose:3.5.0")
             implementation("io.coil-kt.coil3:coil-network-ktor3:3.5.0")
         }
-        androidMain.dependencies {
-            implementation("io.ktor:ktor-client-android:3.5.0")
+        val androidAndJvmMain by creating {
+            dependsOn(commonMain.get())
+        }
+        androidMain {
+            dependsOn(androidAndJvmMain)
+            dependencies {
+                implementation("io.ktor:ktor-client-android:3.5.0")
+            }
         }
         iosMain.dependencies {
             implementation("io.ktor:ktor-client-darwin:3.5.0")
         }
-        jvmMain.dependencies {
-            implementation("io.ktor:ktor-client-java:3.5.0")
+        jvmMain {
+            dependsOn(androidAndJvmMain)
+            dependencies {
+                implementation("io.ktor:ktor-client-java:3.5.0")
+            }
         }
         jvmTest.dependencies {
             implementation(kotlin("test"))

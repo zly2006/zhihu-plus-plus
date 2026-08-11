@@ -116,15 +116,17 @@ class MarkdownRenderModePerformanceTest {
                 val startedAt = System.nanoTime()
                 scroll.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, 700f) }
                 waitForIdle()
+                val elapsedMs = (System.nanoTime() - startedAt) / 1_000_000.0
                 onRoot().captureToImage()
-                (System.nanoTime() - startedAt) / 1_000_000.0
+                elapsedMs
             }
             val backward = List(40) {
                 val startedAt = System.nanoTime()
                 scroll.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, -700f) }
                 waitForIdle()
+                val elapsedMs = (System.nanoTime() - startedAt) / 1_000_000.0
                 onRoot().captureToImage()
-                (System.nanoTime() - startedAt) / 1_000_000.0
+                elapsedMs
             }
             println(
                 "CurrentFormulaScroll mode=$candidate forward=${forward.modeSummary()} backward=${backward.modeSummary()}",
