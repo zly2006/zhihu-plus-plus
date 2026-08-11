@@ -32,8 +32,9 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.sp
 import com.hrm.codehigh.theme.CodeTheme
 import com.hrm.codehigh.theme.LocalCodeTheme
-import com.hrm.latex.renderer.measure.LatexMeasurerState
-import com.hrm.latex.renderer.measure.rememberLatexMeasurer
+import com.hrm.latex.renderer.LatexRenderCache
+import com.hrm.latex.renderer.LocalLatexRenderCache
+import com.hrm.latex.renderer.measure.LatexDimensions
 import com.hrm.markdown.parser.ast.Abbreviation
 import com.hrm.markdown.parser.ast.Autolink
 import com.hrm.markdown.parser.ast.CitationReference
@@ -82,8 +83,9 @@ internal fun rememberInlineContent(
     val theme = LocalMarkdownTheme.current
     val directiveRegistry = LocalMarkdownDirectiveRegistry.current
     val onFootnoteClick = LocalOnFootnoteClick.current
-    val latexMeasurer = rememberLatexMeasurer()
+    val latexRenderCache = LocalLatexRenderCache.current
     val density = LocalDensity.current
+    val latexDimensionsKey = inlineMathDimensionsKey(parent.children, latexRenderCache, theme, density)
     val textMeasurer = rememberTextMeasurer()
     val inlineCodeTheme = LocalCodeHighlightTheme.current ?: LocalCodeTheme.current
     val inlineRevision = remember(parent) {
@@ -102,7 +104,8 @@ internal fun rememberInlineContent(
         onLinkClick,
         onFootnoteClick,
         hostTextStyle,
-        latexMeasurer,
+        latexRenderCache,
+        latexDimensionsKey,
         density,
         textMeasurer,
         inlineCodeTheme
@@ -117,7 +120,7 @@ internal fun rememberInlineContent(
                 directiveRegistry,
                 onLinkClick,
                 onFootnoteClick,
-                latexMeasurer,
+                latexRenderCache,
                 density,
                 textMeasurer,
                 inlineCodeTheme,
@@ -138,7 +141,7 @@ internal fun buildInlineAnnotatedString(
     directiveRegistry: MarkdownDirectiveRegistry,
     onLinkClick: ((String) -> Unit)? = null,
     onFootnoteClick: ((String) -> Unit)? = null,
-    latexMeasurer: LatexMeasurerState? = null,
+    latexRenderCache: LatexRenderCache? = null,
     density: Density? = null,
     textMeasurer: TextMeasurer? = null,
     codeTheme: CodeTheme? = null,
@@ -151,7 +154,7 @@ internal fun buildInlineAnnotatedString(
         directiveRegistry,
         onLinkClick,
         onFootnoteClick,
-        latexMeasurer,
+        latexRenderCache,
         density,
         textMeasurer,
         codeTheme,
@@ -166,7 +169,7 @@ internal fun AnnotatedString.Builder.renderInlineChildren(
     directiveRegistry: MarkdownDirectiveRegistry,
     onLinkClick: ((String) -> Unit)?,
     onFootnoteClick: ((String) -> Unit)?,
-    latexMeasurer: LatexMeasurerState? = null,
+    latexRenderCache: LatexRenderCache? = null,
     density: Density? = null,
     textMeasurer: TextMeasurer? = null,
     inlineCodeTheme: CodeTheme? = null,
@@ -180,7 +183,7 @@ internal fun AnnotatedString.Builder.renderInlineChildren(
             directiveRegistry,
             onLinkClick,
             onFootnoteClick,
-            latexMeasurer,
+            latexRenderCache,
             density,
             textMeasurer,
             inlineCodeTheme,
@@ -196,7 +199,7 @@ internal fun AnnotatedString.Builder.renderInlineNode(
     directiveRegistry: MarkdownDirectiveRegistry,
     onLinkClick: ((String) -> Unit)?,
     onFootnoteClick: ((String) -> Unit)?,
-    latexMeasurer: LatexMeasurerState? = null,
+    latexRenderCache: LatexRenderCache? = null,
     density: Density? = null,
     textMeasurer: TextMeasurer? = null,
     inlineCodeTheme: CodeTheme? = null,
@@ -218,7 +221,7 @@ internal fun AnnotatedString.Builder.renderInlineNode(
                     directiveRegistry,
                     onLinkClick,
                     onFootnoteClick,
-                    latexMeasurer,
+                    latexRenderCache,
                     density,
                     textMeasurer,
                     inlineCodeTheme
@@ -236,7 +239,7 @@ internal fun AnnotatedString.Builder.renderInlineNode(
                     directiveRegistry,
                     onLinkClick,
                     onFootnoteClick,
-                    latexMeasurer,
+                    latexRenderCache,
                     density,
                     textMeasurer,
                     inlineCodeTheme
@@ -254,7 +257,7 @@ internal fun AnnotatedString.Builder.renderInlineNode(
                     directiveRegistry,
                     onLinkClick,
                     onFootnoteClick,
-                    latexMeasurer,
+                    latexRenderCache,
                     density,
                     textMeasurer,
                     inlineCodeTheme
@@ -274,19 +277,13 @@ internal fun AnnotatedString.Builder.renderInlineNode(
         }
 
         is Link -> {
-            val linkAnnotation = LinkAnnotation.Clickable(
-                tag = "link",
-                styles = TextLinkStyles(
-                    style = SpanStyle(
-                        color = theme.linkColor,
-                        textDecoration = TextDecoration.Underline,
-                    ),
+            pushStringAnnotation(MARKDOWN_LINK_ANNOTATION_TAG, node.destination)
+            withStyle(
+                SpanStyle(
+                    color = theme.linkColor,
+                    textDecoration = TextDecoration.Underline,
                 ),
-                linkInteractionListener = {
-                    onLinkClick?.invoke(node.destination)
-                },
-            )
-            withLink(linkAnnotation) {
+            ) {
                 renderInlineChildren(
                     node.children,
                     theme,
@@ -295,12 +292,13 @@ internal fun AnnotatedString.Builder.renderInlineNode(
                     directiveRegistry,
                     onLinkClick,
                     onFootnoteClick,
-                    latexMeasurer,
+                    latexRenderCache,
                     density,
                     textMeasurer,
                     inlineCodeTheme
                 )
             }
+            pop()
         }
 
         is Image -> {
@@ -308,21 +306,16 @@ internal fun AnnotatedString.Builder.renderInlineNode(
         }
 
         is Autolink -> {
-            val linkAnnotation = LinkAnnotation.Clickable(
-                tag = "link",
-                styles = TextLinkStyles(
-                    style = SpanStyle(
-                        color = theme.linkColor,
-                        textDecoration = TextDecoration.Underline,
-                    ),
+            pushStringAnnotation(MARKDOWN_LINK_ANNOTATION_TAG, node.destination)
+            withStyle(
+                SpanStyle(
+                    color = theme.linkColor,
+                    textDecoration = TextDecoration.Underline,
                 ),
-                linkInteractionListener = {
-                    onLinkClick?.invoke(node.destination)
-                },
-            )
-            withLink(linkAnnotation) {
+            ) {
                 append(node.destination)
             }
+            pop()
         }
 
         is InlineHtml -> {
@@ -402,7 +395,7 @@ internal fun AnnotatedString.Builder.renderInlineNode(
                 theme,
                 hostTextStyle,
                 inlineContents,
-                latexMeasurer,
+                latexRenderCache,
                 density,
                 textMeasurer
             )
@@ -418,7 +411,7 @@ internal fun AnnotatedString.Builder.renderInlineNode(
                     directiveRegistry,
                     onLinkClick,
                     onFootnoteClick,
-                    latexMeasurer,
+                    latexRenderCache,
                     density,
                     textMeasurer,
                     inlineCodeTheme
@@ -439,7 +432,7 @@ internal fun AnnotatedString.Builder.renderInlineNode(
                 directiveRegistry,
                 onLinkClick,
                 onFootnoteClick,
-                latexMeasurer,
+                latexRenderCache,
                 density,
                 textMeasurer,
                 inlineCodeTheme,
@@ -461,7 +454,7 @@ internal fun AnnotatedString.Builder.renderInlineNode(
                     directiveRegistry,
                     onLinkClick,
                     onFootnoteClick,
-                    latexMeasurer,
+                    latexRenderCache,
                     density,
                     textMeasurer,
                     inlineCodeTheme
@@ -483,7 +476,7 @@ internal fun AnnotatedString.Builder.renderInlineNode(
                     directiveRegistry,
                     onLinkClick,
                     onFootnoteClick,
-                    latexMeasurer,
+                    latexRenderCache,
                     density,
                     textMeasurer,
                     inlineCodeTheme
@@ -501,7 +494,7 @@ internal fun AnnotatedString.Builder.renderInlineNode(
                     directiveRegistry,
                     onLinkClick,
                     onFootnoteClick,
-                    latexMeasurer,
+                    latexRenderCache,
                     density,
                     textMeasurer,
                     inlineCodeTheme
@@ -533,7 +526,7 @@ internal fun AnnotatedString.Builder.renderInlineNode(
                         directiveRegistry,
                         onLinkClick,
                         onFootnoteClick,
-                        latexMeasurer,
+                        latexRenderCache,
                         density,
                         textMeasurer,
                         inlineCodeTheme
@@ -548,7 +541,7 @@ internal fun AnnotatedString.Builder.renderInlineNode(
                     directiveRegistry,
                     onLinkClick,
                     onFootnoteClick,
-                    latexMeasurer,
+                    latexRenderCache,
                     density,
                     textMeasurer,
                     inlineCodeTheme
@@ -606,7 +599,7 @@ internal fun AnnotatedString.Builder.renderInlineNode(
                 directiveRegistry,
                 onLinkClick,
                 onFootnoteClick,
-                latexMeasurer,
+                latexRenderCache,
                 density,
                 textMeasurer,
                 inlineCodeTheme,
@@ -649,7 +642,7 @@ internal fun AnnotatedString.Builder.renderInlineNode(
                     directiveRegistry,
                     onLinkClick,
                     onFootnoteClick,
-                    latexMeasurer,
+                    latexRenderCache,
                     density,
                     textMeasurer,
                     inlineCodeTheme
@@ -657,6 +650,28 @@ internal fun AnnotatedString.Builder.renderInlineNode(
             }
         }
     }
+}
+
+internal fun inlineMathDimensionsKey(
+    nodes: List<Node>,
+    cache: LatexRenderCache?,
+    theme: MarkdownTheme,
+    density: Density,
+): List<LatexDimensions?> {
+    if (cache == null) return emptyList()
+    val config = inlineMathLatexConfig(theme)
+    val result = mutableListOf<LatexDimensions?>()
+    fun visit(node: Node) {
+        when (node) {
+            is InlineMath -> {
+                result += cache.observeDimensions(node.literal, config, density).value
+            }
+            is ContainerNode -> node.children.forEach(::visit)
+            else -> Unit
+        }
+    }
+    nodes.forEach(::visit)
+    return result
 }
 
 @Composable

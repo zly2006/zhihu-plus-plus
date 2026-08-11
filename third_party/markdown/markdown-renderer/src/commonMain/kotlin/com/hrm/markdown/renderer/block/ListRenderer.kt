@@ -21,7 +21,7 @@ import com.hrm.markdown.parser.ast.ListBlock
 import com.hrm.markdown.parser.ast.ListItem
 import com.hrm.markdown.parser.ast.Paragraph
 import com.hrm.markdown.renderer.LocalMarkdownTheme
-import com.hrm.markdown.renderer.MarkdownBlockChildren
+import com.hrm.markdown.renderer.DeferredMarkdownColumn
 
 /**
  * 列表渲染器（有序/无序列表）。
@@ -34,20 +34,18 @@ internal fun ListBlockRenderer(
     val theme = LocalMarkdownTheme.current
     val spacing = if (node.tight) 2.dp else theme.blockSpacing
 
-    Column(
+    val items = node.children.filterIsInstance<ListItem>()
+    DeferredMarkdownColumn(
+        blocks = items,
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(spacing),
-    ) {
-        val items = node.children.filterIsInstance<ListItem>()
-        items.forEachIndexed { index, item ->
-            key(item.stableKey, blockRenderRevision(item)) {
-                ListItemRenderer(
-                    node = item,
-                    ordered = node.ordered,
-                    index = node.startNumber + index,
-                )
-            }
-        }
+        blockSpacing = spacing,
+        prefetchViewports = 0.5f,
+    ) { index, item ->
+        ListItemRenderer(
+            node = item,
+            ordered = node.ordered,
+            index = node.startNumber + index,
+        )
     }
 }
 
@@ -97,7 +95,16 @@ private fun ListItemRenderer(
 
         // 内容列
         Box(modifier = Modifier.weight(1f)) {
-            MarkdownBlockChildren(node)
+            Column(verticalArrangement = Arrangement.spacedBy(theme.blockSpacing)) {
+                node.children.filterNot { it is BlankLine }.forEach { child ->
+                    key(child.stableKey, blockRenderRevision(child)) {
+                        BlockRenderer(
+                            node = child,
+                            renderRevision = blockRenderRevision(child),
+                        )
+                    }
+                }
+            }
         }
     }
 }

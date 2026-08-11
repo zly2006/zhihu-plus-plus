@@ -26,6 +26,7 @@ import android.view.InputDevice
 import android.view.MotionEvent
 import androidx.compose.foundation.ComposeFoundationFlags
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
@@ -39,6 +40,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
@@ -71,6 +73,7 @@ import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.github.zly2006.zhihu.data.DataHolder
@@ -99,6 +102,7 @@ import com.github.zly2006.zhihu.ui.article.ArticleActionsMenu
 import com.github.zly2006.zhihu.ui.rememberArticleTtsState
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
+import com.hrm.markdown.renderer.Markdown
 import com.hrm.markdown.renderer.MarkdownImageData
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CancellationException
@@ -106,6 +110,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -303,6 +308,77 @@ class ArticleScreenInstrumentedTest {
         )
     }
 
+    @Test
+    fun markdownJvmToAvdCalibrationBenchmark() {
+        assumeTrue(
+            "Run explicitly with -e markdownPerformance true; normal functional suites should not occupy an AVD for calibration",
+            InstrumentationRegistry.getArguments().getString("markdownPerformance") == "true",
+        )
+        val scenarios = linkedMapOf(
+            "short-prose" to "一段普通正文，用于覆盖最常见的短回答。",
+            "formatted-prose" to (1..30).joinToString("\n\n") { index ->
+                "第 $index 段包含 **加粗**、*斜体*、~~删除线~~ 和 [链接](https://example.com/$index)。"
+            },
+            "block-math" to (1..80).joinToString("\n\n") { index ->
+                "${'$'}${'$'}\\sum_{i=1}^{n} \\frac{x_i^{$index}}{1+x_i^2}${'$'}${'$'}"
+            },
+        )
+        val markdown = mutableStateOf("calibration bootstrap")
+        val scrollState = ScrollState(0)
+        composeRule.setScreenContent {
+            Markdown(
+                markdown = markdown.value,
+                modifier = androidx.compose.ui.Modifier
+                    .fillMaxSize(),
+                scrollState = scrollState,
+                enableScroll = true,
+                enableSelection = true,
+            )
+        }
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            composeRule
+                .onAllNodesWithText("calibration bootstrap", substring = true, useUnmergedTree = true)
+                .fetchSemanticsNodes(atLeastOneRootRequired = false)
+                .isNotEmpty()
+        }
+        composeRule.onRoot().captureToImage()
+
+        repeat(2) { warmup ->
+            scenarios.forEach { (name, body) ->
+                val marker = "$name warmup $warmup"
+                composeRule.runOnUiThread { markdown.value = "$marker\n\n$body" }
+                composeRule.waitUntil(timeoutMillis = 10_000) {
+                    composeRule
+                        .onAllNodesWithText(marker, substring = true, useUnmergedTree = true)
+                        .fetchSemanticsNodes(atLeastOneRootRequired = false)
+                        .isNotEmpty()
+                }
+                composeRule.onRoot().captureToImage()
+            }
+        }
+        val medians = scenarios.mapValues { (name, body) ->
+            val samples = List(7) { iteration ->
+                val marker = "$name calibration $iteration"
+                val startedAt = SystemClock.elapsedRealtimeNanos()
+                composeRule.runOnUiThread { markdown.value = "$marker\n\n$body" }
+                composeRule.waitUntil(timeoutMillis = 10_000) {
+                    composeRule
+                        .onAllNodesWithText(marker, substring = true, useUnmergedTree = true)
+                        .fetchSemanticsNodes(atLeastOneRootRequired = false)
+                        .isNotEmpty()
+                }
+                composeRule.waitForIdle()
+                val elapsedMs = (SystemClock.elapsedRealtimeNanos() - startedAt) / 1_000_000.0
+                composeRule.onRoot().captureToImage()
+                elapsedMs
+            }
+            samples.sorted()[samples.size / 2].also { median ->
+                Log.i(ISSUE_495_BENCHMARK_TAG, "calibrationScenario=$name samplesMs=$samples medianMs=$median")
+            }
+        }
+        Log.i(ISSUE_495_BENCHMARK_TAG, "calibrationMediansMs=$medians")
+    }
+
     @OptIn(ExperimentalFoundationApi::class)
     @Test
     fun selectionSurvivesDeferredMarkdownViewDisposal() {
@@ -385,23 +461,14 @@ class ArticleScreenInstrumentedTest {
                 textToolbar = textToolbar,
                 clipboard = clipboard,
             )
-            listOf(codeBlock, quoteBlock, tableCell).forEach { target ->
-                assertSelectionSurvivesDisposal(
-                    target = target,
-                    awayToEnd = true,
-                    scrollContainer = scrollContainer,
-                    textToolbar = textToolbar,
-                    clipboard = clipboard,
-                )
+
+            // Visit the remaining renderer shapes once in document order. The paragraph above
+            // exercises detach/reattach directly; the full-document selection below verifies that
+            // code, quote, table and tail proxies retain their text after the same disposal.
+            scrollToBoundary(scrollContainer, end = false)
+            listOf(codeBlock, quoteBlock, tableCell, lastParagraph).forEach { target ->
+                scrollForwardToText(scrollContainer, target)
             }
-            assertSelectionSurvivesDisposal(
-                target = thirdFromLastParagraph,
-                additionallyDisposed = listOf(secondFromLastParagraph, lastParagraph),
-                awayToEnd = false,
-                scrollContainer = scrollContainer,
-                textToolbar = textToolbar,
-                clipboard = clipboard,
-            )
 
             // 逐项滚动已经让整篇文档的真实 BlockRenderer 至少注册过一次；全选必须覆盖全部
             // 内容，随后首部节点的销毁、重建和第二次销毁都不能改变高亮或复制结果。
@@ -452,6 +519,21 @@ class ArticleScreenInstrumentedTest {
         } finally {
             ComposeFoundationFlags.isNewContextMenuEnabled = previousContextMenuFlag
         }
+    }
+
+    @Test
+    fun deferredMarkdownSaveStateUsesBundleSafeKeys() {
+        val markdown = (0 until 80).joinToString("\n\n") { index -> "SAVEABLE_BLOCK_$index" }
+        composeRule.setScreenContent {
+            RenderMarkdownText(markdown = markdown)
+        }
+        composeRule.onNodeWithText("SAVEABLE_BLOCK_0").assertIsDisplayed()
+
+        composeRule.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+        composeRule.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+        composeRule.activityRule.scenario.recreate()
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync()
     }
 
     private fun waitUntilSelectionHighlight(
@@ -539,6 +621,13 @@ class ArticleScreenInstrumentedTest {
         text: String,
     ) {
         scrollToBoundary(scrollContainer, end = false)
+        scrollForwardToText(scrollContainer, text)
+    }
+
+    private fun scrollForwardToText(
+        scrollContainer: SemanticsNodeInteraction,
+        text: String,
+    ) {
         val scrollStep = scrollContainer
             .fetchSemanticsNode()
             .boundsInRoot

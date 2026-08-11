@@ -18,7 +18,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Density
 import com.hrm.codehigh.theme.CodeTheme
-import com.hrm.latex.renderer.measure.LatexMeasurerState
+import com.hrm.latex.renderer.LatexRenderCache
 import com.hrm.markdown.parser.ast.Spoiler
 import com.hrm.markdown.renderer.MarkdownTheme
 import com.hrm.markdown.runtime.MarkdownDirectiveRegistry
@@ -32,7 +32,7 @@ internal fun SpoilerContent(
     directiveRegistry: MarkdownDirectiveRegistry,
     onLinkClick: ((String) -> Unit)?,
     onFootnoteClick: ((String) -> Unit)?,
-    latexMeasurer: LatexMeasurerState?,
+    latexRenderCache: LatexRenderCache?,
     density: Density?,
     textMeasurer: TextMeasurer?,
     inlineCodeTheme: CodeTheme?,
@@ -43,13 +43,11 @@ internal fun SpoilerContent(
     val stableOnLinkClick: ((String) -> Unit)? = remember {
         { url: String ->
             currentOnLinkClick.value?.invoke(url)
-            Unit
         }
     }
     val stableOnFootnoteClick: ((String) -> Unit)? = remember {
         { label: String ->
             currentOnFootnoteClick.value?.invoke(label)
-            Unit
         }
     }
     val annotated = remember(
@@ -58,7 +56,7 @@ internal fun SpoilerContent(
         revealed,
         hostTextStyle,
         directiveRegistry,
-        latexMeasurer,
+        latexRenderCache,
         density,
         textMeasurer,
         inlineCodeTheme,
@@ -74,7 +72,7 @@ internal fun SpoilerContent(
                         directiveRegistry,
                         stableOnLinkClick,
                         stableOnFootnoteClick,
-                        latexMeasurer,
+                        latexRenderCache,
                         density,
                         textMeasurer,
                         inlineCodeTheme,
@@ -95,7 +93,7 @@ internal fun SpoilerContent(
                         directiveRegistry,
                         stableOnLinkClick,
                         stableOnFootnoteClick,
-                        latexMeasurer,
+                        latexRenderCache,
                         density,
                         textMeasurer,
                         inlineCodeTheme,

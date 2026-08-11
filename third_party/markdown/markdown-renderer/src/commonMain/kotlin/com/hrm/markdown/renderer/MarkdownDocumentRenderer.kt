@@ -4,9 +4,12 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.hrm.codehigh.theme.CodeTheme
+import com.hrm.latex.renderer.LocalLatexRenderCache
+import com.hrm.latex.renderer.rememberLatexRenderCache
 import com.hrm.markdown.parser.ast.Document
 import com.hrm.markdown.runtime.MarkdownDirectiveRegistry
 
@@ -22,7 +25,6 @@ internal fun MarkdownDocumentRenderer(
     enablePagination: Boolean = false,
     enableScroll: Boolean = true,
     enableSelection: Boolean = true,
-    deferOffscreenBlocks: Boolean = true,
     initialBlockCount: Int = 100,
     header: (@Composable () -> Unit)? = null,
     footer: (@Composable () -> Unit)? = null,
@@ -38,6 +40,9 @@ internal fun MarkdownDocumentRenderer(
         )
     }
     val lazyListState = rememberLazyListState()
+    val inheritedLatexRenderCache = LocalLatexRenderCache.current
+    val ownedLatexRenderCache = rememberLatexRenderCache()
+    val latexRenderCache = inheritedLatexRenderCache ?: ownedLatexRenderCache
     val renderDocument = rememberRenderDocument(
         document = document,
         isStreaming = isStreaming,
@@ -60,30 +65,31 @@ internal fun MarkdownDocumentRenderer(
         onLinkClick = onLinkClick,
     )
 
-    ProvideMarkdownTheme(theme) {
-        ProvideRendererContext(
-            document = renderDocument,
-            onLinkClick = onLinkClick,
-            onFootnoteClick = navigationHandlers.onFootnoteClick,
-            onFootnoteBackClick = navigationHandlers.onFootnoteBackClick,
-            footnoteNavigationState = navigationHandlers.footnoteNavigationState,
-            imageContent = imageContent,
-            config = config,
-            codeTheme = codeTheme,
-            isStreaming = isStreaming,
-            directiveRegistry = directiveRegistry,
-        ) {
-            MarkdownDocumentLayout(
-                renderMode = renderMode,
-                renderState = renderState,
-                modifier = modifier,
-                enableScroll = enableScroll,
-                scrollState = scrollState,
-                lazyListState = lazyListState,
-                deferOffscreenBlocks = deferOffscreenBlocks,
-                header = header,
-                footer = footer,
-            )
+    CompositionLocalProvider(LocalLatexRenderCache provides latexRenderCache) {
+        ProvideMarkdownTheme(theme) {
+            ProvideRendererContext(
+                document = renderDocument,
+                onLinkClick = onLinkClick,
+                onFootnoteClick = navigationHandlers.onFootnoteClick,
+                onFootnoteBackClick = navigationHandlers.onFootnoteBackClick,
+                footnoteNavigationState = navigationHandlers.footnoteNavigationState,
+                imageContent = imageContent,
+                config = config,
+                codeTheme = codeTheme,
+                isStreaming = isStreaming,
+                directiveRegistry = directiveRegistry,
+            ) {
+                MarkdownDocumentLayout(
+                    renderMode = renderMode,
+                    renderState = renderState,
+                    modifier = modifier,
+                    enableScroll = enableScroll,
+                    scrollState = scrollState,
+                    lazyListState = lazyListState,
+                    header = header,
+                    footer = footer,
+                )
+            }
         }
     }
 }

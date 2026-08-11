@@ -23,11 +23,11 @@ import androidx.compose.foundation.text.selection.LocalSelectionRegistrar
 import androidx.compose.foundation.text.selection.Selectable
 import androidx.compose.foundation.text.selection.Selection
 import androidx.compose.foundation.text.selection.SelectionAdjustment
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.text.selection.SelectionLayoutBuilder
 import androidx.compose.foundation.text.selection.SelectionRegistrar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -37,8 +37,12 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
 
+internal interface DocumentOrderedSelectable {
+    val documentOrder: List<Int>
+}
+
 /**
- * AndroidX [SelectionContainer] whose selectable registrations outlive their layouts.
+ * AndroidX selection container whose selectable registrations outlive their layouts.
  *
  * AndroidX normally unregisters a text node when its composable leaves the tree. Deferred Markdown
  * intentionally removes only the expensive view while scrolling, so unregistering there must not
@@ -49,19 +53,37 @@ import androidx.compose.ui.text.TextRange
  */
 @Composable
 fun PersistentSelectionContainer(
+    documentKey: Any = Unit,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    SelectionContainer(modifier) {
-        val androidxRegistrar = checkNotNull(LocalSelectionRegistrar.current)
-        val persistentRegistrar = remember(androidxRegistrar) {
-            PersistentSelectionRegistrar(androidxRegistrar)
+    key(documentKey) {
+        PersistentSelectionEngine(modifier) {
+            val androidxRegistrar = checkNotNull(LocalSelectionRegistrar.current)
+            val persistentRegistrar = remember(androidxRegistrar) {
+                PersistentSelectionRegistrar(androidxRegistrar)
+            }
+            CompositionLocalProvider(
+                LocalSelectionRegistrar provides persistentRegistrar,
+                content = content,
+            )
         }
-        CompositionLocalProvider(
-            LocalSelectionRegistrar provides persistentRegistrar,
-            content = content,
-        )
     }
+}
+
+/** Reserves one stable position for a nested Markdown block list in its parent render sequence. */
+@Composable
+internal fun PersistentSelectionGroup(
+    scopeKey: Any,
+    content: @Composable (List<Int>) -> Unit,
+) {
+    val groupOrder = when (val registrar = LocalSelectionRegistrar.current) {
+        is ScopedPersistentSelectionRegistrar -> remember(registrar, scopeKey) {
+            registrar.documentOrderForChildGroup(scopeKey)
+        }
+        else -> emptyList()
+    }
+    content(groupOrder)
 }
 
 /**
@@ -76,7 +98,7 @@ fun PersistentSelectionContainer(
 @Composable
 internal fun PersistentSelectionScope(
     scopeKey: Any,
-    fallbackCoordinates: LayoutCoordinates? = null,
+    documentOrder: List<Int>,
     content: @Composable () -> Unit,
 ) {
     val registrar = LocalSelectionRegistrar.current
@@ -90,10 +112,9 @@ internal fun PersistentSelectionScope(
         return
     }
 
-    val scopedRegistrar = remember(persistentRegistrar, scopeKey) {
-        persistentRegistrar.scoped(scopeKey).also { it.beginComposition() }
+    val scopedRegistrar = remember(persistentRegistrar, scopeKey, documentOrder) {
+        persistentRegistrar.scoped(documentOrder).also { it.beginComposition() }
     }
-    scopedRegistrar.fallbackCoordinates = fallbackCoordinates
     CompositionLocalProvider(
         LocalSelectionRegistrar provides scopedRegistrar,
         content = content,
@@ -104,27 +125,27 @@ private class PersistentSelectionRegistrar(
     private val androidxRegistrar: SelectionRegistrar,
 ) : SelectionRegistrar {
     private val selectables = mutableMapOf<Long, PersistentSelectable>()
-    private val scopes = mutableMapOf<Any, ScopedPersistentSelectionRegistrar>()
+    private val scopes = mutableMapOf<List<Int>, ScopedPersistentSelectionRegistrar>()
 
-    fun scoped(scopeKey: Any): ScopedPersistentSelectionRegistrar =
-        scopes.getOrPut(scopeKey) { ScopedPersistentSelectionRegistrar(this) }
+    fun scoped(documentOrder: List<Int>): ScopedPersistentSelectionRegistrar =
+        scopes.getOrPut(documentOrder) { ScopedPersistentSelectionRegistrar(this, documentOrder) }
 
     override val subselections: LongObjectMap<Selection>
         get() = androidxRegistrar.subselections
 
     override fun subscribe(selectable: Selectable): Selectable =
-        subscribe(selectable) { null }
+        subscribe(selectable, listOf(Int.MAX_VALUE, selectable.selectableId.hashCode()))
 
     fun subscribe(
         selectable: Selectable,
-        fallbackCoordinates: () -> LayoutCoordinates?,
+        documentOrder: List<Int>,
     ): Selectable {
         val persistentSelectable = selectables[selectable.selectableId]
         if (persistentSelectable != null) {
             persistentSelectable.attach(selectable)
-            persistentSelectable.setFallbackCoordinates(fallbackCoordinates)
+            persistentSelectable.documentOrder = documentOrder
         } else {
-            PersistentSelectable(selectable, fallbackCoordinates).also {
+            PersistentSelectable(selectable, documentOrder).also {
                 selectables[selectable.selectableId] = it
                 androidxRegistrar.subscribe(it)
             }
@@ -192,12 +213,18 @@ private class PersistentSelectionRegistrar(
 
 private class ScopedPersistentSelectionRegistrar(
     val persistentRegistrar: PersistentSelectionRegistrar,
+    private val documentOrder: List<Int>,
 ) : SelectionRegistrar by persistentRegistrar {
     private val selectableIds = mutableListOf<Long>()
+    private val selectableOrders = mutableMapOf<Long, List<Int>>()
+    private val childGroupOrders = mutableMapOf<Any, List<Int>>()
     private val selectedIdsAtDisposal = mutableSetOf<Long>()
     private var idsRestoredThisComposition = emptySet<Long>()
     private var allocationIndex = 0
-    var fallbackCoordinates: LayoutCoordinates? = null
+    private var nextDocumentOrderSlot = 0
+
+    fun documentOrderForChildGroup(scopeKey: Any): List<Int> =
+        childGroupOrders.getOrPut(scopeKey) { documentOrder + nextDocumentOrderSlot++ }
 
     fun beginComposition() {
         allocationIndex = 0
@@ -212,12 +239,16 @@ private class ScopedPersistentSelectionRegistrar(
         }
         return persistentRegistrar.nextSelectableId().also { selectableId ->
             selectableIds += selectableId
+            selectableOrders[selectableId] = documentOrder + nextDocumentOrderSlot++
             allocationIndex = selectableIds.size
         }
     }
 
     override fun subscribe(selectable: Selectable): Selectable =
-        persistentRegistrar.subscribe(selectable) { fallbackCoordinates }
+        persistentRegistrar.subscribe(
+            selectable = selectable,
+            documentOrder = checkNotNull(selectableOrders[selectable.selectableId]),
+        )
 
     override fun unsubscribe(selectable: Selectable) {
         val wasSelected = persistentRegistrar.subselections.containsKey(selectable.selectableId)
@@ -233,11 +264,10 @@ private class ScopedPersistentSelectionRegistrar(
 
 private class PersistentSelectable(
     delegate: Selectable,
-    fallbackCoordinates: () -> LayoutCoordinates?,
-) : Selectable {
+    override var documentOrder: List<Int>,
+) : Selectable, DocumentOrderedSelectable {
     override val selectableId = delegate.selectableId
     private var delegate: Selectable? = delegate
-    private var fallbackCoordinates = fallbackCoordinates
     private var text = delegate.getText()
     private var selectAllSelection = delegate.getSelectAllSelection()
 
@@ -245,10 +275,6 @@ private class PersistentSelectable(
         delegate = selectable
         text = selectable.getText()
         selectAllSelection = selectable.getSelectAllSelection()
-    }
-
-    fun setFallbackCoordinates(fallbackCoordinates: () -> LayoutCoordinates?) {
-        this.fallbackCoordinates = fallbackCoordinates
     }
 
     fun detach(selectable: Selectable): Boolean {
@@ -271,7 +297,6 @@ private class PersistentSelectable(
 
     override fun getLayoutCoordinates(): LayoutCoordinates? =
         delegate?.getLayoutCoordinates()?.takeIf { it.isAttached }
-            ?: fallbackCoordinates().takeIf { it?.isAttached == true }
 
     override fun textLayoutResult(): TextLayoutResult? = delegate?.textLayoutResult()
 
