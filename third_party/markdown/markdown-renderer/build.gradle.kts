@@ -47,9 +47,9 @@ kotlin {
             implementation("org.jetbrains.compose.ui:ui:1.11.1")
             implementation("org.jetbrains.compose.components:components-resources:1.11.1")
 
-            implementation("io.github.zly2006:latex-base:0.0.1-alpha4")
-            implementation("io.github.zly2006:latex-parser:0.0.1-alpha4")
-            implementation("io.github.zly2006:latex-renderer:0.0.1-alpha4")
+            implementation("io.github.zly2006:latex-base:0.0.1-alpha5")
+            implementation("io.github.zly2006:latex-parser:0.0.1-alpha5")
+            implementation("io.github.zly2006:latex-renderer:0.0.1-alpha5")
             implementation("io.github.huarangmeng:codehighlight-parser:1.1.1")
             implementation("io.github.huarangmeng:codehighlight-render:1.1.1")
 
@@ -64,6 +64,12 @@ kotlin {
         }
         jvmMain.dependencies {
             implementation("io.ktor:ktor-client-java:3.5.0")
+        }
+        jvmTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(compose.desktop.currentOs)
+            implementation("org.jetbrains.compose.ui:ui-test:1.11.1")
+            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
         }
     }
 }

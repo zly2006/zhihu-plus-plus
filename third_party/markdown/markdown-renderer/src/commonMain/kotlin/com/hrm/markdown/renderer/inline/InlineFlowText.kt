@@ -5,7 +5,10 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.AlignmentLine
 import androidx.compose.ui.layout.FirstBaseline
@@ -13,6 +16,9 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.LastBaseline
 import androidx.compose.ui.layout.MeasurePolicy
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
@@ -20,6 +26,8 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
+import com.hrm.markdown.renderer.LocalOnLinkClick
+import com.hrm.markdown.renderer.markdownInlineTaps
 import kotlin.math.roundToInt
 
 /**
@@ -39,8 +47,8 @@ internal fun InlineFlowText(
     onTextLayout: ((TextLayoutResult) -> Unit)? = null,
 ) {
     if (inlineContents.isEmpty()) {
-        BasicText(
-            text = annotated,
+        MarkdownBasicText(
+            annotated = annotated,
             modifier = modifier,
             style = style,
             maxLines = maxLines,
@@ -107,8 +115,8 @@ private fun InlineFlowMeasuredContent(
                     for (item in line.items) {
                         when (item) {
                             is LineItem.TextItem -> {
-                                BasicText(
-                                    text = item.text,
+                                MarkdownBasicText(
+                                    annotated = item.text,
                                     style = line.textStyle,
                                     maxLines = 1,
                                     softWrap = false,
@@ -171,6 +179,55 @@ private fun InlineFlowMeasuredContent(
             }
         }
     }
+}
+
+@Composable
+private fun MarkdownBasicText(
+    annotated: AnnotatedString,
+    modifier: Modifier = Modifier,
+    style: TextStyle,
+    maxLines: Int,
+    softWrap: Boolean = true,
+    onTextLayout: ((TextLayoutResult) -> Unit)? = null,
+) {
+    val onLinkClick = LocalOnLinkClick.current
+    val links = remember(annotated) {
+        annotated
+            .getStringAnnotations(MARKDOWN_LINK_ANNOTATION_TAG, 0, annotated.length)
+            .distinctBy { it.item }
+    }
+    var layoutResult by remember(annotated) { mutableStateOf<TextLayoutResult?>(null) }
+    val linkModifier = modifier.markdownInlineTaps(
+        annotated = annotated,
+        highlights = emptyMap(),
+        textLayoutResult = { layoutResult },
+        onHighlightClick = null,
+        onLinkClick = onLinkClick,
+    )
+    val accessibilityActions = remember(annotated, links, onLinkClick) {
+        links.map { annotation ->
+            val label = annotated.substring(annotation.start, annotation.end)
+            CustomAccessibilityAction("打开链接：$label") {
+                onLinkClick?.invoke(annotation.item)
+                true
+            }
+        }
+    }
+    BasicText(
+        text = annotated,
+        modifier = if (accessibilityActions.isEmpty()) {
+            linkModifier
+        } else {
+            linkModifier.semantics { customActions = accessibilityActions }
+        },
+        style = style,
+        maxLines = maxLines,
+        softWrap = softWrap,
+        onTextLayout = {
+            layoutResult = it
+            onTextLayout?.invoke(it)
+        },
+    )
 }
 
 private fun inlineFlowMeasurePolicy(

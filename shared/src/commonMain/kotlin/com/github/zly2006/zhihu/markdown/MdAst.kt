@@ -113,6 +113,15 @@ private fun MarkdownNode.collectPreviewImageUrls(): List<String> = when (this) {
 private fun List<HtmlNode>.convertNodesToBlocks(noNativeBlock: Boolean): List<MarkdownNode> {
     val blocks = mutableListOf<MarkdownNode>()
     var currentParagraph: Paragraph? = null
+    val hasNextInlineContent = BooleanArray(size + 1)
+    for (index in lastIndex downTo 0) {
+        val node = this[index]
+        hasNextInlineContent[index] = when {
+            node is Element && node.isBlockBoundary() -> false
+            node.hasInlineContent() -> true
+            else -> hasNextInlineContent[index + 1]
+        }
+    }
 
     fun paragraph(): Paragraph = currentParagraph ?: Paragraph().also {
         blocks.add(it)
@@ -124,7 +133,7 @@ private fun List<HtmlNode>.convertNodesToBlocks(noNativeBlock: Boolean): List<Ma
             is TextNode -> {
                 val text = node.text().trimInlineBoundary(
                     hasPreviousInline = currentParagraph != null,
-                    hasNextInline = drop(index + 1).hasNextInlineContent(),
+                    hasNextInline = hasNextInlineContent[index + 1],
                 )
                 if (text.isNotEmpty()) {
                     paragraph().appendChild(
@@ -176,18 +185,6 @@ private fun String.trimInlineBoundary(
     hasPreviousInline -> trimEnd()
     hasNextInline -> trimStart()
     else -> trim()
-}
-
-private fun List<HtmlNode>.hasNextInlineContent(): Boolean {
-    for (node in this) {
-        if (node is Element && node.isBlockBoundary()) {
-            return false
-        }
-        if (node.hasInlineContent()) {
-            return true
-        }
-    }
-    return false
 }
 
 private fun Element.isBlockBoundary(): Boolean = when (tagName().lowercase()) {

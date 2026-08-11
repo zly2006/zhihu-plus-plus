@@ -14,7 +14,7 @@ import androidx.compose.ui.unit.sp
 import com.hrm.codehigh.renderer.InlineCodeDefaults
 import com.hrm.codehigh.renderer.measureInlineCodeSize
 import com.hrm.codehigh.theme.CodeTheme
-import com.hrm.latex.renderer.measure.LatexMeasurerState
+import com.hrm.latex.renderer.LatexRenderCache
 import com.hrm.latex.renderer.model.LatexConfig
 import com.hrm.latex.renderer.model.LatexTheme
 import com.hrm.markdown.parser.ast.DirectiveInline
@@ -114,19 +114,19 @@ internal fun AnnotatedString.Builder.renderInlineMathNode(
     theme: MarkdownTheme,
     hostTextStyle: TextStyle,
     inlineContents: MutableMap<String, InlineContentEntry>,
-    latexMeasurer: LatexMeasurerState?,
+    latexRenderCache: LatexRenderCache?,
     density: Density?,
     textMeasurer: TextMeasurer?,
 ) {
     val id = "math_${node.hashCode()}"
     val fontSize = theme.mathFontSize
-    val latexConfig = LatexConfig(
-        fontSize = fontSize.sp,
-        theme = LatexTheme.light(color = theme.mathColor),
-        mathFont = theme.mathFont,
-    )
+    val latexConfig = inlineMathLatexConfig(theme)
 
-    val dims = latexMeasurer?.measure(node.literal, latexConfig)
+    val dims = if (density != null) {
+        latexRenderCache?.dimensions(node.literal, latexConfig, density)
+    } else {
+        null
+    }
     val placeholderWidth = if (dims != null && density != null) {
         with(density) { dims.widthPx.toSp() }
     } else {
@@ -165,6 +165,12 @@ internal fun AnnotatedString.Builder.renderInlineMathNode(
     )
 }
 
+internal fun inlineMathLatexConfig(theme: MarkdownTheme): LatexConfig = LatexConfig(
+    fontSize = theme.mathFontSize.sp,
+    theme = LatexTheme.light(color = theme.mathColor),
+    mathFont = theme.mathFont,
+)
+
 internal fun AnnotatedString.Builder.renderSpoilerNode(
     node: Spoiler,
     theme: MarkdownTheme,
@@ -173,7 +179,7 @@ internal fun AnnotatedString.Builder.renderSpoilerNode(
     directiveRegistry: MarkdownDirectiveRegistry,
     onLinkClick: ((String) -> Unit)?,
     onFootnoteClick: ((String) -> Unit)?,
-    latexMeasurer: LatexMeasurerState?,
+    latexRenderCache: LatexRenderCache?,
     density: Density?,
     textMeasurer: TextMeasurer?,
     inlineCodeTheme: CodeTheme?,
@@ -203,7 +209,7 @@ internal fun AnnotatedString.Builder.renderSpoilerNode(
             directiveRegistry = directiveRegistry,
             onLinkClick = onLinkClick,
             onFootnoteClick = onFootnoteClick,
-            latexMeasurer = latexMeasurer,
+            latexRenderCache = latexRenderCache,
             density = density,
             textMeasurer = textMeasurer,
             inlineCodeTheme = inlineCodeTheme,

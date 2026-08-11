@@ -26,6 +26,7 @@ import android.view.InputDevice
 import android.view.MotionEvent
 import androidx.compose.foundation.ComposeFoundationFlags
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
@@ -39,6 +40,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
@@ -99,6 +101,7 @@ import com.github.zly2006.zhihu.ui.article.ArticleActionsMenu
 import com.github.zly2006.zhihu.ui.rememberArticleTtsState
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
+import com.hrm.markdown.renderer.Markdown
 import com.hrm.markdown.renderer.MarkdownImageData
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CancellationException
@@ -106,6 +109,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -301,6 +305,77 @@ class ArticleScreenInstrumentedTest {
             "Issue #495 median first frame took ${medianMillis}ms; benchmark includes HTML parsing, Compose layout, and draw",
             medianMillis < ISSUE_495_FIRST_FRAME_LIMIT_MS,
         )
+    }
+
+    @Test
+    fun markdownJvmToAvdCalibrationBenchmark() {
+        assumeTrue(
+            "Run explicitly with -e markdownPerformance true; normal functional suites should not occupy an AVD for calibration",
+            InstrumentationRegistry.getArguments().getString("markdownPerformance") == "true",
+        )
+        val scenarios = linkedMapOf(
+            "short-prose" to "一段普通正文，用于覆盖最常见的短回答。",
+            "formatted-prose" to (1..30).joinToString("\n\n") { index ->
+                "第 $index 段包含 **加粗**、*斜体*、~~删除线~~ 和 [链接](https://example.com/$index)。"
+            },
+            "block-math" to (1..80).joinToString("\n\n") { index ->
+                "${'$'}${'$'}\\sum_{i=1}^{n} \\frac{x_i^{$index}}{1+x_i^2}${'$'}${'$'}"
+            },
+        )
+        val markdown = mutableStateOf("calibration bootstrap")
+        val scrollState = ScrollState(0)
+        composeRule.setScreenContent {
+            Markdown(
+                markdown = markdown.value,
+                modifier = androidx.compose.ui.Modifier
+                    .fillMaxSize(),
+                scrollState = scrollState,
+                enableScroll = true,
+                enableSelection = true,
+            )
+        }
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            composeRule
+                .onAllNodesWithText("calibration bootstrap", substring = true, useUnmergedTree = true)
+                .fetchSemanticsNodes(atLeastOneRootRequired = false)
+                .isNotEmpty()
+        }
+        composeRule.onRoot().captureToImage()
+
+        repeat(2) { warmup ->
+            scenarios.forEach { (name, body) ->
+                val marker = "$name warmup $warmup"
+                composeRule.runOnUiThread { markdown.value = "$marker\n\n$body" }
+                composeRule.waitUntil(timeoutMillis = 10_000) {
+                    composeRule
+                        .onAllNodesWithText(marker, substring = true, useUnmergedTree = true)
+                        .fetchSemanticsNodes(atLeastOneRootRequired = false)
+                        .isNotEmpty()
+                }
+                composeRule.onRoot().captureToImage()
+            }
+        }
+        val medians = scenarios.mapValues { (name, body) ->
+            val samples = List(7) { iteration ->
+                val marker = "$name calibration $iteration"
+                val startedAt = SystemClock.elapsedRealtimeNanos()
+                composeRule.runOnUiThread { markdown.value = "$marker\n\n$body" }
+                composeRule.waitUntil(timeoutMillis = 10_000) {
+                    composeRule
+                        .onAllNodesWithText(marker, substring = true, useUnmergedTree = true)
+                        .fetchSemanticsNodes(atLeastOneRootRequired = false)
+                        .isNotEmpty()
+                }
+                composeRule.waitForIdle()
+                val elapsedMs = (SystemClock.elapsedRealtimeNanos() - startedAt) / 1_000_000.0
+                composeRule.onRoot().captureToImage()
+                elapsedMs
+            }
+            samples.sorted()[samples.size / 2].also { median ->
+                Log.i(ISSUE_495_BENCHMARK_TAG, "calibrationScenario=$name samplesMs=$samples medianMs=$median")
+            }
+        }
+        Log.i(ISSUE_495_BENCHMARK_TAG, "calibrationMediansMs=$medians")
     }
 
     @OptIn(ExperimentalFoundationApi::class)

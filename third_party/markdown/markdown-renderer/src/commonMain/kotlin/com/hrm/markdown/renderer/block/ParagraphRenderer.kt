@@ -35,13 +35,14 @@ import com.hrm.markdown.renderer.LocalOnFootnoteClick
 import com.hrm.markdown.renderer.LocalOnLinkClick
 import com.hrm.markdown.renderer.LocalOnSegmentHighlightClick
 import com.hrm.markdown.renderer.MarkdownImageData
-import com.hrm.markdown.renderer.segmentHighlightTaps
+import com.hrm.markdown.renderer.markdownInlineTaps
 import com.hrm.markdown.renderer.segmentHighlightsByKey
-import com.hrm.latex.renderer.measure.rememberLatexMeasurer
+import com.hrm.latex.renderer.LocalLatexRenderCache
 import com.hrm.markdown.renderer.inline.buildInlineAnnotatedString
 import com.hrm.markdown.renderer.inline.InlineFlowText
 import com.hrm.markdown.renderer.inline.InlineContentEntry
 import com.hrm.markdown.renderer.inline.SEGMENT_HIGHLIGHT_ANNOTATION_TAG
+import com.hrm.markdown.renderer.inline.inlineMathDimensionsKey
 import com.hrm.markdown.renderer.inline.rememberInlineContent
 
 /**
@@ -92,13 +93,14 @@ private fun SimpleParagraphRenderer(
     val annotatedText = inlineResult.annotated
     var textLayoutResult by remember(annotatedText) { mutableStateOf<TextLayoutResult?>(null) }
     val underlineColor = MaterialTheme.colorScheme.outlineVariant
-    val interactionModifier = modifier.segmentHighlightTaps(
+    val interactionModifier = modifier.markdownInlineTaps(
         annotated = annotatedText,
         highlights = segmentHighlights,
         textLayoutResult = { textLayoutResult },
-        onClick = onSegmentHighlightClick,
+        onHighlightClick = onSegmentHighlightClick,
+        onLinkClick = null,
     )
-    val segmentModifier = if (segmentHighlights.isEmpty()) {
+    val visualModifier = if (segmentHighlights.isEmpty()) {
         interactionModifier
     } else {
         interactionModifier
@@ -129,21 +131,29 @@ private fun SimpleParagraphRenderer(
                             )
                         }
                     }
-            }.semantics {
-                if (onSegmentHighlightClick != null) {
-                    customActions = segmentHighlights.values.map { highlight ->
-                        CustomAccessibilityAction("打开划线片段：${highlight.text}") {
-                            onSegmentHighlightClick(highlight)
-                            true
-                        }
-                    }
-                }
             }
+    }
+    val accessibilityActions = buildList {
+        if (onSegmentHighlightClick != null) {
+            addAll(segmentHighlights.values.map { highlight ->
+                CustomAccessibilityAction("打开划线片段：${highlight.text}") {
+                    onSegmentHighlightClick(highlight)
+                    true
+                }
+            })
+        }
+    }
+    val semanticModifier = if (accessibilityActions.isEmpty()) {
+        visualModifier
+    } else {
+        visualModifier.semantics {
+            customActions = accessibilityActions
+        }
     }
     InlineFlowText(
         annotated = annotatedText,
         inlineContents = inlineResult.inlineContents,
-        modifier = segmentModifier.fillMaxWidth(),
+        modifier = semanticModifier.fillMaxWidth(),
         style = theme.bodyStyle,
         onTextLayout = { textLayoutResult = it },
     )
@@ -208,8 +218,9 @@ private fun MixedParagraphRenderer(
     val onFootnoteClick = LocalOnFootnoteClick.current
     val customRenderer = LocalImageRenderer.current
     val directiveRegistry = LocalMarkdownDirectiveRegistry.current
-    val latexMeasurer = rememberLatexMeasurer()
+    val latexRenderCache = LocalLatexRenderCache.current
     val density = androidx.compose.ui.platform.LocalDensity.current
+    val latexDimensionsKey = inlineMathDimensionsKey(node.children, latexRenderCache, theme, density)
     val textMeasurer = rememberTextMeasurer()
     val codeTheme = LocalCodeHighlightTheme.current ?: LocalCodeTheme.current
 
@@ -224,7 +235,7 @@ private fun MixedParagraphRenderer(
                 is ParagraphSegment.TextRun -> {
                     val built = remember(
                         segment, theme, onLinkClick, onFootnoteClick, directiveRegistry,
-                        latexMeasurer, density, textMeasurer, codeTheme,
+                        latexRenderCache, latexDimensionsKey, density, textMeasurer, codeTheme,
                     ) {
                         val inlineContents = mutableMapOf<String, InlineContentEntry>()
                         val annotated = buildInlineAnnotatedString(
@@ -235,7 +246,7 @@ private fun MixedParagraphRenderer(
                             directiveRegistry = directiveRegistry,
                             onLinkClick = onLinkClick,
                             onFootnoteClick = onFootnoteClick,
-                            latexMeasurer = latexMeasurer,
+                            latexRenderCache = latexRenderCache,
                             density = density,
                             textMeasurer = textMeasurer,
                             codeTheme = codeTheme,

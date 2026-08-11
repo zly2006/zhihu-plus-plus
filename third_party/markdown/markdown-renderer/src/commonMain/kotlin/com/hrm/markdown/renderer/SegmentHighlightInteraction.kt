@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.IntSize
 import com.hrm.markdown.parser.ast.ContainerNode
 import com.hrm.markdown.parser.ast.Node
 import com.hrm.markdown.parser.ast.SegmentHighlight
+import com.hrm.markdown.renderer.inline.MARKDOWN_LINK_ANNOTATION_TAG
 import com.hrm.markdown.renderer.inline.SEGMENT_HIGHLIGHT_ANNOTATION_TAG
 
 /**
@@ -27,41 +28,53 @@ import com.hrm.markdown.renderer.inline.SEGMENT_HIGHLIGHT_ANNOTATION_TAG
  * 这里通过 Compose 的公开 sibling-sharing pointer node 同时保留真实文字命中和原生选择手势。
  * 父层双击手势会消费抬手事件，因此按原始 pressed 状态识别抬手，同时仍以时长、位移和多指取消短按。
  */
-internal fun Modifier.segmentHighlightTaps(
+internal fun Modifier.markdownInlineTaps(
     annotated: AnnotatedString,
     highlights: Map<String, SegmentHighlight>,
     textLayoutResult: () -> TextLayoutResult?,
-    onClick: ((SegmentHighlight) -> Unit)?,
+    onHighlightClick: ((SegmentHighlight) -> Unit)?,
+    onLinkClick: ((String) -> Unit)?,
 ): Modifier {
-    if (onClick == null || highlights.isEmpty()) return this
+    val hasHighlights = onHighlightClick != null && highlights.isNotEmpty()
+    val hasLinks = onLinkClick != null && annotated.hasStringAnnotations(MARKDOWN_LINK_ANNOTATION_TAG, 0, annotated.length)
+    if (!hasHighlights && !hasLinks) return this
     return this.then(
-        SegmentHighlightTapElement(
+        MarkdownInlineTapElement(
             annotated = annotated,
             highlights = highlights,
             textLayoutResult = textLayoutResult,
-            onClick = onClick,
+            onHighlightClick = onHighlightClick,
+            onLinkClick = onLinkClick,
         ),
     )
 }
 
-private data class SegmentHighlightTapElement(
+private data class MarkdownInlineTapElement(
     val annotated: AnnotatedString,
     val highlights: Map<String, SegmentHighlight>,
     val textLayoutResult: () -> TextLayoutResult?,
-    val onClick: (SegmentHighlight) -> Unit,
-) : ModifierNodeElement<SegmentHighlightTapNode>() {
-    override fun create() = SegmentHighlightTapNode(annotated, highlights, textLayoutResult, onClick)
+    val onHighlightClick: ((SegmentHighlight) -> Unit)?,
+    val onLinkClick: ((String) -> Unit)?,
+) : ModifierNodeElement<MarkdownInlineTapNode>() {
+    override fun create() = MarkdownInlineTapNode(
+        annotated,
+        highlights,
+        textLayoutResult,
+        onHighlightClick,
+        onLinkClick,
+    )
 
-    override fun update(node: SegmentHighlightTapNode) {
-        node.update(annotated, highlights, textLayoutResult, onClick)
+    override fun update(node: MarkdownInlineTapNode) {
+        node.update(annotated, highlights, textLayoutResult, onHighlightClick, onLinkClick)
     }
 }
 
-private class SegmentHighlightTapNode(
+private class MarkdownInlineTapNode(
     private var annotated: AnnotatedString,
     private var highlights: Map<String, SegmentHighlight>,
     private var textLayoutResult: () -> TextLayoutResult?,
-    private var onClick: (SegmentHighlight) -> Unit,
+    private var onHighlightClick: ((SegmentHighlight) -> Unit)?,
+    private var onLinkClick: ((String) -> Unit)?,
 ) : Modifier.Node(),
     PointerInputModifierNode,
     CompositionLocalConsumerModifierNode {
@@ -73,7 +86,8 @@ private class SegmentHighlightTapNode(
         annotated: AnnotatedString,
         highlights: Map<String, SegmentHighlight>,
         textLayoutResult: () -> TextLayoutResult?,
-        onClick: (SegmentHighlight) -> Unit,
+        onHighlightClick: ((SegmentHighlight) -> Unit)?,
+        onLinkClick: ((String) -> Unit)?,
     ) {
         if (this.annotated != annotated || this.highlights != highlights) {
             onCancelPointerInput()
@@ -81,7 +95,8 @@ private class SegmentHighlightTapNode(
         this.annotated = annotated
         this.highlights = highlights
         this.textLayoutResult = textLayoutResult
-        this.onClick = onClick
+        this.onHighlightClick = onHighlightClick
+        this.onLinkClick = onLinkClick
     }
 
     override fun sharePointerInputWithSiblings() = true
@@ -120,11 +135,19 @@ private class SegmentHighlightTapNode(
                     val offset = layout
                         .getOffsetForPosition(change.position)
                         .coerceIn(0, annotated.lastIndex)
-                    val key = annotated
-                        .getStringAnnotations(SEGMENT_HIGHLIGHT_ANNOTATION_TAG, offset, offset + 1)
+                    val link = annotated
+                        .getStringAnnotations(MARKDOWN_LINK_ANNOTATION_TAG, offset, offset + 1)
                         .firstOrNull()
                         ?.item
-                    key?.let(highlights::get)?.let(onClick)
+                    if (link != null) {
+                        onLinkClick?.invoke(link)
+                    } else {
+                        val key = annotated
+                            .getStringAnnotations(SEGMENT_HIGHLIGHT_ANNOTATION_TAG, offset, offset + 1)
+                            .firstOrNull()
+                            ?.item
+                        key?.let(highlights::get)?.let { onHighlightClick?.invoke(it) }
+                    }
                 }
             }
             onCancelPointerInput()

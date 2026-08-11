@@ -259,7 +259,6 @@ fun RenderMarkdown(
     scrollState: ScrollState = rememberScrollState(),
     selectable: Boolean = true,
     enableScroll: Boolean = true,
-    deferOffscreenBlocks: Boolean = true,
     header: (@Composable () -> Unit)? = null,
     footer: (@Composable () -> Unit)? = null,
 ) {
@@ -270,7 +269,6 @@ fun RenderMarkdown(
         scrollState = scrollState,
         selectable = selectable,
         enableScroll = enableScroll,
-        deferOffscreenBlocks = deferOffscreenBlocks,
         header = header,
         footer = footer,
     )
@@ -283,7 +281,6 @@ fun RenderMarkdownText(
     scrollState: ScrollState = rememberScrollState(),
     selectable: Boolean = true,
     enableScroll: Boolean = true,
-    deferOffscreenBlocks: Boolean = true,
     header: (@Composable () -> Unit)? = null,
     footer: (@Composable () -> Unit)? = null,
 ) {
@@ -294,7 +291,6 @@ fun RenderMarkdownText(
         scrollState = scrollState,
         selectable = selectable,
         enableScroll = enableScroll,
-        deferOffscreenBlocks = deferOffscreenBlocks,
         header = header,
         footer = footer,
     )
@@ -307,7 +303,6 @@ private fun RenderMarkdownDocument(
     scrollState: ScrollState,
     selectable: Boolean,
     enableScroll: Boolean,
-    deferOffscreenBlocks: Boolean,
     header: (@Composable () -> Unit)?,
     footer: (@Composable () -> Unit)?,
 ) {
@@ -353,7 +348,6 @@ private fun RenderMarkdownDocument(
                         scrollState = scrollState,
                         enableScroll = enableScroll,
                         enableSelection = selectable,
-                        deferOffscreenBlocks = deferOffscreenBlocks,
                         onLinkClick = { url ->
                             resolveContent(url)?.let { navigator.onNavigate(it) }
                                 ?: openExternalUrl(url)
