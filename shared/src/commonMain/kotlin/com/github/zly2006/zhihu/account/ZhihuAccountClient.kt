@@ -94,6 +94,25 @@ class ZhihuAccountClient(
         }
     }
 
+    suspend fun verifyMobileAndSave(token: ZhihuMobileLoginToken): Boolean {
+        val cookies = token.cookies.toMutableMap()
+        val temporaryClient = temporaryHttpClient(cookies)
+        try {
+            val verified = fetchVerifiedZhihuSession(temporaryClient, cookies, load().userAgent) ?: return false
+            save(
+                verified.copy(
+                    mobileAccessToken = token.accessToken,
+                    mobileRefreshToken = token.refreshToken,
+                    mobileTokenType = token.tokenType,
+                    mobileTokenExpiresAt = token.expiresAt,
+                ),
+            )
+            return true
+        } finally {
+            temporaryClient.close()
+        }
+    }
+
     suspend fun refreshAndSaveProfile(): ZhihuAccountSession? {
         val currentSession = load()
         val refreshed = fetchVerifiedZhihuSession(httpClient(), currentSession.cookies, currentSession.userAgent)
