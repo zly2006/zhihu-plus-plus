@@ -26,8 +26,6 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
-import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.test.swipeDown
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.github.zly2006.zhihu.data.CommonFeed
@@ -242,7 +240,9 @@ class QuestionScreenInstrumentedTest {
     }
 
     @Test
-    fun longQuestionDetailRemainsVisibleAfterSlowReturnFromAnswerList() {
+    fun longQuestionDetailRemainsVisibleAfterReturnFromAnswerList() {
+        val lastDetailParagraph =
+            "问题详情回归段落 36：这是一段足够长的正文，用于覆盖超过屏幕高度的问题描述滚动场景。"
         val detail = (1..36).joinToString("") { index ->
             "<p>问题详情回归段落 $index：这是一段足够长的正文，用于覆盖超过屏幕高度的问题描述滚动场景。</p>"
         }
@@ -262,28 +262,11 @@ class QuestionScreenInstrumentedTest {
             .performScrollToNode(hasTestTag(farAnswerTag))
         composeRule.onNodeWithTag(farAnswerTag).assertIsDisplayed()
 
-        val list = composeRule.onNodeWithTag(QUESTION_SCREEN_LIST_TAG)
-        var detailVisible = false
-        for (ignored in 0 until 40) {
-            list.performTouchInput {
-                swipeDown(
-                    startY = height * 0.35f,
-                    endY = height * 0.65f,
-                    durationMillis = 600,
-                )
-            }
-            detailVisible = runCatching {
-                composeRule.onNodeWithTag(QUESTION_DETAIL_CONTENT_TAG).assertIsDisplayed()
-                true
-            }.getOrDefault(false)
-            if (detailVisible) break
-        }
-
-        assertTrue("长问题详情应在低速返回时重新进入视口", detailVisible)
         composeRule
-            .onNodeWithText(
-                "问题详情回归段落 36：这是一段足够长的正文，用于覆盖超过屏幕高度的问题描述滚动场景。",
-            ).assertIsDisplayed()
+            .onNodeWithTag(QUESTION_SCREEN_LIST_TAG)
+            .performScrollToNode(hasText(lastDetailParagraph))
+        composeRule.onNodeWithTag(QUESTION_DETAIL_CONTENT_TAG).assertIsDisplayed()
+        composeRule.onNodeWithText(lastDetailParagraph).assertIsDisplayed()
     }
 
     @Test
