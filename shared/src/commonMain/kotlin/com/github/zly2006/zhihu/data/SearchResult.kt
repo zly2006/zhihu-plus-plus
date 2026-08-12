@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.data
 
+import com.fleeksoft.ksoup.Ksoup
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
@@ -32,9 +33,12 @@ import kotlinx.serialization.encoding.decodeStructure
 import kotlinx.serialization.encoding.encodeStructure
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonEncoder
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
@@ -50,6 +54,11 @@ data class SearchResult(
     val index: Int? = null,
     val hitLabels: String? = null,
 ) {
+    val people: DataHolder.People?
+        get() = (obj as? SearchObjectPeople)?.people?.let { people ->
+            people.copy(name = Ksoup.parse(people.name).text())
+        }
+
     /**
      * Convert search result to Feed for display
      * Returns null if the result type doesn't have displayable content
@@ -78,7 +87,7 @@ object SearchResultSerializer : KSerializer<SearchResult> {
     override val descriptor: SerialDescriptor = buildClassSerialDescriptor("SearchResult") {
         element<String>("type")
         element<String>("id")
-        element("object", SearchObject.serializer().descriptor, isOptional = true)
+        element("object", JsonElement.serializer().descriptor, isOptional = true)
         element("highlight", Highlight.serializer().descriptor, isOptional = true)
         element<Int>("index", isOptional = true)
         element<String>("hit_labels", isOptional = true)
@@ -115,8 +124,16 @@ object SearchResultSerializer : KSerializer<SearchResult> {
                         // Parse object field based on type
                         obj = when (type) {
                             "search_result" -> {
-                                val target = decodeSerializableElement(descriptor, 2, Feed.Target.serializer())
-                                SearchObjectResult(target)
+                                val element = decodeSerializableElement(descriptor, 2, JsonElement.serializer())
+                                if (element.jsonObject["type"]?.jsonPrimitive?.content == "people") {
+                                    SearchObjectPeople(
+                                        decoder.json.decodeFromJsonElement(DataHolder.People.serializer(), element),
+                                    )
+                                } else {
+                                    SearchObjectResult(
+                                        decoder.json.decodeFromJsonElement(Feed.Target.serializer(), element),
+                                    )
+                                }
                             }
                             "koc_box" -> decodeSerializableElement(descriptor, 2, SearchObjectKocBox.serializer())
                             "knowledge_ad" -> decodeSerializableElement(descriptor, 2, SearchObjectKnowledgeAd.serializer())
@@ -150,6 +167,12 @@ sealed interface SearchObject
 @SerialName("search_result")
 data class SearchObjectResult(
     val target: Feed.Target,
+) : SearchObject
+
+@Serializable
+@SerialName("search_people")
+data class SearchObjectPeople(
+    val people: DataHolder.People,
 ) : SearchObject
 
 /**

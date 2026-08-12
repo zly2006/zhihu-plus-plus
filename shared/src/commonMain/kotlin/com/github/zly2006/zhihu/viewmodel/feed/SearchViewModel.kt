@@ -18,8 +18,10 @@
 package com.github.zly2006.zhihu.viewmodel.feed
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.SearchResult
 import com.github.zly2006.zhihu.data.ZhihuJson
@@ -37,6 +39,7 @@ open class SearchViewModel(
     val searchQuery: String,
     val restrictedMemberHashId: String = "",
 ) : BaseFeedViewModel() {
+    val peopleResults = mutableStateListOf<DataHolder.People>()
     var sortOption by mutableStateOf(SearchSortOption.Default)
         private set
     var contentType by mutableStateOf(SearchContentType.All)
@@ -80,6 +83,11 @@ open class SearchViewModel(
         refresh(environment)
     }
 
+    override fun refresh(environment: PaginationEnvironment) {
+        peopleResults.clear()
+        super.refresh(environment)
+    }
+
     override suspend fun fetchFeeds(environment: PaginationEnvironment) {
         try {
             val url = lastPaging?.next ?: initialUrl
@@ -87,14 +95,18 @@ open class SearchViewModel(
             val jsonArray = jojo["data"]!!.jsonArray
 
             // Parse search results and convert to Feed objects
-            val feeds = jsonArray.mapNotNull { element ->
+            val results = jsonArray.mapNotNull { element ->
                 try {
-                    val searchResult = ZhihuJson.decodeJson<SearchResult>(element)
-                    searchResult.toFeed()
+                    ZhihuJson.decodeJson<SearchResult>(element)
                 } catch (e: Exception) {
                     environment.logDecodeFailure("SearchViewModel", element, e)
                     null
                 }
+            }
+            val feeds = results.mapNotNull(SearchResult::toFeed)
+            val existingPeopleIds = peopleResults.mapTo(mutableSetOf(), DataHolder.People::id)
+            results.mapNotNull(SearchResult::people).forEach { people ->
+                if (existingPeopleIds.add(people.id)) peopleResults.add(people)
             }
 
             processResponse(environment, feeds, jsonArray)
@@ -146,6 +158,7 @@ enum class SearchContentType(
     Answer("回答", "answer"),
     Article("文章", "article"),
     Video("视频", "zvideo"),
+    People("用户", "people"),
 }
 
 enum class SearchTimeRange(
@@ -173,7 +186,7 @@ fun zhihuSearchUrl(
         timeRange != SearchTimeRange.All
     val params = buildList {
         add("gk_version" to "gz-gaokao")
-        add("t" to "general")
+        add("t" to if (contentType == SearchContentType.People) "people" else "general")
         add("q" to query)
         add("correction" to "1")
         add("offset" to "0")
@@ -187,7 +200,7 @@ fun zhihuSearchUrl(
             add("restricted_field" to "member_hash_id")
             add("restricted_value" to restrictedMemberHashId)
         }
-        if (contentType.value.isNotEmpty()) {
+        if (contentType.value.isNotEmpty() && contentType != SearchContentType.People) {
             add("vertical" to contentType.value)
             add("vertical_info" to SEARCH_VERTICAL_INFO)
         }

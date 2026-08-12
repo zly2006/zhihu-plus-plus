@@ -90,6 +90,18 @@ class SearchViewModelUrlTest {
     }
 
     @Test
+    fun buildsPeopleSearchUrlWithPeopleSearchType() {
+        val params = URL(
+            zhihuSearchUrl("周源", contentType = SearchContentType.People),
+        ).queryParameters()
+
+        assertEquals("people", params["t"])
+        assertEquals("Filter", params["search_source"])
+        assertNull(params["vertical"])
+        assertNull(params["vertical_info"])
+    }
+
+    @Test
     fun buildsMemberRestrictedSearchUrlWithEncodedRestrictionParameters() {
         val url = zhihuSearchUrl(
             query = "用户 创作",
