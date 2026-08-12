@@ -17,7 +17,6 @@
 
 package com.github.zly2006.zhihu.data
 
-import com.fleeksoft.ksoup.Ksoup
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
@@ -56,7 +55,11 @@ data class SearchResult(
 ) {
     val people: DataHolder.People?
         get() = (obj as? SearchObjectPeople)?.people?.let { people ->
-            people.copy(name = Ksoup.parse(people.name).text())
+            people.copy(
+                name = people.name
+                    .replace("<em>", "")
+                    .replace("</em>", ""),
+            )
         }
 
     /**
