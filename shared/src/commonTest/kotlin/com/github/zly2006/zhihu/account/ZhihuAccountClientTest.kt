@@ -188,6 +188,7 @@ class ZhihuAccountClientTest {
                 cookies = mapOf(
                     "q_c0" to "q-cookie",
                     "z_c0" to "z-cookie",
+                    "d_c0" to "device-cookie",
                 ),
             ),
         )
@@ -197,6 +198,7 @@ class ZhihuAccountClientTest {
         assertEquals(1, store.writeCount)
         assertEquals("alice", saved.username)
         assertEquals("z-cookie", saved.cookies["z_c0"])
+        assertEquals("device-cookie", saved.cookies["d_c0"])
         assertEquals("mobile-access", saved.mobileAccessToken)
         assertEquals("mobile-refresh", saved.mobileRefreshToken)
         assertEquals("bearer", saved.mobileTokenType)
