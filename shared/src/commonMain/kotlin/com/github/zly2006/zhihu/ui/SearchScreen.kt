@@ -28,7 +28,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -49,13 +53,16 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -64,17 +71,21 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.platform.SettingsStore
 import com.github.zly2006.zhihu.platform.UserMessageDuration
@@ -89,9 +100,11 @@ import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
+import com.github.zly2006.zhihu.util.parseEmphasizedHtmlTextWithTheme
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.SearchContentType
 import com.github.zly2006.zhihu.viewmodel.feed.SearchSortOption
+import com.github.zly2006.zhihu.viewmodel.feed.SearchTab
 import com.github.zly2006.zhihu.viewmodel.feed.SearchTimeRange
 import com.github.zly2006.zhihu.viewmodel.feed.SearchViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.ZHIHU_HOT_SEARCH_URL
@@ -151,6 +164,8 @@ fun SearchScreen(
         append(':')
         append(viewModel.contentType.name)
         append(':')
+        append(viewModel.searchTab.name)
+        append(':')
         append(viewModel.timeRange.name)
         append(':')
         append(search.query)
@@ -165,6 +180,7 @@ fun SearchScreen(
     val searchInputFocusRequester = remember { FocusRequester() }
     var searchText by remember { mutableStateOf(search.query) }
     val coroutineScope = rememberCoroutineScope()
+    val peopleListState = rememberLazyListState()
     val isMemberSearch = search.isRestrictedToMember
     val memberSearchName = search.restrictedMemberName.ifBlank { "TA" }
     val searchPlaceholder = if (isMemberSearch) "搜索 $memberSearchName 的创作" else "搜索内容"
@@ -375,19 +391,21 @@ fun SearchScreen(
                     }
                 },
                 actions = {
-                    IconButton(
-                        onClick = { filterMenuExpanded = true },
-                        enabled = search.query.isNotEmpty(),
-                        modifier = Modifier.testTag("search_filter_button"),
-                    ) {
-                        Icon(Icons.Default.FilterList, contentDescription = "筛选搜索结果")
+                    if (viewModel.searchTab == SearchTab.General) {
+                        IconButton(
+                            onClick = { filterMenuExpanded = true },
+                            enabled = search.query.isNotEmpty(),
+                            modifier = Modifier.testTag("search_filter_button"),
+                        ) {
+                            Icon(Icons.Default.FilterList, contentDescription = "筛选搜索结果")
+                        }
+                        SearchFilterMenu(
+                            expanded = filterMenuExpanded,
+                            onDismissRequest = { filterMenuExpanded = false },
+                            viewModel = viewModel,
+                            paginationEnvironment = paginationEnvironment,
+                        )
                     }
-                    SearchFilterMenu(
-                        expanded = filterMenuExpanded,
-                        onDismissRequest = { filterMenuExpanded = false },
-                        viewModel = viewModel,
-                        paginationEnvironment = paginationEnvironment,
-                    )
                 },
             )
         },
@@ -397,6 +415,18 @@ fun SearchScreen(
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
+            if (search.query.isNotEmpty() && !isMemberSearch) {
+                PrimaryTabRow(selectedTabIndex = viewModel.searchTab.ordinal) {
+                    SearchTab.entries.forEach { tab ->
+                        Tab(
+                            selected = viewModel.searchTab == tab,
+                            onClick = { viewModel.updateSearchTab(paginationEnvironment, tab) },
+                            text = { Text(tab.label) },
+                            modifier = Modifier.testTag("search_tab_${tab.name}"),
+                        )
+                    }
+                }
+            }
             if (viewModel.displayItems.isEmpty() && !viewModel.isLoading && viewModel.searchQuery.isEmpty()) {
                 val shouldShowHistory = showSearchHistory.value && searchHistoryItems.isNotEmpty()
                 val shouldShowHotSearch = showHotSearch.value && hotSearchItems.isNotEmpty()
@@ -557,6 +587,80 @@ fun SearchScreen(
                                 .fillMaxWidth()
                                 .padding(16.dp),
                         )
+                    }
+                }
+            } else if (viewModel.searchTab == SearchTab.People) {
+                val shouldLoadMorePeople by remember {
+                    derivedStateOf {
+                        val lastVisibleIndex = peopleListState.layoutInfo.visibleItemsInfo
+                            .lastOrNull()
+                            ?.index ?: -1
+                        lastVisibleIndex >= peopleListState.layoutInfo.totalItemsCount - 3
+                    }
+                }
+                LaunchedEffect(shouldLoadMorePeople, viewModel.isLoading, viewModel.isEnd) {
+                    if (shouldLoadMorePeople && !viewModel.isLoading && !viewModel.isEnd) {
+                        viewModel.loadMore(paginationEnvironment)
+                    }
+                }
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    state = peopleListState,
+                ) {
+                    items(viewModel.peopleResults, key = { it.people.id }) { result ->
+                        val people = result.people
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    navigator.onNavigate(
+                                        Person(
+                                            id = people.id,
+                                            urlToken = people.urlToken.orEmpty(),
+                                            name = people.name,
+                                        ),
+                                    )
+                                }.padding(horizontal = 16.dp, vertical = 12.dp)
+                                .testTag("search_people_result_${people.id}"),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            AsyncImage(
+                                model = people.avatarUrl,
+                                contentDescription = "${people.name}的头像",
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape),
+                            )
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(start = 12.dp),
+                            ) {
+                                Text(
+                                    text = parseEmphasizedHtmlTextWithTheme(result.highlightedName),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                if (people.headline.isNotEmpty()) {
+                                    Text(
+                                        text = people.headline,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                                Text(
+                                    text = "${people.followerCount} 粉丝 · ${people.answerCount} 回答",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                    item {
+                        ProgressIndicatorFooter(peopleListState)
                     }
                 }
             } else {

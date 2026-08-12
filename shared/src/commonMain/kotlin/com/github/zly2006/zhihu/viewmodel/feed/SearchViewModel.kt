@@ -18,9 +18,11 @@
 package com.github.zly2006.zhihu.viewmodel.feed
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.PeopleSearchResult
 import com.github.zly2006.zhihu.data.SearchResult
 import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.data.ZhihuPaging
@@ -37,9 +39,12 @@ open class SearchViewModel(
     val searchQuery: String,
     val restrictedMemberHashId: String = "",
 ) : BaseFeedViewModel() {
+    val peopleResults = mutableStateListOf<PeopleSearchResult>()
     var sortOption by mutableStateOf(SearchSortOption.Default)
         private set
     var contentType by mutableStateOf(SearchContentType.All)
+        private set
+    var searchTab by mutableStateOf(SearchTab.General)
         private set
     var timeRange by mutableStateOf(SearchTimeRange.All)
         private set
@@ -48,7 +53,7 @@ open class SearchViewModel(
         get() = initialUrl
 
     override val initialUrl: String
-        get() = zhihuSearchUrl(searchQuery, sortOption, contentType, timeRange, restrictedMemberHashId)
+        get() = zhihuSearchUrl(searchQuery, searchTab, sortOption, contentType, timeRange, restrictedMemberHashId)
 
     // Override include to request necessary fields for search results
     override val include = "data[*].highlight,object,type"
@@ -71,6 +76,15 @@ open class SearchViewModel(
         refresh(environment)
     }
 
+    fun updateSearchTab(
+        environment: PaginationEnvironment,
+        tab: SearchTab,
+    ) {
+        if (searchTab == tab) return
+        searchTab = tab
+        refresh(environment)
+    }
+
     fun updateTimeRange(
         environment: PaginationEnvironment,
         range: SearchTimeRange,
@@ -80,6 +94,11 @@ open class SearchViewModel(
         refresh(environment)
     }
 
+    override fun refresh(environment: PaginationEnvironment) {
+        peopleResults.clear()
+        super.refresh(environment)
+    }
+
     override suspend fun fetchFeeds(environment: PaginationEnvironment) {
         try {
             val url = lastPaging?.next ?: initialUrl
@@ -87,14 +106,18 @@ open class SearchViewModel(
             val jsonArray = jojo["data"]!!.jsonArray
 
             // Parse search results and convert to Feed objects
-            val feeds = jsonArray.mapNotNull { element ->
+            val results = jsonArray.mapNotNull { element ->
                 try {
-                    val searchResult = ZhihuJson.decodeJson<SearchResult>(element)
-                    searchResult.toFeed()
+                    ZhihuJson.decodeJson<SearchResult>(element)
                 } catch (e: Exception) {
                     environment.logDecodeFailure("SearchViewModel", element, e)
                     null
                 }
+            }
+            val feeds = results.mapNotNull(SearchResult::toFeed)
+            val existingPeopleIds = peopleResults.mapTo(mutableSetOf()) { it.people.id }
+            results.mapNotNull(SearchResult::people).forEach { result ->
+                if (existingPeopleIds.add(result.people.id)) peopleResults.add(result)
             }
 
             processResponse(environment, feeds, jsonArray)
@@ -148,6 +171,13 @@ enum class SearchContentType(
     Video("视频", "zvideo"),
 }
 
+enum class SearchTab(
+    val label: String,
+) {
+    General("全站"),
+    People("用户"),
+}
+
 enum class SearchTimeRange(
     val label: String,
     val value: String,
@@ -163,6 +193,7 @@ enum class SearchTimeRange(
 
 fun zhihuSearchUrl(
     query: String,
+    searchTab: SearchTab = SearchTab.General,
     sortOption: SearchSortOption = SearchSortOption.Default,
     contentType: SearchContentType = SearchContentType.All,
     timeRange: SearchTimeRange = SearchTimeRange.All,
@@ -173,7 +204,7 @@ fun zhihuSearchUrl(
         timeRange != SearchTimeRange.All
     val params = buildList {
         add("gk_version" to "gz-gaokao")
-        add("t" to "general")
+        add("t" to if (searchTab == SearchTab.People) "people" else "general")
         add("q" to query)
         add("correction" to "1")
         add("offset" to "0")
