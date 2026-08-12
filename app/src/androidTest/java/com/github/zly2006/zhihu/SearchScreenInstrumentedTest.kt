@@ -187,6 +187,22 @@ class SearchScreenInstrumentedTest {
     }
 
     @Test
+    fun peopleTabHidesGeneralSearchFilterAndSwitchingBackRestoresIt() {
+        ZhihuMockApi.mockJsonPrefix(
+            method = HttpMethod.Get,
+            urlPrefix = "https://www.zhihu.com/api/v4/search_v3",
+            body = """{"data":[],"paging":{"is_end":true,"is_start":true,"totals":0,"next":""}}""",
+        )
+        composeRule.setScreenContent { SearchScreen(search = Search(query = "用户")) }
+
+        composeRule.onAllNodesWithTag("search_filter_button").assertCountEquals(1)
+        composeRule.onNodeWithTag("search_tab_People").performClick()
+        composeRule.onAllNodesWithTag("search_filter_button").assertCountEquals(0)
+        composeRule.onNodeWithTag("search_tab_General").performClick()
+        composeRule.onAllNodesWithTag("search_filter_button").assertCountEquals(1)
+    }
+
+    @Test
     fun searchHistoryRendersRecordsSearchesAndSupportsMenuActions() {
         // This disables hot-search so the history surface can be tested without network requests.
         // Expected behavior:
