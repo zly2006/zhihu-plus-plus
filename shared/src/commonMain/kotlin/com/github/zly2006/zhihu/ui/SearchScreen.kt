@@ -75,6 +75,9 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -587,7 +590,8 @@ fun SearchScreen(
                     modifier = Modifier.fillMaxSize(),
                     state = peopleListState,
                 ) {
-                    items(viewModel.peopleResults, key = { it.id }) { people ->
+                    items(viewModel.peopleResults, key = { it.people.id }) { result ->
+                        val people = result.people
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -616,7 +620,34 @@ fun SearchScreen(
                                     .padding(start = 12.dp),
                             ) {
                                 Text(
-                                    text = people.name,
+                                    text = buildAnnotatedString {
+                                        var cursor = 0
+                                        val openingTag = "<em>"
+                                        val closingTag = "</em>"
+                                        while (cursor < result.highlightedName.length) {
+                                            val highlightStart = result.highlightedName.indexOf(openingTag, cursor)
+                                            if (highlightStart < 0) {
+                                                append(result.highlightedName.substring(cursor))
+                                                break
+                                            }
+                                            append(result.highlightedName.substring(cursor, highlightStart))
+                                            val contentStart = highlightStart + openingTag.length
+                                            val highlightEnd = result.highlightedName.indexOf(closingTag, contentStart)
+                                            if (highlightEnd < 0) {
+                                                append(result.highlightedName.substring(contentStart))
+                                                break
+                                            }
+                                            pushStyle(
+                                                SpanStyle(
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                    fontWeight = FontWeight.Bold,
+                                                ),
+                                            )
+                                            append(result.highlightedName.substring(contentStart, highlightEnd))
+                                            pop()
+                                            cursor = highlightEnd + closingTag.length
+                                        }
+                                    },
                                     style = MaterialTheme.typography.titleMedium,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,

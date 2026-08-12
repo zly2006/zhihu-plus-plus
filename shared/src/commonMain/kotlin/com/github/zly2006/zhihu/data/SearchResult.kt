@@ -53,12 +53,15 @@ data class SearchResult(
     val index: Int? = null,
     val hitLabels: String? = null,
 ) {
-    val people: DataHolder.People?
+    val people: PeopleSearchResult?
         get() = (obj as? SearchObjectPeople)?.people?.let { people ->
-            people.copy(
-                name = people.name
-                    .replace("<em>", "")
-                    .replace("</em>", ""),
+            PeopleSearchResult(
+                people = people.copy(
+                    name = people.name
+                        .replace("<em>", "")
+                        .replace("</em>", ""),
+                ),
+                highlightedName = people.name,
             )
         }
 
@@ -82,6 +85,11 @@ data class SearchResult(
         null
     }
 }
+
+data class PeopleSearchResult(
+    val people: DataHolder.People,
+    val highlightedName: String,
+)
 
 /**
  * Custom serializer for SearchResult that handles polymorphic object field

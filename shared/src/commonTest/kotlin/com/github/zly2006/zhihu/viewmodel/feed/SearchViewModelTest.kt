@@ -104,9 +104,10 @@ class SearchViewModelTest {
             ),
         )
 
-        assertEquals("zhouyuan", result.people?.urlToken)
-        assertEquals("周源", result.people?.name)
-        assertEquals(1048300, result.people?.followerCount)
+        assertEquals("zhouyuan", result.people?.people?.urlToken)
+        assertEquals("周源", result.people?.people?.name)
+        assertEquals("<em>周源</em>", result.people?.highlightedName)
+        assertEquals(1048300, result.people?.people?.followerCount)
         assertNull(result.toFeed())
     }
 

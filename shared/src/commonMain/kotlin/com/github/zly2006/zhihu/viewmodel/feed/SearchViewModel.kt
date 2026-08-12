@@ -21,8 +21,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.PeopleSearchResult
 import com.github.zly2006.zhihu.data.SearchResult
 import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.data.ZhihuPaging
@@ -39,7 +39,7 @@ open class SearchViewModel(
     val searchQuery: String,
     val restrictedMemberHashId: String = "",
 ) : BaseFeedViewModel() {
-    val peopleResults = mutableStateListOf<DataHolder.People>()
+    val peopleResults = mutableStateListOf<PeopleSearchResult>()
     var sortOption by mutableStateOf(SearchSortOption.Default)
         private set
     var contentType by mutableStateOf(SearchContentType.All)
@@ -104,9 +104,9 @@ open class SearchViewModel(
                 }
             }
             val feeds = results.mapNotNull(SearchResult::toFeed)
-            val existingPeopleIds = peopleResults.mapTo(mutableSetOf(), DataHolder.People::id)
-            results.mapNotNull(SearchResult::people).forEach { people ->
-                if (existingPeopleIds.add(people.id)) peopleResults.add(people)
+            val existingPeopleIds = peopleResults.mapTo(mutableSetOf()) { it.people.id }
+            results.mapNotNull(SearchResult::people).forEach { result ->
+                if (existingPeopleIds.add(result.people.id)) peopleResults.add(result)
             }
 
             processResponse(environment, feeds, jsonArray)
