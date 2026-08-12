@@ -56,6 +56,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -102,6 +104,7 @@ import com.github.zly2006.zhihu.util.parseEmphasizedHtmlTextWithTheme
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.SearchContentType
 import com.github.zly2006.zhihu.viewmodel.feed.SearchSortOption
+import com.github.zly2006.zhihu.viewmodel.feed.SearchTab
 import com.github.zly2006.zhihu.viewmodel.feed.SearchTimeRange
 import com.github.zly2006.zhihu.viewmodel.feed.SearchViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.ZHIHU_HOT_SEARCH_URL
@@ -160,6 +163,8 @@ fun SearchScreen(
         append(viewModel.sortOption.name)
         append(':')
         append(viewModel.contentType.name)
+        append(':')
+        append(viewModel.searchTab.name)
         append(':')
         append(viewModel.timeRange.name)
         append(':')
@@ -388,7 +393,7 @@ fun SearchScreen(
                 actions = {
                     IconButton(
                         onClick = { filterMenuExpanded = true },
-                        enabled = search.query.isNotEmpty(),
+                        enabled = search.query.isNotEmpty() && viewModel.searchTab == SearchTab.General,
                         modifier = Modifier.testTag("search_filter_button"),
                     ) {
                         Icon(Icons.Default.FilterList, contentDescription = "筛选搜索结果")
@@ -408,6 +413,18 @@ fun SearchScreen(
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
+            if (search.query.isNotEmpty() && !isMemberSearch) {
+                PrimaryTabRow(selectedTabIndex = viewModel.searchTab.ordinal) {
+                    SearchTab.entries.forEach { tab ->
+                        Tab(
+                            selected = viewModel.searchTab == tab,
+                            onClick = { viewModel.updateSearchTab(paginationEnvironment, tab) },
+                            text = { Text(tab.label) },
+                            modifier = Modifier.testTag("search_tab_${tab.name}"),
+                        )
+                    }
+                }
+            }
             if (viewModel.displayItems.isEmpty() && !viewModel.isLoading && viewModel.searchQuery.isEmpty()) {
                 val shouldShowHistory = showSearchHistory.value && searchHistoryItems.isNotEmpty()
                 val shouldShowHotSearch = showHotSearch.value && hotSearchItems.isNotEmpty()
@@ -570,7 +587,7 @@ fun SearchScreen(
                         )
                     }
                 }
-            } else if (viewModel.contentType == SearchContentType.People) {
+            } else if (viewModel.searchTab == SearchTab.People) {
                 val shouldLoadMorePeople by remember {
                     derivedStateOf {
                         val lastVisibleIndex = peopleListState.layoutInfo.visibleItemsInfo

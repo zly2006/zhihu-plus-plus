@@ -44,6 +44,8 @@ open class SearchViewModel(
         private set
     var contentType by mutableStateOf(SearchContentType.All)
         private set
+    var searchTab by mutableStateOf(SearchTab.General)
+        private set
     var timeRange by mutableStateOf(SearchTimeRange.All)
         private set
 
@@ -51,7 +53,7 @@ open class SearchViewModel(
         get() = initialUrl
 
     override val initialUrl: String
-        get() = zhihuSearchUrl(searchQuery, sortOption, contentType, timeRange, restrictedMemberHashId)
+        get() = zhihuSearchUrl(searchQuery, searchTab, sortOption, contentType, timeRange, restrictedMemberHashId)
 
     // Override include to request necessary fields for search results
     override val include = "data[*].highlight,object,type"
@@ -71,6 +73,15 @@ open class SearchViewModel(
     ) {
         if (contentType == type) return
         contentType = type
+        refresh(environment)
+    }
+
+    fun updateSearchTab(
+        environment: PaginationEnvironment,
+        tab: SearchTab,
+    ) {
+        if (searchTab == tab) return
+        searchTab = tab
         refresh(environment)
     }
 
@@ -158,7 +169,13 @@ enum class SearchContentType(
     Answer("回答", "answer"),
     Article("文章", "article"),
     Video("视频", "zvideo"),
-    People("用户", "people"),
+}
+
+enum class SearchTab(
+    val label: String,
+) {
+    General("全站"),
+    People("用户"),
 }
 
 enum class SearchTimeRange(
@@ -176,6 +193,7 @@ enum class SearchTimeRange(
 
 fun zhihuSearchUrl(
     query: String,
+    searchTab: SearchTab = SearchTab.General,
     sortOption: SearchSortOption = SearchSortOption.Default,
     contentType: SearchContentType = SearchContentType.All,
     timeRange: SearchTimeRange = SearchTimeRange.All,
@@ -186,7 +204,7 @@ fun zhihuSearchUrl(
         timeRange != SearchTimeRange.All
     val params = buildList {
         add("gk_version" to "gz-gaokao")
-        add("t" to if (contentType == SearchContentType.People) "people" else "general")
+        add("t" to if (searchTab == SearchTab.People) "people" else "general")
         add("q" to query)
         add("correction" to "1")
         add("offset" to "0")
@@ -200,7 +218,7 @@ fun zhihuSearchUrl(
             add("restricted_field" to "member_hash_id")
             add("restricted_value" to restrictedMemberHashId)
         }
-        if (contentType.value.isNotEmpty() && contentType != SearchContentType.People) {
+        if (contentType.value.isNotEmpty()) {
             add("vertical" to contentType.value)
             add("vertical_info" to SEARCH_VERTICAL_INFO)
         }

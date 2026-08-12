@@ -19,6 +19,7 @@ package com.github.zly2006.zhihu
 
 import com.github.zly2006.zhihu.viewmodel.feed.SearchContentType
 import com.github.zly2006.zhihu.viewmodel.feed.SearchSortOption
+import com.github.zly2006.zhihu.viewmodel.feed.SearchTab
 import com.github.zly2006.zhihu.viewmodel.feed.SearchTimeRange
 import com.github.zly2006.zhihu.viewmodel.feed.zhihuSearchUrl
 import org.junit.Assert.assertEquals
@@ -92,11 +93,11 @@ class SearchViewModelUrlTest {
     @Test
     fun buildsPeopleSearchUrlWithPeopleSearchType() {
         val params = URL(
-            zhihuSearchUrl("周源", contentType = SearchContentType.People),
+            zhihuSearchUrl("周源", searchTab = SearchTab.People),
         ).queryParameters()
 
         assertEquals("people", params["t"])
-        assertEquals("Filter", params["search_source"])
+        assertEquals("Normal", params["search_source"])
         assertNull(params["vertical"])
         assertNull(params["vertical_info"])
     }
