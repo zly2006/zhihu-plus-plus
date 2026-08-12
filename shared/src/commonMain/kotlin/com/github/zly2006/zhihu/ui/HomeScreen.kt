@@ -59,6 +59,7 @@ import androidx.compose.material.icons.filled.MarkUnreadChatAlt
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.CircularProgressIndicator
@@ -72,6 +73,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -234,6 +236,18 @@ fun HomeScreen(
     }
 
     val account = rememberAccountSettingsAccountState().value
+    if (account.login && !account.hasRequiredCookie) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text("Cookie 不完整") },
+            text = { Text("当前登录信息缺少必要的 Cookie d_c0，请重新登录。") },
+            confirmButton = {
+                TextButton(onClick = { paginationEnvironment.requestLogin() }) {
+                    Text("重新登录")
+                }
+            },
+        )
+    }
     val updateState by rememberSystemUpdateRuntime().state.collectAsState()
     val updateAnnouncement = updateState as? SystemUpdateState.UpdateAvailable
     val versionName = rememberAppVersionInfo().substringBefore(' ').takeIf { it.firstOrNull()?.isDigit() == true }
