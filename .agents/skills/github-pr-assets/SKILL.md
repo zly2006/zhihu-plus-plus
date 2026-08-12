@@ -72,6 +72,10 @@ Keep asset commits narrow:
 - Avoid committing large or reusable generated assets unless the PR requirement needs them.
 - Prefer descriptive names like `answer-voters-sheet.png` over timestamp-only names.
 
+### 截图夹具不得伪造产品数据资产
+
+截图中的头像、封面、图片等远端产品资产必须来自该响应真实返回的 URL，并确认在截图执行面实际加载成功。不能为了让布局看起来完整，临时生成字母头像、纯色图片或其他人工占位资产，再把它作为功能效果截图发布；这种做法只能证明控件能显示任意图片，不能证明真实数据链路。如果真实资产因凭据、网络或防盗链暂时无法加载，应先移除不合格截图，继续修复执行面或明确报告阻塞，不能用伪造内容补齐画面。
+
 ## Troubleshooting
 
 ### 创建 skill 的指令不能降级成普通记录
