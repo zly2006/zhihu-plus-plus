@@ -53,11 +53,11 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
-import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -391,19 +391,21 @@ fun SearchScreen(
                     }
                 },
                 actions = {
-                    IconButton(
-                        onClick = { filterMenuExpanded = true },
-                        enabled = search.query.isNotEmpty() && viewModel.searchTab == SearchTab.General,
-                        modifier = Modifier.testTag("search_filter_button"),
-                    ) {
-                        Icon(Icons.Default.FilterList, contentDescription = "筛选搜索结果")
+                    if (viewModel.searchTab == SearchTab.General) {
+                        IconButton(
+                            onClick = { filterMenuExpanded = true },
+                            enabled = search.query.isNotEmpty(),
+                            modifier = Modifier.testTag("search_filter_button"),
+                        ) {
+                            Icon(Icons.Default.FilterList, contentDescription = "筛选搜索结果")
+                        }
+                        SearchFilterMenu(
+                            expanded = filterMenuExpanded,
+                            onDismissRequest = { filterMenuExpanded = false },
+                            viewModel = viewModel,
+                            paginationEnvironment = paginationEnvironment,
+                        )
                     }
-                    SearchFilterMenu(
-                        expanded = filterMenuExpanded,
-                        onDismissRequest = { filterMenuExpanded = false },
-                        viewModel = viewModel,
-                        paginationEnvironment = paginationEnvironment,
-                    )
                 },
             )
         },
