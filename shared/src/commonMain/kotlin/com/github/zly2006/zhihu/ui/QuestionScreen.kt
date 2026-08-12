@@ -191,6 +191,7 @@ fun QuestionScreen(
     var commentCount by remember(question.questionId) { mutableIntStateOf(0) }
     var followerCount by remember(question.questionId) { mutableIntStateOf(0) }
     var title by remember(question.questionId, question.title) { mutableStateOf(question.title) }
+    var isQuestionLoaded by remember(question.questionId) { mutableStateOf(false) }
     var showComments by rememberSaveable(question.questionId) { mutableStateOf(false) }
     var isFollowing by remember(question.questionId) { mutableStateOf(false) }
     var showShareDialog by remember { mutableStateOf(false) }
@@ -222,6 +223,7 @@ fun QuestionScreen(
                 commentCount = questionData.commentCount
                 followerCount = questionData.followerCount
                 isFollowing = questionData.relationship.isFollowing
+                isQuestionLoaded = true
             } else {
                 userMessages.showShortMessage("获取问题详情失败")
             }
@@ -281,7 +283,7 @@ fun QuestionScreen(
                                 followerCount = followerCount,
                                 onShowComments = { showComments = true },
                             )
-                            if (questionContent.isNotEmpty()) {
+                            if (isQuestionLoaded) {
                                 QuestionAnimatedBodyHeader(
                                     questionId = question.questionId,
                                     questionContent = questionContent,
@@ -504,6 +506,7 @@ private fun QuestionAnimatedBodyHeader(
             )
         val detailPlaceable =
             subcompose("detail") {
+                if (questionContent.isEmpty()) return@subcompose
                 if (allowDetailCollapse) {
                     QuestionDetailAnimatedViewport(
                         questionId = questionId,
@@ -521,7 +524,7 @@ private fun QuestionAnimatedBodyHeader(
                         onMeasuredHeight = { fullViewportHeightPx = it },
                     )
                 }
-            }.single().measure(looseConstraints)
+            }.singleOrNull()?.measure(looseConstraints)
         val controlsPlaceable =
             subcompose("controls") {
                 Column(
@@ -565,10 +568,12 @@ private fun QuestionAnimatedBodyHeader(
                     }
                 }
             }.single().measure(looseConstraints)
-        val totalHeight = detailPlaceable.height + sectionSpacingPx + controlsPlaceable.height
+        val detailHeight = detailPlaceable?.height ?: 0
+        val controlsOffset = detailHeight + if (detailPlaceable == null) 0 else sectionSpacingPx
+        val totalHeight = controlsOffset + controlsPlaceable.height
         layout(width = constraints.maxWidth, height = totalHeight) {
-            detailPlaceable.place(0, 0)
-            controlsPlaceable.place(0, detailPlaceable.height + sectionSpacingPx)
+            detailPlaceable?.place(0, 0)
+            controlsPlaceable.place(0, controlsOffset)
         }
     }
 }
