@@ -47,7 +47,26 @@ class ZhihuPhoneLoginClientTest {
                 when (requestIndex) {
                     1 -> {
                         assertEquals(HttpMethod.Post, request.method)
+                        assertEquals("www.zhihu.com", request.url.host)
+                        assertEquals("/udid", request.url.encodedPath)
+                        respond(
+                            content = "web-device-id",
+                            headers = headersOf(
+                                HttpHeaders.SetCookie,
+                                "d_c0=web-device-cookie; Path=/; Domain=zhihu.com",
+                            ),
+                        )
+                    }
+
+                    2 -> {
+                        assertEquals(HttpMethod.Post, request.method)
                         assertEquals("/api/account/prod/init/udid_guest", request.url.encodedPath)
+                        assertTrue(
+                            request.headers[HttpHeaders.Cookie]
+                                .orEmpty()
+                                .contains("d_c0=")
+                                .not(),
+                        )
                         assertTrue(request.headers[HttpHeaders.Authorization].orEmpty().startsWith("oauth "))
                         assertEquals("1355", request.headers["x-app-id"])
                         assertEquals("2", request.headers["x-sign-version"])
@@ -80,7 +99,7 @@ class ZhihuPhoneLoginClientTest {
                         )
                     }
 
-                    2 -> {
+                    3 -> {
                         assertEquals(HttpMethod.Get, request.method)
                         assertEquals("/captcha", request.url.encodedPath)
                         assertEquals("bearer guest-access", request.headers[HttpHeaders.Authorization])
@@ -89,7 +108,7 @@ class ZhihuPhoneLoginClientTest {
                         respondJson("""{"show_captcha":false}""")
                     }
 
-                    3 -> {
+                    4 -> {
                         assertEquals(HttpMethod.Post, request.method)
                         assertEquals("/api/account/prod/auth/digits", request.url.encodedPath)
                         assertEquals("bearer guest-access", request.headers[HttpHeaders.Authorization])
@@ -105,19 +124,25 @@ class ZhihuPhoneLoginClientTest {
             },
             cookies,
         )
-        val client = ZhihuPhoneLoginClient(httpClient, cookies, DEVICE_INFO) { 1_700_000_000L }
+        val client = ZhihuPhoneLoginClient(
+            httpClient = httpClient,
+            cookies = cookies,
+            deviceInfo = DEVICE_INFO,
+            nowEpochSeconds = { 1_700_000_000L },
+        )
 
         val result = client.requestDigits("138 0013 8000")
 
         assertIs<ZhihuPhoneDigitsResult.Sent>(result)
+        assertTrue("d_c0" !in cookies)
         assertEquals("guest-cookie", cookies["q_c0"])
-        assertEquals(3, requestIndex)
+        assertEquals(4, requestIndex)
         httpClient.close()
     }
 
     @Test
     fun captchaBranchLoadsImageAndVerifiesUserInputBeforeSendingDigits() = runTest {
-        val cookies = mutableMapOf<String, String>()
+        val cookies = mutableMapOf("d_c0" to "device-cookie")
         var requestIndex = 0
         val httpClient = phoneLoginTestClient(
             MockEngine { request ->
@@ -149,7 +174,12 @@ class ZhihuPhoneLoginClientTest {
             },
             cookies,
         )
-        val client = ZhihuPhoneLoginClient(httpClient, cookies, DEVICE_INFO) { 1_700_000_000L }
+        val client = ZhihuPhoneLoginClient(
+            httpClient = httpClient,
+            cookies = cookies,
+            deviceInfo = DEVICE_INFO,
+            nowEpochSeconds = { 1_700_000_000L },
+        )
 
         val result = client.requestDigits("13800138000")
         assertEquals("image-data", assertIs<ZhihuPhoneDigitsResult.CaptchaRequired>(result).imageBase64)
@@ -160,14 +190,19 @@ class ZhihuPhoneLoginClientTest {
     }
 
     @Test
-    fun signInUsesDigitsSignatureAndReturnsCompleteMobileSession() = runTest {
-        val cookies = mutableMapOf("d_c0" to "device-cookie")
+    fun completePhoneLoginKeepsPreinitializedDeviceCookieInReturnedSession() = runTest {
+        val cookies = mutableMapOf<String, String>()
         var requestIndex = 0
         val httpClient = phoneLoginTestClient(
             MockEngine { request ->
                 requestIndex++
                 when (requestIndex) {
-                    1 -> respondJson(
+                    1 -> respond(
+                        content = "web-device-id",
+                        headers = headersOf(HttpHeaders.SetCookie, "d_c0=device-cookie; Path=/; Domain=zhihu.com"),
+                    )
+
+                    2 -> respondJson(
                         """
                         {
                           "udid": "device-id",
@@ -180,10 +215,21 @@ class ZhihuPhoneLoginClientTest {
                         """.trimIndent(),
                     )
 
-                    2 -> {
+                    3 -> respondJson("""{"show_captcha":false}""")
+
+                    4 -> respondJson("""{"success":true}""")
+
+                    5 -> {
                         assertEquals(HttpMethod.Post, request.method)
                         assertEquals("/api/account/prod/sign_in", request.url.encodedPath)
                         assertEquals("bearer guest-access", request.headers[HttpHeaders.Authorization])
+                        assertTrue(request.headers[HttpHeaders.Cookie].orEmpty().contains("q_c0=guest-cookie"))
+                        assertTrue(
+                            request.headers[HttpHeaders.Cookie]
+                                .orEmpty()
+                                .contains("d_c0=")
+                                .not(),
+                        )
                         assertEncryptedBody(
                             "client_id=8d5227e0aaaa4797a763ac64e0c3b8&digits=123456&grant_type=digits&" +
                                 "signature=096465d8a44361e0393c87ab61b0d48a088b2cfb&source=com.zhihu.android&" +
@@ -206,38 +252,65 @@ class ZhihuPhoneLoginClientTest {
                         )
                     }
 
-                    3 -> {
-                        assertEquals(HttpMethod.Get, request.method)
-                        assertEquals("www.zhihu.com", request.url.host)
-                        assertEquals("/", request.url.encodedPath)
-                        respond(
-                            content = "<!doctype html>",
-                            headers = headersOf(HttpHeaders.SetCookie, "d_c0=web-device-cookie; Path=/; Domain=zhihu.com"),
-                        )
-                    }
-
                     else -> error("Unexpected request #$requestIndex")
                 }
             },
             cookies,
         )
-        val client = ZhihuPhoneLoginClient(httpClient, cookies, DEVICE_INFO) { 1_700_000_000L }
+        val client = ZhihuPhoneLoginClient(
+            httpClient = httpClient,
+            cookies = cookies,
+            deviceInfo = DEVICE_INFO,
+            nowEpochSeconds = { 1_700_000_000L },
+        )
 
+        assertIs<ZhihuPhoneDigitsResult.Sent>(client.requestDigits("13800138000"))
         val token = client.signIn("+8613800138000", "123456")
 
         assertEquals("account-access", token.accessToken)
         assertEquals("account-refresh", token.refreshToken)
         assertEquals("bearer", token.tokenType)
         assertEquals(1_700_003_600L, token.expiresAt)
-        assertEquals("web-device-cookie", token.cookies["d_c0"])
+        assertEquals("device-cookie", token.cookies["d_c0"])
+        assertEquals("device-cookie", cookies["d_c0"])
         assertEquals("account-z-cookie", token.cookies["z_c0"])
         assertEquals("account-q-cookie", token.cookies["q_c0"])
+        assertEquals(5, requestIndex)
         httpClient.close()
     }
 
     @Test
-    fun exposesServerErrorCodeForInvalidPhoneNumber() = runTest {
+    fun loginStopsBeforeSmsWhenUdidEndpointDoesNotSetDeviceCookie() = runTest {
         val cookies = mutableMapOf<String, String>()
+        var requestIndex = 0
+        val httpClient = phoneLoginTestClient(
+            MockEngine { request ->
+                requestIndex++
+                assertEquals(HttpMethod.Post, request.method)
+                assertEquals("/udid", request.url.encodedPath)
+                respond(content = "web-device-id")
+            },
+            cookies,
+        )
+        val client = ZhihuPhoneLoginClient(
+            httpClient = httpClient,
+            cookies = cookies,
+            deviceInfo = DEVICE_INFO,
+            nowEpochSeconds = { 1_700_000_000L },
+        )
+
+        val error = assertFailsWith<IllegalStateException> {
+            client.requestDigits("13800138000")
+        }
+
+        assertEquals("服务器未返回必要的 Cookie d_c0", error.message)
+        assertEquals(1, requestIndex)
+        httpClient.close()
+    }
+
+    @Test
+    fun exposesServerMessageForInvalidPhoneNumber() = runTest {
+        val cookies = mutableMapOf("d_c0" to "device-cookie")
         var requestIndex = 0
         val httpClient = phoneLoginTestClient(
             MockEngine { request ->
@@ -264,21 +337,24 @@ class ZhihuPhoneLoginClientTest {
             },
             cookies,
         )
-        val client = ZhihuPhoneLoginClient(httpClient, cookies, DEVICE_INFO) { 1_700_000_000L }
+        val client = ZhihuPhoneLoginClient(
+            httpClient = httpClient,
+            cookies = cookies,
+            deviceInfo = DEVICE_INFO,
+            nowEpochSeconds = { 1_700_000_000L },
+        )
 
-        val error = assertFailsWith<ZhihuPhoneLoginException> {
+        val error = assertFailsWith<IllegalStateException> {
             client.requestDigits("13800138000")
         }
 
-        assertEquals(HttpStatusCode.BadRequest.value, error.statusCode)
-        assertEquals(100030, error.errorCode)
         assertTrue(error.message.orEmpty().contains("手机号格式错误"))
         httpClient.close()
     }
 
     @Test
     fun ticketNeededErrorRechecksCaptchaAndRetriesDigitsOnce() = runTest {
-        val cookies = mutableMapOf<String, String>()
+        val cookies = mutableMapOf("d_c0" to "device-cookie")
         var requestIndex = 0
         val httpClient = phoneLoginTestClient(
             MockEngine { request ->
@@ -307,7 +383,12 @@ class ZhihuPhoneLoginClientTest {
             },
             cookies,
         )
-        val client = ZhihuPhoneLoginClient(httpClient, cookies, DEVICE_INFO) { 1_700_000_000L }
+        val client = ZhihuPhoneLoginClient(
+            httpClient = httpClient,
+            cookies = cookies,
+            deviceInfo = DEVICE_INFO,
+            nowEpochSeconds = { 1_700_000_000L },
+        )
 
         assertIs<ZhihuPhoneDigitsResult.Sent>(client.requestDigits("13800138000"))
         assertEquals(5, requestIndex)

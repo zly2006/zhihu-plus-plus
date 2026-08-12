@@ -202,51 +202,6 @@ internal fun PhoneLoginPane(activity: LoginActivity) {
                 .testTag("phone_login_phone"),
         )
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { agreementAccepted = !agreementAccepted }
-                .testTag("phone_login_agreement"),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Checkbox(
-                checked = agreementAccepted,
-                onCheckedChange = { agreementAccepted = it },
-            )
-            Text(
-                text = "我已阅读并同意《知乎协议》《个人信息保护指引》",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.weight(1f),
-            )
-        }
-
-        Button(
-            onClick = { scope.launch { sendDigits() } },
-            enabled = agreementAccepted &&
-                phoneNumber.length == 11 &&
-                resendSeconds == 0 &&
-                !isSendingDigits &&
-                !isLoggingIn,
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag("phone_login_send_digits"),
-        ) {
-            if (isSendingDigits) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    strokeWidth = 2.dp,
-                )
-            } else {
-                Text(
-                    if (resendSeconds > 0) {
-                        "$resendSeconds 秒后可重新发送"
-                    } else {
-                        "发送验证码"
-                    },
-                )
-            }
-        }
-
         if (captchaRequired) {
             val captchaBitmap = remember(captchaImageBase64) {
                 runCatching {
@@ -326,21 +281,69 @@ internal fun PhoneLoginPane(activity: LoginActivity) {
             }
         }
 
-        OutlinedTextField(
-            value = digits,
-            onValueChange = { value ->
-                digits = value.filter(Char::isDigit).take(6)
-            },
-            label = { Text("短信验证码") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.NumberPassword,
-                imeAction = ImeAction.Done,
-            ),
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            OutlinedTextField(
+                value = digits,
+                onValueChange = { value ->
+                    digits = value.filter(Char::isDigit).take(6)
+                },
+                label = { Text("短信验证码") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Number,
+                    imeAction = ImeAction.Done,
+                ),
+                modifier = Modifier
+                    .weight(1f)
+                    .testTag("phone_login_digits"),
+            )
+            Button(
+                onClick = { scope.launch { sendDigits() } },
+                enabled = agreementAccepted &&
+                    phoneNumber.length == 11 &&
+                    resendSeconds == 0 &&
+                    !isSendingDigits &&
+                    !isLoggingIn,
+                modifier = Modifier.testTag("phone_login_send_digits"),
+            ) {
+                if (isSendingDigits) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Text(
+                        if (resendSeconds > 0) {
+                            "${resendSeconds}s"
+                        } else {
+                            "发送验证码"
+                        },
+                    )
+                }
+            }
+        }
+
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .testTag("phone_login_digits"),
-        )
+                .clickable { agreementAccepted = !agreementAccepted }
+                .testTag("phone_login_agreement"),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Checkbox(
+                checked = agreementAccepted,
+                onCheckedChange = { agreementAccepted = it },
+            )
+            Text(
+                text = "我已阅读并同意《知乎协议》《个人信息保护指引》",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.weight(1f),
+            )
+        }
 
         Button(
             onClick = {
