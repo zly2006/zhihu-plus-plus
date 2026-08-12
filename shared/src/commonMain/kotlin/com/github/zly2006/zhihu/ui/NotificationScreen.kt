@@ -573,16 +573,6 @@ internal fun MobileNotificationTimelineItem.avatarUrl(): String =
         ?: ""
 
 internal fun MobileNotificationTimelineItem.navDestination(): NavDestination? {
-    target
-        ?.takeIf { it.type == "people" && (it.urlToken.isNotBlank() || it.id.isNotBlank()) }
-        ?.let {
-            return Person(
-                id = it.id.ifBlank { Person.EMPTY_ID },
-                urlToken = it.urlToken,
-                name = it.name.ifBlank { "loading..." },
-            )
-        }
-
     val destinations = listOf(
         content?.targetLink,
         content?.subTargetLink,
@@ -592,6 +582,7 @@ internal fun MobileNotificationTimelineItem.navDestination(): NavDestination? {
         link?.takeIf { it.isNotBlank() }?.let(::resolveContent)
     }
     val destination = destinations.firstOrNull { it is Notification.Message }
+        ?: destinations.firstOrNull { it !is Person }
         ?: destinations.firstOrNull()
     return if (destination is Notification.Message) {
         destination.copy(
@@ -599,7 +590,15 @@ internal fun MobileNotificationTimelineItem.navDestination(): NavDestination? {
             avatarUrl = avatarUrl(),
         )
     } else {
-        destination
+        destination ?: target
+            ?.takeIf { it.type == "people" && (it.urlToken.isNotBlank() || it.id.isNotBlank()) }
+            ?.let {
+                Person(
+                    id = it.id.ifBlank { Person.EMPTY_ID },
+                    urlToken = it.urlToken,
+                    name = it.name.ifBlank { "loading..." },
+                )
+            }
     }
 }
 
