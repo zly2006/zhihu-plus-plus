@@ -232,6 +232,9 @@ class ZhihuPhoneLoginClient(
         val token = ZhihuJson.json.decodeFromString<TokenResponse>(body)
         check(token.accessToken.isNotBlank()) { "服务器未返回登录凭证" }
         cookies.putAll(token.cookie.values())
+        httpClient.get("https://www.zhihu.com/") {
+            applyMobileHeaders()
+        }.successBody("初始化网页登录凭证")
         return ZhihuMobileLoginToken(
             accessToken = token.accessToken,
             refreshToken = token.refreshToken,

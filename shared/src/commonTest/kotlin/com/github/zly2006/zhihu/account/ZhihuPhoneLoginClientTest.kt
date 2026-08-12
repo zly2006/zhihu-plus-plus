@@ -206,6 +206,16 @@ class ZhihuPhoneLoginClientTest {
                         )
                     }
 
+                    3 -> {
+                        assertEquals(HttpMethod.Get, request.method)
+                        assertEquals("www.zhihu.com", request.url.host)
+                        assertEquals("/", request.url.encodedPath)
+                        respond(
+                            content = "<!doctype html>",
+                            headers = headersOf(HttpHeaders.SetCookie, "d_c0=web-device-cookie; Path=/; Domain=zhihu.com"),
+                        )
+                    }
+
                     else -> error("Unexpected request #$requestIndex")
                 }
             },
@@ -219,7 +229,7 @@ class ZhihuPhoneLoginClientTest {
         assertEquals("account-refresh", token.refreshToken)
         assertEquals("bearer", token.tokenType)
         assertEquals(1_700_003_600L, token.expiresAt)
-        assertEquals("device-cookie", token.cookies["d_c0"])
+        assertEquals("web-device-cookie", token.cookies["d_c0"])
         assertEquals("account-z-cookie", token.cookies["z_c0"])
         assertEquals("account-q-cookie", token.cookies["q_c0"])
         httpClient.close()
