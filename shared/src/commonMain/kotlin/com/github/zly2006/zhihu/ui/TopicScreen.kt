@@ -9,7 +9,12 @@
 
 package com.github.zly2006.zhihu.ui
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -17,16 +22,22 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -41,12 +52,19 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -91,6 +109,7 @@ const val TOPIC_SCREEN_TAG = "topic_screen"
 const val TOPIC_SHARE_BUTTON_TAG = "topic_share_button"
 const val TOPIC_FOLLOW_BUTTON_TAG = "topic_follow_button"
 const val TOPIC_WRITE_PIN_BUTTON_TAG = "topic_write_pin_button"
+const val TOPIC_INTRODUCTION_TOGGLE_TAG = "topic_introduction_toggle"
 const val TOPIC_RELATED_TAG = "topic_related"
 const val TOPIC_RETRY_BUTTON_TAG = "topic_retry_button"
 
@@ -509,9 +528,7 @@ fun TopicScreen(topic: Topic) {
                                 }
                             }
                         },
-                    )
-                    Button(
-                        onClick = {
+                        onWritePin = {
                             navigator.onNavigate(
                                 WritePin(
                                     topicName = viewModel.detail?.name?.ifBlank { topic.name } ?: topic.name,
@@ -522,9 +539,7 @@ fun TopicScreen(topic: Topic) {
                                 ),
                             )
                         },
-                        enabled = viewModel.detail?.topicId != null,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).testTag(TOPIC_WRITE_PIN_BUTTON_TAG),
-                    ) { Text("发想法") }
+                    )
                     PrimaryTabRow(selectedTabIndex = viewModel.selectedTab.ordinal) {
                         TopicFeedTab.entries.forEach { tab ->
                             Tab(
@@ -611,6 +626,7 @@ private fun TopicHeader(
     isFollowingChanging: Boolean,
     onRetryDetail: () -> Unit,
     onFollowingChange: (Boolean) -> Unit,
+    onWritePin: () -> Unit,
 ) {
     Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -639,27 +655,110 @@ private fun TopicHeader(
             }
         }
         detail?.excerpt?.takeIf(String::isNotBlank)?.let { introduction ->
-            Text(
-                text = introduction,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = if (isIntroductionExpanded) Int.MAX_VALUE else 3,
-                overflow = TextOverflow.Ellipsis,
+            TopicIntroduction(
+                introduction = introduction,
+                isExpanded = isIntroductionExpanded,
+                onExpandedChange = onIntroductionExpandedChange,
             )
-            TextButton(onClick = { onIntroductionExpandedChange(!isIntroductionExpanded) }) {
-                Text(if (isIntroductionExpanded) "收起简介" else "展开简介")
-            }
         }
-        detail?.let { loaded ->
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Button(
-                onClick = { onFollowingChange(!loaded.isFollowing) },
-                enabled = !isFollowingChanging,
-                modifier = Modifier.testTag(TOPIC_FOLLOW_BUTTON_TAG),
+                onClick = { detail?.let { onFollowingChange(!it.isFollowing) } },
+                enabled = detail != null && !isFollowingChanging,
+                modifier =
+                    Modifier
+                        .weight(3f)
+                        .testTag(TOPIC_FOLLOW_BUTTON_TAG)
+                        .semantics { selected = detail?.isFollowing == true },
             ) {
                 if (isFollowingChanging) {
                     CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                 } else {
-                    Text(if (loaded.isFollowing) "已关注" else "关注话题")
+                    Text(if (detail?.isFollowing == true) "已关注" else "关注话题", maxLines = 1)
                 }
+            }
+            FilledTonalButton(
+                onClick = onWritePin,
+                enabled = detail?.topicId != null,
+                modifier = Modifier.weight(2f).testTag(TOPIC_WRITE_PIN_BUTTON_TAG),
+                colors = ButtonDefaults.filledTonalButtonColors(),
+            ) {
+                Text("发想法", maxLines = 1)
+            }
+        }
+    }
+}
+
+@Composable
+private fun TopicIntroduction(
+    introduction: String,
+    isExpanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+) {
+    var canCollapse by remember(introduction) { mutableStateOf(false) }
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    Box(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clipToBounds()
+                .animateContentSize(
+                    animationSpec = tween(durationMillis = 420, easing = FastOutSlowInEasing),
+                ),
+    ) {
+        Text(
+            text = introduction,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = if (isExpanded) Int.MAX_VALUE else 3,
+            overflow = TextOverflow.Clip,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .then(if (canCollapse) Modifier.padding(bottom = 56.dp) else Modifier),
+            onTextLayout = { result ->
+                canCollapse = result.lineCount > 3 || result.hasVisualOverflow
+            },
+        )
+        if (canCollapse && !isExpanded) {
+            Box(
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .height(88.dp)
+                        .blur(12.dp)
+                        .background(
+                            brush =
+                                Brush.verticalGradient(
+                                    listOf(
+                                        Color.Transparent,
+                                        surfaceColor.copy(alpha = 0.7f),
+                                        surfaceColor,
+                                    ),
+                                ),
+                        ),
+            )
+        }
+        if (canCollapse) {
+            TextButton(
+                onClick = { onExpandedChange(!isExpanded) },
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomEnd)
+                        .offset(y = 4.dp)
+                        .padding(end = 4.dp)
+                        .testTag(TOPIC_INTRODUCTION_TOGGLE_TAG),
+            ) {
+                Icon(
+                    imageVector = if (isExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    contentDescription = null,
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(if (isExpanded) "收起简介" else "展开简介")
             }
         }
     }
