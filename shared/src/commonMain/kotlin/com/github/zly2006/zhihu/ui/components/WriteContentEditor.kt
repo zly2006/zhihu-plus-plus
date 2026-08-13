@@ -17,6 +17,8 @@
 
 package com.github.zly2006.zhihu.ui.components
 
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,9 +40,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.TextFieldValue
@@ -58,10 +64,28 @@ fun WriteContentMarkdownEditor(
     modifier: Modifier = Modifier,
     topPadding: Dp = 16.dp,
     bottomPadding: Dp = 160.dp,
+    onVerticalScroll: ((Float) -> Unit)? = null,
 ) {
-    val editorScrollState = rememberScrollState()
+    val scrollState = rememberScrollState()
+    val currentOnVerticalScroll by rememberUpdatedState(onVerticalScroll)
+    val scrollDirectionObserver = Modifier.pointerInput(Unit) {
+        awaitEachGesture {
+            var previousPosition = awaitFirstDown(
+                requireUnconsumed = false,
+                pass = PointerEventPass.Initial,
+            ).position
+            do {
+                val event = awaitPointerEvent(PointerEventPass.Initial)
+                event.changes.firstOrNull()?.let { change ->
+                    val delta = change.position.y - previousPosition.y
+                    if (delta != 0f) currentOnVerticalScroll?.invoke(delta)
+                    previousPosition = change.position
+                }
+            } while (event.changes.any { it.pressed })
+        }
+    }
 
-    Box(modifier = modifier) {
+    Box(modifier = modifier.then(if (onVerticalScroll == null) Modifier else scrollDirectionObserver)) {
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
@@ -82,7 +106,7 @@ fun WriteContentMarkdownEditor(
                     modifier =
                         Modifier
                             .fillMaxSize()
-                            .verticalScroll(editorScrollState)
+                            .verticalScroll(scrollState)
                             .padding(top = topPadding, bottom = bottomPadding),
                 ) {
                     if (value.text.isEmpty()) {
