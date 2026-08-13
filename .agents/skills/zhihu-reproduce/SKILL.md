@@ -20,8 +20,8 @@ license: CC BY-NC-SA 4.0
 
 ## 1. 环境与 MCP 检查
 
-1. 询问用户使用的是msedge还是chrome浏览器。
-2. 根据用户的浏览器，给出启动命令，要求用户在本地执行，启动一个带有远程调试功能的浏览器实例。
+1. 先检查当前会话是否已有可用的 DevTools 工具和 CDP 端点，不要只看浏览器进程是否存在。
+2. 在本机需要启动 Edge 时，由 Codex 使用独立的持久化 data dir 启动；只有登录、验证码或 MFA 必须由用户完成时才请求用户接管。
 
 假如你是Claude，在.mcp.json已经设置好了mcp server。
 
@@ -32,20 +32,45 @@ license: CC BY-NC-SA 4.0
 ```bash
 codex mcp list
 codex mcp get chrome-devtools
-curl -s http://127.0.0.1:9222/json/version
+curl -s http://127.0.0.1:9223/json/version
 ```
 
-`127.0.0.1:9222/json/version` 必须返回合法 CDP 信息。Edge 和 Chrome 都可以，只要 CDP 端点有效并且是用户实际登录知乎的浏览器实例。
+`127.0.0.1:9223/json/version` 必须返回合法 CDP 信息。Edge 和 Chrome 都可以，只要 CDP 端点有效并且是用户实际登录知乎的浏览器实例。本机将 9223 固定给 Codex 独立 Edge profile，避免把默认 Edge 在 9222 上的其他监听器误认成 DevTools。
+
+在这台 Mac 上，禁止使用下面这个不完整命令：
+
+```bash
+open -na "/Applications/Microsoft Edge.app" --args --remote-debugging-port=9222
+```
+
+Edge 的远程调试必须指定非默认 `--user-data-dir`；否则参数可能被已经运行的默认实例吞掉，或者 Chromium 直接忽略默认 profile 上的远程调试开关。使用 Codex 专用且可持久保留登录态的 profile：
+
+```bash
+mkdir -p "/Users/zhaoliyan/.codex/edge-devtools-profile"
+open -na "/Applications/Microsoft Edge.app" --args \
+  --remote-debugging-port=9223 \
+  --user-data-dir="/Users/zhaoliyan/.codex/edge-devtools-profile"
+```
+
+启动后必须同时验证进程参数与两个 CDP 端点：
+
+```bash
+pgrep -alf '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge' | grep -- '--remote-debugging-port=9223 --user-data-dir=/Users/zhaoliyan/.codex/edge-devtools-profile'
+curl -sS http://127.0.0.1:9223/json/version
+curl -sS http://127.0.0.1:9223/json/list
+```
+
+只有进程参数包含独立 data dir 和 `--remote-debugging-port=9223`、`/json/version` 返回 `webSocketDebuggerUrl`、`/json/list` 返回合法页面数组，并且 `chrome-devtools` MCP 的 `--browserUrl` 指向同一个端口时，才能认为浏览器启动成功。Edge 正在运行本身不构成成功证据。
 
 如果还没有注册 DevTools MCP，在 Codex 中使用：
 
 ```bash
-codex mcp add chrome-devtools -- npx -y chrome-devtools-mcp@latest --browserUrl http://127.0.0.1:9222
+codex mcp add chrome-devtools -- npx -y chrome-devtools-mcp@latest --browserUrl http://127.0.0.1:9223
 ```
 
 注册后通常需要重启或重新进入对话，当前会话不一定会热加载新 MCP。重启后再确认工具真的可用。
 
-如果 9222 没有可用浏览器实例，询问用户使用 Edge 还是 Chrome，再给出对应的远程调试启动命令。不要擅自假设浏览器类型或登录状态。
+如果 9223 没有可用浏览器实例且本机安装了 Edge，直接按上面的独立 profile 命令启动并验证。启动前后都要确认端口归属；只有 Edge 不存在、端口被其他服务占用，或用户明确指定 Chrome 时才切换执行面；不要擅自假设登录状态。
 
 ## 2. 登录状态检查
 
@@ -305,7 +330,7 @@ https://www.zhihu.com/api/v4/comment_v5/{contentType}/{contentId}/root_comment
 
 ```bash
 codex mcp list
-curl -s http://127.0.0.1:9222/json/version
+curl -s http://127.0.0.1:9223/json/version
 ```
 
 如果两者都正常但工具仍不可用，要求重启对话后再继续。
