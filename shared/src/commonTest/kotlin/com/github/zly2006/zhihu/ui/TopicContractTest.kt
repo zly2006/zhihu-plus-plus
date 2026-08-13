@@ -22,6 +22,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class TopicContractTest {
@@ -86,6 +87,7 @@ class TopicContractTest {
             ),
         )
         assertTrue(feed.toDisplayItem(enableQualityFilter = false).details.endsWith(" · 热门讨论"))
+        assertFalse(feed.toDisplayItem(enableQualityFilter = false).isFiltered)
     }
 
     @Test

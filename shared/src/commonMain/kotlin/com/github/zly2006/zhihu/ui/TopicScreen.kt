@@ -292,7 +292,7 @@ class TopicViewModel(
                 val feeds = (json["data"] as? JsonArray).orEmpty().mapNotNull { element ->
                     runCatching { ZhihuJson.decodeJson<Feed>(element) }.getOrNull()
                 }
-                feeds.flattenFeeds().map(Feed::toDisplayItem)
+                feeds.flattenFeeds().map { it.toDisplayItem(enableQualityFilter = false) }
             }
             loadedItems.forEach { item ->
                 if (items.none { it.stableKey == item.stableKey }) items += item
