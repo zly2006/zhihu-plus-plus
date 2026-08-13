@@ -70,6 +70,24 @@ class SettingsSearchScreenInstrumentedTest {
     }
 
     @Test
+    fun searchScreen_matchesPageNamesConfiguredByGroupedSettings() {
+        val navigator = setSearchScreenContent()
+
+        composeRule
+            .onNodeWithTag(SETTINGS_SEARCH_INPUT_TAG)
+            .performTextInput("热榜")
+        composeRule
+            .onNodeWithTag("settingsSearch.result.appearance.bottomBar")
+            .assertIsDisplayed()
+            .performClick()
+
+        assertEquals(
+            listOf(Account.AppearanceSettings(setting = "appearanceSettings.bottomBarSection")),
+            navigator.destinations,
+        )
+    }
+
+    @Test
     fun searchScreen_canJumpToSystemAndNotificationSettingsEntries() {
         val navigator = setSearchScreenContent()
 

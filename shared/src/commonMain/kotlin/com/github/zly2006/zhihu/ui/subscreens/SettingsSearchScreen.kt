@@ -154,35 +154,59 @@ private fun notificationEntry(
 )
 
 private val settingsSearchEntries = buildList {
-    add(appearanceEntry("appearance.nightMode", "主题模式", "切换浅色、深色或跟随系统。", "nightMode", listOf("夜间模式", "深色模式")))
-    add(appearanceEntry("appearance.dynamicColor", "使用 Material You 动态取色", "Android 12+ 根据系统壁纸取色。", "dynamicColor", listOf("动态颜色")))
-    add(appearanceEntry("appearance.fontScale", "字号与行高", "调整正文阅读字号和行距。", "fontScale", listOf("字体大小", "内容字体")))
+    add(appearanceEntry("appearance.nightMode", "主题模式", "切换浅色、深色或跟随系统。", "nightMode", listOf("夜间模式", "深色模式", "暗色模式", "浅色模式", "跟随系统")))
+    add(appearanceEntry("appearance.dynamicColor", "使用 Material You 动态取色", "Android 12+ 根据系统壁纸取色。", "dynamicColor", listOf("动态颜色", "壁纸取色", "主题色")))
+    add(appearanceEntry("appearance.fontScale", "字号与行高", "调整正文阅读字号和行距。", "fontScale", listOf("字体大小", "内容字体", "正文字号", "行距")))
     add(appearanceEntry("appearance.showFeedThumbnail", "显示 Feed 卡片缩略图", "控制信息流卡片图片显示。", "showFeedThumbnail", listOf("图片", "封面")))
     add(appearanceEntry("appearance.showRefreshFab", "显示刷新 FAB 按钮", "控制首页和列表的浮动刷新按钮。", "showRefreshFab", listOf("刷新按钮", "浮动按钮")))
-    add(appearanceEntry("appearance.feedCardStyle", "信息流样式", "切换卡片或分割线样式。", "feedCardStyle", listOf("Feed", "列表样式")))
+    add(appearanceEntry("appearance.feedCardStyle", "信息流样式", "切换卡片或分割线样式。", "feedCardStyle", listOf("Feed", "列表样式", "卡片样式", "分割线")))
     add(appearanceEntry("appearance.webviewRender", "使用 WebView 显示文章", "切换文章、回答、想法正文渲染方式。", ARTICLE_USE_WEBVIEW_PREFERENCE_KEY))
     add(appearanceEntry("appearance.titleAutoHide", "自动隐藏回答标题", "阅读时自动收起顶部标题。", "titleAutoHide", listOf("标题栏")))
     add(appearanceEntry("appearance.autoHideArticleBottomBar", "自动隐藏回答底部按钮", "滚动阅读时自动隐藏底部操作栏。", "autoHideArticleBottomBar"))
     add(appearanceEntry("appearance.buttonSkipAnswer", "显示跳转下一个回答按钮", "在回答页显示快速跳转按钮。", "buttonSkipAnswer", listOf("下一个回答")))
     add(appearanceEntry("appearance.pinAnswerDate", "置顶回答日期", "调整回答日期在正文中的位置。", "pinAnswerDate"))
-    add(appearanceEntry("appearance.answerSwitchMode", "回答切换手势", "设置回答之间的上下或左右切换。", "answerSwitchMode", listOf("手势")))
+    add(appearanceEntry("appearance.answerSwitchMode", "回答切换手势", "设置回答之间的上下或左右切换。", "answerSwitchMode", listOf("手势", "上下滑动", "左右滑动", "切换回答")))
     add(appearanceEntry("appearance.answerDoubleTapAction", "双击回答动作", "设置双击正文后的默认动作。", ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY, listOf("双击")))
-    add(appearanceEntry("appearance.bottomBar", "底部导航栏", "启动页、底栏显示页面和底栏行为。", APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY, listOf("启动默认页面", "底部栏")))
-    add(appearanceEntry("appearance.shareAction", "分享操作", "设置分享按钮默认复制、分享或询问。", "shareAction"))
+    add(
+        appearanceEntry(
+            "appearance.bottomBar",
+            "底部导航栏",
+            "启动页、底栏显示页面和底栏行为。",
+            APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY,
+            listOf(
+                "启动默认页面",
+                "底部栏",
+                "主页",
+                "首页",
+                "关注",
+                "日报",
+                "热榜",
+                "历史",
+                "浏览历史",
+                "收藏",
+                "收藏夹",
+                "账号",
+                "回到顶部",
+                "双击刷新",
+                "自动隐藏底栏",
+            ),
+        ),
+    )
+    add(appearanceEntry("appearance.shareAction", "分享操作", "设置分享按钮默认复制、分享或询问。", "shareAction", listOf("复制链接", "分享链接", "分享按钮")))
     add(appearanceEntry("appearance.showSearchHotSearch", "搜索界面显示热搜", "控制搜索页空查询时是否展示热搜。", "showSearchHotSearch", listOf("热搜")))
-    add(appearanceEntry("appearance.showSearchHistory", "记录并显示搜索历史", "控制搜索历史记录和展示。", "showSearchHistory", listOf("搜索记录")))
+    add(appearanceEntry("appearance.showSearchHistory", "记录并显示搜索历史", "控制搜索历史记录和展示。", "showSearchHistory", listOf("搜索记录", "历史记录", "清除搜索历史")))
     add(appearanceEntry("appearance.customNavHost", "使用自定义导航", "切换实验性的导航实现。", "use_custom_nav_host"))
     add(appearanceEntry("appearance.predictiveBack", "启用预测性返回", "控制 Android 预测性返回动画。", "enable_predictive_back", listOf("返回手势")))
     add(appearanceEntry("appearance.duo3", "123Duo3 新 UI", "集中管理 Duo3 视觉和交互开关。", "123Duo3", listOf("新UI", "Duo3")))
 
-    add(recommendEntry("recommend.recommendationMode", "推荐算法", "选择 Web、Android、本地或混合推荐。", "recommendationMode", listOf("推荐来源")))
+    add(recommendEntry("recommend.recommendationMode", "推荐算法", "选择 Web、Android、本地或混合推荐。", "recommendationMode", listOf("推荐来源", "Web 推荐", "Android 推荐", "本地推荐", "混合推荐")))
     add(recommendEntry("recommend.loginForRecommendation", "推荐内容时登录", "获取推荐内容时是否带登录凭证。", "loginForRecommendation"))
     add(recommendEntry("recommend.enableQualityFilter", "启用质量过滤规则", "按赞同数、关注数等指标过滤内容。", "enableQualityFilter", listOf("低质量")))
     add(recommendEntry("recommend.enableContentFilter", "启用智能内容过滤", "过滤重复出现但未点击内容。", "enableContentFilter"))
     add(recommendEntry("recommend.filterFollowedUserContent", "过滤已关注用户内容", "控制是否过滤已关注用户的内容。", "filterFollowedUserContent"))
-    add(recommendEntry("recommend.enableKeywordBlocking", "启用关键词屏蔽", "按关键词过滤内容。", "enableKeywordBlocking", listOf("关键词")))
-    add(recommendEntry("recommend.enableUserBlocking", "启用用户屏蔽", "按用户过滤内容。", "enableUserBlocking", listOf("作者屏蔽")))
-    add(recommendEntry("recommend.enableTopicBlocking", "启用主题屏蔽", "按命中主题过滤内容。", "enableTopicBlocking"))
+    add(recommendEntry("recommend.enableKeywordBlocking", "启用关键词屏蔽", "按关键词过滤内容。", "enableKeywordBlocking", listOf("关键词", "屏蔽词")))
+    add(recommendEntry("recommend.enableUserBlocking", "启用用户屏蔽", "按用户过滤内容。", "enableUserBlocking", listOf("作者屏蔽", "屏蔽用户")))
+    add(recommendEntry("recommend.enableTopicBlocking", "启用主题屏蔽", "按命中主题过滤内容。", "enableTopicBlocking", listOf("话题屏蔽", "屏蔽话题")))
     add(recommendEntry("recommend.topicBlockingThreshold", "主题屏蔽阈值", "设置命中多少个被屏蔽主题后才过滤内容。", "topicBlockingThreshold", listOf("主题阈值")))
     add(recommendEntry("recommend.blockZhihuAdPlatform", "屏蔽知乎广告平台内容", "过滤知乎广告平台推广内容。", "blockZhihuAdPlatform", listOf("广告")))
     add(recommendEntry("recommend.blockZhihuSchool", "屏蔽知乎学堂内容", "过滤知乎学堂和教育推广内容。", "blockZhihuSchool", listOf("学堂")))
@@ -196,7 +220,7 @@ private val settingsSearchEntries = buildList {
             section = "推荐系统与内容过滤",
             description = "管理关键词、用户和主题屏蔽。",
             destination = Account.RecommendSettings.Blocklist,
-            keywords = listOf("黑名单"),
+            keywords = listOf("黑名单", "屏蔽词", "屏蔽用户", "屏蔽话题"),
         ),
     )
     add(
@@ -210,15 +234,15 @@ private val settingsSearchEntries = buildList {
         ),
     )
 
-    add(systemEntry("system.githubToken", "GitHub Token", "配置更新检查时使用的 GitHub API 令牌。", "githubToken", listOf("限速", "更新检查")))
+    add(systemEntry("system.githubToken", "GitHub Token", "配置更新检查时使用的 GitHub API 令牌。", "githubToken", listOf("限速", "更新检查", "令牌")))
     add(systemEntry("system.autoCheckUpdates", "自动检查更新", "应用启动后后台检查新版本。", "autoCheckUpdates", listOf("更新提醒")))
     add(systemEntry("system.checkNightlyUpdates", "检查 Nightly 版本更新", "检查每日构建版本。", "checkNightlyUpdates", listOf("每日构建")))
-    add(systemEntry("system.allowTelemetry", "允许发送遥测统计数据", "控制匿名使用统计。", "allowTelemetry", listOf("统计", "隐私")))
+    add(systemEntry("system.allowTelemetry", "允许发送遥测统计数据", "控制匿名使用统计。", "allowTelemetry", listOf("统计", "隐私", "数据收集", "使用数据")))
     add(systemEntry("system.aigcMarking", "启用 AIGC 标记", "开启后可查看其他用户对内容是否疑似 AIGC 的标记。", AIGC_MARKING_ENABLED_PREFERENCE_KEY, listOf("AI", "AIGC")))
     add(systemEntry("system.reminder", "防沉迷提醒", "设置连续使用提醒的间隔。", CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES_KEY, listOf("连续使用", "休息提醒")))
 
-    add(notificationEntry("notification.autoMarkAsRead", "打开通知自动已读", "进入通知页后自动标记当前批次为已读。", "autoMarkAsRead", listOf("已读")))
-    add(notificationEntry("notification.unreadBadge", "显示未读红点", "控制首页和账号入口的未读角标。", "unreadBadge", listOf("角标", "红点")))
+    add(notificationEntry("notification.autoMarkAsRead", "打开通知自动已读", "进入通知页后自动标记当前批次为已读。", "autoMarkAsRead", listOf("已读", "标记已读")))
+    add(notificationEntry("notification.unreadBadge", "显示未读红点", "控制首页和账号入口的未读角标。", "unreadBadge", listOf("角标", "红点", "未读数")))
     add(notificationEntry("notification.systemNotifications", "系统通知", "控制是否向系统发送各类通知。", "systemNotifications", NotificationType.entries.map { it.displayName }))
     add(notificationEntry("notification.displayInAppNotifications", "应用内显示", "控制通知页展示哪些通知类型。", "displayInAppNotifications", NotificationType.entries.map { it.displayName }))
 
