@@ -23,6 +23,12 @@ Use this skill for high-throughput Zhihu++ issue work. The main agent must coord
 - Workers are not alone in the codebase: tell them not to revert unrelated changes, and to keep write scopes disjoint from other workers.
 - Prefer many independent workers over one broad worker, but do not assign overlapping files or features to multiple workers.
 
+## Handoff Exit
+
+Parallel coordination must end when it no longer shortens the work. If execution has converged to one worker and the main agent is repeatedly sending that same worker sequential follow-ups for implementation, validation, CI, screenshots, or PR edits, the main agent must interrupt the worker and take over the remaining serial work. Do not preserve worker ownership as ceremony after parallel value has disappeared.
+
+Example: after several independent audits finish, one worker may initially consolidate the feature. Once only that branch remains and every next action depends on the previous one, routing each fix and check through the worker only adds a handoff; the main agent should continue directly in the existing isolated worktree.
+
 ## Daemon Ban
 
 Do not use any Gradle, Kotlin compiler, build, watch, or long-lived helper daemon in the main checkout or any worker worktree. Daemon processes retain heap across parallel workers and can freeze the machine.
