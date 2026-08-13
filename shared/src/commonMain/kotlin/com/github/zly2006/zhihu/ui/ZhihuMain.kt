@@ -119,6 +119,7 @@ import com.github.zly2006.zhihu.navigation.SentenceSimilarityTest
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.navigation.WriteAnswer
 import com.github.zly2006.zhihu.navigation.WritePin
+import com.github.zly2006.zhihu.platform.PlatformBackHandler
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
 import com.github.zly2006.zhihu.reading.saveReadingPlaybackSpeed
@@ -140,8 +141,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.reflect.KClass
 import kotlin.reflect.typeOf
-
-const val SURVEY_URL = "https://v.wjx.cn/vm/Ppfw2R4.aspx#"
 
 private sealed class MainTabPage(
     val bottomDestination: TopLevelDestination,
@@ -346,6 +345,12 @@ fun ZhihuMain(
         mainTabPages.getOrNull(mainPagerState.currentPage)?.bottomDestination?.let { destination ->
             currentMainTabDestination = destination
             setCurrentMainTabOpenFrom(destination.openFrom)
+        }
+    }
+
+    PlatformBackHandler(mainPagerState.currentPage != 0) {
+        coroutineScope.launch {
+            mainPagerState.animateScrollToPage(0)
         }
     }
 
