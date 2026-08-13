@@ -16,7 +16,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -71,7 +70,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.data.ZhihuJson
@@ -79,7 +77,6 @@ import com.github.zly2006.zhihu.data.flattenFeeds
 import com.github.zly2006.zhihu.data.toDisplayItem
 import com.github.zly2006.zhihu.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.navigation.LocalNavigator
-import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Topic
 import com.github.zly2006.zhihu.navigation.WritePin
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
@@ -110,7 +107,6 @@ const val TOPIC_SHARE_BUTTON_TAG = "topic_share_button"
 const val TOPIC_FOLLOW_BUTTON_TAG = "topic_follow_button"
 const val TOPIC_WRITE_PIN_BUTTON_TAG = "topic_write_pin_button"
 const val TOPIC_INTRODUCTION_TOGGLE_TAG = "topic_introduction_toggle"
-const val TOPIC_RELATED_TAG = "topic_related"
 const val TOPIC_RETRY_BUTTON_TAG = "topic_retry_button"
 
 @Serializable
@@ -125,15 +121,6 @@ data class TopicDetail(
     val topicId: Long? = null,
     val totalPv: String = "",
     val discussCount: String = "",
-)
-
-@Serializable
-data class TopicBestAnswerer(
-    val member: DataHolder.People,
-    val answerVotes: Int = 0,
-    val totalVotes: Int = 0,
-    val answerCount: Int = 0,
-    val articleCount: Int = 0,
 )
 
 enum class TopicFeedTab(
@@ -207,9 +194,6 @@ class TopicViewModel(
     var detail by mutableStateOf(initialDetail)
         private set
     val items = mutableStateListOf<FeedDisplayItem>()
-    val parentTopics = mutableStateListOf<DataHolder.Topic>()
-    val childTopics = mutableStateListOf<DataHolder.Topic>()
-    val bestAnswerers = mutableStateListOf<TopicBestAnswerer>()
     var selectedTab by mutableStateOf(TopicFeedTab.Discussion)
         private set
     var discussionSort by mutableStateOf(TopicDiscussionSort.Hot)
@@ -242,30 +226,6 @@ class TopicViewModel(
                 if (it is CancellationException) throw it
                 detailErrorMessage = it.message
             }
-    }
-
-    suspend fun loadSupportingContent(environment: PaginationEnvironment) {
-        suspend fun loadTopics(url: String, destination: MutableList<DataHolder.Topic>) {
-            val json = environment.fetchJson(url, "") ?: return
-            destination.clear()
-            destination += (json["data"] as? JsonArray).orEmpty().mapNotNull {
-                runCatching { ZhihuJson.decodeJson(DataHolder.Topic.serializer(), it) }.getOrNull()
-            }
-        }
-        runCatching { loadTopics("https://www.zhihu.com/api/v3/topics/$topicId/parent", parentTopics) }
-            .onFailure { if (it is CancellationException) throw it }
-        runCatching { loadTopics("https://www.zhihu.com/api/v3/topics/$topicId/children?limit=10&offset=0", childTopics) }
-            .onFailure { if (it is CancellationException) throw it }
-        runCatching {
-            val json = environment.fetchJson(
-                "https://www.zhihu.com/api/v4/topics/$topicId/best_answerers?limit=3",
-                "data[*].member,answer_votes,total_votes,answer_count,article_count",
-            ) ?: return@runCatching
-            bestAnswerers.clear()
-            bestAnswerers += (json["data"] as? JsonArray).orEmpty().mapNotNull {
-                runCatching { ZhihuJson.decodeJson(TopicBestAnswerer.serializer(), it) }.getOrNull()
-            }
-        }.onFailure { if (it is CancellationException) throw it }
     }
 
     fun selectTab(environment: PaginationEnvironment, tab: TopicFeedTab) {
@@ -462,13 +422,11 @@ fun TopicScreen(topic: Topic) {
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var showShareDialog by androidx.compose.runtime.remember { mutableStateOf(false) }
     var isIntroductionExpanded by rememberSaveable(topic.id) { mutableStateOf(false) }
-    var isSupportingContentExpanded by rememberSaveable(topic.id) { mutableStateOf(false) }
     val viewModel: TopicViewModel = viewModel(key = "topic_${topic.id}_${topic.section}") { TopicViewModel(topic.id) }
 
     LaunchedEffect(topic.id, topic.section) {
         viewModel.initializeSection(topic.section)
         launch { viewModel.loadDetail(environment) }
-        launch { viewModel.loadSupportingContent(environment) }
         viewModel.loadMore(environment)
     }
 
@@ -578,25 +536,6 @@ fun TopicScreen(topic: Topic) {
                                     modifier = Modifier.testTag("topic_ideas_sort_${sort.name.lowercase()}"),
                                 )
                             }
-                        }
-                    }
-                }
-            },
-            bottomContent = {
-                item {
-                    if (viewModel.parentTopics.isNotEmpty() || viewModel.childTopics.isNotEmpty() || viewModel.bestAnswerers.isNotEmpty()) {
-                        TextButton(
-                            onClick = { isSupportingContentExpanded = !isSupportingContentExpanded },
-                            modifier = Modifier.fillMaxWidth().testTag(TOPIC_RELATED_TAG),
-                        ) {
-                            Text(if (isSupportingContentExpanded) "收起相关话题与答主" else "展开相关话题与答主")
-                        }
-                        if (isSupportingContentExpanded) {
-                            TopicSupportingContent(
-                                parentTopics = viewModel.parentTopics,
-                                childTopics = viewModel.childTopics,
-                                bestAnswerers = viewModel.bestAnswerers,
-                            )
                         }
                     }
                 }
@@ -776,62 +715,5 @@ internal fun formatTopicCount(raw: String): String {
         value >= 100_000_000 -> scaled(100_000_000.0, "亿")
         value >= 10_000 -> scaled(10_000.0, "万")
         else -> value.toString()
-    }
-}
-
-@Composable
-private fun TopicSupportingContent(
-    parentTopics: List<DataHolder.Topic>,
-    childTopics: List<DataHolder.Topic>,
-    bestAnswerers: List<TopicBestAnswerer>,
-) {
-    val navigator = LocalNavigator.current
-    Column(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        if (parentTopics.isNotEmpty()) {
-            Text("父话题", style = MaterialTheme.typography.titleMedium)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                parentTopics.forEach { parent ->
-                    TextButton(onClick = { navigator.onNavigate(Topic(parent.id, parent.name)) }) { Text(parent.name) }
-                }
-            }
-        }
-        if (childTopics.isNotEmpty()) {
-            Text("子话题", style = MaterialTheme.typography.titleMedium)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                childTopics.forEach { child ->
-                    TextButton(
-                        onClick = { navigator.onNavigate(Topic(child.id, child.name)) },
-                    ) { Text(child.name) }
-                }
-            }
-        }
-        if (bestAnswerers.isNotEmpty()) {
-            Text("优秀答主", style = MaterialTheme.typography.titleMedium)
-            bestAnswerers.forEach { item ->
-                TextButton(
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = {
-                        navigator.onNavigate(
-                            Person(
-                                id = item.member.id,
-                                urlToken = item.member.urlToken.orEmpty(),
-                                name = item.member.name,
-                            ),
-                        )
-                    },
-                ) {
-                    Column(Modifier.fillMaxWidth()) {
-                        Text(item.member.name)
-                        Text(
-                            "${item.answerCount} 回答 · ${item.articleCount} 文章 · ${item.answerVotes} 回答赞同",
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-                }
-            }
-        }
     }
 }
