@@ -44,11 +44,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -429,6 +431,7 @@ fun TopicScreen(topic: Topic) {
     val executeShareAction = rememberShareActionExecutor()
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var showShareDialog by androidx.compose.runtime.remember { mutableStateOf(false) }
+    var isIntroductionExpanded by rememberSaveable(topic.id) { mutableStateOf(false) }
     val viewModel: TopicViewModel = viewModel(key = "topic_${topic.id}") { TopicViewModel(topic.id) }
 
     LaunchedEffect(topic.id) {
@@ -469,6 +472,8 @@ fun TopicScreen(topic: Topic) {
                     detail = viewModel.detail,
                     detailErrorMessage = viewModel.detailErrorMessage,
                     destination = topic,
+                    isIntroductionExpanded = isIntroductionExpanded,
+                    onIntroductionExpandedChange = { isIntroductionExpanded = it },
                     isFollowingChanging = viewModel.isFollowingChanging,
                     onFollowingChange = { following ->
                         scope.launch {
@@ -477,11 +482,6 @@ fun TopicScreen(topic: Topic) {
                             }
                         }
                     },
-                )
-                TopicSupportingContent(
-                    parentTopics = viewModel.parentTopics,
-                    childTopics = viewModel.childTopics,
-                    bestAnswerers = viewModel.bestAnswerers,
                 )
                 Button(
                     onClick = {
@@ -537,6 +537,13 @@ fun TopicScreen(topic: Topic) {
                 FeedCard(item = item, modifier = Modifier.testTag("topic_feed_${item.stableKey}"))
             }
             item {
+                TopicSupportingContent(
+                    parentTopics = viewModel.parentTopics,
+                    childTopics = viewModel.childTopics,
+                    bestAnswerers = viewModel.bestAnswerers,
+                )
+            }
+            item {
                 when {
                     viewModel.isLoading -> Row(Modifier.fillMaxWidth().padding(24.dp), horizontalArrangement = Arrangement.Center) {
                         CircularProgressIndicator()
@@ -571,6 +578,8 @@ private fun TopicHeader(
     detail: TopicDetail?,
     detailErrorMessage: String?,
     destination: Topic,
+    isIntroductionExpanded: Boolean,
+    onIntroductionExpandedChange: (Boolean) -> Unit,
     isFollowingChanging: Boolean,
     onFollowingChange: (Boolean) -> Unit,
 ) {
@@ -591,7 +600,17 @@ private fun TopicHeader(
                 }
             }
         }
-        detail?.introduction?.takeIf(String::isNotBlank)?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+        detail?.introduction?.takeIf(String::isNotBlank)?.let { introduction ->
+            Text(
+                text = introduction,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = if (isIntroductionExpanded) Int.MAX_VALUE else 3,
+                overflow = TextOverflow.Ellipsis,
+            )
+            TextButton(onClick = { onIntroductionExpandedChange(!isIntroductionExpanded) }) {
+                Text(if (isIntroductionExpanded) "收起简介" else "展开简介")
+            }
+        }
         detail?.let { loaded ->
             Button(
                 onClick = { onFollowingChange(!loaded.isFollowing) },
