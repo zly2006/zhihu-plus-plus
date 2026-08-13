@@ -431,37 +431,39 @@ fun AccountSettingScreen(
                 }
             }
 
-            Surface(
-                modifier = Modifier
-                    .height(36.dp)
-                    .testTag(ACCOUNT_SETTINGS_SEARCH_TAG),
-                shape = RoundedCornerShape(24.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                onClick = {
-                    navigator.onNavigate(Account.SettingsSearch)
-                },
-            ) {
-                Row(
+            Column(Modifier.padding(horizontal = 16.dp)) {
+                Surface(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                        .height(36.dp)
+                        .testTag(ACCOUNT_SETTINGS_SEARCH_TAG),
+                    shape = RoundedCornerShape(24.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    onClick = {
+                        navigator.onNavigate(Account.SettingsSearch)
+                    },
                 ) {
-                    Icon(
-                        Icons.Default.Search,
-                        contentDescription = "搜索",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = "搜索设置项",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            Icons.Default.Search,
+                            contentDescription = "搜索",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "搜索设置项",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                    }
                 }
-            }
 
-            Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(16.dp))
+            }
 
             SettingItemGroup {
                 if (data.login && data.identityManagementSupported) {
