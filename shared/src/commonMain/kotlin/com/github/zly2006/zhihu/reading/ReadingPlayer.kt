@@ -414,6 +414,11 @@ fun buildReadingSpeechText(
         .trim()
 }
 
+fun htmlToReadingText(html: String): String = Ksoup
+    .parse(html)
+    .also { document -> document.select("a.video-box").remove() }
+    .text()
+
 fun buildReadingTemplatePreview(preferences: ReadingPreferences): String {
     val normalized = preferences.normalized()
     return normalized.fieldOrder

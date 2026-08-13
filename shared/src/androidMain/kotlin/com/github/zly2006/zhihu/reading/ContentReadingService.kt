@@ -410,7 +410,7 @@ class ContentReadingService : Service() {
             contentType = resolvedItem.contentType,
             title = resolvedItem.title,
             author = resolvedItem.author,
-            body = Ksoup.parse(resolvedItem.bodyHtml.orEmpty()).text(),
+            body = htmlToReadingText(resolvedItem.bodyHtml.orEmpty()),
             publishedAt = resolvedItem.publishedAt,
             voteUpCount = resolvedItem.voteUpCount,
             comments = comments,
