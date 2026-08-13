@@ -50,6 +50,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -65,6 +66,8 @@ fun WriteContentMarkdownEditor(
     topPadding: Dp = 16.dp,
     bottomPadding: Dp = 160.dp,
     onVerticalScroll: ((Float) -> Unit)? = null,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    extraShortcuts: List<MarkdownShortcut> = emptyList(),
 ) {
     val scrollState = rememberScrollState()
     val currentOnVerticalScroll by rememberUpdatedState(onVerticalScroll)
@@ -94,6 +97,7 @@ fun WriteContentMarkdownEditor(
                     .fillMaxSize()
                     .testTag(contentTag),
             enabled = enabled,
+            visualTransformation = visualTransformation,
             textStyle =
                 TextStyle(
                     color = MaterialTheme.colorScheme.onBackground,
@@ -124,6 +128,7 @@ fun WriteContentMarkdownEditor(
             onApplyShortcut = { shortcut ->
                 onValueChange(value.applyMarkdownShortcut(shortcut))
             },
+            shortcuts = extraShortcuts + MarkdownShortcut.entries.filterNot { it == MarkdownShortcut.Topic },
             modifier =
                 Modifier
                     .align(Alignment.BottomCenter)

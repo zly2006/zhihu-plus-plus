@@ -101,7 +101,7 @@ object SearchResultSerializer : KSerializer<SearchResult> {
         element("object", JsonElement.serializer().descriptor, isOptional = true)
         element("highlight", Highlight.serializer().descriptor, isOptional = true)
         element<Int>("index", isOptional = true)
-        element<String>("hit_labels", isOptional = true)
+        element<String>("hitLabels", isOptional = true)
     }
 
     override fun serialize(encoder: Encoder, value: SearchResult) {
@@ -198,18 +198,12 @@ data class SearchObjectKocBox(
     val type: String,
     val id: String,
     val description: String,
-    @SerialName("icon_url")
     val iconUrl: String? = null,
-    @SerialName("attached_info_bytes")
     val attachedInfoBytes: String? = null,
     val source: String? = null,
-    @SerialName("sub_type")
     val subType: String? = null,
-    @SerialName("is_multi_koc")
     val isMultiKoc: Boolean? = null,
-    @SerialName("more_url")
     val moreUrl: String? = null,
-    @SerialName("paid_column")
     val paidColumn: PaidColumn? = null,
 ) : SearchObject
 
@@ -219,12 +213,9 @@ data class SearchObjectKocBox(
 @Serializable
 data class PaidColumn(
     val id: String,
-    @SerialName("paid_column_id")
     val paidColumnId: String,
     val title: String,
-    @SerialName("attached_info_bytes")
     val attachedInfoBytes: String? = null,
-    @SerialName("is_mid_long")
     val isMidLong: Boolean? = null,
 )
 
@@ -238,19 +229,13 @@ data class SearchObjectKnowledgeAd(
     val header: KnowledgeAdHeader,
     val body: KnowledgeAdBody,
     val footer: String? = null,
-    @SerialName("commodity_id")
     val commodityId: String? = null,
-    @SerialName("commodity_type")
     val commodityType: String? = null,
     val url: String? = null,
     val source: String? = null,
-    @SerialName("card_version")
     val cardVersion: String? = null,
-    @SerialName("slave_url")
     val slaveUrl: String? = null,
-    @SerialName("tab_type")
     val tabType: String? = null,
-    @SerialName("ab_id_list")
     val abIdList: List<String>? = null,
 ) : SearchObject
 
@@ -259,9 +244,7 @@ data class SearchObjectKnowledgeAd(
  */
 @Serializable
 data class KnowledgeAdHeader(
-    @SerialName("card_title")
     val cardTitle: String,
-    @SerialName("no_more")
     val noMore: Boolean,
 )
 
@@ -274,11 +257,8 @@ data class KnowledgeAdBody(
     val description: String? = null,
     val authors: List<Author>? = null,
     val images: List<String>? = null,
-    @SerialName("play_icon")
     val playIcon: String? = null,
-    @SerialName("show_image")
     val showImage: String? = null,
-    @SerialName("show_author")
     val showAuthor: String? = null,
 )
 
@@ -288,7 +268,6 @@ data class KnowledgeAdBody(
 @Serializable
 data class Author(
     val name: String,
-    @SerialName("url_token")
     val urlToken: String,
 )
 

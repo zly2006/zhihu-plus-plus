@@ -29,52 +29,40 @@ class TopicContractTest {
     @Test
     fun buildsVerifiedTopicFeedUrls() {
         assertEquals(
-            "https://www.zhihu.com/api/v5.1/topics/19550517/feeds/essence/v2?limit=20&offset=0",
+            "https://www.zhihu.com/api/v5.1/topics/19550517/feeds/top_activity/v2?limit=20&offset=0",
             topicFeedUrl("19550517", TopicFeedTab.Discussion, TopicDiscussionSort.Essence),
         )
         assertEquals(null, normalizeTopicPagingUrl("https://evil.example/topics/1?offset=20"))
         assertEquals(
-            "https://www.zhihu.com/api/v4/topics/19550517/feeds/timeline_activity?limit=20&offset=0",
+            "https://www.zhihu.com/api/v5.1/topics/19550517/feeds/timeline_activity/v2?limit=20&offset=0",
             topicFeedUrl("19550517", TopicFeedTab.Discussion, TopicDiscussionSort.Timeline),
         )
         assertEquals(
-            "https://www.zhihu.com/api/v4/topics/19550517/unanswered_questions?limit=20&offset=0",
+            "https://www.zhihu.com/api/v5.1/topics/19550517/feeds/top_question/v2?limit=20&offset=0",
             topicFeedUrl("19550517", TopicFeedTab.Unanswered),
         )
         assertEquals(
-            "https://api.zhihu.com/v5.1/topics/19550517/feeds/pin-hot?offset=0&limit=10",
+            "https://www.zhihu.com/api/v5.1/topics/19550517/feeds/pin-hot?offset=0&limit=10",
             topicFeedUrl("19550517", TopicFeedTab.Ideas, ideasSort = TopicIdeasSort.Hot),
         )
         assertEquals(
-            "https://api.zhihu.com/v5.1/topics/19550517/feeds/pin-new?offset=0&limit=10",
+            "https://www.zhihu.com/api/v5.1/topics/19550517/feeds/pin-new?offset=0&limit=10",
             topicFeedUrl("19550517", TopicFeedTab.Ideas, ideasSort = TopicIdeasSort.Latest),
         )
     }
 
     @Test
-    fun topicSearchUsesTopicVerticalAndEncodesQuery() {
-        val url = topicSearchUrl("机器 学习")
-        assertTrue("t=topic" in url)
-        assertTrue("q=%E6%9C%BA%E5%99%A8+%E5%AD%A6%E4%B9%A0" in url)
-    }
-
-    @Test
-    fun topicSearchRemovesOnlyObservedEmHighlightTags() {
-        val json = ZhihuJson.json
-            .parseToJsonElement(
-                """{"data":[{"type":"search_result","object":{"id":"1","type":"topic","url":"zhihu://topic/1","name":"<em>编程</em> <b>语言</b>"}}]}""",
-            ).jsonObject
-        assertEquals("编程 <b>语言</b>", decodeTopicSearchResults(json).single().name)
-    }
-
-    @Test
-    fun decodesIntroductionFromTopicDetail() {
+    fun decodesPlainExcerptAndInternalPublishTopicIdFromTopicDetail() {
         val detail = ZhihuJson.decodeJson<TopicDetail>(
             ZhihuJson.json.parseToJsonElement(
-                """{"id":"1","name":"编程","introduction":"简介","followers_count":3,"questions_count":4,"is_following":true}""",
+                """{"id":"1","name":"编程","excerpt":"纯文本简介","introduction":"<p>纯文本简介</p>","followers_count":3,"questions_count":4,"is_following":true,"topic_id":1354,"total_pv":"1628616121","discuss_count":"703641"}""",
             ),
         )
-        assertEquals("简介", detail.introduction)
+        assertEquals("纯文本简介", detail.excerpt)
+        assertEquals(1354, detail.topicId)
+        assertEquals("16.2 亿", formatTopicCount(detail.totalPv))
+        assertEquals("70.3 万", formatTopicCount(detail.discussCount))
+        assertEquals("189 万", formatTopicCount("1890565"))
         assertEquals(3, detail.followersCount)
         assertTrue(detail.isFollowing)
     }
@@ -94,7 +82,7 @@ class TopicContractTest {
     fun decodesObservedTopicPinShapeWithNavigation() {
         val json = ZhihuJson.json
             .parseToJsonElement(
-                """{"data":[{"type":"pin","target":{"id":"123","type":"pin","url":"https://www.zhihu.com/pin/123","author":{"avatar_url":"https://pic.example/a.jpg","name":"作者"},"title":"想法标题","excerpt":"摘要","content":"正文","plain_content":"纯文本正文","counter":{"applaud":8,"comment":2,"favorite":1,"forward":0,"pv":20}}}],"paging":{"is_end":false,"next":"https://api.zhihu.com/v5.1/topics/1/feeds/pin-hot?offset=10&limit=10"}}""",
+                """{"data":[{"type":"pin","target":{"id":"123","type":"pin","url":"https://www.zhihu.com/pin/123","author":{"avatar_url":"https://pic.example/a.jpg","name":"作者"},"title":"想法标题","excerpt":"摘要","content":"正文","plain_content":"纯文本正文","counter":{"applaud":8,"comment":2,"favorite":1,"forward":0,"pv":20}}}],"paging":{"is_end":false,"next":"https://www.zhihu.com/api/v5.1/topics/1/feeds/pin-hot?offset=10&limit=10"}}""",
             ).jsonObject
         val item = decodeTopicPinFeeds(json).single()
         assertEquals("想法标题", item.title)
@@ -105,7 +93,7 @@ class TopicContractTest {
             item.navDestination,
         )
         assertEquals(
-            "https://api.zhihu.com/v5.1/topics/1/feeds/pin-hot?offset=10&limit=10",
+            "https://www.zhihu.com/api/v5.1/topics/1/feeds/pin-hot?offset=10&limit=10",
             normalizeTopicPagingUrl(json["paging"]!!.jsonObject["next"]!!.jsonPrimitive.content),
         )
     }
@@ -120,6 +108,25 @@ class TopicContractTest {
             "https://www.zhihu.com/api/v5.1/topics/1/feeds/essence/v2?offset=20",
             normalizeTopicPagingUrl("https://www.zhihu.com/api/v5.1/topics/1/feeds/essence/v2?offset=20"),
         )
+        assertEquals(null, normalizeTopicPagingUrl("not a url"))
+    }
+
+    @Test
+    fun initializesOfficialTopicSectionsWithoutFallingBackToHot() {
+        TopicViewModel("1").apply {
+            initializeSection("top-answers")
+            assertEquals(TopicFeedTab.Discussion, selectedTab)
+            assertEquals(TopicDiscussionSort.Essence, discussionSort)
+        }
+        TopicViewModel("1").apply {
+            initializeSection("newest")
+            assertEquals(TopicFeedTab.Discussion, selectedTab)
+            assertEquals(TopicDiscussionSort.Timeline, discussionSort)
+        }
+        TopicViewModel("1").apply {
+            initializeSection("unanswered")
+            assertEquals(TopicFeedTab.Unanswered, selectedTab)
+        }
     }
 
     @Test
@@ -131,7 +138,10 @@ class TopicContractTest {
 
     @Test
     fun topicWriteDestinationCarriesInitialTopic() {
-        assertEquals(WritePin("19554298", "编程"), WritePin(topicId = "19554298", topicName = "编程"))
+        assertEquals(
+            WritePin("编程", "1354"),
+            WritePin(topicName = "编程", publishTopicId = "1354"),
+        )
         assertEquals(WritePin(), WritePin())
     }
 

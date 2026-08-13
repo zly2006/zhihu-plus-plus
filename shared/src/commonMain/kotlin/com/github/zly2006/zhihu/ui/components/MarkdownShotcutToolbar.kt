@@ -52,6 +52,7 @@ enum class MarkdownShortcut(
     CodeBlock("```"),
     Divider("HR"),
     Math("∑"),
+    Topic("#"),
 }
 
 @Composable
@@ -59,6 +60,7 @@ fun MarkdownShortcutToolbar(
     onApplyShortcut: (MarkdownShortcut) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    shortcuts: List<MarkdownShortcut> = MarkdownShortcut.entries,
 ) {
     Surface(
         modifier =
@@ -78,7 +80,7 @@ fun MarkdownShortcutToolbar(
                     .padding(horizontal = 6.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            MarkdownShortcut.entries.forEach { shortcut ->
+            shortcuts.forEach { shortcut ->
                 ShortcutButton(
                     label = shortcut.label,
                     enabled = enabled,
@@ -121,6 +123,7 @@ fun TextFieldValue.applyMarkdownShortcut(shortcut: MarkdownShortcut): TextFieldV
         MarkdownShortcut.CodeBlock -> toggleCodeBlock()
         MarkdownShortcut.InlineCode -> toggleWrapSelection(prefix = "`", suffix = "`", placeholder = "code")
         MarkdownShortcut.Math -> toggleWrapSelection(prefix = "$", suffix = "$", placeholder = "x")
+        MarkdownShortcut.Topic -> replaceSelection("#", 1)
         MarkdownShortcut.Link -> insertLink()
     }
 

@@ -292,8 +292,8 @@ data class WriteAnswer(
  */
 @Serializable
 data class WritePin(
-    val topicId: String = "",
     val topicName: String = "",
+    val publishTopicId: String = "",
 ) : NavDestination
 
 @Serializable
@@ -510,7 +510,7 @@ fun resolveContent(url: Url): NavDestination? {
             return Pin(id = pinId)
         } else if (url.host == "topic" || url.host == "topics") {
             val topicId = segments.firstOrNull() ?: return null
-            return Topic(id = topicId)
+            return Topic(id = topicId, section = segments.getOrNull(1).orEmpty())
         } else if (url.host == "pin20") {
             val topicId = url.parameters["topic_id"]
                 ?: url.parameters["topicId"]

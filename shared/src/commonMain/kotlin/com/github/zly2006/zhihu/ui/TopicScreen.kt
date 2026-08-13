@@ -80,31 +80,32 @@ import com.github.zly2006.zhihu.viewmodel.deleteSigned
 import com.github.zly2006.zhihu.viewmodel.postSigned
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import io.ktor.http.Url
-import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 
 const val TOPIC_SCREEN_TAG = "topic_screen"
 const val TOPIC_SHARE_BUTTON_TAG = "topic_share_button"
 const val TOPIC_FOLLOW_BUTTON_TAG = "topic_follow_button"
 const val TOPIC_WRITE_PIN_BUTTON_TAG = "topic_write_pin_button"
 const val TOPIC_RELATED_TAG = "topic_related"
+const val TOPIC_RETRY_BUTTON_TAG = "topic_retry_button"
 
 @Serializable
 data class TopicDetail(
     val id: String,
     val name: String = "",
-    val introduction: String = "",
+    val excerpt: String = "",
     val avatarUrl: String? = null,
     val followersCount: Int = 0,
     val questionsCount: Int = 0,
     val isFollowing: Boolean = false,
+    val topicId: Long? = null,
+    val totalPv: String = "",
+    val discussCount: String = "",
 )
 
 @Serializable
@@ -128,8 +129,8 @@ enum class TopicDiscussionSort(
     val title: String,
 ) {
     Essence("精华"),
-    Hot("热度"),
-    Timeline("时间"),
+    Hot("最热"),
+    Timeline("最新"),
 }
 
 enum class TopicIdeasSort(
@@ -174,6 +175,12 @@ data class TopicPinCounter(
     val pv: Int = 0,
 )
 
+@Serializable
+private data class TopicPaging(
+    val isEnd: Boolean = true,
+    val next: String? = null,
+)
+
 class TopicViewModel(
     private val topicId: String,
     initialDetail: TopicDetail? = null,
@@ -208,8 +215,8 @@ class TopicViewModel(
         detailErrorMessage = null
         runCatching {
             environment.fetchJson(
-                "https://www.zhihu.com/api/v4/topics/$topicId",
-                "name,introduction,avatar_url,followers_count,questions_count,is_following",
+                "https://www.zhihu.com/api/v5.1/topics/$topicId",
+                "name,excerpt,avatar_url,followers_count,questions_count,is_following,topic_id,total_pv,discuss_count",
             ) ?: error("话题详情响应为空")
         }.onSuccess { detail = ZhihuJson.decodeJson(TopicDetail.serializer(), it) }
             .onFailure {
@@ -244,76 +251,92 @@ class TopicViewModel(
 
     fun selectTab(environment: PaginationEnvironment, tab: TopicFeedTab) {
         if (selectedTab == tab && items.isNotEmpty()) return
+        loadJob?.cancel()
+        loadJob = null
+        isLoading = false
         selectedTab = tab
         items.clear()
+        errorMessage = null
         nextUrl = null
         isEnd = false
         requestGeneration++
-        loadJob?.cancel()
         loadMore(environment)
     }
 
     fun selectDiscussionSort(environment: PaginationEnvironment, sort: TopicDiscussionSort) {
         if (discussionSort == sort) return
+        loadJob?.cancel()
+        loadJob = null
+        isLoading = false
         discussionSort = sort
         items.clear()
+        errorMessage = null
         nextUrl = null
         isEnd = false
         requestGeneration++
-        loadJob?.cancel()
         loadMore(environment)
     }
 
     fun selectIdeasSort(environment: PaginationEnvironment, sort: TopicIdeasSort) {
         if (ideasSort == sort) return
+        loadJob?.cancel()
+        loadJob = null
+        isLoading = false
         ideasSort = sort
         items.clear()
+        errorMessage = null
         nextUrl = null
         isEnd = false
         requestGeneration++
-        loadJob?.cancel()
         loadMore(environment)
     }
 
-    suspend fun loadMoreNow(environment: PaginationEnvironment) {
+    private suspend fun loadMoreNow(environment: PaginationEnvironment) {
         if (isEnd) return
         val generation = requestGeneration
         isLoading = true
         errorMessage = null
-        runCatching {
+        try {
             val url = nextUrl ?: topicFeedUrl(topicId, selectedTab, discussionSort, ideasSort)
-            environment.fetchJson(url, "data[*].content,excerpt,target.author.badge_v2")
+            val json = environment.fetchJson(url, "data[*].content,excerpt,target.author.badge_v2")
                 ?: error("话题内容响应为空")
-        }.onSuccess { json ->
-            if (generation != requestGeneration) return@onSuccess
+            if (generation != requestGeneration) return
+            val responseItems = (json["data"] as? JsonArray).orEmpty()
             val loadedItems = if (selectedTab == TopicFeedTab.Ideas) {
                 decodeTopicPinFeeds(json)
             } else {
-                val feeds = (json["data"] as? JsonArray).orEmpty().mapNotNull { element ->
+                val feeds = responseItems.mapNotNull { element ->
                     runCatching { ZhihuJson.decodeJson<Feed>(element) }.getOrNull()
                 }
                 feeds.flattenFeeds().map { it.toDisplayItem(enableQualityFilter = false) }
             }
+            if (responseItems.isNotEmpty() && loadedItems.isEmpty()) {
+                error("话题内容解码失败：服务端返回 ${responseItems.size} 项，但没有可显示内容")
+            }
             loadedItems.forEach { item ->
                 if (items.none { it.stableKey == item.stableKey }) items += item
             }
-            val paging = json["paging"]
-            val rawNext = paging
-                ?.let { runCatching { it.jsonObject["next"]?.jsonPrimitive?.content }.getOrNull() }
+            val paging = json["paging"]?.let { ZhihuJson.decodeJson<TopicPaging>(it) }
+            val rawNext = paging?.next
             nextUrl = rawNext?.let(::normalizeTopicPagingUrl)
             isEnd = if (rawNext != null && nextUrl == null) {
                 errorMessage = "服务端返回了不受信任的分页地址，已停止加载"
                 true
             } else {
-                paging?.let { runCatching { it.jsonObject["is_end"]?.jsonPrimitive?.content == "true" }.getOrDefault(false) }
-                    ?: true
+                paging?.isEnd ?: true
             }
-        }.onFailure { if (generation == requestGeneration) errorMessage = it.message }
-        if (generation == requestGeneration) isLoading = false
+        } catch (error: Throwable) {
+            if (error is CancellationException) throw error
+            if (generation == requestGeneration) {
+                errorMessage = error.message ?: error::class.simpleName ?: "未知错误"
+            }
+        } finally {
+            if (generation == requestGeneration) isLoading = false
+        }
     }
 
     fun loadMore(environment: PaginationEnvironment) {
-        if (isEnd || errorMessage != null || loadJob?.isActive == true) return
+        if (isEnd || isLoading || errorMessage != null || loadJob?.isActive == true) return
         loadJob = viewModelScope.launch { loadMoreNow(environment) }
     }
 
@@ -327,7 +350,11 @@ class TopicViewModel(
             "unanswered" -> TopicFeedTab.Unanswered
             else -> TopicFeedTab.Discussion
         }
-        discussionSort = if (section == "top-answers") TopicDiscussionSort.Essence else TopicDiscussionSort.Hot
+        discussionSort = when (section) {
+            "top-answers" -> TopicDiscussionSort.Essence
+            "newest" -> TopicDiscussionSort.Timeline
+            else -> TopicDiscussionSort.Hot
+        }
     }
 
     suspend fun setFollowing(environment: ZhihuApiEnvironment, following: Boolean): Result<Unit> {
@@ -360,13 +387,13 @@ fun topicFeedUrl(
 ): String = when (tab) {
     TopicFeedTab.Discussion -> {
         when (discussionSort) {
-            TopicDiscussionSort.Essence -> "https://www.zhihu.com/api/v5.1/topics/$topicId/feeds/essence/v2?limit=20&offset=0"
-            TopicDiscussionSort.Hot -> "https://www.zhihu.com/api/v4/topics/$topicId/feeds/top_activity?limit=20&offset=0"
-            TopicDiscussionSort.Timeline -> "https://www.zhihu.com/api/v4/topics/$topicId/feeds/timeline_activity?limit=20&offset=0"
+            TopicDiscussionSort.Essence -> "https://www.zhihu.com/api/v5.1/topics/$topicId/feeds/top_activity/v2?limit=20&offset=0"
+            TopicDiscussionSort.Hot -> "https://www.zhihu.com/api/v5.1/topics/$topicId/feeds/essence/v2?limit=20&offset=0"
+            TopicDiscussionSort.Timeline -> "https://www.zhihu.com/api/v5.1/topics/$topicId/feeds/timeline_activity/v2?limit=20&offset=0"
         }
     }
-    TopicFeedTab.Ideas -> "https://api.zhihu.com/v5.1/topics/$topicId/feeds/${ideasSort.endpoint}?offset=0&limit=10"
-    TopicFeedTab.Unanswered -> "https://www.zhihu.com/api/v4/topics/$topicId/unanswered_questions?limit=20&offset=0"
+    TopicFeedTab.Ideas -> "https://www.zhihu.com/api/v5.1/topics/$topicId/feeds/${ideasSort.endpoint}?offset=0&limit=10"
+    TopicFeedTab.Unanswered -> "https://www.zhihu.com/api/v5.1/topics/$topicId/feeds/top_question/v2?limit=20&offset=0"
 }
 
 fun decodeTopicPinFeeds(json: kotlinx.serialization.json.JsonObject): List<FeedDisplayItem> =
@@ -387,23 +414,12 @@ fun decodeTopicPinFeeds(json: kotlinx.serialization.json.JsonObject): List<FeedD
         }
     }
 
-fun topicSearchUrl(query: String): String =
-    "https://www.zhihu.com/api/v4/search_v3?t=topic&q=${query.encodeURLParameter(spaceToPlus = true)}&offset=0&limit=20"
-
 fun normalizeTopicPagingUrl(rawUrl: String): String? {
-    val url = Url(rawUrl)
+    val url = runCatching { Url(rawUrl) }.getOrNull() ?: return null
     if (url.host == "www.zhihu.com" &&
-        url.encodedPath.startsWith("/api/v4/") ||
-        url.host == "www.zhihu.com" &&
-        url.encodedPath.startsWith("/api/v5.1/")
+        (url.encodedPath.startsWith("/api/v4/") || url.encodedPath.startsWith("/api/v5.1/"))
     ) {
         return "https://www.zhihu.com${url.encodedPath}" + url.encodedQuery
-            .takeIf(String::isNotEmpty)
-            ?.let { "?$it" }
-            .orEmpty()
-    }
-    if (url.host == "api.zhihu.com" && url.encodedPath.startsWith("/v5.1/topics/")) {
-        return "https://api.zhihu.com${url.encodedPath}" + url.encodedQuery
             .takeIf(String::isNotEmpty)
             ?.let { "?$it" }
             .orEmpty()
@@ -415,25 +431,6 @@ fun normalizeTopicPagingUrl(rawUrl: String): String? {
         if (url.encodedQuery.isNotEmpty()) append('?').append(url.encodedQuery)
     }
 }
-
-suspend fun searchTopics(environment: PaginationEnvironment, query: String): List<DataHolder.Topic> {
-    if (query.isBlank()) return emptyList()
-    val json = environment.fetchJson(topicSearchUrl(query.trim()), "data[*].object,type") ?: return emptyList()
-    return decodeTopicSearchResults(json)
-}
-
-fun decodeTopicSearchResults(json: kotlinx.serialization.json.JsonObject): List<DataHolder.Topic> =
-    (json["data"] as? JsonArray)
-        .orEmpty()
-        .mapNotNull { entry ->
-            val obj = entry.jsonObject["object"]?.jsonObject ?: return@mapNotNull null
-            if (obj["type"]?.jsonPrimitive?.content != "topic") return@mapNotNull null
-            runCatching { ZhihuJson.decodeJson(DataHolder.Topic.serializer(), obj) }
-                .getOrNull()
-                ?.let { topic ->
-                    topic.copy(name = topic.name.replace("<em>", "").replace("</em>", ""))
-                }
-        }.distinctBy(DataHolder.Topic::id)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -447,13 +444,13 @@ fun TopicScreen(topic: Topic) {
     var showShareDialog by androidx.compose.runtime.remember { mutableStateOf(false) }
     var isIntroductionExpanded by rememberSaveable(topic.id) { mutableStateOf(false) }
     var isSupportingContentExpanded by rememberSaveable(topic.id) { mutableStateOf(false) }
-    val viewModel: TopicViewModel = viewModel(key = "topic_${topic.id}") { TopicViewModel(topic.id) }
+    val viewModel: TopicViewModel = viewModel(key = "topic_${topic.id}_${topic.section}") { TopicViewModel(topic.id) }
 
-    LaunchedEffect(topic.id) {
+    LaunchedEffect(topic.id, topic.section) {
         viewModel.initializeSection(topic.section)
         launch { viewModel.loadDetail(environment) }
         launch { viewModel.loadSupportingContent(environment) }
-        launch { viewModel.loadMoreNow(environment) }
+        viewModel.loadMore(environment)
     }
 
     Scaffold(
@@ -491,8 +488,8 @@ fun TopicScreen(topic: Topic) {
                 } else {
                     TextButton(
                         onClick = { viewModel.retry(environment) },
-                        modifier = Modifier.fillMaxWidth().padding(8.dp),
-                    ) { Text("加载失败，点击重试") }
+                        modifier = Modifier.fillMaxWidth().padding(8.dp).testTag(TOPIC_RETRY_BUTTON_TAG),
+                    ) { Text("加载失败：${viewModel.errorMessage}，点击重试") }
                 }
             },
             topContent = {
@@ -504,6 +501,7 @@ fun TopicScreen(topic: Topic) {
                         isIntroductionExpanded = isIntroductionExpanded,
                         onIntroductionExpandedChange = { isIntroductionExpanded = it },
                         isFollowingChanging = viewModel.isFollowingChanging,
+                        onRetryDetail = { scope.launch { viewModel.loadDetail(environment) } },
                         onFollowingChange = { following ->
                             scope.launch {
                                 viewModel.setFollowing(environment, following).onFailure {
@@ -516,11 +514,15 @@ fun TopicScreen(topic: Topic) {
                         onClick = {
                             navigator.onNavigate(
                                 WritePin(
-                                    topicId = topic.id,
                                     topicName = viewModel.detail?.name?.ifBlank { topic.name } ?: topic.name,
+                                    publishTopicId = viewModel.detail
+                                        ?.topicId
+                                        ?.toString()
+                                        .orEmpty(),
                                 ),
                             )
                         },
+                        enabled = viewModel.detail?.topicId != null,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).testTag(TOPIC_WRITE_PIN_BUTTON_TAG),
                     ) { Text("发想法") }
                     PrimaryTabRow(selectedTabIndex = viewModel.selectedTab.ordinal) {
@@ -543,6 +545,7 @@ fun TopicScreen(topic: Topic) {
                                     selected = viewModel.discussionSort == sort,
                                     onClick = { viewModel.selectDiscussionSort(environment, sort) },
                                     label = { Text(sort.title) },
+                                    modifier = Modifier.testTag("topic_discussion_sort_${sort.name.lowercase()}"),
                                 )
                             }
                         }
@@ -557,10 +560,15 @@ fun TopicScreen(topic: Topic) {
                                     selected = viewModel.ideasSort == sort,
                                     onClick = { viewModel.selectIdeasSort(environment, sort) },
                                     label = { Text(sort.title) },
+                                    modifier = Modifier.testTag("topic_ideas_sort_${sort.name.lowercase()}"),
                                 )
                             }
                         }
                     }
+                }
+            },
+            bottomContent = {
+                item {
                     if (viewModel.parentTopics.isNotEmpty() || viewModel.childTopics.isNotEmpty() || viewModel.bestAnswerers.isNotEmpty()) {
                         TextButton(
                             onClick = { isSupportingContentExpanded = !isSupportingContentExpanded },
@@ -601,6 +609,7 @@ private fun TopicHeader(
     isIntroductionExpanded: Boolean,
     onIntroductionExpandedChange: (Boolean) -> Unit,
     isFollowingChanging: Boolean,
+    onRetryDetail: () -> Unit,
     onFollowingChange: (Boolean) -> Unit,
 ) {
     Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -614,13 +623,22 @@ private fun TopicHeader(
             Column {
                 Text(detail?.name?.ifBlank { destination.name } ?: destination.name, style = MaterialTheme.typography.headlineSmall)
                 when {
-                    detail != null -> Text("${detail.followersCount} 关注 · ${detail.questionsCount} 问题")
-                    detailErrorMessage != null -> Text("话题信息加载失败", color = MaterialTheme.colorScheme.error)
+                    detail != null -> Text(
+                        listOfNotNull(
+                            detail.totalPv.takeIf(String::isNotBlank)?.let { "${formatTopicCount(it)} 浏览" },
+                            detail.discussCount.takeIf(String::isNotBlank)?.let { "${formatTopicCount(it)} 讨论" },
+                            "${detail.followersCount} 关注",
+                            "${detail.questionsCount} 问题",
+                        ).joinToString(" · "),
+                    )
+                    detailErrorMessage != null -> TextButton(onClick = onRetryDetail) {
+                        Text("话题信息加载失败：$detailErrorMessage，点击重试", color = MaterialTheme.colorScheme.error)
+                    }
                     else -> Text("正在加载话题信息…")
                 }
             }
         }
-        detail?.introduction?.takeIf(String::isNotBlank)?.let { introduction ->
+        detail?.excerpt?.takeIf(String::isNotBlank)?.let { introduction ->
             Text(
                 text = introduction,
                 style = MaterialTheme.typography.bodyMedium,
@@ -644,6 +662,21 @@ private fun TopicHeader(
                 }
             }
         }
+    }
+}
+
+internal fun formatTopicCount(raw: String): String {
+    val value = raw.toLongOrNull() ?: return raw
+
+    fun scaled(divisor: Double, unit: String): String {
+        val number = (value / divisor * 10).toLong() / 10.0
+        val text = if (number % 1.0 == 0.0) number.toLong().toString() else number.toString()
+        return "$text $unit"
+    }
+    return when {
+        value >= 100_000_000 -> scaled(100_000_000.0, "亿")
+        value >= 10_000 -> scaled(10_000.0, "万")
+        else -> value.toString()
     }
 }
 

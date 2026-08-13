@@ -18,6 +18,17 @@
 package com.github.zly2006.zhihu.editor
 
 import com.github.zly2006.zhihu.data.ZhihuJson
+import com.github.zly2006.zhihu.data.installZhihuCommonClientConfig
+import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respond
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.content.OutgoingContent
+import io.ktor.http.headersOf
+import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -27,6 +38,20 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 
 class ZhihuPinPublisherTest {
+    @Test
+    fun decodesObservedTopicRecommendationFields() {
+        val response = ZhihuJson.decodeJson<PinTopicSuggestionResponse>(
+            ZhihuJson.json.parseToJsonElement(
+                """{"data":{"is_show_create":true,"list":[{"id":"787460807","name":"AI","topic_id":3858106,"discuss_count":"31.8 万讨论"}]},"code":0}""",
+            ),
+        )
+
+        assertEquals(
+            PinTopicSuggestion("787460807", "AI", 3858106, "31.8 万讨论"),
+            response.data.list.single(),
+        )
+    }
+
     @Test
     fun serializesPinDraftPayloadWithObservedPublishShape() {
         val request = SavePinDraftRequest(
@@ -114,7 +139,7 @@ class ZhihuPinPublisherTest {
         val selected = PublishPinRequest(
             data = PinContentPayload(
                 publish = PublishTrace(traceId = "trace-id"),
-                topic = PinContentTopic(listOf(PinContentTopicItem("19550517", "互联网"))),
+                topic = PinContentTopic(listOf(PinContentTopicItem("19550517", "#互联网#"))),
             ),
         )
         val selectedData = ZhihuJson.json
@@ -130,7 +155,7 @@ class ZhihuPinPublisherTest {
             .single()
             .jsonObject
         assertEquals("19550517", topic.getValue("topic_id").jsonPrimitive.content)
-        assertEquals("互联网", topic.getValue("topic_name").jsonPrimitive.content)
+        assertEquals("#互联网#", topic.getValue("topic_name").jsonPrimitive.content)
 
         val empty = PublishPinRequest(data = PinContentPayload(publish = PublishTrace(traceId = "trace-id")))
         val emptyData = ZhihuJson.json
@@ -139,6 +164,85 @@ class ZhihuPinPublisherTest {
             .getValue("data")
             .jsonObject
         assertFalse("topic" in emptyData)
+    }
+
+    @Test
+    fun compilesSelectedTopicAsInlineNodeAndUsesInternalTopicId() {
+        val html = compilePinMarkdownToZhihuHtml(
+            "正文 #编程 后文",
+            listOf(PinContentTopicMarker(PinContentTopicItem("1354", "编程"), 3, 6)),
+        )
+        assertEquals(
+            "<p>正文 <a class=\"hash_tag\" data-topic-name=\"#编程#\" data-topic-id=\"1354\">#编程#</a> 后文</p>",
+            html,
+        )
+    }
+
+    @Test
+    fun compilesTopicNamesWithMarkdownAndHtmlCharacters() {
+        val topic = PinContentTopicItem("9&10", "C++ [A&B]")
+        val markdown = "正文 ${topic.inlineMarker} 后文"
+
+        assertEquals(
+            "<p>正文 <a class=\"hash_tag\" data-topic-name=\"#C++ [A&amp;B]#\" data-topic-id=\"9&amp;10\">#C++ [A&amp;B]#</a> 后文</p>",
+            compilePinMarkdownToZhihuHtml(
+                markdown,
+                listOf(PinContentTopicMarker(topic, 3, 3 + topic.inlineMarker.length)),
+            ),
+        )
+    }
+
+    @Test
+    fun capturesInlineTopicsInFinalDraftRequest() = runTest {
+        var requestBody = ""
+        val client = HttpClient(
+            MockEngine { request ->
+                requestBody = (request.body as OutgoingContent.ByteArrayContent).bytes().decodeToString()
+                respond(
+                    "{}",
+                    HttpStatusCode.OK,
+                    headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+                )
+            },
+        ) {
+            installZhihuCommonClientConfig(mutableMapOf(), "test-agent")
+        }
+        val publisher = ZhihuApiPinPublisher(
+            object : ZhihuApiEnvironment {
+                override fun httpClient() = client
+
+                override fun authenticatedCookies() = mapOf("_xsrf" to "xsrf", "d_c0" to "device")
+
+                override suspend fun handleFetchFailure(tag: String?, error: Exception) = Unit
+            },
+        )
+        val topic = PinContentTopicItem("1354", "编程")
+        val html = compilePinMarkdownToZhihuHtml("正文 #编程 ", listOf(PinContentTopicMarker(topic, 3, 6)))
+
+        publisher.savePinDraft("", html, calculatePinHtmlTextLength(html), emptyList(), listOf(topic))
+
+        val data = ZhihuJson.json
+            .parseToJsonElement(requestBody)
+            .jsonObject
+            .getValue("data")
+            .jsonObject
+        val payloadTopic = data
+            .getValue("topic")
+            .jsonObject
+            .getValue("topics")
+            .jsonArray
+            .single()
+            .jsonObject
+        assertEquals("1354", payloadTopic.getValue("topic_id").jsonPrimitive.content)
+        assertEquals("#编程#", payloadTopic.getValue("topic_name").jsonPrimitive.content)
+        assertEquals(
+            "<p>正文 <a class=\"hash_tag\" data-topic-name=\"#编程#\" data-topic-id=\"1354\">#编程#</a></p>",
+            data
+                .getValue("hybrid")
+                .jsonObject
+                .getValue("html")
+                .jsonPrimitive.content,
+        )
     }
 
     @Test

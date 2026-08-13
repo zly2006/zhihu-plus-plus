@@ -422,3 +422,41 @@ fun compileMdToZhihuHtml(
         ).write(document)
     return html.trimEnd()
 }
+
+/** Replaces topic markers selected in the pin editor with Zhihu's inline topic nodes. */
+fun compilePinMarkdownToZhihuHtml(
+    markdown: String,
+    markers: List<PinContentTopicMarker>,
+): String {
+    val validMarkers = markers
+        .filter { marker ->
+            marker.start >= 0 &&
+                marker.endExclusive <= markdown.length &&
+                markdown.substring(marker.start, marker.endExclusive) == marker.topic.inlineMarker
+        }.sortedBy(PinContentTopicMarker::start)
+    if (validMarkers.isEmpty()) return compileMdToZhihuHtml(markdown)
+    val markedMarkdown = buildString {
+        var offset = 0
+        validMarkers.forEachIndexed { index, marker ->
+            append(markdown, offset, marker.start)
+            append("[zhihu-pin-topic-")
+                .append(index)
+                .append("](zhihu-pin-topic:")
+                .append(index)
+                .append(')')
+            offset = marker.endExclusive
+        }
+        append(markdown, offset, markdown.length)
+    }
+    var html = compileMdToZhihuHtml(markedMarkdown)
+    validMarkers.forEachIndexed { index, marker ->
+        val topic = marker.topic
+        val topicLabel = "#${topic.displayName}#"
+        html = html.replace(
+            "<a href=\"zhihu-pin-topic:$index\">zhihu-pin-topic-$index</a>",
+            "<a class=\"hash_tag\" data-topic-name=\"${escapeHtmlAttribute(topicLabel)}\" " +
+                "data-topic-id=\"${escapeHtmlAttribute(topic.topicId)}\">${escapeHtmlText(topicLabel)}</a>",
+        )
+    }
+    return html
+}

@@ -364,7 +364,7 @@ private fun currentEpochMillis(): Long = Clock.System.now().toEpochMilliseconds(
 private fun <T> decodeZhihuLoginJsonTyped(serializer: KSerializer<T>, json: JsonElement): T {
     val normalized = ZhihuJson.snakeCaseToCamelCase(json)
     try {
-        return ZhihuJson.json.decodeFromJsonElement(serializer, normalized)
+        return ZhihuJson.decodeJson(serializer, json)
     } catch (e: SerializationException) {
         throw SerializationException("Failed to parse QR login JSON: ${e.message}\n\n$normalized", e)
     }
