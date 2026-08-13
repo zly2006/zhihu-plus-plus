@@ -140,6 +140,7 @@ Workers create draft PRs themselves.
 - Sync from latest `origin/master` before branch creation.
 - PR title/body must be Chinese.
 - Title prefix must be `feat:`, `fix:`, or `refactor:`.
+- PR 标题的信息密度必须与改动广度匹配。当一个 PR 横跨多个可独立识别的用户能力时，标题应列出主要能力及其关系，不能用“完善 X 功能”“支持 X”等泛词把宽改动压缩成单一概念。例如，一个 PR 同时增加原生浏览页、多入口跳转和创作时的数据绑定，标题应明确写出这三类主要能力，而不是只写“完善内容功能”。
 - After creating or editing a PR, read it back with `gh pr view` and explicitly verify the title prefix instead of trusting the worker's summary.
 - Include `Resolves #<issue>` when the PR closes the issue.
 - UI PR descriptions must include final effect screenshots from a real app run, AVD, or reproducible UI render.
