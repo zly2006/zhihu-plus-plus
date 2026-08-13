@@ -922,7 +922,7 @@ fun ArticleScreen(
                         }
 
                         if (viewModel.content.isNotEmpty() || viewModel.attachment != null) {
-                            if (viewModel.topics.isNotEmpty()) {
+                            if (article.type == ArticleType.Article && viewModel.topics.isNotEmpty()) {
                                 FlowRow(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp),

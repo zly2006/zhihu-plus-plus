@@ -20,8 +20,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -69,6 +67,8 @@ import com.github.zly2006.zhihu.navigation.WritePin
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.components.FeedCard
+import com.github.zly2006.zhihu.ui.components.PaginatedList
+import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.ui.components.handleShareAction
@@ -86,6 +86,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -147,15 +148,21 @@ data class TopicPinFeed(
 
 @Serializable
 data class TopicPinTarget(
-    val id: Long,
+    val id: JsonPrimitive,
     val type: String,
-    val url: String,
-    val author: DataHolder.Author,
+    val url: String = "",
+    val author: TopicPinAuthor,
     val title: String = "",
     val excerpt: String = "",
     val content: String = "",
     val plainContent: String = "",
     val counter: TopicPinCounter = TopicPinCounter(),
+)
+
+@Serializable
+data class TopicPinAuthor(
+    val avatarUrl: String = "",
+    val name: String = "",
 )
 
 @Serializable
@@ -190,7 +197,8 @@ class TopicViewModel(
     var detailErrorMessage by mutableStateOf<String?>(null)
         private set
     private var nextUrl: String? = null
-    private var isEnd = false
+    var isEnd by mutableStateOf(false)
+        private set
     private var requestGeneration = 0L
     private var loadJob: Job? = null
     var isFollowingChanging by mutableStateOf(false)
@@ -305,8 +313,13 @@ class TopicViewModel(
     }
 
     fun loadMore(environment: PaginationEnvironment) {
-        if (isEnd || loadJob?.isActive == true) return
+        if (isEnd || errorMessage != null || loadJob?.isActive == true) return
         loadJob = viewModelScope.launch { loadMoreNow(environment) }
+    }
+
+    fun retry(environment: PaginationEnvironment) {
+        errorMessage = null
+        loadMore(environment)
     }
 
     fun initializeSection(section: String) {
@@ -359,13 +372,14 @@ fun topicFeedUrl(
 fun decodeTopicPinFeeds(json: kotlinx.serialization.json.JsonObject): List<FeedDisplayItem> =
     (json["data"] as? JsonArray).orEmpty().mapNotNull { element ->
         runCatching { ZhihuJson.decodeJson<TopicPinFeed>(element) }.getOrNull()?.target?.let { target ->
+            val pinId = target.id.content.toLongOrNull() ?: return@let null
             FeedDisplayItem(
                 title = target.title.ifBlank { "想法" },
                 summary = target.plainContent.ifBlank { target.excerpt.ifBlank { target.content } }.takeIf(String::isNotBlank),
                 details = "想法 · ${target.counter.applaud} 赞 · ${target.counter.comment} 评论",
                 feed = null,
                 navDestinationJson = com.github.zly2006.zhihu.navigation
-                    .Pin(target.id)
+                    .Pin(pinId)
                     .toFeedDisplayItemNavDestinationJson(),
                 avatarSrc = target.author.avatarUrl,
                 authorName = target.author.name,
@@ -432,6 +446,7 @@ fun TopicScreen(topic: Topic) {
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var showShareDialog by androidx.compose.runtime.remember { mutableStateOf(false) }
     var isIntroductionExpanded by rememberSaveable(topic.id) { mutableStateOf(false) }
+    var isSupportingContentExpanded by rememberSaveable(topic.id) { mutableStateOf(false) }
     val viewModel: TopicViewModel = viewModel(key = "topic_${topic.id}") { TopicViewModel(topic.id) }
 
     LaunchedEffect(topic.id) {
@@ -463,103 +478,108 @@ fun TopicScreen(topic: Topic) {
             )
         },
     ) { padding ->
-        LazyColumn(
+        PaginatedList(
+            items = viewModel.items,
+            onLoadMore = { viewModel.loadMore(environment) },
+            isEnd = { viewModel.isEnd },
+            key = FeedDisplayItem::stableKey,
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(bottom = 24.dp),
-        ) {
-            item {
-                TopicHeader(
-                    detail = viewModel.detail,
-                    detailErrorMessage = viewModel.detailErrorMessage,
-                    destination = topic,
-                    isIntroductionExpanded = isIntroductionExpanded,
-                    onIntroductionExpandedChange = { isIntroductionExpanded = it },
-                    isFollowingChanging = viewModel.isFollowingChanging,
-                    onFollowingChange = { following ->
-                        scope.launch {
-                            viewModel.setFollowing(environment, following).onFailure {
-                                messages.showShortMessage("${if (following) "关注" else "取消关注"}失败：${it.message}")
+            footer = { listState ->
+                if (viewModel.errorMessage == null) {
+                    ProgressIndicatorFooter(listState)
+                } else {
+                    TextButton(
+                        onClick = { viewModel.retry(environment) },
+                        modifier = Modifier.fillMaxWidth().padding(8.dp),
+                    ) { Text("加载失败，点击重试") }
+                }
+            },
+            topContent = {
+                item {
+                    TopicHeader(
+                        detail = viewModel.detail,
+                        detailErrorMessage = viewModel.detailErrorMessage,
+                        destination = topic,
+                        isIntroductionExpanded = isIntroductionExpanded,
+                        onIntroductionExpandedChange = { isIntroductionExpanded = it },
+                        isFollowingChanging = viewModel.isFollowingChanging,
+                        onFollowingChange = { following ->
+                            scope.launch {
+                                viewModel.setFollowing(environment, following).onFailure {
+                                    messages.showShortMessage("${if (following) "关注" else "取消关注"}失败：${it.message}")
+                                }
+                            }
+                        },
+                    )
+                    Button(
+                        onClick = {
+                            navigator.onNavigate(
+                                WritePin(
+                                    topicId = topic.id,
+                                    topicName = viewModel.detail?.name?.ifBlank { topic.name } ?: topic.name,
+                                ),
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).testTag(TOPIC_WRITE_PIN_BUTTON_TAG),
+                    ) { Text("发想法") }
+                    PrimaryTabRow(selectedTabIndex = viewModel.selectedTab.ordinal) {
+                        TopicFeedTab.entries.forEach { tab ->
+                            Tab(
+                                selected = viewModel.selectedTab == tab,
+                                onClick = { viewModel.selectTab(environment, tab) },
+                                text = { Text(tab.title) },
+                                modifier = Modifier.testTag("topic_tab_${tab.name.lowercase()}"),
+                            )
+                        }
+                    }
+                    if (viewModel.selectedTab == TopicFeedTab.Discussion) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            TopicDiscussionSort.entries.forEach { sort ->
+                                androidx.compose.material3.FilterChip(
+                                    selected = viewModel.discussionSort == sort,
+                                    onClick = { viewModel.selectDiscussionSort(environment, sort) },
+                                    label = { Text(sort.title) },
+                                )
                             }
                         }
-                    },
-                )
-                Button(
-                    onClick = {
-                        navigator.onNavigate(
-                            WritePin(
-                                topicId = topic.id,
-                                topicName = viewModel.detail?.name?.ifBlank { topic.name } ?: topic.name,
-                            ),
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).testTag(TOPIC_WRITE_PIN_BUTTON_TAG),
-                ) { Text("发想法") }
-                PrimaryTabRow(selectedTabIndex = viewModel.selectedTab.ordinal) {
-                    TopicFeedTab.entries.forEach { tab ->
-                        Tab(
-                            selected = viewModel.selectedTab == tab,
-                            onClick = { viewModel.selectTab(environment, tab) },
-                            text = { Text(tab.title) },
-                            modifier = Modifier.testTag("topic_tab_${tab.name.lowercase()}"),
-                        )
                     }
-                }
-                if (viewModel.selectedTab == TopicFeedTab.Discussion) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        TopicDiscussionSort.entries.forEach { sort ->
-                            androidx.compose.material3.FilterChip(
-                                selected = viewModel.discussionSort == sort,
-                                onClick = { viewModel.selectDiscussionSort(environment, sort) },
-                                label = { Text(sort.title) },
+                    if (viewModel.selectedTab == TopicFeedTab.Ideas) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            TopicIdeasSort.entries.forEach { sort ->
+                                androidx.compose.material3.FilterChip(
+                                    selected = viewModel.ideasSort == sort,
+                                    onClick = { viewModel.selectIdeasSort(environment, sort) },
+                                    label = { Text(sort.title) },
+                                )
+                            }
+                        }
+                    }
+                    if (viewModel.parentTopics.isNotEmpty() || viewModel.childTopics.isNotEmpty() || viewModel.bestAnswerers.isNotEmpty()) {
+                        TextButton(
+                            onClick = { isSupportingContentExpanded = !isSupportingContentExpanded },
+                            modifier = Modifier.fillMaxWidth().testTag(TOPIC_RELATED_TAG),
+                        ) {
+                            Text(if (isSupportingContentExpanded) "收起相关话题与答主" else "展开相关话题与答主")
+                        }
+                        if (isSupportingContentExpanded) {
+                            TopicSupportingContent(
+                                parentTopics = viewModel.parentTopics,
+                                childTopics = viewModel.childTopics,
+                                bestAnswerers = viewModel.bestAnswerers,
                             )
                         }
                     }
                 }
-                if (viewModel.selectedTab == TopicFeedTab.Ideas) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        TopicIdeasSort.entries.forEach { sort ->
-                            androidx.compose.material3.FilterChip(
-                                selected = viewModel.ideasSort == sort,
-                                onClick = { viewModel.selectIdeasSort(environment, sort) },
-                                label = { Text(sort.title) },
-                            )
-                        }
-                    }
-                }
-            }
-            items(viewModel.items, key = FeedDisplayItem::stableKey) { item ->
-                FeedCard(item = item, modifier = Modifier.testTag("topic_feed_${item.stableKey}"))
-            }
-            item {
-                TopicSupportingContent(
-                    parentTopics = viewModel.parentTopics,
-                    childTopics = viewModel.childTopics,
-                    bestAnswerers = viewModel.bestAnswerers,
-                )
-            }
-            item {
-                when {
-                    viewModel.isLoading -> Row(Modifier.fillMaxWidth().padding(24.dp), horizontalArrangement = Arrangement.Center) {
-                        CircularProgressIndicator()
-                    }
-                    viewModel.errorMessage != null -> Text(
-                        "加载失败：${viewModel.errorMessage}",
-                        modifier = Modifier.padding(24.dp),
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                    viewModel.items.isEmpty() -> Text("暂无内容", modifier = Modifier.padding(24.dp))
-                    else -> TextButton(
-                        onClick = { viewModel.loadMore(environment) },
-                        modifier = Modifier.fillMaxWidth().padding(8.dp),
-                    ) { Text("加载更多") }
-                }
-            }
+            },
+        ) { item ->
+            FeedCard(item = item, modifier = Modifier.testTag("topic_feed_${item.stableKey}"))
         }
     }
     val loadedTopic = topic.copy(name = viewModel.detail?.name ?: topic.name)
@@ -635,7 +655,7 @@ private fun TopicSupportingContent(
 ) {
     val navigator = LocalNavigator.current
     Column(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp).testTag(TOPIC_RELATED_TAG),
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         if (parentTopics.isNotEmpty()) {

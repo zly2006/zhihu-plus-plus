@@ -277,7 +277,7 @@ class ArticleViewModel(
                             createdAt = answer.createdTime
                             ipInfo = answer.ipInfo
                             endorsements = answer.endorsementItems
-                            topics = answer.question.topics
+                            topics = emptyList()
 
                             environment.postHistoryDestination(
                                 Article(

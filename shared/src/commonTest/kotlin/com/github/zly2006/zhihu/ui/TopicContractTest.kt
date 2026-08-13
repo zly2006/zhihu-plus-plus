@@ -92,7 +92,7 @@ class TopicContractTest {
     fun decodesObservedTopicPinShapeWithNavigation() {
         val json = ZhihuJson.json
             .parseToJsonElement(
-                """{"data":[{"type":"pin","target":{"id":123,"type":"pin","url":"https://www.zhihu.com/pin/123","author":{"avatar_url":"https://pic.example/a.jpg","gender":0,"headline":"简介","id":"user","is_advertiser":false,"is_org":false,"name":"作者","type":"people","url":"https://www.zhihu.com/people/u","url_token":"u","user_type":"people"},"title":"想法标题","excerpt":"摘要","content":"正文","plain_content":"纯文本正文","counter":{"applaud":8,"comment":2,"favorite":1,"forward":0,"pv":20}}}],"paging":{"is_end":false,"next":"https://api.zhihu.com/v5.1/topics/1/feeds/pin-hot?offset=10&limit=10"}}""",
+                """{"data":[{"type":"pin","target":{"id":"123","type":"pin","url":"https://www.zhihu.com/pin/123","author":{"avatar_url":"https://pic.example/a.jpg","name":"作者"},"title":"想法标题","excerpt":"摘要","content":"正文","plain_content":"纯文本正文","counter":{"applaud":8,"comment":2,"favorite":1,"forward":0,"pv":20}}}],"paging":{"is_end":false,"next":"https://api.zhihu.com/v5.1/topics/1/feeds/pin-hot?offset=10&limit=10"}}""",
             ).jsonObject
         val item = decodeTopicPinFeeds(json).single()
         assertEquals("想法标题", item.title)

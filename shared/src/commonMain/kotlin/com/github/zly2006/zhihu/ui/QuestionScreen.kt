@@ -286,22 +286,13 @@ fun QuestionScreen(
                                 followerCount = followerCount,
                                 onShowComments = { showComments = true },
                             )
-                            if (topics.isNotEmpty()) {
-                                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    topics.forEach { topic ->
-                                        FilterChip(
-                                            selected = false,
-                                            onClick = { navigator.onNavigate(Topic(topic.id, topic.name)) },
-                                            label = { Text("# ${topic.name}") },
-                                        )
-                                    }
-                                }
-                            }
                             if (isQuestionLoaded) {
                                 QuestionAnimatedBodyHeader(
                                     questionId = question.questionId,
                                     questionContent = questionContent,
                                     questionContentPlainText = questionContentPlainText,
+                                    topics = topics,
+                                    onTopicClick = { topic -> navigator.onNavigate(Topic(topic.id, topic.name)) },
                                     isExpanded = isQuestionDetailExpanded,
                                     onToggleExpanded = { isQuestionDetailExpanded = !isQuestionDetailExpanded },
                                     isFollowing = isFollowing,
@@ -458,6 +449,8 @@ private fun QuestionAnimatedBodyHeader(
     questionId: Long,
     questionContent: String,
     questionContentPlainText: String,
+    topics: List<DataHolder.Topic>,
+    onTopicClick: (DataHolder.Topic) -> Unit,
     isExpanded: Boolean,
     onToggleExpanded: () -> Unit,
     isFollowing: Boolean,
@@ -520,11 +513,13 @@ private fun QuestionAnimatedBodyHeader(
             )
         val detailPlaceable =
             subcompose("detail") {
-                if (questionContent.isEmpty()) return@subcompose
+                if (questionContent.isEmpty() && topics.isEmpty()) return@subcompose
                 if (allowDetailCollapse) {
                     QuestionDetailAnimatedViewport(
                         questionId = questionId,
                         questionContent = questionContent,
+                        topics = topics,
+                        onTopicClick = onTopicClick,
                         viewportHeightPx = viewportHeightPx,
                         isExpanded = isExpanded,
                         overlayAlpha = 1f - expandProgress,
@@ -535,6 +530,8 @@ private fun QuestionAnimatedBodyHeader(
                     QuestionDetailStaticContent(
                         questionId = questionId,
                         questionContent = questionContent,
+                        topics = topics,
+                        onTopicClick = onTopicClick,
                         onMeasuredHeight = { fullViewportHeightPx = it },
                     )
                 }
@@ -596,6 +593,8 @@ private fun QuestionAnimatedBodyHeader(
 private fun QuestionDetailStaticContent(
     questionId: Long,
     questionContent: String,
+    topics: List<DataHolder.Topic>,
+    onTopicClick: (DataHolder.Topic) -> Unit,
     onMeasuredHeight: (Int) -> Unit,
 ) {
     SubcomposeLayout(
@@ -606,7 +605,12 @@ private fun QuestionDetailStaticContent(
     ) { constraints ->
         val placeable =
             subcompose("static_detail") {
-                QuestionDetailContent(questionId = questionId, html = questionContent)
+                QuestionDetailWithTopics(
+                    questionId = questionId,
+                    questionContent = questionContent,
+                    topics = topics,
+                    onTopicClick = onTopicClick,
+                )
             }.single().measure(
                 constraints.copy(
                     minWidth = 0,
@@ -627,6 +631,8 @@ private fun QuestionDetailStaticContent(
 private fun QuestionDetailAnimatedViewport(
     questionId: Long,
     questionContent: String,
+    topics: List<DataHolder.Topic>,
+    onTopicClick: (DataHolder.Topic) -> Unit,
     viewportHeightPx: Int,
     isExpanded: Boolean,
     overlayAlpha: Float,
@@ -656,7 +662,12 @@ private fun QuestionDetailAnimatedViewport(
                             .fillMaxWidth()
                             .padding(bottom = QUESTION_DETAIL_TOGGLE_ZONE_HEIGHT),
                 ) {
-                    QuestionDetailContent(questionId = questionId, html = questionContent)
+                    QuestionDetailWithTopics(
+                        questionId = questionId,
+                        questionContent = questionContent,
+                        topics = topics,
+                        onTopicClick = onTopicClick,
+                    )
                 }
             }.single().measure(looseConstraints)
         if (contentPlaceable.height > 0) {
@@ -692,6 +703,31 @@ private fun QuestionDetailAnimatedViewport(
             val buttonY = (layoutHeight - buttonZoneHeightPx + (buttonZoneHeightPx - buttonPlaceable.height) / 2).coerceAtLeast(0)
             val buttonX = (constraints.maxWidth - buttonPlaceable.width).coerceAtLeast(0)
             buttonPlaceable.place(buttonX, buttonY)
+        }
+    }
+}
+
+@Composable
+private fun QuestionDetailWithTopics(
+    questionId: Long,
+    questionContent: String,
+    topics: List<DataHolder.Topic>,
+    onTopicClick: (DataHolder.Topic) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (questionContent.isNotEmpty()) {
+            QuestionDetailContent(questionId = questionId, html = questionContent)
+        }
+        if (topics.isNotEmpty()) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                topics.forEach { topic ->
+                    FilterChip(
+                        selected = false,
+                        onClick = { onTopicClick(topic) },
+                        label = { Text("# ${topic.name}") },
+                    )
+                }
+            }
         }
     }
 }
