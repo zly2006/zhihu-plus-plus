@@ -40,5 +40,8 @@ kotlin {
             implementation("org.jetbrains.compose.runtime:runtime:1.11.1")
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
         }
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+        }
     }
 }

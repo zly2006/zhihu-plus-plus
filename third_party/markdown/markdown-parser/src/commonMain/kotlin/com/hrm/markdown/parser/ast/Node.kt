@@ -23,17 +23,21 @@ sealed class Node {
      */
     var contentHash: Long = 0L
 
+    internal var siblingKey: Int = -1
+
     /**
-     * 用于 Compose `key()` 的稳定身份标识。
-     * 仅基于起始行号，确保：
-     * - 同一位置的块始终被 Compose 视为同一组件实例 → 复用组件、只更新内容
-     * - 不同位置的块 key 不同 → 正确分辨不同组件
+     * 用于 Compose `key()` 的稳定身份标识，在同一文档树内唯一。
+     * 容器按结构槽位分配路径；替换节点继承原路径，因此内容或节点类型更新不会无故销毁
+     * 同一位置的组件，而同一源文本行拆出的多个同类型节点也不会发生冲突。
      *
      * 注意：不包含 contentHash，因为流式输入时内容每个 token 都在变，
      * 如果 key 跟着变，Compose 会销毁旧组件再创建新组件，导致"闪缩"和状态丢失。
      */
-    open val stableKey: Int
-        get() = lineRange.startLine
+    val stableKey: String
+        get() {
+            val parentKey = parent?.takeUnless { it is Document }?.stableKey
+            return if (parentKey.isNullOrEmpty()) "$siblingKey" else "$parentKey/$siblingKey"
+        }
 
     /**
      * 接受访问者进行树遍历。
@@ -52,6 +56,7 @@ sealed class Node {
  */
 sealed class ContainerNode : Node() {
     private val _children: MutableList<Node> = mutableListOf()
+    private var nextChildKey: Int = 0
 
     /**
      * 延迟行内解析的原始内容。设置后，首次访问 [children] 时自动触发行内解析。
@@ -118,13 +123,18 @@ sealed class ContainerNode : Node() {
     }
 
     fun appendChild(child: Node) {
-        child.parent = this
+        attachChild(child)
         _children.add(child)
     }
 
     fun insertChild(index: Int, child: Node) {
-        child.parent = this
+        attachChild(child)
         _children.add(index, child)
+    }
+
+    private fun attachChild(child: Node, key: Int = nextChildKey++) {
+        child.parent = this
+        child.siblingKey = key
     }
 
     fun removeChild(child: Node): Boolean {
@@ -142,12 +152,13 @@ sealed class ContainerNode : Node() {
         val index = _children.indexOf(old)
         if (index >= 0) {
             old.parent = null
-            new.parent = this
+            attachChild(new, old.siblingKey)
             _children[index] = new
         }
     }
 
     fun replaceChildren(startIndex: Int, endIndex: Int, newChildren: List<Node>) {
+        val replacedKeys = (startIndex until endIndex).map { _children[it].siblingKey }
         for (i in startIndex until endIndex) {
             _children[i].parent = null
         }
@@ -156,7 +167,8 @@ sealed class ContainerNode : Node() {
             _children.removeAt(startIndex)
         }
         newChildren.forEachIndexed { i, child ->
-            child.parent = this
+            val replacedKey = replacedKeys.getOrNull(i)
+            if (replacedKey == null) attachChild(child) else attachChild(child, replacedKey)
             _children.add(startIndex + i, child)
         }
     }
@@ -164,6 +176,7 @@ sealed class ContainerNode : Node() {
     fun clearChildren() {
         _children.forEach { it.parent = null }
         _children.clear()
+        nextChildKey = 0
         // 同时清除 lazy 状态，避免 clear 后重新触发旧的 lazy 解析
         _lazyInlineContent = null
         _lazyInlineParser = null

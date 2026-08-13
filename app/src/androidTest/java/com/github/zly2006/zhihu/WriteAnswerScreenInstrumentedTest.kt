@@ -17,10 +17,14 @@
 
 package com.github.zly2006.zhihu
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
@@ -77,5 +81,35 @@ class WriteAnswerScreenInstrumentedTest {
         }
         composeRule.onNodeWithTag(WRITE_ANSWER_FAB_PREVIEW_TAG).assertIsDisplayed()
         composeRule.onNodeWithTag(WRITE_ANSWER_FAB_SAVE_TAG).assertIsDisplayed()
+    }
+
+    @Test
+    fun previewRendersMarkdownWithReferenceDefinitions() {
+        composeRule.setScreenContent {
+            WriteAnswerScreen(
+                WriteAnswer(
+                    questionId = 648,
+                    questionTitle = "回答预览重复状态键测试",
+                ),
+            )
+        }
+
+        composeRule.onNodeWithTag(WRITE_ANSWER_CONTENT_TAG).performTextInput(
+            buildString {
+                appendLine("[回答预览正文][docs]")
+                appendLine()
+                repeat(12) { index ->
+                    appendLine("[引用 $index][ref-$index]")
+                    appendLine("[ref-$index]: https://example.com/preview/$index")
+                    appendLine("${'$'}${'$'}x_$index${'$'}${'$'} 同行尾随正文 $index")
+                    appendLine()
+                }
+                appendLine("[docs]: https://example.com/preview")
+            },
+        )
+        composeRule.onNodeWithTag(WRITE_ANSWER_FAB_PREVIEW_TAG).performClick()
+
+        composeRule.onNodeWithText("Markdown").assertIsDisplayed()
+        composeRule.onAllNodesWithText("回答预览正文", substring = true).assertCountEquals(2)
     }
 }
