@@ -1306,13 +1306,16 @@ private fun FollowedQuestionListItem(question: FollowedQuestion) {
 
 @Composable
 private fun FollowedTopicListItem(topic: FollowedTopic) {
-    val openZhihuWebUrl = rememberZhihuWebUrlOpener()
+    val navigator = LocalNavigator.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .testTag("people_screen_followed_topic_item_${topic.displayId}")
             .clickable {
-                openZhihuWebUrl("https://www.zhihu.com/topic/${topic.displayId}")
+                navigator.onNavigate(
+                    com.github.zly2006.zhihu.navigation
+                        .Topic(topic.displayId, topic.displayName),
+                )
             }.padding(vertical = 8.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

@@ -103,6 +103,7 @@ import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.decodeQuestionContentDetail
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.navigation.Topic
 import com.github.zly2006.zhihu.navigation.WriteAnswer
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
@@ -194,6 +195,7 @@ fun QuestionScreen(
     var isQuestionLoaded by remember(question.questionId) { mutableStateOf(false) }
     var showComments by rememberSaveable(question.questionId) { mutableStateOf(false) }
     var isFollowing by remember(question.questionId) { mutableStateOf(false) }
+    var topics by remember(question.questionId) { mutableStateOf<List<DataHolder.Topic>>(emptyList()) }
     var showShareDialog by remember { mutableStateOf(false) }
     val userMessages = rememberUserMessageSink()
     var isQuestionDetailExpanded by rememberSaveable(question.questionId) { mutableStateOf(false) }
@@ -223,6 +225,7 @@ fun QuestionScreen(
                 commentCount = questionData.commentCount
                 followerCount = questionData.followerCount
                 isFollowing = questionData.relationship.isFollowing
+                topics = questionData.topics
                 isQuestionLoaded = true
             } else {
                 userMessages.showShortMessage("获取问题详情失败")
@@ -283,6 +286,17 @@ fun QuestionScreen(
                                 followerCount = followerCount,
                                 onShowComments = { showComments = true },
                             )
+                            if (topics.isNotEmpty()) {
+                                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    topics.forEach { topic ->
+                                        FilterChip(
+                                            selected = false,
+                                            onClick = { navigator.onNavigate(Topic(topic.id, topic.name)) },
+                                            label = { Text("# ${topic.name}") },
+                                        )
+                                    }
+                                }
+                            }
                             if (isQuestionLoaded) {
                                 QuestionAnimatedBodyHeader(
                                     questionId = question.questionId,

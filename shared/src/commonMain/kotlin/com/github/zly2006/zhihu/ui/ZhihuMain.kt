@@ -117,6 +117,7 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.navigation.SentenceSimilarityTest
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
+import com.github.zly2006.zhihu.navigation.Topic
 import com.github.zly2006.zhihu.navigation.WriteAnswer
 import com.github.zly2006.zhihu.navigation.WritePin
 import com.github.zly2006.zhihu.platform.PlatformBackHandler
@@ -536,6 +537,9 @@ fun ZhihuMain(
                     composable<Question> { navEntry ->
                         val question: Question = navEntry.toRoute()
                         QuestionScreen(question)
+                    }
+                    composable<Topic> { navEntry ->
+                        TopicScreen(navEntry.toRoute())
                     }
                     composable<WriteAnswer> { navEntry ->
                         val args: WriteAnswer = navEntry.toRoute()

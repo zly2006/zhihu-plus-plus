@@ -52,6 +52,7 @@ interface ZhihuPinPublisher {
         html: String,
         textLength: Int,
         images: List<UploadedZhihuImage>,
+        topics: List<PinContentTopicItem> = emptyList(),
     )
 
     /**
@@ -66,6 +67,7 @@ interface ZhihuPinPublisher {
         html: String,
         textLength: Int,
         images: List<UploadedZhihuImage>,
+        topics: List<PinContentTopicItem> = emptyList(),
     ): Long
 }
 
@@ -80,6 +82,7 @@ internal class ZhihuApiPinPublisher(
         html: String,
         textLength: Int,
         images: List<UploadedZhihuImage>,
+        topics: List<PinContentTopicItem>,
     ) {
         val xsrf = environment.authenticatedCookies()["_xsrf"]
             ?: throw IllegalStateException("缺少 _xsrf Cookie，无法保存想法草稿；请先确保已登录。")
@@ -96,6 +99,7 @@ internal class ZhihuApiPinPublisher(
                             html = html,
                             textLength = textLength,
                             images = images,
+                            topics = topics,
                         ),
                     ),
                 )
@@ -107,6 +111,7 @@ internal class ZhihuApiPinPublisher(
         html: String,
         textLength: Int,
         images: List<UploadedZhihuImage>,
+        topics: List<PinContentTopicItem>,
     ): Long {
         val xsrf = environment.authenticatedCookies()["_xsrf"]
             ?: throw IllegalStateException("缺少 _xsrf Cookie，无法发布想法；请先确保已登录。")
@@ -123,6 +128,7 @@ internal class ZhihuApiPinPublisher(
                             html = html,
                             textLength = textLength,
                             images = images,
+                            topics = topics,
                         ),
                     ),
                 )
@@ -148,6 +154,7 @@ internal class ZhihuApiPinPublisher(
         html: String,
         textLength: Int,
         images: List<UploadedZhihuImage>,
+        topics: List<PinContentTopicItem>,
     ): PinContentPayload =
         PinContentPayload(
             publish = PublishTrace(traceId = newPublishTraceId()),
@@ -181,6 +188,9 @@ internal class ZhihuApiPinPublisher(
                         },
                     )
                 },
+            topic = topics
+                .takeIf { it.isNotEmpty() }
+                ?.let(::PinContentTopic),
         )
 }
 

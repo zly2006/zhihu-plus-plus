@@ -110,6 +110,38 @@ class ZhihuPinPublisherTest {
     }
 
     @Test
+    fun serializesSelectedTopicsAndOmitsEmptyTopicPayload() {
+        val selected = PublishPinRequest(
+            data = PinContentPayload(
+                publish = PublishTrace(traceId = "trace-id"),
+                topic = PinContentTopic(listOf(PinContentTopicItem("19550517", "互联网"))),
+            ),
+        )
+        val selectedData = ZhihuJson.json
+            .encodeToJsonElement(PublishPinRequest.serializer(), selected)
+            .jsonObject
+            .getValue("data")
+            .jsonObject
+        val topic = selectedData
+            .getValue("topic")
+            .jsonObject
+            .getValue("topics")
+            .jsonArray
+            .single()
+            .jsonObject
+        assertEquals("19550517", topic.getValue("topic_id").jsonPrimitive.content)
+        assertEquals("互联网", topic.getValue("topic_name").jsonPrimitive.content)
+
+        val empty = PublishPinRequest(data = PinContentPayload(publish = PublishTrace(traceId = "trace-id")))
+        val emptyData = ZhihuJson.json
+            .encodeToJsonElement(PublishPinRequest.serializer(), empty)
+            .jsonObject
+            .getValue("data")
+            .jsonObject
+        assertFalse("topic" in emptyData)
+    }
+
+    @Test
     fun calculatesPinTextLengthFromHtmlText() {
         assertEquals(
             7,

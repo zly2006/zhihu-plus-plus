@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -35,9 +36,12 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -60,6 +64,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.editor.PinContentTopicItem
 import com.github.zly2006.zhihu.editor.UnknownImageFormatException
 import com.github.zly2006.zhihu.editor.UploadedZhihuImage
 import com.github.zly2006.zhihu.editor.ZhihuImageUploadSource
@@ -87,8 +92,11 @@ const val WRITE_PIN_FAB_PREVIEW_TAG = "WritePinFabPreview"
 const val WRITE_PIN_FAB_IMAGE_TAG = "WritePinFabImage"
 const val WRITE_PIN_FAB_SAVE_TAG = "WritePinFabSave"
 const val WRITE_PIN_IMAGE_LIST_TAG = "WritePinImageList"
+const val WRITE_PIN_TOPIC_BUTTON_TAG = "WritePinTopicButton"
+const val WRITE_PIN_TOPIC_SEARCH_TAG = "WritePinTopicSearch"
 
 private const val PIN_IMAGE_LIMIT = 9
+private const val PIN_TOPIC_LIMIT = 5
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -105,6 +113,8 @@ fun WritePinScreen() {
     var content by remember { mutableStateOf(TextFieldValue("")) }
     var title by remember { mutableStateOf(TextFieldValue("")) }
     var images by remember { mutableStateOf<List<UploadedZhihuImage>>(emptyList()) }
+    var selectedTopics by remember { mutableStateOf<List<PinContentTopicItem>>(emptyList()) }
+    var showTopicPicker by remember { mutableStateOf(false) }
     var isSubmitting by remember { mutableStateOf(false) }
     var isUploadingImage by remember { mutableStateOf(false) }
     var errorDialogMessage by remember { mutableStateOf<String?>(null) }
@@ -163,6 +173,7 @@ fun WritePinScreen() {
                         html = html,
                         textLength = textLength,
                         images = imagesSnapshot,
+                        topics = selectedTopics,
                     )
                 } else {
                     publisher.savePinDraft(
@@ -170,6 +181,7 @@ fun WritePinScreen() {
                         html = html,
                         textLength = textLength,
                         images = imagesSnapshot,
+                        topics = selectedTopics,
                     )
                     null
                 }
@@ -359,6 +371,24 @@ fun WritePinScreen() {
                         }
                     }
                 }
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    TextButton(
+                        modifier = Modifier.testTag(WRITE_PIN_TOPIC_BUTTON_TAG),
+                        onClick = { showTopicPicker = true },
+                        enabled = !isSubmitting && selectedTopics.size < PIN_TOPIC_LIMIT,
+                    ) { Text("添加话题 ${selectedTopics.size}/$PIN_TOPIC_LIMIT") }
+                    selectedTopics.forEach { topic ->
+                        FilterChip(
+                            selected = true,
+                            onClick = { selectedTopics = selectedTopics - topic },
+                            label = { Text("# ${topic.topicName}") },
+                        )
+                    }
+                }
                 WriteContentMarkdownEditor(
                     value = content,
                     onValueChange = { newValue -> content = newValue },
@@ -373,6 +403,19 @@ fun WritePinScreen() {
                 )
             }
         }
+    }
+
+    if (showTopicPicker) {
+        TopicPickerSheet(
+            selectedIds = selectedTopics.mapTo(mutableSetOf(), PinContentTopicItem::topicId),
+            onDismiss = { showTopicPicker = false },
+            onSelect = { topic ->
+                if (selectedTopics.size < PIN_TOPIC_LIMIT && selectedTopics.none { it.topicId == topic.id }) {
+                    selectedTopics = selectedTopics + PinContentTopicItem(topic.id, topic.name)
+                }
+                showTopicPicker = false
+            },
+        )
     }
 
     if (showPreviewSheet) {
@@ -397,4 +440,46 @@ fun WritePinScreen() {
             userMessages.showShortMessage("已复制错误信息")
         },
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TopicPickerSheet(
+    selectedIds: Set<String>,
+    onDismiss: () -> Unit,
+    onSelect: (com.github.zly2006.zhihu.data.DataHolder.Topic) -> Unit,
+) {
+    val environment = rememberPaginationEnvironment(false)
+    val scope = rememberCoroutineScope()
+    var query by remember { mutableStateOf("") }
+    var results by remember { mutableStateOf<List<com.github.zly2006.zhihu.data.DataHolder.Topic>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(false) }
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+            Text("添加话题", style = MaterialTheme.typography.titleLarge)
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                modifier = Modifier.fillMaxWidth().testTag(WRITE_PIN_TOPIC_SEARCH_TAG),
+                label = { Text("搜索话题") },
+                trailingIcon = {
+                    TextButton(onClick = {
+                        scope.launch {
+                            isLoading = true
+                            results = searchTopics(environment, query)
+                            isLoading = false
+                        }
+                    }) { Text("搜索") }
+                },
+            )
+            if (isLoading) CircularProgressIndicator(Modifier.padding(16.dp))
+            results.filterNot { it.id in selectedIds }.forEach { topic ->
+                TextButton(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { onSelect(topic) },
+                ) { Text("# ${topic.name}", modifier = Modifier.fillMaxWidth()) }
+            }
+            Spacer(Modifier.height(24.dp))
+        }
+    }
 }

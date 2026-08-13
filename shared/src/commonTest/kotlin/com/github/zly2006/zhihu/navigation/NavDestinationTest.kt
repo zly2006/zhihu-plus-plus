@@ -23,6 +23,13 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 class NavDestinationTest {
+    @Test
+    fun resolvesTopicLinks() {
+        assertEquals(Topic("19550517"), resolveContent("https://www.zhihu.com/topic/19550517"))
+        assertEquals(Topic("19550517"), resolveContent("zhihu://topic/19550517"))
+        assertEquals(Topic("19550517"), resolveContent("zhihu://pin20/topic?topic_id=19550517"))
+    }
+
     private val json = Json {
         ignoreUnknownKeys = true
     }
