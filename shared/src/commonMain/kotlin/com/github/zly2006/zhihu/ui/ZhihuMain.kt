@@ -545,8 +545,8 @@ fun ZhihuMain(
                         val args: WriteAnswer = navEntry.toRoute()
                         WriteAnswerScreen(args)
                     }
-                    composable<WritePin> {
-                        WritePinScreen()
+                    composable<WritePin> { navEntry ->
+                        WritePinScreen(navEntry.toRoute())
                     }
                     composable<Article>(
                         typeMap = mapOf(typeOf<ArticleType>() to ArticleTypeNavType),

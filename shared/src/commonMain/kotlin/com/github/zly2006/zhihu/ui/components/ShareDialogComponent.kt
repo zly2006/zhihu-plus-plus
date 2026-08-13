@@ -59,6 +59,7 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.navigation.Topic
 import com.github.zly2006.zhihu.platform.SettingsStore
 import com.github.zly2006.zhihu.platform.UserMessageSink
 
@@ -286,6 +287,9 @@ fun getShareText(content: NavDestination, title: String = "", authorName: String
     is Pin -> {
         "https://www.zhihu.com/pin/${content.id}"
     }
+    is Topic -> {
+        "https://www.zhihu.com/topic/${content.id}\n【${content.name.ifBlank { title.ifBlank { "知乎话题" } }}】"
+    }
     else -> null
 }
 
@@ -295,5 +299,6 @@ fun getShareTitle(content: NavDestination): String = when (content) {
         ArticleType.Article -> " - ${content.authorName} 的文章"
     }
     is Question -> content.title
+    is Topic -> content.name.ifBlank { "知乎话题" }
     else -> "分享内容"
 }

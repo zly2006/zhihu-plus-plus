@@ -930,7 +930,7 @@ fun HomeScreen(
                                 },
                                 onClick = {
                                     showCreateMenu = false
-                                    navigator.onNavigate(WritePin)
+                                    navigator.onNavigate(WritePin())
                                 },
                             )
                         }

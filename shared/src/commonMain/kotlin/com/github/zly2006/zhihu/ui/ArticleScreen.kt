@@ -109,6 +109,7 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.navigation.Topic
 import com.github.zly2006.zhihu.platform.PlatformBackHandler
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
@@ -921,6 +922,21 @@ fun ArticleScreen(
                         }
 
                         if (viewModel.content.isNotEmpty() || viewModel.attachment != null) {
+                            if (viewModel.topics.isNotEmpty()) {
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    viewModel.topics.forEach { topic ->
+                                        androidx.compose.material3.FilterChip(
+                                            selected = false,
+                                            onClick = { navigator.onNavigate(Topic(topic.id, topic.name)) },
+                                            label = { Text("# ${topic.name}") },
+                                        )
+                                    }
+                                }
+                                Spacer(Modifier.height(12.dp))
+                            }
                             val hasPinnedDate = articleSettings.pinAnswerDate
                             val hasSocialCredit = viewModel.votersTotal > 0 || viewModel.aigcSupportVoterCount > 0
                             val endorsements = viewModel.endorsements

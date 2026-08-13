@@ -21,6 +21,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -76,6 +77,7 @@ import com.github.zly2006.zhihu.editor.uploadZhihuImage
 import com.github.zly2006.zhihu.markdown.rememberMarkdownImageModel
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Pin
+import com.github.zly2006.zhihu.navigation.WritePin
 import com.github.zly2006.zhihu.platform.rememberPlainTextClipboard
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
@@ -83,6 +85,7 @@ import com.github.zly2006.zhihu.ui.components.WriteContentFabColumn
 import com.github.zly2006.zhihu.ui.components.WriteContentMarkdownEditor
 import com.github.zly2006.zhihu.ui.components.WriteContentPreviewSheet
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.yield
 
@@ -100,7 +103,7 @@ private const val PIN_TOPIC_LIMIT = 5
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WritePinScreen() {
+fun WritePinScreen(destination: WritePin = WritePin()) {
     val navigator = LocalNavigator.current
     val userMessages = rememberUserMessageSink()
     val publisher = rememberZhihuPinPublisher()
@@ -113,7 +116,15 @@ fun WritePinScreen() {
     var content by remember { mutableStateOf(TextFieldValue("")) }
     var title by remember { mutableStateOf(TextFieldValue("")) }
     var images by remember { mutableStateOf<List<UploadedZhihuImage>>(emptyList()) }
-    var selectedTopics by remember { mutableStateOf<List<PinContentTopicItem>>(emptyList()) }
+    var selectedTopics by remember(destination.topicId, destination.topicName) {
+        mutableStateOf(
+            destination.topicId
+                .takeIf(String::isNotBlank)
+                ?.let {
+                    listOf(PinContentTopicItem(it, destination.topicName))
+                }.orEmpty(),
+        )
+    }
     var showTopicPicker by remember { mutableStateOf(false) }
     var isSubmitting by remember { mutableStateOf(false) }
     var isUploadingImage by remember { mutableStateOf(false) }
@@ -371,10 +382,10 @@ fun WritePinScreen() {
                         }
                     }
                 }
-                Row(
+                FlowRow(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     TextButton(
                         modifier = Modifier.testTag(WRITE_PIN_TOPIC_BUTTON_TAG),
@@ -454,6 +465,8 @@ private fun TopicPickerSheet(
     var query by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<com.github.zly2006.zhihu.data.DataHolder.Topic>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var searchJob by remember { mutableStateOf<Job?>(null) }
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
             Text("添加话题", style = MaterialTheme.typography.titleLarge)
@@ -463,16 +476,24 @@ private fun TopicPickerSheet(
                 modifier = Modifier.fillMaxWidth().testTag(WRITE_PIN_TOPIC_SEARCH_TAG),
                 label = { Text("搜索话题") },
                 trailingIcon = {
-                    TextButton(onClick = {
-                        scope.launch {
-                            isLoading = true
-                            results = searchTopics(environment, query)
-                            isLoading = false
-                        }
-                    }) { Text("搜索") }
+                    TextButton(
+                        enabled = !isLoading && query.isNotBlank(),
+                        onClick = {
+                            searchJob?.cancel()
+                            searchJob = scope.launch {
+                                isLoading = true
+                                errorMessage = null
+                                runCatching { searchTopics(environment, query) }
+                                    .onSuccess { results = it }
+                                    .onFailure { errorMessage = it.message ?: "搜索失败" }
+                                isLoading = false
+                            }
+                        },
+                    ) { Text("搜索") }
                 },
             )
             if (isLoading) CircularProgressIndicator(Modifier.padding(16.dp))
+            errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             results.filterNot { it.id in selectedIds }.forEach { topic ->
                 TextButton(
                     modifier = Modifier.fillMaxWidth(),

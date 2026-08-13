@@ -323,6 +323,7 @@ val Feed.target: Feed.Target?
         is MomentsFeed -> target
         is FeedItemIndexGroup -> target
         is HotListFeed -> target
+        is TopicFeed -> target
         else -> null
     }
 
@@ -335,6 +336,7 @@ val Feed.actionText: String?
         is MomentsFeed -> null
         is FeedItemIndexGroup -> actionText
         is HotListFeed -> detailText
+        is TopicFeed -> targetDescription
     }
 
 val Feed.sourceLabel: String?
@@ -342,6 +344,7 @@ val Feed.sourceLabel: String?
         is CommonFeed -> actionText
         is FeedItemIndexGroup -> actionText
         is MomentsFeed -> momentDesc
+        is TopicFeed -> targetDescription
         else -> null
     }?.trim()?.takeIf { it.isNotEmpty() }
 
@@ -413,6 +416,14 @@ data class CommonFeed(
     val promotionExtra: String? = null,
     val cursor: String = "",
     val actionText: String? = null,
+) : Feed
+
+@Serializable
+@SerialName("topic_feed")
+data class TopicFeed(
+    val id: String = "",
+    val target: Feed.Target,
+    val targetDescription: String? = null,
 ) : Feed
 
 @Serializable

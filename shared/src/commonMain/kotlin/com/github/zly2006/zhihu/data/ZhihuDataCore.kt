@@ -57,7 +57,7 @@ fun Feed.toDisplayItem(
     enableQualityFilter: Boolean = true,
     reverseBlock: Boolean = false,
 ): FeedDisplayItem = when (this) {
-    is CommonFeed, is FeedItemIndexGroup, is MomentsFeed, is HotListFeed -> toTargetDisplayItem(
+    is CommonFeed, is FeedItemIndexGroup, is MomentsFeed, is HotListFeed, is TopicFeed -> toTargetDisplayItem(
         enableQualityFilter = enableQualityFilter,
         reverseBlock = reverseBlock,
     )

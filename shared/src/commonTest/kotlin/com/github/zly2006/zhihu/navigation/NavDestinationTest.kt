@@ -28,6 +28,15 @@ class NavDestinationTest {
         assertEquals(Topic("19550517"), resolveContent("https://www.zhihu.com/topic/19550517"))
         assertEquals(Topic("19550517"), resolveContent("zhihu://topic/19550517"))
         assertEquals(Topic("19550517"), resolveContent("zhihu://pin20/topic?topic_id=19550517"))
+        assertEquals(Topic("19550517", section = "hot"), resolveContent("https://www.zhihu.com/topic/19550517/hot"))
+        assertEquals(
+            Topic("19550517", section = "top-answers"),
+            resolveContent("https://www.zhihu.com/topic/19550517/top-answers"),
+        )
+        assertEquals(
+            Topic("19550517", section = "unanswered"),
+            resolveContent("https://www.zhihu.com/topic/19550517/unanswered"),
+        )
     }
 
     private val json = Json {
