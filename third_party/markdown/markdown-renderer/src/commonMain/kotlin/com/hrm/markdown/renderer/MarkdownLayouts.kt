@@ -169,8 +169,8 @@ private fun <T : Node> DeferredMarkdownBlockLayout(
     val density = LocalDensity.current
     val viewportHeightPx = LocalWindowInfo.current.containerSize.height.toFloat()
     val deferredBlockStates = rememberSaveableStateHolder()
-    val measuredHeightsPx = remember { mutableStateMapOf<Any, Int>() }
-    val blockKeys = remember(blocks) { blocks.map { it::class to it.stableKey } }
+    val measuredHeightsPx = remember { mutableStateMapOf<String, Int>() }
+    val blockKeys = remember(blocks) { blocks.map(Node::stableKey) }
     val estimatedHeightsByWidth = remember(blocks, theme, density.density, density.fontScale) {
         mutableMapOf<Int, List<Int>>()
     }
@@ -230,7 +230,7 @@ private fun <T : Node> DeferredMarkdownBlockLayout(
                 if (bottom >= visibleTop && top <= visibleBottom || requestedByNavigation) {
                     val blockKey = blockKeys[index]
                     val placeable = subcompose(blockKey) {
-                        deferredBlockStates.SaveableStateProvider(node.stableKey) {
+                        deferredBlockStates.SaveableStateProvider(blockKey) {
                             PersistentSelectionScope(
                                 scopeKey = blockKey,
                                 documentOrder = groupOrder + index,

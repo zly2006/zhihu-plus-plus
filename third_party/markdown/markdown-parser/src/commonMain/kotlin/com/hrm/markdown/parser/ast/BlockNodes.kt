@@ -4,10 +4,6 @@ import androidx.compose.runtime.Composable
 import com.hrm.markdown.parser.core.Attributes
 import com.hrm.markdown.parser.lint.DiagnosticResult
 
-private var nextSyntheticStableKey = -1
-
-private fun allocateSyntheticStableKey(): Int = nextSyntheticStableKey--
-
 /**
  * 文档的根节点。
  */
@@ -304,7 +300,6 @@ class NativeBlock(
     val content: @Composable () -> Unit,
 ) : LeafNode() {
     override val literal: String get() = ""
-    override val stableKey: Int = allocateSyntheticStableKey()
 
     override fun <R> accept(visitor: NodeVisitor<R>): R = visitor.visitNativeBlock(this)
 }

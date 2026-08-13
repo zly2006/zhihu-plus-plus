@@ -6,7 +6,7 @@
 - 上游基线提交：`0ae14148bbe427e27629117b3581ea071d86c4c7`
 - 保持原应用行为的源码提交：`4f2ab8c13f44bf24cc070821ea6b510efe188759`
 - 内置日期：2026-07-21
-- 生产源码清单 SHA-256：`4ae22da5adf66d621696f5c403181d0f866242bcc6dcf1c34a0c04ddf8ab9046`
+- 生产源码清单 SHA-256：`2e69525d51f8de48efb393800898018b24c54ffdf4eb89d5e9e415b5c80ba6a6`
 
 替换前，应用依赖的是 `io.github.zly2006:markdown-*:0.0.1-alpha.11`。这个坐标只说明被替换的分叉构件，不是本目录的上游 base version；本目录的 base version 始终按上游实际版本记为 `1.2.9`。源码提交 `4f2ab8c...` 在 1.2.9 基础上保留了原应用所需的 `NativeBlock` 与 LaTeX 1.4.6-zly 兼容改动。
 

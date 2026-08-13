@@ -45,6 +45,39 @@ import kotlinx.serialization.json.jsonPrimitive
 @OptIn(ExperimentalTestApi::class)
 class MarkdownPerformanceTest {
     @Test
+    fun markdownPreviewIdentityStressRendersAcrossRepeatedDocumentChanges() =
+        runDesktopComposeUiTest(width = 412, height = 892) {
+            fun stressMarkdown(round: Int) = buildString {
+                appendLine("回答预览正文 $round")
+                appendLine()
+                repeat(40) { index ->
+                    appendLine("[引用 $index][ref-$round-$index]")
+                    appendLine("[ref-$round-$index]: https://example.com/$round/$index")
+                    appendLine("${'$'}${'$'}x_$index + y_$round${'$'}${'$'} 同行尾随正文 $index")
+                    appendLine()
+                }
+            }
+            var markdown by mutableStateOf(stressMarkdown(0))
+
+            setContent {
+                Markdown(
+                    markdown = markdown,
+                    modifier = Modifier.fillMaxSize(),
+                    enableScroll = true,
+                    enableSelection = true,
+                )
+            }
+
+            repeat(8) { round ->
+                runOnUiThread { markdown = stressMarkdown(round) }
+                waitForRenderedMarker("回答预览正文 $round")
+                waitForIdle()
+                onNode(hasText("回答预览正文 $round", substring = true), useUnmergedTree = true)
+                    .assertIsDisplayed()
+            }
+        }
+
+    @Test
     fun preparedLatexDrawsAndSurvivesCompositionDisposal() = runDesktopComposeUiTest(width = 412, height = 892) {
         val cache = LatexRenderCache()
         var showFormula by mutableStateOf(true)
