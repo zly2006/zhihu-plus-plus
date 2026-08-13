@@ -69,13 +69,14 @@ class ReadingPlayerTest {
 
     @Test
     fun readingTextSkipsVideoLinksButKeepsRegularLinks() {
-        val html = """
-            <p>视频前的正文。</p>
-            <a class="video-box" href="https://link.zhihu.com/?target=https%3A//www.zhihu.com/video/123">
-                https://www.zhihu.com/video/123
-            </a>
-            <p>查看<a href="https://www.zhihu.com/question/1">普通链接</a>后的正文。</p>
-        """.trimIndent()
+        val html =
+            """
+                <p>视频前的正文。</p>
+                <a class="video-box" href="https://link.zhihu.com/?target=https%3A//www.zhihu.com/video/123">
+                    https://www.zhihu.com/video/123
+                </a>
+                <p>查看<a href="https://www.zhihu.com/question/1">普通链接</a>后的正文。</p>
+            """.trimIndent()
 
         assertEquals("视频前的正文。 查看普通链接后的正文。", htmlToReadingText(html))
     }
