@@ -59,6 +59,7 @@ import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.START_DESTINATION_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.subscreens.appearanceSettingsStartDestinationOptionTag
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

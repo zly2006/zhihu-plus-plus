@@ -37,6 +37,7 @@ import com.github.zly2006.zhihu.navigation.Navigator
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.AndroidZhihuMain
+import top.yukonga.miuix.kmp.nav.core.NavController
 import top.yukonga.miuix.kmp.nav.core.rememberNavController
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger

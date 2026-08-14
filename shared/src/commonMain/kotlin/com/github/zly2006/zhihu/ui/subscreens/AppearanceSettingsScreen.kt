@@ -124,6 +124,10 @@ const val DEFAULT_FAB_OPACITY = 100
 const val APPEARANCE_SETTINGS_SCROLL_TAG = "appearanceSettings.scroll"
 const val APPEARANCE_SETTINGS_START_DESTINATION_ROW_TAG = "appearanceSettings.startDestinationRow"
 const val APPEARANCE_SETTINGS_START_DESTINATION_TAG = "appearanceSettings.startDestination"
+
+/** 启动页下拉里每个选项的 testTag；生产与插桩测试共用，避免两边各写一份字符串后漂移。 */
+fun appearanceSettingsStartDestinationOptionTag(key: String) = "appearanceSettings:startDestination:option:$key"
+
 const val APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG = "appearanceSettings.answerDoubleTap"
 const val APPEARANCE_SETTINGS_ANSWER_SWITCH_SENSITIVITY_TAG = "appearanceSettings.answerSwitchSensitivity"
 const val APPEARANCE_SETTINGS_USE_WEBVIEW_TAG = "appearanceSettings.useWebView"
@@ -1111,7 +1115,7 @@ fun AppearanceSettingsScreen(
                             ) {
                                 startDestinationItems.forEach { (key, label) ->
                                     DropdownMenuItem(
-                                        modifier = Modifier.testTag("appearanceSettings:startDestination:option:$key"),
+                                        modifier = Modifier.testTag(appearanceSettingsStartDestinationOptionTag(key)),
                                         text = { Text(label) },
                                         onClick = {
                                             startDestinationKey = key
