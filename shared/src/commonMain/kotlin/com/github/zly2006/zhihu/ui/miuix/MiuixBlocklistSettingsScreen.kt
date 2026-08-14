@@ -65,6 +65,7 @@ import com.github.zly2006.zhihu.viewmodel.filter.KeywordType
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Checkbox
 import top.yukonga.miuix.kmp.basic.FloatingActionButton
@@ -331,7 +332,7 @@ private fun KeywordsTab(
     val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
 
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
+    LazyColumn(modifier = Modifier.fillMaxSize().overScrollVertical()) {
         if (keywords.isNotEmpty()) {
             item {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.End) {
@@ -433,7 +434,7 @@ private fun UsersTab(
     val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
 
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
+    LazyColumn(modifier = Modifier.fillMaxSize().overScrollVertical()) {
         if (users.isNotEmpty()) {
             item {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.End) {
@@ -542,7 +543,7 @@ private fun TopicsTab(
     val coroutineScope = rememberCoroutineScope()
 
     Box(Modifier.fillMaxSize()) {
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(modifier = Modifier.fillMaxSize().overScrollVertical()) {
             if (topics.isEmpty()) {
                 item {
                     Column(Modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -697,6 +698,7 @@ private fun AddKeywordForm(onDismiss: () -> Unit, onConfirm: (String, Boolean, B
                     onClick = { if (kw.isNotBlank()) onConfirm(kw, caseSensitive, isRegex) },
                     modifier = Modifier.testTag(BlocklistSettingsTestTags.KEYWORD_DIALOG_CONFIRM),
                     enabled = kw.isNotBlank(),
+                    colors = ButtonDefaults.buttonColorsPrimary(),
                 ) { Text("添加") }
             }
         }
@@ -741,6 +743,7 @@ private fun AddUserForm(onDismiss: () -> Unit, onConfirm: (String, String) -> Un
                     onClick = { if (userId.isNotBlank()) onConfirm(userId, userName.ifBlank { userId }) },
                     modifier = Modifier.testTag(BlocklistSettingsTestTags.USER_DIALOG_CONFIRM),
                     enabled = userId.isNotBlank(),
+                    colors = ButtonDefaults.buttonColorsPrimary(),
                 ) { Text("添加") }
             }
         }
@@ -785,6 +788,7 @@ private fun AddTopicForm(onDismiss: () -> Unit, onConfirm: (String, String) -> U
                     onClick = { if (topicId.isNotBlank()) onConfirm(topicId, topicName.ifBlank { topicId }) },
                     modifier = Modifier.testTag(BlocklistSettingsTestTags.TOPIC_DIALOG_CONFIRM),
                     enabled = topicId.isNotBlank(),
+                    colors = ButtonDefaults.buttonColorsPrimary(),
                 ) { Text("添加") }
             }
         }
@@ -811,7 +815,11 @@ private fun ConfirmDialog(
                 Spacer(Modifier.height(20.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
                     TextButton(text = "取消", modifier = Modifier.testTag(dismissTag), onClick = onDismiss)
-                    Button(onClick = onConfirm, modifier = Modifier.testTag(confirmTag)) { Text("清空") }
+                    Button(
+                        onClick = onConfirm,
+                        modifier = Modifier.testTag(confirmTag),
+                        colors = ButtonDefaults.buttonColorsPrimary(),
+                    ) { Text("清空") }
                 }
             }
         }

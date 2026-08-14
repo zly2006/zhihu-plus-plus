@@ -37,6 +37,7 @@ import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.window.WindowBottomSheet
 
 /**
@@ -63,7 +64,7 @@ fun MiuixVotersSheet(
         onDismissRequest = onDismissRequest,
     ) {
         LazyColumn(
-            modifier = Modifier.fillMaxWidth().height(520.dp),
+            modifier = Modifier.fillMaxWidth().height(520.dp).overScrollVertical(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {

@@ -49,6 +49,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.utils.overScrollVertical
 
 private data class MiuixHotQuery(
     val query: String,
@@ -105,7 +106,7 @@ fun MiuixSearchSuggestions(
     }
 
     LazyColumn(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize().overScrollVertical(),
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
     ) {
         if (hasHistory) {

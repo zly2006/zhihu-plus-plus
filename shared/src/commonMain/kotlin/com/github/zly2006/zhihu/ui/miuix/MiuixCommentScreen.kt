@@ -102,6 +102,7 @@ import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.utils.overScrollVertical
 
 /**
  * 评论列表的 miuix 版本。
@@ -252,7 +253,7 @@ fun MiuixCommentScreen(
 
                 else -> LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize().testTag(COMMENT_SCREEN_LIST_TAG),
+                    modifier = Modifier.fillMaxSize().overScrollVertical().testTag(COMMENT_SCREEN_LIST_TAG),
                     contentPadding = PaddingValues(bottom = 16.dp, start = 12.dp, end = 12.dp, top = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {

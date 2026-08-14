@@ -50,7 +50,9 @@ fun MiuixConfirmDialog(
                 modifier = Modifier.weight(1f),
                 colors = ButtonDefaults.buttonColorsPrimary(),
             ) {
-                Text(confirmText, color = androidx.compose.ui.graphics.Color.White)
+                // 不写死白字：miuix Button 会按 ButtonColors 把 contentColor/disabledContentColor
+                // 通过 LocalContentColor 传下来，写死会让 disabled 态仍是纯白。
+                Text(confirmText)
             }
         }
     }

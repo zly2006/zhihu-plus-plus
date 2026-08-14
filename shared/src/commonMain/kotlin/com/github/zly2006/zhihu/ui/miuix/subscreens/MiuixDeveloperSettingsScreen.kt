@@ -372,7 +372,7 @@ fun MiuixDeveloperSettingsScreen() {
                     },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColorsPrimary(),
-                ) { Text("确认设置", color = androidx.compose.ui.graphics.Color.White) }
+                ) { Text("确认设置") }
             }
         }
     }
@@ -444,7 +444,7 @@ fun MiuixDeveloperSettingsScreen() {
                     enabled = !isLoading,
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColorsPrimary(),
-                ) { Text(if (isLoading) "请求中..." else "发送请求", color = androidx.compose.ui.graphics.Color.White) }
+                ) { Text(if (isLoading) "请求中..." else "发送请求") }
             }
         }
     }

@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.ColorPalette
 import top.yukonga.miuix.kmp.basic.HsvColorPicker
 import top.yukonga.miuix.kmp.basic.Text
@@ -100,6 +101,7 @@ fun MiuixColorPickerSheet(
                 Button(
                     onClick = { onConfirm(selectedColor) },
                     modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColorsPrimary(),
                 ) {
                     Text("确定")
                 }

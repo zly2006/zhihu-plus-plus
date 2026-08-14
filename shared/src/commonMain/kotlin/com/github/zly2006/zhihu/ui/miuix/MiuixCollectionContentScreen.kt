@@ -184,7 +184,7 @@ fun MiuixCollectionContentScreen(
                         },
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColorsPrimary(),
-                    ) { Text("开始导出", color = androidx.compose.ui.graphics.Color.White) }
+                    ) { Text("开始导出") }
                 }
             }
         }
@@ -217,7 +217,7 @@ fun MiuixCollectionContentScreen(
                         Spacer(Modifier.height(16.dp))
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                             Button(onClick = screenViewModel::dismissExportDialog, colors = ButtonDefaults.buttonColorsPrimary()) {
-                                Text("确定", color = androidx.compose.ui.graphics.Color.White)
+                                Text("确定")
                             }
                         }
                     }
