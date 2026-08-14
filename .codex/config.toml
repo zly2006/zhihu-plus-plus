@@ -4,6 +4,6 @@ args = [
     "-y",
     "chrome-devtools-mcp@latest",
     "--browserUrl",
-    "http://127.0.0.1:9222",
+    "http://127.0.0.1:9223",
 ]
 command = "npx"

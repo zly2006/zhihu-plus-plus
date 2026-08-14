@@ -26,10 +26,17 @@ import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respond
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.Url
+import io.ktor.http.headersOf
+import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 
 class SearchViewModelTest {
@@ -53,6 +60,74 @@ class SearchViewModelTest {
         assertEquals("member-hash-id", url.parameters["restricted_value"])
         assertEquals("Normal", url.parameters["search_source"])
         assertEquals("0", url.parameters["lc_idx"])
+    }
+
+    @Test
+    fun topicSearchUsesOfficialVerticalAndShowAllTopics() {
+        val url = Url(
+            zhihuSearchUrl(
+                query = "AI",
+                searchTab = SearchTab.Topic,
+            ),
+        )
+
+        assertEquals("topic", url.parameters["t"])
+        assertEquals("1", url.parameters["show_all_topics"])
+        assertEquals("AI", url.parameters["q"])
+    }
+
+    @Test
+    fun decodesObservedTopicSearchShapeThroughZhihuJson() {
+        val result = decodeTopicSearchResult(
+            ZhihuJson.json.parseToJsonElement(
+                """{"type":"search_result","object":{"id":"20106982","name":"<em>AI</em>技术","url":"https://api.zhihu.com/topics/20106982","type":"topic","excerpt":"人工智能（Artificial Intelligence），英文缩写为<em>AI</em>","avatar_url":"https://pic.example/topic.jpg","is_following":false,"visit_count":3359904456,"top_answer_count":1890565}}""",
+            ),
+        )!!
+
+        assertEquals("20106982", result.topic.id)
+        assertEquals("AI技术", result.topic.name)
+        assertEquals("人工智能（Artificial Intelligence），英文缩写为AI", result.excerpt)
+        assertEquals(3_359_904_456, result.visitCount)
+        assertEquals(1_890_565, result.discussCount)
+        assertFalse(result.isFollowing)
+    }
+
+    @Test
+    fun malformedTopicSearchEntriesAreRejectedWithoutThrowing() {
+        assertNull(decodeTopicSearchResult(JsonPrimitive("not-an-object")))
+        assertNull(
+            decodeTopicSearchResult(
+                ZhihuJson.json.parseToJsonElement("""{"type":"search_result","object":null}"""),
+            ),
+        )
+    }
+
+    @Test
+    fun topicSearchFollowFailureRollsBackRelationship() = runTest {
+        val viewModel = SearchViewModel("AI")
+        viewModel.topicResults += TopicSearchResult(
+            topic = com.github.zly2006.zhihu.data.DataHolder
+                .Topic("1", "topic", "zhihu://topic/1", "AI"),
+            excerpt = "",
+            visitCount = 1,
+            discussCount = 1,
+            isFollowing = false,
+        )
+        val environment = object : PaginationEnvironment {
+            override fun httpClient() = HttpClient(
+                MockEngine {
+                    respond("failed", HttpStatusCode.InternalServerError, headersOf(HttpHeaders.ContentType, "text/plain"))
+                },
+            )
+
+            override fun authenticatedCookies() = mapOf("d_c0" to "test")
+
+            override suspend fun handleFetchFailure(tag: String?, error: Exception) = Unit
+        }
+
+        assertFalse(viewModel.setTopicFollowing(environment, "1", true).isSuccess)
+        assertFalse(viewModel.topicResults.single().isFollowing)
+        assertFalse("1" in viewModel.changingTopicIds)
     }
 
     @Test

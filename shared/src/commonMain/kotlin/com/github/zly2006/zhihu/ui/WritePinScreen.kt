@@ -25,11 +25,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
@@ -39,10 +42,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,27 +60,40 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.editor.PinContentTopicItem
+import com.github.zly2006.zhihu.editor.PinContentTopicMarker
+import com.github.zly2006.zhihu.editor.PinTopicSuggestion
 import com.github.zly2006.zhihu.editor.UnknownImageFormatException
 import com.github.zly2006.zhihu.editor.UploadedZhihuImage
 import com.github.zly2006.zhihu.editor.ZhihuImageUploadSource
 import com.github.zly2006.zhihu.editor.calculatePinHtmlTextLength
-import com.github.zly2006.zhihu.editor.compileMdToZhihuHtml
+import com.github.zly2006.zhihu.editor.compilePinMarkdownToZhihuHtml
 import com.github.zly2006.zhihu.editor.rememberImagePickerLauncher
 import com.github.zly2006.zhihu.editor.rememberZhihuPinPublisher
 import com.github.zly2006.zhihu.editor.uploadZhihuImage
 import com.github.zly2006.zhihu.markdown.rememberMarkdownImageModel
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Pin
+import com.github.zly2006.zhihu.navigation.WritePin
 import com.github.zly2006.zhihu.platform.rememberPlainTextClipboard
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.ui.components.MarkdownShortcut
 import com.github.zly2006.zhihu.ui.components.WriteContentFabColumn
 import com.github.zly2006.zhihu.ui.components.WriteContentMarkdownEditor
 import com.github.zly2006.zhihu.ui.components.WriteContentPreviewSheet
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.yield
 
@@ -87,12 +103,93 @@ const val WRITE_PIN_FAB_PREVIEW_TAG = "WritePinFabPreview"
 const val WRITE_PIN_FAB_IMAGE_TAG = "WritePinFabImage"
 const val WRITE_PIN_FAB_SAVE_TAG = "WritePinFabSave"
 const val WRITE_PIN_IMAGE_LIST_TAG = "WritePinImageList"
+const val WRITE_PIN_TOPIC_SUGGESTIONS_TAG = "WritePinTopicSuggestions"
 
 private const val PIN_IMAGE_LIMIT = 9
 
+internal data class ActivePinTopicQuery(
+    val start: Int,
+    val endExclusive: Int,
+    val query: String,
+)
+
+internal fun activePinTopicQuery(
+    value: TextFieldValue,
+    selectedTopics: List<PinContentTopicMarker> = emptyList(),
+): ActivePinTopicQuery? {
+    if (value.selection.start != value.selection.end) return null
+    val cursor = value.selection.end
+    if (cursor !in 1..value.text.length) return null
+    var hash = value.text.lastIndexOf('#', startIndex = cursor - 1)
+    while (hash > 0 && !value.text[hash - 1].isWhitespace()) {
+        hash = value.text.lastIndexOf('#', startIndex = hash - 1)
+    }
+    if (hash < 0 || hash >= cursor || value.text.substring(hash, cursor).contains('\n')) return null
+    val query = value.text.substring(hash + 1, cursor)
+    if (query.length > 50) return null
+    if (selectedTopics.any { marker -> hash == marker.start }) {
+        return null
+    }
+    return ActivePinTopicQuery(hash, cursor, query)
+}
+
+internal fun insertPinTopic(
+    value: TextFieldValue,
+    query: ActivePinTopicQuery,
+    topic: PinTopicSuggestion,
+): TextFieldValue {
+    val insertion = "#${topic.name} "
+    val text = value.text.replaceRange(query.start, query.endExclusive, insertion)
+    return value.copy(
+        text = text,
+        selection = androidx.compose.ui.text
+            .TextRange(query.start + insertion.length),
+        composition = null,
+    )
+}
+
+internal fun updatePinTopicMarkers(
+    oldText: String,
+    newText: String,
+    markers: List<PinContentTopicMarker>,
+): List<PinContentTopicMarker> {
+    val commonPrefix = oldText.zip(newText).takeWhile { (old, new) -> old == new }.size
+    val maxSuffix = minOf(oldText.length - commonPrefix, newText.length - commonPrefix)
+    var commonSuffix = 0
+    while (commonSuffix < maxSuffix &&
+        oldText[oldText.lastIndex - commonSuffix] == newText[newText.lastIndex - commonSuffix]
+    ) {
+        commonSuffix++
+    }
+    val oldChangedEnd = oldText.length - commonSuffix
+    val delta = newText.length - oldText.length
+    return markers.mapNotNull { marker ->
+        when {
+            marker.endExclusive <= commonPrefix -> marker
+            marker.start >= oldChangedEnd -> marker.copy(start = marker.start + delta, endExclusive = marker.endExclusive + delta)
+            else -> null
+        }
+    }
+}
+
+private class PinTopicVisualTransformation(
+    private val topics: List<PinContentTopicMarker>,
+    private val color: androidx.compose.ui.graphics.Color,
+) : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val styled = AnnotatedString.Builder(text)
+        topics.forEach { marker ->
+            if (marker.endExclusive <= text.length) {
+                styled.addStyle(SpanStyle(color = color), marker.start, marker.endExclusive)
+            }
+        }
+        return TransformedText(styled.toAnnotatedString(), OffsetMapping.Identity)
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WritePinScreen() {
+fun WritePinScreen(destination: WritePin = WritePin()) {
     val navigator = LocalNavigator.current
     val userMessages = rememberUserMessageSink()
     val publisher = rememberZhihuPinPublisher()
@@ -101,24 +198,76 @@ fun WritePinScreen() {
     val settings = rememberSettingsStore()
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    val environment = rememberPaginationEnvironment(false)
 
-    var content by remember { mutableStateOf(TextFieldValue("")) }
+    val initialTopic = remember(destination.publishTopicId, destination.topicName) {
+        destination.publishTopicId
+            .takeIf(String::isNotBlank)
+            ?.let { PinContentTopicItem(it, destination.topicName) }
+    }
+    var content by remember(initialTopic) {
+        mutableStateOf(
+            initialTopic
+                ?.let { TextFieldValue("#${it.displayName} ") }
+                ?: TextFieldValue(""),
+        )
+    }
     var title by remember { mutableStateOf(TextFieldValue("")) }
     var images by remember { mutableStateOf<List<UploadedZhihuImage>>(emptyList()) }
+    var selectedTopics by remember(initialTopic) {
+        mutableStateOf(
+            initialTopic
+                ?.let { listOf(PinContentTopicMarker(it, 0, it.inlineMarker.length)) }
+                .orEmpty(),
+        )
+    }
+    var topicSuggestions by remember { mutableStateOf<List<PinTopicSuggestion>>(emptyList()) }
+    var topicSuggestionError by remember { mutableStateOf<String?>(null) }
+    var topicSearchJob by remember { mutableStateOf<Job?>(null) }
     var isSubmitting by remember { mutableStateOf(false) }
     var isUploadingImage by remember { mutableStateOf(false) }
     var errorDialogMessage by remember { mutableStateOf<String?>(null) }
     var showPreviewSheet by remember { mutableStateOf(false) }
-    val previewSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val previewSheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var isPreviewLoading by remember { mutableStateOf(false) }
     var previewHtml by remember { mutableStateOf<String?>(null) }
     var previewMarkdown by remember { mutableStateOf<String?>(null) }
     var previewUseWebView by remember { mutableStateOf(false) }
 
+    fun updateContent(newValue: TextFieldValue) {
+        selectedTopics = updatePinTopicMarkers(content.text, newValue.text, selectedTopics)
+        content = newValue
+        topicSearchJob?.cancel()
+        val query = activePinTopicQuery(newValue, selectedTopics)
+        if (query == null || query.query.isBlank()) {
+            topicSuggestions = emptyList()
+            topicSuggestionError = null
+            return
+        }
+        topicSearchJob = coroutineScope.launch {
+            delay(180)
+            val contentHtml = compilePinMarkdownToZhihuHtml(newValue.text, selectedTopics)
+            topicSuggestionError = null
+            try {
+                val suggestions = publisher.recommendTopics(query.query, title.text, contentHtml)
+                if (activePinTopicQuery(content, selectedTopics) == query) {
+                    topicSuggestions = suggestions
+                }
+            } catch (error: Throwable) {
+                if (error is CancellationException) throw error
+                if (activePinTopicQuery(content, selectedTopics) == query) {
+                    topicSuggestions = emptyList()
+                    topicSuggestionError = error.message ?: error::class.simpleName ?: "未知错误"
+                }
+            }
+        }
+    }
+
     fun showPreview() {
         if (isSubmitting || content.text.isBlank()) return
         val useWebView = settings.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)
         val markdownSnapshot = content.text
+        val topicsSnapshot = selectedTopics
         coroutineScope.launch {
             focusManager.clearFocus(force = true)
             keyboardController?.hide()
@@ -133,7 +282,7 @@ fun WritePinScreen() {
             }
             isPreviewLoading = true
             runCatching {
-                compileMdToZhihuHtml(markdown = markdownSnapshot)
+                compilePinMarkdownToZhihuHtml(markdownSnapshot, topicsSnapshot)
             }.onSuccess { html ->
                 previewHtml = html
             }.onFailure { e ->
@@ -147,6 +296,7 @@ fun WritePinScreen() {
     fun submitPin(publish: Boolean) {
         val markdownSnapshot = content.text
         val imagesSnapshot = images
+        val topicsSnapshot = selectedTopics
         if (markdownSnapshot.isBlank() && imagesSnapshot.isEmpty()) {
             userMessages.showShortMessage("想法内容为空")
             return
@@ -155,7 +305,7 @@ fun WritePinScreen() {
         isSubmitting = true
         coroutineScope.launch {
             runCatching {
-                val html = compileMdToZhihuHtml(markdown = markdownSnapshot)
+                val html = compilePinMarkdownToZhihuHtml(markdownSnapshot, topicsSnapshot)
                 val textLength = calculatePinHtmlTextLength(html)
                 if (publish) {
                     publisher.publishPin(
@@ -163,6 +313,7 @@ fun WritePinScreen() {
                         html = html,
                         textLength = textLength,
                         images = imagesSnapshot,
+                        topics = topicsSnapshot.map(PinContentTopicMarker::topic).distinctBy(PinContentTopicItem::topicId),
                     )
                 } else {
                     publisher.savePinDraft(
@@ -170,6 +321,7 @@ fun WritePinScreen() {
                         html = html,
                         textLength = textLength,
                         images = imagesSnapshot,
+                        topics = topicsSnapshot.map(PinContentTopicMarker::topic).distinctBy(PinContentTopicItem::topicId),
                     )
                     null
                 }
@@ -190,7 +342,6 @@ fun WritePinScreen() {
         }
     }
 
-    val environment = rememberPaginationEnvironment(false)
     val launchImagePicker = rememberImagePickerLauncher { picked ->
         if (isSubmitting || isUploadingImage) return@rememberImagePickerLauncher
         if (images.size >= PIN_IMAGE_LIMIT) {
@@ -361,8 +512,8 @@ fun WritePinScreen() {
                 }
                 WriteContentMarkdownEditor(
                     value = content,
-                    onValueChange = { newValue -> content = newValue },
-                    placeholder = "分享你此刻的想法...",
+                    onValueChange = ::updateContent,
+                    placeholder = "分享你此刻的想法... 输入 # 添加话题",
                     contentTag = WRITE_PIN_CONTENT_TAG,
                     enabled = !isSubmitting,
                     modifier =
@@ -370,7 +521,65 @@ fun WritePinScreen() {
                             .fillMaxWidth()
                             .weight(1f),
                     topPadding = 4.dp,
+                    visualTransformation = PinTopicVisualTransformation(selectedTopics, MaterialTheme.colorScheme.primary),
+                    extraShortcuts = listOf(MarkdownShortcut.Topic),
                 )
+                if (topicSuggestions.isNotEmpty()) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().testTag(WRITE_PIN_TOPIC_SUGGESTIONS_TAG),
+                        tonalElevation = 4.dp,
+                        shape = MaterialTheme.shapes.medium,
+                    ) {
+                        Column(
+                            Modifier
+                                .heightIn(max = 280.dp)
+                                .verticalScroll(rememberScrollState()),
+                        ) {
+                            topicSuggestions.forEach { topic ->
+                                TextButton(
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .testTag("write_pin_topic_suggestion_${topic.topicId}"),
+                                    onClick = {
+                                        val query = activePinTopicQuery(content) ?: return@TextButton
+                                        val previousContent = content
+                                        val insertedContent = insertPinTopic(previousContent, query, topic)
+                                        val shiftedTopics =
+                                            updatePinTopicMarkers(
+                                                previousContent.text,
+                                                insertedContent.text,
+                                                selectedTopics,
+                                            )
+                                        content = insertedContent
+                                        val selected = PinContentTopicItem(topic.topicId.toString(), topic.name)
+                                        val start = query.start
+                                        val marker = PinContentTopicMarker(selected, start, start + selected.inlineMarker.length)
+                                        if (shiftedTopics.none { it.start == marker.start }) {
+                                            selectedTopics = shiftedTopics + marker
+                                        }
+                                        topicSuggestions = emptyList()
+                                    },
+                                ) {
+                                    Column(Modifier.fillMaxWidth()) {
+                                        Text("#${topic.name}")
+                                        if (topic.discussCount.isNotBlank()) {
+                                            Text(topic.discussCount, style = MaterialTheme.typography.bodySmall)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                topicSuggestionError?.let { message ->
+                    TextButton(
+                        onClick = { updateContent(content) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("话题推荐加载失败：$message，点击重试")
+                    }
+                }
             }
         }
     }

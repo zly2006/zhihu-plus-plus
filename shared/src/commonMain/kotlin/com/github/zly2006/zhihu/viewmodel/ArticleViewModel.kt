@@ -131,6 +131,7 @@ class ArticleViewModel(
     var createdAt by mutableLongStateOf(0L)
     var ipInfo by mutableStateOf<String?>(null)
     var endorsements by mutableStateOf<List<DataHolder.AnswerEndorsementDisplay>>(emptyList())
+    var topics by mutableStateOf<List<DataHolder.Topic>>(emptyList())
     var endorsementTexts: List<String>
         get() = endorsements.map { endorsement -> endorsement.text }
         set(value) {
@@ -276,6 +277,7 @@ class ArticleViewModel(
                             createdAt = answer.createdTime
                             ipInfo = answer.ipInfo
                             endorsements = answer.endorsementItems
+                            topics = emptyList()
 
                             environment.postHistoryDestination(
                                 Article(
@@ -352,6 +354,7 @@ class ArticleViewModel(
                             updatedAt = article.updated
                             createdAt = article.created
                             ipInfo = article.ipInfo
+                            topics = article.topics.orEmpty()
 
                             environment.postHistoryDestination(
                                 Article(

@@ -30,6 +30,7 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
+import io.ktor.http.encodeURLParameter
 import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
@@ -42,6 +43,12 @@ import kotlinx.serialization.json.JsonElement
  * 想法的标题、正文和图片 payload 与回答发布完全不同，不能与回答编辑流程共用一个发布器。
  */
 interface ZhihuPinPublisher {
+    suspend fun recommendTopics(
+        query: String,
+        title: String,
+        contentHtml: String,
+    ): List<PinTopicSuggestion>
+
     /**
      * 保存想法草稿。
      *
@@ -52,6 +59,7 @@ interface ZhihuPinPublisher {
         html: String,
         textLength: Int,
         images: List<UploadedZhihuImage>,
+        topics: List<PinContentTopicItem> = emptyList(),
     )
 
     /**
@@ -66,6 +74,7 @@ interface ZhihuPinPublisher {
         html: String,
         textLength: Int,
         images: List<UploadedZhihuImage>,
+        topics: List<PinContentTopicItem> = emptyList(),
     ): Long
 }
 
@@ -75,11 +84,30 @@ expect fun rememberZhihuPinPublisher(): ZhihuPinPublisher
 internal class ZhihuApiPinPublisher(
     private val environment: ZhihuApiEnvironment,
 ) : ZhihuPinPublisher {
+    override suspend fun recommendTopics(
+        query: String,
+        title: String,
+        contentHtml: String,
+    ): List<PinTopicSuggestion> {
+        if (query.isBlank()) return emptyList()
+        val responseElement = environment
+            .postSigned(
+                "https://api.zhihu.com/content/publish/topics/recommend?" +
+                    "recommend_type=pin&key_word=${query.encodeURLParameter(spaceToPlus = true)}",
+            ) {
+                contentType(ContentType.Application.Json)
+                setBody(PinTopicSuggestionRequest(title = title, content = contentHtml))
+            }.raiseForStatus(dumpRequest = true)
+            .body<JsonElement>()
+        return ZhihuJson.decodeJson<PinTopicSuggestionResponse>(responseElement).data.list
+    }
+
     override suspend fun savePinDraft(
         title: String,
         html: String,
         textLength: Int,
         images: List<UploadedZhihuImage>,
+        topics: List<PinContentTopicItem>,
     ) {
         val xsrf = environment.authenticatedCookies()["_xsrf"]
             ?: throw IllegalStateException("缺少 _xsrf Cookie，无法保存想法草稿；请先确保已登录。")
@@ -96,6 +124,7 @@ internal class ZhihuApiPinPublisher(
                             html = html,
                             textLength = textLength,
                             images = images,
+                            topics = topics,
                         ),
                     ),
                 )
@@ -107,6 +136,7 @@ internal class ZhihuApiPinPublisher(
         html: String,
         textLength: Int,
         images: List<UploadedZhihuImage>,
+        topics: List<PinContentTopicItem>,
     ): Long {
         val xsrf = environment.authenticatedCookies()["_xsrf"]
             ?: throw IllegalStateException("缺少 _xsrf Cookie，无法发布想法；请先确保已登录。")
@@ -123,6 +153,7 @@ internal class ZhihuApiPinPublisher(
                             html = html,
                             textLength = textLength,
                             images = images,
+                            topics = topics,
                         ),
                     ),
                 )
@@ -148,6 +179,7 @@ internal class ZhihuApiPinPublisher(
         html: String,
         textLength: Int,
         images: List<UploadedZhihuImage>,
+        topics: List<PinContentTopicItem>,
     ): PinContentPayload =
         PinContentPayload(
             publish = PublishTrace(traceId = newPublishTraceId()),
@@ -181,6 +213,10 @@ internal class ZhihuApiPinPublisher(
                         },
                     )
                 },
+            topic = topics
+                .takeIf { it.isNotEmpty() }
+                ?.map { it.copy(topicName = "#${it.displayName}#") }
+                ?.let(::PinContentTopic),
         )
 }
 
@@ -282,4 +318,40 @@ data class PinContentTopicItem(
     val topicId: String,
     @SerialName("topic_name")
     val topicName: String,
+) {
+    val displayName: String
+        get() = topicName.removePrefix("#").removeSuffix("#")
+
+    val inlineMarker: String
+        get() = "#$displayName"
+}
+
+data class PinContentTopicMarker(
+    val topic: PinContentTopicItem,
+    val start: Int,
+    val endExclusive: Int,
+)
+
+@Serializable
+data class PinTopicSuggestionRequest(
+    val title: String,
+    val content: String,
+)
+
+@Serializable
+data class PinTopicSuggestionResponse(
+    val data: PinTopicSuggestionData = PinTopicSuggestionData(),
+)
+
+@Serializable
+data class PinTopicSuggestionData(
+    val list: List<PinTopicSuggestion> = emptyList(),
+)
+
+@Serializable
+data class PinTopicSuggestion(
+    val id: String,
+    val name: String,
+    val topicId: Long,
+    val discussCount: String = "",
 )

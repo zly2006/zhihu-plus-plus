@@ -71,6 +71,21 @@ class ZhihuJsonTest {
         assertEquals(SampleData(userName = "Alice", voteCount = 10), decoded)
     }
 
+    @Test
+    fun dynamicCookieKeysRemainUnchanged() {
+        val source = ZhihuJson.json.parseToJsonElement(
+            """{"access_token":"token","cookie":{"q_c0":"q","z_c0":"z","d_c0":"d"}}""",
+        )
+
+        val converted = ZhihuJson.snakeCaseToCamelCase(source).jsonObject
+
+        assertEquals("token", converted["accessToken"]?.jsonPrimitive?.content)
+        val cookie = converted["cookie"]?.jsonObject
+        assertEquals("q", cookie?.get("q_c0")?.jsonPrimitive?.content)
+        assertEquals("z", cookie?.get("z_c0")?.jsonPrimitive?.content)
+        assertEquals("d", cookie?.get("d_c0")?.jsonPrimitive?.content)
+    }
+
     @Serializable
     private data class SampleData(
         val userName: String,

@@ -770,7 +770,14 @@ private fun PinContent(
                     "# ${topic.name}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(vertical = 4.dp),
+                    modifier = Modifier
+                        .padding(vertical = 4.dp)
+                        .clickable {
+                            navigator.onNavigate(
+                                com.github.zly2006.zhihu.navigation
+                                    .Topic(topic.id, topic.name),
+                            )
+                        },
                 )
             }
         }

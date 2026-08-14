@@ -291,7 +291,10 @@ data class WriteAnswer(
  * 想法不是问题下的内容，没有问题 ID；标题可选，正文或图片至少存在其一。
  */
 @Serializable
-data object WritePin : NavDestination
+data class WritePin(
+    val topicName: String = "",
+    val publishTopicId: String = "",
+) : NavDestination
 
 @Serializable
 data class Person(
@@ -346,6 +349,13 @@ data class Pin(
 
     override fun equals(other: Any?): Boolean = other is Pin && other.id == id
 }
+
+@Serializable
+data class Topic(
+    val id: String,
+    val name: String = "",
+    val section: String = "",
+) : NavDestination
 
 fun NavDestination.withReadingQueueSource(sourceId: String?): NavDestination = when (this) {
     is Article -> copy(readingQueueSourceId = sourceId)
@@ -415,6 +425,8 @@ fun resolveContent(url: Url): NavDestination? {
             } else if (segments.size == 2 && segments[0] == "pin") {
                 val pinId = segments[1].toLongOrNull() ?: return null
                 return Pin(id = pinId)
+            } else if (segments.size >= 2 && segments[0] == "topic") {
+                return Topic(id = segments[1], section = segments.getOrNull(2).orEmpty())
             } else if (segments.size == 3 && segments[0] == "appview") {
                 val contentId = segments[2].toLongOrNull() ?: return null
                 return when (segments[1]) {
@@ -496,6 +508,15 @@ fun resolveContent(url: Url): NavDestination? {
         } else if (url.host == "pin") {
             val pinId = segments[0].toLong()
             return Pin(id = pinId)
+        } else if (url.host == "topic" || url.host == "topics") {
+            val topicId = segments.firstOrNull() ?: return null
+            return Topic(id = topicId, section = segments.getOrNull(1).orEmpty())
+        } else if (url.host == "pin20") {
+            val topicId = url.parameters["topic_id"]
+                ?: url.parameters["topicId"]
+                ?: segments.lastOrNull()?.takeIf { it.all(Char::isDigit) }
+                ?: return null
+            return Topic(id = topicId)
         }
         Log.w("NavDestination", "Cannot resolve content from url: $url")
     }

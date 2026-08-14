@@ -59,6 +59,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -87,6 +88,7 @@ import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Search
+import com.github.zly2006.zhihu.navigation.Topic
 import com.github.zly2006.zhihu.platform.SettingsStore
 import com.github.zly2006.zhihu.platform.UserMessageDuration
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
@@ -181,6 +183,7 @@ fun SearchScreen(
     var searchText by remember { mutableStateOf(search.query) }
     val coroutineScope = rememberCoroutineScope()
     val peopleListState = rememberLazyListState()
+    val topicListState = rememberLazyListState()
     val isMemberSearch = search.isRestrictedToMember
     val memberSearchName = search.restrictedMemberName.ifBlank { "TA" }
     val searchPlaceholder = if (isMemberSearch) "搜索 $memberSearchName 的创作" else "搜索内容"
@@ -589,78 +592,138 @@ fun SearchScreen(
                         )
                     }
                 }
-            } else if (viewModel.searchTab == SearchTab.People) {
-                val shouldLoadMorePeople by remember {
+            } else if (viewModel.searchTab == SearchTab.People || viewModel.searchTab == SearchTab.Topic) {
+                val resultListState = if (viewModel.searchTab == SearchTab.Topic) topicListState else peopleListState
+                val shouldLoadMoreResults by remember(resultListState) {
                     derivedStateOf {
-                        val lastVisibleIndex = peopleListState.layoutInfo.visibleItemsInfo
+                        val lastVisibleIndex = resultListState.layoutInfo.visibleItemsInfo
                             .lastOrNull()
                             ?.index ?: -1
-                        lastVisibleIndex >= peopleListState.layoutInfo.totalItemsCount - 3
+                        lastVisibleIndex >= resultListState.layoutInfo.totalItemsCount - 3
                     }
                 }
-                LaunchedEffect(shouldLoadMorePeople, viewModel.isLoading, viewModel.isEnd) {
-                    if (shouldLoadMorePeople && !viewModel.isLoading && !viewModel.isEnd) {
+                LaunchedEffect(shouldLoadMoreResults, viewModel.isLoading, viewModel.isEnd) {
+                    if (shouldLoadMoreResults && !viewModel.isLoading && !viewModel.isEnd && viewModel.errorMessage == null) {
                         viewModel.loadMore(paginationEnvironment)
                     }
                 }
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    state = peopleListState,
+                    state = resultListState,
                 ) {
-                    items(viewModel.peopleResults, key = { it.people.id }) { result ->
-                        val people = result.people
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    navigator.onNavigate(
-                                        Person(
-                                            id = people.id,
-                                            urlToken = people.urlToken.orEmpty(),
-                                            name = people.name,
-                                        ),
-                                    )
-                                }.padding(horizontal = 16.dp, vertical = 12.dp)
-                                .testTag("search_people_result_${people.id}"),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            AsyncImage(
-                                model = people.avatarUrl,
-                                contentDescription = "${people.name}的头像",
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .clip(CircleShape),
-                            )
-                            Column(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .padding(start = 12.dp),
+                    if (viewModel.searchTab == SearchTab.Topic) {
+                        items(viewModel.topicResults, key = { it.topic.id }) { result ->
+                            val topic = result.topic
+                            Row(
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .clickable { navigator.onNavigate(Topic(topic.id, topic.name)) }
+                                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                                        .testTag("search_topic_result_${topic.id}"),
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Text(
-                                    text = parseEmphasizedHtmlTextWithTheme(result.highlightedName),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
+                                AsyncImage(
+                                    model = topic.avatarUrl,
+                                    contentDescription = "${topic.name}的话题头像",
+                                    modifier = Modifier.size(48.dp).clip(CircleShape),
                                 )
-                                if (people.headline.isNotEmpty()) {
+                                Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                                    Text(topic.name, style = MaterialTheme.typography.titleMedium)
+                                    result.excerpt.takeIf(String::isNotBlank)?.let {
+                                        Text(
+                                            it,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
                                     Text(
-                                        text = people.headline,
-                                        style = MaterialTheme.typography.bodyMedium,
+                                        "${formatTopicCount(result.visitCount.toString())} 浏览 · ${formatTopicCount(result.discussCount.toString())} 讨论",
+                                        style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis,
                                     )
                                 }
-                                Text(
-                                    text = "${people.followerCount} 粉丝 · ${people.answerCount} 回答",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                TextButton(
+                                    modifier = Modifier.testTag("search_topic_follow_${topic.id}"),
+                                    enabled = topic.id !in viewModel.changingTopicIds,
+                                    onClick = {
+                                        coroutineScope.launch {
+                                            viewModel
+                                                .setTopicFollowing(paginationEnvironment, topic.id, !result.isFollowing)
+                                                .onFailure { userMessages.showShortMessage("关注操作失败：${it.message}") }
+                                        }
+                                    },
+                                ) { Text(if (result.isFollowing) "已关注" else "关注") }
+                            }
+                        }
+                    } else {
+                        items(viewModel.peopleResults, key = { it.people.id }) { result ->
+                            val people = result.people
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        navigator.onNavigate(
+                                            Person(
+                                                id = people.id,
+                                                urlToken = people.urlToken.orEmpty(),
+                                                name = people.name,
+                                            ),
+                                        )
+                                    }.padding(horizontal = 16.dp, vertical = 12.dp)
+                                    .testTag("search_people_result_${people.id}"),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                AsyncImage(
+                                    model = people.avatarUrl,
+                                    contentDescription = "${people.name}的头像",
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .clip(CircleShape),
                                 )
+                                Column(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(start = 12.dp),
+                                ) {
+                                    Text(
+                                        text = parseEmphasizedHtmlTextWithTheme(result.highlightedName),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                    if (people.headline.isNotEmpty()) {
+                                        Text(
+                                            text = people.headline,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
+                                    Text(
+                                        text = "${people.followerCount} 粉丝 · ${people.answerCount} 回答",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
                             }
                         }
                     }
                     item {
-                        ProgressIndicatorFooter(peopleListState)
+                        when {
+                            viewModel.errorMessage != null -> {
+                                TextButton(
+                                    modifier = Modifier.fillMaxWidth().testTag("search_retry_button"),
+                                    onClick = { viewModel.retry(paginationEnvironment) },
+                                ) {
+                                    Text("加载失败：${viewModel.errorMessage}，点击重试")
+                                }
+                            }
+                            !viewModel.isEnd -> ProgressIndicatorFooter(resultListState)
+                        }
                     }
                 }
             } else {

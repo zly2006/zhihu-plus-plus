@@ -209,7 +209,7 @@ class HomeScreenInstrumentedTest {
         composeRule.onNodeWithTag(HOME_CREATE_FAB_TAG).performClick()
         composeRule.onNodeWithText("发想法").performClick()
 
-        assertEquals(listOf(WritePin), recordingNavigator.destinations)
+        assertEquals(listOf(WritePin()), recordingNavigator.destinations)
         assertEquals(0, recordingNavigator.backCount)
     }
 

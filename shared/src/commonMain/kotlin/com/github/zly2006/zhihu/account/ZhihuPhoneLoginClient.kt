@@ -36,7 +36,6 @@ import io.ktor.http.Parameters
 import io.ktor.http.contentType
 import io.ktor.http.formUrlEncode
 import io.ktor.http.isSuccess
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -197,7 +196,7 @@ class ZhihuPhoneLoginClient(
         }
         val body = response.bodyAsText()
         check(response.status.isSuccess()) { "获取图形验证码失败（HTTP ${response.status.value}）" }
-        return ZhihuJson.json.decodeFromString<CaptchaResponse>(body).imageBase64
+        return ZhihuJson.decodeJson<CaptchaResponse>(ZhihuJson.json.parseToJsonElement(body)).imgBase64
     }
 
     suspend fun verifyCaptcha(input: String): Boolean {
@@ -209,7 +208,7 @@ class ZhihuPhoneLoginClient(
         }
         val body = response.bodyAsText()
         check(response.status.isSuccess()) { "验证图形验证码失败（HTTP ${response.status.value}）" }
-        return ZhihuJson.json.decodeFromString<CaptchaVerificationResponse>(body).success
+        return ZhihuJson.decodeJson<CaptchaVerificationResponse>(ZhihuJson.json.parseToJsonElement(body)).success
     }
 
     suspend fun signIn(
@@ -245,7 +244,7 @@ class ZhihuPhoneLoginClient(
             }.getOrNull()
             error(message?.let { "手机号登录失败：$it" } ?: "手机号登录失败（HTTP ${response.status.value}）")
         }
-        val token = ZhihuJson.json.decodeFromString<TokenResponse>(body)
+        val token = ZhihuJson.decodeJson<TokenResponse>(ZhihuJson.json.parseToJsonElement(body))
         check(token.accessToken.isNotBlank()) { "服务器未返回登录凭证" }
         cookies.putAll(token.cookie.filterValues(String::isNotBlank))
         if (cookies["d_c0"].isNullOrBlank()) {
@@ -308,12 +307,12 @@ class ZhihuPhoneLoginClient(
                     ?: "初始化手机号登录失败（HTTP ${response.status.value}）",
             )
         }
-        val initialization = ZhihuJson.json.decodeFromString<DeviceGuestInitializationResponse>(body)
+        val initialization = ZhihuJson.decodeJson<DeviceGuestInitializationResponse>(ZhihuJson.json.parseToJsonElement(body))
         val guest = initialization.guest
         check(guest.accessToken.isNotBlank()) { "服务器未返回访客凭证" }
-        check(initialization.deviceId.isNotBlank()) { "服务器未返回设备凭证" }
+        check(initialization.udid.isNotBlank()) { "服务器未返回设备凭证" }
         cookies.putAll(guest.cookie.filterValues(String::isNotBlank))
-        deviceId = initialization.deviceId
+        deviceId = initialization.udid
         authorization = "${guest.tokenType.ifBlank { "bearer" }} ${guest.accessToken}"
     }
 
@@ -323,7 +322,7 @@ class ZhihuPhoneLoginClient(
         }
         val body = response.bodyAsText()
         check(response.status.isSuccess()) { "检查图形验证码失败（HTTP ${response.status.value}）" }
-        return ZhihuJson.json.decodeFromString(body)
+        return ZhihuJson.decodeJson(ZhihuJson.json.parseToJsonElement(body))
     }
 
     private fun HttpRequestBuilder.applyMobileHeaders() {
@@ -378,26 +377,21 @@ private fun normalizePhoneNumber(phoneNumber: String): String {
 
 @Serializable
 private data class GuestTokenResponse(
-    @SerialName("access_token")
     val accessToken: String,
-    @SerialName("token_type")
     val tokenType: String = "bearer",
     val cookie: Map<String, String> = emptyMap(),
 )
 
 @Serializable
 private data class DeviceGuestInitializationResponse(
-    @SerialName("udid")
-    val deviceId: String,
+    val udid: String,
     val guest: GuestTokenResponse,
 )
 
 @Serializable
 private data class CaptchaResponse(
-    @SerialName("show_captcha")
     val showCaptcha: Boolean = false,
-    @SerialName("img_base64")
-    val imageBase64: String? = null,
+    val imgBase64: String? = null,
 )
 
 @Serializable
@@ -407,13 +401,9 @@ private data class CaptchaVerificationResponse(
 
 @Serializable
 private data class TokenResponse(
-    @SerialName("access_token")
     val accessToken: String,
-    @SerialName("refresh_token")
     val refreshToken: String? = null,
-    @SerialName("token_type")
     val tokenType: String = "bearer",
-    @SerialName("expires_in")
     val expiresIn: Long? = null,
     val cookie: Map<String, String> = emptyMap(),
 )

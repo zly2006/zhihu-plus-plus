@@ -21,16 +21,22 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.PeopleSearchResult
 import com.github.zly2006.zhihu.data.SearchResult
 import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.data.ZhihuPaging
 import com.github.zly2006.zhihu.data.target
+import com.github.zly2006.zhihu.util.raiseForStatus
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.deleteSigned
+import com.github.zly2006.zhihu.viewmodel.postSigned
 import io.ktor.http.encodeURLParameter
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 
 const val ZHIHU_HOT_SEARCH_URL = "https://www.zhihu.com/api/v4/search/hot_search"
 private const val SEARCH_VERTICAL_INFO = "0,0,0,0,0,0,0,0,0,0,0,0"
@@ -40,6 +46,8 @@ open class SearchViewModel(
     val restrictedMemberHashId: String = "",
 ) : BaseFeedViewModel() {
     val peopleResults = mutableStateListOf<PeopleSearchResult>()
+    val topicResults = mutableStateListOf<TopicSearchResult>()
+    val changingTopicIds = mutableStateListOf<String>()
     var sortOption by mutableStateOf(SearchSortOption.Default)
         private set
     var contentType by mutableStateOf(SearchContentType.All)
@@ -94,19 +102,51 @@ open class SearchViewModel(
         refresh(environment)
     }
 
+    suspend fun setTopicFollowing(
+        environment: PaginationEnvironment,
+        topicId: String,
+        following: Boolean,
+    ): Result<Unit> {
+        val index = topicResults.indexOfFirst { it.topic.id == topicId }
+        if (index < 0 || topicId in changingTopicIds || topicResults[index].isFollowing == following) {
+            return Result.success(Unit)
+        }
+        val previous = topicResults[index]
+        changingTopicIds += topicId
+        topicResults[index] = previous.copy(isFollowing = following)
+        return runCatching {
+            val endpoint = "https://www.zhihu.com/api/v4/topics/$topicId/followers"
+            val response = if (following) environment.postSigned(endpoint) else environment.deleteSigned(endpoint)
+            response.raiseForStatus()
+            Unit
+        }.onFailure {
+            val currentIndex = topicResults.indexOfFirst { it.topic.id == topicId }
+            if (currentIndex >= 0) topicResults[currentIndex] = previous
+        }.also {
+            changingTopicIds -= topicId
+        }
+    }
+
     override fun refresh(environment: PaginationEnvironment) {
         peopleResults.clear()
+        topicResults.clear()
         super.refresh(environment)
+    }
+
+    fun retry(environment: PaginationEnvironment) {
+        errorMessage = null
+        loadMore(environment)
     }
 
     override suspend fun fetchFeeds(environment: PaginationEnvironment) {
         try {
             val url = lastPaging?.next ?: initialUrl
-            val jojo = environment.fetchJson(url, include)!!
-            val jsonArray = jojo["data"]!!.jsonArray
+            val jojo = environment.fetchJson(url, include) ?: error("搜索响应为空")
+            val jsonArray = jojo["data"] as? JsonArray ?: error("搜索响应缺少 data 列表")
 
             // Parse search results and convert to Feed objects
             val results = jsonArray.mapNotNull { element ->
+                if (searchTab == SearchTab.Topic) return@mapNotNull null
                 try {
                     ZhihuJson.decodeJson<SearchResult>(element)
                 } catch (e: Exception) {
@@ -119,8 +159,32 @@ open class SearchViewModel(
             results.mapNotNull(SearchResult::people).forEach { result ->
                 if (existingPeopleIds.add(result.people.id)) peopleResults.add(result)
             }
+            if (searchTab == SearchTab.Topic) {
+                val existingTopicIds = topicResults.mapTo(mutableSetOf()) { it.topic.id }
+                val decodedTopics = jsonArray.mapNotNull { element ->
+                    decodeTopicSearchResult(element).also { result ->
+                        if (result == null) {
+                            environment.logDecodeFailure(
+                                "SearchViewModel",
+                                element,
+                                IllegalArgumentException("话题搜索结果缺少可用的话题对象"),
+                            )
+                        }
+                    }
+                }
+                if (jsonArray.isNotEmpty() && decodedTopics.isEmpty()) {
+                    error("服务端返回了 ${jsonArray.size} 条话题搜索结果，但均无法解码")
+                }
+                decodedTopics.forEach { result ->
+                    if (existingTopicIds.add(result.topic.id)) topicResults.add(result)
+                }
+            }
 
-            processResponse(environment, feeds, jsonArray)
+            if (searchTab == SearchTab.Topic) {
+                debugData.addAll(jsonArray)
+            } else {
+                processResponse(environment, feeds, jsonArray)
+            }
 
             // Handle pagination
             if ("paging" in jojo) {
@@ -176,6 +240,50 @@ enum class SearchTab(
 ) {
     General("全站"),
     People("用户"),
+    Topic("话题"),
+}
+
+data class TopicSearchResult(
+    val topic: DataHolder.Topic,
+    val excerpt: String,
+    val visitCount: Long,
+    val discussCount: Long,
+    val isFollowing: Boolean,
+)
+
+@Serializable
+private data class TopicSearchObject(
+    val id: String,
+    val type: String,
+    val url: String,
+    val name: String,
+    val avatarUrl: String? = null,
+    val topicType: String? = null,
+    val excerpt: String = "",
+    val visitCount: Long = 0,
+    val topAnswerCount: Long = 0,
+    val isFollowing: Boolean = false,
+)
+
+fun decodeTopicSearchResult(element: JsonElement): TopicSearchResult? {
+    val entry = element as? JsonObject ?: return null
+    val objectJson = entry["object"] as? JsonObject ?: return null
+    val decoded = runCatching { ZhihuJson.decodeJson<TopicSearchObject>(objectJson) }.getOrNull() ?: return null
+    if (decoded.type != "topic") return null
+    return TopicSearchResult(
+        topic = DataHolder.Topic(
+            id = decoded.id,
+            type = decoded.type,
+            url = decoded.url,
+            name = decoded.name.replace("<em>", "").replace("</em>", ""),
+            avatarUrl = decoded.avatarUrl,
+            topicType = decoded.topicType,
+        ),
+        excerpt = decoded.excerpt.replace("<em>", "").replace("</em>", ""),
+        visitCount = decoded.visitCount,
+        discussCount = decoded.topAnswerCount,
+        isFollowing = decoded.isFollowing,
+    )
 }
 
 enum class SearchTimeRange(
@@ -204,13 +312,19 @@ fun zhihuSearchUrl(
         timeRange != SearchTimeRange.All
     val params = buildList {
         add("gk_version" to "gz-gaokao")
-        add("t" to if (searchTab == SearchTab.People) "people" else "general")
+        add(
+            "t" to when (searchTab) {
+                SearchTab.People -> "people"
+                SearchTab.Topic -> "topic"
+                SearchTab.General -> "general"
+            },
+        )
         add("q" to query)
         add("correction" to "1")
         add("offset" to "0")
         add("limit" to "20")
         add("search_source" to if (hasActiveFilter) "Filter" else "Normal")
-        add("show_all_topics" to "0")
+        add("show_all_topics" to if (searchTab == SearchTab.Topic) "1" else "0")
         if (restrictedMemberHashId.isNotBlank()) {
             add("filter_fields" to "")
             add("lc_idx" to "0")

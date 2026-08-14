@@ -32,7 +32,6 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -50,18 +49,12 @@ const val ZHIHU_ANDROID_IDENTITY_USER_AGENT =
 @Serializable
 data class ZhihuIdentityAccount(
     val id: String,
-    @SerialName("url_token")
     val urlToken: String? = null,
     val name: String,
-    @SerialName("avatar_url")
     val avatarUrl: String? = null,
-    @SerialName("is_active")
     val isActive: Boolean = false,
-    @SerialName("can_create_sub_account")
     val canCreateSubAccount: Boolean = false,
-    @SerialName("account_type")
     val accountType: Int = 0,
-    @SerialName("sub_account_control_status")
     val subAccountControlStatus: Int = 0,
 )
 
@@ -92,7 +85,7 @@ class ZhihuIdentityClient(
             applyIdentityHeaders(currentSession())
         }
         val body = response.successBody("获取身份列表")
-        return ZhihuJson.json.decodeFromString<ZhihuIdentityAccountListResponse>(body).data
+        return ZhihuJson.decodeJson<ZhihuIdentityAccountListResponse>(ZhihuJson.json.parseToJsonElement(body)).data
     }
 
     suspend fun createSubAccount(): ZhihuIdentityChangeResult {
@@ -119,7 +112,7 @@ class ZhihuIdentityClient(
         body: String,
         expectedAccountId: String? = null,
     ): ZhihuIdentityChangeResult {
-        val token = ZhihuJson.json.decodeFromString<ZhihuIdentityToken>(body)
+        val token = ZhihuJson.decodeJson<ZhihuIdentityToken>(ZhihuJson.json.parseToJsonElement(body))
         check(token.accessToken.isNotBlank()) { "服务器未返回新账号凭证" }
         check(token.cookie["z_c0"].isNullOrBlank().not()) { "服务器未返回新账号 Cookie" }
 
@@ -140,7 +133,7 @@ class ZhihuIdentityClient(
             val profileBody = response.successBody("初始化新账号")
             val rawProfile = ZhihuJson.json.parseToJsonElement(profileBody).jsonObject
             val convertedProfile = ZhihuJson.snakeCaseToCamelCase(rawProfile)
-            val profile = ZhihuJson.json.decodeFromJsonElement<ZhihuIdentityProfile>(convertedProfile)
+            val profile = ZhihuJson.decodeJson<ZhihuIdentityProfile>(rawProfile)
             check(profile.id.isNotBlank() && profile.name.isNotBlank()) { "服务器返回的账号资料不完整" }
             check(expectedAccountId == null || profile.id == expectedAccountId) {
                 "服务器返回的账号与目标账号不一致"
@@ -239,18 +232,12 @@ private data class SwitchAccountRequest(
 @Serializable
 private data class ZhihuIdentityToken(
     val uid: String = "",
-    @SerialName("user_id")
     val userId: Long? = null,
-    @SerialName("token_type")
     val tokenType: String = "bearer",
-    @SerialName("access_token")
     val accessToken: String,
-    @SerialName("refresh_token")
     val refreshToken: String? = null,
-    @SerialName("expires_in")
     val expiresIn: Long? = null,
     val cookie: Map<String, String> = emptyMap(),
-    @SerialName("expires_at")
     val expiresAt: Long? = null,
 )
 

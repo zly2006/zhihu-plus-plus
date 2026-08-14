@@ -32,7 +32,7 @@ import kotlin.time.Clock
  */
 fun parsePublishContentId(resultText: String): Long? =
     runCatching {
-        ZhihuJson.json.decodeFromString(DataHolder.PublishResult.serializer(), resultText)
+        ZhihuJson.decodeJson(DataHolder.PublishResult.serializer(), ZhihuJson.json.parseToJsonElement(resultText))
     }.getOrNull()
         ?.let { result -> result.publish?.id ?: result.id }
         ?.toLongOrNull()
