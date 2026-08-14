@@ -2,12 +2,11 @@
 //
 // Minimal squircle clip shim for the vendored miuix-nav.
 //
-// Upstream miuix-squircle's absoluteSquircleClip is shader-backed (AGSL RuntimeShader + a baked
-// SDF) and falls back to AbsoluteRoundedCornerShape when runtime shaders are unavailable. Vendoring
-// that whole chain (miuix-shader + AGSL platform actuals) for the single corner clip miuix-nav
-// performs during navigation transitions is disproportionate, so this provides the same public
-// signature using a pure-path GenericShape built from the vendored [addSquircleRect] math. It keeps
-// the MIUIX G2 corner silhouette (incl. asymmetric left/right-edge modes) without the shader tree.
+// miuix-squircle 0.9.3 (pulled in transitively by miuix-ui) supplies the corner math and defaults
+// used below, but not absoluteSquircleClip — upstream only added that alongside miuix-nav in
+// 0.9.4-rc01, which we do not take because it drags Compose up to 1.12.0-rc01. So this keeps the
+// one entry point miuix-nav needs, implemented as a per-corner Shape over the official math. Drop
+// this file once we move to the published miuix-nav.
 
 package top.yukonga.miuix.kmp.squircle
 
@@ -72,8 +71,15 @@ private class AbsoluteSquircleShape(
 }
 
 /**
+ * Cubic Bézier handle ratio, mirroring miuix-squircle's `SQUIRCLE_CONTROL`. That one is `internal`
+ * to its module, so it cannot be referenced from here; keep this value in lock-step with it or the
+ * navigation clip silhouette drifts from the rest of the MIUIX squircle surfaces.
+ */
+private const val SQUIRCLE_CONTROL = 0.643f
+
+/**
  * Appends a squircle rectangle with per-corner radii. A corner whose radius resolves to `0` becomes
- * a sharp 90° vertex. Mirrors the cubic construction in the uniform [addSquircleRect] in this module.
+ * a sharp 90° vertex. Mirrors the cubic construction in miuix-squircle's uniform `addSquircleRect`.
  */
 private fun Path.addSquircleRect(
     width: Float,

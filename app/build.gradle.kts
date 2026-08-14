@@ -1,4 +1,4 @@
-﻿@file:OptIn(ExperimentalEncodingApi::class)
+@file:OptIn(ExperimentalEncodingApi::class)
 
 import buildlogic.gitHash
 import org.gradle.api.tasks.testing.Test
@@ -37,7 +37,7 @@ ksp {
 
 android {
     namespace = "com.github.zly2006.zhihu"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.github.zly2006.zhplus"
@@ -138,8 +138,8 @@ android {
                 )
         }
         dex {
-            // minSdk鈮?8 鏃?AGP 榛樿涓嶅帇缂?dex锛堣澶囦笂鍙?mmap锛屼絾 APK 浣撶Н缈诲€嶏級銆?
-            // 鏈簲鐢ㄨ蛋 Telegram 渚ц浇鍒嗗彂锛屼笅杞戒綋绉紭鍏?鈫?寮哄埗鍘嬬缉 dex锛圓PK 鍑忓崐锛屼粎棣栨瀹夎鐣ユ參锛夈€?
+            // minSdku{2265}28 时 AGP 默认不压缩 dex（设备上可 mmap，但 APK 体积翻倍）。
+            // 本应用走 Telegram 侧载分发，下载体积优先 u{2192} 强制压缩 dex（APK 减半，仅首次安装略慢）。
             useLegacyPackaging = true
         }
     }
@@ -199,14 +199,14 @@ tasks.withType<Test>().configureEach {
 
 val ktor = "3.5.0"
 val coil = "3.4.0"
-val aboutLibraries = "14.0.1"
-val composeVersion = "1.11.0"
+val aboutLibraries = "15.0.0"
+val composeVersion = "1.11.1"
 val lifecycleVersion = "2.10.0"
 
-// Force material3 to 1.10.0-alpha05锛屼笌 shared 妯″潡淇濇寔涓€鑷淬€?
-// 鏍瑰洜锛歴hared 妯″潡 commonMain 閫氳繃 material-kolor 鐨?strictly 绾︽潫瑙ｆ瀽鍒?1.10.0-alpha05锛?
-// 浣嗗钩鍙伴厤缃拰鏈ā鍧楀鏋滄病鏈?force锛屼細鍚勮嚜瑙ｆ瀽鍒颁笉鍚岀増鏈紙1.9.0 鎴?1.11.0-alpha07锛夛紝
-// 瀵艰嚧杩愯鏃剁被鍐茬獊鎴栫紪璇戞椂 internal API 涓嶅彲瑙併€?
+// Force material3 to 1.10.0-alpha05，与 shared 模块保持一致。
+// 根因：shared 模块 commonMain 通过 material-kolor 的 strictly 约束解析到 1.10.0-alpha05，
+// 但平台配置和本模块如果没有 force，会各自解析到不同版本（1.9.0 或 1.11.0-alpha07），
+// 导致运行时类冲突或编译时 internal API 不可见。
 configurations.configureEach {
     resolutionStrategy {
         force("org.jetbrains.compose.material3:material3:1.10.0-alpha05")
@@ -263,8 +263,8 @@ dependencies {
     implementation("org.jetbrains.compose.animation:animation:$composeVersion")
     implementation("org.jetbrains.compose.animation:animation-core:$composeVersion")
     implementation("org.jetbrains.compose.components:components-resources-android:$composeVersion")
-    // Compose (AndroidX 鈥?icons, tooling, test not available from JetBrains yet)
-    implementation(platform("androidx.compose:compose-bom:2026.05.00"))
+    // Compose (AndroidX u{2014} icons, tooling, test not available from JetBrains yet)
+    implementation(platform("androidx.compose:compose-bom:2026.06.00"))
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("com.mikepenz:aboutlibraries-compose-m3:$aboutLibraries")
@@ -273,7 +273,7 @@ dependencies {
     "fullImplementation"(project(":sentence_embeddings"))
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
-    androidTestImplementation(platform("androidx.compose:compose-bom:2026.05.00"))
+    androidTestImplementation(platform("androidx.compose:compose-bom:2026.06.00"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
 
     // HanLP for Chinese NLP
@@ -288,8 +288,8 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
     androidTestImplementation("io.ktor:ktor-client-mock:$ktor")
 
-    // ===== miuix 0.9.1 =====
-    val miuixVersion = "0.9.1"
+    // ===== miuix 0.9.3 =====
+    val miuixVersion = "0.9.3"
     implementation("top.yukonga.miuix.kmp:miuix-core-android:$miuixVersion")
     implementation("top.yukonga.miuix.kmp:miuix-ui-android:$miuixVersion")
     implementation("top.yukonga.miuix.kmp:miuix-preference-android:$miuixVersion")
