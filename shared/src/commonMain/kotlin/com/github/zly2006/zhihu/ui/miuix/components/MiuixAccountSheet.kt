@@ -43,13 +43,13 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.Person
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.AppTokens
 import com.github.zly2006.zhihu.ui.AccountSettingsAccountState
-import com.github.zly2006.zhihu.ui.rememberAccountLoginRequester
-import com.github.zly2006.zhihu.ui.rememberAccountLogoutAction
 import com.github.zly2006.zhihu.ui.rememberAccountQrLoginRequester
 import com.github.zly2006.zhihu.ui.rememberAccountSettingsAccountState
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Icon
@@ -74,9 +74,9 @@ fun MiuixAccountSheet(
     if (!show) return
 
     val navigator = LocalNavigator.current
-    val requestLogin = rememberAccountLoginRequester()
+    val environment = rememberPaginationEnvironment(allowGuestAccess = false)
     val requestQrLoginScan = rememberAccountQrLoginRequester()
-    val logout = rememberAccountLogoutAction()
+    val userMessages = rememberUserMessageSink()
     val settings = rememberSettingsStore()
     val accountState by rememberAccountSettingsAccountState()
     val data = testAccountData ?: accountState
@@ -126,7 +126,9 @@ fun MiuixAccountSheet(
                             title = "登录知乎",
                             onClick = {
                                 onDismiss()
-                                requestLogin()
+                                if (!environment.requestLogin()) {
+                                    userMessages.showShortMessage("当前平台暂不支持登录")
+                                }
                             },
                             startAction = { Icon(Icons.AutoMirrored.Filled.Login, null) },
                         )
@@ -179,7 +181,7 @@ fun MiuixAccountSheet(
                     }, startAction = { Icon(Icons.Default.FilterAlt, null) })
                     ArrowPreference(title = "系统与更新", summary = "GitHub、更新设置等", onClick = {
                         onDismiss()
-                        navigator.onNavigate(Account.SystemAndUpdateSettings)
+                        navigator.onNavigate(Account.SystemAndUpdateSettings())
                     }, startAction = { Icon(Icons.Default.Settings, null) })
                     if (settings.getBoolean("developer", false)) {
                         ArrowPreference(title = "开发者选项", onClick = {
@@ -218,7 +220,7 @@ fun MiuixAccountSheet(
                             title = "退出登录",
                             onClick = {
                                 onDismiss()
-                                logout()
+                                environment.logout()
                             },
                             startAction = { Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MiuixTheme.colorScheme.error) },
                         )

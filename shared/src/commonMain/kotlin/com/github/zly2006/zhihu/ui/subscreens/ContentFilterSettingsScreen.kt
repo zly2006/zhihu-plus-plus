@@ -61,17 +61,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.data.RecommendationMode
+import com.github.zly2006.zhihu.filter.ContentFilterStats
+import com.github.zly2006.zhihu.filter.cleanupOldData
+import com.github.zly2006.zhihu.filter.clearAllData
+import com.github.zly2006.zhihu.filter.loadFilterStats
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
-import com.github.zly2006.zhihu.shared.data.RecommendationMode
-import com.github.zly2006.zhihu.shared.filter.ContentFilterStats
-import com.github.zly2006.zhihu.shared.filter.rememberContentFilterMaintenance
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.shared.util.Log
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.ui.AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
+import com.github.zly2006.zhihu.util.Log
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
@@ -92,7 +96,7 @@ fun ContentFilterSettingsScreen(
     val navigator = LocalNavigator.current
     val coroutineScope = rememberCoroutineScope()
     val settings = rememberSettingsStore()
-    val filterMaintenance = rememberContentFilterMaintenance()
+    val contentFilterDao = remember { getContentFilterDatabase().contentFilterDao() }
     val userMessages = rememberUserMessageSink()
     val highlightedSetting = setting.orEmpty()
 
@@ -209,6 +213,22 @@ fun ContentFilterSettingsScreen(
                     settingKey = "loginForRecommendation",
                     highlightedKey = highlightedSetting,
                 )
+
+                val autoRefreshHomeOnStartup = remember {
+                    mutableStateOf(settings.getBoolean(AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY, true))
+                }
+                SettingItemWithSwitch(
+                    modifier = Modifier.testTag("contentFilterSettings:autoRefreshHomeOnStartup"),
+                    title = { Text("启动时自动刷新首页") },
+                    description = { Text("关闭后优先显示上次获取的一批首页推荐；没有缓存时仍会加载新推荐") },
+                    checked = autoRefreshHomeOnStartup.value,
+                    onCheckedChange = { checked ->
+                        autoRefreshHomeOnStartup.value = checked
+                        settings.putBoolean(AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY, checked)
+                    },
+                    settingKey = AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY,
+                    highlightedKey = highlightedSetting,
+                )
             }
 
             val enableContentFilter = remember { mutableStateOf(settings.getBoolean("enableContentFilter", true)) }
@@ -272,7 +292,7 @@ fun ContentFilterSettingsScreen(
                 val enableUserBlocking = remember { mutableStateOf(settings.getBoolean("enableUserBlocking", true)) }
                 SettingItemWithSwitch(
                     title = { Text("启用用户屏蔽") },
-                    description = { Text("屏蔽特定用户发布的内容") },
+                    description = { Text("屏蔽特定用户发布的内容，或由特定用户提出的问题") },
                     checked = enableUserBlocking.value,
                     onCheckedChange = {
                         enableUserBlocking.value = it
@@ -306,6 +326,8 @@ fun ContentFilterSettingsScreen(
                                 "当回答的问题包含 >= ${topicThreshold.value} 个被屏蔽主题时，屏蔽该内容",
                             )
                         },
+                        settingKey = "topicBlockingThreshold",
+                        highlightedKey = highlightedSetting,
                         endAction = {
                             Text(
                                 topicThreshold.value.toString(),
@@ -463,7 +485,7 @@ fun ContentFilterSettingsScreen(
 
             LaunchedEffect(Unit) {
                 try {
-                    filterStats = filterMaintenance.loadFilterStats()
+                    filterStats = contentFilterDao.loadFilterStats()
                 } catch (e: Exception) {
                     Log.e("ContentFilterSettingsScreen", "Failed to load filter stats", e)
                 }
@@ -501,7 +523,7 @@ fun ContentFilterSettingsScreen(
                                 onClick = {
                                     coroutineScope.launch {
                                         try {
-                                            filterStats = filterMaintenance.cleanupOldData()
+                                            filterStats = contentFilterDao.cleanupOldData()
                                             userMessages.showMessage("已清理过期数据")
                                         } catch (e: Exception) {
                                             // 忽略导出异常。
@@ -516,7 +538,7 @@ fun ContentFilterSettingsScreen(
                                 onClick = {
                                     coroutineScope.launch {
                                         try {
-                                            filterStats = filterMaintenance.clearAllData()
+                                            filterStats = contentFilterDao.clearAllData()
                                             userMessages.showMessage("已重置所有数据")
                                             showStatsDialog = false
                                         } catch (e: Exception) {

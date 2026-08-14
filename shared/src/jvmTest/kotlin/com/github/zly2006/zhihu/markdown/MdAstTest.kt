@@ -18,12 +18,19 @@
 package com.github.zly2006.zhihu.markdown
 
 import com.hrm.markdown.parser.ast.ContainerNode
+import com.hrm.markdown.parser.ast.Emphasis
 import com.hrm.markdown.parser.ast.Figure
+import com.hrm.markdown.parser.ast.FootnoteDefinition
+import com.hrm.markdown.parser.ast.FootnoteReference
 import com.hrm.markdown.parser.ast.InlineMath
+import com.hrm.markdown.parser.ast.Link
+import com.hrm.markdown.parser.ast.ListBlock
+import com.hrm.markdown.parser.ast.ListItem
 import com.hrm.markdown.parser.ast.MathBlock
 import com.hrm.markdown.parser.ast.NativeBlock
 import com.hrm.markdown.parser.ast.Node
 import com.hrm.markdown.parser.ast.Paragraph
+import com.hrm.markdown.parser.ast.SegmentHighlight
 import com.hrm.markdown.parser.ast.StrongEmphasis
 import com.hrm.markdown.parser.ast.Text
 import org.jsoup.Jsoup
@@ -46,6 +53,100 @@ class MdAstTest {
 
         assertEquals(1, document.children.size)
         assertTrue(document.children.single() is NativeBlock)
+    }
+
+    @Test
+    fun video_box_anchor_should_convert_to_link_when_native_blocks_disabled() {
+        val document = htmlToMdAst(
+            """
+            <a class="video-box" href="https://link.zhihu.com/?target=https%3A//www.zhihu.com/video/2029631316597973958" data-lens-id="2029631316597973958">
+              <img src="https://example.com/cover.jpg" />
+            </a>
+            """.trimIndent(),
+            noNativeBlock = true,
+        )
+
+        assertFalse(document.allNodes().any { it is NativeBlock })
+        assertEquals("[视频](https://www.zhihu.com/video/2029631316597973958)", document.toMarkdown())
+    }
+
+    @Test
+    fun highlighted_paragraph_should_remain_inline_when_native_blocks_disabled() {
+        val document = htmlToMdAst(
+            """
+            <p data-pid="seg-1"><span class="highlight-wrap other has-comments"
+                data-highlight-id="abc"
+                data-highlight-like-count="5"
+                data-highlight-comment-count="1"
+                data-highlight-my-comment-count="0"
+                data-highlight-is-like="true"
+                data-highlight-is-span="false"
+                data-highlight-content-id="42"
+                data-highlight-content-type="answer"
+                data-highlight-pid="seg-1"
+                data-highlight-start-offset="0"
+                data-highlight-end-offset="7">第一句需要划线</span>，第二句保持原样。</p>
+            """.trimIndent(),
+            noNativeBlock = true,
+        )
+
+        assertFalse(document.allNodes().any { it is NativeBlock })
+        assertEquals(1, document.allNodes().count { it is SegmentHighlight })
+        assertEquals("第一句需要划线，第二句保持原样。", document.toMarkdown())
+    }
+
+    @Test
+    fun highlighted_paragraph_should_use_segment_highlight_inside_paragraph() {
+        val document = htmlToMdAst(
+            """
+            <p data-pid="seg-1"><span class="highlight-wrap other has-comments"
+                data-highlight-id="abc"
+                data-highlight-like-count="5"
+                data-highlight-comment-count="1"
+                data-highlight-my-comment-count="0"
+                data-highlight-is-like="true"
+                data-highlight-is-span="false"
+                data-highlight-content-id="42"
+                data-highlight-content-type="answer"
+                data-highlight-pid="seg-1"
+                data-highlight-start-offset="0"
+                data-highlight-end-offset="7">第一句需要划线</span>，第二句保持原样。</p>
+            """.trimIndent(),
+        )
+
+        val paragraph = document.children.single() as Paragraph
+        val highlight = paragraph.children.first() as SegmentHighlight
+        assertEquals("第一句需要划线", highlight.text)
+        assertEquals("abc", highlight.attributes["data-highlight-id"])
+        assertEquals("第一句需要划线，第二句保持原样。", document.toMarkdown())
+    }
+
+    @Test
+    fun segment_highlight_should_preserve_supported_inline_format() {
+        val document = htmlToMdAst(
+            """
+            <p data-pid="seg-1"><span class="highlight-wrap"
+                data-highlight-id="abc"><strong>加粗</strong><em>斜体</em></span>保持原样。</p>
+            """.trimIndent(),
+        )
+
+        val highlight = document.allNodes().filterIsInstance<SegmentHighlight>().single()
+        assertTrue(highlight.children[0] is StrongEmphasis)
+        assertTrue(highlight.children[1] is Emphasis)
+        assertEquals("**加粗***斜体*保持原样。", document.toMarkdown())
+    }
+
+    @Test
+    fun segment_highlight_should_yield_to_unsupported_inline_format() {
+        val document = htmlToMdAst(
+            """
+            <p><span class="highlight-wrap" data-highlight-id="abc">划线文字</span><a href="https://example.com">原链接</a></p>
+            """.trimIndent(),
+        )
+
+        assertFalse(document.allNodes().any { it is SegmentHighlight })
+        assertEquals(1, document.allNodes().count { it is Link })
+        assertEquals("划线文字[原链接](https://example.com)", document.toMarkdown())
     }
 
     @Test
@@ -106,6 +207,78 @@ class MdAstTest {
     }
 
     @Test
+    fun sibling_ordered_lists_should_nest_under_the_preceding_list_item() {
+        val document = htmlToMdAst(
+            """
+            <ol>
+              <li>继续跳票。</li>
+              <li>在较短时间内推出，但是</li>
+              <ol>
+                <li>分词器和灰测表现不一致</li>
+                <ol>
+                  <li>正式版性能约等于 Fable。</li>
+                  <li>正式版性能远不及 Fable。</li>
+                </ol>
+                <li>分词器和灰测表现一致</li>
+                <ol>
+                  <li>正式版的性能接近 Fable。</li>
+                  <li>正式版的表现远不及 Fable。</li>
+                </ol>
+              </ol>
+            </ol>
+            """.trimIndent(),
+        )
+
+        val outerList = document.children.single() as ListBlock
+        val outerItems = outerList.children.filterIsInstance<ListItem>()
+        val secondLevelList = outerItems[1].children.filterIsInstance<ListBlock>().single()
+        val secondLevelItems = secondLevelList.children.filterIsInstance<ListItem>()
+
+        assertEquals(2, outerItems.size)
+        assertEquals(2, secondLevelItems.size)
+        assertEquals(
+            2,
+            secondLevelItems[0]
+                .children
+                .filterIsInstance<ListBlock>()
+                .single()
+                .children.size,
+        )
+        assertEquals(
+            2,
+            secondLevelItems[1]
+                .children
+                .filterIsInstance<ListBlock>()
+                .single()
+                .children.size,
+        )
+    }
+
+    @Test
+    fun nested_list_without_preceding_item_should_keep_its_items() {
+        val document = htmlToMdAst(
+            """
+            <h3>1.2 国际带宽分配</h3>
+            <ul><ul>
+              <li>电信的国际带宽总量最大，约为7.7T</li>
+              <li>带宽分配较为均衡，各省都有一定的国际带宽</li>
+            </ul></ul>
+            """.trimIndent(),
+        )
+        val list = document.children.filterIsInstance<ListBlock>().single()
+        val items = list.children.filterIsInstance<ListItem>()
+
+        assertEquals(2, items.size)
+        assertEquals(
+            listOf(
+                "电信的国际带宽总量最大，约为7.7T",
+                "带宽分配较为均衡，各省都有一定的国际带宽",
+            ),
+            items.map { it.plainText() },
+        )
+    }
+
+    @Test
     fun preview_image_urls_should_keep_document_order_and_drop_duplicates() {
         val document = htmlToMdAst(
             """
@@ -127,6 +300,33 @@ class MdAstTest {
     }
 
     @Test
+    fun issue_495_fixture_should_build_complete_ast_before_viewport_layout() {
+        val html = File("../app/src/androidTest/assets/issue-495-answer.html").readText()
+        val document = htmlToMdAst(html)
+        val nodes = document.allNodes()
+
+        assertTrue(document.children.size > 100)
+        assertEquals(406, nodes.size)
+        assertEquals(148, nodes.count { it is MathBlock || it is InlineMath })
+    }
+
+    @Test
+    fun markdown_footnote_definition_should_keep_its_content_as_blocks() {
+        val document = markdownToMdAst(
+            """
+            [^note]: Footnote content.
+
+            Text with [^note].
+            """.trimIndent(),
+        )
+        val footnote = document.children.filterIsInstance<FootnoteDefinition>().single()
+        val paragraph = footnote.children.single() as Paragraph
+
+        assertEquals("Footnote content.", (paragraph.children.single() as Text).literal)
+        assertEquals(1, document.allNodes().count { it is FootnoteReference })
+    }
+
+    @Test
     fun extracted_answer_content_should_keep_equation_as_math_not_figure() {
         val htmlFile = File(
             requireNotNull(javaClass.classLoader?.getResource("zhihu_answer_2035661632110585441_content.html")).toURI(),
@@ -144,12 +344,12 @@ class MdAstTest {
         assertFalse(nodes.any { it is Figure && it.imageUrl.contains("/equation?tex=") })
     }
 
-    private fun Node.allNodes(): List<Node> =
-        listOf(this) + if (this is ContainerNode) children.flatMap { it.allNodes() } else emptyList()
-
     private fun Node.plainText(): String = when (this) {
         is Text -> literal
         is ContainerNode -> children.joinToString(separator = "") { it.plainText() }
         else -> ""
     }
 }
+
+internal fun Node.allNodes(): List<Node> =
+    listOf(this) + if (this is ContainerNode) children.flatMap { it.allNodes() } else emptyList()

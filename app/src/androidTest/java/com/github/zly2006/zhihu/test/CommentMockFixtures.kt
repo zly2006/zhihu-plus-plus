@@ -17,45 +17,17 @@
 
 package com.github.zly2006.zhihu.test
 
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.ZhihuJson
 import io.ktor.http.HttpMethod
 import kotlinx.serialization.encodeToString
 
 fun mockRootComments(
     urlPrefix: String,
     commentId: String = "offline-root-comment",
+    resourceType: String = "answer",
 ) {
-    val comment = DataHolder.Comment(
-        id = commentId,
-        type = "comment",
-        resourceType = "answer",
-        url = "https://www.zhihu.com/comment/$commentId",
-        content = "<p>离线评论内容</p>",
-        createdTime = 1_713_500_000L,
-        isDelete = false,
-        collapsed = false,
-        reviewing = false,
-        liked = false,
-        likeCount = 0,
-        isAuthor = false,
-        author = DataHolder.Comment.Author(
-            id = "offline-comment-author",
-            urlToken = "offline-comment-author-token",
-            name = "离线评论作者",
-            avatarUrl = "https://example.invalid/avatar.png",
-            avatarUrlTemplate = "",
-            isOrg = false,
-            type = "people",
-            url = "https://www.zhihu.com/people/offline-comment-author-token",
-            userType = "people",
-            headline = "离线评论作者签名",
-            gender = 0,
-            isAdvertiser = false,
-        ),
-        childCommentCount = 0,
-        childComments = emptyList(),
-    )
+    val comment = offlineComment(commentId, resourceType)
     ZhihuMockApi.mockJsonPrefix(
         method = HttpMethod.Get,
         urlPrefix = urlPrefix,
@@ -73,3 +45,51 @@ fun mockRootComments(
             """.trimIndent(),
     )
 }
+
+fun mockCommentDetail(
+    commentId: String,
+    resourceType: String,
+    replyRootCommentId: String? = null,
+) {
+    ZhihuMockApi.mockJson(
+        method = HttpMethod.Get,
+        url = "https://www.zhihu.com/api/v4/comment_v5/comment/$commentId",
+        body = ZhihuJson.json.encodeToString(
+            offlineComment(commentId, resourceType).copy(replyRootCommentId = replyRootCommentId),
+        ),
+    )
+}
+
+private fun offlineComment(
+    commentId: String,
+    resourceType: String,
+) = DataHolder.Comment(
+    id = commentId,
+    type = "comment",
+    resourceType = resourceType,
+    url = "https://www.zhihu.com/comment/$commentId",
+    content = "<p>离线评论内容</p>",
+    createdTime = 1_713_500_000L,
+    isDelete = false,
+    collapsed = false,
+    reviewing = false,
+    liked = false,
+    likeCount = 0,
+    isAuthor = false,
+    author = DataHolder.Comment.Author(
+        id = "offline-comment-author",
+        urlToken = "offline-comment-author-token",
+        name = "离线评论作者",
+        avatarUrl = "https://example.invalid/avatar.png",
+        avatarUrlTemplate = "",
+        isOrg = false,
+        type = "people",
+        url = "https://www.zhihu.com/people/offline-comment-author-token",
+        userType = "people",
+        headline = "离线评论作者签名",
+        gender = 0,
+        isAdvertiser = false,
+    ),
+    childCommentCount = 0,
+    childComments = emptyList(),
+)

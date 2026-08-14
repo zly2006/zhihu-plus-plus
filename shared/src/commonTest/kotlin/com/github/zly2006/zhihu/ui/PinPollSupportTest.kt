@@ -17,8 +17,8 @@
 
 package com.github.zly2006.zhihu.ui
 
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.ZhihuJson
 import kotlinx.serialization.json.jsonObject
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -62,7 +62,7 @@ class PinPollSupportTest {
     }
 
     @Test
-    fun homeAnnouncementExtractionKeepsAllActiveAuthorPolls() {
+    fun homeAnnouncementExtractionKeepsPollsAndZhihuPlusPlusTopics() {
         val response = ZhihuJson.json
             .parseToJsonElement(
                 """
@@ -70,18 +70,38 @@ class PinPollSupportTest {
                   "data": [
                     ${pinJson(id = "101", pollId = "poll-101", title = "第一个反馈投票")},
                     ${pinJson(id = "102", pollId = "poll-102", title = "第二个反馈投票")},
-                    ${pinJson(id = "103", pollId = "poll-103", title = "已结束反馈投票", endAt = 1000)}
+                    ${pinJson(id = "103", pollId = "poll-103", title = "已结束反馈投票", endAt = 1000)},
+                    ${pinJson(id = "104", pollId = "", topicId = ZHIHU_PLUS_TOPIC_ID, excerptTitle = "版本动态")},
+                    ${pinJson(id = "105", pollId = "", topicId = "other-topic")}
                   ]
                 }
                 """.trimIndent(),
             ).jsonObject
 
-        val announcements = decodeHomePollAnnouncements(response, nowEpochSeconds = 2_000)
+        val announcements = decodeHomePinAnnouncements(response)
 
-        assertEquals(listOf(101L, 102L), announcements.map { it.pinId })
-        assertEquals(listOf("poll-101", "poll-102"), announcements.map { it.pollId })
+        assertEquals(listOf(101L, 102L, 104L), announcements.map { it.pinId })
+        assertEquals(
+            listOf(HomePinAnnouncementKind.Poll, HomePinAnnouncementKind.Poll, HomePinAnnouncementKind.Topic),
+            announcements.map { it.kind },
+        )
         assertEquals("第一个反馈投票", announcements.first().title)
         assertEquals(2, announcements.first().optionCount)
+        assertEquals("版本动态", announcements.last().title)
+    }
+
+    @Test
+    fun topicAnnouncementUsesPlainTextBeforeHtmlDetails() {
+        val pin = decodePin(
+            pinJson(
+                id = "104",
+                pollId = "",
+                topicId = ZHIHU_PLUS_TOPIC_ID,
+                excerptTitle = "版本动态<br><p>详细内容</p>",
+            ),
+        )
+
+        assertEquals("版本动态", pin.toHomePinAnnouncement()?.title)
     }
 
     private fun decodePin(json: String): DataHolder.Pin =
@@ -93,6 +113,8 @@ class PinPollSupportTest {
         title: String = "知乎++好用吗",
         memberCount: Int = 0,
         endAt: Long = -1,
+        topicId: String? = null,
+        excerptTitle: String = "给知乎++打个分吧",
     ): String =
         """
         {
@@ -124,9 +146,13 @@ class PinPollSupportTest {
               "poll_id": 2051253919255360130
             }
           ],
-          "excerpt_title": "给知乎++打个分吧",
+          "excerpt_title": "$excerptTitle",
           "content_html": "<p>给知乎++打个分吧</p>",
-          "bottom_poll": {
+          "topics": ${topicId?.let { "[{\"id\":\"$it\",\"type\":\"topic\",\"url\":\"zhihu://topic/$it/pin20\",\"name\":\"topic\"}]" } ?: "null"},
+          "bottom_poll": ${if (pollId.isBlank()) {
+            "null"
+        } else {
+            """{
             "voting": {
               "id": "$pollId",
               "title": "$title",
@@ -153,7 +179,8 @@ class PinPollSupportTest {
                 }
               ]
             }
-          }
+          }"""
+        }}
         }
         """.trimIndent()
 }

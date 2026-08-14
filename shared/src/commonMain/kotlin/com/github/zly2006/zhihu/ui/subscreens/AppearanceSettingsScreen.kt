@@ -93,19 +93,24 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.MyCollections
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.shared.theme.ThemeMode
-import com.github.zly2006.zhihu.shared.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
-import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.theme.ThemeMode
 import com.github.zly2006.zhihu.theme.ThemeStyle
+import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
+import com.github.zly2006.zhihu.ui.components.ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.ColorPickerDialog
+import com.github.zly2006.zhihu.ui.components.DEFAULT_ANSWER_SWITCH_SENSITIVITY
+import com.github.zly2006.zhihu.ui.components.MAX_ANSWER_SWITCH_SENSITIVITY
+import com.github.zly2006.zhihu.ui.components.MIN_ANSWER_SWITCH_SENSITIVITY
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemOverall
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
+import com.github.zly2006.zhihu.ui.components.normalizedAnswerSwitchSensitivity
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
@@ -114,18 +119,23 @@ const val DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY = "duo3_card_large_title"
 const val PREF_FONT_SIZE = "contentFontSize"
 const val PREF_LINE_HEIGHT = "contentLineHeight"
 const val PREF_BLOCK_SPACING = "contentBlockSpacing"
+const val PREF_FAB_OPACITY = "fabOpacity"
+const val DEFAULT_FAB_OPACITY = 100
 const val APPEARANCE_SETTINGS_SCROLL_TAG = "appearanceSettings.scroll"
 const val APPEARANCE_SETTINGS_START_DESTINATION_ROW_TAG = "appearanceSettings.startDestinationRow"
 const val APPEARANCE_SETTINGS_START_DESTINATION_TAG = "appearanceSettings.startDestination"
 const val APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG = "appearanceSettings.answerDoubleTap"
+const val APPEARANCE_SETTINGS_ANSWER_SWITCH_SENSITIVITY_TAG = "appearanceSettings.answerSwitchSensitivity"
 const val APPEARANCE_SETTINGS_USE_WEBVIEW_TAG = "appearanceSettings.useWebView"
 const val APPEARANCE_SETTINGS_WEBVIEW_FONT_TAG = "appearanceSettings.webViewFont"
 const val APPEARANCE_SETTINGS_WEBVIEW_OPTIONS_TAG = "appearanceSettings.webViewOptions"
 const val APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY = "appearanceSettings.bottomBarSection"
+const val APPEARANCE_SETTINGS_COLLECTION_DIRECT_BROWSE_TAG = "appearanceSettings.collectionDirectBrowse"
 
 const val START_DESTINATION_PREFERENCE_KEY = "startDestination"
 const val BOTTOM_BAR_ITEMS_PREFERENCE_KEY = "bottom_bar_items"
 const val BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY = "bottom_bar_item_order"
+const val COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY = "collectionDirectBrowse"
 private const val BOTTOM_BAR_ITEM_ORDER_SEPARATOR = ","
 private val bottomBarSettingItemHeight = 64.dp
 private val bottomBarSettingItemSpacing = 4.dp
@@ -266,7 +276,6 @@ fun AppearanceSettingsScreen(
     onExit: () -> Unit,
 ) {
     val settingKey = setting.orEmpty()
-    val runtime = rememberThemeSettingsRuntime()
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()
 
@@ -378,7 +387,8 @@ fun AppearanceSettingsScreen(
                                 val isSelected = currentThemeMode == mode
                                 OutlinedButton(
                                     onClick = {
-                                        runtime.setThemeMode(mode)
+                                        ThemeManager.setThemeMode(mode)
+                                        settings.putString("themeMode", mode.name)
                                         userMessages.showShortMessage("已切换到$label")
                                     },
                                     colors = ButtonDefaults.outlinedButtonColors(
@@ -407,9 +417,10 @@ fun AppearanceSettingsScreen(
                     description = { Text("切换为类 HyperOS 视觉风格。可随时切回 Material 3。\n切换后整个应用立即生效，不需要重启。") },
                     checked = currentThemeStyle == ThemeStyle.Miuix,
                     onCheckedChange = { useMiuix ->
-                        runtime.setThemeStyle(
-                            if (useMiuix) ThemeStyle.Miuix else ThemeStyle.Material3,
-                        )
+                        // ThemeManager 的 setter 只改内存态，持久化必须由调用方补上。
+                        val style = if (useMiuix) ThemeStyle.Miuix else ThemeStyle.Material3
+                        ThemeManager.setThemeStyle(style)
+                        settings.putString("themeStyle", style.name)
                         userMessages.showShortMessage(
                             "已切换到${if (useMiuix) "miuix" else "Material 3"}风格",
                         )
@@ -424,7 +435,8 @@ fun AppearanceSettingsScreen(
                     description = { Text("根据系统壁纸自动提取主题色（Android 12+ 可用）。\n关闭后可以自己设定主题颜色。") },
                     checked = useDynamicColor,
                     onCheckedChange = {
-                        runtime.setUseDynamicColor(it)
+                        ThemeManager.setUseDynamicColor(it)
+                        settings.putBoolean("useDynamicColor", it)
                         userMessages.showShortMessage("已${if (it) "启用" else "禁用"}动态取色")
                     },
                     settingKey = "dynamicColor",
@@ -457,7 +469,8 @@ fun AppearanceSettingsScreen(
                         initialColor = customColor,
                         onDismiss = { showColorPicker = false },
                         onColorSelected = { color ->
-                            runtime.setCustomColor(color)
+                            ThemeManager.setCustomColor(color)
+                            settings.putInt("customThemeColor", color.toArgb())
                             userMessages.showShortMessage("主题色已保存")
                             showColorPicker = false
                         },
@@ -535,12 +548,37 @@ fun AppearanceSettingsScreen(
                         ),
                         onDismiss = { showBackgroundColorPicker = false },
                         onColorSelected = { color ->
-                            runtime.setBackgroundColor(color, currentIsDarkTheme)
+                            ThemeManager.setBackgroundColor(color, currentIsDarkTheme)
+                            settings.putInt(
+                                if (currentIsDarkTheme) "backgroundColorDark" else "backgroundColorLight",
+                                color.toArgb(),
+                            )
                             userMessages.showShortMessage("背景颜色已保存")
                             showBackgroundColorPicker = false
                         },
                     )
                 }
+
+                var fabOpacity by remember {
+                    mutableIntStateOf(settings.getInt(PREF_FAB_OPACITY, DEFAULT_FAB_OPACITY))
+                }
+                SettingItem(
+                    title = { Text("悬浮按钮透明度") },
+                    description = { Text("控制所有悬浮按钮的透明度 ($fabOpacity%)。") },
+                    bottomAction = {
+                        Slider(
+                            value = fabOpacity.toFloat(),
+                            onValueChange = {
+                                val v = (it / 5).roundToInt() * 5
+                                fabOpacity = v
+                                settings.putInt(PREF_FAB_OPACITY, v)
+                            },
+                            valueRange = 10f..100f,
+                            steps = 17,
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        )
+                    },
+                )
             }
             // ── 阅读 ────────────────────────────────────────────────────────────
             SettingItemGroup(
@@ -622,21 +660,27 @@ fun AppearanceSettingsScreen(
                         showFeedThumbnail.value = it
                         settings.putBoolean("showFeedThumbnail", it)
                     },
+                    settingKey = "showFeedThumbnail",
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor("showFeedThumbnail"),
                 )
 
                 SettingItemWithSwitch(
-                    title = { Text("显示刷新 FAB 按钮") },
+                    title = { Text("显示刷新悬浮按钮") },
                     description = { Text("在页面上显示可拖动的刷新按钮。") },
                     checked = showRefreshFab.value,
                     onCheckedChange = {
                         showRefreshFab.value = it
                         settings.putBoolean("showRefreshFab", it)
                     },
+                    settingKey = "showRefreshFab",
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor("showRefreshFab"),
                 )
 
                 var feedCardStyleExpanded by remember { mutableStateOf(false) }
                 val feedCardStyle = remember {
-                    mutableStateOf(settings.getString("feedCardStyle", "card"))
+                    mutableStateOf(settings.getString("feedCardStyle", "divider"))
                 }
                 val feedCardStyleOptions = listOf(
                     "card" to "卡片样式",
@@ -645,6 +689,9 @@ fun AppearanceSettingsScreen(
                 SettingItem(
                     title = { Text("信息流样式") },
                     description = { Text("卡片样式使用圆角卡片展示，分割线样式使用细线分隔条目。") },
+                    settingKey = "feedCardStyle",
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor("feedCardStyle"),
                     endAction = {
                         ExposedDropdownMenuBox(
                             expanded = feedCardStyleExpanded,
@@ -692,7 +739,7 @@ fun AppearanceSettingsScreen(
                 SettingItemWithSwitch(
                     modifier = Modifier.testTag(APPEARANCE_SETTINGS_USE_WEBVIEW_TAG),
                     title = { Text("使用 WebView 显示文章") },
-                    description = { Text("关闭后使用 Compose 渲染，支持代码高亮等高级功能。") },
+                    description = { Text("关闭后使用 Compose 渲染，支持代码高亮等高级功能。警告：这个渲染模式不再推荐，非专业人士请不要开启！") },
                     checked = articleUseWebview.value,
                     onCheckedChange = {
                         articleUseWebview.value = it
@@ -757,6 +804,9 @@ fun AppearanceSettingsScreen(
                         isTitleAutoHide.value = it
                         settings.putBoolean("titleAutoHide", it)
                     },
+                    settingKey = "titleAutoHide",
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor("titleAutoHide"),
                 )
 
                 val autoHideArticleBottomBar = remember {
@@ -770,6 +820,9 @@ fun AppearanceSettingsScreen(
                         autoHideArticleBottomBar.value = it
                         settings.putBoolean("autoHideArticleBottomBar", it)
                     },
+                    settingKey = "autoHideArticleBottomBar",
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor("autoHideArticleBottomBar"),
                 )
 
                 SettingItemWithSwitch(
@@ -780,6 +833,9 @@ fun AppearanceSettingsScreen(
                         buttonSkipAnswer.value = it
                         settings.putBoolean("buttonSkipAnswer", it)
                     },
+                    settingKey = "buttonSkipAnswer",
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor("buttonSkipAnswer"),
                 )
 
                 val autoHideSkipAnswerButton = remember { mutableStateOf(settings.getBoolean("autoHideSkipAnswerButton", true)) }
@@ -804,6 +860,9 @@ fun AppearanceSettingsScreen(
                         pinAnswerDate.value = it
                         settings.putBoolean("pinAnswerDate", it)
                     },
+                    settingKey = "pinAnswerDate",
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor("pinAnswerDate"),
                 )
 
                 var answerSwitchExpanded by remember { mutableStateOf(false) }
@@ -818,6 +877,9 @@ fun AppearanceSettingsScreen(
                 SettingItem(
                     title = { Text("回答切换手势") },
                     description = { Text("在回答页面通过手势切换同一问题下的其他回答。") },
+                    settingKey = "answerSwitchMode",
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor("answerSwitchMode"),
                     endAction = {
                         ExposedDropdownMenuBox(
                             expanded = answerSwitchExpanded,
@@ -852,6 +914,44 @@ fun AppearanceSettingsScreen(
                         }
                     },
                 )
+
+                var answerSwitchSensitivity by remember {
+                    mutableStateOf(
+                        normalizedAnswerSwitchSensitivity(
+                            settings.getFloat(
+                                ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY,
+                                DEFAULT_ANSWER_SWITCH_SENSITIVITY,
+                            ),
+                        ),
+                    )
+                }
+                AnimatedVisibility(answerSwitchMode.value != "off") {
+                    SettingItem(
+                        title = { Text("回答切换灵敏度") },
+                        description = {
+                            Text("当前 ${(answerSwitchSensitivity * 10).roundToInt() / 10f}x，数值越高，滑动越短；同时作用于上下和左右切换。")
+                        },
+                        settingKey = ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY,
+                        highlightedKey = settingKey,
+                        bringIntoViewRequester = requesterFor(ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY),
+                        bottomAction = {
+                            Slider(
+                                value = answerSwitchSensitivity,
+                                onValueChange = {
+                                    val sensitivity = (it * 10).roundToInt() / 10f
+                                    answerSwitchSensitivity = sensitivity
+                                    settings.putFloat(ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY, sensitivity)
+                                },
+                                valueRange = MIN_ANSWER_SWITCH_SENSITIVITY..MAX_ANSWER_SWITCH_SENSITIVITY,
+                                steps = 24,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp)
+                                    .testTag(APPEARANCE_SETTINGS_ANSWER_SWITCH_SENSITIVITY_TAG),
+                            )
+                        },
+                    )
+                }
 
                 var answerDoubleTapExpanded by remember { mutableStateOf(false) }
                 val answerDoubleTapAction = remember {
@@ -1128,6 +1228,25 @@ fun AppearanceSettingsScreen(
                     },
                 )
 
+                val collectionDirectBrowse = remember {
+                    mutableStateOf(settings.getBoolean(COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY, false))
+                }
+                SettingItemWithSwitch(
+                    modifier = Modifier.testTag(APPEARANCE_SETTINGS_COLLECTION_DIRECT_BROWSE_TAG),
+                    title = { Text("收藏直达浏览（测试）") },
+                    description = {
+                        Text("测试功能，请谨慎开启，可能存在问题。开启后支持收藏夹直览、顺序模式与随机模式，欢迎提交 Issue。")
+                    },
+                    checked = collectionDirectBrowse.value,
+                    onCheckedChange = {
+                        collectionDirectBrowse.value = it
+                        settings.putBoolean(COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY, it)
+                    },
+                    settingKey = COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY,
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor(COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY),
+                )
+
                 val tapToRefresh = remember { mutableStateOf(settings.getBoolean("bottomBarTapScrollToTop", true)) }
                 SettingItemWithSwitch(
                     title = { Text("点击底部导航栏回到顶部/刷新") },
@@ -1263,6 +1382,9 @@ fun AppearanceSettingsScreen(
                         settings.putBoolean("use_custom_nav_host", it)
                         userMessages.showShortMessage("需要重启应用生效")
                     },
+                    settingKey = "use_custom_nav_host",
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor("use_custom_nav_host"),
                 )
 
                 val enablePredictiveBack = remember { mutableStateOf(settings.getBoolean("enable_predictive_back", true)) }
@@ -1274,13 +1396,15 @@ fun AppearanceSettingsScreen(
                         enablePredictiveBack.value = it
                         settings.putBoolean("enable_predictive_back", it)
                     },
+                    settingKey = "enable_predictive_back",
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor("enable_predictive_back"),
                 )
             }
             // ── 123duo3 UI 改进 ─────────────────────────────────────────────────
 
             // 先声明所有子开关状态，以便主开关可以批量操作
             val duo3All = remember { mutableStateOf(settings.getBoolean("duo3_all", false)) }
-            val duo3NavStyle = remember { mutableStateOf(settings.getBoolean("duo3_nav_style", false)) }
             val duo3CardAppearance = remember { mutableStateOf(settings.getBoolean("duo3_card_appearance", false)) }
             val duo3CardLayout = remember { mutableStateOf(settings.getBoolean("duo3_card_layout", false)) }
             val duo3CardLargeTitle = remember {
@@ -1291,7 +1415,6 @@ fun AppearanceSettingsScreen(
 
             fun enableAllSubs() {
                 settings.putBoolean("duo3_home_account", true)
-                settings.putBoolean("duo3_nav_style", true)
                 settings.putBoolean("duo3_card_appearance", true)
                 settings.putBoolean("duo3_card_layout", true)
                 settings.putBoolean(DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY, true)
@@ -1300,7 +1423,6 @@ fun AppearanceSettingsScreen(
                 settings.putBoolean("showRefreshFab", false)
                 settings.putBoolean("buttonSkipAnswer", false)
                 duo3HomeAccount.value = true
-                duo3NavStyle.value = true
                 duo3CardAppearance.value = true
                 duo3CardLayout.value = true
                 duo3CardLargeTitle.value = true
@@ -1319,14 +1441,12 @@ fun AppearanceSettingsScreen(
 
             fun disableAllSubs() {
                 settings.putBoolean("duo3_home_account", false)
-                settings.putBoolean("duo3_nav_style", false)
                 settings.putBoolean("duo3_card_appearance", false)
                 settings.putBoolean("duo3_card_layout", false)
                 settings.putBoolean(DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY, false)
                 settings.putBoolean("duo3_article_bar", false)
                 settings.putBoolean("duo3_article_actions", false)
                 duo3HomeAccount.value = false
-                duo3NavStyle.value = false
                 duo3CardAppearance.value = false
                 duo3CardLayout.value = false
                 duo3CardLargeTitle.value = false
@@ -1389,16 +1509,6 @@ fun AppearanceSettingsScreen(
                             selectedBottomBarItemKeys.value
                         }
                         persistBottomBarSelection(updatedSelection, it)
-                    },
-                )
-
-                SettingItemWithSwitch(
-                    title = { Text("底部导航栏：改为 Material 样式") },
-                    description = { Text("移除自定义样式；更改「关注」按钮图标。") },
-                    checked = duo3NavStyle.value,
-                    onCheckedChange = {
-                        duo3NavStyle.value = it
-                        settings.putBoolean("duo3_nav_style", it)
                     },
                 )
 

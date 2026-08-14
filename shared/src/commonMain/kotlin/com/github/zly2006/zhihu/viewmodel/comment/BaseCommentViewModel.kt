@@ -21,9 +21,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
+import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
+import com.github.zly2006.zhihu.viewmodel.CommentItem
 import com.github.zly2006.zhihu.viewmodel.ContentBlocklistEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
@@ -127,6 +127,49 @@ abstract class BaseCommentViewModel(
                 errorMessage = "操作失败：${e.message}"
             } finally {
                 isLikeLoading = false
+            }
+        }
+    }
+
+    fun deleteComment(
+        commentData: DataHolder.Comment,
+        environment: ZhihuApiEnvironment,
+        onSuccess: () -> Unit,
+        onFailure: (String) -> Unit,
+    ) {
+        if (!commentData.canDelete) {
+            onFailure("当前账号无权删除这条评论")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val response = environment.deleteSigned(
+                    "https://www.zhihu.com/api/v4/comment_v5/comment/${commentData.id}",
+                )
+                if (response.status.isSuccess()) {
+                    allData
+                        .firstOrNull { it.id == commentData.id }
+                        ?.childComments
+                        ?.forEach { commentsMap.remove(it.id) }
+                    allData.removeAll { it.id == commentData.id }
+                    allData.indices.forEach { index ->
+                        val parent = allData[index]
+                        val remainingChildren = parent.childComments.filterNot { it.id == commentData.id }
+                        if (remainingChildren.size != parent.childComments.size) {
+                            allData[index] = parent.copy(
+                                childComments = remainingChildren,
+                                childCommentCount = (parent.childCommentCount - 1).coerceAtLeast(remainingChildren.size),
+                            )
+                        }
+                    }
+                    commentsMap.remove(commentData.id)
+                    onSuccess()
+                } else {
+                    onFailure("删除失败：${response.status}")
+                }
+            } catch (e: Exception) {
+                onFailure("删除失败：${e.message}")
             }
         }
     }

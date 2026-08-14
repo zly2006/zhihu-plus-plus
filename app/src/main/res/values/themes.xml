@@ -1,4 +1,3 @@
 <resources>
-    <style name="Theme.Zhihu" parent="Theme.AppCompat.DayNight.NoActionBar"
-            />
+    <style name="Theme.Zhihu" parent="@android:style/Theme.Material.Light.NoActionBar"/>
 </resources>

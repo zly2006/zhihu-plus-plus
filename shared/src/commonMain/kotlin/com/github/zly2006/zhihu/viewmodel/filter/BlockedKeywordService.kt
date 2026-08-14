@@ -17,7 +17,7 @@
 
 package com.github.zly2006.zhihu.viewmodel.filter
 
-import com.github.zly2006.zhihu.shared.util.Log
+import com.github.zly2006.zhihu.util.Log
 import kotlinx.serialization.json.Json
 
 fun interface KeywordSemanticMatcher {
@@ -35,7 +35,7 @@ fun interface KeywordSemanticMatcher {
 class BlockedKeywordService(
     private val keywordDao: BlockedKeywordDao,
     private val recordDao: BlockedContentRecordDao,
-    private val semanticMatcher: KeywordSemanticMatcher,
+    private val semanticMatcher: KeywordSemanticMatcher?,
 ) {
     /**
      * 检查内容快照是否应该被 NLP 语义屏蔽。
@@ -75,7 +75,8 @@ class BlockedKeywordService(
             }
         }
 
-        val matches = semanticMatcher.checkBlockedPhrases(weightedText, phrases, threshold)
+        val matches = semanticMatcher?.checkBlockedPhrases(weightedText, phrases, threshold)
+            ?: emptyList()
 
         val matchedInfos = matches.map { (phrase, similarity) ->
             MatchedKeywordInfo(phrase, similarity)

@@ -40,8 +40,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberSettingBoolean
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
@@ -155,9 +155,9 @@ fun MiuixBlockedFeedHistoryScreen() {
                                     maxLines = 2,
                                     overflow = TextOverflow.Ellipsis,
                                 )
-                                if (!record.authorName.isNullOrBlank()) {
+                                record.authorName?.takeIf { it.isNotBlank() }?.let { authorName ->
                                     Text(
-                                        text = record.authorName,
+                                        text = authorName,
                                         fontSize = 13.sp,
                                         color = MiuixTheme.colorScheme.onSurfaceSecondary,
                                     )

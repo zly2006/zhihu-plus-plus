@@ -23,12 +23,13 @@ import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
+import com.github.zly2006.zhihu.ui.components.ShareAction
+import com.github.zly2006.zhihu.ui.components.rememberShareActionExecutor
 import top.yukonga.miuix.kmp.window.WindowBottomSheet
 
 /**
  * 分享弹层的 miuix 版本，对标 M3 [com.github.zly2006.zhihu.ui.components.ShareDialog]：
- * 系统分享 / 复制链接 / 分享设置三个动作，复用同一套 [rememberShareDialogRuntime] 逻辑。
+ * 系统分享 / 复制链接 / 分享设置三个动作，复用同一套 [rememberShareActionExecutor] 逻辑。
  */
 @Composable
 fun MiuixShareSheet(
@@ -38,7 +39,7 @@ fun MiuixShareSheet(
     onDismissRequest: () -> Unit,
 ) {
     val navigator = LocalNavigator.current
-    val runtime = rememberShareDialogRuntime()
+    val executeShareAction = rememberShareActionExecutor()
     WindowBottomSheet(
         show = showDialog,
         title = "分享",
@@ -48,11 +49,11 @@ fun MiuixShareSheet(
         Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             MiuixSheetActionRow("分享", icon = Icons.Filled.Share, onClick = {
                 onDismissRequest()
-                runtime.share(content, shareText)
+                executeShareAction(ShareAction.Share, content, shareText)
             })
             MiuixSheetActionRow("复制链接", icon = Icons.Filled.ContentCopy, onClick = {
                 onDismissRequest()
-                runtime.copyLink(content, shareText)
+                executeShareAction(ShareAction.CopyLink, content, shareText)
             })
             MiuixSheetActionRow("分享设置", icon = Icons.Filled.Settings, onClick = {
                 onDismissRequest()

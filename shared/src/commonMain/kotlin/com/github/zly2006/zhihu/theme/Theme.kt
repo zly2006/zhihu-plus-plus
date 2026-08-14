@@ -20,7 +20,7 @@ import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import com.github.zly2006.zhihu.shared.theme.ThemeMode
+import com.github.zly2006.zhihu.theme.ThemeMode
 import com.materialkolor.dynamicColorScheme
 import top.yukonga.miuix.kmp.theme.ColorSchemeMode
 import top.yukonga.miuix.kmp.theme.MiuixTheme

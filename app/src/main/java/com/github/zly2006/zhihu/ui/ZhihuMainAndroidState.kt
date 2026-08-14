@@ -31,9 +31,10 @@ import com.github.zly2006.zhihu.navigation.Home
 import com.github.zly2006.zhihu.navigation.HotList
 import com.github.zly2006.zhihu.navigation.MyCollections
 import com.github.zly2006.zhihu.navigation.OnlineHistory
-import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
+import com.github.zly2006.zhihu.platform.androidSettingsStore
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.subscreens.COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.START_DESTINATION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.bottomBarItemOrderFromPreference
 import com.github.zly2006.zhihu.ui.subscreens.defaultBottomBarSelectionKeys
@@ -45,17 +46,17 @@ private val mainPreferenceKeys = setOf(
     "duo3_home_account",
     BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
     BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY,
-    "duo3_nav_style",
     "bottomBarTapScrollToTop",
     "autoHideBottomBar",
     "autoHideTopBar",
+    COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY,
     START_DESTINATION_PREFERENCE_KEY,
 )
 
 /**
  * 读取 Android SharedPreferences 中会影响主壳的设置快照。
  *
- * 这些设置决定底部栏项目、启动页、Duo3 底栏样式和自动隐藏行为。设置页退出后会重新读取这份快照，
+ * 这些设置决定底部栏项目、启动页和自动隐藏行为。设置页退出后会重新读取这份快照，
  * 因此新增主壳设置时要同步这里和 Desktop 的读取逻辑。
  */
 @Composable
@@ -86,10 +87,10 @@ fun rememberAndroidZhihuMainPreferenceState(): ZhihuMainPreferenceState {
             )
             ZhihuMainPreferenceSnapshot(
                 duo3HomeAccount = duo3HomeAccount,
-                duo3NavStyle = settings.getBoolean("duo3_nav_style", false),
                 tapToScrollToTopEnabled = settings.getBoolean("bottomBarTapScrollToTop", true),
                 autoHideBottomBar = settings.getBoolean("autoHideBottomBar", false),
                 autoHideTopBar = settings.getBoolean("autoHideTopBar", false),
+                collectionDirectBrowseEnabled = settings.getBoolean(COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY, false),
                 selectedBottomBarItemKeys = orderedSelectedKeys,
                 startDestination = navDestinationFromName(
                     resolveValidStartDestinationKey(
@@ -99,23 +100,6 @@ fun rememberAndroidZhihuMainPreferenceState(): ZhihuMainPreferenceState {
                 ),
             )
         },
-    )
-}
-
-/**
- * 把 [MainActivity] 的导航能力包装成 common 主壳可消费的状态。
- *
- * Android 侧负责处理 deep link、剪贴板跳转、历史记录、视频打开和内容来源归因；common UI 只通过返回的
- * [ZhihuMainNavigationState] 发起导航。
- */
-@Composable
-fun rememberAndroidZhihuMainNavigationState(): ZhihuMainNavigationState {
-    val activity = LocalActivity.current as MainActivity
-    return ZhihuMainNavigationState(
-        mainTabNavigationTarget = activity.mainTabNavigationTarget,
-        navigate = activity::navigate,
-        setCurrentMainTabOpenFrom = activity::setCurrentMainTabOpenFrom,
-        consumeMainTabNavigationTarget = activity::consumeMainTabNavigationTarget,
     )
 }
 

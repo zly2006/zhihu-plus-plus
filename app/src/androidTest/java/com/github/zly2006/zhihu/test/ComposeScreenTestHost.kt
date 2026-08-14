@@ -20,6 +20,7 @@ package com.github.zly2006.zhihu.test
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.junit4.AndroidComposeTestRule
 import androidx.compose.ui.test.performTouchInput
@@ -33,6 +34,7 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.MainTabs
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Navigator
+import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.AndroidZhihuMain
 import top.yukonga.miuix.kmp.nav.core.rememberNavController
@@ -44,22 +46,28 @@ typealias MainActivityComposeRule =
 
 class RecordingNavigator {
     private val navigateEvents = CopyOnWriteArrayList<NavDestination>()
+    private val topLevelNavigateEvents = CopyOnWriteArrayList<TopLevelDestination>()
     private val backEvents = AtomicInteger(0)
 
     val destinations: List<NavDestination>
         get() = navigateEvents.toList()
+
+    val topLevelDestinations: List<TopLevelDestination>
+        get() = topLevelNavigateEvents.toList()
 
     val backCount: Int
         get() = backEvents.get()
 
     fun reset() {
         navigateEvents.clear()
+        topLevelNavigateEvents.clear()
         backEvents.set(0)
     }
 
     fun asNavigator(): Navigator = Navigator(
         onNavigate = { destination -> navigateEvents += destination },
         onNavigateBack = { backEvents.incrementAndGet() },
+        onNavigateTopLevel = { destination -> topLevelNavigateEvents += destination },
     )
 }
 
@@ -85,7 +93,9 @@ fun MainActivityComposeRule.setScreenContent(
     return recordingNavigator
 }
 
-fun MainActivityComposeRule.setZhihuMainContent() {
+fun MainActivityComposeRule.setZhihuMainContent(
+    onNavControllerReady: (NavController<NavDestination>) -> Unit = {},
+) {
     activity.setContent { }
     waitForIdle()
     activity.setContent {
@@ -94,6 +104,9 @@ fun MainActivityComposeRule.setZhihuMainContent() {
             // 否则 activity.navigate() 操作的是 onCreate 旧栈，openFrom 等基于 backStack 的判定会出错。
             val navController = rememberNavController<NavDestination>(MainTabs)
             activity.navController = navController
+            LaunchedEffect(navController) {
+                onNavControllerReady(navController)
+            }
             AndroidZhihuMain(navController = navController)
         }
     }

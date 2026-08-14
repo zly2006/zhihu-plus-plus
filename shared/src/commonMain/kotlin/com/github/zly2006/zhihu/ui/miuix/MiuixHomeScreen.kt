@@ -27,16 +27,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.ArrowCircleUp
 import androidx.compose.material.icons.filled.CopyAll
 import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.MarkUnreadChatAlt
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -58,34 +57,51 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.data.RecommendationMode
+import com.github.zly2006.zhihu.data.ZHIHU_ME_URL
+import com.github.zly2006.zhihu.data.ZhihuJson
+import com.github.zly2006.zhihu.data.ZhihuMeNotifications
+import com.github.zly2006.zhihu.data.navDestination
 import com.github.zly2006.zhihu.navigation.Account
+import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
-import com.github.zly2006.zhihu.shared.data.RecommendationMode
-import com.github.zly2006.zhihu.shared.data.ZHIHU_ME_URL
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.shared.data.ZhihuMeNotifications
-import com.github.zly2006.zhihu.shared.data.navDestination
-import com.github.zly2006.zhihu.shared.notification.rememberNotificationSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
-import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
-import com.github.zly2006.zhihu.shared.platform.rememberSettingString
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.navigation.Pin
+import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_ANSWER
+import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_ARTICLE
+import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_PIN
+import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_UPDATE_SETTINGS
+import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_URL
+import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_SET_SETTING
+import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_REFRESH_INTERVAL_MILLIS
+import com.github.zly2006.zhihu.notification.OnlineHomeNotification
+import com.github.zly2006.zhihu.notification.OnlineHomeNotificationRepository
+import com.github.zly2006.zhihu.notification.rememberNotificationSettingsStore
+import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
+import com.github.zly2006.zhihu.platform.rememberSettingBoolean
+import com.github.zly2006.zhihu.platform.rememberSettingString
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.HOME_REFRESH_BUTTON_TAG
-import com.github.zly2006.zhihu.ui.QQ_GROUP_DISMISSED_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.SEARCH_HISTORY_MAX_SIZE
 import com.github.zly2006.zhihu.ui.components.AnnouncementCard
 import com.github.zly2006.zhihu.ui.components.AnnouncementCardDefaults
 import com.github.zly2006.zhihu.ui.components.AutoHideTopBar
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
+import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockConfirmDialog
+import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockRequest
+import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockType
 import com.github.zly2006.zhihu.ui.components.PaginatedList
-import com.github.zly2006.zhihu.ui.components.rememberFeedBlockActions
+import com.github.zly2006.zhihu.ui.homeOnlineNotificationTag
 import com.github.zly2006.zhihu.ui.loadSearchHistory
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixAccountSheet
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
@@ -97,10 +113,13 @@ import com.github.zly2006.zhihu.ui.miuix.components.SearchBox
 import com.github.zly2006.zhihu.ui.miuix.components.SearchPager
 import com.github.zly2006.zhihu.ui.miuix.components.SearchStatus
 import com.github.zly2006.zhihu.ui.miuix.components.searchFilterSummary
-import com.github.zly2006.zhihu.ui.rememberHomeAccountState
+import com.github.zly2006.zhihu.ui.rememberAccountSettingsAccountState
+import com.github.zly2006.zhihu.ui.rememberAppVersionInfo
 import com.github.zly2006.zhihu.ui.rememberHomeIsDebuggable
-import com.github.zly2006.zhihu.ui.rememberHomeUpdateAnnouncement
 import com.github.zly2006.zhihu.ui.saveSearchHistory
+import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
+import com.github.zly2006.zhihu.ui.subscreens.rememberSystemUpdateRuntime
+import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
@@ -109,8 +128,15 @@ import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.za.MixedHomeFeedViewModel
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -152,6 +178,7 @@ fun MiuixHomeScreen(
     val userMessages = rememberUserMessageSink()
     val openExternalUrl = rememberExternalUrlOpener()
     val coroutineScope = rememberCoroutineScope()
+    val lifecycleOwner = LocalLifecycleOwner.current
     val density = LocalDensity.current
     val duo3HomeAccount = rememberSettingBoolean("duo3_home_account", false, settings)
     val showRefreshFab = rememberSettingBoolean("showRefreshFab", true, settings)
@@ -161,10 +188,10 @@ fun MiuixHomeScreen(
     val currentRecommendationMode = RecommendationMode.entries.find {
         it.key == recommendationModeKey
     } ?: RecommendationMode.MIXED
-    val account = rememberHomeAccountState()
-    val updateAnnouncement = rememberHomeUpdateAnnouncement()
+    val account = rememberAccountSettingsAccountState().value
+    val updateState by rememberSystemUpdateRuntime().state.collectAsState()
+    val updateAnnouncement = updateState as? SystemUpdateState.UpdateAvailable
     val isDebuggable = rememberHomeIsDebuggable()
-    val feedBlockActions = rememberFeedBlockActions()
     val viewModel: BaseFeedViewModel = when (currentRecommendationMode) {
         RecommendationMode.WEB -> viewModel { HomeFeedViewModel() }
         RecommendationMode.ANDROID -> viewModel { AndroidHomeFeedViewModel() }
@@ -185,22 +212,38 @@ fun MiuixHomeScreen(
     var unreadCount by remember { mutableIntStateOf(0) }
     var showSearchFilter by remember { mutableStateOf(false) }
     var dismissedUpdateVersion by remember { mutableStateOf<String?>(null) }
-    var showFilterExplainDialog by remember {
-        mutableStateOf(!settings.getBoolean("filterExplainDialogShown", false))
-    }
-    var showQQGroup by remember {
-        mutableStateOf(!settings.getBoolean(QQ_GROUP_DISMISSED_PREFERENCE_KEY, false))
-    }
+    val versionName = rememberAppVersionInfo().substringBefore(' ').takeIf { it.firstOrNull()?.isDigit() == true }
+    val onlineNotificationRepository = remember(settings) { OnlineHomeNotificationRepository(settings) }
+    var onlineNotifications by remember { mutableStateOf(emptyList<OnlineHomeNotification>()) }
 
     // 屏蔽相关 state（沿用 HomeScreen 逻辑）
-    var showBlockUserDialog by remember { mutableStateOf(false) }
-    var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var feedAuthorBlockRequest by remember { mutableStateOf<FeedAuthorBlockRequest?>(null) }
     var showBlockByKeywordsDialog by remember { mutableStateOf(false) }
     var feedToBlockByKeywords by remember { mutableStateOf<Pair<String, String?>?>(null) }
 
-    LaunchedEffect(currentRecommendationMode, account.isLoggedIn) {
+    LaunchedEffect(currentRecommendationMode, account.login) {
         if (viewModel.displayItems.isEmpty()) {
             viewModel.refresh(paginationEnvironment)
+        }
+    }
+
+    LaunchedEffect(lifecycleOwner, paginationEnvironment, versionName) {
+        if (versionName != null) {
+            lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                while (true) {
+                    try {
+                        onlineNotifications = onlineNotificationRepository.load(
+                            versionName = versionName,
+                            httpClient = paginationEnvironment.httpClient(),
+                        )
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Log.e("MiuixHomeScreen", "Failed to load online notifications", e)
+                    }
+                    delay(HOME_NOTIFICATION_REFRESH_INTERVAL_MILLIS)
+                }
+            }
         }
     }
 
@@ -438,7 +481,7 @@ fun MiuixHomeScreen(
                                             )
                                         },
                                         accept = { androidx.compose.material3.Text("查看更新") },
-                                        onAccept = { navigator.onNavigate(Account.SystemAndUpdateSettings) },
+                                        onAccept = { navigator.onNavigate(Account.SystemAndUpdateSettings()) },
                                         dismiss = { androidx.compose.material3.Text("以后") },
                                         onDismiss = {
                                             availableUpdate?.version?.let { version ->
@@ -447,43 +490,77 @@ fun MiuixHomeScreen(
                                         },
                                         colors = AnnouncementCardDefaults.colorsImportant(),
                                     )
-                                    AnnouncementCard(
-                                        visible = showQQGroup,
-                                        title = "欢迎加入 QQ 群",
-                                        leadingIcon = {
-                                            androidx.compose.material3.Icon(
-                                                Icons.Default.MarkUnreadChatAlt,
-                                                contentDescription = null,
-                                            )
-                                        },
-                                        content = "欢迎加入 Zhihu++ QQ 群。1 & 2 群已满，我们新建了 3 群。已入群的朋友请不要重复加群。",
-                                        accept = { androidx.compose.material3.Text("加入") },
-                                        onAccept = { openExternalUrl("https://qm.qq.com/q/AaCml6Un4G") },
-                                        dismiss = { androidx.compose.material3.Text("关闭") },
-                                        onDismiss = {
-                                            settings.putBoolean(QQ_GROUP_DISMISSED_PREFERENCE_KEY, true)
-                                            showQQGroup = false
-                                        },
-                                        colors = AnnouncementCardDefaults.colorsVariant(),
-                                    )
-                                    AnnouncementCard(
-                                        visible = showFilterExplainDialog,
-                                        title = "为什么有的内容突然消失了？",
-                                        leadingIcon = {
-                                            androidx.compose.material3.Icon(
-                                                Icons.AutoMirrored.Filled.HelpOutline,
-                                                contentDescription = null,
-                                            )
-                                        },
-                                        content = "知乎++会默认屏蔽知乎盐选、知乎广告平台、知乎学堂、微信公众号文章。" +
-                                            "除此之外，您也可以手动屏蔽的用户、话题、问题等内容。" +
-                                            "由于我们需要更详细的数据来精准屏蔽，而获取数据需要时间，所以他们会闪一下然后消失。",
-                                        dismiss = { androidx.compose.material3.Text("好") },
-                                        onDismiss = {
-                                            settings.putBoolean("filterExplainDialogShown", true)
-                                            showFilterExplainDialog = false
-                                        },
-                                    )
+                                }
+                                onlineNotifications.forEach { notification ->
+                                    val markRead = {
+                                        onlineNotificationRepository.markRead(notification)
+                                        onlineNotifications = onlineNotifications.filterNot { it.uuid == notification.uuid }
+                                    }
+                                    item(notification.uuid) {
+                                        AnnouncementCard(
+                                            modifier = Modifier.testTag(homeOnlineNotificationTag(notification.uuid)),
+                                            visible = true,
+                                            title = notification.title,
+                                            leadingIcon = {
+                                                androidx.compose.material3.Icon(
+                                                    Icons.Default.Notifications,
+                                                    contentDescription = null,
+                                                )
+                                            },
+                                            content = notification.content,
+                                            accept = notification.accept?.let { accept ->
+                                                { androidx.compose.material3.Text(accept.text) }
+                                            },
+                                            onAccept = {
+                                                val accept = notification.accept
+                                                markRead()
+                                                when (accept?.key) {
+                                                    HOME_NOTIFICATION_ACTION_OPEN_URL -> {
+                                                        accept.value
+                                                            ?.jsonPrimitive
+                                                            ?.contentOrNull
+                                                            ?.let(openExternalUrl)
+                                                    }
+                                                    HOME_NOTIFICATION_ACTION_OPEN_UPDATE_SETTINGS -> {
+                                                        navigator.onNavigate(Account.SystemAndUpdateSettings())
+                                                    }
+                                                    HOME_NOTIFICATION_ACTION_OPEN_PIN -> {
+                                                        accept.value?.jsonPrimitive?.contentOrNull?.toLongOrNull()?.let {
+                                                            navigator.onNavigate(Pin(it))
+                                                        }
+                                                    }
+                                                    HOME_NOTIFICATION_ACTION_OPEN_ANSWER -> {
+                                                        accept.value?.jsonPrimitive?.contentOrNull?.toLongOrNull()?.let {
+                                                            navigator.onNavigate(Article(type = ArticleType.Answer, id = it))
+                                                        }
+                                                    }
+                                                    HOME_NOTIFICATION_ACTION_OPEN_ARTICLE -> {
+                                                        accept.value?.jsonPrimitive?.contentOrNull?.toLongOrNull()?.let {
+                                                            navigator.onNavigate(Article(type = ArticleType.Article, id = it))
+                                                        }
+                                                    }
+                                                    HOME_NOTIFICATION_ACTION_SET_SETTING -> {
+                                                        val setting = accept.value?.jsonObject
+                                                        val name = setting?.get("setting_name")?.jsonPrimitive?.contentOrNull
+                                                        when (setting?.get("value_type")?.jsonPrimitive?.contentOrNull) {
+                                                            "boolean" -> setting["value"]?.jsonPrimitive?.booleanOrNull?.let {
+                                                                settings.putBoolean(name!!, it)
+                                                            }
+                                                            "string" -> setting["value"]?.jsonPrimitive?.contentOrNull?.let {
+                                                                settings.putString(name!!, it)
+                                                            }
+                                                            "int" -> setting["value"]?.jsonPrimitive?.intOrNull?.let {
+                                                                settings.putInt(name!!, it)
+                                                            }
+                                                        }
+                                                    }
+                                                    else -> userMessages.showShortMessage("当前版本不支持此通知操作")
+                                                }
+                                            },
+                                            dismiss = { androidx.compose.material3.Text(notification.dismiss) },
+                                            onDismiss = markRead,
+                                        )
+                                    }
                                 }
                             },
                         ) { item ->
@@ -492,19 +569,22 @@ fun MiuixHomeScreen(
                                 onLike = { localHomeViewModel?.onLocalItemFeedback(it, 1.0) },
                                 onDislike = { localHomeViewModel?.onLocalItemFeedback(it, -1.0) },
                                 onBlockUser = { feedItem ->
-                                    feedBlockActions.handleBlockUser(viewModel, feedItem) { authorInfo ->
-                                        userToBlock = authorInfo
-                                        showBlockUserDialog = true
+                                    viewModel.handleBlockUser(paginationEnvironment, userMessages, feedItem) { authorInfo ->
+                                        feedAuthorBlockRequest = FeedAuthorBlockRequest(
+                                            type = FeedAuthorBlockType.CONTENT_AUTHOR,
+                                            userId = authorInfo.first,
+                                            userName = authorInfo.second,
+                                        )
                                     }
                                 },
                                 onBlockByKeywords = { feedItem ->
-                                    feedBlockActions.handleBlockByKeywords(viewModel, feedItem) { (_, contentInfo) ->
+                                    viewModel.handleBlockByKeywords(paginationEnvironment, userMessages, feedItem) { (_, contentInfo) ->
                                         feedToBlockByKeywords = contentInfo.first to contentInfo.second
                                         showBlockByKeywordsDialog = true
                                     }
                                 },
                                 onBlockTopic = { topicId, topicName ->
-                                    feedBlockActions.handleBlockTopic(viewModel, topicId, topicName)
+                                    viewModel.handleBlockTopic(userMessages, topicId, topicName)
                                 },
                                 onClick = {
                                     // 默认跳转逻辑：本地内容回调 + navDestination
@@ -512,7 +592,7 @@ fun MiuixHomeScreen(
                                     if (feed != null) {
                                         (viewModel as HomeFeedInteractionViewModel)
                                             .onUiContentClick(paginationEnvironment, feed, this)
-                                    } else if (this.localContentId != null) {
+                                    } else {
                                         localHomeViewModel?.onLocalItemOpened(this)
                                     }
                                     this.navDestination?.let { navigator.onNavigate(it) }
@@ -636,18 +716,13 @@ fun MiuixHomeScreen(
     }
 
     // 屏蔽用户确认对话框（与 HomeScreen 同签名）
-    com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog(
-        showDialog = showBlockUserDialog,
-        userToBlock = userToBlock,
+    FeedAuthorBlockConfirmDialog(
+        request = feedAuthorBlockRequest,
         displayItems = viewModel.displayItems,
-        onDismiss = {
-            showBlockUserDialog = false
-            userToBlock = null
-        },
+        onDismiss = { feedAuthorBlockRequest = null },
         onConfirm = {
             viewModel.refresh(paginationEnvironment)
-            showBlockUserDialog = false
-            userToBlock = null
+            feedAuthorBlockRequest = null
         },
     )
 

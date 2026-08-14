@@ -17,7 +17,17 @@
 
 package com.github.zly2006.zhihu.viewmodel.feed
 
+import com.github.zly2006.zhihu.data.CommonFeed
+import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.Person
+import com.github.zly2006.zhihu.data.SearchResult
+import com.github.zly2006.zhihu.data.ZhihuJson
+import com.github.zly2006.zhihu.data.target
+import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.mock.MockEngine
 import io.ktor.http.Url
+import kotlinx.serialization.json.JsonArray
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -44,4 +54,108 @@ class SearchViewModelTest {
         assertEquals("Normal", url.parameters["search_source"])
         assertEquals("0", url.parameters["lc_idx"])
     }
+
+    @Test
+    fun searchResultsExcludeLocallyBlockedAuthors() {
+        val viewModel = TestSearchViewModel()
+        val blocked = answerFeed(id = 1, authorId = "blocked-user")
+        val kept = answerFeed(id = 2, authorId = "kept-user")
+
+        viewModel.process(
+            environment = testEnvironment(blockedUserIds = setOf("blocked-user")),
+            feeds = listOf(blocked, kept),
+        )
+
+        assertEquals(listOf<Feed>(kept), viewModel.allData)
+        assertEquals(
+            listOf("kept-user"),
+            viewModel.displayItems.map {
+                it.feed
+                    ?.target
+                    ?.author
+                    ?.id
+            },
+        )
+    }
+
+    @Test
+    fun decodesPeopleSearchResultAsStronglyTypedPeople() {
+        val result = ZhihuJson.decodeJson<SearchResult>(
+            ZhihuJson.json.parseToJsonElement(
+                """
+                {
+                  "type": "search_result",
+                  "id": 460104019,
+                  "object": {
+                    "id": "6733f12c60e7e98ea7491f20de46f79e",
+                    "url_token": "zhouyuan",
+                    "type": "people",
+                    "url": "https://api.zhihu.com/people/6733f12c60e7e98ea7491f20de46f79e",
+                "name": "<em>周源</em>",
+                    "user_type": "people",
+                    "headline": "知乎 001 号员工",
+                    "gender": 1,
+                    "avatar_url": "https://pic.example/avatar.jpg",
+                    "follower_count": 1048300,
+                    "answer_count": 371
+                  }
+                }
+                """.trimIndent(),
+            ),
+        )
+
+        assertEquals("zhouyuan", result.people?.people?.urlToken)
+        assertEquals("周源", result.people?.people?.name)
+        assertEquals("<em>周源</em>", result.people?.highlightedName)
+        assertEquals(1048300, result.people?.people?.followerCount)
+        assertNull(result.toFeed())
+    }
+
+    private class TestSearchViewModel : SearchViewModel("query") {
+        fun process(
+            environment: PaginationEnvironment,
+            feeds: List<Feed>,
+        ) {
+            processResponse(environment, feeds, JsonArray(emptyList()))
+        }
+    }
+
+    private fun testEnvironment(blockedUserIds: Set<String>) = object : PaginationEnvironment {
+        override fun httpClient() = HttpClient(MockEngine)
+
+        override fun authenticatedCookies() = emptyMap<String, String>()
+
+        override fun blockedUserIds() = blockedUserIds
+
+        override suspend fun handleFetchFailure(
+            tag: String?,
+            error: Exception,
+        ) = Unit
+    }
+
+    private fun answerFeed(
+        id: Long,
+        authorId: String,
+    ) = CommonFeed(
+        id = id.toString(),
+        verb = "SEARCH_RESULT",
+        target = Feed.AnswerTarget(
+            id = id,
+            url = "https://www.zhihu.com/question/1/answer/$id",
+            author = Person(
+                id = authorId,
+                url = "https://www.zhihu.com/people/$authorId",
+                userType = "people",
+                name = authorId,
+                headline = "",
+                avatarUrl = "",
+            ),
+            question = Feed.QuestionTarget(
+                id = 1,
+                _title = "问题",
+                url = "https://www.zhihu.com/question/1",
+                type = "question",
+            ),
+        ),
+    )
 }

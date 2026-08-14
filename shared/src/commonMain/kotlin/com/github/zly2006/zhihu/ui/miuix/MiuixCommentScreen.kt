@@ -70,8 +70,7 @@ import com.github.zly2006.zhihu.navigation.CommentHolder
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Person
-import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
-import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
+import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.ui.AuthorTag
 import com.github.zly2006.zhihu.ui.COMMENT_CANCEL_REPLY_TAG
 import com.github.zly2006.zhihu.ui.COMMENT_INPUT_TAG
@@ -87,6 +86,7 @@ import com.github.zly2006.zhihu.ui.commentViewModelKey
 import com.github.zly2006.zhihu.ui.dfsSimple
 import com.github.zly2006.zhihu.ui.formatCommentTime
 import com.github.zly2006.zhihu.ui.rememberCommentEmojiInlineContent
+import com.github.zly2006.zhihu.viewmodel.CommentItem
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.ChildCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.CommentSortOrder

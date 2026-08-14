@@ -19,9 +19,9 @@ package com.github.zly2006.zhihu.editor
 
 import androidx.compose.runtime.Composable
 import com.fleeksoft.ksoup.Ksoup
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.shared.util.raiseForStatus
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.ZhihuJson
+import com.github.zly2006.zhihu.util.raiseForStatus
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.postSigned
 import io.ktor.client.call.body

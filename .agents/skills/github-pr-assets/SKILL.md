@@ -72,6 +72,10 @@ Keep asset commits narrow:
 - Avoid committing large or reusable generated assets unless the PR requirement needs them.
 - Prefer descriptive names like `answer-voters-sheet.png` over timestamp-only names.
 
+### 截图夹具不得伪造产品数据资产
+
+截图中的头像、封面、图片等远端产品资产必须来自该响应真实返回的 URL，并确认在截图执行面实际加载成功。不能为了让布局看起来完整，临时生成字母头像、纯色图片或其他人工占位资产，再把它作为功能效果截图发布；这种做法只能证明控件能显示任意图片，不能证明真实数据链路。如果真实资产因凭据、网络或防盗链暂时无法加载，应先移除不合格截图，继续修复执行面或明确报告阻塞，不能用伪造内容补齐画面。
+
 ## Troubleshooting
 
 ### 创建 skill 的指令不能降级成普通记录
@@ -89,3 +93,11 @@ Keep asset commits narrow:
 ### PR 仍显示旧截图或旧正文
 
 先用 `gh pr view <number> --json body` 验证 GitHub 端正文是否已更新。浏览器缓存或 Markdown 渲染延迟不能替代 CLI/API 复查。
+
+### UI PR 截图应复用最合适的真实运行面
+
+为 UI PR 准备效果截图时，选择当前健康、目标 API 匹配且能最低成本复现目标 UI 的 AVD；本地和远端都可以，不能为了满足形式而强制先启动 `off`。如果功能已经在某个 AVD 上完成真实验证，应优先继续复用同一运行面，避免无意义地重建状态。无论选择哪种设备，截图都必须来自包含当前提交的真实 APK，并验证目标状态确实可见。
+
+### 数量驱动的布局必须覆盖边界截图
+
+当 UI 布局会随条目数量切换时，PR 截图不能只挑两个看起来有代表性的数量；必须覆盖每个布局分支的入口、相邻边界和容易改变尺寸的少量情况。例子：图片卡片存在单图、普通多图和网格模式时，至少应分别提供 1、2、3 张以及进入网格模式数量的真实截图；3 张图不能证明 1、2 张图没有被放大或错排，满网格也不能证明网格入口数量正确。

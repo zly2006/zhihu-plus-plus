@@ -17,19 +17,22 @@
 
 package com.github.zly2006.zhihu
 
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.test.InstrumentedTestEnvironment
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.ZhihuMockApi
@@ -38,6 +41,7 @@ import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
+import com.github.zly2006.zhihu.ui.COMMENT_INPUT_TAG
 import com.github.zly2006.zhihu.ui.COMMENT_SCREEN_LIST_TAG
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_AUTHOR_TAG
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_BACK_BUTTON_TAG
@@ -50,6 +54,7 @@ import com.github.zly2006.zhihu.ui.PIN_SCREEN_POLL_CARD_TAG
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_SCROLL_TAG
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_SHARE_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.PinScreen
+import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.pinScreenPollOptionTag
 import io.ktor.http.HttpMethod
 import kotlinx.coroutines.CompletableDeferred
@@ -201,6 +206,40 @@ class PinScreenInstrumentedTest {
             ),
             navigator.destinations,
         )
+    }
+
+    @Test
+    fun commentDraftSurvivesSheetDismissAndReopen() {
+        /*
+         * Expected behavior:
+         * 1. A long draft typed in the comment sheet remains stored after its production Back handler dismisses it.
+         * 2. Reopening the same content's comments must restore the entire unsent draft.
+         */
+        mockRootComments("https://www.zhihu.com/api/v4/comment_v5/pins/101/root_comment")
+        val showComments = mutableStateOf(true)
+        composeRule.setScreenContent {
+            CommentScreenComponent(
+                showComments = showComments.value,
+                onDismiss = { showComments.value = false },
+                content = Pin(101),
+            )
+        }
+        val draft = "这是一段尚未发送的长评论，用来验证关闭评论区后重新打开仍然保留全部内容。".repeat(8)
+
+        composeRule.waitUntilTagExists(COMMENT_INPUT_TAG)
+        composeRule.onNodeWithTag(COMMENT_INPUT_TAG).performTextInput(draft)
+        composeRule.runOnIdle {
+            showComments.value = false
+        }
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(COMMENT_SCREEN_LIST_TAG).fetchSemanticsNodes().isEmpty()
+        }
+
+        composeRule.runOnIdle {
+            showComments.value = true
+        }
+        composeRule.waitUntilTagExists(COMMENT_INPUT_TAG)
+        composeRule.onNodeWithTag(COMMENT_INPUT_TAG).assertTextEquals(draft)
     }
 
     private fun mockPinPollVote(pollId: String = "poll-101") {

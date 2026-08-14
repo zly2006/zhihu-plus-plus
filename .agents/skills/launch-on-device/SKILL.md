@@ -78,6 +78,12 @@ Expected output: `Starting: Intent { cmp=com.github.zly2006.zhplus.lite/com.gith
 
 When Android or JVM verification is blocked by repeated login, first try restoring the saved account JSON instead of logging in again.
 
+### Account JSON Handling Policy
+
+Account JSON is runtime state, not a Gradle input. Do not add Gradle tasks, generated source sets, androidTest assets, or any other build-script wiring that copies `.secret/account.json` or another account JSON into the app or test APK.
+
+Agents must restore account JSON manually before UI checks or real-data instrumented tests. Use `adb push` plus `run-as` to copy the chosen backup into the target app sandbox as `files/account.json`, then launch or run instrumentation.
+
 ### Backup After a Successful Android Login
 
 ```bash
@@ -105,6 +111,22 @@ adb push "$BACKUP" /data/local/tmp/zhihu-account.json
 adb shell run-as com.github.zly2006.zhplus.lite sh -c 'cp /data/local/tmp/zhihu-account.json files/account.json && chmod 600 files/account.json'
 adb shell am force-stop com.github.zly2006.zhplus.lite
 adb shell monkey -p com.github.zly2006.zhplus.lite -c android.intent.category.LAUNCHER 1
+```
+
+If the only available source is the project-local secret file, copy it manually in the same way:
+
+```bash
+BACKUP=.secret/account.json
+adb push "$BACKUP" /data/local/tmp/zhihu-account.json
+adb shell run-as com.github.zly2006.zhplus.lite sh -c 'cp /data/local/tmp/zhihu-account.json files/account.json && chmod 600 files/account.json'
+```
+
+For real-data instrumented tests, restore `files/account.json` first, then pass `zhpp_data_mode=real`:
+
+```bash
+adb shell am instrument -w \
+  -e zhpp_data_mode real \
+  com.github.zly2006.zhplus.lite.test/com.github.zly2006.zhihu.ZhihuInstrumentedTestRunner
 ```
 
 ### Reuse Android Login for JVM/Desktop

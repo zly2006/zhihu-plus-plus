@@ -24,7 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
-import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
+import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 
@@ -82,7 +82,7 @@ fun AboutScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
                         title = { Text("系统与更新") },
                         description = { Text("GitHub、更新设置等") },
                         icon = { Icon(Icons.Default.Settings, null) },
-                        onClick = { navigator.onNavigate(Account.SystemAndUpdateSettings) },
+                        onClick = { navigator.onNavigate(Account.SystemAndUpdateSettings()) },
                     )
                 }
             }

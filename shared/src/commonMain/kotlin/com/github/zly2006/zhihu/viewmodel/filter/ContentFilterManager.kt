@@ -16,8 +16,10 @@
  */
 
 package com.github.zly2006.zhihu.viewmodel.filter
-import com.github.zly2006.zhihu.shared.filter.ContentFilterStats
-import com.github.zly2006.zhihu.shared.filter.createContentFilterMaintenance
+
+import com.github.zly2006.zhihu.filter.ContentFilterStats
+import com.github.zly2006.zhihu.filter.cleanupOldData
+import com.github.zly2006.zhihu.filter.clearAllData
 
 typealias FilterStats = ContentFilterStats
 
@@ -29,8 +31,6 @@ typealias FilterStats = ContentFilterStats
 class ContentFilterManager(
     private val dao: ContentFilterDao,
 ) {
-    private val maintenance = createContentFilterMaintenance(dao)
-
     /** 记录某个内容身份在 feed 中曝光了一次。 */
     suspend fun recordContentView(targetType: String, targetId: String) {
         val recordId = ContentViewRecord.generateId(targetType, targetId)
@@ -65,11 +65,11 @@ class ContentFilterManager(
 
     /** 清理过期曝光记录。 */
     suspend fun cleanupOldData() {
-        maintenance.cleanupOldData()
+        dao.cleanupOldData()
     }
 
     /** 清除所有曝光记录（用于测试或重置）。 */
     suspend fun clearAllData() {
-        maintenance.clearAllData()
+        dao.clearAllData()
     }
 }

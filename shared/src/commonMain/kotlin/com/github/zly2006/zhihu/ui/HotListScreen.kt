@@ -33,7 +33,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -43,16 +42,14 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.github.zly2006.zhihu.shared.data.HotListFeed
-import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
-import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.shared.ui.TopLevelReselectAction
-import com.github.zly2006.zhihu.shared.ui.topLevelReselectAction
+import com.github.zly2006.zhihu.data.HotListFeed
+import com.github.zly2006.zhihu.platform.UserMessageDuration
+import com.github.zly2006.zhihu.platform.rememberSettingBoolean
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ThemeStyle
-import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
@@ -90,6 +87,13 @@ fun HotListScreen(
     contentTopPadding: Dp = 0.dp,
 ) {
     val viewModel: HotListViewModel = viewModel { HotListViewModel() }
+    val readingQueueSourceId = "hot-list:total"
+    if (isActive) {
+        RegisterReadingQueueSource(
+            sourceId = readingQueueSourceId,
+            items = viewModel.displayItems,
+        )
+    }
     val environment = rememberPaginationEnvironment(viewModel.allowGuestAccess)
     val userMessages = rememberUserMessageSink()
     val settings = rememberSettingsStore()
@@ -123,10 +127,6 @@ fun HotListScreen(
             userMessages.showMessage(it, UserMessageDuration.Long)
         }
     }
-
-    // 屏蔽用户确认弹窗。
-    var showBlockUserDialog by remember { mutableStateOf(false) }
-    var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) }
 
     Column {
         // 按主题分流，而非 backdrop 是否为空：miuix 主题下关闭模糊或低版本系统不支持
@@ -178,7 +178,7 @@ fun HotListScreen(
             }
         } else {
             // M3 path
-            FeedPullToRefresh(viewModel) {
+            FeedPullToRefresh(viewModel, environment) {
                 PaginatedList(
                     items = viewModel.displayItems,
                     listState = listState,
@@ -189,6 +189,7 @@ fun HotListScreen(
                 ) { item ->
                     FeedCard(
                         item,
+                        readingQueueSourceId = readingQueueSourceId.takeIf { isActive },
                         thumbnailUrl = (item.feed as? HotListFeed)?.children?.firstOrNull()?.thumbnail,
                     )
                 }
@@ -208,21 +209,5 @@ fun HotListScreen(
                 }
             }
         }
-
-        // 屏蔽用户确认弹窗。
-        BlockUserConfirmDialog(
-            showDialog = showBlockUserDialog,
-            userToBlock = userToBlock,
-            displayItems = viewModel.displayItems,
-            onDismiss = {
-                showBlockUserDialog = false
-                userToBlock = null
-            },
-            onConfirm = {
-                viewModel.refresh(environment)
-                showBlockUserDialog = false
-                userToBlock = null
-            },
-        )
     }
 }

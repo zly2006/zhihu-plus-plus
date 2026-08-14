@@ -53,24 +53,25 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.navDestination
+import com.github.zly2006.zhihu.data.officialBadge
+import com.github.zly2006.zhihu.data.sourceLabel
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Navigator
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.navDestination
-import com.github.zly2006.zhihu.shared.data.officialBadge
-import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
-import com.github.zly2006.zhihu.shared.platform.rememberIsLiteVariant
-import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
-import com.github.zly2006.zhihu.shared.platform.rememberSettingInt
-import com.github.zly2006.zhihu.shared.platform.rememberSettingString
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
+import com.github.zly2006.zhihu.platform.rememberIsLiteVariant
+import com.github.zly2006.zhihu.platform.rememberSettingBoolean
+import com.github.zly2006.zhihu.platform.rememberSettingInt
+import com.github.zly2006.zhihu.platform.rememberSettingString
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.AppTokens
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.subscreens.DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY
-import com.github.zly2006.zhihu.util.parseHtmlTextWithTheme
+import com.github.zly2006.zhihu.util.parseEmphasizedHtmlTextWithTheme
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -300,6 +301,7 @@ private fun MiuixFeedCardContent(
     val colors = AppTokens.colors
     val text = AppTokens.text
     val summaryText = item.summary?.takeIf { it.isNotBlank() }
+    val sourceLabel = item.feed?.sourceLabel.takeUnless { item.isFiltered }
 
     // 赞同数（details）+ 「更多」菜单按钮内联一行，对齐 M3 FeedCard。
     // details 允许换行（不设 maxLines），避免长文案被截断。
@@ -323,11 +325,11 @@ private fun MiuixFeedCardContent(
 
     if (duo3CardLayout) {
         if (showSourceLabel) {
-            MiuixFeedCardSourceLabel(item.sourceLabel)
+            MiuixFeedCardSourceLabel(sourceLabel)
         }
         if (!item.title.isEmpty()) {
             Text(
-                text = parseHtmlTextWithTheme(item.title),
+                text = parseEmphasizedHtmlTextWithTheme(item.title),
                 fontSize = titleFontSize,
                 fontWeight = FontWeight.Bold,
                 maxLines = titleMaxLines,
@@ -342,7 +344,7 @@ private fun MiuixFeedCardContent(
                 Row {
                     if (summaryText != null) {
                         Text(
-                            text = parseHtmlTextWithTheme(summaryText),
+                            text = parseEmphasizedHtmlTextWithTheme(summaryText),
                             style = text.bodyMedium,
                             color = colors.onSurfaceVariant,
                             maxLines = 4,
@@ -387,10 +389,10 @@ private fun MiuixFeedCardContent(
         }
     } else {
         if (showSourceLabel) {
-            MiuixFeedCardSourceLabel(item.sourceLabel)
+            MiuixFeedCardSourceLabel(sourceLabel)
         }
         if (!item.title.isEmpty() && !item.isFiltered) {
-            Text(parseHtmlTextWithTheme(item.title), fontSize = titleFontSize, fontWeight = FontWeight.Bold, maxLines = titleMaxLines, overflow = TextOverflow.Ellipsis)
+            Text(parseEmphasizedHtmlTextWithTheme(item.title), fontSize = titleFontSize, fontWeight = FontWeight.Bold, maxLines = titleMaxLines, overflow = TextOverflow.Ellipsis)
         }
         if (item.avatarSrc != null && item.authorName != null) {
             Spacer(Modifier.height(4.dp))
@@ -409,7 +411,7 @@ private fun MiuixFeedCardContent(
             Column(Modifier.weight(2f)) {
                 if (summaryText != null) {
                     Text(
-                        parseHtmlTextWithTheme(summaryText),
+                        parseEmphasizedHtmlTextWithTheme(summaryText),
                         fontSize = 13.sp,
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
@@ -430,7 +432,7 @@ private fun MiuixFeedCardContent(
 private fun MiuixFeedCardSourceLabel(sourceLabel: String?) {
     val label = sourceLabel?.takeIf { it.isNotBlank() } ?: return
     Text(
-        parseHtmlTextWithTheme(label),
+        parseEmphasizedHtmlTextWithTheme(label),
         style = AppTokens.text.labelMedium,
         color = AppTokens.colors.primary,
         maxLines = 1,

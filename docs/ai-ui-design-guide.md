@@ -78,8 +78,16 @@ URL 解析集中在 `resolveContent()`。支持知乎问题、回答、文章、
 | `autoHideSkipAnswerButton` | 自动隐藏跳转按钮 | 跳转按钮滚动隐藏 | 仅 `buttonSkipAnswer` 开启时可见 |
 | `pinAnswerDate` | 置顶回答日期 | 回答日期位置 | 影响文章正文布局 |
 | `answerSwitchMode` | 回答切换手势 | `off` / `vertical` / `horizontal` | 会影响转场方向和手势冲突 |
+| `answerSwitchSensitivity` | 回答切换灵敏度 | 上下/左右回答切换触发阈值 | 默认 1.0，数值越高触发距离越短；关闭手势时设置项隐藏 |
 | `answerDoubleTapAction` | 双击回答动作 | 双击正文后的动作 | 可在文章页内动态保存 |
 | `bottom_bar_items` | 底栏页面选择 | 主 pager 页集合和底栏按钮 | 始终经 `normalizeBottomBarSelection()` |
+| `collectionDirectBrowse` | 收藏直达浏览（测试） | 底栏收藏夹进入内容瀑布流，支持切换、删除、刷新及随机排序 | 默认关闭，关闭时保留原收藏夹列表入口 |
+
+### 收藏直达浏览测试功能边界
+
+- 页面从非活动状态重新进入活动状态时，会同时刷新收藏夹列表和当前收藏夹内容；用户也可以在内容区下拉刷新。
+- 每次进入随机模式都会生成新种子并重新洗牌，同一轮内 Compose 重组不会让卡片反复跳位；随机模式下显示可拖动的重新加载 FAB，点击时重新拉取内容并生成新顺序；切回顺序模式会恢复接口返回顺序并隐藏该 FAB。
+- 非默认收藏夹可从文件夹菜单删除并需要二次确认，默认收藏夹不提供删除入口；删除当前收藏夹后回退到默认收藏夹或列表中的第一个。
 | `startDestination` | 应用启动默认页面 | 主 pager 初始页 | 只允许选择已显示的底栏项 |
 | `bottomBarTapScrollToTop` | 点击底栏回到顶部/刷新 | 选中 tab 再点时触发 scroll/refresh | 双击由 UI 测试用 `&&` 连续 adb 才可靠 |
 | `autoHideTopBar` | 滚动时自动隐藏顶栏 | 主 tab 页顶栏可见性 | 复用底栏滚动信号 |
@@ -119,7 +127,6 @@ URL 解析集中在 `resolveContent()`。支持知乎问题、回答、文章、
 | `allowTelemetry` | 遥测统计 | 匿名使用统计 | 不影响核心功能 |
 | `continuousUsageReminderIntervalMinutes` | 防沉迷提醒 | 连续使用提醒间隔 | 0 表示关闭 |
 | `developer` | 开发者模式 | 账号页显示开发者选项 | 账号页点击版本 5 次开启 |
-| `enableSwipeReaction` | 开发者选项: 滑动反馈 | Feed 卡片左右滑动触发喜欢/不喜欢 | 由 `FeedCard` 读取，需要调用方提供喜欢/不喜欢回调 |
 | `enableScrollEndHaptic` | 开发者选项: 滚动到底震动 | 滚动边界反馈行为开关 | 改前查具体 overScroll 使用点 |
 | `showDebugOverlay` | 开发者选项: 调试悬浮窗 | 调试 Feed 详情显示 | 如果 `rg` 只命中设置页，先补运行时读取点 |
 | `zse96_key` | 开发者签名请求 | 调试签名相关请求 | 只在开发者页处理 |
@@ -127,14 +134,13 @@ URL 解析集中在 `resolveContent()`。支持知乎问题、回答、文章、
 
 ## 123Duo3 UI/UX 开关
 
-`duo3_all` 是批量开关。开启时会写入 `duo3_home_account`、`duo3_nav_style`、`duo3_card_appearance`、`duo3_card_layout`、`duo3_card_large_title`、`duo3_article_bar`、`duo3_article_actions`，并关闭 `showRefreshFab` 和 `buttonSkipAnswer`。
+`duo3_all` 是批量开关。开启时会写入 `duo3_home_account`、`duo3_card_appearance`、`duo3_card_layout`、`duo3_article_bar`、`duo3_article_actions`，并关闭 `showRefreshFab` 和 `buttonSkipAnswer`。底部导航栏统一使用 Material 样式，不再提供单独开关。
 
 各子开关影响:
 
 | key | 影响 |
 | --- | --- |
 | `duo3_home_account` | 主页头像承接账号入口，底栏账号项规则变化，账号页可能显示历史快捷方式 |
-| `duo3_nav_style` | 底栏高度、标签显示、图标和选中样式变化 |
 | `duo3_card_appearance` | Feed 卡片圆角、背景和阴影变化 |
 | `duo3_card_layout` | Feed 卡片作者、图片、摘要行数和字体排版变化 |
 | `duo3_card_large_title` | `duo3_card_layout` 开启后控制标题字号 |
@@ -150,7 +156,7 @@ URL 解析集中在 `resolveContent()`。支持知乎问题、回答、文章、
 3. 新设置项: 记录 preference key、默认值、读取点、是否实时生效、是否需要重启、对应 test tag 和从账号页跳转高亮的 `settingKey`。
 4. 新按钮: 优先复用 Material 3 组件和现有图标库，补稳定 test tag，描述点击后影响的状态或导航目标。
 5. 新正文/卡片渲染逻辑: 同时确认 Compose Markdown、WebView、共享组件、平台 adapter、lite/full variant 差异。
-6. 新手势: 明确方向、阈值、和现有回答切换/底栏自动隐藏/图片查看/Feed 滑动反馈的冲突关系。
+6. 新手势: 明确方向、阈值，以及和现有回答切换、底栏自动隐藏、图片查看的冲突关系。
 
 ## 验证入口
 

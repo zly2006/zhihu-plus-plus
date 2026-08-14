@@ -42,11 +42,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.LocalNavigator
-import com.github.zly2006.zhihu.shared.notification.NotificationType
-import com.github.zly2006.zhihu.shared.notification.rememberNotificationSettingsStore
+import com.github.zly2006.zhihu.notification.NotificationType
+import com.github.zly2006.zhihu.notification.rememberNotificationSettingsStore
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
-import com.github.zly2006.zhihu.shared.notification.matchNotificationType as sharedMatchNotificationType
+import com.github.zly2006.zhihu.notification.matchNotificationType as sharedMatchNotificationType
 
 object NotificationPreferences {
     fun matchNotificationType(verb: String): NotificationType? = sharedMatchNotificationType(verb)
@@ -61,10 +61,13 @@ object NotificationPreferences {
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NotificationSettingsScreen() {
+fun NotificationSettingsScreen(
+    setting: String? = null,
+) {
     val navigator = LocalNavigator.current
     val settingsStore = rememberNotificationSettingsStore()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val highlightedSetting = setting.orEmpty()
 
     var systemNotificationSettings by remember {
         mutableStateOf(
@@ -119,12 +122,14 @@ fun NotificationSettingsScreen() {
             SettingItemGroup(title = "阅读行为") {
                 SettingItemWithSwitch(
                     title = { Text("打开通知自动已读") },
-                    description = { Text("进入通知页后，自动把当前通知批次标记为已读") },
+                    description = { Text("进入通知板块后，自动把当前查看的板块标记为已读") },
                     checked = autoMarkAsRead,
                     onCheckedChange = { checked ->
                         autoMarkAsRead = checked
                         settingsStore.setAutoMarkAsReadEnabled(checked)
                     },
+                    settingKey = "autoMarkAsRead",
+                    highlightedKey = highlightedSetting,
                 )
                 SettingItemWithSwitch(
                     title = { Text("显示未读红点") },
@@ -133,10 +138,16 @@ fun NotificationSettingsScreen() {
                         unreadBadgeEnabled = checked
                         settingsStore.setUnreadBadgeEnabled(checked)
                     },
+                    settingKey = "unreadBadge",
+                    highlightedKey = highlightedSetting,
                 )
             }
 
-            SettingItemGroup(title = "系统通知") {
+            SettingItemGroup(
+                title = "系统通知",
+                settingKey = "systemNotifications",
+                highlightedKey = highlightedSetting,
+            ) {
                 NotificationType.entries.forEach { type ->
                     SettingItemWithSwitch(
                         title = { Text(type.displayName) },
@@ -154,6 +165,8 @@ fun NotificationSettingsScreen() {
             SettingItemGroup(
                 title = "应用内显示",
                 footer = { Text("选择在通知页面显示哪些通知") },
+                settingKey = "displayInAppNotifications",
+                highlightedKey = highlightedSetting,
             ) {
                 NotificationType.entries.forEach { type ->
                     SettingItemWithSwitch(

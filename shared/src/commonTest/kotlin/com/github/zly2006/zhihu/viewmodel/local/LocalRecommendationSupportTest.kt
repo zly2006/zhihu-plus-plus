@@ -17,12 +17,12 @@
 
 package com.github.zly2006.zhihu.viewmodel.local
 
+import com.github.zly2006.zhihu.data.CommonFeed
+import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
-import com.github.zly2006.zhihu.shared.data.CommonFeed
-import com.github.zly2006.zhihu.shared.data.Feed
-import com.github.zly2006.zhihu.shared.recommendation.LocalContentAffinity
-import com.github.zly2006.zhihu.shared.recommendation.LocalReasonPreference
+import com.github.zly2006.zhihu.viewmodel.local.LocalContentAffinity
+import com.github.zly2006.zhihu.viewmodel.local.LocalReasonPreference
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonArray
 import kotlin.io.path.createTempDirectory
@@ -68,7 +68,7 @@ class LocalRecommendationSupportTest {
     }
 
     @Test
-    fun createLocalFeedDisplayItemKeepsLocalRecommendationMetadata() {
+    fun createLocalFeedDisplayItemKeepsOnlyPresentationData() {
         val item = createLocalFeedDisplayItem(
             LocalRecommendationEntry(
                 feed = LocalFeed(
@@ -95,9 +95,6 @@ class LocalRecommendationSupportTest {
         assertEquals("回答标题", item.title)
         assertEquals("回答摘要", item.summary)
         assertEquals("热门推荐", item.details)
-        assertEquals("answer:42", item.localContentId)
-        assertEquals("local_feed_answer_42", item.localFeedId)
-        assertEquals(CrawlingReason.Trending.name, item.localReason)
         assertNotNull(item.navDestinationJson)
     }
 

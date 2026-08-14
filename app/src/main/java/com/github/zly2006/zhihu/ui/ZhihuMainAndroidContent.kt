@@ -25,7 +25,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
+import com.github.zly2006.zhihu.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ThemeStyle
 import com.github.zly2006.zhihu.ui.miuix.MiuixArticleScreen
@@ -35,7 +35,8 @@ import top.yukonga.miuix.kmp.nav.core.NavController
 /**
  * Android 平台的 Zhihu++ 主界面入口。
  *
- * 这里把 [MainActivity] 持有的导航、偏好设置、文章页 ViewModel、回答切换转场和 NLP 页面适配到共享 [ZhihuMain]。
+ * 这里把 [MainActivity] 持有的导航、偏好设置、文章页 ViewModel 和 NLP 页面适配到共享 [ZhihuMain]。
+ * 回答切换转场不在这里，由 common 的 ArticleAnswerSlot 在单个导航 entry 内部处理。
  * UI 结构仍由 common 主壳负责，Android 只提供生命周期、Activity、ViewModel 和平台专属页面实现。
  */
 @Composable
@@ -43,39 +44,38 @@ fun AndroidZhihuMain(navController: NavController<NavDestination>) {
     val activity = rememberAndroidZhihuMainActivity()
     ZhihuMain(
         navController = navController,
-        navigationState = rememberAndroidZhihuMainNavigationState(),
+        mainTabNavigationTarget = activity.mainTabNavigationTarget,
+        navigate = activity::navigate,
+        setCurrentMainTabOpenFrom = activity::setCurrentMainTabOpenFrom,
+        consumeMainTabNavigationTarget = activity::consumeMainTabNavigationTarget,
         preferenceState = rememberAndroidZhihuMainPreferenceState(),
-        isDarkTheme = com.github.zly2006.zhihu.theme.ThemeManager.isDarkTheme,
-        platformAdapter = androidZhihuMainPlatformAdapter(activity),
+        isDarkTheme = ThemeManager.isDarkTheme,
+        articleContent = { article ->
+            val lifecycleOwner = LocalLifecycleOwner.current
+            // 同一回答链共用一个导航 entry 的 store，故按回答 id 区分 ViewModel（见 ArticleAnswerSlot）。
+            val viewModel: ArticleViewModel = viewModel(key = "article-${article.id}") {
+                ArticleViewModel(article, activity.httpClient, androidUserMessageSink(activity)) { onPause ->
+                    lifecycleOwner.lifecycle.addObserver(object : DefaultLifecycleObserver {
+                        override fun onPause(owner: LifecycleOwner) {
+                            onPause()
+                        }
+                    })
+                }
+            }
+            if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+                MiuixArticleScreen(article, viewModel)
+            } else {
+                ArticleScreen(article, viewModel)
+            }
+        },
+        sentenceSimilarityContent = {
+            SentenceSimilarityTestScreen()
+        },
+        blocklistSettingsNlpContent = { onNavigateBack ->
+            NLPKeywordManagementScreen(
+                innerPadding = PaddingValues(),
+                onNavigateBack = onNavigateBack,
+            )
+        },
     )
 }
-
-private fun androidZhihuMainPlatformAdapter(activity: MainActivity): ZhihuMainPlatformAdapter = ZhihuMainPlatformAdapter(
-    article = { article ->
-        val lifecycleOwner = LocalLifecycleOwner.current
-        // 同一回答链共用一个导航 entry 的 store，故按回答 id 区分 ViewModel（见 ArticleAnswerSlot）。
-        val viewModel: ArticleViewModel = viewModel(key = "article-${article.id}") {
-            ArticleViewModel(article, activity.httpClient, androidUserMessageSink(activity)) { onPause ->
-                lifecycleOwner.lifecycle.addObserver(object : DefaultLifecycleObserver {
-                    override fun onPause(owner: LifecycleOwner) {
-                        onPause()
-                    }
-                })
-            }
-        }
-        if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
-            MiuixArticleScreen(article, viewModel)
-        } else {
-            ArticleScreen(article, viewModel)
-        }
-    },
-    sentenceSimilarityTest = {
-        SentenceSimilarityTestScreen()
-    },
-    blocklistSettingsNlpContent = { onNavigateBack ->
-        NLPKeywordManagementScreen(
-            innerPadding = PaddingValues(),
-            onNavigateBack = onNavigateBack,
-        )
-    },
-)

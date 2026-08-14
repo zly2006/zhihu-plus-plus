@@ -22,10 +22,8 @@ import com.fleeksoft.ksoup.nodes.Element
 import com.fleeksoft.ksoup.nodes.TextNode
 import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
-import com.github.zly2006.zhihu.shared.util.extractImageUrl
-import com.github.zly2006.zhihu.shared.util.parseSegmentTextParagraph
-import com.github.zly2006.zhihu.ui.components.SegmentedText
-import com.github.zly2006.zhihu.ui.components.segmentedTextStyle
+import com.github.zly2006.zhihu.util.extractImageUrl
+import com.hrm.markdown.parser.LineRange
 import com.hrm.markdown.parser.MarkdownParser
 import com.hrm.markdown.parser.ast.BlockQuote
 import com.hrm.markdown.parser.ast.ContainerNode
@@ -48,6 +46,7 @@ import com.hrm.markdown.parser.ast.ListItem
 import com.hrm.markdown.parser.ast.MathBlock
 import com.hrm.markdown.parser.ast.NativeBlock
 import com.hrm.markdown.parser.ast.Paragraph
+import com.hrm.markdown.parser.ast.SegmentHighlight
 import com.hrm.markdown.parser.ast.Strikethrough
 import com.hrm.markdown.parser.ast.StrongEmphasis
 import com.hrm.markdown.parser.ast.Subscript
@@ -66,23 +65,38 @@ import com.hrm.markdown.parser.ast.Node as MarkdownNode
 private var parsingDocument: Document? = null
 private const val ZHIHU_EQUATION_URL_PREFIX = "https://www.zhihu.com/equation?tex="
 
-fun htmlToMdAst(html: String): Document {
+fun htmlToMdAst(
+    html: String,
+    noNativeBlock: Boolean = false,
+): Document {
     val document = Document()
     parsingDocument = document
     Ksoup
         .parseBodyFragment(html)
         .body()
         .childNodes()
-        .convertNodesToBlocks()
+        .convertNodesToBlocks(noNativeBlock)
         .forEach(document::appendChild)
     document.footnoteDefinitions.forEach { (_, definition) ->
         document.appendChild(definition)
     }
     parsingDocument = null
+    document.assignStableLineRanges()
     return document
 }
 
 fun markdownToMdAst(markdown: String): Document = MarkdownParser().parse(markdown)
+
+private fun MarkdownNode.assignStableLineRanges(startLine: Int = 0): Int {
+    lineRange = LineRange(startLine, startLine)
+    var nextLine = startLine + 1
+    if (this is ContainerNode) {
+        children.forEach { child ->
+            nextLine = child.assignStableLineRanges(nextLine)
+        }
+    }
+    return nextLine
+}
 
 internal fun Document.previewImageUrls(): List<String> =
     collectPreviewImageUrls()
@@ -96,9 +110,18 @@ private fun MarkdownNode.collectPreviewImageUrls(): List<String> = when (this) {
     else -> emptyList()
 }
 
-private fun List<HtmlNode>.convertNodesToBlocks(): List<MarkdownNode> {
+private fun List<HtmlNode>.convertNodesToBlocks(noNativeBlock: Boolean): List<MarkdownNode> {
     val blocks = mutableListOf<MarkdownNode>()
     var currentParagraph: Paragraph? = null
+    val hasNextInlineContent = BooleanArray(size + 1)
+    for (index in lastIndex downTo 0) {
+        val node = this[index]
+        hasNextInlineContent[index] = when {
+            node is Element && node.isBlockBoundary() -> false
+            node.hasInlineContent() -> true
+            else -> hasNextInlineContent[index + 1]
+        }
+    }
 
     fun paragraph(): Paragraph = currentParagraph ?: Paragraph().also {
         blocks.add(it)
@@ -110,7 +133,7 @@ private fun List<HtmlNode>.convertNodesToBlocks(): List<MarkdownNode> {
             is TextNode -> {
                 val text = node.text().trimInlineBoundary(
                     hasPreviousInline = currentParagraph != null,
-                    hasNextInline = drop(index + 1).hasNextInlineContent(),
+                    hasNextInline = hasNextInlineContent[index + 1],
                 )
                 if (text.isNotEmpty()) {
                     paragraph().appendChild(
@@ -127,7 +150,7 @@ private fun List<HtmlNode>.convertNodesToBlocks(): List<MarkdownNode> {
                     }
                 }
 
-                val blockNode = convertElementToBlock(node)
+                val blockNode = convertElementToBlock(node, noNativeBlock)
                 if (blockNode.isNotEmpty()) {
                     blocks.addAll(blockNode)
                     currentParagraph = null
@@ -164,18 +187,6 @@ private fun String.trimInlineBoundary(
     else -> trim()
 }
 
-private fun List<HtmlNode>.hasNextInlineContent(): Boolean {
-    for (node in this) {
-        if (node is Element && node.isBlockBoundary()) {
-            return false
-        }
-        if (node.hasInlineContent()) {
-            return true
-        }
-    }
-    return false
-}
-
 private fun Element.isBlockBoundary(): Boolean = when (tagName().lowercase()) {
     "br",
     "h1",
@@ -199,7 +210,10 @@ private fun Element.isBlockBoundary(): Boolean = when (tagName().lowercase()) {
     else -> false
 }
 
-private fun convertElementToBlock(element: Element): List<MarkdownNode> = when (element.tagName().lowercase()) {
+private fun convertElementToBlock(
+    element: Element,
+    noNativeBlock: Boolean,
+): List<MarkdownNode> = when (element.tagName().lowercase()) {
     "h1", "h2", "h3", "h4", "h5", "h6" -> listOf(
         Heading(level = element.tagName()[1].digitToInt()).apply {
             appendChildren(extractInlineChildren(element))
@@ -223,25 +237,12 @@ private fun convertElementToBlock(element: Element): List<MarkdownNode> = when (
                 ?.let { formula -> listOf(MathBlock(formula)) }
                 ?: listOfNotNull(createBlockImage(image))
         } else {
-            if (element.selectFirst("span.highlight-wrap") != null) {
-                // 含有知乎的划线高亮结构，需要单独处理
-                // TODO: 暂不考虑其他可能的结构，直接尝试解析整个段落为SegmentedTextParagraph
-                parseSegmentTextParagraph(element)?.let { paragraph ->
-                    return listOf(
-                        NativeBlock {
-                            SegmentedText(
-                                parts = paragraph.parts,
-                                style = segmentedTextStyle(),
-                            )
-                        },
-                    )
-                }
-            }
             // 特殊处理<p>里面包含的MathBlock
             val list = mutableListOf<MarkdownNode>()
 
             fun paragraph(): Paragraph = list.lastOrNull() as? Paragraph ?: Paragraph().also { list.add(it) }
-            extractInlineChildren(element).forEach {
+            val segmentHighlightsEnabled = element.childNodes().all(HtmlNode::supportsSegmentHighlightFormat)
+            extractInlineChildren(element, segmentHighlightsEnabled).forEach {
                 if (it is MathBlock) {
                     list.add(it)
                 } else {
@@ -254,15 +255,15 @@ private fun convertElementToBlock(element: Element): List<MarkdownNode> = when (
 
     "blockquote" -> listOf(
         BlockQuote().apply {
-            element.childNodes().convertNodesToBlocks().forEach(::appendChild)
+            element.childNodes().convertNodesToBlocks(noNativeBlock).forEach(::appendChild)
         },
     )
 
     "pre" -> listOf(createCodeBlock(element))
 
-    "ul" -> listOf(createListBlock(element, ordered = false))
+    "ul" -> listOf(createListBlock(element, ordered = false, noNativeBlock = noNativeBlock))
 
-    "ol" -> listOf(createListBlock(element, ordered = true))
+    "ol" -> listOf(createListBlock(element, ordered = true, noNativeBlock = noNativeBlock))
 
     "hr" -> listOf(ThematicBreak())
 
@@ -273,12 +274,16 @@ private fun convertElementToBlock(element: Element): List<MarkdownNode> = when (
     "table" -> listOf(createTableBlock(element))
 
     "div" -> {
-        element.childNodes().convertNodesToBlocks()
+        element.childNodes().convertNodesToBlocks(noNativeBlock)
     }
 
     "a" -> {
         if (element.attr("class").contains("video-box")) {
-            listOfNotNull(createVideoBoxBlock(element))
+            if (noNativeBlock) {
+                listOfNotNull(createVideoBoxLinkBlock(element))
+            } else {
+                listOfNotNull(createVideoBoxBlock(element))
+            }
         } else {
             emptyList()
         }
@@ -310,25 +315,46 @@ private fun parseLanguageFromClassName(classNames: Set<String>): String? {
 private fun createListBlock(
     element: Element,
     ordered: Boolean,
+    noNativeBlock: Boolean,
 ): ListBlock = ListBlock(
     ordered = ordered,
     startNumber = element.attr("start").toIntOrNull() ?: 1,
 ).apply {
-    element.select("> li").forEach { listItemElement ->
-        appendChild(
-            ListItem().apply {
-                val children = listItemElement.childNodes().convertNodesToBlocks()
-                if (children.isEmpty()) {
-                    appendChild(
-                        Paragraph().apply {
-                            appendChildren(extractInlineChildren(listItemElement))
-                        },
-                    )
-                } else {
-                    appendChildren(children)
+    var precedingListItem: ListItem? = null
+    element.children().forEach { childElement ->
+        when (childElement.tagName().lowercase()) {
+            "li" -> {
+                val listItem = ListItem().apply {
+                    val children = childElement.childNodes().convertNodesToBlocks(noNativeBlock)
+                    if (children.isEmpty()) {
+                        appendChild(
+                            Paragraph().apply {
+                                appendChildren(extractInlineChildren(childElement))
+                            },
+                        )
+                    } else {
+                        appendChildren(children)
+                    }
                 }
-            },
-        )
+                appendChild(listItem)
+                precedingListItem = listItem
+            }
+
+            "ul", "ol" -> {
+                val nestedList = createListBlock(
+                    childElement,
+                    ordered = childElement.tagName().equals("ol", ignoreCase = true),
+                    noNativeBlock = noNativeBlock,
+                )
+                if (precedingListItem != null) {
+                    precedingListItem.appendChild(nestedList)
+                } else {
+                    val nestedItems = nestedList.children.toList()
+                    nestedList.clearChildren()
+                    appendChildren(nestedItems)
+                }
+            }
+        }
     }
 }
 
@@ -344,6 +370,10 @@ private fun createBlockImage(element: Element): MarkdownNode? {
     return Figure(
         imageUrl = src,
         caption = caption,
+        imageWidth = element.attr("data-rawwidth").toIntOrNull()
+            ?: element.attr("width").toIntOrNull(),
+        imageHeight = element.attr("data-rawheight").toIntOrNull()
+            ?: element.attr("height").toIntOrNull(),
     )
 }
 
@@ -354,8 +384,10 @@ private fun createFigureBlock(element: Element): MarkdownNode? {
         return Figure(
             imageUrl = src,
             caption = caption,
-            imageWidth = image.attr("width").toIntOrNull(),
-            imageHeight = image.attr("height").toIntOrNull(),
+            imageWidth = image.attr("data-rawwidth").toIntOrNull()
+                ?: image.attr("width").toIntOrNull(),
+            imageHeight = image.attr("data-rawheight").toIntOrNull()
+                ?: image.attr("height").toIntOrNull(),
         )
     }
 
@@ -383,6 +415,24 @@ private fun createVideoBoxBlock(element: Element): MarkdownNode? {
         RenderVideoBox(
             videoId = videoId,
             thumbnailUrl = thumbnailUrl,
+        )
+    }
+}
+
+private fun createVideoBoxLinkBlock(element: Element): MarkdownNode? {
+    val href = element.attr("href").ifBlank {
+        element
+            .attr("data-lens-id")
+            .toLongOrNull()
+            ?.let { "https://www.zhihu.com/video/$it" }
+            .orEmpty()
+    }
+    if (href.isBlank()) return null
+    return Paragraph().apply {
+        appendChild(
+            Link(destination = normalizeLinkDestination(href)).apply {
+                appendChild(Text("视频"))
+            },
         )
     }
 }
@@ -443,7 +493,10 @@ private fun Element.toAlignment(): Table.Alignment = when (attr("align").lowerca
     else -> Table.Alignment.NONE
 }
 
-private fun extractInlineChildren(element: Element): List<MarkdownNode> {
+private fun extractInlineChildren(
+    element: Element,
+    segmentHighlightsEnabled: Boolean = true,
+): List<MarkdownNode> {
     val childNodes = element.childNodes()
     return childNodes.flatMapIndexed { index, child ->
         if (child is TextNode && child.text().isBlank()) {
@@ -453,7 +506,7 @@ private fun extractInlineChildren(element: Element): List<MarkdownNode> {
                 emptyList()
             }
         } else {
-            extractInlineNode(child)
+            extractInlineNode(child, segmentHighlightsEnabled)
         }
     }
 }
@@ -468,6 +521,16 @@ private fun HtmlNode.hasInlineContent(): Boolean = when (this) {
     else -> false
 }
 
+private fun HtmlNode.supportsSegmentHighlightFormat(): Boolean = when (this) {
+    is TextNode -> true
+    is Element -> {
+        val supportedTag = tagName().lowercase() in SEGMENT_HIGHLIGHT_FORMAT_TAGS ||
+            (tagName().equals("span", ignoreCase = true) && hasClass("highlight-wrap"))
+        supportedTag && childNodes().all(HtmlNode::supportsSegmentHighlightFormat)
+    }
+    else -> false
+}
+
 private fun extractEquationTex(imgElement: Element): String? = extractImageUrl(imgElement::attr)
     ?.takeIf { it.startsWith(ZHIHU_EQUATION_URL_PREFIX) }
     ?.let { Url(it).parameters["tex"].orEmpty() }
@@ -478,7 +541,10 @@ private fun extractEquationTex(imgElement: Element): String? = extractImageUrl(i
  *
  * > 注意：由于知乎的bug，MathBlock在<p>里面。
  */
-private fun extractInlineNode(node: HtmlNode): List<MarkdownNode> = when (node) {
+private fun extractInlineNode(
+    node: HtmlNode,
+    segmentHighlightsEnabled: Boolean = true,
+): List<MarkdownNode> = when (node) {
     is TextNode -> {
         val text = node.text()
         if (text.isBlank()) {
@@ -491,15 +557,38 @@ private fun extractInlineNode(node: HtmlNode): List<MarkdownNode> = when (node) 
     }
 
     is Element -> when (node.tagName().lowercase()) {
-        "strong", "b" -> listOf(StrongEmphasis().apply { appendChildren(extractInlineChildren(node)) })
+        "strong", "b" -> listOf(
+            StrongEmphasis().apply { appendChildren(extractInlineChildren(node, segmentHighlightsEnabled)) },
+        )
 
-        "em", "i" -> listOf(Emphasis().apply { appendChildren(extractInlineChildren(node)) })
+        "em", "i" -> listOf(
+            Emphasis().apply { appendChildren(extractInlineChildren(node, segmentHighlightsEnabled)) },
+        )
 
-        "del", "s", "strike" -> listOf(Strikethrough().apply { appendChildren(extractInlineChildren(node)) })
+        "del", "s", "strike" -> listOf(
+            Strikethrough().apply { appendChildren(extractInlineChildren(node, segmentHighlightsEnabled)) },
+        )
 
-        "mark" -> listOf(Highlight().apply { appendChildren(extractInlineChildren(node)) })
+        "mark" -> listOf(Highlight().apply { appendChildren(extractInlineChildren(node, segmentHighlightsEnabled)) })
 
-        "sub" -> listOf(Subscript().apply { appendChildren(extractInlineChildren(node)) })
+        "span" -> {
+            if (segmentHighlightsEnabled && node.hasClass("highlight-wrap")) {
+                listOf(
+                    SegmentHighlight(
+                        text = node.text(),
+                        attributes = SEGMENT_HIGHLIGHT_ATTRIBUTES
+                            .associateWith(node::attr)
+                            .filterValues(String::isNotEmpty),
+                    ).apply {
+                        appendChildren(extractInlineChildren(node, segmentHighlightsEnabled))
+                    },
+                )
+            } else {
+                extractInlineChildren(node, segmentHighlightsEnabled)
+            }
+        }
+
+        "sub" -> listOf(Subscript().apply { appendChildren(extractInlineChildren(node, segmentHighlightsEnabled)) })
 
         "sup" -> {
             if (node.attr("data-draft-type") == "reference") {
@@ -521,7 +610,7 @@ private fun extractInlineNode(node: HtmlNode): List<MarkdownNode> = when (node) 
                 }
                 listOf(FootnoteReference(index.toString(), index))
             } else {
-                listOf(Superscript().apply { appendChildren(extractInlineChildren(node)) })
+                listOf(Superscript().apply { appendChildren(extractInlineChildren(node, segmentHighlightsEnabled)) })
             }
         }
 
@@ -531,15 +620,10 @@ private fun extractInlineNode(node: HtmlNode): List<MarkdownNode> = when (node) 
 
         "a" -> {
             val href = node.attr("href")
-            val destination = if (href.contains("link.zhihu.com")) {
-                runCatching { Url(href).parameters["target"] }.getOrNull() ?: href
-            } else {
-                href
-            }
             listOf(
-                Link(destination = destination).apply {
+                Link(destination = normalizeLinkDestination(href)).apply {
                     appendChildren(
-                        extractInlineChildren(node).ifEmpty {
+                        extractInlineChildren(node, segmentHighlightsEnabled).ifEmpty {
                             listOf(
                                 Text(node.text()),
                             )
@@ -581,7 +665,7 @@ private fun extractInlineNode(node: HtmlNode): List<MarkdownNode> = when (node) 
         }
 
         else -> {
-            val children = extractInlineChildren(node)
+            val children = extractInlineChildren(node, segmentHighlightsEnabled)
             if (children.isNotEmpty()) {
                 children
             } else {
@@ -600,9 +684,33 @@ private fun extractInlineNode(node: HtmlNode): List<MarkdownNode> = when (node) 
     else -> emptyList()
 }
 
+private fun normalizeLinkDestination(href: String): String =
+    if (href.contains("link.zhihu.com")) {
+        runCatching { Url(href).parameters["target"] }.getOrNull()?.takeIf { it.isNotBlank() } ?: href
+    } else {
+        href
+    }
+
 private fun ContainerNode.appendChildren(children: List<MarkdownNode>) {
     children.forEach(::appendChild)
 }
+
+private val SEGMENT_HIGHLIGHT_ATTRIBUTES = listOf(
+    "data-highlight-id",
+    "data-highlight-like-count",
+    "data-highlight-comment-count",
+    "data-highlight-my-comment-count",
+    "data-highlight-is-like",
+    "data-highlight-is-span",
+    "data-highlight-source-url",
+    "data-highlight-content-id",
+    "data-highlight-content-type",
+    "data-highlight-pid",
+    "data-highlight-start-offset",
+    "data-highlight-end-offset",
+)
+
+private val SEGMENT_HIGHLIGHT_FORMAT_TAGS = setOf("b", "strong", "i", "em")
 
 /**
  * 把知乎回答的 HTML（DataHolder.Answer.content / editableContent）转换成 Markdown，

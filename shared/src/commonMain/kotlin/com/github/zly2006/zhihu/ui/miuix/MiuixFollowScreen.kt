@@ -26,6 +26,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -55,12 +56,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
-import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
-import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.shared.ui.TopLevelReselectAction
-import com.github.zly2006.zhihu.shared.ui.topLevelReselectAction
+import com.github.zly2006.zhihu.platform.UserMessageDuration
+import com.github.zly2006.zhihu.platform.rememberSettingBoolean
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
@@ -72,12 +71,17 @@ import com.github.zly2006.zhihu.ui.FOLLOW_RECOMMEND_REFRESH_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.FOLLOW_SCREEN_PAGER_TAG
 import com.github.zly2006.zhihu.ui.FOLLOW_SCREEN_TAB_ROW_TAG
 import com.github.zly2006.zhihu.ui.FollowScreenData
+import com.github.zly2006.zhihu.ui.TopLevelReselectAction
 import com.github.zly2006.zhihu.ui.components.AutoHideTopBar
-import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
+import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockConfirmDialog
+import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockRequest
+import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockType
+import com.github.zly2006.zhihu.ui.components.NoOpPagerNestedScrollConnection
 import com.github.zly2006.zhihu.ui.components.PaginatedList
-import com.github.zly2006.zhihu.ui.components.rememberFeedBlockActions
+import com.github.zly2006.zhihu.ui.components.rememberNestedHorizontalPagerConnection
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
+import com.github.zly2006.zhihu.ui.topLevelReselectAction
 import com.github.zly2006.zhihu.viewmodel.feed.FollowRecommendViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.FollowViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.RecentMomentsViewModel
@@ -170,18 +174,34 @@ fun MiuixFollowScreen(
     }
 }
 
+/**
+ * 关注页的 miuix 版本，对标 M3 [com.github.zly2006.zhihu.ui.FollowScreen]。
+ *
+ * tab 状态由页面自己通过 [FollowScreenData] 持有；父 pager 只传进来用于手势协商，
+ * 这样在「推荐」左边缘或「动态」右边缘继续横滑才会交还给主壳切 tab。
+ */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MiuixFollowTopLevelPage(
-    selectedTabIndex: Int,
-    onTabSelected: (Int) -> Unit,
     scrollToTopTrigger: Int = 0,
     innerPadding: PaddingValues = PaddingValues(0.dp),
-    isActive: Boolean = true,
+    parentPagerState: PagerState,
 ) {
     val settings = rememberSettingsStore()
     val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
+    val viewModel = viewModel { FollowScreenData() }
+    val pagerState = rememberPagerState(
+        initialPage = viewModel.selectedTabIndex,
+        pageCount = { 2 },
+    )
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(pagerState.currentPage) {
+        viewModel.selectedTabIndex = pagerState.currentPage
+    }
+
     Scaffold(
         topBar = {
             AutoHideTopBar {
@@ -194,26 +214,46 @@ fun MiuixFollowTopLevelPage(
                         title = "关注",
                         scrollBehavior = scrollBehavior,
                     )
-                    MiuixFollowTabRow(selectedTabIndex = selectedTabIndex, onTabSelected = onTabSelected)
+                    MiuixFollowTabRow(
+                        selectedTabIndex = pagerState.currentPage,
+                        onTabSelected = { index ->
+                            viewModel.selectedTabIndex = index
+                            coroutineScope.launch { pagerState.animateScrollToPage(index) }
+                        },
+                    )
                 }
             }
         },
     ) { padding ->
-        when (selectedTabIndex) {
-            0 -> MiuixFollowRecommendScreen(
-                scrollToTopTrigger = scrollToTopTrigger,
-                isActive = isActive,
-                backdrop = backdrop,
-                scrollBehavior = scrollBehavior,
-                contentTopPadding = padding.calculateTopPadding(),
-            )
-            1 -> MiuixFollowDynamicScreen(
-                scrollToTopTrigger = scrollToTopTrigger,
-                isActive = isActive,
-                backdrop = backdrop,
-                scrollBehavior = scrollBehavior,
-                contentTopPadding = padding.calculateTopPadding(),
-            )
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = innerPadding.calculateBottomPadding())
+                .nestedScroll(
+                    rememberNestedHorizontalPagerConnection(
+                        parentState = parentPagerState,
+                        childState = pagerState,
+                    ),
+                ).testTag(FOLLOW_SCREEN_PAGER_TAG),
+            pageNestedScrollConnection = NoOpPagerNestedScrollConnection,
+        ) { page ->
+            when (page) {
+                0 -> MiuixFollowRecommendScreen(
+                    scrollToTopTrigger = scrollToTopTrigger,
+                    isActive = pagerState.currentPage == 0,
+                    backdrop = backdrop,
+                    scrollBehavior = scrollBehavior,
+                    contentTopPadding = padding.calculateTopPadding(),
+                )
+                1 -> MiuixFollowDynamicScreen(
+                    scrollToTopTrigger = scrollToTopTrigger,
+                    isActive = pagerState.currentPage == 1,
+                    backdrop = backdrop,
+                    scrollBehavior = scrollBehavior,
+                    contentTopPadding = padding.calculateTopPadding(),
+                )
+            }
         }
     }
 }
@@ -321,7 +361,6 @@ fun MiuixFollowRecommendScreen(
     val environment = rememberPaginationEnvironment(allowGuestAccess = viewModel.allowGuestAccess)
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()
-    val feedBlockActions = rememberFeedBlockActions()
     val showRefreshFab = rememberSettingBoolean("showRefreshFab", true, settings)
     val listState = rememberLazyListState()
     var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
@@ -353,8 +392,7 @@ fun MiuixFollowRecommendScreen(
         }
     }
 
-    var showBlockUserDialog by remember { mutableStateOf(false) }
-    var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var feedAuthorBlockRequest by remember { mutableStateOf<FeedAuthorBlockRequest?>(null) }
 
     val scope = rememberCoroutineScope()
 
@@ -383,13 +421,16 @@ fun MiuixFollowRecommendScreen(
                         item = item,
                         modifier = Modifier.testTag("follow_recommend_item_${item.stableKey}"),
                         onBlockUser = { feedItem ->
-                            feedBlockActions.handleBlockUser(viewModel, feedItem) { authorInfo ->
-                                userToBlock = authorInfo
-                                showBlockUserDialog = true
+                            viewModel.handleBlockUser(environment, userMessages, feedItem) { authorInfo ->
+                                feedAuthorBlockRequest = FeedAuthorBlockRequest(
+                                    type = FeedAuthorBlockType.CONTENT_AUTHOR,
+                                    userId = authorInfo.first,
+                                    userName = authorInfo.second,
+                                )
                             }
                         },
                         onBlockTopic = { topicId, topicName ->
-                            feedBlockActions.handleBlockTopic(viewModel, topicId, topicName)
+                            viewModel.handleBlockTopic(userMessages, topicId, topicName)
                         },
                     )
                 }
@@ -408,18 +449,15 @@ fun MiuixFollowRecommendScreen(
             }
         }
 
-        BlockUserConfirmDialog(
-            showDialog = showBlockUserDialog,
-            userToBlock = userToBlock,
+        FeedAuthorBlockConfirmDialog(
+            request = feedAuthorBlockRequest,
             displayItems = viewModel.displayItems,
             onDismiss = {
-                showBlockUserDialog = false
-                userToBlock = null
+                feedAuthorBlockRequest = null
             },
             onConfirm = {
                 viewModel.refresh(environment)
-                showBlockUserDialog = false
-                userToBlock = null
+                feedAuthorBlockRequest = null
             },
         )
     }
@@ -439,7 +477,6 @@ fun MiuixFollowDynamicScreen(
     val environment = rememberPaginationEnvironment(allowGuestAccess = viewModel.allowGuestAccess)
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()
-    val feedBlockActions = rememberFeedBlockActions()
     val showRefreshFab = rememberSettingBoolean("showRefreshFab", true, settings)
     val listState = rememberLazyListState()
     var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
@@ -471,8 +508,7 @@ fun MiuixFollowDynamicScreen(
         }
     }
 
-    var showBlockUserDialog by remember { mutableStateOf(false) }
-    var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var feedAuthorBlockRequest by remember { mutableStateOf<FeedAuthorBlockRequest?>(null) }
 
     val scope = rememberCoroutineScope()
 
@@ -504,13 +540,16 @@ fun MiuixFollowDynamicScreen(
                         onLike = { userMessages.showShortMessage("收到喜欢，功能正在优化") },
                         onDislike = { userMessages.showShortMessage("收到反馈，功能正在优化") },
                         onBlockUser = { feedItem ->
-                            feedBlockActions.handleBlockUser(viewModel, feedItem) { authorInfo ->
-                                userToBlock = authorInfo
-                                showBlockUserDialog = true
+                            viewModel.handleBlockUser(environment, userMessages, feedItem) { authorInfo ->
+                                feedAuthorBlockRequest = FeedAuthorBlockRequest(
+                                    type = FeedAuthorBlockType.CONTENT_AUTHOR,
+                                    userId = authorInfo.first,
+                                    userName = authorInfo.second,
+                                )
                             }
                         },
                         onBlockTopic = { topicId, topicName ->
-                            feedBlockActions.handleBlockTopic(viewModel, topicId, topicName)
+                            viewModel.handleBlockTopic(userMessages, topicId, topicName)
                         },
                     )
                 }
@@ -529,18 +568,15 @@ fun MiuixFollowDynamicScreen(
             }
         }
 
-        BlockUserConfirmDialog(
-            showDialog = showBlockUserDialog,
-            userToBlock = userToBlock,
+        FeedAuthorBlockConfirmDialog(
+            request = feedAuthorBlockRequest,
             displayItems = viewModel.displayItems,
             onDismiss = {
-                showBlockUserDialog = false
-                userToBlock = null
+                feedAuthorBlockRequest = null
             },
             onConfirm = {
                 viewModel.refresh(environment)
-                showBlockUserDialog = false
-                userToBlock = null
+                feedAuthorBlockRequest = null
             },
         )
     }

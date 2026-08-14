@@ -52,17 +52,17 @@ import com.github.zly2006.zhihu.navigation.HotList
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.MyCollections
 import com.github.zly2006.zhihu.navigation.OnlineHistory
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.shared.theme.ThemeMode
-import com.github.zly2006.zhihu.shared.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
-import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.theme.ThemeMode
 import com.github.zly2006.zhihu.theme.ThemeStyle
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
+import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixColorPickerSheet
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixExpandableArrowPreference
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
@@ -78,7 +78,6 @@ import com.github.zly2006.zhihu.ui.subscreens.bottomBarItemOrderPreferenceValue
 import com.github.zly2006.zhihu.ui.subscreens.defaultBottomBarSelectionKeys
 import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarItemOrder
 import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarSelection
-import com.github.zly2006.zhihu.ui.subscreens.rememberThemeSettingsRuntime
 import com.github.zly2006.zhihu.ui.subscreens.resolveValidStartDestinationKey
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Checkbox
@@ -118,7 +117,6 @@ fun MiuixAppearanceSettingsScreen(
 ) {
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()
-    val runtime = rememberThemeSettingsRuntime()
     val navigator = LocalNavigator.current
     val blurEnabled = remember { mutableStateOf(settings.getBoolean("blurEnabled", true)) }
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled.value)
@@ -282,7 +280,11 @@ fun MiuixAppearanceSettingsScreen(
             item { SmallTitle(text = "界面风格") }
             item {
                 Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
-                    UiEngineSpinner(themeStyle) { runtime.setThemeStyle(it) }
+                    // ThemeManager 的 setter 只改内存态，持久化必须由调用方补上。
+                    UiEngineSpinner(themeStyle) {
+                        ThemeManager.setThemeStyle(it)
+                        settings.putString("themeStyle", it.name)
+                    }
                     SwitchPreference(
                         checked = blurEnabled.value,
                         onCheckedChange = {
@@ -299,10 +301,16 @@ fun MiuixAppearanceSettingsScreen(
             item { SmallTitle(text = "主题") }
             item {
                 Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
-                    ThemeModeSpinner(themeMode) { runtime.setThemeMode(it) }
+                    ThemeModeSpinner(themeMode) {
+                        ThemeManager.setThemeMode(it)
+                        settings.putString("themeMode", it.name)
+                    }
                     SwitchPreference(
                         checked = useDynamicColor,
-                        onCheckedChange = { runtime.setUseDynamicColor(it) },
+                        onCheckedChange = {
+                            ThemeManager.setUseDynamicColor(it)
+                            settings.putBoolean("useDynamicColor", it)
+                        },
                         title = "动态颜色",
                         summary = "跟随系统取色（Android 12 及以上）",
                     )
@@ -698,7 +706,8 @@ fun MiuixAppearanceSettingsScreen(
         title = "选择主题色",
         initialColor = customColor,
         onConfirm = {
-            runtime.setCustomColor(it)
+            ThemeManager.setCustomColor(it)
+            settings.putInt("customThemeColor", it.toArgb())
             showColorPicker.value = false
         },
     )
@@ -717,7 +726,8 @@ fun MiuixAppearanceSettingsScreen(
         title = "选择背景颜色",
         initialColor = bgColor,
         onConfirm = {
-            runtime.setBackgroundColor(it, isDark)
+            ThemeManager.setBackgroundColor(it, isDark)
+            settings.putInt(if (isDark) "backgroundColorDark" else "backgroundColorLight", it.toArgb())
             showBgPicker.value = false
         },
     )

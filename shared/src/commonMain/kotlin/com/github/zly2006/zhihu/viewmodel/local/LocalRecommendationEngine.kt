@@ -17,18 +17,18 @@
 
 package com.github.zly2006.zhihu.viewmodel.local
 
+import com.github.zly2006.zhihu.data.CommonFeed
+import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.target
+import com.github.zly2006.zhihu.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.shared.data.CommonFeed
-import com.github.zly2006.zhihu.shared.data.Feed
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.target
-import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
-import com.github.zly2006.zhihu.shared.recommendation.LocalReasonPreference
-import com.github.zly2006.zhihu.shared.recommendation.applyReasonDiversity
-import com.github.zly2006.zhihu.shared.recommendation.buildLocalRecommendationReason
-import com.github.zly2006.zhihu.shared.recommendation.parseLocalContentIdentity
-import com.github.zly2006.zhihu.shared.recommendation.scoreFeedTarget
-import com.github.zly2006.zhihu.shared.recommendation.toLocalContentIdentity
+import com.github.zly2006.zhihu.viewmodel.local.LocalReasonPreference
+import com.github.zly2006.zhihu.viewmodel.local.applyReasonDiversity
+import com.github.zly2006.zhihu.viewmodel.local.buildLocalRecommendationReason
+import com.github.zly2006.zhihu.viewmodel.local.parseLocalContentIdentity
+import com.github.zly2006.zhihu.viewmodel.local.scoreFeedTarget
+import com.github.zly2006.zhihu.viewmodel.local.toLocalContentIdentity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -220,9 +220,6 @@ internal fun createLocalFeedDisplayItem(entry: LocalRecommendationEntry): FeedDi
     feed = null,
     navDestinationJson = entry.navDestination?.toFeedDisplayItemNavDestinationJson(),
     isFiltered = false,
-    localContentId = entry.result.contentId,
-    localFeedId = entry.feed.id,
-    localReason = entry.result.reason.name,
 )
 
 internal suspend fun cleanupLocalRecommendationData(

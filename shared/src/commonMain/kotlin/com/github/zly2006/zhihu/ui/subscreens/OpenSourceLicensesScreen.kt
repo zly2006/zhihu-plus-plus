@@ -115,7 +115,6 @@ fun OpenSourceLicensesContent(
         libraries = rememberOpenSourceLicensesLibraries(),
         modifier = modifier,
         contentPadding = contentPadding,
-        showDescription = false,
         header = {
             if (manualLibraries.isNotEmpty()) {
                 item {

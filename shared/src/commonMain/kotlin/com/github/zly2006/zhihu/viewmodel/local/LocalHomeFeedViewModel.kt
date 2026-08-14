@@ -18,8 +18,8 @@
 package com.github.zly2006.zhihu.viewmodel.local
 
 import androidx.lifecycle.viewModelScope
-import com.github.zly2006.zhihu.shared.data.Feed
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.viewmodel.ContentInteractionEnvironment
 import com.github.zly2006.zhihu.viewmodel.LocalRecommendationEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
@@ -35,6 +35,9 @@ class LocalHomeFeedViewModel :
     HomeFeedInteractionViewModel {
     private lateinit var recommendationEngine: LocalRecommendationEngine
 
+    // 存整个 entry 而不只是 result：负反馈要按 LocalFeed.id 回写 userFeedback，只有 entry 带得到这个 id。
+    private val recommendationEntries = mutableMapOf<String, LocalRecommendationEntry>()
+
     override val initialUrl: String
         get() = error("LocalHomeFeedViewModel should not be used directly. Use LocalFeedViewModel instead.")
 
@@ -48,11 +51,18 @@ class LocalHomeFeedViewModel :
         try {
             val engine = ensureEngine(environment)
             val recommendations = engine.generateRecommendations(20)
+            recommendationEntries.clear()
 
             if (recommendations.isEmpty()) {
                 generateFallbackContent()
             } else {
-                addDisplayItems(recommendations.map(::createLocalFeedDisplayItem))
+                val loadedItems = recommendations.map { entry ->
+                    createLocalFeedDisplayItem(entry).also { item ->
+                        recommendationEntries[item.stableKey] = entry
+                    }
+                }
+                addDisplayItems(loadedItems)
+                latestLoadedDisplayItems.value = loadedItems
             }
         } catch (e: Exception) {
             environment.handleLocalRecommendationFailure(e)
@@ -66,27 +76,30 @@ class LocalHomeFeedViewModel :
     }
 
     fun onLocalItemOpened(item: FeedDisplayItem) {
-        val contentId = item.localContentId ?: return
-        val reason = item.localReason?.let { runCatching { CrawlingReason.valueOf(it) }.getOrNull() } ?: return
+        val result = recommendationEntries[item.stableKey]?.result ?: return
         if (!::recommendationEngine.isInitialized) {
             return
         }
         viewModelScope.launch(Dispatchers.Default) {
-            recommendationEngine.recordContentOpened(contentId, reason)
+            recommendationEngine.recordContentOpened(result.contentId, result.reason)
         }
     }
 
+    /**
+     * 记录用户对本地推荐条目的显式反馈（miuix 信息流卡片的上滑喜欢 / 下滑不喜欢）。
+     *
+     * 负反馈同时把卡片移出当前列表，否则用户滑完还要继续看到它。
+     */
     fun onLocalItemFeedback(item: FeedDisplayItem, feedback: Double) {
-        val contentId = item.localContentId ?: return
-        val reason = item.localReason?.let { runCatching { CrawlingReason.valueOf(it) }.getOrNull() } ?: return
+        val entry = recommendationEntries[item.stableKey] ?: return
         if (!::recommendationEngine.isInitialized) {
             return
         }
         viewModelScope.launch(Dispatchers.Default) {
             recommendationEngine.recordRecommendationFeedback(
-                feedId = item.localFeedId,
-                contentId = contentId,
-                reason = reason,
+                feedId = entry.feed.id,
+                contentId = entry.result.contentId,
+                reason = entry.result.reason,
                 feedback = feedback,
             )
             if (feedback < 0) {
@@ -110,14 +123,14 @@ class LocalHomeFeedViewModel :
         val fallbackItems = listOf(
             FeedDisplayItem(
                 title = "本地推荐正在建立候选池",
-                summary = "系统会先抓取关注动态、热门内容和相关话题，再根据你的点击与反馈逐步调整排序。",
+                summary = "系统会先抓取关注动态、热门内容和相关话题，再根据你的点击逐步调整排序。",
                 details = "本地推荐 · 冷启动",
                 feed = null,
                 isFiltered = false,
             ),
             FeedDisplayItem(
                 title = "你的行为只在本地学习",
-                summary = "点开、喜欢、不喜欢都会影响后续排序，但这些学习信号不会作为推荐特征上传到服务器。",
+                summary = "点开内容会影响后续排序，但这些学习信号不会作为推荐特征上传到服务器。",
                 details = "本地推荐 · 隐私优先",
                 feed = null,
                 isFiltered = false,
@@ -130,6 +143,7 @@ class LocalHomeFeedViewModel :
             }
             delay(300)
         }
+        latestLoadedDisplayItems.value = fallbackItems
     }
 
     override suspend fun recordContentInteraction(

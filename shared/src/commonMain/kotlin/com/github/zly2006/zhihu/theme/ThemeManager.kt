@@ -12,7 +12,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import com.github.zly2006.zhihu.shared.theme.ThemeMode
+import com.github.zly2006.zhihu.theme.ThemeMode
 
 data class ThemeSnapshot(
     val useDynamicColor: Boolean = true,

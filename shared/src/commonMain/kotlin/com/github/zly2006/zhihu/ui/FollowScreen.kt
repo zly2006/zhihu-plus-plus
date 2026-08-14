@@ -21,18 +21,22 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -40,11 +44,13 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -57,8 +63,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -66,21 +72,28 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
-import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
-import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.shared.ui.TopLevelReselectAction
-import com.github.zly2006.zhihu.shared.ui.topLevelReselectAction
-import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
+import com.github.zly2006.zhihu.platform.UserMessageDuration
+import com.github.zly2006.zhihu.platform.rememberSettingBoolean
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.reading.RegisterReadingQueueSource
+import com.github.zly2006.zhihu.ui.TopLevelReselectAction
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
+import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockConfirmDialog
+import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockRequest
+import com.github.zly2006.zhihu.ui.components.FeedAuthorBlockType
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
+import com.github.zly2006.zhihu.ui.components.NoOpPagerNestedScrollConnection
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
-import com.github.zly2006.zhihu.ui.components.rememberFeedBlockActions
+import com.github.zly2006.zhihu.ui.components.rememberNestedHorizontalPagerConnection
+import com.github.zly2006.zhihu.ui.topLevelReselectAction
 import com.github.zly2006.zhihu.viewmodel.feed.FollowRecommendViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.FollowViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.RecentMomentsViewModel
@@ -110,9 +123,11 @@ const val FOLLOW_DYNAMIC_REFRESH_BUTTON_TAG = "follow_dynamic_refresh_button"
 fun FollowScreen(
     scrollToTopTrigger: Int,
     innerPadding: PaddingValues,
+    parentPagerState: PagerState,
 ): Unit = FollowScreenContent(
     scrollToTopTrigger = scrollToTopTrigger,
     innerPadding = innerPadding,
+    parentPagerState = parentPagerState,
     onTestRecommendRefreshClick = null,
     onTestRecommendLoadMore = null,
     onTestDynamicRefreshClick = null,
@@ -128,6 +143,7 @@ fun FollowScreen(
 fun FollowScreen(
     scrollToTopTrigger: Int = 0,
     innerPadding: PaddingValues,
+    parentPagerState: PagerState,
     onTestRecommendRefreshClick: (() -> Unit)?,
     onTestRecommendLoadMore: (() -> Unit)?,
     onTestDynamicRefreshClick: (() -> Unit)?,
@@ -135,6 +151,7 @@ fun FollowScreen(
 ): Unit = FollowScreenContent(
     scrollToTopTrigger = scrollToTopTrigger,
     innerPadding = innerPadding,
+    parentPagerState = parentPagerState,
     onTestRecommendRefreshClick = onTestRecommendRefreshClick,
     onTestRecommendLoadMore = onTestRecommendLoadMore,
     onTestDynamicRefreshClick = onTestDynamicRefreshClick,
@@ -152,6 +169,7 @@ fun FollowScreen(
 private fun FollowScreenContent(
     scrollToTopTrigger: Int = 0,
     innerPadding: PaddingValues = PaddingValues(0.dp),
+    parentPagerState: PagerState,
     onTestRecommendRefreshClick: (() -> Unit)? = null,
     onTestRecommendLoadMore: (() -> Unit)? = null,
     onTestDynamicRefreshClick: (() -> Unit)? = null,
@@ -159,22 +177,20 @@ private fun FollowScreenContent(
 ) {
     val viewModel = viewModel { FollowScreenData() }
     val titles = listOf("推荐", "动态")
-    val pagerState = rememberPagerState(pageCount = { titles.size })
+    val pagerState = rememberPagerState(
+        initialPage = viewModel.selectedTabIndex,
+        pageCount = { titles.size },
+    )
     val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(pagerState.currentPage) {
         viewModel.selectedTabIndex = pagerState.currentPage
     }
 
-    LaunchedEffect(viewModel.selectedTabIndex) {
-        if (pagerState.currentPage != viewModel.selectedTabIndex) {
-            pagerState.animateScrollToPage(viewModel.selectedTabIndex)
-        }
-    }
-
     Column(modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())) {
         FollowTabRow(
-            selectedTabIndex = viewModel.selectedTabIndex,
+            pagerState = pagerState,
+            selectedTabIndex = pagerState.currentPage,
             onTabSelected = { index ->
                 viewModel.selectedTabIndex = index
                 coroutineScope.launch {
@@ -191,7 +207,13 @@ private fun FollowScreenContent(
             state = pagerState,
             modifier = Modifier
                 .fillMaxSize()
-                .testTag(FOLLOW_SCREEN_PAGER_TAG),
+                .nestedScroll(
+                    rememberNestedHorizontalPagerConnection(
+                        parentState = parentPagerState,
+                        childState = pagerState,
+                    ),
+                ).testTag(FOLLOW_SCREEN_PAGER_TAG),
+            pageNestedScrollConnection = NoOpPagerNestedScrollConnection,
         ) { page ->
             when (page) {
                 0 -> FollowRecommendScreen(
@@ -213,54 +235,57 @@ private fun FollowScreenContent(
 }
 
 @Composable
-fun FollowTopLevelPage(
-    selectedTabIndex: Int,
-    onTabSelected: (Int) -> Unit,
-    scrollToTopTrigger: Int,
-    innerPadding: PaddingValues,
-    isActive: Boolean,
-) {
-    Column(
-        modifier = Modifier
-            .padding(bottom = innerPadding.calculateBottomPadding())
-            .then(if (isActive) Modifier else Modifier.clearAndSetSemantics {}),
-    ) {
-        FollowTabRow(
-            selectedTabIndex = selectedTabIndex,
-            onTabSelected = onTabSelected,
-            modifier = Modifier.padding(top = innerPadding.calculateTopPadding()),
-        )
-        when (selectedTabIndex) {
-            0 -> FollowRecommendScreen(
-                scrollToTopTrigger = scrollToTopTrigger,
-                isActive = isActive,
-            )
-            1 -> FollowDynamicScreen(
-                scrollToTopTrigger = scrollToTopTrigger,
-                isActive = isActive,
-            )
-        }
-    }
-}
-
-@Composable
 private fun FollowTabRow(
+    pagerState: PagerState? = null,
     selectedTabIndex: Int,
     onTabSelected: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val titles = listOf("推荐", "动态")
-    PrimaryTabRow(
-        selectedTabIndex = selectedTabIndex,
-        modifier = modifier.testTag(FOLLOW_SCREEN_TAB_ROW_TAG),
-    ) {
+    val tabs: @Composable () -> Unit = {
         titles.forEachIndexed { index, title ->
             Tab(
                 modifier = Modifier.testTag("follow_screen_tab_$index"),
                 selected = selectedTabIndex == index,
                 onClick = { onTabSelected(index) },
-                text = { Text(text = title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+                text = {
+                    Text(
+                        text = title,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center,
+                    )
+                },
             )
+        }
+    }
+
+    if (pagerState != null) {
+        BoxWithConstraints(modifier) {
+            val tabWidth = maxWidth / titles.size
+            PrimaryTabRow(
+                selectedTabIndex = selectedTabIndex,
+                modifier = Modifier.testTag(FOLLOW_SCREEN_TAB_ROW_TAG),
+                indicator = {
+                    val page = (pagerState.currentPage + pagerState.currentPageOffsetFraction)
+                        .coerceIn(0f, (titles.size - 1).toFloat())
+                    TabRowDefaults.PrimaryIndicator(
+                        modifier = Modifier
+                            .offset(x = tabWidth * page)
+                            .width(tabWidth),
+                    )
+                },
+            ) {
+                tabs()
+            }
+        }
+    } else {
+        PrimaryTabRow(
+            selectedTabIndex = selectedTabIndex,
+            modifier = modifier.testTag(FOLLOW_SCREEN_TAB_ROW_TAG),
+        ) {
+            tabs()
         }
     }
 }
@@ -351,10 +376,16 @@ fun FollowRecommendScreen(
     onTestLoadMore: (() -> Unit)? = null,
 ) {
     val viewModel: FollowRecommendViewModel = viewModel { FollowRecommendViewModel() }
+    val readingQueueSourceId = "follow:recommend"
+    if (isActive) {
+        RegisterReadingQueueSource(
+            sourceId = readingQueueSourceId,
+            items = viewModel.displayItems,
+        )
+    }
     val environment = rememberPaginationEnvironment(allowGuestAccess = viewModel.allowGuestAccess)
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()
-    val feedBlockActions = rememberFeedBlockActions()
     val showRefreshFab = rememberSettingBoolean("showRefreshFab", true, settings)
     val listState = rememberLazyListState()
     var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
@@ -386,9 +417,7 @@ fun FollowRecommendScreen(
         }
     }
 
-    // 屏蔽用户确认对话框
-    var showBlockUserDialog by remember { mutableStateOf(false) }
-    var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var feedAuthorBlockRequest by remember { mutableStateOf<FeedAuthorBlockRequest?>(null) }
 
     Column {
         FeedPullToRefresh(viewModel, environment) {
@@ -406,15 +435,57 @@ fun FollowRecommendScreen(
             ) { item ->
                 FeedCard(
                     item = item,
+                    readingQueueSourceId = readingQueueSourceId.takeIf { isActive },
                     modifier = Modifier.testTag("follow_recommend_item_${item.stableKey}"),
-                    onBlockUser = { feedItem ->
-                        feedBlockActions.handleBlockUser(viewModel, feedItem) { authorInfo ->
-                            userToBlock = authorInfo
-                            showBlockUserDialog = true
+                    menuItems = { dismissMenu ->
+                        DropdownMenuItem(
+                            text = { Text("屏蔽用户") },
+                            onClick = {
+                                dismissMenu()
+                                viewModel.handleBlockUser(environment, userMessages, item) { authorInfo ->
+                                    feedAuthorBlockRequest = FeedAuthorBlockRequest(
+                                        FeedAuthorBlockType.CONTENT_AUTHOR,
+                                        authorInfo.first,
+                                        authorInfo.second,
+                                    )
+                                }
+                            },
+                        )
+                        val canBlockQuestionAuthor = when (item.feed?.target) {
+                            is Feed.AnswerTarget, is Feed.QuestionTarget -> true
+                            else -> item.raw is DataHolder.Answer || item.raw is DataHolder.Question
                         }
-                    },
-                    onBlockTopic = { topicId, topicName ->
-                        feedBlockActions.handleBlockTopic(viewModel, topicId, topicName)
+                        if (canBlockQuestionAuthor) {
+                            DropdownMenuItem(
+                                text = { Text("屏蔽提问者") },
+                                onClick = {
+                                    dismissMenu()
+                                    viewModel.handleBlockQuestionAuthor(environment, userMessages, item) { authorInfo ->
+                                        feedAuthorBlockRequest = FeedAuthorBlockRequest(
+                                            FeedAuthorBlockType.QUESTION_AUTHOR,
+                                            authorInfo.first,
+                                            authorInfo.second,
+                                        )
+                                    }
+                                },
+                            )
+                        }
+                        val topics = when (val raw = item.raw) {
+                            is DataHolder.Answer -> raw.question.topics
+                            is DataHolder.Question -> raw.topics
+                            is DataHolder.Article -> raw.topics ?: emptyList()
+                            is DataHolder.Pin -> raw.topics ?: emptyList()
+                            else -> emptyList()
+                        }
+                        topics.forEach { topic ->
+                            DropdownMenuItem(
+                                text = { Text("屏蔽「${topic.name}」") },
+                                onClick = {
+                                    dismissMenu()
+                                    viewModel.handleBlockTopic(userMessages, topic.id, topic.name)
+                                },
+                            )
+                        }
                     },
                 )
             }
@@ -435,19 +506,13 @@ fun FollowRecommendScreen(
             }
         }
 
-        // 屏蔽用户确认对话框
-        BlockUserConfirmDialog(
-            showDialog = showBlockUserDialog,
-            userToBlock = userToBlock,
+        FeedAuthorBlockConfirmDialog(
+            request = feedAuthorBlockRequest,
             displayItems = viewModel.displayItems,
-            onDismiss = {
-                showBlockUserDialog = false
-                userToBlock = null
-            },
+            onDismiss = { feedAuthorBlockRequest = null },
             onConfirm = {
                 viewModel.refresh(environment)
-                showBlockUserDialog = false
-                userToBlock = null
+                feedAuthorBlockRequest = null
             },
         )
     }
@@ -461,10 +526,16 @@ fun FollowDynamicScreen(
     onTestLoadMore: (() -> Unit)? = null,
 ) {
     val viewModel: FollowViewModel = viewModel { FollowViewModel() }
+    val readingQueueSourceId = "follow:dynamic"
+    if (isActive) {
+        RegisterReadingQueueSource(
+            sourceId = readingQueueSourceId,
+            items = viewModel.displayItems,
+        )
+    }
     val environment = rememberPaginationEnvironment(allowGuestAccess = viewModel.allowGuestAccess)
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()
-    val feedBlockActions = rememberFeedBlockActions()
     val showRefreshFab = rememberSettingBoolean("showRefreshFab", true, settings)
     val listState = rememberLazyListState()
     var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
@@ -496,9 +567,7 @@ fun FollowDynamicScreen(
         }
     }
 
-    // 屏蔽用户确认对话框
-    var showBlockUserDialog by remember { mutableStateOf(false) }
-    var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var feedAuthorBlockRequest by remember { mutableStateOf<FeedAuthorBlockRequest?>(null) }
 
     Column {
         FeedPullToRefresh(viewModel, environment) {
@@ -516,22 +585,58 @@ fun FollowDynamicScreen(
             ) { item ->
                 FeedCard(
                     item = item,
+                    readingQueueSourceId = readingQueueSourceId.takeIf { isActive },
                     modifier = Modifier.testTag("follow_dynamic_item_${item.stableKey}"),
                     showSourceLabel = true,
-                    onLike = {
-                        userMessages.showShortMessage("收到喜欢，功能正在优化")
-                    },
-                    onDislike = {
-                        userMessages.showShortMessage("收到反馈，功能正在优化")
-                    },
-                    onBlockUser = { feedItem ->
-                        feedBlockActions.handleBlockUser(viewModel, feedItem) { authorInfo ->
-                            userToBlock = authorInfo
-                            showBlockUserDialog = true
+                    menuItems = { dismissMenu ->
+                        DropdownMenuItem(
+                            text = { Text("屏蔽用户") },
+                            onClick = {
+                                dismissMenu()
+                                viewModel.handleBlockUser(environment, userMessages, item) { authorInfo ->
+                                    feedAuthorBlockRequest = FeedAuthorBlockRequest(
+                                        FeedAuthorBlockType.CONTENT_AUTHOR,
+                                        authorInfo.first,
+                                        authorInfo.second,
+                                    )
+                                }
+                            },
+                        )
+                        val canBlockQuestionAuthor = when (item.feed?.target) {
+                            is Feed.AnswerTarget, is Feed.QuestionTarget -> true
+                            else -> item.raw is DataHolder.Answer || item.raw is DataHolder.Question
                         }
-                    },
-                    onBlockTopic = { topicId, topicName ->
-                        feedBlockActions.handleBlockTopic(viewModel, topicId, topicName)
+                        if (canBlockQuestionAuthor) {
+                            DropdownMenuItem(
+                                text = { Text("屏蔽提问者") },
+                                onClick = {
+                                    dismissMenu()
+                                    viewModel.handleBlockQuestionAuthor(environment, userMessages, item) { authorInfo ->
+                                        feedAuthorBlockRequest = FeedAuthorBlockRequest(
+                                            FeedAuthorBlockType.QUESTION_AUTHOR,
+                                            authorInfo.first,
+                                            authorInfo.second,
+                                        )
+                                    }
+                                },
+                            )
+                        }
+                        val topics = when (val raw = item.raw) {
+                            is DataHolder.Answer -> raw.question.topics
+                            is DataHolder.Question -> raw.topics
+                            is DataHolder.Article -> raw.topics ?: emptyList()
+                            is DataHolder.Pin -> raw.topics ?: emptyList()
+                            else -> emptyList()
+                        }
+                        topics.forEach { topic ->
+                            DropdownMenuItem(
+                                text = { Text("屏蔽「${topic.name}」") },
+                                onClick = {
+                                    dismissMenu()
+                                    viewModel.handleBlockTopic(userMessages, topic.id, topic.name)
+                                },
+                            )
+                        }
                     },
                 )
             }
@@ -552,19 +657,13 @@ fun FollowDynamicScreen(
             }
         }
 
-        // 屏蔽用户确认对话框
-        BlockUserConfirmDialog(
-            showDialog = showBlockUserDialog,
-            userToBlock = userToBlock,
+        FeedAuthorBlockConfirmDialog(
+            request = feedAuthorBlockRequest,
             displayItems = viewModel.displayItems,
-            onDismiss = {
-                showBlockUserDialog = false
-                userToBlock = null
-            },
+            onDismiss = { feedAuthorBlockRequest = null },
             onConfirm = {
                 viewModel.refresh(environment)
-                showBlockUserDialog = false
-                userToBlock = null
+                feedAuthorBlockRequest = null
             },
         )
     }

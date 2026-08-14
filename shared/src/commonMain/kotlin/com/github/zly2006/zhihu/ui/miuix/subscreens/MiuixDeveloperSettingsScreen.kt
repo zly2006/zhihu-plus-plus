@@ -20,7 +20,6 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -31,23 +30,23 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.github.zly2006.zhihu.data.ZHIHU_ME_URL
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.SentenceSimilarityTest
-import com.github.zly2006.zhihu.shared.data.ZHIHU_ME_URL
-import com.github.zly2006.zhihu.shared.platform.rememberDeveloperDiagnostics
-import com.github.zly2006.zhihu.shared.platform.rememberPlainTextClipboard
-import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.platform.rememberDeveloperDiagnostics
+import com.github.zly2006.zhihu.platform.rememberPlainTextClipboard
+import com.github.zly2006.zhihu.platform.rememberSettingBoolean
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.ui.subscreens.parseCookieString
-import com.github.zly2006.zhihu.ui.subscreens.rememberDeveloperSettingsRuntime
-import kotlinx.coroutines.delay
+import com.github.zly2006.zhihu.ui.subscreens.rememberDeveloperRuntimeInfo
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
@@ -72,7 +71,8 @@ import top.yukonga.miuix.kmp.window.WindowDialog
 fun MiuixDeveloperSettingsScreen() {
     val navigator = LocalNavigator.current
     val settings = rememberSettingsStore()
-    val runtime = rememberDeveloperSettingsRuntime()
+    val environment = rememberPaginationEnvironment(allowGuestAccess = false)
+    val runtimeInfo = rememberDeveloperRuntimeInfo()
     val diagnostics = rememberDeveloperDiagnostics()
     val copyPlainText = rememberPlainTextClipboard()
     val userMessages = rememberUserMessageSink()
@@ -83,15 +83,6 @@ fun MiuixDeveloperSettingsScreen() {
     var developerModeEnabled by remember { mutableStateOf(settings.getBoolean("developer", false)) }
     var showCookieDialog by remember { mutableStateOf(false) }
     var showSignedRequestDialog by remember { mutableStateOf(false) }
-    val continuousUsageDurationMs by produceState(
-        initialValue = runtime.runtimeInfo().continuousUsageDurationMs,
-        key1 = runtime,
-    ) {
-        while (true) {
-            value = runtime.runtimeInfo().continuousUsageDurationMs
-            delay(1_000L)
-        }
-    }
 
     Scaffold(
         topBar = {
@@ -173,10 +164,10 @@ fun MiuixDeveloperSettingsScreen() {
                     ArrowPreference(title = "App 信息", summary = diagnostics.appInfo, onClick = {})
                     ArrowPreference(
                         title = "网络状态",
-                        summary = runtime.networkStatus(),
+                        summary = runtimeInfo.networkStatus,
                         onClick = {},
                     )
-                    runtime.powerSaveModeText()?.let { powerSaveMode ->
+                    runtimeInfo.powerSaveModeText?.let { powerSaveMode ->
                         ArrowPreference(
                             title = "省电模式",
                             summary = powerSaveMode,
@@ -185,14 +176,14 @@ fun MiuixDeveloperSettingsScreen() {
                     }
                     ArrowPreference(
                         title = "连续使用时长",
-                        summary = formatContinuousUsageDuration(continuousUsageDurationMs),
+                        summary = formatContinuousUsageDuration(runtimeInfo.continuousUsageDurationMs),
                         onClick = {},
                     )
                     ArrowPreference(
                         title = "验证登录",
                         onClick = {
                             coroutineScope.launch {
-                                if (runtime.verifyLogin(runtime.cookies())) {
+                                if (environment.verifyLogin(environment.authenticatedCookies())) {
                                     userMessages.showShortMessage("登录成功")
                                 } else {
                                     userMessages.showShortMessage("登录失败")
@@ -204,7 +195,7 @@ fun MiuixDeveloperSettingsScreen() {
                         title = "刷新 Token",
                         onClick = {
                             coroutineScope.launch {
-                                runtime.refreshToken()
+                                environment.refreshToken()
                                 userMessages.showShortMessage("刷新成功")
                             }
                         },
@@ -225,7 +216,6 @@ fun MiuixDeveloperSettingsScreen() {
             item { SmallTitle(text = "语音朗读引擎") }
             item {
                 Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
-                    val runtimeInfo = runtime.runtimeInfo()
                     DeveloperInfoRow("当前引擎", runtimeInfo.currentTtsEngineLabel)
                     DeveloperInfoRow(
                         "引擎状态",
@@ -369,9 +359,9 @@ fun MiuixDeveloperSettingsScreen() {
                             userMessages.showShortMessage("未能解析有效的 Cookie 数据")
                             return@Button
                         }
-                        runtime.saveCookies(cookies)
+                        environment.saveCookies(cookies)
                         coroutineScope.launch {
-                            if (runtime.verifyLogin(cookies)) {
+                            if (environment.verifyLogin(cookies)) {
                                 userMessages.showShortMessage("Cookie 设置成功并验证登录状态")
                             } else {
                                 userMessages.showShortMessage("Cookie 设置成功，但验证登录失败")
@@ -439,7 +429,7 @@ fun MiuixDeveloperSettingsScreen() {
                         isLoading = true
                         coroutineScope.launch {
                             try {
-                                val body = runtime.signedGet(urlInput)
+                                val body = environment.signedGetText(urlInput)
                                 copyPlainText("Signed Request Response", body)
                                 responseText = body
                                 userMessages.showShortMessage("响应已复制到剪贴板")

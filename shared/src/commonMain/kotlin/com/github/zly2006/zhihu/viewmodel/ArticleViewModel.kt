@@ -26,44 +26,41 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.fleeksoft.ksoup.Ksoup
-import com.fleeksoft.ksoup.nodes.Element
-import com.fleeksoft.ksoup.nodes.TextNode
+import com.github.zly2006.zhihu.data.AigcVoteFlagSubmission
+import com.github.zly2006.zhihu.data.AigcVoteNamedVoter
+import com.github.zly2006.zhihu.data.AigcVoteReadEvent
+import com.github.zly2006.zhihu.data.AigcVoteReadEvidence
+import com.github.zly2006.zhihu.data.Collection
+import com.github.zly2006.zhihu.data.CollectionResponse
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.OfficialBadge
+import com.github.zly2006.zhihu.data.VoteUpState
+import com.github.zly2006.zhihu.data.ZhihuJson
+import com.github.zly2006.zhihu.data.decodeZhihuCommentData
+import com.github.zly2006.zhihu.data.officialBadge
+import com.github.zly2006.zhihu.markdown.htmlToMdAst
+import com.github.zly2006.zhihu.markdown.toMarkdown
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionAnswerNavigator
 import com.github.zly2006.zhihu.navigation.PaginationInfoNavigator
 import com.github.zly2006.zhihu.navigation.QuestionAnswerNavigator
-import com.github.zly2006.zhihu.shared.aigc.AigcVoteFlagResponse
-import com.github.zly2006.zhihu.shared.aigc.AigcVoteFlagStatusResponse
-import com.github.zly2006.zhihu.shared.aigc.AigcVoteFlagSubmission
-import com.github.zly2006.zhihu.shared.aigc.AigcVoteNamedVoter
-import com.github.zly2006.zhihu.shared.aigc.AigcVoteReadEvent
-import com.github.zly2006.zhihu.shared.aigc.AigcVoteReadEvidence
-import com.github.zly2006.zhihu.shared.comment.decodeZhihuCommentData
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.OfficialBadge
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.shared.data.officialBadge
-import com.github.zly2006.zhihu.shared.platform.UserMessageSink
-import com.github.zly2006.zhihu.shared.util.Log
-import com.github.zly2006.zhihu.shared.util.ZhidaSummarySsePayload
-import com.github.zly2006.zhihu.shared.util.ZhihuFetchSignature
-import com.github.zly2006.zhihu.shared.util.applySegmentInfosToHtml
-import com.github.zly2006.zhihu.shared.util.buildZhidaSummaryRequest
-import com.github.zly2006.zhihu.shared.util.decodeZhidaAnswerData
-import com.github.zly2006.zhihu.shared.util.decodeZhidaStreamErrorMessage
-import com.github.zly2006.zhihu.shared.util.mergeSummaryChunk
-import com.github.zly2006.zhihu.shared.util.parseZhidaSsePayload
-import com.github.zly2006.zhihu.shared.util.serializeZhidaSummaryRequest
-import com.github.zly2006.zhihu.shared.util.twoDigitString
-import com.github.zly2006.zhihu.ui.Collection
-import com.github.zly2006.zhihu.ui.CollectionResponse
-import com.github.zly2006.zhihu.ui.VoteUpState
+import com.github.zly2006.zhihu.platform.UserMessageSink
 import com.github.zly2006.zhihu.util.ArticleExportComment
+import com.github.zly2006.zhihu.util.Log
+import com.github.zly2006.zhihu.util.ZhidaSummarySsePayload
+import com.github.zly2006.zhihu.util.ZhihuFetchSignature
+import com.github.zly2006.zhihu.util.applySegmentInfosToHtml
 import com.github.zly2006.zhihu.util.buildArticleExportCommentsHtml
 import com.github.zly2006.zhihu.util.buildArticleExportFileName
+import com.github.zly2006.zhihu.util.buildZhidaSummaryRequest
+import com.github.zly2006.zhihu.util.decodeZhidaAnswerData
+import com.github.zly2006.zhihu.util.decodeZhidaStreamErrorMessage
+import com.github.zly2006.zhihu.util.mergeSummaryChunk
+import com.github.zly2006.zhihu.util.parseZhidaSsePayload
 import com.github.zly2006.zhihu.util.prepareArticleExportComment
+import com.github.zly2006.zhihu.util.serializeZhidaSummaryRequest
+import com.github.zly2006.zhihu.util.twoDigitString
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.accept
@@ -78,6 +75,7 @@ import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import io.ktor.utils.io.readLine
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -126,10 +124,18 @@ class ArticleViewModel(
         private set
     val voters = mutableStateListOf<DataHolder.Author>()
     var questionId by mutableLongStateOf(0L)
+    var answerNextIds by mutableStateOf<List<Long>>(emptyList())
+        private set
     var collections = mutableStateListOf<Collection>()
     var updatedAt by mutableLongStateOf(0L)
     var createdAt by mutableLongStateOf(0L)
     var ipInfo by mutableStateOf<String?>(null)
+    var endorsements by mutableStateOf<List<DataHolder.AnswerEndorsementDisplay>>(emptyList())
+    var endorsementTexts: List<String>
+        get() = endorsements.map { endorsement -> endorsement.text }
+        set(value) {
+            endorsements = value.map { text -> DataHolder.AnswerEndorsementDisplay(text = text) }
+        }
     var aiSummaryText by mutableStateOf("")
         private set
     var aiSummaryError by mutableStateOf<String?>(null)
@@ -196,9 +202,13 @@ class ArticleViewModel(
         val createdAt: Long = 0L,
         val updatedAt: Long = 0L,
         val ipInfo: String? = null,
+        val endorsements: List<DataHolder.AnswerEndorsementDisplay> = emptyList(),
         /** 来源标签，用于 UI 显示，例如 "此问题"、"「收藏夹名称」" */
         val sourceLabel: String = "此问题",
-    )
+    ) {
+        val endorsementTexts: List<String>
+            get() = endorsements.map { endorsement -> endorsement.text }
+    }
 
     fun toCachedContent(sourceLabel: String = "此问题"): CachedAnswerContent = CachedAnswerContent(
         article = article,
@@ -213,6 +223,7 @@ class ArticleViewModel(
         createdAt = createdAt,
         updatedAt = updatedAt,
         ipInfo = ipInfo,
+        endorsements = endorsements,
         sourceLabel = sourceLabel,
     )
 
@@ -259,15 +270,12 @@ class ArticleViewModel(
                             votersTotal = answer.voteupCount
                             commentCount = answer.commentCount
                             questionId = answer.question.id
-                            voteUpState = when (answer.reaction?.relation?.vote) {
-                                "UP" -> VoteUpState.Up
-                                "DOWN" -> VoteUpState.Down
-                                "Neutral" -> VoteUpState.Neutral
-                                else -> VoteUpState.Neutral
-                            }
+                            answerNextIds = answer.paginationInfo?.nextAnswerIds.orEmpty()
+                            voteUpState = VoteUpState.from(answer.reaction?.relation?.vote)
                             updatedAt = answer.updatedTime
                             createdAt = answer.createdTime
                             ipInfo = answer.ipInfo
+                            endorsements = answer.endorsementItems
 
                             environment.postHistoryDestination(
                                 Article(
@@ -281,39 +289,47 @@ class ArticleViewModel(
                                 ),
                             )
                             environment.recordOpenEvent(article, answer.question.id)
-                            // 设置问题回答导航器（如果当前不是收藏夹导航器）
-                            if (sharedData?.navigator !is CollectionAnswerNavigator) {
-                                val existingNav = sharedData?.navigator
-                                val isSameQuestion = when (existingNav) {
-                                    is QuestionAnswerNavigator -> existingNav.questionId == questionId
-                                    is PaginationInfoNavigator -> existingNav.questionId == questionId
-                                    else -> false
+                            withContext(Dispatchers.Main.immediate) {
+                                // 设置问题回答导航器（如果当前不是收藏夹导航器）
+                                if (sharedData?.navigator !is CollectionAnswerNavigator) {
+                                    val existingNav = sharedData?.navigator
+                                    val isSameQuestion = when (existingNav) {
+                                        is QuestionAnswerNavigator -> existingNav.questionId == questionId
+                                        is PaginationInfoNavigator -> existingNav.questionId == questionId
+                                        else -> false
+                                    }
+                                    if (!isSameQuestion) {
+                                        sharedData?.navigator = QuestionAnswerNavigator(
+                                            questionId = questionId,
+                                            environment = environment,
+                                        )
+                                    }
                                 }
-                                if (!isSameQuestion) {
-                                    sharedData?.navigator = QuestionAnswerNavigator(
-                                        questionId = questionId,
-                                        environment = environment,
-                                    )
-                                }
+                                sharedData?.navigator?.pushAnswer(
+                                    toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"),
+                                )
                             }
-                            sharedData?.navigator?.pushAnswer(toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"))
                             loadAnswerRelationshipEndorsement(environment)
                             loadMoreVoters(environment, reset = true)
 
                             // 仅在无前向历史时预取下一个回答
-                            sharedData?.navigator?.let { nav ->
-                                if (nav.currentAnswerIndex >= nav.answerHistory.size - 1) {
-                                    nav.prefetchNext(article.id)
+                            withContext(Dispatchers.Main.immediate) {
+                                sharedData?.navigator?.let { nav ->
+                                    if (nav.currentAnswerIndex >= nav.answerHistory.size - 1) {
+                                        nav.prefetchNext(article.id)
+                                    }
+                                    nav.prefetchPrevious(article.id)
                                 }
-                                nav.prefetchPrevious(article.id)
                             }
                         } else {
                             content = "<h1>你似乎来到了没有知识存在的荒原</h1>"
+                            endorsements = emptyList()
                             Log.e("ArticleViewModel", "Answer not found")
                         }
                     } else if (article.type == ArticleType.Article) {
                         val article = environment.fetchContentDetail(article) as? DataHolder.Article
                         if (article != null) {
+                            endorsements = emptyList()
                             exportSourceContent = article
                             title = article.title
                             content = applySegmentInfosToHtml(
@@ -332,12 +348,7 @@ class ArticleViewModel(
                             authorBio = article.author.headline
                             authorAvatarSrc = article.author.avatarUrl
                             authorBadge = article.author.badgeV2.officialBadge()
-                            voteUpState = when (article.reaction?.relation?.vote) {
-                                "UP" -> VoteUpState.Up
-                                "DOWN" -> VoteUpState.Down
-                                "Neutral" -> VoteUpState.Neutral
-                                else -> VoteUpState.Neutral
-                            }
+                            voteUpState = VoteUpState.from(article.reaction?.relation?.vote)
                             updatedAt = article.updated
                             createdAt = article.created
                             ipInfo = article.ipInfo
@@ -368,7 +379,7 @@ class ArticleViewModel(
 
     fun toggleFavorite(collectionId: String, remove: Boolean, environment: ZhihuApiEnvironment) {
         if (httpClient == null) return
-        viewModelScope.launch {
+        CoroutineScope(Dispatchers.Main.immediate).launch {
             try {
                 val contentType = when (article.type) {
                     ArticleType.Answer -> "answer"
@@ -389,6 +400,8 @@ class ArticleViewModel(
                 } else {
                     userMessages.showShortMessage("收藏操作失败")
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e("ArticleViewModel", "Favorite toggle failed", e)
                 userMessages.showShortMessage("收藏操作失败: ${e.message}")
@@ -634,13 +647,19 @@ class ArticleViewModel(
             aigcVoteLoading = true
             aigcVoteError = null
             try {
-                applyAigcStatus(
-                    client.getFlagStatus(
-                        contentType = aigcContentType(),
-                        contentId = article.id.toString(),
-                        voter = voter,
-                    ),
+                val response = client.getFlagStatus(
+                    contentType = aigcContentType(),
+                    contentId = article.id.toString(),
+                    voter = voter,
                 )
+                aigcFlagged = response.myFlagged
+                aigcVoteCredit = response.credit
+                aigcVoteProgress = response.progress
+                aigcVoteCap = response.cap
+                aigcCreditBypassAvailable = response.creditBypassAvailable
+                aigcEffectiveFlagCount = response.effectiveFlagCount
+                aigcNamedVoters = response.voters
+                zhihuaiAigcSupportVoterCount = response.externalSource?.voterCount ?: 0
             } catch (e: Exception) {
                 Log.e("ArticleViewModel", "Failed to load AIGC vote status", e)
                 aigcVoteError = e.message ?: "AIGC 投票状态加载失败"
@@ -720,20 +739,25 @@ class ArticleViewModel(
             aigcVoteLoading = true
             aigcVoteError = null
             try {
-                applyAigcFlagResponse(
-                    client.submitFlag(
-                        AigcVoteFlagSubmission(
-                            contentType = aigcContentType(),
-                            contentId = article.id.toString(),
-                            voter = voter,
-                            title = title,
-                            authorHash = currentAuthorHash(),
-                            contentHtml = content,
-                            contentUpdatedAt = currentContentUpdatedAt(),
-                            evidence = currentAigcReadEvidence(),
-                        ),
+                val response = client.submitFlag(
+                    AigcVoteFlagSubmission(
+                        contentType = aigcContentType(),
+                        contentId = article.id.toString(),
+                        voter = voter,
+                        title = title,
+                        authorHash = currentAuthorHash(),
+                        contentHtml = content,
+                        contentUpdatedAt = currentContentUpdatedAt(),
+                        evidence = currentAigcReadEvidence(),
                     ),
                 )
+                aigcFlagged = response.myFlagged
+                aigcVoteCredit = response.credit
+                aigcCreditBypassAvailable = response.creditBypassAvailable
+                aigcEffectiveFlagCount = response.effectiveFlagCount
+                aigcCurrentVersionFlagCount = response.currentVersionFlagCount
+                aigcNamedVoters = response.voters
+                zhihuaiAigcSupportVoterCount = response.externalSource?.voterCount ?: 0
                 userMessages.showShortMessage("已标记疑似 AIGC")
             } catch (e: Exception) {
                 Log.e("ArticleViewModel", "AIGC flag failed", e)
@@ -743,27 +767,6 @@ class ArticleViewModel(
                 aigcVoteLoading = false
             }
         }
-    }
-
-    private fun applyAigcStatus(response: AigcVoteFlagStatusResponse) {
-        aigcFlagged = response.myFlagged
-        aigcVoteCredit = response.credit
-        aigcVoteProgress = response.progress
-        aigcVoteCap = response.cap
-        aigcCreditBypassAvailable = response.creditBypassAvailable
-        aigcEffectiveFlagCount = response.effectiveFlagCount
-        aigcNamedVoters = response.voters
-        zhihuaiAigcSupportVoterCount = response.externalSource?.voterCount ?: 0
-    }
-
-    private fun applyAigcFlagResponse(response: AigcVoteFlagResponse) {
-        aigcFlagged = response.myFlagged
-        aigcVoteCredit = response.credit
-        aigcCreditBypassAvailable = response.creditBypassAvailable
-        aigcEffectiveFlagCount = response.effectiveFlagCount
-        aigcCurrentVersionFlagCount = response.currentVersionFlagCount
-        aigcNamedVoters = response.voters
-        zhihuaiAigcSupportVoterCount = response.externalSource?.voterCount ?: 0
     }
 
     private fun currentAigcReadEvidence(): AigcVoteReadEvidence {
@@ -1040,155 +1043,18 @@ class ArticleViewModel(
     private fun requireExportSourceContent(): DataHolder.Content = exportSourceContent
         ?: throw IllegalStateException("内容未加载完成")
 
-    // 转换为Markdown格式
     fun convertToMarkdown(): String {
         val sb = StringBuilder()
 
-        // 标题
         sb.append("# $title\n\n")
 
-        // 作者信息
         sb.append("**作者**: $authorName\n\n")
         if (authorBio.isNotEmpty()) {
             sb.append("**简介**: $authorBio\n\n")
         }
 
-        // 分隔线
         sb.append("---\n\n")
-
-        // 内容 - 解析 HTML 并转换为 Markdown
-        val document = Ksoup.parse(content)
-        sb.append(htmlToMarkdown(document.body()))
-
-        return sb.toString()
-    }
-
-    // HTML 转 Markdown 的递归函数
-    private fun htmlToMarkdown(element: Element): String {
-        val sb = StringBuilder()
-
-        for (node in element.childNodes()) {
-            when (node) {
-                is Element -> {
-                    when (node.tagName().lowercase()) {
-                        "h1" -> sb.append("# ${node.text()}\n\n")
-                        "h2" -> sb.append("## ${node.text()}\n\n")
-                        "h3" -> sb.append("### ${node.text()}\n\n")
-                        "h4" -> sb.append("#### ${node.text()}\n\n")
-                        "h5" -> sb.append("##### ${node.text()}\n\n")
-                        "h6" -> sb.append("###### ${node.text()}\n\n")
-                        "p" -> sb.append("${htmlToMarkdown(node)}\n\n")
-                        "br" -> sb.append("\n")
-                        "strong", "b" -> sb.append("**${node.text()}**")
-                        "em", "i" -> sb.append("*${node.text()}*")
-                        "u" -> sb.append("_${node.text()}_")
-                        "code" -> sb.append("`${node.text()}`")
-                        "pre" -> sb.append("```\n${node.text()}\n```\n\n")
-                        "blockquote" -> {
-                            val lines = htmlToMarkdown(node).trim().split("\n")
-                            for (line in lines) {
-                                sb.append("> $line\n")
-                            }
-                            sb.append("\n")
-                        }
-                        "ul", "ol" -> {
-                            val items = node.select("li")
-                            items.forEachIndexed { index, item ->
-                                val prefix = if (node.tagName() == "ul") "- " else "${index + 1}. "
-                                sb.append("$prefix${htmlToMarkdown(item).trim()}\n")
-                            }
-                            sb.append("\n")
-                        }
-                        "li" -> sb.append(htmlToMarkdown(node))
-                        "a" -> {
-                            val href = node.attr("href")
-                            val text = node.text()
-                            if (href.isNotEmpty()) {
-                                sb.append("[$text]($href)")
-                            } else {
-                                sb.append(text)
-                            }
-                        }
-                        "img" -> {
-                            val src = node.attr("src").ifEmpty { node.attr("data-actualsrc") }
-                            val alt = node.attr("alt").ifEmpty { "image" }
-                            if (src.isNotEmpty()) {
-                                sb.append("![$alt]($src)\n\n")
-                            }
-                        }
-                        "figure" -> {
-                            // 知乎的图片通常在 figure 标签中
-                            val img = node.selectFirst("img")
-                            if (img != null) {
-                                val src = img.attr("src").ifEmpty { img.attr("data-actualsrc") }
-                                val alt = img.attr("alt").ifEmpty { "image" }
-                                if (src.isNotEmpty()) {
-                                    sb.append("![$alt]($src)\n\n")
-                                }
-                            } else {
-                                sb.append(htmlToMarkdown(node))
-                            }
-                        }
-                        "hr" -> sb.append("---\n\n")
-                        "table" -> {
-                            // 简单的表格处理
-                            val rows = node.select("tr")
-                            if (rows.isNotEmpty()) {
-                                // 表头
-                                val headerCells = rows[0].select("th, td")
-                                if (headerCells.isNotEmpty()) {
-                                    sb.append("| ")
-                                    headerCells.forEach { cell ->
-                                        sb.append("${cell.text()} | ")
-                                    }
-                                    sb.append("\n")
-                                    // 分隔线
-                                    sb.append("| ")
-                                    headerCells.forEach { _ ->
-                                        sb.append("--- | ")
-                                    }
-                                    sb.append("\n")
-                                }
-                                // 表格内容
-                                for (i in 1 until rows.size) {
-                                    val cells = rows[i].select("td")
-                                    if (cells.isNotEmpty()) {
-                                        sb.append("| ")
-                                        cells.forEach { cell ->
-                                            sb.append("${cell.text()} | ")
-                                        }
-                                        sb.append("\n")
-                                    }
-                                }
-                                sb.append("\n")
-                            }
-                        }
-                        "div", "span" -> {
-                            // 检查是否是知乎的特殊标签
-                            val className = node.attr("class")
-                            if (className.contains("highlight")) {
-                                // 代码块
-                                val code = node.selectFirst("code")
-                                if (code != null) {
-                                    sb.append("```\n${code.text()}\n```\n\n")
-                                } else {
-                                    sb.append(htmlToMarkdown(node))
-                                }
-                            } else {
-                                sb.append(htmlToMarkdown(node))
-                            }
-                        }
-                        else -> sb.append(htmlToMarkdown(node))
-                    }
-                }
-                is TextNode -> {
-                    val text = node.text()
-                    if (text.isNotBlank()) {
-                        sb.append(text)
-                    }
-                }
-            }
-        }
+        sb.append(htmlToMdAst(content, noNativeBlock = true).toMarkdown())
 
         return sb.toString()
     }

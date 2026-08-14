@@ -1,0 +1,11 @@
+{
+  "name": "katex-ast-oracle",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "generate": "node generate.js"
+  },
+  "dependencies": {
+    "katex": "0.18.1"
+  }
+}

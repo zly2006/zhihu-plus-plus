@@ -44,24 +44,24 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.navDestination
+import com.github.zly2006.zhihu.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionContent
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.navDestination
-import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
-import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.util.Log
+import com.github.zly2006.zhihu.platform.rememberSettingBoolean
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.PersonViewModel
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
+import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
@@ -294,7 +294,6 @@ private fun coerceToFeedItem(item: Any): FeedDisplayItem = when (item) {
         summary = item.excerpt,
         details = "",
         feed = null,
-        localFeedId = item.id.toString(),
         navDestinationJson = Article(id = item.id, type = ArticleType.Answer, title = item.question.title)
             .toFeedDisplayItemNavDestinationJson(),
     )
@@ -303,7 +302,6 @@ private fun coerceToFeedItem(item: Any): FeedDisplayItem = when (item) {
         summary = item.excerpt,
         details = "",
         feed = null,
-        localFeedId = item.id.toString(),
         navDestinationJson = Article(id = item.id, type = ArticleType.Article, title = item.title)
             .toFeedDisplayItemNavDestinationJson(),
     )
@@ -312,7 +310,6 @@ private fun coerceToFeedItem(item: Any): FeedDisplayItem = when (item) {
         summary = null,
         details = "",
         feed = null,
-        localFeedId = item.id,
         navDestinationJson = CollectionContent(collectionId = item.id)
             .toFeedDisplayItemNavDestinationJson(),
     )
@@ -321,7 +318,6 @@ private fun coerceToFeedItem(item: Any): FeedDisplayItem = when (item) {
         summary = null,
         details = "",
         feed = null,
-        localFeedId = item.id.toString(),
         navDestinationJson = QuestionNav(questionId = item.id, title = item.title)
             .toFeedDisplayItemNavDestinationJson(),
     )
@@ -332,7 +328,6 @@ private fun coerceToFeedItem(item: Any): FeedDisplayItem = when (item) {
             summary = null,
             details = "",
             feed = null,
-            localFeedId = item.id,
             navDestinationJson = PinNav(id = pinId).toFeedDisplayItemNavDestinationJson(),
         )
     }
@@ -341,7 +336,6 @@ private fun coerceToFeedItem(item: Any): FeedDisplayItem = when (item) {
         summary = null,
         details = "",
         feed = null,
-        localFeedId = item.hashCode().toString(),
     )
 }
 

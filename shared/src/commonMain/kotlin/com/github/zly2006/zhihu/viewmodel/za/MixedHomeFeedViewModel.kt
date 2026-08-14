@@ -17,8 +17,8 @@
 
 package com.github.zly2006.zhihu.viewmodel.za
 
-import com.github.zly2006.zhihu.shared.data.Feed
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.viewmodel.ContentInteractionEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
@@ -39,6 +39,8 @@ class MixedHomeFeedViewModel :
     init {
         android.displayItems = this.displayItems
         web.displayItems = this.displayItems
+        android.latestLoadedDisplayItems = this.latestLoadedDisplayItems
+        web.latestLoadedDisplayItems = this.latestLoadedDisplayItems
     }
 
     override suspend fun fetchFeeds(environment: PaginationEnvironment) {

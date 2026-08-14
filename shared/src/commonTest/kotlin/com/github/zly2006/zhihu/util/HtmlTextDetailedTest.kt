@@ -35,7 +35,7 @@ class HtmlTextDetailedTest {
     fun testEmTagParsing() {
         val html = "This is a <em>test</em> string"
         val emphasisColor = Color.Blue
-        val annotatedString = parseHtmlText(html, emphasisColor)
+        val annotatedString = parseEmphasizedHtmlText(html, emphasisColor)
 
         // Verify the text content is correct
         assertEquals("This is a test string", annotatedString.text)
@@ -58,7 +58,7 @@ class HtmlTextDetailedTest {
     fun testMultipleEmTags() {
         val html = "Search <em>keyword1</em> and <em>keyword2</em>"
         val emphasisColor = Color.Red
-        val annotatedString = parseHtmlText(html, emphasisColor)
+        val annotatedString = parseEmphasizedHtmlText(html, emphasisColor)
 
         // Verify the text content is correct
         assertEquals("Search keyword1 and keyword2", annotatedString.text)
@@ -74,7 +74,7 @@ class HtmlTextDetailedTest {
     fun testPlainText() {
         val html = "This is plain text"
         val emphasisColor = Color.Green
-        val annotatedString = parseHtmlText(html, emphasisColor)
+        val annotatedString = parseEmphasizedHtmlText(html, emphasisColor)
 
         // Verify the text content is correct
         assertEquals("This is plain text", annotatedString.text)
@@ -90,7 +90,7 @@ class HtmlTextDetailedTest {
     fun testNestedHtml() {
         val html = "Test <em>emphasis</em> text"
         val emphasisColor = Color.Yellow
-        val annotatedString = parseHtmlText(html, emphasisColor)
+        val annotatedString = parseEmphasizedHtmlText(html, emphasisColor)
 
         // Verify the text is parsed correctly
         assertEquals("Test emphasis text", annotatedString.text)
@@ -105,7 +105,7 @@ class HtmlTextDetailedTest {
         // Real format from Zhihu search API
         val html = "为什么互联网给我一种想<em>搜</em>的东西什么都搜不到，屁用没有的信息一大堆的无力感？"
         val emphasisColor = Color.Cyan
-        val annotatedString = parseHtmlText(html, emphasisColor)
+        val annotatedString = parseEmphasizedHtmlText(html, emphasisColor)
 
         // Verify the text content
         assertTrue(annotatedString.text.contains("搜"), "Should contain the search keyword")
@@ -121,7 +121,7 @@ class HtmlTextDetailedTest {
     fun testEmptyString() {
         val html = ""
         val emphasisColor = Color.Magenta
-        val annotatedString = parseHtmlText(html, emphasisColor)
+        val annotatedString = parseEmphasizedHtmlText(html, emphasisColor)
 
         // Verify empty result
         assertEquals("", annotatedString.text, "Should have empty text")
@@ -135,9 +135,9 @@ class HtmlTextDetailedTest {
     fun testHtmlEntities() {
         val html = "Test &lt;em&gt;<em>keyword</em>&lt;/em&gt;"
         val emphasisColor = Color.Black
-        val annotatedString = parseHtmlText(html, emphasisColor)
+        val annotatedString = parseEmphasizedHtmlText(html, emphasisColor)
 
-        // Jsoup automatically decodes HTML entities
+        // HTML entities in text nodes are decoded
         assertTrue(annotatedString.text.contains("<em>"), "Should decode HTML entities")
         assertTrue(annotatedString.spanStyles.isNotEmpty(), "Should have emphasized text")
     }

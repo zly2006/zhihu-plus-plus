@@ -18,9 +18,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
 import com.github.zly2006.zhihu.ui.commentViewModelKey
 import com.github.zly2006.zhihu.ui.miuix.MiuixCommentScreen
+import com.github.zly2006.zhihu.viewmodel.CommentItem
 import top.yukonga.miuix.kmp.window.WindowBottomSheet
 
 /**

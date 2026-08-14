@@ -27,19 +27,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.data.RecommendationMode
+import com.github.zly2006.zhihu.filter.ContentFilterStats
+import com.github.zly2006.zhihu.filter.cleanupOldData
+import com.github.zly2006.zhihu.filter.clearAllData
+import com.github.zly2006.zhihu.filter.loadFilterStats
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
-import com.github.zly2006.zhihu.shared.data.RecommendationMode
-import com.github.zly2006.zhihu.shared.filter.ContentFilterStats
-import com.github.zly2006.zhihu.shared.filter.rememberContentFilterMaintenance
-import com.github.zly2006.zhihu.shared.platform.SettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.platform.SettingsStore
+import com.github.zly2006.zhihu.platform.rememberSettingBoolean
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
@@ -70,7 +73,7 @@ fun MiuixContentFilterSettingsScreen(
     val coroutineScope = rememberCoroutineScope()
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()
-    val filterMaintenance = rememberContentFilterMaintenance()
+    val contentFilterDao = remember { getContentFilterDatabase().contentFilterDao() }
     val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
@@ -81,7 +84,7 @@ fun MiuixContentFilterSettingsScreen(
 
     LaunchedEffect(Unit) {
         try {
-            filterStats = filterMaintenance.loadFilterStats()
+            filterStats = contentFilterDao.loadFilterStats()
         } catch (_: Exception) {
         }
     }
@@ -332,7 +335,7 @@ fun MiuixContentFilterSettingsScreen(
                 onClick = {
                     coroutineScope.launch {
                         try {
-                            filterStats = filterMaintenance.cleanupOldData()
+                            filterStats = contentFilterDao.cleanupOldData()
                             userMessages.showShortMessage("已清理过期数据")
                         } catch (_: Exception) {
                         }
@@ -347,7 +350,7 @@ fun MiuixContentFilterSettingsScreen(
                 onClick = {
                     coroutineScope.launch {
                         try {
-                            filterStats = filterMaintenance.clearAllData()
+                            filterStats = contentFilterDao.clearAllData()
                             userMessages.showShortMessage("已重置所有数据")
                             showStatsSheet.value = false
                         } catch (_: Exception) {

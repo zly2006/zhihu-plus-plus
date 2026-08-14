@@ -82,36 +82,37 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.data.VoteUpState
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Question
-import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
-import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
-import com.github.zly2006.zhihu.shared.util.formatCompactCount
+import com.github.zly2006.zhihu.platform.PlatformBackHandler
+import com.github.zly2006.zhihu.platform.rememberSettingBoolean
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
+import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
 import com.github.zly2006.zhihu.ui.ArticleImmersiveModeEffect
-import com.github.zly2006.zhihu.ui.ArticleVideoAttachmentContent
 import com.github.zly2006.zhihu.ui.LocalArticleAnswerSwitcher
 import com.github.zly2006.zhihu.ui.TtsState
-import com.github.zly2006.zhihu.ui.VoteUpState
+import com.github.zly2006.zhihu.ui.article.ArticleVideoAttachmentContent
+import com.github.zly2006.zhihu.ui.article.voteUpNeutralContent
 import com.github.zly2006.zhihu.ui.articleActionText
 import com.github.zly2006.zhihu.ui.components.AnswerHorizontalOverscroll
 import com.github.zly2006.zhihu.ui.components.AnswerVerticalOverscroll
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
+import com.github.zly2006.zhihu.ui.components.ShareAction
 import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
 import com.github.zly2006.zhihu.ui.components.ZhihuTwoRowsTopAppBar
 import com.github.zly2006.zhihu.ui.components.rememberPreferCollapsedExitUntilCollapsedScrollBehavior
-import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
+import com.github.zly2006.zhihu.ui.components.rememberShareActionExecutor
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixCommentSheet
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixExportSheet
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
@@ -122,7 +123,7 @@ import com.github.zly2006.zhihu.ui.rememberArticleHost
 import com.github.zly2006.zhihu.ui.rememberArticleScreenSettingsState
 import com.github.zly2006.zhihu.ui.rememberArticleSpeechToggler
 import com.github.zly2006.zhihu.ui.rememberArticleTtsState
-import com.github.zly2006.zhihu.ui.voteUpNeutralContent
+import com.github.zly2006.zhihu.util.formatCompactCount
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import com.github.zly2006.zhihu.viewmodel.formatArticleDateTime
@@ -168,7 +169,7 @@ fun MiuixArticleScreen(
     val ttsState = rememberArticleTtsState()
     val toggleSpeech = rememberArticleSpeechToggler()
     val openArticleInBrowser = rememberArticleBrowserOpener()
-    val shareRuntime = rememberShareDialogRuntime()
+    val executeShareAction = rememberShareActionExecutor()
     val settings = rememberSettingsStore()
     val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
@@ -375,7 +376,7 @@ fun MiuixArticleScreen(
                         },
                         actions = {
                             IconButton(onClick = {
-                                shareRuntime.share(article, articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName))
+                                executeShareAction(ShareAction.Share, article, articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName))
                             }) {
                                 Icon(Icons.Default.Share, "分享", tint = MiuixTheme.colorScheme.onBackground)
                             }
@@ -828,7 +829,7 @@ fun MiuixArticleScreen(
             }
             MiuixActionMenuRow(Icons.Default.ContentCopy, "复制链接") {
                 showActionsMenu = false
-                shareRuntime.copyLink(article, articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName))
+                executeShareAction(ShareAction.CopyLink, article, articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName))
             }
             MiuixActionMenuRow(Icons.Default.GetApp, "导出文章 (Markdown、图片、HTML、PDF)") {
                 showActionsMenu = false

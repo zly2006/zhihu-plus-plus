@@ -37,6 +37,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Comment
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.Card
@@ -73,7 +75,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.fleeksoft.ksoup.Ksoup
+import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.decodePinContentDetail
+import com.github.zly2006.zhihu.data.officialBadge
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
@@ -82,19 +86,25 @@ import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.resolveContent
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.officialBadge
-import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.util.formatCompactCount
-import com.github.zly2006.zhihu.shared.util.twoDigitString
+import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.reading.ReadingPlaybackStatus
+import com.github.zly2006.zhihu.reading.ReadingQueueSourceRegistry
+import com.github.zly2006.zhihu.reading.ReadingStartRequest
+import com.github.zly2006.zhihu.reading.hasReadableFields
+import com.github.zly2006.zhihu.reading.loadReadingPlaybackSpeed
+import com.github.zly2006.zhihu.reading.loadReadingPreferences
+import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
+import com.github.zly2006.zhihu.reading.toReadingQueueItem
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.VotersSheet
 import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.ui.components.handleShareAction
-import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
+import com.github.zly2006.zhihu.ui.components.rememberShareActionExecutor
+import com.github.zly2006.zhihu.util.formatCompactCount
+import com.github.zly2006.zhihu.util.twoDigitString
 import com.github.zly2006.zhihu.viewmodel.ContentLoadEnvironment
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.addReadHistory
@@ -122,6 +132,7 @@ import androidx.compose.material.icons.outlined.ThumbUp as OutlinedThumbUp
 
 const val PIN_SCREEN_BACK_BUTTON_TAG = "pin_screen_back_button"
 const val PIN_SCREEN_SHARE_BUTTON_TAG = "pin_screen_share_button"
+const val PIN_SCREEN_READING_BUTTON_TAG = "pin_screen_reading_button"
 const val PIN_SCREEN_LOADING_TAG = "pin_screen_loading"
 const val PIN_SCREEN_ERROR_TAG = "pin_screen_error"
 const val PIN_SCREEN_SCROLL_TAG = "pin_screen_scroll"
@@ -170,7 +181,7 @@ private suspend fun loadPinDetail(
     val jsonObject = environment.fetchJson("https://www.zhihu.com/api/v4/pins/${pin.id}?include=topics", "")
         ?: error("想法详情为空")
     val content = decodePinContentDetail(jsonObject)
-    environment.postHistoryDestination(pin)
+    environment.postHistoryDestination(pin.copy(authorName = content.author.name))
     environment.recordContentOpenEvent(destination = pin)
     return content
 }
@@ -196,7 +207,11 @@ fun PinScreen(
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
 
     val settings = rememberSettingsStore()
-    val shareRuntime = rememberShareDialogRuntime()
+    val readingPreferences = loadReadingPreferences(settings)
+    val readingPlaybackSpeed = loadReadingPlaybackSpeed(settings)
+    val readingPlayer = rememberReadingPlayerController()
+    val readingPlayerState by readingPlayer.state
+    val executeShareAction = rememberShareActionExecutor()
     var isLoading by remember(pin.id) { mutableStateOf(true) }
     var errorMessage by remember(pin.id) { mutableStateOf<String?>(null) }
     var pinContent by remember(pin.id) { mutableStateOf<DataHolder.Pin?>(null) }
@@ -284,11 +299,55 @@ fun PinScreen(
                     }
                 },
                 actions = {
+                    val readingItem = pinContent?.toReadingQueueItem(pin)
+                    val isCurrentReadingItem = readingItem?.key == readingPlayerState.currentItem?.key
+                    IconButton(
+                        onClick = {
+                            val item = readingItem ?: return@IconButton
+                            if (isCurrentReadingItem) {
+                                readingPlayer.togglePlayPause()
+                            } else {
+                                readingPlayer.start(
+                                    ReadingStartRequest(
+                                        queue = ReadingQueueSourceRegistry.queueStartingAt(
+                                            current = item,
+                                            sourceId = pin.readingQueueSourceId,
+                                            limit = readingPreferences.queueLimit,
+                                        ),
+                                        preferences = readingPreferences,
+                                        sourceId = pin.readingQueueSourceId,
+                                        playbackSpeed = readingPlaybackSpeed,
+                                    ),
+                                )
+                            }
+                        },
+                        enabled = readingPlayer.isSupported && readingItem?.hasReadableFields(readingPreferences) == true,
+                        modifier = Modifier.testTag(PIN_SCREEN_READING_BUTTON_TAG),
+                    ) {
+                        when {
+                            isCurrentReadingItem &&
+                                readingPlayerState.status in setOf(
+                                    ReadingPlaybackStatus.Initializing,
+                                    ReadingPlaybackStatus.Loading,
+                                ) -> CircularProgressIndicator(
+                                modifier = Modifier.size(22.dp),
+                                strokeWidth = 2.dp,
+                            )
+                            isCurrentReadingItem && readingPlayerState.isActivelyPlaying -> Icon(
+                                Icons.Default.Pause,
+                                contentDescription = "暂停朗读",
+                            )
+                            else -> Icon(
+                                Icons.AutoMirrored.Filled.VolumeUp,
+                                contentDescription = if (isCurrentReadingItem) "继续朗读" else "开始连续朗读",
+                            )
+                        }
+                    }
                     IconButton(
                         onClick = {
                             val shareText = getShareText(pin)
                             if (shareText != null) {
-                                handleShareAction(pin, settings, shareRuntime) {
+                                handleShareAction(pin, settings, executeShareAction) {
                                     showShareDialog = true
                                 }
                             }
@@ -375,13 +434,12 @@ fun PinScreen(
                         },
                     )
 
-                    if (showComments) {
-                        CommentScreenComponent(
-                            showComments = showComments,
-                            onDismiss = { showComments = false },
-                            content = pin,
-                        )
-                    }
+                    CommentScreenComponent(
+                        showComments = showComments,
+                        onDismiss = { showComments = false },
+                        content = pin,
+                        isZhPlusAuthorContent = pinContent?.author?.id == DataHolder.ZH_PLUS_AUTHOR_USER_ID,
+                    )
 
                     val shareText = getShareText(pin)
                     if (shareText != null) {
@@ -428,6 +486,7 @@ private fun PinContent(
     onPollVote: (pollId: String, optionId: String) -> Unit,
 ) {
     val navigator = LocalNavigator.current
+    val readingPlayerOverlayPadding = LocalReadingPlayerOverlayPadding.current
     val openExternalUrl = rememberExternalUrlOpener()
 
     Column(
@@ -715,6 +774,7 @@ private fun PinContent(
                 )
             }
         }
+        Spacer(modifier = Modifier.height(readingPlayerOverlayPadding))
     }
 }
 

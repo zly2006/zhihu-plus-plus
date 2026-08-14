@@ -66,10 +66,10 @@ import androidx.compose.ui.unit.sp
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Navigator
-import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
-import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
+import com.github.zly2006.zhihu.platform.rememberSettingBoolean
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
@@ -363,7 +363,7 @@ private fun AboutContent(
                             title = "系统与更新",
                             summary = "GitHub、更新设置等",
                             startAction = { Icon(Icons.Filled.Settings, null) },
-                            onClick = { navigator.onNavigate(Account.SystemAndUpdateSettings) },
+                            onClick = { navigator.onNavigate(Account.SystemAndUpdateSettings()) },
                         )
                     }
                     Spacer(Modifier.height(12.dp))

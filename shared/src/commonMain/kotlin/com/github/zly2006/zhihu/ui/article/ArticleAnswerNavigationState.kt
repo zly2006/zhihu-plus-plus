@@ -1,0 +1,174 @@
+/*
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
+ * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation (version 3 only).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package com.github.zly2006.zhihu.ui.article
+
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import com.github.zly2006.zhihu.navigation.AnswerNavigator
+import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.navigation.Navigator
+import com.github.zly2006.zhihu.navigation.withReadingQueueSource
+import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
+import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
+import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.nav.core.NavController
+
+@Stable
+internal class ArticleAnswerNavigationState(
+    private val switchState: ArticleAnswerSwitchState?,
+    private val viewModel: ArticleViewModel,
+    private val navigator: Navigator,
+    private val navController: NavController<NavDestination>?,
+    private val coroutineScope: CoroutineScope,
+    private val readingQueueSourceId: String?,
+    answerSwitchMode: String,
+) {
+    var answerSwitchMode by mutableStateOf(answerSwitchMode)
+        internal set
+    var navigatingToNextAnswer by mutableStateOf(false)
+        private set
+
+    val answerNavigator: AnswerNavigator?
+        get() = switchState?.navigator
+
+    fun prepareArticle() {
+        val state = switchState ?: return
+        if (!state.navigatingFromAnswerSwitch) {
+            state.reset()
+        }
+        state.navigatingFromAnswerSwitch = false
+        state.answerTransitionDirection = ArticleAnswerTransitionDirection.DEFAULT
+
+        val pending = state.pendingInitialContent ?: return
+        viewModel.title = pending.title
+        viewModel.authorName = pending.authorName
+        viewModel.authorBio = pending.authorBio
+        viewModel.authorAvatarSrc = pending.authorAvatarUrl
+        viewModel.content = pending.content
+        viewModel.voteUpCount = pending.voteUpCount
+        viewModel.commentCount = pending.commentCount
+        viewModel.endorsements = pending.endorsements
+        state.pendingInitialContent = null
+    }
+
+    fun navigateToPrevious() {
+        val state = switchState ?: return
+        val answerNavigator = state.navigator ?: return
+        state.answerTransitionDirection = if (answerSwitchMode == "horizontal") {
+            ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS
+        } else {
+            ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS
+        }
+        state.navigatingFromAnswerSwitch = true
+        answerNavigator.pushAnswer(viewModel.toCachedContent(sourceLabel = answerNavigator.sourceName))
+
+        val previous = answerNavigator.goToPrevious()
+        if (previous != null) {
+            state.pendingInitialContent = previous
+            state.promoteForNavigation(state.answerTransitionDirection)
+            navigate(previous.article)
+            return
+        }
+
+        state.pendingInitialContent = answerNavigator.previousAnswerPreview
+        state.promoteForNavigation(state.answerTransitionDirection)
+        coroutineScope.launch {
+            val loaded = answerNavigator.loadPrevious() ?: return@launch
+            state.pendingInitialContent = loaded
+            navigate(loaded.article)
+        }
+    }
+
+    fun navigateToNext() {
+        if (navigatingToNextAnswer) return
+        val state = switchState ?: return
+        val answerNavigator = state.navigator ?: return
+        state.answerTransitionDirection = if (answerSwitchMode == "horizontal") {
+            ArticleAnswerTransitionDirection.HORIZONTAL_NEXT
+        } else {
+            ArticleAnswerTransitionDirection.VERTICAL_NEXT
+        }
+        state.navigatingFromAnswerSwitch = true
+        answerNavigator.pushAnswer(viewModel.toCachedContent(sourceLabel = answerNavigator.sourceName))
+
+        val historyNext = answerNavigator.goToNext()
+        if (historyNext != null) {
+            state.pendingInitialContent = historyNext
+            state.promoteForNavigation(state.answerTransitionDirection)
+            navigate(historyNext.article)
+            return
+        }
+
+        state.pendingInitialContent = answerNavigator.nextAnswer
+        state.promoteForNavigation(state.answerTransitionDirection)
+        navigatingToNextAnswer = true
+        coroutineScope.launch {
+            try {
+                answerNavigator.loadNext()?.let(::navigate)
+            } finally {
+                navigatingToNextAnswer = false
+            }
+        }
+    }
+
+    private fun navigate(article: Article) {
+        // 已经站在某个回答页时先出栈再入栈，否则连续切换回答会把返回栈堆成一长串回答。
+        val current = navController?.backStack?.lastOrNull()
+        if (current is Article && current.type == ArticleType.Answer) {
+            navController.pop()
+        }
+        navigator.onNavigate(article.withReadingQueueSource(readingQueueSourceId))
+    }
+}
+
+@Composable
+internal fun rememberArticleAnswerNavigationState(
+    switchState: ArticleAnswerSwitchState?,
+    viewModel: ArticleViewModel,
+    navigator: Navigator,
+    navController: NavController<NavDestination>?,
+    answerSwitchMode: String,
+    readingQueueSourceId: String?,
+): ArticleAnswerNavigationState {
+    val coroutineScope = rememberCoroutineScope()
+    val state = remember(switchState, viewModel, navigator, navController, coroutineScope, readingQueueSourceId) {
+        ArticleAnswerNavigationState(
+            switchState = switchState,
+            viewModel = viewModel,
+            navigator = navigator,
+            navController = navController,
+            coroutineScope = coroutineScope,
+            readingQueueSourceId = readingQueueSourceId,
+            answerSwitchMode = answerSwitchMode,
+        )
+    }
+    SideEffect {
+        state.answerSwitchMode = answerSwitchMode
+    }
+    return state
+}

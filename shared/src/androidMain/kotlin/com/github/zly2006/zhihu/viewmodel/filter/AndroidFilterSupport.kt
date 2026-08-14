@@ -18,35 +18,11 @@
 package com.github.zly2006.zhihu.viewmodel.filter
 
 import android.content.Context
-import androidx.room.Room
-import com.github.zly2006.zhihu.shared.nlp.KeywordWeightExtractor
-import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
+import com.github.zly2006.zhihu.nlp.KeywordWeightExtractor
+import com.github.zly2006.zhihu.platform.androidSettingsStore
 
-private const val CONTENT_FILTER_DATABASE_NAME = "content_filter_database"
-
-@Volatile
-private var contentFilterDatabase: ContentFilterDatabase? = null
-
-fun getContentFilterDatabase(context: Context): ContentFilterDatabase =
-    contentFilterDatabase ?: synchronized(ContentFilterDatabase::class) {
-        contentFilterDatabase ?: buildContentFilterDatabase(
-            Room.databaseBuilder<ContentFilterDatabase>(
-                context.applicationContext,
-                CONTENT_FILTER_DATABASE_NAME,
-            ),
-        ).also {
-            contentFilterDatabase = it
-        }
-    }
-
-object AndroidContentFilterRuntime {
-    var semanticMatcher: KeywordSemanticMatcher = KeywordSemanticMatcher { _, _, _ -> emptyList() }
-    var keywordWeightExtractor: KeywordWeightExtractor = KeywordWeightExtractor { _, _ -> emptyList() }
-}
-
-actual fun getContentFilterDatabase(): ContentFilterDatabase =
-    contentFilterDatabase
-        ?: error("Content filter database is not initialized")
+var androidKeywordSemanticMatcher: KeywordSemanticMatcher = KeywordSemanticMatcher { _, _, _ -> emptyList() }
+var androidKeywordWeightExtractor: KeywordWeightExtractor = KeywordWeightExtractor { _, _ -> emptyList() }
 
 fun Context.contentFilterSettings(): FeedFilterSettings =
     androidSettingsStore(this).toFeedFilterSettings()

@@ -24,24 +24,28 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.github.zly2006.zhihu.account.ZhihuIdentityClient
+import com.github.zly2006.zhihu.data.AigcVoteClient
+import com.github.zly2006.zhihu.data.AigcVoteVoter
 import com.github.zly2006.zhihu.data.ContentDetailCache
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.OnlineHistoryDeletePair
+import com.github.zly2006.zhihu.data.ZhihuJson.decodeJson
+import com.github.zly2006.zhihu.data.ZhihuPaging
+import com.github.zly2006.zhihu.data.executeZhihuAuthenticatedRequest
+import com.github.zly2006.zhihu.data.fetchZhihuAuthenticatedJson
 import com.github.zly2006.zhihu.data.fetchZhihuContentDetail
 import com.github.zly2006.zhihu.data.getOrFetchContentDetail
 import com.github.zly2006.zhihu.navigation.AnswerNavigator
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.shared.aigc.AigcVoteClient
-import com.github.zly2006.zhihu.shared.aigc.AigcVoteVoter
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.Feed
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.ZhihuJson.decodeJson
-import com.github.zly2006.zhihu.shared.data.ZhihuPaging
-import com.github.zly2006.zhihu.shared.data.fetchZhihuAuthenticatedJson
-import com.github.zly2006.zhihu.shared.util.Log
-import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
 import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
+import com.github.zly2006.zhihu.util.Log
+import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
+import com.github.zly2006.zhihu.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import io.ktor.client.HttpClient
@@ -50,10 +54,12 @@ import io.ktor.client.request.delete
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpMethod
 import io.ktor.http.URLProtocol
 import io.ktor.http.contentType
+import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Job
@@ -86,6 +92,8 @@ abstract class PaginationViewModel<T : Any>(
     private var currentJob: Job? = null
     protected open val shouldLogDecodeFailures: Boolean = true
 
+    protected open fun resolvePageUrl(): String = lastPaging?.next ?: initialUrl
+
     /**
      * Generally used fields to include in the API request.
      * This can be overridden in subclasses to include more specific fields.
@@ -110,18 +118,16 @@ abstract class PaginationViewModel<T : Any>(
 
     protected open suspend fun fetchFeeds(environment: PaginationEnvironment) {
         try {
-            val url = lastPaging?.next ?: initialUrl
+            val url = resolvePageUrl()
 
             @Suppress("HttpUrlsUsage")
             val json = environment.fetchJson(url.replace("http://", "https://"), include)
-                ?: throw IllegalStateException("接口返回空响应或非 JSON 对象（可能触发知乎风控或登录态失效）")
+                ?: throw RuntimeException("您可能已被风控，请重新登录。", Exception("cause: not json object."))
 
-            // 不再用 !!：风控/异常响应没有 data 时，release 下 R8 会把 !! 降级成不可读的 getClass NPE，
-            // 这里直接把原始响应带进异常，方便定位是风控、登录态失效还是响应结构变化。
-            val jsonArray = (
-                json["data"]
-                    ?: throw IllegalStateException("接口未返回 data 字段，原始响应: $json")
-            ).jsonArray
+            // cause 里带上原始响应：release 下这类失败只剩一句风控提示时，无法区分是真风控、
+            // 登录态失效（如 d_c0 缺失导致的 10003）还是响应结构变化。
+            val jsonArray = json["data"] as? JsonArray
+                ?: throw RuntimeException("您可能已被风控，请重新登录。", Exception("cause: no \$.data, body: $json"))
             processResponse(
                 environment,
                 jsonArray.mapNotNull {
@@ -254,6 +260,21 @@ interface ZhihuApiEnvironment {
         }
     }
 
+    suspend fun signedGetText(url: String): String = withAuthenticatedClient { client, cookies ->
+        executeZhihuAuthenticatedRequest(client, url) {
+            method = HttpMethod.Get
+            signZhihuFetchRequest(cookies)
+        }.bodyAsText()
+    }
+
+    suspend fun refreshToken() {
+        val client = httpClient()
+        ZhihuCredentialRefresher.refreshZhihuToken(
+            ZhihuCredentialRefresher.fetchRefreshToken(client),
+            client,
+        )
+    }
+
     suspend fun handleFetchFailure(
         tag: String?,
         error: Exception,
@@ -267,6 +288,31 @@ interface ZhihuApiEnvironment {
         error: Exception,
     ) {
         Log.e(tag ?: "PaginationViewModel", "Failed to decode item: $item", error)
+    }
+}
+
+interface AccountEnvironment {
+    suspend fun refreshAccountProfile() = Unit
+
+    fun requestLogin(): Boolean = false
+
+    fun clearAccountSession() = Unit
+
+    fun currentAccountId(): String = ""
+
+    fun identityClient(): ZhihuIdentityClient? = null
+
+    fun restartApplication() = Unit
+
+    suspend fun verifyLogin(cookies: Map<String, String>): Boolean = false
+
+    fun saveCookies(cookies: Map<String, String>) = Unit
+
+    fun logout() = clearAccountSession()
+
+    fun requestRelogin(): Boolean {
+        clearAccountSession()
+        return requestLogin()
     }
 }
 
@@ -310,6 +356,29 @@ suspend fun ZhihuApiEnvironment.addReadHistory(
             )
         }
     }
+}
+
+internal suspend fun ZhihuApiEnvironment.deleteOnlineHistoryItem(item: OnlineHistoryDeletePair) {
+    val response = postSigned("https://api.zhihu.com/read_history/batch_del") {
+        contentType(ContentType.Application.Json)
+        setBody(
+            buildJsonObject {
+                put(
+                    "pairs",
+                    JsonArray(
+                        listOf(
+                            buildJsonObject {
+                                put("content_token", item.contentToken)
+                                put("content_type", item.contentType)
+                            },
+                        ),
+                    ),
+                )
+                put("clear", false)
+            }.toString(),
+        )
+    }
+    check(response.status.isSuccess()) { "删除在线历史记录失败: ${response.status}" }
 }
 
 suspend fun ZhihuApiEnvironment.postSigned(
@@ -385,6 +454,8 @@ interface AigcVoteEnvironment {
 interface ContentBlocklistEnvironment {
     suspend fun isUserBlocked(userId: String): Boolean = false
 
+    suspend fun isQuestionAuthorBlocked(userId: String): Boolean = false
+
     fun blockedUserIds(): Set<String> = emptySet()
 
     suspend fun addBlockedUser(
@@ -394,12 +465,16 @@ interface ContentBlocklistEnvironment {
         avatarUrl: String? = null,
     ) = Unit
 
-    suspend fun addBlockedTopic(
-        topicId: String,
-        topicName: String,
+    suspend fun addBlockedQuestionAuthor(
+        userId: String,
+        userName: String,
+        urlToken: String? = null,
+        avatarUrl: String? = null,
     ) = Unit
 
     suspend fun removeBlockedUser(userId: String) = Unit
+
+    suspend fun removeBlockedQuestionAuthor(userId: String) = Unit
 }
 
 interface LocalRecommendationEnvironment : ZhihuApiEnvironment {
@@ -478,6 +553,7 @@ interface ArticleLoadEnvironment :
 
 interface PaginationEnvironment :
     ZhihuApiEnvironment,
+    AccountEnvironment,
     MobileHomeFeedEnvironment,
     FeedDisplayEnvironment,
     ContentInteractionEnvironment,

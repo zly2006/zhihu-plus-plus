@@ -57,19 +57,19 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.fleeksoft.ksoup.Ksoup
+import com.github.zly2006.zhihu.data.DailyStory
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.resolveContent
-import com.github.zly2006.zhihu.shared.data.DailyStory
-import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.util.formatDailyDate
-import com.github.zly2006.zhihu.shared.viewmodel.DailyViewModel
+import com.github.zly2006.zhihu.platform.rememberSettingBoolean
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.components.AutoHideTopBar
-import com.github.zly2006.zhihu.ui.rememberZhihuHttpClient
+import com.github.zly2006.zhihu.util.formatDailyDate
+import com.github.zly2006.zhihu.viewmodel.DailyViewModel
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -99,7 +99,7 @@ import kotlin.time.ExperimentalTime
 @Composable
 fun MiuixDailyScreen() {
     val navigator = LocalNavigator.current
-    val httpClient = rememberZhihuHttpClient()
+    val httpClient = rememberPaginationEnvironment(allowGuestAccess = false).httpClient()
     val uriHandler = LocalUriHandler.current
     val viewModel = viewModel { DailyViewModel() }
     var isRefreshing by remember { mutableStateOf(false) }

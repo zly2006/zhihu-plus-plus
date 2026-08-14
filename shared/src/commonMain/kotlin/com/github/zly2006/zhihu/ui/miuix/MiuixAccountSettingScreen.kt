@@ -47,18 +47,16 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.Person
-import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.platform.rememberSettingBoolean
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
 import com.github.zly2006.zhihu.ui.AccountSettingsAccountState
-import com.github.zly2006.zhihu.ui.rememberAccountLoginRequester
-import com.github.zly2006.zhihu.ui.rememberAccountLogoutAction
-import com.github.zly2006.zhihu.ui.rememberAccountProfileRefresher
 import com.github.zly2006.zhihu.ui.rememberAccountQrLoginRequester
 import com.github.zly2006.zhihu.ui.rememberAccountSettingsAccountState
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -80,10 +78,8 @@ fun MiuixAccountSettingScreen(
     testAccountData: AccountSettingsAccountState? = null,
 ) {
     val navigator = LocalNavigator.current
-    val refreshProfile = rememberAccountProfileRefresher()
-    val requestLogin = rememberAccountLoginRequester()
+    val environment = rememberPaginationEnvironment(allowGuestAccess = false)
     val requestQrLoginScan = rememberAccountQrLoginRequester()
-    val logout = rememberAccountLogoutAction()
     val settings = rememberSettingsStore()
     val accountState by rememberAccountSettingsAccountState()
     val data = testAccountData ?: accountState
@@ -96,7 +92,7 @@ fun MiuixAccountSettingScreen(
     LaunchedEffect(data.login) {
         if (testAccountData == null && data.login) {
             try {
-                refreshProfile()
+                environment.refreshAccountProfile()
             } catch (e: Exception) {
                 userMessages.showShortMessage("获取用户信息失败")
             }
@@ -155,7 +151,11 @@ fun MiuixAccountSettingScreen(
                             title = "登录知乎",
                             summary = "登录后体验完整功能",
                             startAction = { Icon(Icons.AutoMirrored.Filled.Login, null, tint = MiuixTheme.colorScheme.primary) },
-                            onClick = { requestLogin() },
+                            onClick = {
+                                if (!environment.requestLogin()) {
+                                    userMessages.showShortMessage("当前平台暂不支持登录")
+                                }
+                            },
                         )
                     }
                 }
@@ -214,7 +214,7 @@ fun MiuixAccountSettingScreen(
                     ArrowPreference(
                         title = "系统与更新",
                         summary = "GitHub、更新设置等",
-                        onClick = { navigator.onNavigate(Account.SystemAndUpdateSettings) },
+                        onClick = { navigator.onNavigate(Account.SystemAndUpdateSettings()) },
                         startAction = { Icon(Icons.Default.Settings, null) },
                     )
                     if (settings.getBoolean("developer", false)) {
@@ -256,7 +256,7 @@ fun MiuixAccountSettingScreen(
                     ) {
                         ArrowPreference(
                             title = "退出登录",
-                            onClick = { logout() },
+                            onClick = { environment.logout() },
                             startAction = { Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MiuixTheme.colorScheme.error) },
                         )
                     }

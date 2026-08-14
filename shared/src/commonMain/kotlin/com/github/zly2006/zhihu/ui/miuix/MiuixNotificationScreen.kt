@@ -27,10 +27,15 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Circle
+import androidx.compose.material.icons.automirrored.outlined.Comment
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.CopyAll
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MarkChatRead
+import androidx.compose.material.icons.filled.PersonAddAlt1
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.ContactPage
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -41,39 +46,34 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.data.MobileNotificationColumnHead
+import com.github.zly2006.zhihu.data.MobileNotificationTimelineItem
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
-import com.github.zly2006.zhihu.navigation.Person
-import com.github.zly2006.zhihu.navigation.Pin
-import com.github.zly2006.zhihu.navigation.Question
-import com.github.zly2006.zhihu.shared.data.NotificationItem
-import com.github.zly2006.zhihu.shared.data.NotificationTarget
-import com.github.zly2006.zhihu.shared.data.navDestination
-import com.github.zly2006.zhihu.shared.notification.rememberNotificationSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberSettingBoolean
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.shared.util.formatRelativeTime
+import com.github.zly2006.zhihu.notification.rememberNotificationSettingsStore
+import com.github.zly2006.zhihu.platform.rememberSettingBoolean
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
+import com.github.zly2006.zhihu.ui.avatarUrl
+import com.github.zly2006.zhihu.ui.displayTitle
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixListLoadingIndicator
+import com.github.zly2006.zhihu.ui.navDestination
+import com.github.zly2006.zhihu.ui.notificationListDate
 import com.github.zly2006.zhihu.ui.rememberNotificationEnvironment
-import com.github.zly2006.zhihu.ui.rememberNotificationShowDebugCopy
+import com.github.zly2006.zhihu.viewmodel.MobileNotificationCategory
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
@@ -89,20 +89,27 @@ import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 
+/**
+ * 通知中心的 miuix 版本，对标 M3 [com.github.zly2006.zhihu.ui.NotificationScreen]。
+ *
+ * 顶部是四个分类入口和邀请回答行，下面是会话列表。是否显示未读数由 `NotificationSettingsStore` 控制，
+ * 这里不能自行决定默认展示哪些通知。
+ */
 @Composable
 fun MiuixNotificationScreen() {
     val navigator = LocalNavigator.current
     val settings = rememberSettingsStore()
     val settingsStore = rememberNotificationSettingsStore()
     val viewModel = viewModel { NotificationViewModel() }
-    val environment = rememberNotificationEnvironment(viewModel, settingsStore)
-    val showDebugCopy = rememberNotificationShowDebugCopy()
+    val environment = rememberNotificationEnvironment(settingsStore)
     val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
     val blurEnabled = rememberSettingBoolean("blurEnabled", true, settings)
+    val showDebugCopy = rememberSettingBoolean("developer", false, settings)
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
     val scrollBehavior = MiuixScrollBehavior()
     val listState = rememberLazyListState()
+    val showUnreadBadge = settingsStore.getUnreadBadgeEnabled()
     // 区分“下拉刷新”和“首次加载”：下拉刷新时不显示中心转圈，避免与刷新动画叠加
     var isManualRefreshing by remember { mutableStateOf(false) }
 
@@ -137,7 +144,7 @@ fun MiuixNotificationScreen() {
                             Icon(Icons.Default.MarkChatRead, "已读", tint = MiuixTheme.colorScheme.onBackground)
                         }
                     }
-                    IconButton(onClick = { navigator.onNavigate(Notification.NotificationSettings) }) {
+                    IconButton(onClick = { navigator.onNavigate(Notification.NotificationSettings()) }) {
                         Icon(Icons.Default.Settings, "设置", tint = MiuixTheme.colorScheme.onBackground)
                     }
                 },
@@ -168,52 +175,35 @@ fun MiuixNotificationScreen() {
                         bottom = padding.calculateBottomPadding(),
                     ),
                 ) {
-                    items(viewModel.allData, key = { it.id }) { notification ->
-                        if (viewModel.shouldShowNotification(settingsStore, notification)) {
-                            NotificationItemCard(
-                                notification = notification,
-                                onClick = {
-                                    when (notification.target) {
-                                        is NotificationTarget.Comment -> {
-                                            userMessages.showMessage("暂不支持跳转到评论，将跳转到对应回答。")
-                                            notification.target.target?.navDestination?.let {
-                                                navigator.onNavigate(it)
-                                            } ?: userMessages.showMessage("导航失败")
-                                        }
-                                        is NotificationTarget.Question -> {
-                                            navigator.onNavigate(Question(notification.target.id.toLong(), notification.target.title))
-                                        }
-                                        is NotificationTarget.People -> {
-                                            navigator.onNavigate(Person(notification.target.id, notification.target.urlToken, name = notification.target.name))
-                                        }
-                                        is NotificationTarget.Answer -> {
-                                            navigator.onNavigate(
-                                                Article(
-                                                    title = notification.target.title,
-                                                    type = ArticleType.Answer,
-                                                    id = notification.target.id.toLong(),
-                                                    excerpt = notification.target.excerpt,
-                                                ),
-                                            )
-                                        }
-                                        is NotificationTarget.Article -> {
-                                            navigator.onNavigate(
-                                                Article(
-                                                    title = notification.target.title,
-                                                    type = ArticleType.Article,
-                                                    id = notification.target.id.toLong(),
-                                                    excerpt = notification.target.excerpt,
-                                                ),
-                                            )
-                                        }
-                                        is NotificationTarget.Pin -> {
-                                            navigator.onNavigate(Pin(notification.target.id.toLong()))
-                                        }
-                                        null -> {}
-                                    }
-                                },
+                    item(key = "notification_categories") {
+                        MiuixNotificationCategoryRow(
+                            unreadCounts = viewModel.categoryUnreadCounts,
+                            showUnreadBadges = showUnreadBadge,
+                            onCategoryClick = { category ->
+                                navigator.onNavigate(
+                                    Notification.Entry(category.entryName, category.detailTitle),
+                                )
+                            },
+                        )
+                    }
+                    viewModel.invitation?.let { invitation ->
+                        item(key = "notification_invitation") {
+                            MiuixNotificationInvitationRow(
+                                invitation = invitation,
+                                showUnreadBadge = showUnreadBadge,
+                                onClick = { navigator.onNavigate(Notification.Invitations) },
                             )
                         }
+                    }
+                    items(viewModel.allData, key = { it.stableId }) { notification ->
+                        MiuixNotificationConversationRow(
+                            notification = notification,
+                            showUnreadBadge = showUnreadBadge,
+                            onClick = {
+                                notification.navDestination()?.let(navigator.onNavigate)
+                                    ?: userMessages.showMessage("暂不支持打开此消息")
+                            },
+                        )
                     }
                     if (!viewModel.isEnd) {
                         item {
@@ -229,7 +219,7 @@ fun MiuixNotificationScreen() {
                 )
 
                 if (showDebugCopy) {
-                    androidx.compose.foundation.layout.Box(
+                    Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.BottomEnd,
                     ) {
@@ -250,104 +240,203 @@ fun MiuixNotificationScreen() {
 }
 
 @Composable
-private fun NotificationItemCard(
-    notification: NotificationItem,
-    onClick: () -> Unit,
+private fun MiuixNotificationCategoryRow(
+    unreadCounts: Map<MobileNotificationCategory, Int>,
+    showUnreadBadges: Boolean,
+    onCategoryClick: (MobileNotificationCategory) -> Unit,
 ) {
-    val bgColor = if (notification.isRead) {
-        Color.Transparent
-    } else {
-        MiuixTheme.colorScheme.primary.copy(alpha = 0.08f)
-    }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 4.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick)
-            .background(bgColor, RoundedCornerShape(16.dp)),
-    ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f),
+    Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+        ) {
+            MobileNotificationCategory.entries.forEach { category ->
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .testTag("notification_category_${category.entryName}")
+                        .clickable { onCategoryClick(category) }
+                        .padding(vertical = 4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    if (notification.content.extend?.icon != null) {
-                        AsyncImage(
-                            model = notification.content.extend.icon,
-                            contentDescription = "",
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(MiuixTheme.colorScheme.surface),
+                    Box {
+                        Icon(
+                            imageVector = category.miuixHomeIcon(),
+                            contentDescription = category.detailTitle,
+                            modifier = Modifier.size(36.dp),
+                            tint = MiuixTheme.colorScheme.onSurface,
                         )
-                        Spacer(modifier = Modifier.width(10.dp))
+                        val unreadCount = unreadCounts[category] ?: 0
+                        if (showUnreadBadges && unreadCount > 0) {
+                            MiuixUnreadBadge(unreadCount, Modifier.align(Alignment.TopEnd))
+                        }
                     }
                     Text(
-                        text = buildNotificationText(notification),
-                        fontSize = 14.sp,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-                if (!notification.isRead) {
-                    Icon(
-                        imageVector = Icons.Default.Circle,
-                        contentDescription = "未读",
-                        modifier = Modifier.size(8.dp),
-                        tint = MiuixTheme.colorScheme.primary,
+                        text = category.detailTitle,
+                        style = MiuixTheme.textStyles.footnote1,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
-
-            notification.target?.let { target ->
-                Spacer(modifier = Modifier.height(8.dp))
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        target.title?.let { title ->
-                            Text(title, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        }
-                        target.content?.let { content ->
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = content.replace(Regex("<[^>]*>"), ""),
-                                fontSize = 12.sp,
-                                color = MiuixTheme.colorScheme.onSurfaceSecondary,
-                                maxLines = 3,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(formatRelativeTime(notification.createTime), fontSize = 12.sp, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
         }
     }
 }
 
 @Composable
-private fun buildNotificationText(notification: NotificationItem) = buildAnnotatedString {
-    val content = notification.content
-    if (content.actors.isNotEmpty()) {
-        content.actors.forEachIndexed { index, actor ->
-            withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) { append(actor.name) }
-            if (index < content.actors.size - 1) append("、")
+private fun MiuixNotificationInvitationRow(
+    invitation: MobileNotificationColumnHead,
+    showUnreadBadge: Boolean,
+    onClick: () -> Unit,
+) {
+    Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("notification_invitation")
+                .clickable(onClick = onClick)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(CircleShape)
+                    .background(MiuixTheme.colorScheme.primary),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Outlined.ContactPage,
+                    contentDescription = null,
+                    modifier = Modifier.size(28.dp),
+                    tint = MiuixTheme.colorScheme.onPrimary,
+                )
+            }
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = invitation.title.ifBlank { "邀请回答" },
+                    style = MiuixTheme.textStyles.body1,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    text = invitation.textPrefix + invitation.text,
+                    style = MiuixTheme.textStyles.body2,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            if (showUnreadBadge && invitation.unreadCount > 0) {
+                MiuixUnreadBadge(invitation.unreadCount)
+            }
         }
-        append(" ")
     }
-    if (notification.mergeCount > 1 && content.actors.size != notification.mergeCount) {
-        append(" 等${notification.mergeCount}人")
+}
+
+@Composable
+private fun MiuixNotificationConversationRow(
+    notification: MobileNotificationTimelineItem,
+    showUnreadBadge: Boolean,
+    onClick: () -> Unit,
+) {
+    Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 8.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("notification_message_${notification.stableId}")
+                .clickable(onClick = onClick)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            val avatarUrl = notification.avatarUrl()
+            if (avatarUrl.isNotBlank()) {
+                AsyncImage(
+                    model = avatarUrl,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(CircleShape)
+                        .background(MiuixTheme.colorScheme.surfaceContainerHigh),
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(CircleShape)
+                        .background(MiuixTheme.colorScheme.surfaceContainerHigh),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.Outlined.Notifications,
+                        contentDescription = null,
+                        tint = MiuixTheme.colorScheme.onSurface,
+                    )
+                }
+            }
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = notification.displayTitle(),
+                        style = MiuixTheme.textStyles.body1,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    notification.notificationListDate().takeIf { it.isNotBlank() }?.let { created ->
+                        Text(
+                            text = created,
+                            style = MiuixTheme.textStyles.footnote2,
+                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                            modifier = Modifier.padding(start = 8.dp),
+                        )
+                    }
+                }
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    text = notification.content?.text.orEmpty(),
+                    style = MiuixTheme.textStyles.body2,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            if (showUnreadBadge && notification.unreadCount > 0) {
+                Spacer(Modifier.width(8.dp))
+                MiuixUnreadBadge(notification.unreadCount)
+            }
+        }
     }
-    append(content.verb)
-    content.target?.let { target ->
-        append(" ")
-        withStyle(style = SpanStyle(color = MiuixTheme.colorScheme.primary)) { append(target.text) }
+}
+
+@Composable
+private fun MiuixUnreadBadge(count: Int, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .clip(CircleShape)
+            .background(MiuixTheme.colorScheme.primary)
+            .padding(horizontal = 5.dp, vertical = 1.dp),
+    ) {
+        Text(
+            text = if (count > 99) "99+" else count.toString(),
+            color = MiuixTheme.colorScheme.onPrimary,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
     }
+}
+
+private fun MobileNotificationCategory.miuixHomeIcon(): ImageVector = when (this) {
+    MobileNotificationCategory.Comment -> Icons.AutoMirrored.Outlined.Comment
+    MobileNotificationCategory.Like -> Icons.Filled.Favorite
+    MobileNotificationCategory.Favorite -> Icons.Filled.Bookmark
+    MobileNotificationCategory.Follow -> Icons.Filled.PersonAddAlt1
 }

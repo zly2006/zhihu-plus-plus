@@ -1,6 +1,5 @@
 plugins {
     id("com.android.library")
-    kotlin("android")
 }
 
 // Used in GitHub CI to pass the path of the installed Android NDK
@@ -46,7 +45,7 @@ android {
 
     sourceSets {
         getByName("main") {
-            jniLibs.srcDirs("src/main/jniLibs")
+            jniLibs.directories.add("src/main/jniLibs")
         }
     }
 }
@@ -157,7 +156,7 @@ tasks.matching { it.name.startsWith("preBuild") }.configureEach {
 }
 
 dependencies {
-    implementation("androidx.core:core-ktx:1.17.0")
+    implementation("androidx.core:core-ktx:1.19.0")
     implementation("androidx.appcompat:appcompat:1.7.1")
-    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.23.0")
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.26.0")
 }

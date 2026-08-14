@@ -63,11 +63,11 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
 import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
-import com.github.zly2006.zhihu.shared.platform.rememberExternalUrlOpener
-import com.github.zly2006.zhihu.shared.platform.rememberImageGalleryOpener
-import com.github.zly2006.zhihu.shared.platform.rememberImageSaver
-import com.github.zly2006.zhihu.shared.platform.rememberImageSharer
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
+import com.github.zly2006.zhihu.platform.rememberImageGalleryOpener
+import com.github.zly2006.zhihu.platform.rememberImageSaver
+import com.github.zly2006.zhihu.platform.rememberImageSharer
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.theme.AppTokens
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ThemeStyle
@@ -76,6 +76,7 @@ import com.github.zly2006.zhihu.ui.components.LocalSegmentActionSheetHost
 import com.github.zly2006.zhihu.ui.components.LocalSegmentCommentHost
 import com.github.zly2006.zhihu.ui.components.SegmentActionSheet
 import com.github.zly2006.zhihu.ui.components.SegmentActionSheetState
+import com.github.zly2006.zhihu.ui.components.SegmentHighlightInteractionHost
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixCommentSheet
 import com.github.zly2006.zhihu.ui.subscreens.PREF_BLOCK_SPACING
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
@@ -102,6 +103,14 @@ fun RenderImage(
     val previewUrls = remember(imageUrls, data.url) {
         imageUrls.ifEmpty { listOf(data.url) }
     }
+    val imageWidth = data.width
+    val imageHeight = data.height
+    val imageAspectRatio =
+        if (imageWidth != null && imageHeight != null && imageWidth > 0 && imageHeight > 0) {
+            imageWidth.toFloat() / imageHeight
+        } else {
+            null
+        }
 
     fun openGallery() {
         val initialIndex = previewUrls.indexOf(data.url).takeIf { it >= 0 } ?: 0
@@ -117,7 +126,13 @@ fun RenderImage(
             contentDescription = data.altText,
             modifier = modifier
                 .fillMaxWidth(0.8f)
-                .pointerInput(Unit) {
+                .then(
+                    if (imageAspectRatio != null) {
+                        Modifier.aspectRatio(imageAspectRatio)
+                    } else {
+                        Modifier
+                    },
+                ).pointerInput(Unit) {
                     detectTapGestures(
                         onTap = {
                             openGallery()
@@ -295,9 +310,9 @@ private fun RenderMarkdownDocument(
     header: (@Composable () -> Unit)?,
     footer: (@Composable () -> Unit)?,
 ) {
-    val imageUrls = remember(document) { document.previewImageUrls() }
+    val previewImageUrls = remember(document) { document.previewImageUrls() }
     val navigator = LocalNavigator.current
-    val runtime = rememberMarkdownRuntime()
+    val mathFont = rememberMarkdownMathFont()
     val openExternalUrl = rememberExternalUrlOpener()
     val settings = rememberSettingsStore()
     val fontSize = settings.getInt(PREF_FONT_SIZE, 100)
@@ -327,53 +342,58 @@ private fun RenderMarkdownDocument(
         dividerColor = AppTokens.colors.outlineVariant,
         blockSpacing = defaultTheme.blockSpacing * (blockSpacing / 100f),
         mathFontSize = 18f * fontSize / 100,
-        mathFont = runtime.mathFont ?: defaultTheme.mathFont,
+        mathFont = mathFont ?: defaultTheme.mathFont,
     )
     var segmentCommentTarget by remember { mutableStateOf<SegmentCommentHolder?>(null) }
     var segmentActionSheetState by remember { mutableStateOf<SegmentActionSheetState?>(null) }
     CompositionLocalProvider(
-        LocalSegmentCommentHost provides { target -> segmentCommentTarget = target },
+        LocalSegmentCommentHost provides { target ->
+            segmentCommentTarget = target
+        },
         LocalSegmentActionSheetHost provides { state -> segmentActionSheetState = state },
     ) {
-        Box(modifier = modifier) {
-            NoDoubleClickSelectionScope {
-                Markdown(
-                    document = document,
-                    imageContent = { data, imageModifier ->
-                        RenderImage(
-                            data = data,
-                            modifier = imageModifier,
-                            imageUrls = imageUrls,
-                        )
-                    },
-                    scrollState = scrollState,
-                    enableScroll = enableScroll,
-                    enableSelection = selectable,
-                    onLinkClick = { url ->
-                        resolveContent(url)?.let { navigator.onNavigate(it) }
-                            ?: openExternalUrl(url)
-                    },
-                    header = header,
-                    footer = footer,
-                    theme = theme,
-                )
+        SegmentHighlightInteractionHost {
+            Box(modifier = modifier) {
+                NoDoubleClickSelectionScope {
+                    Markdown(
+                        document = document,
+                        imageContent = { data, imageModifier ->
+                            RenderImage(
+                                data = data,
+                                modifier = imageModifier,
+                                imageUrls = previewImageUrls,
+                            )
+                        },
+                        scrollState = scrollState,
+                        enableScroll = enableScroll,
+                        enableSelection = selectable,
+                        onLinkClick = { url ->
+                            resolveContent(url)?.let { navigator.onNavigate(it) }
+                                ?: openExternalUrl(url)
+                        },
+                        header = header,
+                        footer = footer,
+                        theme = theme,
+                    )
+                }
             }
         }
     }
-    segmentCommentTarget?.let { target ->
-        if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+    if (ThemeManager.getThemeStyle() == ThemeStyle.Miuix) {
+        // miuix 弹层没有「常驻 + showComments 控制」的退场动画需求，按需挂载即可。
+        segmentCommentTarget?.let { target ->
             MiuixCommentSheet(
                 showComments = true,
                 onDismiss = { segmentCommentTarget = null },
                 content = target,
             )
-        } else {
-            CommentScreenComponent(
-                showComments = true,
-                onDismiss = { segmentCommentTarget = null },
-                content = target,
-            )
         }
+    } else {
+        CommentScreenComponent(
+            showComments = segmentCommentTarget != null,
+            onDismiss = { segmentCommentTarget = null },
+            content = segmentCommentTarget ?: SegmentCommentHolder("dummy", "dummy", "dummy", "", "", 0, 0),
+        )
     }
     segmentActionSheetState?.let { state ->
         SegmentActionSheet(state)

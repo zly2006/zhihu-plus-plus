@@ -119,19 +119,10 @@ Release 页面还提供实验性桌面版 jar（macOS arm64 / Linux x64 / Window
 
 - [Hydrogen](https://github.com/zhihulite/Hydrogen)
 - [Zhihu--](https://github.com/huamurui/zhihu-minus-minus) （极早期开发阶段，功能尚有欠缺）
+- [Zhihu++ swift版（iOS）](https://github.com/kangyun1994/zhihu-plus-plus-swift) 注意：这里的所有项目与知乎++无关，在此列出不代表其实得到了知乎++的支持或背书。
 
 ## 贡献者
 
 感谢所有为 Zhihu++ 做出贡献的开发者与用户，正是你们让这个项目持续变得更好。
 
 [![Contributors](https://ghcontrib.pages.dev/image?repo=zly2006/zhihu-plus-plus)](https://github.com/zly2006/zhihu-plus-plus/graphs/contributors)
-
-<details>
-<summary>碎碎念</summary>
-
-转眼之间，这个项目也做了快两年了，高频更新也进行了一年了，我想给自己放个假。
-
-我想有的开源作者进行internet break确实是有必要的。网络神人太多。有人没学小学语文不会写标题的，有人觉得他果爹放个屁都是香的，还有人觉得我是超人什么都能做，生产力吊打别人一个公司的。
-
-我确实是累了，我已经unsubscribe了issue和PR，subscribe确实会带来过大的心理压力，这些垃圾会直接冲进你的邮箱。
-</details>

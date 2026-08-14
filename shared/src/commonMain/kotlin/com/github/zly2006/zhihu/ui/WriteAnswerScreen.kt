@@ -17,6 +17,11 @@
 
 package com.github.zly2006.zhihu.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
@@ -47,6 +52,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.TextFieldValue
@@ -62,9 +68,9 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.WriteAnswer
-import com.github.zly2006.zhihu.shared.platform.rememberPlainTextClipboard
-import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.platform.rememberPlainTextClipboard
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
 import com.github.zly2006.zhihu.ui.components.WriteContentFabColumn
@@ -93,6 +99,9 @@ fun WriteAnswerScreen(
     val settings = rememberSettingsStore()
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    var editorActionsVisible by remember { mutableStateOf(true) }
+    val actionVisibilityThreshold = with(LocalDensity.current) { 12.dp.roundToPx() }
+    var accumulatedEditorScroll by remember { mutableStateOf(0f) }
 
     var content by remember { mutableStateOf(TextFieldValue("")) }
     var tocEnabled by remember { mutableStateOf(false) }
@@ -299,19 +308,25 @@ fun WriteAnswerScreen(
             )
         },
         floatingActionButton = {
-            WriteContentFabColumn(
-                previewEnabled = !isSubmitting && content.text.isNotBlank(),
-                imageEnabled = launchImagePicker != null && !isSubmitting && !isUploadingImage,
-                saveEnabled = !isSubmitting,
-                showImageButton = launchImagePicker != null,
-                isUploadingImage = isUploadingImage,
-                previewTag = WRITE_ANSWER_FAB_PREVIEW_TAG,
-                imageTag = WRITE_ANSWER_FAB_IMAGE_TAG,
-                saveTag = WRITE_ANSWER_FAB_SAVE_TAG,
-                onPreview = ::showPreview,
-                onImage = { launchImagePicker?.invoke() },
-                onSave = { submitAnswer(publish = false) },
-            )
+            AnimatedVisibility(
+                visible = editorActionsVisible,
+                enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
+                exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 2 }),
+            ) {
+                WriteContentFabColumn(
+                    previewEnabled = !isSubmitting && content.text.isNotBlank(),
+                    imageEnabled = launchImagePicker != null && !isSubmitting && !isUploadingImage,
+                    saveEnabled = !isSubmitting,
+                    showImageButton = launchImagePicker != null,
+                    isUploadingImage = isUploadingImage,
+                    previewTag = WRITE_ANSWER_FAB_PREVIEW_TAG,
+                    imageTag = WRITE_ANSWER_FAB_IMAGE_TAG,
+                    saveTag = WRITE_ANSWER_FAB_SAVE_TAG,
+                    onPreview = ::showPreview,
+                    onImage = { launchImagePicker?.invoke() },
+                    onSave = { submitAnswer(publish = false) },
+                )
+            }
         },
     ) { innerPadding ->
         Box(
@@ -330,6 +345,24 @@ fun WriteAnswerScreen(
                 contentTag = WRITE_ANSWER_CONTENT_TAG,
                 enabled = !isSubmitting,
                 modifier = Modifier.fillMaxSize(),
+                bottomPadding = 280.dp,
+                onVerticalScroll = { delta ->
+                    if (accumulatedEditorScroll != 0f && (accumulatedEditorScroll > 0f) != (delta > 0f)) {
+                        accumulatedEditorScroll = delta
+                    } else {
+                        accumulatedEditorScroll += delta
+                    }
+                    when {
+                        accumulatedEditorScroll <= -actionVisibilityThreshold -> {
+                            editorActionsVisible = false
+                            accumulatedEditorScroll = 0f
+                        }
+                        accumulatedEditorScroll >= actionVisibilityThreshold -> {
+                            editorActionsVisible = true
+                            accumulatedEditorScroll = 0f
+                        }
+                    }
+                },
             )
         }
     }

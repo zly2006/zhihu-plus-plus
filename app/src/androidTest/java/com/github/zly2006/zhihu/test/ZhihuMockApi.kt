@@ -19,6 +19,7 @@ package com.github.zly2006.zhihu.test
 
 import android.content.Context
 import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.notification.ZHIHU_PLUS_PLUS_HOME_NOTIFICATIONS_URL
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
 import io.ktor.client.engine.mock.respond
@@ -59,18 +60,7 @@ object ZhihuMockApi {
             AccountData.createConfiguredHttpClient(
                 context = context,
                 cookies = cookies,
-                engine = MockEngine { request ->
-                    requests += RecordedRequest(request.method, request.url.toString())
-                    val route = routes.firstOrNull { it.predicate(request) }
-                    if (route != null) {
-                        route.responder(this, request)
-                    } else {
-                        jsonResponse(
-                            status = HttpStatusCode.NotFound,
-                            body = """{"error":"No mock route registered","url":"${request.url}","method":"${request.method.value}"}""",
-                        )
-                    }
-                },
+                engine = mockEngine(),
             )
         }
     }
@@ -156,6 +146,11 @@ object ZhihuMockApi {
                 }
                 """.trimIndent(),
         )
+        mockJsonPrefix(
+            method = HttpMethod.Get,
+            urlPrefix = "$ZHIHU_PLUS_PLUS_HOME_NOTIFICATIONS_URL?version=",
+            body = """{"notifications":[]}""",
+        )
         mockJson(
             method = HttpMethod.Get,
             url = "https://redenmc.com/api/zhihu/releases/latest",
@@ -190,6 +185,29 @@ object ZhihuMockApi {
             url = "https://www.zhihu.com/api/v4/notifications/v2/recent?limit=20&include=data%5B%2A%5D.content%2Cexcerpt%2Cheadline",
             body = emptyFeedResponse,
         )
+        mockJson(
+            method = HttpMethod.Get,
+            url = "https://api.zhihu.com/notifications/v3/message/v3?limit=20",
+            body =
+                """
+                {
+                  "head": [
+                    {"type": "entry", "detail_title": "评论转发@", "unread_count": 0},
+                    {"type": "entry", "detail_title": "赞同喜欢", "unread_count": 0},
+                    {"type": "entry", "detail_title": "收藏了我", "unread_count": 0},
+                    {"type": "entry", "detail_title": "关注订阅", "unread_count": 0}
+                  ],
+                  "data": []
+                }
+                """.trimIndent(),
+        )
+        listOf("comment", "like", "follow", "favlist_me").forEach { entry ->
+            mockJson(
+                method = HttpMethod.Get,
+                url = "https://api.zhihu.com/notifications/v3/timeline/entry/$entry?limit=20",
+                body = emptyFeedResponse,
+            )
+        }
         mockJson(
             method = HttpMethod.Get,
             url = "https://api.zhihu.com/unify-consumption/read_history?offset=0&limit=10&include=data%5B%2A%5D.content%2Cexcerpt%2Cheadline",
@@ -261,4 +279,17 @@ object ZhihuMockApi {
         status = status,
         headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
     )
+
+    private fun mockEngine() = MockEngine { request ->
+        requests += RecordedRequest(request.method, request.url.toString())
+        val route = routes.firstOrNull { it.predicate(request) }
+        if (route != null) {
+            route.responder(this, request)
+        } else {
+            jsonResponse(
+                status = HttpStatusCode.NotFound,
+                body = """{"error":"No mock route registered","url":"${request.url}","method":"${request.method.value}"}""",
+            )
+        }
+    }
 }
