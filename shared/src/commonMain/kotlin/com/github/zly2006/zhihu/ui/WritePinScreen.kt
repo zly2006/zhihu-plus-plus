@@ -119,11 +119,12 @@ internal fun activePinTopicQuery(
 ): ActivePinTopicQuery? {
     if (value.selection.start != value.selection.end) return null
     val cursor = value.selection.end
-    var hash = value.text.lastIndexOf('#', startIndex = (cursor - 1).coerceAtLeast(0))
+    if (cursor !in 1..value.text.length) return null
+    var hash = value.text.lastIndexOf('#', startIndex = cursor - 1)
     while (hash > 0 && !value.text[hash - 1].isWhitespace()) {
         hash = value.text.lastIndexOf('#', startIndex = hash - 1)
     }
-    if (hash < 0 || value.text.substring(hash, cursor).contains('\n')) return null
+    if (hash < 0 || hash >= cursor || value.text.substring(hash, cursor).contains('\n')) return null
     val query = value.text.substring(hash + 1, cursor)
     if (query.length > 50) return null
     if (selectedTopics.any { marker -> hash == marker.start }) {

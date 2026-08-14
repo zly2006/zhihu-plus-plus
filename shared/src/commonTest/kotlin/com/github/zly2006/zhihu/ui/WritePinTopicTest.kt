@@ -11,6 +11,13 @@ import kotlin.test.assertNull
 
 class WritePinTopicTest {
     @Test
+    fun ignoresTopicQueryWhenCursorIsAtTextStart() {
+        assertNull(activePinTopicQuery(TextFieldValue("#机器学习", selection = TextRange.Zero)))
+        assertNull(activePinTopicQuery(TextFieldValue("正文 #机器学习", selection = TextRange.Zero)))
+        assertNull(activePinTopicQuery(TextFieldValue("", selection = TextRange.Zero)))
+    }
+
+    @Test
     fun findsInlineTopicQueryIncludingSpaces() {
         val value = TextFieldValue("正文 #机器 学习", selection = TextRange("正文 #机器 学习".length))
         assertEquals("机器 学习", activePinTopicQuery(value)?.query)
