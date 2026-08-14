@@ -24,8 +24,8 @@ import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
 import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDataFile
 import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
 import com.github.zly2006.zhihu.shared.desktop.saveImageToDownloads
-import java.util.Properties
 import kotlinx.coroutines.launch
+import java.util.Properties
 
 @Composable
 actual fun rememberSettingsStore(): SettingsStore = remember { desktopSettingsStore() }

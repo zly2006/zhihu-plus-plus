@@ -70,10 +70,10 @@ import com.github.zly2006.zhihu.ui.PinHtmlContent
 import com.github.zly2006.zhihu.ui.PinLikeResult
 import com.github.zly2006.zhihu.ui.PinLinkCardPreview
 import com.github.zly2006.zhihu.ui.booleanCompat
-import com.github.zly2006.zhihu.ui.fetchPinLinkCardPreview
 import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
+import com.github.zly2006.zhihu.ui.fetchPinLinkCardPreview
 import com.github.zly2006.zhihu.ui.linkCardTypeLabel
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixCommentSheet
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
@@ -81,11 +81,11 @@ import com.github.zly2006.zhihu.ui.miuix.components.MiuixShareSheet
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixVotersSheet
 import com.github.zly2006.zhihu.viewmodel.ContentLoadEnvironment
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
+import com.github.zly2006.zhihu.viewmodel.addReadHistory
 import com.github.zly2006.zhihu.viewmodel.deleteSigned
 import com.github.zly2006.zhihu.viewmodel.loadVotersPage
 import com.github.zly2006.zhihu.viewmodel.nextUrlOrNull
 import com.github.zly2006.zhihu.viewmodel.postSigned
-import com.github.zly2006.zhihu.viewmodel.addReadHistory
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.replaceOrAppendUniqueVoters
 import io.ktor.client.call.body
@@ -249,7 +249,7 @@ fun MiuixPinScreen(
                 }
 
                 errorMessage != null -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                    Text("加载失败: ${errorMessage}", color = MiuixTheme.colorScheme.onBackground, modifier = Modifier.testTag(PIN_SCREEN_ERROR_TAG))
+                    Text("加载失败: $errorMessage", color = MiuixTheme.colorScheme.onBackground, modifier = Modifier.testTag(PIN_SCREEN_ERROR_TAG))
                 }
 
                 pinContent != null -> MiuixPinContent(

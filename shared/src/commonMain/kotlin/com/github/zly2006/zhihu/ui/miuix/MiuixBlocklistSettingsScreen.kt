@@ -58,11 +58,11 @@ import com.github.zly2006.zhihu.ui.miuix.components.MiuixIconsEmbedded
 import com.github.zly2006.zhihu.ui.rememberBlocklistRuleExporter
 import com.github.zly2006.zhihu.ui.rememberBlocklistRuleImporter
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeyword
-import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedTopic
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedUser
 import com.github.zly2006.zhihu.viewmodel.filter.BlocklistStats
 import com.github.zly2006.zhihu.viewmodel.filter.KeywordType
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
@@ -124,7 +124,8 @@ fun MiuixBlocklistSettingsScreen(
         coroutineScope.launch {
             try {
                 loadedKeywords = database
-                    .blockedKeywordDao().getAllKeywords()
+                    .blockedKeywordDao()
+                    .getAllKeywords()
                     .filter { it.getKeywordTypeEnum() == KeywordType.EXACT_MATCH }
                 loadedUsers = database.blockedUserDao().getAllUsers()
                 loadedTopics = database.blockedTopicDao().getAllTopics()
