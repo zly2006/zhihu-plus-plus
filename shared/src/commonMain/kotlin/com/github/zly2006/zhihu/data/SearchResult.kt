@@ -21,6 +21,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.nullable
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.buildClassSerialDescriptor
@@ -36,7 +37,6 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonEncoder
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -153,7 +153,7 @@ object SearchResultSerializer : KSerializer<SearchResult> {
                     }
                     3 -> highlight = decodeNullableSerializableElement(descriptor, 3, Highlight.serializer())
                     4 -> index = decodeIntElement(descriptor, 4)
-                    5 -> hitLabels = decodeStringElement(descriptor, 5)
+                    5 -> hitLabels = decodeNullableSerializableElement(descriptor, 5, String.serializer().nullable)
                     CompositeDecoder.DECODE_DONE -> break
                     else -> throw IllegalArgumentException("Unknown index $i")
                 }
