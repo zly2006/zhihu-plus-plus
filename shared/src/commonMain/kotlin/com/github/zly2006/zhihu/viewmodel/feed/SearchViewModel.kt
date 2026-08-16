@@ -24,6 +24,7 @@ import androidx.compose.runtime.setValue
 import com.github.zly2006.zhihu.data.CommonFeed
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.util.raiseForStatus
@@ -44,6 +45,7 @@ open class SearchViewModel(
     private val restrictedMemberHashId: String = "",
 ) : BaseFeedViewModel() {
     val entities = mutableStateListOf<SearchEntity>()
+    private var pendingGeneralEntities = emptyList<PendingGeneralEntity>()
     val changingTopicIds = mutableStateListOf<String>()
     var filters by mutableStateOf(SearchFilters())
         private set
@@ -114,17 +116,44 @@ open class SearchViewModel(
     ): List<Feed> {
         val existingIds = entities.mapTo(mutableSetOf(), SearchEntity::id)
         var decodedTopicCount = 0
-        val feeds = rawData.mapNotNull { element ->
+        val indexedEntries = rawData.withIndex().sortedBy { (responseOrder, element) ->
+            (element as? JsonObject)
+                ?.get("index")
+                ?.jsonPrimitive
+                ?.content
+                ?.toIntOrNull() ?: responseOrder
+        }
+        if (searchTab == SearchTab.General) {
+            pendingGeneralEntities = indexedEntries.mapNotNull { (_, element) ->
+                val entry = element as? JsonObject ?: return@mapNotNull null
+                if (entry["type"]?.jsonPrimitive?.content != "search_result") return@mapNotNull null
+                val content = entry["object"] as? JsonObject ?: return@mapNotNull null
+                try {
+                    if (content["type"]?.jsonPrimitive?.content == "people") {
+                        PendingGeneralEntity.Person(ZhihuJson.decodeJson<DataHolder.People>(content))
+                    } else {
+                        PendingGeneralEntity.Content(
+                            CommonFeed(
+                                id = content["id"]?.jsonPrimitive?.content ?: return@mapNotNull null,
+                                verb = "SEARCH_RESULT",
+                                target = ZhihuJson.decodeJson<Feed.Target>(content),
+                            ),
+                        )
+                    }
+                } catch (e: Exception) {
+                    environment.logDecodeFailure("SearchViewModel", element, e)
+                    null
+                }
+            }
+            return pendingGeneralEntities.mapNotNull { (it as? PendingGeneralEntity.Content)?.feed }
+        }
+        val feeds = indexedEntries.mapNotNull { (_, element) ->
             val entry = element as? JsonObject ?: return@mapNotNull null
             if (entry["type"]?.jsonPrimitive?.content != "search_result") return@mapNotNull null
             val content = entry["object"] as? JsonObject ?: return@mapNotNull null
             try {
                 when (searchTab) {
-                    SearchTab.General -> CommonFeed(
-                        id = entry["id"]?.jsonPrimitive?.content ?: return@mapNotNull null,
-                        verb = "SEARCH_RESULT",
-                        target = ZhihuJson.decodeJson<Feed.Target>(content),
-                    )
+                    SearchTab.General -> error("General 搜索已在保序分支解码")
                     SearchTab.People -> {
                         val person = ZhihuJson.decodeJson<DataHolder.People>(content)
                         if (existingIds.add(person.id)) entities += SearchEntity.Person(person)
@@ -175,7 +204,31 @@ open class SearchViewModel(
             data.filterNot { it.target?.author?.id in blockedUserIds },
             rawData,
         )
+        if (searchTab != SearchTab.General) return
+        if (isPullToRefresh) entities.clear()
+        val loadedContent = latestLoadedDisplayItems.value.associateBy(FeedDisplayItem::stableKey)
+        val existingIds = entities.mapTo(mutableSetOf(), SearchEntity::id)
+        pendingGeneralEntities.forEach { pending ->
+            val entity = when (pending) {
+                is PendingGeneralEntity.Person -> SearchEntity.Person(pending.person)
+                is PendingGeneralEntity.Content -> createDisplayItem(environment, pending.feed)
+                    .stableKey
+                    .let(loadedContent::get)
+                    ?.let { SearchEntity.Content(it) }
+            }
+            if (entity != null && existingIds.add(entity.id)) entities += entity
+        }
     }
+}
+
+private sealed interface PendingGeneralEntity {
+    data class Person(
+        val person: DataHolder.People,
+    ) : PendingGeneralEntity
+
+    data class Content(
+        val feed: Feed,
+    ) : PendingGeneralEntity
 }
 
 sealed interface SearchEntity {
@@ -185,6 +238,12 @@ sealed interface SearchEntity {
         val person: DataHolder.People,
     ) : SearchEntity {
         override val id = person.id
+    }
+
+    data class Content(
+        val item: FeedDisplayItem,
+    ) : SearchEntity {
+        override val id = item.stableKey
     }
 
     data class Topic(
