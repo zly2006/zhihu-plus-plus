@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu
 
 import com.github.zly2006.zhihu.viewmodel.feed.SearchContentType
+import com.github.zly2006.zhihu.viewmodel.feed.SearchFilters
 import com.github.zly2006.zhihu.viewmodel.feed.SearchSortOption
 import com.github.zly2006.zhihu.viewmodel.feed.SearchTab
 import com.github.zly2006.zhihu.viewmodel.feed.SearchTimeRange
@@ -55,9 +56,11 @@ class SearchViewModelUrlTest {
     fun encodesQueryAndUsesZhihuFilterParameters() {
         val url = zhihuSearchUrl(
             query = "知乎 搜索/排序",
-            sortOption = SearchSortOption.Latest,
-            contentType = SearchContentType.Answer,
-            timeRange = SearchTimeRange.Week,
+            filters = SearchFilters(
+                sort = SearchSortOption.Latest,
+                contentType = SearchContentType.Answer,
+                timeRange = SearchTimeRange.Week,
+            ),
         )
         val params = URL(url).queryParameters()
 
@@ -75,17 +78,17 @@ class SearchViewModelUrlTest {
     fun treatsAnySingleNonDefaultFilterAsFilterSearch() {
         assertEquals(
             "Filter",
-            URL(zhihuSearchUrl("query", sortOption = SearchSortOption.MostVoted))
+            URL(zhihuSearchUrl("query", filters = SearchFilters(sort = SearchSortOption.MostVoted)))
                 .queryParameters()["search_source"],
         )
         assertEquals(
             "Filter",
-            URL(zhihuSearchUrl("query", contentType = SearchContentType.Article))
+            URL(zhihuSearchUrl("query", filters = SearchFilters(contentType = SearchContentType.Article)))
                 .queryParameters()["search_source"],
         )
         assertEquals(
             "Filter",
-            URL(zhihuSearchUrl("query", timeRange = SearchTimeRange.Year))
+            URL(zhihuSearchUrl("query", filters = SearchFilters(timeRange = SearchTimeRange.Year)))
                 .queryParameters()["search_source"],
         )
     }
@@ -100,6 +103,26 @@ class SearchViewModelUrlTest {
         assertEquals("Normal", params["search_source"])
         assertNull(params["vertical"])
         assertNull(params["vertical_info"])
+    }
+
+    @Test
+    fun ignoresGeneralFiltersInPeopleAndTopicSearches() {
+        val filters = SearchFilters(
+            sort = SearchSortOption.Latest,
+            contentType = SearchContentType.Answer,
+            timeRange = SearchTimeRange.Week,
+        )
+
+        listOf(SearchTab.People, SearchTab.Topic).forEach { tab ->
+            val params = URL(zhihuSearchUrl("query", searchTab = tab, filters = filters)).queryParameters()
+
+            assertEquals(tab.parameter, params["t"])
+            assertEquals("Normal", params["search_source"])
+            assertNull(params["sort"])
+            assertNull(params["vertical"])
+            assertNull(params["vertical_info"])
+            assertNull(params["time_interval"])
+        }
     }
 
     @Test
