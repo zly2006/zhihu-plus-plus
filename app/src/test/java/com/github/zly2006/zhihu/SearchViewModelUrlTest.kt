@@ -106,6 +106,26 @@ class SearchViewModelUrlTest {
     }
 
     @Test
+    fun ignoresGeneralFiltersInPeopleAndTopicSearches() {
+        val filters = SearchFilters(
+            sort = SearchSortOption.Latest,
+            contentType = SearchContentType.Answer,
+            timeRange = SearchTimeRange.Week,
+        )
+
+        listOf(SearchTab.People, SearchTab.Topic).forEach { tab ->
+            val params = URL(zhihuSearchUrl("query", searchTab = tab, filters = filters)).queryParameters()
+
+            assertEquals(tab.parameter, params["t"])
+            assertEquals("Normal", params["search_source"])
+            assertNull(params["sort"])
+            assertNull(params["vertical"])
+            assertNull(params["vertical_info"])
+            assertNull(params["time_interval"])
+        }
+    }
+
+    @Test
     fun buildsMemberRestrictedSearchUrlWithEncodedRestrictionParameters() {
         val url = zhihuSearchUrl(
             query = "用户 创作",

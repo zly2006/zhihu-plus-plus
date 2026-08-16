@@ -37,6 +37,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
@@ -108,6 +109,19 @@ class SearchViewModelTest {
         assertFalse(viewModel.setTopicFollowing(environment("failed", HttpStatusCode.InternalServerError), topic.id, true).isSuccess)
         assertFalse(assertIs<SearchEntity.Topic>(viewModel.entities.single()).isFollowing)
         assertFalse(topic.id in viewModel.changingTopicIds)
+    }
+
+    @Test
+    fun rejectsNonEmptyTopicPageWhenNoTopicCanBeDecoded() {
+        val error = assertFailsWith<IllegalStateException> {
+            TestSearchViewModel().decode(
+                environment("{}"),
+                SearchTab.Topic,
+                """{"data":[{"type":"search_result","object":{"id":"person-id","type":"people"}}]}""",
+            )
+        }
+
+        assertEquals("服务端返回了 1 条话题搜索结果，但均无法解码", error.message)
     }
 
     @Test

@@ -113,7 +113,8 @@ open class SearchViewModel(
         rawData: JsonArray,
     ): List<Feed> {
         val existingIds = entities.mapTo(mutableSetOf(), SearchEntity::id)
-        return rawData.mapNotNull { element ->
+        var decodedTopicCount = 0
+        val feeds = rawData.mapNotNull { element ->
             val entry = element as? JsonObject ?: return@mapNotNull null
             if (entry["type"]?.jsonPrimitive?.content != "search_result") return@mapNotNull null
             val content = entry["object"] as? JsonObject ?: return@mapNotNull null
@@ -132,6 +133,7 @@ open class SearchViewModel(
                     SearchTab.Topic -> {
                         val topic = ZhihuJson.decodeJson<TopicSearchObject>(content)
                         if (topic.type != "topic") return@mapNotNull null
+                        decodedTopicCount++
                         if (existingIds.add(topic.id)) {
                             entities += SearchEntity.Topic(
                                 topic = DataHolder.Topic(
@@ -156,6 +158,10 @@ open class SearchViewModel(
                 null
             }
         }
+        if (searchTab == SearchTab.Topic && rawData.isNotEmpty() && decodedTopicCount == 0) {
+            error("服务端返回了 ${rawData.size} 条话题搜索结果，但均无法解码")
+        }
+        return feeds
     }
 
     override fun processResponse(
@@ -259,6 +265,7 @@ fun zhihuSearchUrl(
     filters: SearchFilters = SearchFilters(),
     restrictedMemberHashId: String = "",
 ): String {
+    val activeFilters = if (searchTab == SearchTab.General) filters else SearchFilters()
     val params = buildList {
         add("gk_version" to "gz-gaokao")
         add("t" to searchTab.parameter)
@@ -266,7 +273,7 @@ fun zhihuSearchUrl(
         add("correction" to "1")
         add("offset" to "0")
         add("limit" to "20")
-        add("search_source" to if (filters == SearchFilters()) "Normal" else "Filter")
+        add("search_source" to if (activeFilters == SearchFilters()) "Normal" else "Filter")
         add("show_all_topics" to if (searchTab == SearchTab.Topic) "1" else "0")
         if (restrictedMemberHashId.isNotBlank()) {
             add("filter_fields" to "")
@@ -275,14 +282,14 @@ fun zhihuSearchUrl(
             add("restricted_field" to "member_hash_id")
             add("restricted_value" to restrictedMemberHashId)
         }
-        filters.contentType.parameter.takeIf(String::isNotEmpty)?.let {
+        activeFilters.contentType.parameter.takeIf(String::isNotEmpty)?.let {
             add("vertical" to it)
             add("vertical_info" to SEARCH_VERTICAL_INFO)
         }
-        filters.sort.parameter
+        activeFilters.sort.parameter
             .takeIf(String::isNotEmpty)
             ?.let { add("sort" to it) }
-        filters.timeRange.parameter
+        activeFilters.timeRange.parameter
             .takeIf(String::isNotEmpty)
             ?.let { add("time_interval" to it) }
     }.joinToString("&") { (key, value) ->
