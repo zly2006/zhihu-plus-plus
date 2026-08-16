@@ -21,12 +21,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.github.zly2006.zhihu.data.CommonFeed
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
-import com.github.zly2006.zhihu.data.PeopleSearchResult
-import com.github.zly2006.zhihu.data.SearchResult
 import com.github.zly2006.zhihu.data.ZhihuJson
-import com.github.zly2006.zhihu.data.ZhihuPaging
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.util.raiseForStatus
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
@@ -35,56 +33,29 @@ import com.github.zly2006.zhihu.viewmodel.postSigned
 import io.ktor.http.encodeURLParameter
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 const val ZHIHU_HOT_SEARCH_URL = "https://www.zhihu.com/api/v4/search/hot_search"
 private const val SEARCH_VERTICAL_INFO = "0,0,0,0,0,0,0,0,0,0,0,0"
 
 open class SearchViewModel(
     val searchQuery: String,
-    val restrictedMemberHashId: String = "",
+    private val restrictedMemberHashId: String = "",
 ) : BaseFeedViewModel() {
-    val peopleResults = mutableStateListOf<PeopleSearchResult>()
-    val topicResults = mutableStateListOf<TopicSearchResult>()
+    val entities = mutableStateListOf<SearchEntity>()
     val changingTopicIds = mutableStateListOf<String>()
-    var sortOption by mutableStateOf(SearchSortOption.Default)
-        private set
-    var contentType by mutableStateOf(SearchContentType.All)
+    var filters by mutableStateOf(SearchFilters())
         private set
     var searchTab by mutableStateOf(SearchTab.General)
         private set
-    var timeRange by mutableStateOf(SearchTimeRange.All)
-        private set
-
-    val initialRequestUrl: String
-        get() = initialUrl
 
     override val initialUrl: String
-        get() = zhihuSearchUrl(searchQuery, searchTab, sortOption, contentType, timeRange, restrictedMemberHashId)
+        get() = zhihuSearchUrl(searchQuery, searchTab, filters, restrictedMemberHashId)
 
-    // Override include to request necessary fields for search results
     override val include = "data[*].highlight,object,type"
 
-    fun updateSortOption(
-        environment: PaginationEnvironment,
-        option: SearchSortOption,
-    ) {
-        if (sortOption == option) return
-        sortOption = option
-        refresh(environment)
-    }
-
-    fun updateContentType(
-        environment: PaginationEnvironment,
-        type: SearchContentType,
-    ) {
-        if (contentType == type) return
-        contentType = type
-        refresh(environment)
-    }
-
-    fun updateSearchTab(
+    fun selectTab(
         environment: PaginationEnvironment,
         tab: SearchTab,
     ) {
@@ -93,12 +64,12 @@ open class SearchViewModel(
         refresh(environment)
     }
 
-    fun updateTimeRange(
+    fun updateFilters(
         environment: PaginationEnvironment,
-        range: SearchTimeRange,
+        newFilters: SearchFilters,
     ) {
-        if (timeRange == range) return
-        timeRange = range
+        if (filters == newFilters) return
+        filters = newFilters
         refresh(environment)
     }
 
@@ -107,29 +78,28 @@ open class SearchViewModel(
         topicId: String,
         following: Boolean,
     ): Result<Unit> {
-        val index = topicResults.indexOfFirst { it.topic.id == topicId }
-        if (index < 0 || topicId in changingTopicIds || topicResults[index].isFollowing == following) {
-            return Result.success(Unit)
-        }
-        val previous = topicResults[index]
+        val index = entities.indexOfFirst { it is SearchEntity.Topic && it.id == topicId }
+        val previous = entities.getOrNull(index) as? SearchEntity.Topic
+            ?: return Result.success(Unit)
+        if (topicId in changingTopicIds || previous.isFollowing == following) return Result.success(Unit)
+
         changingTopicIds += topicId
-        topicResults[index] = previous.copy(isFollowing = following)
+        entities[index] = previous.copy(isFollowing = following)
         return runCatching {
             val endpoint = "https://www.zhihu.com/api/v4/topics/$topicId/followers"
             val response = if (following) environment.postSigned(endpoint) else environment.deleteSigned(endpoint)
             response.raiseForStatus()
             Unit
         }.onFailure {
-            val currentIndex = topicResults.indexOfFirst { it.topic.id == topicId }
-            if (currentIndex >= 0) topicResults[currentIndex] = previous
+            val currentIndex = entities.indexOfFirst { it.id == topicId }
+            if (currentIndex >= 0) entities[currentIndex] = previous
         }.also {
             changingTopicIds -= topicId
         }
     }
 
     override fun refresh(environment: PaginationEnvironment) {
-        peopleResults.clear()
-        topicResults.clear()
+        entities.clear()
         super.refresh(environment)
     }
 
@@ -138,63 +108,53 @@ open class SearchViewModel(
         loadMore(environment)
     }
 
-    override suspend fun fetchFeeds(environment: PaginationEnvironment) {
-        try {
-            val url = lastPaging?.next ?: initialUrl
-            val jojo = environment.fetchJson(url, include) ?: error("搜索响应为空")
-            val jsonArray = jojo["data"] as? JsonArray ?: error("搜索响应缺少 data 列表")
-
-            // Parse search results and convert to Feed objects
-            val results = jsonArray.mapNotNull { element ->
-                if (searchTab == SearchTab.Topic) return@mapNotNull null
-                try {
-                    ZhihuJson.decodeJson<SearchResult>(element)
-                } catch (e: Exception) {
-                    environment.logDecodeFailure("SearchViewModel", element, e)
-                    null
-                }
-            }
-            val feeds = results.mapNotNull(SearchResult::toFeed)
-            val existingPeopleIds = peopleResults.mapTo(mutableSetOf()) { it.people.id }
-            results.mapNotNull(SearchResult::people).forEach { result ->
-                if (existingPeopleIds.add(result.people.id)) peopleResults.add(result)
-            }
-            if (searchTab == SearchTab.Topic) {
-                val existingTopicIds = topicResults.mapTo(mutableSetOf()) { it.topic.id }
-                val decodedTopics = jsonArray.mapNotNull { element ->
-                    decodeTopicSearchResult(element).also { result ->
-                        if (result == null) {
-                            environment.logDecodeFailure(
-                                "SearchViewModel",
-                                element,
-                                IllegalArgumentException("话题搜索结果缺少可用的话题对象"),
+    override fun decodePage(
+        environment: PaginationEnvironment,
+        rawData: JsonArray,
+    ): List<Feed> {
+        val existingIds = entities.mapTo(mutableSetOf(), SearchEntity::id)
+        return rawData.mapNotNull { element ->
+            val entry = element as? JsonObject ?: return@mapNotNull null
+            if (entry["type"]?.jsonPrimitive?.content != "search_result") return@mapNotNull null
+            val content = entry["object"] as? JsonObject ?: return@mapNotNull null
+            try {
+                when (searchTab) {
+                    SearchTab.General -> CommonFeed(
+                        id = entry["id"]?.jsonPrimitive?.content ?: return@mapNotNull null,
+                        verb = "SEARCH_RESULT",
+                        target = ZhihuJson.decodeJson<Feed.Target>(content),
+                    )
+                    SearchTab.People -> {
+                        val person = ZhihuJson.decodeJson<DataHolder.People>(content)
+                        if (existingIds.add(person.id)) entities += SearchEntity.Person(person)
+                        null
+                    }
+                    SearchTab.Topic -> {
+                        val topic = ZhihuJson.decodeJson<TopicSearchObject>(content)
+                        if (topic.type != "topic") return@mapNotNull null
+                        if (existingIds.add(topic.id)) {
+                            entities += SearchEntity.Topic(
+                                topic = DataHolder.Topic(
+                                    id = topic.id,
+                                    type = topic.type,
+                                    url = topic.url,
+                                    name = topic.name.replace("<em>", "").replace("</em>", ""),
+                                    avatarUrl = topic.avatarUrl,
+                                    topicType = topic.topicType,
+                                ),
+                                excerpt = topic.excerpt.replace("<em>", "").replace("</em>", ""),
+                                visitCount = topic.visitCount,
+                                discussCount = topic.topAnswerCount,
+                                isFollowing = topic.isFollowing,
                             )
                         }
+                        null
                     }
                 }
-                if (jsonArray.isNotEmpty() && decodedTopics.isEmpty()) {
-                    error("服务端返回了 ${jsonArray.size} 条话题搜索结果，但均无法解码")
-                }
-                decodedTopics.forEach { result ->
-                    if (existingTopicIds.add(result.topic.id)) topicResults.add(result)
-                }
+            } catch (e: Exception) {
+                environment.logDecodeFailure("SearchViewModel", element, e)
+                null
             }
-
-            if (searchTab == SearchTab.Topic) {
-                debugData.addAll(jsonArray)
-            } else {
-                processResponse(environment, feeds, jsonArray)
-            }
-
-            // Handle pagination
-            if ("paging" in jojo) {
-                lastPaging = ZhihuJson.decodeJson<ZhihuPaging>(jojo["paging"]!!)
-            }
-        } catch (e: Exception) {
-            environment.handleFetchFailure("SearchViewModel", e)
-            throw e
-        } finally {
-            isLoading = false
         }
     }
 
@@ -204,52 +164,33 @@ open class SearchViewModel(
         rawData: JsonArray,
     ) {
         val blockedUserIds = environment.blockedUserIds()
-        // 进行搜索filter逻辑。目前仅支持作者。
-        val filtered = if (blockedUserIds.isEmpty()) {
-            data
-        } else {
-            data.filterNot { feed ->
-                feed.target?.author?.id in blockedUserIds
-            }
-        }
-        super.processResponse(environment, filtered, rawData)
+        super.processResponse(
+            environment,
+            data.filterNot { it.target?.author?.id in blockedUserIds },
+            rawData,
+        )
     }
 }
 
-enum class SearchSortOption(
-    val label: String,
-    val value: String,
-) {
-    Default("综合排序", ""),
-    Latest("最新发布", "created_time"),
-    MostVoted("最多赞同", "upvoted_count"),
-}
+sealed interface SearchEntity {
+    val id: String
 
-enum class SearchContentType(
-    val label: String,
-    val value: String,
-) {
-    All("全部内容", ""),
-    Answer("回答", "answer"),
-    Article("文章", "article"),
-    Video("视频", "zvideo"),
-}
+    data class Person(
+        val person: DataHolder.People,
+    ) : SearchEntity {
+        override val id = person.id
+    }
 
-enum class SearchTab(
-    val label: String,
-) {
-    General("全站"),
-    People("用户"),
-    Topic("话题"),
+    data class Topic(
+        val topic: DataHolder.Topic,
+        val excerpt: String,
+        val visitCount: Long,
+        val discussCount: Long,
+        val isFollowing: Boolean,
+    ) : SearchEntity {
+        override val id = topic.id
+    }
 }
-
-data class TopicSearchResult(
-    val topic: DataHolder.Topic,
-    val excerpt: String,
-    val visitCount: Long,
-    val discussCount: Long,
-    val isFollowing: Boolean,
-)
 
 @Serializable
 private data class TopicSearchObject(
@@ -265,30 +206,43 @@ private data class TopicSearchObject(
     val isFollowing: Boolean = false,
 )
 
-fun decodeTopicSearchResult(element: JsonElement): TopicSearchResult? {
-    val entry = element as? JsonObject ?: return null
-    val objectJson = entry["object"] as? JsonObject ?: return null
-    val decoded = runCatching { ZhihuJson.decodeJson<TopicSearchObject>(objectJson) }.getOrNull() ?: return null
-    if (decoded.type != "topic") return null
-    return TopicSearchResult(
-        topic = DataHolder.Topic(
-            id = decoded.id,
-            type = decoded.type,
-            url = decoded.url,
-            name = decoded.name.replace("<em>", "").replace("</em>", ""),
-            avatarUrl = decoded.avatarUrl,
-            topicType = decoded.topicType,
-        ),
-        excerpt = decoded.excerpt.replace("<em>", "").replace("</em>", ""),
-        visitCount = decoded.visitCount,
-        discussCount = decoded.topAnswerCount,
-        isFollowing = decoded.isFollowing,
-    )
+data class SearchFilters(
+    val sort: SearchSortOption = SearchSortOption.Default,
+    val contentType: SearchContentType = SearchContentType.All,
+    val timeRange: SearchTimeRange = SearchTimeRange.All,
+)
+
+enum class SearchSortOption(
+    val label: String,
+    val parameter: String,
+) {
+    Default("综合排序", ""),
+    Latest("最新发布", "created_time"),
+    MostVoted("最多赞同", "upvoted_count"),
+}
+
+enum class SearchContentType(
+    val label: String,
+    val parameter: String,
+) {
+    All("全部内容", ""),
+    Answer("回答", "answer"),
+    Article("文章", "article"),
+    Video("视频", "zvideo"),
+}
+
+enum class SearchTab(
+    val label: String,
+    val parameter: String,
+) {
+    General("全站", "general"),
+    People("用户", "people"),
+    Topic("话题", "topic"),
 }
 
 enum class SearchTimeRange(
     val label: String,
-    val value: String,
+    val parameter: String,
 ) {
     All("不限时间", ""),
     Day("一天内", "a_day"),
@@ -302,28 +256,17 @@ enum class SearchTimeRange(
 fun zhihuSearchUrl(
     query: String,
     searchTab: SearchTab = SearchTab.General,
-    sortOption: SearchSortOption = SearchSortOption.Default,
-    contentType: SearchContentType = SearchContentType.All,
-    timeRange: SearchTimeRange = SearchTimeRange.All,
+    filters: SearchFilters = SearchFilters(),
     restrictedMemberHashId: String = "",
 ): String {
-    val hasActiveFilter = sortOption != SearchSortOption.Default ||
-        contentType != SearchContentType.All ||
-        timeRange != SearchTimeRange.All
     val params = buildList {
         add("gk_version" to "gz-gaokao")
-        add(
-            "t" to when (searchTab) {
-                SearchTab.People -> "people"
-                SearchTab.Topic -> "topic"
-                SearchTab.General -> "general"
-            },
-        )
+        add("t" to searchTab.parameter)
         add("q" to query)
         add("correction" to "1")
         add("offset" to "0")
         add("limit" to "20")
-        add("search_source" to if (hasActiveFilter) "Filter" else "Normal")
+        add("search_source" to if (filters == SearchFilters()) "Normal" else "Filter")
         add("show_all_topics" to if (searchTab == SearchTab.Topic) "1" else "0")
         if (restrictedMemberHashId.isNotBlank()) {
             add("filter_fields" to "")
@@ -332,16 +275,16 @@ fun zhihuSearchUrl(
             add("restricted_field" to "member_hash_id")
             add("restricted_value" to restrictedMemberHashId)
         }
-        if (contentType.value.isNotEmpty()) {
-            add("vertical" to contentType.value)
+        filters.contentType.parameter.takeIf(String::isNotEmpty)?.let {
+            add("vertical" to it)
             add("vertical_info" to SEARCH_VERTICAL_INFO)
         }
-        if (sortOption.value.isNotEmpty()) {
-            add("sort" to sortOption.value)
-        }
-        if (timeRange.value.isNotEmpty()) {
-            add("time_interval" to timeRange.value)
-        }
+        filters.sort.parameter
+            .takeIf(String::isNotEmpty)
+            ?.let { add("sort" to it) }
+        filters.timeRange.parameter
+            .takeIf(String::isNotEmpty)
+            ?.let { add("time_interval" to it) }
     }.joinToString("&") { (key, value) ->
         "$key=${value.encodeURLParameter(spaceToPlus = true)}"
     }

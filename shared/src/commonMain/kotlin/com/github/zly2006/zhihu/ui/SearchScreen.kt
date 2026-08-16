@@ -105,6 +105,7 @@ import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.util.parseEmphasizedHtmlTextWithTheme
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.SearchContentType
+import com.github.zly2006.zhihu.viewmodel.feed.SearchEntity
 import com.github.zly2006.zhihu.viewmodel.feed.SearchSortOption
 import com.github.zly2006.zhihu.viewmodel.feed.SearchTab
 import com.github.zly2006.zhihu.viewmodel.feed.SearchTimeRange
@@ -162,13 +163,13 @@ fun SearchScreen(
         append("search:")
         append(search.restrictedMemberHashId)
         append(':')
-        append(viewModel.sortOption.name)
+        append(viewModel.filters.sort.name)
         append(':')
-        append(viewModel.contentType.name)
+        append(viewModel.filters.contentType.name)
         append(':')
         append(viewModel.searchTab.name)
         append(':')
-        append(viewModel.timeRange.name)
+        append(viewModel.filters.timeRange.name)
         append(':')
         append(search.query)
     }
@@ -423,7 +424,7 @@ fun SearchScreen(
                     SearchTab.entries.forEach { tab ->
                         Tab(
                             selected = viewModel.searchTab == tab,
-                            onClick = { viewModel.updateSearchTab(paginationEnvironment, tab) },
+                            onClick = { viewModel.selectTab(paginationEnvironment, tab) },
                             text = { Text(tab.label) },
                             modifier = Modifier.testTag("search_tab_${tab.name}"),
                         )
@@ -592,7 +593,7 @@ fun SearchScreen(
                         )
                     }
                 }
-            } else if (viewModel.searchTab == SearchTab.People || viewModel.searchTab == SearchTab.Topic) {
+            } else if (viewModel.searchTab != SearchTab.General) {
                 val resultListState = if (viewModel.searchTab == SearchTab.Topic) topicListState else peopleListState
                 val shouldLoadMoreResults by remember(resultListState) {
                     derivedStateOf {
@@ -611,103 +612,94 @@ fun SearchScreen(
                     modifier = Modifier.fillMaxSize(),
                     state = resultListState,
                 ) {
-                    if (viewModel.searchTab == SearchTab.Topic) {
-                        items(viewModel.topicResults, key = { it.topic.id }) { result ->
-                            val topic = result.topic
-                            Row(
-                                modifier =
-                                    Modifier
+                    items(viewModel.entities, key = SearchEntity::id) { result ->
+                        when (result) {
+                            is SearchEntity.Topic -> {
+                                val topic = result.topic
+                                Row(
+                                    modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable { navigator.onNavigate(Topic(topic.id, topic.name)) }
                                         .padding(horizontal = 16.dp, vertical = 12.dp)
                                         .testTag("search_topic_result_${topic.id}"),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                AsyncImage(
-                                    model = topic.avatarUrl,
-                                    contentDescription = "${topic.name}的话题头像",
-                                    modifier = Modifier.size(48.dp).clip(CircleShape),
-                                )
-                                Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                                    Text(topic.name, style = MaterialTheme.typography.titleMedium)
-                                    result.excerpt.takeIf(String::isNotBlank)?.let {
-                                        Text(
-                                            it,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines = 2,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                    }
-                                    Text(
-                                        "${formatTopicCount(result.visitCount.toString())} 浏览 · ${formatTopicCount(result.discussCount.toString())} 讨论",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                                TextButton(
-                                    modifier = Modifier.testTag("search_topic_follow_${topic.id}"),
-                                    enabled = topic.id !in viewModel.changingTopicIds,
-                                    onClick = {
-                                        coroutineScope.launch {
-                                            viewModel
-                                                .setTopicFollowing(paginationEnvironment, topic.id, !result.isFollowing)
-                                                .onFailure { userMessages.showShortMessage("关注操作失败：${it.message}") }
-                                        }
-                                    },
-                                ) { Text(if (result.isFollowing) "已关注" else "关注") }
-                            }
-                        }
-                    } else {
-                        items(viewModel.peopleResults, key = { it.people.id }) { result ->
-                            val people = result.people
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        navigator.onNavigate(
-                                            Person(
-                                                id = people.id,
-                                                urlToken = people.urlToken.orEmpty(),
-                                                name = people.name,
-                                            ),
-                                        )
-                                    }.padding(horizontal = 16.dp, vertical = 12.dp)
-                                    .testTag("search_people_result_${people.id}"),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                AsyncImage(
-                                    model = people.avatarUrl,
-                                    contentDescription = "${people.name}的头像",
-                                    modifier = Modifier
-                                        .size(48.dp)
-                                        .clip(CircleShape),
-                                )
-                                Column(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .padding(start = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Text(
-                                        text = parseEmphasizedHtmlTextWithTheme(result.highlightedName),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
+                                    AsyncImage(
+                                        model = topic.avatarUrl,
+                                        contentDescription = "${topic.name}的话题头像",
+                                        modifier = Modifier.size(48.dp).clip(CircleShape),
                                     )
-                                    if (people.headline.isNotEmpty()) {
+                                    Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                                        Text(topic.name, style = MaterialTheme.typography.titleMedium)
+                                        result.excerpt.takeIf(String::isNotBlank)?.let {
+                                            Text(
+                                                it,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis,
+                                            )
+                                        }
                                         Text(
-                                            text = people.headline,
-                                            style = MaterialTheme.typography.bodyMedium,
+                                            "${formatTopicCount(result.visitCount.toString())} 浏览 · ${formatTopicCount(result.discussCount.toString())} 讨论",
+                                            style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines = 2,
-                                            overflow = TextOverflow.Ellipsis,
                                         )
                                     }
-                                    Text(
-                                        text = "${people.followerCount} 粉丝 · ${people.answerCount} 回答",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    TextButton(
+                                        modifier = Modifier.testTag("search_topic_follow_${topic.id}"),
+                                        enabled = topic.id !in viewModel.changingTopicIds,
+                                        onClick = {
+                                            coroutineScope.launch {
+                                                viewModel
+                                                    .setTopicFollowing(paginationEnvironment, topic.id, !result.isFollowing)
+                                                    .onFailure { userMessages.showShortMessage("关注操作失败：${it.message}") }
+                                            }
+                                        },
+                                    ) { Text(if (result.isFollowing) "已关注" else "关注") }
+                                }
+                            }
+                            is SearchEntity.Person -> {
+                                val person = result.person
+                                val plainName = person.name.replace("<em>", "").replace("</em>", "")
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            navigator.onNavigate(
+                                                Person(person.id, person.urlToken.orEmpty(), plainName),
+                                            )
+                                        }.padding(horizontal = 16.dp, vertical = 12.dp)
+                                        .testTag("search_people_result_${person.id}"),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    AsyncImage(
+                                        model = person.avatarUrl,
+                                        contentDescription = "${plainName}的头像",
+                                        modifier = Modifier.size(48.dp).clip(CircleShape),
                                     )
+                                    Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                                        Text(
+                                            text = parseEmphasizedHtmlTextWithTheme(person.name),
+                                            style = MaterialTheme.typography.titleMedium,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                        person.headline.takeIf(String::isNotEmpty)?.let {
+                                            Text(
+                                                text = it,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis,
+                                            )
+                                        }
+                                        Text(
+                                            text = "${person.followerCount} 粉丝 · ${person.answerCount} 回答",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -814,11 +806,14 @@ private fun SearchFilterMenu(
         SearchSortOption.entries.forEach { option ->
             SearchFilterMenuItem(
                 text = option.label,
-                selected = viewModel.sortOption == option,
+                selected = viewModel.filters.sort == option,
                 testTag = "search_filter_sort_${option.name}",
                 onClick = {
                     onDismissRequest()
-                    viewModel.updateSortOption(paginationEnvironment, option)
+                    viewModel.updateFilters(
+                        paginationEnvironment,
+                        viewModel.filters.copy(sort = option),
+                    )
                 },
             )
         }
@@ -827,11 +822,14 @@ private fun SearchFilterMenu(
         SearchContentType.entries.forEach { type ->
             SearchFilterMenuItem(
                 text = type.label,
-                selected = viewModel.contentType == type,
+                selected = viewModel.filters.contentType == type,
                 testTag = "search_filter_type_${type.name}",
                 onClick = {
                     onDismissRequest()
-                    viewModel.updateContentType(paginationEnvironment, type)
+                    viewModel.updateFilters(
+                        paginationEnvironment,
+                        viewModel.filters.copy(contentType = type),
+                    )
                 },
             )
         }
@@ -840,11 +838,14 @@ private fun SearchFilterMenu(
         SearchTimeRange.entries.forEach { range ->
             SearchFilterMenuItem(
                 text = range.label,
-                selected = viewModel.timeRange == range,
+                selected = viewModel.filters.timeRange == range,
                 testTag = "search_filter_time_${range.name}",
                 onClick = {
                     onDismissRequest()
-                    viewModel.updateTimeRange(paginationEnvironment, range)
+                    viewModel.updateFilters(
+                        paginationEnvironment,
+                        viewModel.filters.copy(timeRange = range),
+                    )
                 },
             )
         }
