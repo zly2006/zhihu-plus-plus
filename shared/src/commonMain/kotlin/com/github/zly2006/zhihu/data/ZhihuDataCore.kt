@@ -31,6 +31,7 @@ data class FeedDisplayItem(
     val authorName: String? = null,
     val authorBadgeV2: DataHolder.BadgeV2? = null,
     val isFiltered: Boolean = false,
+    val isQualityFiltered: Boolean = false,
     val content: String? = null,
     var raw: DataHolder.Content? = null,
 ) {
@@ -111,6 +112,7 @@ private fun Feed.toTargetDisplayItem(
             details = target!!.detailsText,
             feed = this,
             isFiltered = true,
+            isQualityFiltered = true,
         )
     }
 

@@ -104,7 +104,7 @@ URL 解析集中在 `resolveContent()`。支持知乎问题、回答、文章、
 | --- | --- | --- | --- |
 | `recommendationMode` | 推荐算法 | Web、Android、本地、混合推荐 | 枚举在 `RecommendationMode.kt` |
 | `loginForRecommendation` | 推荐内容时登录 | 获取推荐时是否带登录凭证 | 影响服务端推荐结果 |
-| `enableQualityFilter` | 质量过滤规则 | 按赞同数、关注数等指标过滤 | 查 content filter settings/runtime |
+| `qualityFilterMode` | 质量屏蔽 | 不屏蔽、显示屏蔽规则或隐藏低质量内容 | 默认 `RULES`，旧布尔设置不迁移 |
 | `enableContentFilter` | 智能内容过滤 | 过滤重复出现但未点击内容 | 关闭时相关子统计/开关应弱化 |
 | `filterFollowedUserContent` | 过滤已关注用户内容 | 是否过滤关注用户内容 | 仅智能过滤开启时可操作 |
 | `enableKeywordBlocking` | 关键词屏蔽 | 命中关键词时过滤 | 管理入口在 Blocklist |
