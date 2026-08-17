@@ -84,6 +84,8 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.markdown.TiqianBrandTitle
+import com.github.zly2006.zhihu.markdown.isTiqianMarkdownRendererAvailable
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Daily
 import com.github.zly2006.zhihu.navigation.Follow
@@ -115,6 +117,8 @@ import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 
 const val DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY = "duo3_card_large_title"
+const val DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY = "duo3_tiqian_markdown"
+const val DUO3_TIQIAN_MATH_FONT_PREFERENCE_KEY = "duo3_tiqian_math_font"
 const val PREF_FONT_SIZE = "contentFontSize"
 const val PREF_LINE_HEIGHT = "contentLineHeight"
 const val PREF_BLOCK_SPACING = "contentBlockSpacing"
@@ -125,6 +129,7 @@ const val APPEARANCE_SETTINGS_START_DESTINATION_TAG = "appearanceSettings.startD
 const val APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG = "appearanceSettings.answerDoubleTap"
 const val APPEARANCE_SETTINGS_ANSWER_SWITCH_SENSITIVITY_TAG = "appearanceSettings.answerSwitchSensitivity"
 const val APPEARANCE_SETTINGS_USE_WEBVIEW_TAG = "appearanceSettings.useWebView"
+const val APPEARANCE_SETTINGS_TIQIAN_MARKDOWN_TAG = "appearanceSettings.tiqianMarkdown"
 const val APPEARANCE_SETTINGS_WEBVIEW_FONT_TAG = "appearanceSettings.webViewFont"
 const val APPEARANCE_SETTINGS_WEBVIEW_OPTIONS_TAG = "appearanceSettings.webViewOptions"
 const val APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY = "appearanceSettings.bottomBarSection"
@@ -1379,8 +1384,18 @@ fun AppearanceSettingsScreen(
             }
             val duo3ArticleBar = remember { mutableStateOf(settings.getBoolean("duo3_article_bar", false)) }
             val duo3ArticleActions = remember { mutableStateOf(settings.getBoolean("duo3_article_actions", false)) }
+            val duo3TiqianMarkdown = remember {
+                mutableStateOf(settings.getBoolean(DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY, false))
+            }
+            val duo3TiqianMathFont = remember {
+                mutableStateOf(settings.getString(DUO3_TIQIAN_MATH_FONT_PREFERENCE_KEY, "lete"))
+            }
 
             fun enableAllSubs() {
+                if (isTiqianMarkdownRendererAvailable) {
+                    settings.putBoolean(DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY, true)
+                    duo3TiqianMarkdown.value = true
+                }
                 settings.putBoolean("duo3_home_account", true)
                 settings.putBoolean("duo3_card_appearance", true)
                 settings.putBoolean("duo3_card_layout", true)
@@ -1405,6 +1420,10 @@ fun AppearanceSettingsScreen(
             }
 
             fun disableAllSubs() {
+                if (isTiqianMarkdownRendererAvailable) {
+                    settings.putBoolean(DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY, false)
+                    duo3TiqianMarkdown.value = false
+                }
                 settings.putBoolean("duo3_home_account", false)
                 settings.putBoolean("duo3_card_appearance", false)
                 settings.putBoolean("duo3_card_layout", false)
@@ -1459,6 +1478,34 @@ fun AppearanceSettingsScreen(
                     )
                 },
             ) {
+                if (isTiqianMarkdownRendererAvailable) {
+                    SettingItemWithSwitch(
+                        modifier = Modifier.testTag(APPEARANCE_SETTINGS_TIQIAN_MARKDOWN_TAG),
+                        title = { TiqianBrandTitle(prefix = "正文：使用", suffix = " Markdown 渲染器") },
+                        description = { Text("使用「提椠」段落书写器排版正文：段落两端对齐，改进中西混排间距、代码、表格、公式与脚注等样式，接近纸质书的排版效果。作用于文章、想法与问题详情。实验功能。") },
+                        checked = duo3TiqianMarkdown.value,
+                        onCheckedChange = {
+                            duo3TiqianMarkdown.value = it
+                            settings.putBoolean(DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY, it)
+                        },
+                        settingKey = DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY,
+                        highlightedKey = settingKey,
+                        bringIntoViewRequester = requesterFor(DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY),
+                    )
+                    AnimatedVisibility(visible = duo3TiqianMarkdown.value) {
+                        SettingItemWithSwitch(
+                            title = { Text("正文：使用非衬线数学字体") },
+                            description = { Text("默认公式使用非衬线的 Lete Sans Math；关闭后改用衬线的 STIX Two Math。") },
+                            checked = duo3TiqianMathFont.value == "lete",
+                            onCheckedChange = {
+                                val fontId = if (it) "lete" else "stix"
+                                duo3TiqianMathFont.value = fontId
+                                settings.putString(DUO3_TIQIAN_MATH_FONT_PREFERENCE_KEY, fontId)
+                            },
+                        )
+                    }
+                }
+
                 SettingItemWithSwitch(
                     title = { Text("主页：账号入口迁移至顶部头像") },
                     description = { Text("搜索栏样式变更；点击头像弹出账号与设置；「历史」入口可挪入账号设置页。") },

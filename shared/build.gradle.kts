@@ -52,15 +52,18 @@ tasks
     }
 
 mapOf(
-    "runKtlintFormatOverAndroidMainSourceSet" to "src/androidMain/kotlin",
-    "runKtlintFormatOverJvmMainSourceSet" to "src/jvmMain/kotlin",
-    "runKtlintFormatOverCommonMainSourceSet" to "src/commonMain/kotlin",
-    "runKtlintFormatOverJvmTestSourceSet" to "src/jvmTest/kotlin",
-).forEach { (taskName, sourcePath) ->
+    "runKtlintFormatOverAndroidMainSourceSet" to
+        listOf("src/androidMain/kotlin", "src/tiqianMarkdownMain/kotlin"),
+    "runKtlintFormatOverJvmMainSourceSet" to listOf("src/jvmMain/kotlin"),
+    "runKtlintFormatOverCommonMainSourceSet" to listOf("src/commonMain/kotlin"),
+    "runKtlintFormatOverJvmTestSourceSet" to listOf("src/jvmTest/kotlin"),
+).forEach { (taskName, sourcePaths) ->
     tasks.withType<KtLintFormatTask>().matching { it.name == taskName }.configureEach {
         setSource(
-            fileTree(sourcePath) {
-                include("**/*.kt")
+            sourcePaths.map { sourcePath ->
+                fileTree(sourcePath) {
+                    include("**/*.kt")
+                }
             },
         )
     }
@@ -132,22 +135,33 @@ kotlin {
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
             implementation("io.ktor:ktor-client-mock:3.5.0")
         }
-        androidMain.dependencies {
-            implementation("androidx.activity:activity-compose:1.13.0")
-            implementation("androidx.browser:browser:1.10.0")
-            implementation("androidx.core:core-ktx:1.19.0")
-            implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.11.0")
-            implementation("androidx.media:media:1.7.1")
-            implementation("androidx.webkit:webkit:1.16.0")
-            implementation("com.journeyapps:zxing-android-embedded:4.3.0")
-            implementation("com.google.zxing:core:3.5.4")
-            implementation("io.coil-kt.coil3:coil-gif:3.5.0")
-            implementation("io.coil-kt.coil3:coil-network-ktor3-android:3.5.0")
-            implementation("io.ktor:ktor-client-android:3.5.0")
-            implementation("me.saket.telephoto:zoomable-image-coil3:0.19.0")
-            implementation("org.jsoup:jsoup:1.22.2")
+        androidMain {
+            kotlin.srcDir("src/tiqianMarkdownMain/kotlin")
+            dependencies {
+                implementation("org.tiqian:markdown-compose:0.1.0-alpha03")
+                implementation("org.tiqian:math-font-stix:0.1.0-alpha03")
+                implementation("androidx.activity:activity-compose:1.13.0")
+                implementation("androidx.browser:browser:1.10.0")
+                implementation("androidx.core:core-ktx:1.19.0")
+                implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.11.0")
+                implementation("androidx.media:media:1.7.1")
+                implementation("androidx.webkit:webkit:1.16.0")
+                implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+                implementation("com.google.zxing:core:3.5.4")
+                implementation("io.coil-kt.coil3:coil-gif:3.5.0")
+                implementation("io.coil-kt.coil3:coil-network-ktor3-android:3.5.0")
+                implementation("io.ktor:ktor-client-android:3.5.0")
+                implementation("me.saket.telephoto:zoomable-image-coil3:0.19.0")
+                implementation("org.jsoup:jsoup:1.22.2")
+            }
+        }
+        jvmMain {
+            kotlin.srcDir("src/tiqianMarkdownMain/kotlin")
         }
         jvmMain.dependencies {
+            implementation("org.tiqian:markdown-compose:0.1.0-alpha03")
+            implementation("org.tiqian:math-font-stix:0.1.0-alpha03")
+            implementation("io.coil-kt.coil3:coil-network-ktor3:3.5.0")
             implementation("androidx.sqlite:sqlite-bundled:2.6.2")
             implementation(compose.desktop.currentOs)
             implementation("com.google.zxing:core:3.5.4")
