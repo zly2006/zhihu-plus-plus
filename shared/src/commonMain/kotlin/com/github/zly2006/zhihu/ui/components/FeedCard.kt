@@ -84,6 +84,7 @@ import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
 import com.github.zly2006.zhihu.util.parseEmphasizedHtmlTextWithTheme
+import com.github.zly2006.zhihu.viewmodel.QUALITY_FILTER_MODE_PREFERENCE_KEY
 
 /**
  * 信息流卡片的 Material 3 实现。
@@ -258,12 +259,12 @@ private fun FeedCardMenuBox(
                     navigator.onNavigate(Account.AppearanceSettings())
                 },
             )
-            if (item.isFiltered) {
+            if (item.isQualityFiltered) {
                 DropdownMenuItem(
-                    text = { Text("不再屏蔽低赞内容") },
+                    text = { Text("调整质量屏蔽") },
                     onClick = {
                         onShowMenuChange(false)
-                        navigator.onNavigate(Account.RecommendSettings("enableQualityFilter"))
+                        navigator.onNavigate(Account.RecommendSettings(QUALITY_FILTER_MODE_PREFERENCE_KEY))
                     },
                 )
             }

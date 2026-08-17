@@ -177,7 +177,7 @@ class DesktopPaginationEnvironment(
     }
 
     override fun feedDisplaySettings(): FeedDisplaySettings = FeedDisplaySettings(
-        enableQualityFilter = false,
+        qualityFilterMode = QualityFilterMode.OFF,
         reverseBlock = settingsStore.toFeedFilterSettings().reverseBlock,
     )
 
