@@ -138,8 +138,8 @@ kotlin {
         androidMain {
             kotlin.srcDir("src/tiqianMarkdownMain/kotlin")
             dependencies {
-                implementation("org.tiqian:markdown-compose:0.1.0-alpha03")
-                implementation("org.tiqian:math-font-stix:0.1.0-alpha03")
+                implementation("org.tiqian:markdown-compose:0.1.0-alpha04")
+                implementation("org.tiqian:math-font-stix:0.1.0-alpha04")
                 implementation("androidx.activity:activity-compose:1.13.0")
                 implementation("androidx.browser:browser:1.10.0")
                 implementation("androidx.core:core-ktx:1.19.0")
@@ -159,8 +159,8 @@ kotlin {
             kotlin.srcDir("src/tiqianMarkdownMain/kotlin")
         }
         jvmMain.dependencies {
-            implementation("org.tiqian:markdown-compose:0.1.0-alpha03")
-            implementation("org.tiqian:math-font-stix:0.1.0-alpha03")
+            implementation("org.tiqian:markdown-compose:0.1.0-alpha04")
+            implementation("org.tiqian:math-font-stix:0.1.0-alpha04")
             implementation("io.coil-kt.coil3:coil-network-ktor3:3.5.0")
             implementation("androidx.sqlite:sqlite-bundled:2.6.2")
             implementation(compose.desktop.currentOs)
