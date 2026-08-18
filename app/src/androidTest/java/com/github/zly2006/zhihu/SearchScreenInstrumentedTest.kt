@@ -25,13 +25,16 @@ import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.test.InstrumentedTestEnvironment
@@ -203,6 +206,32 @@ class SearchScreenInstrumentedTest {
     }
 
     @Test
+    fun peopleAndGeneralResultsRenderReturnedAuthorBadges() {
+        ZhihuMockApi.mockJsonPrefix(
+            method = HttpMethod.Get,
+            urlPrefix = "https://www.zhihu.com/api/v4/search_v3",
+            body = readTestAsset("search-badge-general.json"),
+        )
+        composeRule.setScreenContent { SearchScreen(search = Search(query = "徽章")) }
+
+        composeRule.onNodeWithTag("search_people_result_anon-general-people-001").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("刑法等 2 个话题下的优秀答主").assertIsDisplayed()
+        composeRule.onNodeWithTag("search_general_results").performScrollToIndex(2)
+        composeRule
+            .onNodeWithTag("search_general_content_article:2070450975589110182")
+            .assertIsDisplayed()
+
+        ZhihuMockApi.mockJsonPrefix(
+            method = HttpMethod.Get,
+            urlPrefix = "https://www.zhihu.com/api/v4/search_v3",
+            body = readTestAsset("search-badge-people.json"),
+        )
+        composeRule.onNodeWithTag("search_tab_People").performClick()
+
+        composeRule.onNodeWithContentDescription("已认证机构号").assertIsDisplayed()
+    }
+
+    @Test
     fun searchHistoryRendersRecordsSearchesAndSupportsMenuActions() {
         // This disables hot-search so the history surface can be tested without network requests.
         // Expected behavior:
@@ -336,4 +365,12 @@ class SearchScreenInstrumentedTest {
         )
         assertEquals(0, recordingNavigator.backCount)
     }
+
+    private fun readTestAsset(fileName: String): String =
+        InstrumentationRegistry
+            .getInstrumentation()
+            .context.assets
+            .open(fileName)
+            .bufferedReader()
+            .use { it.readText() }
 }

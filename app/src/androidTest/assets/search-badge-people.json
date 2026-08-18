@@ -1,0 +1,124 @@
+{
+  "paging": {
+    "is_end": false,
+    "next": "https://api.zhihu.com/search_v3?advert_count=0&correction=1&gk_version=gz-gaokao&include=data%5B%2A%5D.highlight%2Cobject%2Ctype&limit=20&offset=20&q=%E7%9F%A5%E4%B9%8E&search_hash_id=783ec8ea00f3133dc2344a5d33a9c40b&search_source=Normal&show_all_topics=0&t=people&vertical_info=0%2C0%2C0%2C0%2C0%2C0%2C0%2C0%2C0%2C0%2C0%2C0"
+  },
+  "data": [
+    {
+      "type": "search_result",
+      "highlight": {
+        "description": "",
+        "title": "<em>匿名</em>机构甲"
+      },
+      "object": {
+        "id": "anon-people-001",
+        "url_token": "anon-people-001",
+        "honor_label": "",
+        "type": "people",
+        "url": "https://www.zhihu.com/people/anon-people-001",
+        "name": "<em>匿名</em>机构甲",
+        "user_type": "organization",
+        "headline": "匿名机构简介",
+        "gender": -1,
+        "avatar_url": "https://pic.example/anon-people-001.png",
+        "badge": [
+          {
+            "type": "identity",
+            "description": "已认证账号",
+            "topics": []
+          },
+          {
+            "type": "identity",
+            "description": "已认证的机构",
+            "topics": []
+          }
+        ],
+        "badge_v2": {
+          "title": "已认证机构号",
+          "merged_badges": [
+            {
+              "type": "identity",
+              "detail_type": "identity_org",
+              "title": "认证",
+              "description": "已认证机构号",
+              "url": "https://www.zhihu.com/term/institution-settle",
+              "sources": [],
+              "icon": "",
+              "night_icon": ""
+            }
+          ],
+          "detail_badges": [
+            {
+              "type": "identity",
+              "detail_type": "identity_org",
+              "title": "已认证机构号",
+              "description": "已认证机构号",
+              "url": "https://www.zhihu.com/term/institution-settle",
+              "sources": [],
+              "icon": "https://picx.zhimg.com/v2-2ddc5cc683982648f6f123616fb4ec09_l.png?source=32738c0c",
+              "night_icon": "https://picx.zhimg.com/v2-2ddc5cc683982648f6f123616fb4ec09_l.png?source=32738c0c"
+            }
+          ],
+          "icon": "https://pic1.zhimg.com/v2-2ddc5cc683982648f6f123616fb4ec09_l.png?source=32738c0c",
+          "night_icon": "https://picx.zhimg.com/v2-2ddc5cc683982648f6f123616fb4ec09_l.png?source=32738c0c"
+        },
+        "old_badges": [
+          {
+            "type": "identity",
+            "description": "已认证机构号"
+          }
+        ],
+        "badge_v2_string": "{\"title\":\"已认证机构号\",\"merged_badges\":[{\"type\":\"identity\",\"detail_type\":\"identity_org\",\"title\":\"认证\",\"description\":\"已认证机构号\",\"url\":\"https://www.zhihu.com/term/institution-settle\",\"sources\":[],\"icon\":\"\",\"night_icon\":\"\",\"badge_status\":\"passed\"}],\"detail_badges\":[{\"type\":\"identity\",\"detail_type\":\"identity_org\",\"title\":\"已认证机构号\",\"description\":\"已认证机构号\",\"url\":\"https://www.zhihu.com/term/institution-settle\",\"sources\":[],\"icon\":\"https://picx.zhimg.com/v2-2ddc5cc683982648f6f123616fb4ec09_l.png?source=32738c0c\",\"night_icon\":\"https://picx.zhimg.com/v2-2ddc5cc683982648f6f123616fb4ec09_l.png?source=32738c0c\",\"badge_status\":\"passed\"}],\"icon\":\"https://pic1.zhimg.com/v2-2ddc5cc683982648f6f123616fb4ec09_l.png?source=32738c0c\",\"night_icon\":\"https://picx.zhimg.com/v2-2ddc5cc683982648f6f123616fb4ec09_l.png?source=32738c0c\"}",
+        "is_following": false,
+        "is_followed": false,
+        "is_self": false,
+        "follower_count": 197287,
+        "voteup_count": 45669,
+        "answer_count": 3,
+        "articles_count": 7,
+        "creation_count": 341,
+        "last_creation_time": 1737620532,
+        "vip_info": {
+          "is_vip": false,
+          "vip_icon": {
+            "url": "",
+            "night_mode_url": ""
+          }
+        },
+        "attached_info_bytes": "ANONYMIZED"
+      },
+      "hit_labels": null,
+      "index": 13,
+      "id": 10000001
+    }
+  ],
+  "hit_labels": null,
+  "related_search_result": [],
+  "search_action_info": {
+    "attached_info_bytes": "ANONYMIZED",
+    "lc_idx": 20,
+    "search_hash_id": "anon-search-people",
+    "isfeed": false
+  },
+  "is_brand_word": false,
+  "pendant": null,
+  "sensitive_level": -1,
+  "warning": "",
+  "filter_items": null,
+  "ab_params": "sb_sku_ui=1;dm_hotvideo=0;d_new_search_h2=1;se_koc_list_box=1;dm_preset_opt=1;dm_ai_prompt=0;dm_rescore_v=2;sb_novel_member=1;sb_sku_time=1;dm_ai_class=0;dm_correct=1;dm_AI_hot_recall=0;dm_mark=0;dm_content_quota=3;sb_vip_tag=1;sb_caowei_4in10=1;dm_ai_search_kl=1;sb_slot_time=2;dm_DupFilter=1;dm_ai_corner=0;dm_pre_docs=2;sb_slot_domain=2;sb_zhiad=1;sb_storytag=1;sb_sku_rel=1;sb_vip_xunzhi=1;dm_ai_zhiplus=0;dm_kocrecommend=0;sb_story_ca=0;dm_question_limit=2;dm_center_feature=1;dm_pu_user_card=1;dm_ai_search_safe=1;dm_evaluate=0;bt_holdback_2025=0;dm_l2_snp=0;dm_pin_card=0;sb_domain_2025=0;bt_member_verify=1;dm_l3_multi3=0;dm_search_pregen=1;dm_ai_card_cache=0;dm_test=1;sb_zhiedu=1;dm_integrate=0;bt_vertical_mem=1;d_sr_hold_2026=0;dm_v_member_zag=2;adflow=0;sb_xg_search=1;dm_pu_sug=0;dm_ai_medical=1;dm_realtime=0;dm_ai_rerank=0;sb_ecpmctcvr=1;sb_newreb=1;dm_preset_migrate=2;dm_query_rewrite=0;sb_eduzhi=1;dm_fine_rel=2;dm_l2_ab=1;sb_sku_kzh=1;sb_cardfilter=1;dm_llm_query=0;dm_ai_hot_more=0;dm_hot_pin=0;sb_new_guess=1",
+  "item_in_view": [
+    {
+      "type": "user_survey",
+      "index": 5,
+      "token": "f789e8e4867b476c8406c1420e4e05f4"
+    },
+    {
+      "type": "ask_question",
+      "index": 9
+    }
+  ],
+  "domain_info": {
+    "first_category": ""
+  },
+  "is_koc_words": false
+}
