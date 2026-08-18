@@ -19,6 +19,13 @@ jobs:
       - name: Set repository name as env variable
         run: echo "repository_name=$(echo '${{ github.repository }}' | awk -F '/' '{print $2}')" >> $GITHUB_ENV
 
+      # 先装 21 再装 17：JAVA_HOME 最终指向 17（项目工具链），21 留给 :shared:jvmTest 用。
+      # latex-* 依赖发布的是 class file 65 的字节码，17 的运行时加载不了。
+      - name: Set Up JDK 21 for jvmTest
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '21'
       - name: Set Up JDK
         uses: actions/setup-java@v4
         with:
@@ -57,8 +64,14 @@ jobs:
       # Run Tests Build
       - name: Run KtLint
         run: ./gradlew ktlintCheck
+      # `test` 是 JVM 插件的生命周期任务，不含 KMP 的 jvmTest，shared 的单元测试一直没在 CI 跑过。
+      # 插桩测试源码同理没有任何编译覆盖，这里只编译不执行（执行需要模拟器）。
       - name: Run gradle tests
-        run: ./gradlew test
+        run: |
+          ./gradlew test
+          ./gradlew :shared:jvmTest -Porg.gradle.java.installations.fromEnv=JAVA_HOME_21_X64
+      - name: Compile instrumented test sources
+        run: ./gradlew compileLiteDebugAndroidTestKotlin compileFullDebugAndroidTestKotlin
       - name: Build App
         # Build .apk
         run: |

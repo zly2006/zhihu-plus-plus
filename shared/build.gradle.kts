@@ -32,7 +32,7 @@ ktlint {
         exclude("build/generated/**")
         exclude("**/build/generated/ksp/**")
         exclude("**/ksp/**")
-        exclude { it.file.absolutePath.contains("/build/generated/") }
+        exclude { it.file.invariantSeparatorsPath.contains("/build/generated/") }
     }
 }
 
@@ -41,7 +41,7 @@ tasks.withType<KtLintFormatTask>().configureEach {
     exclude("build/generated/**")
     exclude("**/build/generated/ksp/**")
     exclude("**/ksp/**")
-    exclude { it.file.absolutePath.contains("/build/generated/") }
+    exclude { it.file.invariantSeparatorsPath.contains("/build/generated/") }
 }
 
 tasks
@@ -87,6 +87,18 @@ kotlin {
         compilerOptions {
             jvmTarget = JvmTarget.JVM_17
         }
+    }
+
+    // 编译目标保持 JVM 17（Android 也用这份产物），但 jvmTest 必须跑在 21 上：
+    // io.github.zly2006:latex-* 发布的是 class file 65（Java 21）的字节码，
+    // 17 的运行时加载它会 UnsupportedClassVersionError，公式相关的 markdown 测试全部起不来。
+    // Android 侧不受影响，D8/R8 会脱糖。
+    val jvmTestLauncher =
+        javaToolchains.launcherFor {
+            languageVersion.set(JavaLanguageVersion.of(21))
+        }
+    tasks.named<Test>("jvmTest") {
+        javaLauncher.set(jvmTestLauncher)
     }
 
     listOf(

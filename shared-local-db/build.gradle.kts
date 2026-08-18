@@ -1,6 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jlleitschuh.gradle.ktlint.tasks.GenerateReportsTask
-import org.jlleitschuh.gradle.ktlint.tasks.KtLintFormatTask
+import org.jlleitschuh.gradle.ktlint.tasks.BaseKtLintCheckTask
 
 plugins {
     kotlin("multiplatform")
@@ -20,38 +19,16 @@ ktlint {
         exclude("build/generated/**")
         exclude("**/build/generated/ksp/**")
         exclude("**/ksp/**")
-        exclude { it.file.absolutePath.contains("/build/generated/") }
+        exclude { it.file.invariantSeparatorsPath.contains("/build/generated/") }
     }
 }
 
-// ktlint 的 filter/exclude 拦不住 KSP 产物：Room 生成的 *_Impl.kt 是通过 source set 加进来的，
-// 而上面基于 "/build/generated/" 的路径判断在 Windows 上永远不成立（absolutePath 用反斜杠）。
-// 和 shared 模块一样，直接把格式化任务的源限定成手写代码，并关掉对应的报告任务。
-tasks.withType<KtLintFormatTask>().configureEach {
-    exclude("**/generated/**")
-    exclude("**/ksp/**")
-}
-
-tasks
-    .withType<GenerateReportsTask>()
-    .matching { it.name in setOf("ktlintAndroidMainSourceSetFormat", "ktlintJvmMainSourceSetFormat") }
-    .configureEach {
-        enabled = false
-    }
-
-mapOf(
-    "runKtlintFormatOverAndroidMainSourceSet" to "src/androidMain/kotlin",
-    "runKtlintFormatOverJvmMainSourceSet" to "src/jvmMain/kotlin",
-    "runKtlintFormatOverCommonMainSourceSet" to "src/commonMain/kotlin",
-    "runKtlintFormatOverNativeMainSourceSet" to "src/nativeMain/kotlin",
-).forEach { (taskName, sourcePath) ->
-    tasks.withType<KtLintFormatTask>().matching { it.name == taskName }.configureEach {
-        setSource(
-            fileTree(sourcePath) {
-                include("**/*.kt")
-            },
-        )
-    }
+// ktlint 的 filter{} 只作用于插件自己的 PatternFilterable，拦不住通过 source set 加进来的
+// Room KSP 产物（*_Impl.kt），必须在任务级别再排一次。注意用 invariantSeparatorsPath：
+// absolutePath 在 Windows 上是反斜杠，"/build/generated/" 永远匹配不到，
+// 于是同一份配置在 Linux CI 上碰巧通过、在 Windows 上报几千条。
+tasks.withType<BaseKtLintCheckTask>().configureEach {
+    exclude { it.file.invariantSeparatorsPath.contains("/build/generated/") }
 }
 
 ksp {
