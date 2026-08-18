@@ -564,9 +564,17 @@ interface PaginationEnvironment :
     ArticleExportContentEnvironment
 
 data class FeedDisplaySettings(
-    val enableQualityFilter: Boolean = true,
+    val qualityFilterMode: QualityFilterMode = QualityFilterMode.RULES,
     val reverseBlock: Boolean = false,
 )
+
+enum class QualityFilterMode {
+    OFF,
+    RULES,
+    HIDE,
+}
+
+const val QUALITY_FILTER_MODE_PREFERENCE_KEY = "qualityFilterMode"
 
 data class HomeFeedFilterResult(
     val foregroundItems: List<FeedDisplayItem>,

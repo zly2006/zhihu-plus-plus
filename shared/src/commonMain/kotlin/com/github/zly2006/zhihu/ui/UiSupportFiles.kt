@@ -51,6 +51,7 @@ import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.ui.components.ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.DEFAULT_ANSWER_SWITCH_SENSITIVITY
 import com.github.zly2006.zhihu.ui.components.normalizedAnswerSwitchSensitivity
+import com.github.zly2006.zhihu.ui.subscreens.DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.getOrFetchContentDetail
@@ -113,11 +114,12 @@ internal fun JsonObject?.booleanCompat(vararg keys: String): Boolean {
  * 想法正文的 HTML 渲染入口。
  *
  * 根据当前 WebView 设置选择平台 WebView 或 Compose Markdown 渲染。这样想法页、问题详情和文章页可以共享同一条“正文渲染模式”
- * 语义，避免用户打开 WebView 后只有部分内容类型生效。
+ * 语义，避免用户打开 WebView 后只有部分内容类型生效；提椠 Markdown 开关同理，对这些内容类型一并生效。
  */
 @Composable
 fun PinHtmlContent(html: String) {
-    if (rememberSettingsStore().getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false) &&
+    val settings = rememberSettingsStore()
+    if (settings.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false) &&
         supportsZhihuHtmlWebView()
     ) {
         ZhihuHtmlWebViewContent(html)
@@ -128,6 +130,7 @@ fun PinHtmlContent(html: String) {
             modifier = Modifier.questionSelectionWorkaround(),
             selectable = true,
             enableScroll = false,
+            useTiqianRenderer = settings.getBoolean(DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY, false),
         )
     }
 }
@@ -155,6 +158,7 @@ class ArticleScreenSettingsState(
     autoHideSkipAnswerButton: Boolean,
     answerDoubleTapAction: AnswerDoubleTapAction,
     useWebView: Boolean,
+    useTiqianMarkdown: Boolean,
     private val saveAnswerDoubleTapActionPreference: (AnswerDoubleTapAction) -> Unit,
 ) {
     var isTitleAutoHide by mutableStateOf(isTitleAutoHide)
@@ -167,6 +171,7 @@ class ArticleScreenSettingsState(
     var autoHideSkipAnswerButton by mutableStateOf(autoHideSkipAnswerButton)
     var answerDoubleTapAction by mutableStateOf(answerDoubleTapAction)
     var useWebView by mutableStateOf(useWebView)
+    var useTiqianMarkdown by mutableStateOf(useTiqianMarkdown)
 
     fun saveAnswerDoubleTapAction(action: AnswerDoubleTapAction) {
         answerDoubleTapAction = action
@@ -200,6 +205,7 @@ fun rememberArticleScreenSettingsState(): ArticleScreenSettingsState {
             autoHideSkipAnswerButton = settings.getBoolean("autoHideSkipAnswerButton", true),
             answerDoubleTapAction = settings.answerDoubleTapAction(),
             useWebView = settings.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false),
+            useTiqianMarkdown = settings.getBoolean(DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY, false),
             saveAnswerDoubleTapActionPreference = { action ->
                 settings.putString(
                     ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY,
@@ -232,6 +238,7 @@ fun rememberArticleScreenSettingsState(): ArticleScreenSettingsState {
                 "pinAnswerDate" -> state.pinAnswerDate = settings.getBoolean(key, false)
                 "duo3_article_actions" -> state.useDuo3ArticleActions = settings.getBoolean(key, false)
                 ARTICLE_USE_WEBVIEW_PREFERENCE_KEY -> state.useWebView = settings.getBoolean(key, false)
+                DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY -> state.useTiqianMarkdown = settings.getBoolean(key, false)
                 ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY -> {
                     state.answerDoubleTapAction = settings.answerDoubleTapAction()
                 }
@@ -280,7 +287,8 @@ fun QuestionDetailContent(
     questionId: Long,
     html: String,
 ) {
-    if (rememberSettingsStore().getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false) &&
+    val settings = rememberSettingsStore()
+    if (settings.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false) &&
         supportsQuestionDetailWebView()
     ) {
         QuestionDetailWebViewContent(
@@ -293,6 +301,7 @@ fun QuestionDetailContent(
             modifier = Modifier.questionSelectionWorkaround(),
             selectable = true,
             enableScroll = false,
+            useTiqianRenderer = settings.getBoolean(DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY, false),
         )
     }
 }

@@ -74,6 +74,7 @@ import com.github.zly2006.zhihu.ui.components.LocalSegmentCommentHost
 import com.github.zly2006.zhihu.ui.components.SegmentActionSheet
 import com.github.zly2006.zhihu.ui.components.SegmentActionSheetState
 import com.github.zly2006.zhihu.ui.components.SegmentHighlightInteractionHost
+import com.github.zly2006.zhihu.ui.subscreens.DUO3_TIQIAN_MATH_FONT_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.PREF_BLOCK_SPACING
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
@@ -261,16 +262,19 @@ fun RenderMarkdown(
     enableScroll: Boolean = true,
     header: (@Composable () -> Unit)? = null,
     footer: (@Composable () -> Unit)? = null,
+    useTiqianRenderer: Boolean = false,
 ) {
     val document = remember(html) { htmlToMdAst(html) }
     RenderMarkdownDocument(
         document = document,
+        sourceMarkdown = null,
         modifier = modifier,
         scrollState = scrollState,
         selectable = selectable,
         enableScroll = enableScroll,
         header = header,
         footer = footer,
+        useTiqianRenderer = useTiqianRenderer,
     )
 }
 
@@ -283,48 +287,41 @@ fun RenderMarkdownText(
     enableScroll: Boolean = true,
     header: (@Composable () -> Unit)? = null,
     footer: (@Composable () -> Unit)? = null,
+    useTiqianRenderer: Boolean = false,
 ) {
     val document = remember(markdown) { markdownToMdAst(markdown) }
     RenderMarkdownDocument(
         document = document,
+        sourceMarkdown = markdown,
         modifier = modifier,
         scrollState = scrollState,
         selectable = selectable,
         enableScroll = enableScroll,
         header = header,
         footer = footer,
+        useTiqianRenderer = useTiqianRenderer,
     )
 }
 
 @Composable
 private fun RenderMarkdownDocument(
     document: Document,
+    sourceMarkdown: String?,
     modifier: Modifier,
     scrollState: ScrollState,
     selectable: Boolean,
     enableScroll: Boolean,
     header: (@Composable () -> Unit)?,
     footer: (@Composable () -> Unit)?,
+    useTiqianRenderer: Boolean,
 ) {
     val previewImageUrls = remember(document) { document.previewImageUrls() }
     val navigator = LocalNavigator.current
-    val mathFont = rememberMarkdownMathFont()
     val openExternalUrl = rememberExternalUrlOpener()
     val settings = rememberSettingsStore()
     val fontSize = settings.getInt(PREF_FONT_SIZE, 100)
     val lineHeight = settings.getInt(PREF_LINE_HEIGHT, 160)
     val blockSpacing = settings.getInt(PREF_BLOCK_SPACING, 100)
-    val defaultTheme = MarkdownTheme.material3()
-
-    val theme = defaultTheme.copy(
-        bodyStyle = defaultTheme.bodyStyle.copy(
-            fontSize = 16.sp * fontSize / 100,
-            lineHeight = 16.sp * fontSize / 100 * lineHeight / 100,
-        ),
-        blockSpacing = defaultTheme.blockSpacing * (blockSpacing / 100f),
-        mathFontSize = 18f * fontSize / 100,
-        mathFont = mathFont ?: defaultTheme.mathFont,
-    )
     var segmentCommentTarget by remember { mutableStateOf<SegmentCommentHolder?>(null) }
     var segmentActionSheetState by remember { mutableStateOf<SegmentActionSheetState?>(null) }
     CompositionLocalProvider(
@@ -336,26 +333,59 @@ private fun RenderMarkdownDocument(
         SegmentHighlightInteractionHost {
             Box(modifier = modifier) {
                 NoDoubleClickSelectionScope {
-                    Markdown(
-                        document = document,
-                        imageContent = { data, imageModifier ->
-                            RenderImage(
-                                data = data,
-                                modifier = imageModifier,
-                                imageUrls = previewImageUrls,
-                            )
-                        },
-                        scrollState = scrollState,
-                        enableScroll = enableScroll,
-                        enableSelection = selectable,
-                        onLinkClick = { url ->
-                            resolveContent(url)?.let { navigator.onNavigate(it) }
-                                ?: openExternalUrl(url)
-                        },
-                        header = header,
-                        footer = footer,
-                        theme = theme,
-                    )
+                    val onLinkClick: (String) -> Unit = { url ->
+                        resolveContent(url)?.let { navigator.onNavigate(it) }
+                            ?: openExternalUrl(url)
+                    }
+                    if (useTiqianRenderer && isTiqianMarkdownRendererAvailable) {
+                        PlatformTiqianMarkdown(
+                            document = document,
+                            sourceMarkdown = sourceMarkdown,
+                            imageUrls = previewImageUrls,
+                            scrollState = scrollState,
+                            selectable = selectable,
+                            enableScroll = enableScroll,
+                            fontSizeScale = fontSize / 100f,
+                            lineHeightFromFontSize = lineHeight / 100f,
+                            blockSpacingScale = blockSpacing / 100f,
+                            mathFontFamilyId = settings
+                                .getString(DUO3_TIQIAN_MATH_FONT_PREFERENCE_KEY, "lete")
+                                .takeIf { it == "stix" },
+                            onLinkClick = onLinkClick,
+                            header = header,
+                            footer = footer,
+                        )
+                    } else {
+                        val mathFont = rememberMarkdownMathFont()
+                        val defaultTheme = MarkdownTheme.material3()
+                        val scaledFontSize = 16.sp * fontSize / 100
+                        val theme = defaultTheme.copy(
+                            bodyStyle = defaultTheme.bodyStyle.copy(
+                                fontSize = scaledFontSize,
+                                lineHeight = scaledFontSize * lineHeight / 100,
+                            ),
+                            blockSpacing = defaultTheme.blockSpacing * (blockSpacing / 100f),
+                            mathFontSize = 18f * fontSize / 100,
+                            mathFont = mathFont ?: defaultTheme.mathFont,
+                        )
+                        Markdown(
+                            document = document,
+                            imageContent = { data, imageModifier ->
+                                RenderImage(
+                                    data = data,
+                                    modifier = imageModifier,
+                                    imageUrls = previewImageUrls,
+                                )
+                            },
+                            scrollState = scrollState,
+                            enableScroll = enableScroll,
+                            enableSelection = selectable,
+                            onLinkClick = onLinkClick,
+                            header = header,
+                            footer = footer,
+                            theme = theme,
+                        )
+                    }
                 }
             }
         }

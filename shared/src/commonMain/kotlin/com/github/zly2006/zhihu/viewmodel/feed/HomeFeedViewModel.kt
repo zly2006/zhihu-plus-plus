@@ -30,6 +30,7 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.viewmodel.ContentInteractionEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.QualityFilterMode
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
 import com.github.zly2006.zhihu.viewmodel.filter.extractTopicIds
 import com.github.zly2006.zhihu.viewmodel.postSigned
@@ -174,9 +175,14 @@ class HomeFeedViewModel :
         debugData.addAll(rawData)
 
         viewModelScope.launch {
-            val newItems = data
+            val loadedItems = data
                 .flattenFeeds()
                 .map { feed -> createDisplayItem(environment, feed) }
+            val newItems = if (environment.feedDisplaySettings().qualityFilterMode == QualityFilterMode.HIDE) {
+                loadedItems.filterNot { it.isQualityFiltered }
+            } else {
+                loadedItems
+            }
 
             val filterResult = environment.applyHomeFeedFilters(newItems)
             if (!filterResult.reverseBlock) {
@@ -193,6 +199,7 @@ class HomeFeedViewModel :
             withContext(Dispatchers.Main) {
                 displayItems.replaceHomeFeedItemsWithFilteredResult(filterResult)
                 latestLoadedDisplayItems.value = filterResult.filteredItems
+                completedPageCount++
             }
         }
     }
