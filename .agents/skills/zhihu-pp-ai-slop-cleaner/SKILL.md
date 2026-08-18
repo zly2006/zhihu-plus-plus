@@ -9,6 +9,14 @@ description: Use for Zhihu++ maintenance work that scans Kotlin main sources for
 
 Treat low call count as a queue for review, not proof of deletion.
 
+Do not treat unit-test reachability as a production contract. Before merging or preserving tests for a pure
+function, inspect whether the test caused production code to expose an `internal` helper, accept extra parameters,
+or retain test-only branches and fallback values. When the behavior is simple and already exercised through its
+real caller, delete the direct helper test, inline or make the helper `private`, and remove parameters or special
+cases that no production path needs. Optimize the production API first, then keep only tests for observable
+contracts and regression-prone boundaries; reducing test-method count while leaving test-shaped production code is
+not a successful cleanup.
+
 Do not create a `State` object merely because several local values belong to the same screen, feature, or naming family, or because their count crosses a mechanical threshold. A state object is justified only when its members participate in the same invariant, transition, or lifecycle; independent dialog flags, display modes, loading flags, and navigation flags must remain independent even when there are many of them. Count-based review rules identify places to inspect, not fields to bundle. Example: a reading mode flag and a next-item loading flag may both appear on a content page, but changing one does not constrain the other, so grouping them only hides unrelated state behind a vague container.
 
 Delete or inline a function only after inspecting its declaration, every real call site, and the surrounding contract. Keep small functions that are framework entry points, stable UI/test selectors, platform contracts, interface defaults, Room/serialization hooks, navigation hooks, or meaningful domain boundaries.

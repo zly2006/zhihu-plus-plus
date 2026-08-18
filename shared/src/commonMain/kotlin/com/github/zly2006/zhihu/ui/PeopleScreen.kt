@@ -434,7 +434,8 @@ class PersonViewModel(
     suspend fun load(environment: ProfileLoadEnvironment) {
         environment.addReadHistory(person.id, "profile")
 
-        val jojo = environment.fetchJson(peopleProfileUrl(person), PEOPLE_PROFILE_INCLUDE_PATH)
+        val profileUrl = "https://api.zhihu.com/people/${person.urlToken.takeIf(String::isNotBlank) ?: person.id}"
+        val jojo = environment.fetchJson(profileUrl, PEOPLE_PROFILE_INCLUDE_PATH)
             ?: error("用户资料为空")
 
         val loadedPerson = ZhihuJson.decodeJson<DataHolder.People>(jojo)
@@ -468,8 +469,10 @@ class PersonViewModel(
         }
 
         this.githubSocial = try {
+            val detailUrl =
+                "https://api.zhihu.com/people/${person.urlToken.takeIf(String::isNotBlank) ?: person.id}/profile/detail"
             environment
-                .fetchJson("${peopleProfileUrl(person)}/profile/detail", "")
+                .fetchJson(detailUrl, "")
                 ?.let { ZhihuJson.decodeJson<DataHolder.People>(it).githubSocialUiState() }
         } catch (error: CancellationException) {
             throw error
@@ -587,11 +590,6 @@ const val PEOPLE_SCREEN_OFFICIAL_BADGE_TAG = "people_screen_official_badge"
 private fun peopleScreenInitialPage(person: Person): Int {
     val jumpToIndex = PEOPLE_SCREEN_TITLES.indexOf(person.jumpTo)
     return if (jumpToIndex >= 0) jumpToIndex else 0
-}
-
-internal fun peopleProfileUrl(person: Person): String {
-    val identifier = person.urlToken.takeIf { it.isNotBlank() } ?: person.id
-    return "https://api.zhihu.com/people/$identifier"
 }
 
 data class GithubSocialUiState(

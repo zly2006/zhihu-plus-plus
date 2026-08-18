@@ -243,7 +243,7 @@ internal fun normalizeBottomBarItemOrder(
     return orderedKeys
 }
 
-internal fun bottomBarItemOrderPreferenceValue(keys: List<String>): String =
+private fun bottomBarItemOrderPreferenceValue(keys: List<String>): String =
     keys.joinToString(BOTTOM_BAR_ITEM_ORDER_SEPARATOR)
 
 internal fun bottomBarItemOrderFromPreference(

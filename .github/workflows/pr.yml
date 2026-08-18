@@ -137,8 +137,8 @@ jobs:
       - name: Change wrapper permissions
         run: chmod +x ./gradlew
 
-      - name: Run Lite unit tests
-        run: ./gradlew :app:testLiteDebugUnitTest --max-workers=2
+      - name: Run unit tests
+        run: ./gradlew :shared:jvmTest :app:testLiteDebugUnitTest --max-workers=2
 
       - name: Upload test reports
         if: always()

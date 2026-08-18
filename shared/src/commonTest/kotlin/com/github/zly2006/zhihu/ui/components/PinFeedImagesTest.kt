@@ -20,21 +20,8 @@ package com.github.zly2006.zhihu.ui.components
 import com.github.zly2006.zhihu.data.DataHolder
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 
 class PinFeedImagesTest {
-    @Test
-    fun selectsImageLayoutFromRealPinImageCounts() {
-        assertNull(pinFeedImageLayout(0))
-        assertEquals(PinFeedImageLayout.SINGLE, pinFeedImageLayout(1))
-        assertEquals(PinFeedImageLayout.MULTI_ROW, pinFeedImageLayout(2))
-        assertEquals(PinFeedImageLayout.MULTI_ROW, pinFeedImageLayout(3))
-        assertEquals(PinFeedImageLayout.MULTI_ROW, pinFeedImageLayout(4))
-        assertEquals(PinFeedImageLayout.NINE_GRID, pinFeedImageLayout(5))
-        assertEquals(PinFeedImageLayout.NINE_GRID, pinFeedImageLayout(9))
-        assertEquals(PinFeedImageLayout.NINE_GRID, pinFeedImageLayout(18))
-    }
-
     @Test
     fun usesDedicatedThumbnailAndFallsBackToFeedSizedUrl() {
         val image = DataHolder.Pin.ContentImage(

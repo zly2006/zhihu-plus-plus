@@ -19,9 +19,7 @@ package com.github.zly2006.zhihu.viewmodel.local
 
 import com.github.zly2006.zhihu.data.CommonFeed
 import com.github.zly2006.zhihu.data.Feed
-import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.data.target
-import com.github.zly2006.zhihu.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.viewmodel.local.LocalReasonPreference
 import com.github.zly2006.zhihu.viewmodel.local.applyReasonDiversity
@@ -213,15 +211,6 @@ internal fun zhihuFollowingUpvoteRecommendUrl(
         }
     }
 
-internal fun createLocalFeedDisplayItem(entry: LocalRecommendationEntry): FeedDisplayItem = FeedDisplayItem(
-    title = entry.feed.title,
-    summary = entry.feed.summary,
-    details = entry.feed.reasonDisplay,
-    feed = null,
-    navDestinationJson = entry.navDestination?.toFeedDisplayItemNavDestinationJson(),
-    isFiltered = false,
-)
-
 internal suspend fun cleanupLocalRecommendationData(
     dao: LocalContentDao,
     nowMillis: Long = Clock.System.now().toEpochMilliseconds(),
@@ -412,7 +401,7 @@ internal fun rankCandidate(
     )
 }
 
-internal suspend fun toRecommendationEntry(
+private suspend fun toRecommendationEntry(
     rankedResult: RankedLocalResult,
     feedGenerator: FeedGenerator,
 ): LocalRecommendationEntry? {

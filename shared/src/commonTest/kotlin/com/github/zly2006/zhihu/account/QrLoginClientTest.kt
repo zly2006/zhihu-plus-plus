@@ -25,72 +25,40 @@ import kotlin.time.Clock
 
 class QrLoginClientTest {
     @Test
-    fun parseCookieAssignmentsSkipsAttributes() {
+    fun parsesAndSyncsQrCookies() {
         val cookies = parseCookieAssignments("z_c0=abc; Path=/; Domain=.zhihu.com; _xsrf=def; HttpOnly")
-
         assertEquals(mapOf("z_c0" to "abc", "_xsrf" to "def"), cookies)
+
+        val syncedCookies = mutableMapOf<String, String>()
+        syncCookiesFromScanInfo(syncedCookies, ZhihuQrScanInfo(zC0 = "token"))
+
+        assertEquals("token", syncedCookies["z_c0"])
     }
 
     @Test
-    fun syncCookiesFromScanInfoAcceptsSnakeCaseZC0() {
-        val cookies = mutableMapOf<String, String>()
-
-        syncCookiesFromScanInfo(cookies, ZhihuQrScanInfo(zC0 = "token"))
-
-        assertEquals("token", cookies["z_c0"])
-    }
-
-    @Test
-    fun qrSuccessRecognizesStatusString() {
+    fun recognizesQrTerminalStates() {
         assertTrue(isQrLoginSuccessful(ZhihuQrScanInfo(loginStatus = "login_success")))
         assertFalse(isQrLoginSuccessful(ZhihuQrScanInfo(loginStatus = "waiting")))
-    }
-
-    @Test
-    fun qrExpiredRecognizesStatusCodeAndString() {
         assertTrue(isQrLoginExpired(ZhihuQrScanInfo(status = 2)))
         assertTrue(isQrLoginExpired(ZhihuQrScanInfo(loginStatus = "qr_code_expired")))
         assertFalse(isQrLoginExpired(ZhihuQrScanInfo(status = 1, loginStatus = "waiting")))
     }
 
     @Test
-    fun normalizeDeadlineTreatsSmallExpiresAtAsTtlSeconds() {
+    fun normalizesQrDeadlineUnitsAndStaleValues() {
         val before = Clock.System.now().toEpochMilliseconds()
-        val deadline = normalizeDeadline(600)
-
-        assertTrue(deadline >= before + 600_000)
-        assertTrue(deadline < before + 601_000)
-    }
-
-    @Test
-    fun normalizeDeadlineTreatsSmallExpiresAtAsTtlMillis() {
-        val before = Clock.System.now().toEpochMilliseconds()
-        val deadline = normalizeDeadline(600_000)
-
-        assertTrue(deadline >= before + 600_000)
-        assertTrue(deadline < before + 601_000)
-    }
-
-    @Test
-    fun normalizeDeadlineFallsBackForStaleEpochSeconds() {
-        val before = Clock.System.now().toEpochMilliseconds()
-        val deadline = normalizeDeadline(1_000_000_000)
-
-        assertTrue(deadline >= before + 120_000)
-        assertTrue(deadline < before + 121_000)
-    }
-
-    @Test
-    fun normalizeDeadlineKeepsAbsoluteEpochSeconds() {
         val epochSeconds = Clock.System.now().toEpochMilliseconds() / 1000 + 600
-
-        assertEquals(epochSeconds * 1000, normalizeDeadline(epochSeconds))
-    }
-
-    @Test
-    fun normalizeDeadlineKeepsAbsoluteEpochMillis() {
         val epochMillis = Clock.System.now().toEpochMilliseconds() + 600_000
 
+        listOf(600L, 600_000L).forEach { expiresAt ->
+            val deadline = normalizeDeadline(expiresAt)
+            assertTrue(deadline >= before + 600_000)
+            assertTrue(deadline < before + 601_000)
+        }
+        val staleDeadline = normalizeDeadline(1_000_000_000)
+        assertTrue(staleDeadline >= before + 120_000)
+        assertTrue(staleDeadline < before + 121_000)
+        assertEquals(epochSeconds * 1000, normalizeDeadline(epochSeconds))
         assertEquals(epochMillis, normalizeDeadline(epochMillis))
     }
 }

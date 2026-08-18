@@ -31,35 +31,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-class PeopleScreenProfileUrlTest {
-    @Test
-    fun usesApiPeopleEndpointWithUrlToken() {
-        assertEquals(
-            "https://api.zhihu.com/people/dong-xiao-fang-33",
-            peopleProfileUrl(
-                Person(
-                    id = "c7d6ee7380aba6cc6c131d02b26b84b9",
-                    name = "铁芒萁的研习社",
-                    urlToken = "dong-xiao-fang-33",
-                ),
-            ),
-        )
-    }
-
-    @Test
-    fun fallsBackToIdWhenUrlTokenIsMissing() {
-        assertEquals(
-            "https://api.zhihu.com/people/c7d6ee7380aba6cc6c131d02b26b84b9",
-            peopleProfileUrl(
-                Person(
-                    id = "c7d6ee7380aba6cc6c131d02b26b84b9",
-                    name = "铁芒萁的研习社",
-                    urlToken = "",
-                ),
-            ),
-        )
-    }
-
+class PeopleScreenProfileTest {
     @Test
     fun decodesLiveSocialMediaShapeAndMapsGithubStars() {
         val rawProfile = ZhihuJson.json
