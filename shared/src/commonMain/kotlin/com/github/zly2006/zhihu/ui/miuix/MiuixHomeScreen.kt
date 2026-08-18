@@ -12,25 +12,40 @@
 
 package com.github.zly2006.zhihu.ui.miuix
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowCircleUp
 import androidx.compose.material.icons.filled.CopyAll
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.MarkUnreadChatAlt
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.Composable
@@ -48,6 +63,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -55,6 +71,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -73,6 +90,7 @@ import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Pin
+import com.github.zly2006.zhihu.navigation.WritePin
 import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_ANSWER
 import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_ARTICLE
 import com.github.zly2006.zhihu.notification.HOME_NOTIFICATION_ACTION_OPEN_PIN
@@ -91,7 +109,13 @@ import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
+import com.github.zly2006.zhihu.ui.HOME_CREATE_FAB_TAG
+import com.github.zly2006.zhihu.ui.HOME_CREATE_MENU_TAG
 import com.github.zly2006.zhihu.ui.HOME_REFRESH_BUTTON_TAG
+import com.github.zly2006.zhihu.ui.HOME_WRITE_ANSWER_BUTTON_TAG
+import com.github.zly2006.zhihu.ui.HOME_WRITE_PIN_BUTTON_TAG
+import com.github.zly2006.zhihu.ui.HOME_WRITE_QUESTION_BUTTON_TAG
+import com.github.zly2006.zhihu.ui.LocalReadingPlayerOverlayPadding
 import com.github.zly2006.zhihu.ui.SEARCH_HISTORY_MAX_SIZE
 import com.github.zly2006.zhihu.ui.components.AnnouncementCard
 import com.github.zly2006.zhihu.ui.components.AnnouncementCardDefaults
@@ -104,10 +128,12 @@ import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.homeOnlineNotificationTag
 import com.github.zly2006.zhihu.ui.loadSearchHistory
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixAccountSheet
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixConfirmDialog
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixFeedCard
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixListLoadingIndicator
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixSearchFilterSheet
 import com.github.zly2006.zhihu.ui.miuix.components.MiuixSearchSuggestions
+import com.github.zly2006.zhihu.ui.miuix.components.MiuixSheetActionRow
 import com.github.zly2006.zhihu.ui.miuix.components.SearchBarFake
 import com.github.zly2006.zhihu.ui.miuix.components.SearchBox
 import com.github.zly2006.zhihu.ui.miuix.components.SearchPager
@@ -137,6 +163,8 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.FloatingActionButton
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -171,6 +199,7 @@ fun MiuixHomeScreen(
     scrollToTopTrigger: Int = 0,
     innerPadding: PaddingValues = PaddingValues(0.dp),
 ) {
+    val readingPlayerOverlayPadding = LocalReadingPlayerOverlayPadding.current
     val navigator = LocalNavigator.current
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = true)
     val settings = rememberSettingsStore()
@@ -189,6 +218,18 @@ fun MiuixHomeScreen(
         it.key == recommendationModeKey
     } ?: RecommendationMode.MIXED
     val account = rememberAccountSettingsAccountState().value
+    // 登录态缺 d_c0 时给出明确提示，否则用户只会看到一直刷不出来的空列表（对标 M3 HomeScreen）。
+    if (account.login && !account.hasRequiredCookie) {
+        MiuixConfirmDialog(
+            show = true,
+            title = "Cookie 不完整",
+            summary = "当前登录信息缺少必要的 Cookie d_c0，请重新登录。",
+            confirmText = "重新登录",
+            cancelText = "稍后",
+            onConfirm = { paginationEnvironment.requestLogin() },
+            onDismiss = {},
+        )
+    }
     val updateState by rememberSystemUpdateRuntime().state.collectAsState()
     val updateAnnouncement = updateState as? SystemUpdateState.UpdateAvailable
     val isDebuggable = rememberHomeIsDebuggable()
@@ -211,6 +252,7 @@ fun MiuixHomeScreen(
     val showAccountSheet = remember { mutableStateOf(false) }
     var unreadCount by remember { mutableIntStateOf(0) }
     var showSearchFilter by remember { mutableStateOf(false) }
+    var showCreateMenu by remember { mutableStateOf(false) }
     var dismissedUpdateVersion by remember { mutableStateOf<String?>(null) }
     val versionName = rememberAppVersionInfo().substringBefore(' ').takeIf { it.firstOrNull()?.isDigit() == true }
     val onlineNotificationRepository = remember(settings) { OnlineHomeNotificationRepository(settings) }
@@ -678,6 +720,17 @@ fun MiuixHomeScreen(
             },
         )
 
+        // 创作入口：对标 M3 HomeScreen 的 FAB + 展开菜单（提问题 / 写回答 / 发想法）。
+        // 放在刷新 FAB 之前渲染，保证展开时的遮罩不会盖住刷新按钮的拖拽热区。
+        MiuixHomeCreateFab(
+            expanded = showCreateMenu,
+            onExpandedChange = { showCreateMenu = it },
+            bottomPadding = innerPadding.calculateBottomPadding() + readingPlayerOverlayPadding,
+            onWriteQuestion = { userMessages.showShortMessage("正在施工") },
+            onWriteAnswer = { userMessages.showShortMessage("正在施工") },
+            onWritePin = { navigator.onNavigate(WritePin) },
+        )
+
         if (showRefreshFab) {
             if (isDebuggable) {
                 DraggableRefreshButton(
@@ -750,4 +803,90 @@ fun MiuixHomeScreen(
         showUnreadBadge = showUnreadBadge,
         onDismiss = { showAccountSheet.value = false },
     )
+}
+
+/**
+ * 首页创作入口的 miuix 版本，对标 M3 [com.github.zly2006.zhihu.ui.HomeScreen] 的 FAB + 展开菜单。
+ *
+ * 展开时先铺一层可点击遮罩吞掉外部点击（点空白收起），菜单本身用 miuix Card + [MiuixSheetActionRow]，
+ * 与其它 miuix 弹层的行距、图标尺寸保持一致。
+ */
+@Composable
+private fun BoxScope.MiuixHomeCreateFab(
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    bottomPadding: Dp,
+    onWriteQuestion: () -> Unit,
+    onWriteAnswer: () -> Unit,
+    onWritePin: () -> Unit,
+) {
+    AnimatedVisibility(
+        visible = expanded,
+        enter = fadeIn(tween(120)),
+        exit = fadeOut(tween(120)),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MiuixTheme.colorScheme.windowDimming)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                ) { onExpandedChange(false) },
+        )
+    }
+
+    Column(
+        modifier = Modifier
+            .align(Alignment.BottomEnd)
+            .padding(end = 16.dp, bottom = bottomPadding + 16.dp),
+        horizontalAlignment = Alignment.End,
+    ) {
+        AnimatedVisibility(
+            visible = expanded,
+            enter = fadeIn(tween(120)) +
+                scaleIn(tween(180), initialScale = 0.92f, transformOrigin = TransformOrigin(1f, 1f)),
+            exit = fadeOut(tween(90)) +
+                scaleOut(tween(120), targetScale = 0.96f, transformOrigin = TransformOrigin(1f, 1f)),
+        ) {
+            Column(horizontalAlignment = Alignment.End) {
+                Card(modifier = Modifier.width(180.dp).testTag(HOME_CREATE_MENU_TAG)) {
+                    MiuixSheetActionRow(
+                        text = "提问题",
+                        icon = Icons.AutoMirrored.Filled.HelpOutline,
+                        modifier = Modifier.testTag(HOME_WRITE_QUESTION_BUTTON_TAG),
+                        onClick = {
+                            onExpandedChange(false)
+                            onWriteQuestion()
+                        },
+                    )
+                    MiuixSheetActionRow(
+                        text = "写回答",
+                        icon = Icons.Default.Edit,
+                        modifier = Modifier.testTag(HOME_WRITE_ANSWER_BUTTON_TAG),
+                        onClick = {
+                            onExpandedChange(false)
+                            onWriteAnswer()
+                        },
+                    )
+                    MiuixSheetActionRow(
+                        text = "发想法",
+                        icon = Icons.Default.MarkUnreadChatAlt,
+                        modifier = Modifier.testTag(HOME_WRITE_PIN_BUTTON_TAG),
+                        onClick = {
+                            onExpandedChange(false)
+                            onWritePin()
+                        },
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
+            }
+        }
+        FloatingActionButton(
+            modifier = Modifier.testTag(HOME_CREATE_FAB_TAG),
+            onClick = { onExpandedChange(!expanded) },
+        ) {
+            Icon(Icons.Default.Add, contentDescription = "创作", tint = MiuixTheme.colorScheme.onPrimary)
+        }
+    }
 }

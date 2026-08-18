@@ -50,6 +50,7 @@ import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.decodeQuestionContentDetail
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.navigation.WriteAnswer
 import com.github.zly2006.zhihu.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
@@ -66,6 +67,7 @@ import com.github.zly2006.zhihu.ui.QUESTION_SORT_DEFAULT_TAG
 import com.github.zly2006.zhihu.ui.QUESTION_SORT_UPDATED_TAG
 import com.github.zly2006.zhihu.ui.QUESTION_STATS_TAG
 import com.github.zly2006.zhihu.ui.QUESTION_VIEW_LOG_BUTTON_TAG
+import com.github.zly2006.zhihu.ui.QUESTION_WRITE_ANSWER_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.QuestionDetailContent
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
@@ -273,6 +275,13 @@ fun MiuixQuestionScreen(
                                                 onRefreshAnswers()
                                             }
                                         }
+                                        // 写回答入口，对标 M3 问题页；miuix 侧此前完全没有发布入口。
+                                        TextButton(
+                                            text = "写回答",
+                                            onClick = { navigator.onNavigate(WriteAnswer(questionId = question.questionId, questionTitle = title)) },
+                                            modifier = Modifier.testTag(QUESTION_WRITE_ANSWER_BUTTON_TAG),
+                                        )
+                                        Spacer(Modifier.width(8.dp))
                                         Button(
                                             onClick = {
                                                 scope.launch {

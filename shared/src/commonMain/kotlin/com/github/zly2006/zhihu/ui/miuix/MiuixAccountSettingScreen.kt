@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.FilterAlt
@@ -31,7 +32,9 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SwitchAccount
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -50,6 +53,7 @@ import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.platform.rememberSettingBoolean
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
 import com.github.zly2006.zhihu.theme.getMiuixAppBarColor
 import com.github.zly2006.zhihu.theme.installerMiuixBlurEffect
 import com.github.zly2006.zhihu.theme.rememberMiuixBlurBackdrop
@@ -79,6 +83,7 @@ fun MiuixAccountSettingScreen(
 ) {
     val navigator = LocalNavigator.current
     val environment = rememberPaginationEnvironment(allowGuestAccess = false)
+    val readingPlayerSupported = rememberReadingPlayerController().isSupported
     val requestQrLoginScan = rememberAccountQrLoginRequester()
     val settings = rememberSettingsStore()
     val accountState by rememberAccountSettingsAccountState()
@@ -193,18 +198,45 @@ fun MiuixAccountSettingScreen(
                 }
             }
 
+            // 设置项搜索入口，对标 M3 账号页顶部的搜索条。
+            item {
+                Card(modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
+                    ArrowPreference(
+                        title = "搜索设置项",
+                        onClick = { navigator.onNavigate(Account.SettingsSearch) },
+                        startAction = { Icon(Icons.Default.Search, null) },
+                    )
+                }
+            }
+
             // ── 设置 ──
             item { SmallTitle(text = "设置") }
             item {
                 Card(
                     modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp),
                 ) {
+                    if (data.login && data.identityManagementSupported) {
+                        ArrowPreference(
+                            title = "身份管理",
+                            summary = "创建马甲号或切换当前账号",
+                            onClick = { navigator.onNavigate(Account.IdentityManagement) },
+                            startAction = { Icon(Icons.Default.SwitchAccount, null) },
+                        )
+                    }
                     ArrowPreference(
                         title = "外观与阅读体验",
                         summary = "主题颜色、字体大小等",
                         onClick = { navigator.onNavigate(Account.AppearanceSettings()) },
                         startAction = { Icon(Icons.Default.Palette, null) },
                     )
+                    if (readingPlayerSupported) {
+                        ArrowPreference(
+                            title = "朗读与播放",
+                            summary = "朗读内容、播放队列与条目过渡",
+                            onClick = { navigator.onNavigate(Account.ReadingSettings) },
+                            startAction = { Icon(Icons.AutoMirrored.Filled.VolumeUp, null) },
+                        )
+                    }
                     ArrowPreference(
                         title = "推荐系统与内容过滤",
                         summary = "推荐、智能过滤、关键词屏蔽等",
