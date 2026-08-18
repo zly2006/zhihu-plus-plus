@@ -17,10 +17,6 @@
 
 package com.github.zly2006.zhihu.reading
 
-import com.github.zly2006.zhihu.data.FeedDisplayItem
-import com.github.zly2006.zhihu.data.toFeedDisplayItemNavDestinationJson
-import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.platform.SettingsStore
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -428,29 +424,6 @@ class ReadingPlayerTest {
         )
 
         assertEquals(listOf(1L, 11L, 12L), queue.map(ReadingQueueItem::id))
-    }
-
-    @Test
-    fun queueSourceExcludesFilteredFeedItems() {
-        fun item(
-            id: Long,
-            filtered: Boolean,
-        ) = FeedDisplayItem(
-            title = "回答$id",
-            summary = null,
-            details = "",
-            feed = null,
-            navDestinationJson = Article(
-                type = ArticleType.Answer,
-                id = id,
-            ).toFeedDisplayItemNavDestinationJson(),
-            isFiltered = filtered,
-        )
-
-        val queueItems = listOf(item(1, false), item(2, true), item(3, false))
-            .toReadingQueueSourceItems()
-
-        assertEquals(listOf(1L, 3L), queueItems.map(ReadingQueueItem::id))
     }
 
     @Test

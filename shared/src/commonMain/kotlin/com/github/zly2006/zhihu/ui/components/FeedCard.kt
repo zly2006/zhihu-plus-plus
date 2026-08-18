@@ -495,27 +495,14 @@ private fun FeedCardContent(
     }
 }
 
-internal enum class PinFeedImageLayout {
-    SINGLE,
-    MULTI_ROW,
-    NINE_GRID,
-}
-
-internal fun pinFeedImageLayout(imageCount: Int): PinFeedImageLayout? = when (imageCount) {
-    0 -> null
-    1 -> PinFeedImageLayout.SINGLE
-    in 2..4 -> PinFeedImageLayout.MULTI_ROW
-    else -> PinFeedImageLayout.NINE_GRID
-}
-
 @Composable
 private fun PinFeedImages(
     images: List<DataHolder.Pin.ContentImage>,
     modifier: Modifier = Modifier,
 ) {
-    when (pinFeedImageLayout(images.size)) {
-        null -> return
-        PinFeedImageLayout.SINGLE -> {
+    when (images.size) {
+        0 -> return
+        1 -> {
             val image = images.single()
             AsyncImage(
                 model = image.feedThumbnailUrl,
@@ -528,7 +515,7 @@ private fun PinFeedImages(
                 contentScale = ContentScale.Crop,
             )
         }
-        PinFeedImageLayout.MULTI_ROW -> {
+        in 2..4 -> {
             Row(
                 modifier = modifier
                     .fillMaxWidth()
@@ -554,7 +541,7 @@ private fun PinFeedImages(
                 }
             }
         }
-        PinFeedImageLayout.NINE_GRID -> {
+        else -> {
             val visibleImages = images.take(9)
             Column(
                 modifier = modifier

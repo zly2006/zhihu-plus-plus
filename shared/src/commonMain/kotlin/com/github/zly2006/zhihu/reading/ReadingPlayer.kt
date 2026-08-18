@@ -651,17 +651,15 @@ fun RegisterReadingQueueSource(
     sourceId: String,
     items: List<FeedDisplayItem>,
 ) {
-    val queueItems = items.toReadingQueueSourceItems()
+    val queueItems = items
+        .asSequence()
+        .filterNot { it.isFiltered }
+        .mapNotNull(FeedDisplayItem::toReadingQueueItem)
+        .toList()
     SideEffect {
         ReadingQueueSourceRegistry.register(sourceId, queueItems)
     }
 }
-
-internal fun List<FeedDisplayItem>.toReadingQueueSourceItems(): List<ReadingQueueItem> =
-    asSequence()
-        .filterNot { it.isFiltered }
-        .mapNotNull(FeedDisplayItem::toReadingQueueItem)
-        .toList()
 
 fun FeedDisplayItem.toReadingQueueItem(): ReadingQueueItem? {
     val destination = navDestination ?: return null

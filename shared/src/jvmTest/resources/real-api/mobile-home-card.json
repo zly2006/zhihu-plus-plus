@@ -1,0 +1,336 @@
+{
+  "id": "1919415961875870742",
+  "type": "ComponentCard",
+  "children": [
+    {
+      "id": "Text",
+      "style": "text_recommend_title",
+      "test_id": "answer.2825677854.title",
+      "text": "为什么辽宁舰的出场率比山东号要高？",
+      "type": "Text",
+      "visible": true,
+      "za": {
+        "za": []
+      }
+    },
+    {
+      "id": "title_author_margin",
+      "style": "divider_V_6_id",
+      "type": "Divider",
+      "visible": true,
+      "za": {
+        "za": []
+      }
+    },
+    {
+      "elements": [
+        {
+          "badge": {
+            "style": "Image_avatar_20_round",
+            "type": "Image",
+            "visible": true,
+            "za": {
+              "za": []
+            }
+          },
+          "border": {
+            "type": "Image",
+            "visible": true,
+            "za": {
+              "za": []
+            }
+          },
+          "image": {
+            "style": "Image_avatar_20_or_28_round_v1",
+            "test_id": "answer.2825677854.author",
+            "type": "Image",
+            "url": "https://pic.example/redacted-avatar-001.jpg",
+            "visible": true,
+            "za": {
+              "za": []
+            }
+          },
+          "style": "Avatar_default",
+          "type": "Avatar",
+          "visible": true,
+          "za": {
+            "za": []
+          }
+        },
+        {
+          "style": "divider_h_6",
+          "type": "Divider",
+          "visible": true,
+          "za": {
+            "za": []
+          }
+        },
+        {
+          "style": "text_recommend_author",
+          "text": "脱敏用户001",
+          "type": "Text",
+          "visible": true,
+          "za": {
+            "za": []
+          }
+        }
+      ],
+      "style": "RecommendAuthorLine_default_v1",
+      "type": "Line",
+      "visible": true,
+      "za": {
+        "za": []
+      }
+    },
+    {
+      "style": "divider_v_4_id",
+      "type": "Divider",
+      "visible": true,
+      "za": {
+        "za": []
+      }
+    },
+    {
+      "id": "text_pin_summary",
+      "style": "text_recommend_desc",
+      "test_id": "answer.2825677854.description",
+      "text": "我一个同学在某船厂，他给我透露的是: 主要有两点∶ 一，因为辽宁舰的蒸汽锅炉是代表苏联时代最高水平的圣彼得堡沙碧耶夫机器总局造的，如果维护到位，理论寿命250年没问题。 二，辽宁舰的外壳是现在乌克兰共青城叶卡捷琳娜波波大斯基钢铁厂造的，源自自一战后德国技术的转移，在硬度，持久度方面碾压国内钢厂。 追加: 有不少知友私信我“张口就来”“ 虾扯蛋” ，还进行了很多反驳。有代表性的例子是:055大驱也是101首舰活动的…",
+      "type": "Text",
+      "visible": true,
+      "za": {
+        "za": []
+      }
+    },
+    {
+      "id": "image_title_divider_id",
+      "style": "divider_v_8_id",
+      "type": "Divider",
+      "visible": true,
+      "za": {
+        "za": []
+      }
+    },
+    {
+      "elements": [
+        {
+          "content_id": "2825677854",
+          "content_type": "ANSWER",
+          "count": 8596,
+          "dynamic_theme": {
+            "is_hit": false
+          },
+          "is_active": false,
+          "reaction": "Vote",
+          "style": "reaction_feed_v7",
+          "test_id": "answer.2825677854.vote",
+          "type": "Reaction",
+          "visible": true,
+          "za": {
+            "za": []
+          }
+        },
+        {
+          "style": "divider_h_24",
+          "type": "Divider",
+          "visible": true,
+          "za": {
+            "za": []
+          }
+        },
+        {
+          "content_id": "2825677854",
+          "content_type": "ANSWER",
+          "count": 1740,
+          "is_active": false,
+          "reaction": "Collect",
+          "style": "reaction_feed_v7",
+          "test_id": "answer.2825677854.collect",
+          "type": "Reaction",
+          "visible": true,
+          "za": {
+            "za": []
+          }
+        },
+        {
+          "style": "divider_h_24",
+          "type": "Divider",
+          "visible": true,
+          "za": {
+            "za": []
+          }
+        },
+        {
+          "action": {
+            "parameter": "route_url=zhihu%3a%2f%2fcomment%2flist%2fanswer%2f2825677854%3fopen_editor%3dfalse%26list_height_ratio%3d0.73%26is_show_detail_entry%3dtrue",
+            "type": "Route"
+          },
+          "content_id": "2825677854",
+          "content_type": "ANSWER",
+          "count": 2073,
+          "id": "Comment",
+          "reaction": "Comment",
+          "style": "reaction_feed_v7",
+          "test_id": "answer.2825677854.comment",
+          "type": "Reaction",
+          "visible": true,
+          "za": {
+            "za": []
+          }
+        }
+      ],
+      "style": "LineFooterReactionFeedV1",
+      "tail_element": {
+        "elements": [
+          {
+            "action": {
+              "parameter": "content_id=2825677854&content_type=ANSWER&scene=RECOMMEND&feed_deliver_type=Normal",
+              "type": "Feedback"
+            },
+            "id": "feedbackcloseimage",
+            "style": "image_feedback_x_mark_big_v4",
+            "test_id": "answer.2825677854.feedback",
+            "type": "Image",
+            "url": "https://picx.zhimg.com/80/v2-87b926415201944c8decc07ec119f1ae_1440w.png",
+            "url_night": "https://picx.zhimg.com/80/v2-87b926415201944c8decc07ec119f1ae_1440w.png",
+            "visible": true,
+            "za": {
+              "za": []
+            }
+          }
+        ],
+        "style": "LineFooterReactionFeedFeedbackLine",
+        "type": "Line",
+        "visible": true,
+        "za": {
+          "za": []
+        }
+      },
+      "type": "Line",
+      "visible": true,
+      "za": {
+        "za": []
+      }
+    }
+  ],
+  "extra": {
+    "attachinfo": "Cp8GCM+amuut87uwugEQBBoJNTQzODQ0ODg5IO7IyJ0GKJRDMJkQQEVKFQoITG9jYXRpb24SAzExMBgAIAA6AFoINjM5NDc0NDNiIDViOGUxYmZmN2UxNzQzNTc4OWViODg1NjdiZmI3OTM3cgoyODI1Njc3ODU0igEJNDU3NTAzOTAxqgEJcmVjb21tZW5k8gEKCAwSBk5vcm1hbPIBKAgKEiQ2YTBlYjg3Zi1iOGVkLTRlOTAtOGJmNC0wODg5YjY5M2ZmZTjyAQYICxICMTKIAtLJhcyANJoCAMoCFlNob3JJbnRlcmVzdFdlaWdodFJ1bGXKAhtJbnRlcmFjdGlvblNob3JJbnRlcmVzdFJ1bGXKAhhQZXJpb2RJbnRlcmVzdFdlaWdodFJ1bGXKAhNVc2VyQmF5ZXNXZWlnaHRSdWxlygIUQ29udGVudEFnZVdlaWdodFJ1bGXKAhdUZXN0ZWRBbmRXb3JrV2VpZ2h0UnVsZdoCCExvY2F0aW9u6AIC+gILTk9STUFMX0ZMT1eKAyBkM2I0YWU5ZTFhNzM0MWVlOGI0YWY5Zjc4NDMwN2E4YZoDDwoCdjIQABoFb3RoZXIgAPoDIBINTk9fSU1BR0VfTU9ERSAAKg1OT19JTUFHRV9NT0RFgAQAiAQAkgQGTm9ybWFsmgQBMqAEAKgEALAEALoEBm1hbnVhbMIEAzE3MMgEANIENOS4uuS9oOaOqOiNkCAxMiDmnaHorqnkvaDlpKflvIDnnLznlYznmoTmlrDpspzlhoXlrrnYBADwBAD5BAAAAKCRmKU/gQUAAAAAAAAAAIkFBju4fDHPyj+SBQCaBQNkZnSiBQNkZnSyBQExuQUAAAAAAAAAANAFANgFAOAFAOgFAPAFDJAGAKAGRagGALEG7/E1e0a24T+5BgAAAAAAAAAAwQYAAAAAAAAAAMkGAAAAAAAAAADZBgAAAKCRmKU/4QY8DS9rU4szQOgGLfAGBLgHCMEHknSTww9++D/IBwDQBwDoBwDwBwD4BwCACACICAC4CADBCLVQyfd1HK0/yQgWJMEdE9zmP5ICJQoJNTQzODQ0ODg5EgoyODI1Njc3ODU0GAQiCklNQUdFX1RFWFQ=",
+    "business_ext_map": {
+      "common_below_config_map": {},
+      "contentId": "543844889",
+      "contentToken": "2825677854",
+      "contentType": "ANSWER",
+      "deliver_type": "Normal",
+      "isRefreshImageInfo": true,
+      "isVisibleReadOriginalContent": true,
+      "is_force_insert": false,
+      "media_type": "IMAGE_TEXT",
+      "ori_content": "eyJmZWVkX3R5cGUiOiJGRUVEX05PUk1BTCIsImlkIjp7ImlkIjo1NDM4NDQ4ODksInR5cGUiOiJBTlNXRVIiLCJ0b2tlbiI6IjI4MjU2Nzc4NTQifSwic291cmNlX3R5cGUiOiJUU19TT1VSQ0VfTE9DQVRJT04iLCJyZWNhbGxfaW5mbyI6e30sImF0dGFjaGVkX2luZm8iOiJRM05KUmtOTksyRnRkWFYwT0RkMWQzVm5Sa0ZTVlc5V1EyZG9UV0l5VG1oa1IyeDJZbWhKUkUxVVJYZEhRVUZuUVVSdlFWbHBRVEZaYW1oc1RWZEtiVnBxWkd4TlZHTXdUWHBWTTA5RWJHeFphbWMwVGxSWk0xbHRXbWxPZW10NlRqWnZRa05ZU214Wk1qbDBZbGRXZFZwUVNVSkRaMmROUldkYVQySXpTblJaVjNwNVFWTm5TVU5vU1d0T2JVVjNXbGRKTkU0eVdYUlphbWhzV2tNd01GcFVhM2RNVkdocFdtcFJkRTFFWnpSUFYwa3lUMVJPYlZwdFZUUTRaMFZIUTBGelUwRnFSWGxwUVV4VGVWbFlUV2RFVTJGQlowUkxRV2hhVkdGSE9YbFRWelV3V2xoS2JHTXpVbGhhVjJ4dVlVaFNVMlJYZUd4NVowbGlVMWMxTUZwWVNtaFpNMUp3WWpJMVZHRkhPWGxUVnpVd1dsaEtiR016VWxOa1YzaHNlV2RKV1ZWSFZubGhWemxyVTFjMU1GcFlTbXhqTTFKWVdsZHNibUZJVWxOa1YzaHNlV2RKVkZaWVRteGphMHBvWlZkV2VsWXlWbkJhTW1nd1ZXNVdjMXBqYjBOR1JVNTJZbTVTYkdKdVVrSmFNbFpZV2xkc2JtRklVbE5rVjNoc2VXZEpXRlpIVm5wa1IxWnJVVmMxYTFZeU9YbGhNV1JzWVZka2IyUkdTakZpUjFoaFFXZG9UV0l5VG1oa1IyeDJZblZuUTBGMmIwTkRNRFZRVldzeFFsUkdPVWRVUlRsWWFXZE5aMXBFVG1sT1IwWnNUMWRWZUZsVVkzcE9SRVpzV2xSb2FVNUhSbTFQVjFrelQwUlJlazFFWkdoUFIwZGhRWGM0UzBGdVdYbEZRVUZoUWxjNU1HRkhWbmxKUVVRMlFYaEZVMFJWTlZCWU1HeE9VVlZrUmxnd01WQlNSVlZuUVVsQlJVRkpaMFZCU2tsRlFtczFkbU50TVdoaVMwRkZRVXRuUlVGTVFVVkJUV2RGUVU1SlJVNVBVelIxZFZNNWIwOWhUM0ZQYVU1clEwRjRUV2xFYlc1aFNHOXljVzVyZG1GRWJIQkxabXgyU1VSdWJreDZibXhaZW01dGIxUnRiSEpFY0hOd2VteG9iMWhzY25KdVdVSkJSSGRDUVVRMVFrRkJRVUZMUTFKdFMxVXZaMUZWUVVGQlFVRkJRVUZCUVVsclJrSnFkVFJtUkVoUWVXb3JVMEpSUTJGQ1VVNXJXbTVUYVVKUlRtdGFibE41UWxGRmVIVlJWVUZCUVVGQlFVRkJRVUZPUVVaQlRtZEdRVTlCUmtGUFowWkJVRUZHUkVwQlIwRkxRVWRTWVdkSFFVeEZSemN2UlRGbE1HRXlORlFyTlVKblFVRkJRVUZCUVVGQlFYZFJXVUZCUVVGQlFVRkJRVUZOYTBkQlFVRkJRVUZCUVVGQlJGcENaMEZCUVV0RFVtMUxWUzgwVVZrNFJGTTVjbFUwYzNwUlQyZEhUR1pCUjBKTVowaERUVVZJYTI1VFZIZDNPU3NyUkM5SlFuZEVVVUozUkc5Q2QwUjNRbmRFTkVKM1EwRkRRVU5KUTBGRE5FTkJSRUpEVEZaUmVXWmtNVWhMTUM5NVVXZFhTazFGWkVVNWVtMVFkejA5IiwiZmVlZF9pbmRleCI6NjksInJhbmtfcmVhZF9zY29yZSI6MC4wNDIxNzk2MzI5MzE5NDc3MSwibWVkaWFfaW5mbyI6eyJpbWFnZV9zaG93X21vZGUiOiJOT19JTUFHRV9NT0RFIn0sImNhcmRfaW5mbyI6eyJjYXJkX3RlbXBsYXRlIjoiVU5LTk9XTiJ9LCJkZWxpdmVyX3R5cGUiOiJOb3JtYWwiLCJyZXJhbmtfaW5mbyI6e30sImZlZWRfaW5kZXhfdjIiOjY5fQ==",
+      "passthrough_info": {
+        "author": {
+          "avatar": "https://pic.example/redacted-avatar-001.jpg",
+          "badge": {
+            "desc": "",
+            "icon": "",
+            "night_icon": ""
+          },
+          "id": "redacted-person-001",
+          "is_followed": false,
+          "is_following": false,
+          "name": "脱敏用户001",
+          "url": "https://www.zhihu.com/people/redacted-person-token-001",
+          "url_token": "redacted-person-token-001"
+        },
+        "content": {
+          "summary": "我一个同学在某船厂，他给我透露的是: 主要有两点∶ 一，因为辽宁舰的蒸汽锅炉是代表苏联时代最高水平的圣彼得堡沙碧耶夫机器总局造的，如果维护到位，理论寿命250年没问题。 二，辽宁舰的外壳是现在乌克兰共青城叶卡捷琳娜波波大斯基钢铁厂造的，源自自一战后德国技术的转移，在硬度，持久度方面碾压国内钢厂。 追加: 有不少知友私信我“张口就来”“ 虾扯蛋” ，还进行了很多反驳。有代表性的例子是:055大驱也是101首舰活动的…",
+          "title": "为什么辽宁舰的出场率比山东号要高？"
+        },
+        "reactions": {
+          "collect": {
+            "count": 1740,
+            "is_collect": false
+          },
+          "comment": {
+            "count": 2073
+          },
+          "like": {
+            "count": 819,
+            "is_like": false
+          },
+          "vote": {
+            "count": 8596,
+            "is_down": false,
+            "is_up": false
+          }
+        }
+      },
+      "userInfo": {
+        "avatarUrl": "https://pic.example/redacted-avatar-001.jpg",
+        "followState": "none",
+        "memberHashId": "redacted-person-001",
+        "userName": "脱敏用户001"
+      },
+      "zaConfig": {
+        "attachmentInfo": "Cp8GCM+amuut87uwugEQBBoJNTQzODQ0ODg5IO7IyJ0GKJRDMJkQQEVKFQoITG9jYXRpb24SAzExMBgAIAA6AFoINjM5NDc0NDNiIDViOGUxYmZmN2UxNzQzNTc4OWViODg1NjdiZmI3OTM3cgoyODI1Njc3ODU0igEJNDU3NTAzOTAxqgEJcmVjb21tZW5k8gEKCAwSBk5vcm1hbPIBKAgKEiQ2YTBlYjg3Zi1iOGVkLTRlOTAtOGJmNC0wODg5YjY5M2ZmZTjyAQYICxICMTKIAtLJhcyANJoCAMoCFlNob3JJbnRlcmVzdFdlaWdodFJ1bGXKAhtJbnRlcmFjdGlvblNob3JJbnRlcmVzdFJ1bGXKAhhQZXJpb2RJbnRlcmVzdFdlaWdodFJ1bGXKAhNVc2VyQmF5ZXNXZWlnaHRSdWxlygIUQ29udGVudEFnZVdlaWdodFJ1bGXKAhdUZXN0ZWRBbmRXb3JrV2VpZ2h0UnVsZdoCCExvY2F0aW9u6AIC+gILTk9STUFMX0ZMT1eKAyBkM2I0YWU5ZTFhNzM0MWVlOGI0YWY5Zjc4NDMwN2E4YZoDDwoCdjIQABoFb3RoZXIgAPoDIBINTk9fSU1BR0VfTU9ERSAAKg1OT19JTUFHRV9NT0RFgAQAiAQAkgQGTm9ybWFsmgQBMqAEAKgEALAEALoEBm1hbnVhbMIEAzE3MMgEANIENOS4uuS9oOaOqOiNkCAxMiDmnaHorqnkvaDlpKflvIDnnLznlYznmoTmlrDpspzlhoXlrrnYBADwBAD5BAAAAKCRmKU/gQUAAAAAAAAAAIkFBju4fDHPyj+SBQCaBQNkZnSiBQNkZnSyBQExuQUAAAAAAAAAANAFANgFAOAFAOgFAPAFDJAGAKAGRagGALEG7/E1e0a24T+5BgAAAAAAAAAAwQYAAAAAAAAAAMkGAAAAAAAAAADZBgAAAKCRmKU/4QY8DS9rU4szQOgGLfAGBLgHCMEHknSTww9++D/IBwDQBwDoBwDwBwD4BwCACACICAC4CADBCLVQyfd1HK0/yQgWJMEdE9zmP5ICJQoJNTQzODQ0ODg5EgoyODI1Njc3ODU0GAQiCklNQUdFX1RFWFQ=",
+        "fromType": "cardList",
+        "moduleId": "photo_viewer",
+        "pageId": "44",
+        "pageLevel": "1",
+        "pageUrl": "fakeurl://topstory",
+        "sceneCode": "recommend_page"
+      }
+    },
+    "content_id": "2825677854",
+    "content_type": "answer",
+    "preload": true,
+    "promotion": null,
+    "test_id": "answer.2825677854.card",
+    "user_id": "redacted-person-001"
+  },
+  "style": "card_padding_dynamic_GBK99A_V3",
+  "action": {
+    "parameter": "route_url=https%3A%2F%2Fzhihu.com%2Fquestion%2F457503901%2Fanswer%2F2825677854%3Fnative%3D0",
+    "type": "Route"
+  },
+  "za": {
+    "za": [
+      {
+        "attached_info": "Cp8GCM+amuut87uwugEQBBoJNTQzODQ0ODg5IO7IyJ0GKJRDMJkQQEVKFQoITG9jYXRpb24SAzExMBgAIAA6AFoINjM5NDc0NDNiIDViOGUxYmZmN2UxNzQzNTc4OWViODg1NjdiZmI3OTM3cgoyODI1Njc3ODU0igEJNDU3NTAzOTAxqgEJcmVjb21tZW5k8gEKCAwSBk5vcm1hbPIBKAgKEiQ2YTBlYjg3Zi1iOGVkLTRlOTAtOGJmNC0wODg5YjY5M2ZmZTjyAQYICxICMTKIAtLJhcyANJoCAMoCFlNob3JJbnRlcmVzdFdlaWdodFJ1bGXKAhtJbnRlcmFjdGlvblNob3JJbnRlcmVzdFJ1bGXKAhhQZXJpb2RJbnRlcmVzdFdlaWdodFJ1bGXKAhNVc2VyQmF5ZXNXZWlnaHRSdWxlygIUQ29udGVudEFnZVdlaWdodFJ1bGXKAhdUZXN0ZWRBbmRXb3JrV2VpZ2h0UnVsZdoCCExvY2F0aW9u6AIC+gILTk9STUFMX0ZMT1eKAyBkM2I0YWU5ZTFhNzM0MWVlOGI0YWY5Zjc4NDMwN2E4YZoDDwoCdjIQABoFb3RoZXIgAPoDIBINTk9fSU1BR0VfTU9ERSAAKg1OT19JTUFHRV9NT0RFgAQAiAQAkgQGTm9ybWFsmgQBMqAEAKgEALAEALoEBm1hbnVhbMIEAzE3MMgEANIENOS4uuS9oOaOqOiNkCAxMiDmnaHorqnkvaDlpKflvIDnnLznlYznmoTmlrDpspzlhoXlrrnYBADwBAD5BAAAAKCRmKU/gQUAAAAAAAAAAIkFBju4fDHPyj+SBQCaBQNkZnSiBQNkZnSyBQExuQUAAAAAAAAAANAFANgFAOAFAOgFAPAFDJAGAKAGRagGALEG7/E1e0a24T+5BgAAAAAAAAAAwQYAAAAAAAAAAMkGAAAAAAAAAADZBgAAAKCRmKU/4QY8DS9rU4szQOgGLfAGBLgHCMEHknSTww9++D/IBwDQBwDoBwDwBwD4BwCACACICAC4CADBCLVQyfd1HK0/yQgWJMEdE9zmP5ICJQoJNTQzODQ0ODg5EgoyODI1Njc3ODU0GAQiCklNQUdFX1RFWFQ=",
+        "block_text": "NormalAnswer",
+        "config_map": {
+          "spm_extra": "{\"feed_request_id\":\"d3b4ae9e1a7341ee8b4af9f784307a8a\"}"
+        },
+        "content_id": "2825677854",
+        "content_token": "2825677854",
+        "content_type": "ANSWER",
+        "element_type": "Card",
+        "log_type": "Show",
+        "module_id": "universal_single_card",
+        "page_id": "44",
+        "page_level": 1,
+        "page_name": "fakeurl://topstory",
+        "page_url": "fakeurl://topstory",
+        "visible": true
+      },
+      {
+        "attached_info": "Cp8GCM+amuut87uwugEQBBoJNTQzODQ0ODg5IO7IyJ0GKJRDMJkQQEVKFQoITG9jYXRpb24SAzExMBgAIAA6AFoINjM5NDc0NDNiIDViOGUxYmZmN2UxNzQzNTc4OWViODg1NjdiZmI3OTM3cgoyODI1Njc3ODU0igEJNDU3NTAzOTAxqgEJcmVjb21tZW5k8gEKCAwSBk5vcm1hbPIBKAgKEiQ2YTBlYjg3Zi1iOGVkLTRlOTAtOGJmNC0wODg5YjY5M2ZmZTjyAQYICxICMTKIAtLJhcyANJoCAMoCFlNob3JJbnRlcmVzdFdlaWdodFJ1bGXKAhtJbnRlcmFjdGlvblNob3JJbnRlcmVzdFJ1bGXKAhhQZXJpb2RJbnRlcmVzdFdlaWdodFJ1bGXKAhNVc2VyQmF5ZXNXZWlnaHRSdWxlygIUQ29udGVudEFnZVdlaWdodFJ1bGXKAhdUZXN0ZWRBbmRXb3JrV2VpZ2h0UnVsZdoCCExvY2F0aW9u6AIC+gILTk9STUFMX0ZMT1eKAyBkM2I0YWU5ZTFhNzM0MWVlOGI0YWY5Zjc4NDMwN2E4YZoDDwoCdjIQABoFb3RoZXIgAPoDIBINTk9fSU1BR0VfTU9ERSAAKg1OT19JTUFHRV9NT0RFgAQAiAQAkgQGTm9ybWFsmgQBMqAEAKgEALAEALoEBm1hbnVhbMIEAzE3MMgEANIENOS4uuS9oOaOqOiNkCAxMiDmnaHorqnkvaDlpKflvIDnnLznlYznmoTmlrDpspzlhoXlrrnYBADwBAD5BAAAAKCRmKU/gQUAAAAAAAAAAIkFBju4fDHPyj+SBQCaBQNkZnSiBQNkZnSyBQExuQUAAAAAAAAAANAFANgFAOAFAOgFAPAFDJAGAKAGRagGALEG7/E1e0a24T+5BgAAAAAAAAAAwQYAAAAAAAAAAMkGAAAAAAAAAADZBgAAAKCRmKU/4QY8DS9rU4szQOgGLfAGBLgHCMEHknSTww9++D/IBwDQBwDoBwDwBwD4BwCACACICAC4CADBCLVQyfd1HK0/yQgWJMEdE9zmP5ICJQoJNTQzODQ0ODg5EgoyODI1Njc3ODU0GAQiCklNQUdFX1RFWFQ=",
+        "block_text": "NormalAnswer",
+        "config_map": {
+          "spm_extra": "{\"feed_request_id\":\"d3b4ae9e1a7341ee8b4af9f784307a8a\"}"
+        },
+        "content_id": "2825677854",
+        "content_token": "2825677854",
+        "content_type": "ANSWER",
+        "element_type": "Card",
+        "event_type": "Click",
+        "log_type": "Event",
+        "module_id": "universal_single_card",
+        "page_id": "44",
+        "page_level": 1,
+        "page_name": "fakeurl://topstory",
+        "page_url": "fakeurl://topstory",
+        "view_action": "OpenUrl",
+        "visible": true
+      }
+    ]
+  }
+}

@@ -254,7 +254,7 @@ object UpdateManager {
         }
     }
 
-    internal fun selectApkAsset(apkAssets: List<GithubAsset>, isLiteVariant: Boolean): GithubAsset? = if (isLiteVariant) {
+    private fun selectApkAsset(apkAssets: List<GithubAsset>, isLiteVariant: Boolean): GithubAsset? = if (isLiteVariant) {
         // Lite version: strictly look for "lite" in filename
         apkAssets.firstOrNull { it.name.contains("lite", ignoreCase = true) }
     } else {

@@ -17,22 +17,17 @@
 
 package com.github.zly2006.zhihu
 
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.test.InstrumentedTestEnvironment
 import com.github.zly2006.zhihu.test.ZhihuMockApi
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
-import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class InstrumentedAccountSeedSmokeTest {
-    @get:Rule
-    val composeRule = createAndroidComposeRule<MainActivity>()
-
     @Test
     fun runnerSeedsExpectedAccountModeBeforeActivityInteractions() {
         val seeded = AccountData.data

@@ -82,33 +82,7 @@ data class ZhihuPhoneLoginDeviceInfo(
     val freeMemoryMegabytes: Int,
     val totalStorageMegabytes: Int,
     val freeStorageMegabytes: Int,
-) {
-    internal fun formParameters(): Parameters = Parameters.build {
-        append("app_build", "40408")
-        append("app_install_time", appInstallTimeMillis.toString())
-        append("app_ticket", "interface is empty")
-        append("app_version", "11.4.0")
-        append("bt_ck", if (bluetoothAvailable) "1" else "0")
-        append("bundle_id", MOBILE_SOURCE)
-        append("cp_ct", cpuCount.toString())
-        append("cp_tp", cpuType)
-        append("cp_us", cpuUsage)
-        append("d_n", phoneModel)
-        append("fr_mem", freeMemoryMegabytes.toString())
-        append("fr_st", freeStorageMegabytes.toString())
-        append("latitude", "0.0")
-        append("longitude", "0.0")
-        append("nt_st", if (notificationEnabled) "1" else "0")
-        append("ph_br", phoneBrand)
-        append("ph_md", phoneModel)
-        append("ph_os", "Android $androidRelease")
-        append("pre_install", "InterfaceIsNull")
-        append("tt_mem", totalMemoryMegabytes.toString())
-        append("tt_st", totalStorageMegabytes.toString())
-        append("tz_of", timezoneOffsetSeconds.toString())
-        append("zx_expired", "0")
-    }
-}
+)
 
 sealed interface ZhihuPhoneDigitsResult {
     data object Sent : ZhihuPhoneDigitsResult
@@ -282,7 +256,32 @@ class ZhihuPhoneLoginClient(
         }
 
         val timestamp = nowEpochSeconds().toString()
-        val form = deviceInfo.formParameters().formUrlEncode()
+        val form = Parameters
+            .build {
+                append("app_build", "40408")
+                append("app_install_time", deviceInfo.appInstallTimeMillis.toString())
+                append("app_ticket", "interface is empty")
+                append("app_version", "11.4.0")
+                append("bt_ck", if (deviceInfo.bluetoothAvailable) "1" else "0")
+                append("bundle_id", MOBILE_SOURCE)
+                append("cp_ct", deviceInfo.cpuCount.toString())
+                append("cp_tp", deviceInfo.cpuType)
+                append("cp_us", deviceInfo.cpuUsage)
+                append("d_n", deviceInfo.phoneModel)
+                append("fr_mem", deviceInfo.freeMemoryMegabytes.toString())
+                append("fr_st", deviceInfo.freeStorageMegabytes.toString())
+                append("latitude", "0.0")
+                append("longitude", "0.0")
+                append("nt_st", if (deviceInfo.notificationEnabled) "1" else "0")
+                append("ph_br", deviceInfo.phoneBrand)
+                append("ph_md", deviceInfo.phoneModel)
+                append("ph_os", "Android ${deviceInfo.androidRelease}")
+                append("pre_install", "InterfaceIsNull")
+                append("tt_mem", deviceInfo.totalMemoryMegabytes.toString())
+                append("tt_st", deviceInfo.totalStorageMegabytes.toString())
+                append("tz_of", deviceInfo.timezoneOffsetSeconds.toString())
+                append("zx_expired", "0")
+            }.formUrlEncode()
         val signature = hmacSha1Hex(
             CLOUD_APP_SECRET,
             CLOUD_APP_ID + CLOUD_SIGN_VERSION + form + timestamp,
