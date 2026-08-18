@@ -19,7 +19,6 @@ import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -46,9 +45,8 @@ import com.hrm.markdown.parser.ast.NativeBlock
 import com.hrm.markdown.parser.ast.SegmentHighlight
 import com.hrm.markdown.renderer.LocalOnSegmentHighlightClick
 import com.hrm.markdown.renderer.MarkdownImageData
-import org.tiqian.compose.CjkText
+import org.tiqian.compose.material3.CjkText
 import org.tiqian.compose.ruby
-import org.tiqian.compose.toCjkTextStyle
 import org.tiqian.markdown.MarkdownCustomBlock
 import org.tiqian.markdown.MarkdownImageBlock
 import org.tiqian.markdown.MarkdownNodeKey
@@ -335,6 +333,5 @@ internal actual fun TiqianBrandTitle(prefix: String, suffix: String) {
             ruby("椠", "qiàn")
             append(suffix)
         },
-        textStyle = LocalTextStyle.current.toCjkTextStyle(),
     )
 }
