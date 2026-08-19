@@ -55,6 +55,7 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Navigator
 import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
 import com.github.zly2006.zhihu.test.InstrumentedTestEnvironment
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
@@ -272,6 +273,44 @@ class CommentScreenInstrumentedTest {
         composeRule.onNodeWithTag(COMMENT_INPUT_TAG).assertTextEquals("[惊喜]已有草稿")
         composeRule.onNodeWithTag(COMMENT_EMOJI_BUTTON_TAG).performClick()
         composeRule.onNodeWithContentDescription("选择表情").assertIsDisplayed()
+    }
+
+    @Test
+    fun spanFragmentsWithTheSameSegmentIdsReuseTheCommentThread() {
+        val firstFragment = SegmentCommentHolder(
+            contentId = "1907864533831225689",
+            contentType = "answer",
+            segmentId = "1993195116945487118,1978217501180568395",
+            segmentContent = "吃柠檬，怎么吃？谁吃的？吃的哪儿？什么时候吃的？吃的心情怎么样？",
+            paragraphId = "nX5RAoeG",
+            startOffset = 0,
+            endOffset = 32,
+        )
+        val secondFragment = firstFragment.copy(
+            segmentContent = "柠檬，是怎样的檬？这个檬是否从事正当行业？这个檬是活着还是死的？",
+            paragraphId = "CANw6uZN",
+        )
+        val currentFragment = mutableStateOf<NavDestination>(firstFragment)
+        val viewModel = SeededRootCommentViewModel(
+            article = firstFragment,
+            seededComments = seedRootComments(count = 1),
+        )
+
+        composeRule.setScreenContent {
+            val commentInput = remember { mutableStateOf("") }
+            CommentScreen(
+                content = { currentFragment.value },
+                onChildCommentClick = {},
+                commentInput = commentInput.value,
+                onCommentInputChange = { commentInput.value = it },
+                testOverrides = CommentScreenTestOverrides(viewModel = viewModel),
+            )
+        }
+        composeRule.onNodeWithTag("comment_row_root-1").assertIsDisplayed()
+
+        composeRule.runOnIdle { currentFragment.value = secondFragment }
+
+        composeRule.onNodeWithTag("comment_row_root-1").assertIsDisplayed()
     }
 
     @Test

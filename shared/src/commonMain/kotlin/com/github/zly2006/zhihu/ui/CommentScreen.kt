@@ -464,7 +464,7 @@ fun CommentScreen(
     var isDeletingComment by remember { mutableStateOf(false) }
     var deleteCommentError by remember { mutableStateOf<String?>(null) }
     val initialTargetId = initialCommentId ?: initialComment?.id
-    val viewModelKey = commentViewModelKey(resolvedContent) + initialTargetId?.let { ":initial:$it" }.orEmpty()
+    val viewModelKey = resolvedContent.commentThreadKey() + initialTargetId?.let { ":initial:$it" }.orEmpty()
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val commentInputFocusRequester = remember { FocusRequester() }
@@ -633,7 +633,7 @@ fun CommentScreen(
 
     // 初始加载评论
     LaunchedEffect(resolvedContent) {
-        if (viewModel.article != resolvedContent) {
+        if (viewModel.article.commentThreadKey() != resolvedContent.commentThreadKey()) {
             error("Internal Error: Detected content mismatch")
         }
         if (viewModel.errorMessage == null) {
@@ -1221,13 +1221,13 @@ fun CommentScreen(
     }
 }
 
-private fun commentViewModelKey(content: NavDestination): String = when (content) {
-    is Article -> "article:${content.type}:${content.id}"
-    is Pin -> "pin:${content.id}"
-    is Question -> "question:${content.questionId}"
-    is SegmentCommentHolder -> "segment:${content.contentType}:${content.contentId}:${content.segmentId}"
-    is CommentHolder -> "comment:${content.commentId}:${commentViewModelKey(content.article)}"
-    else -> "comment:${content::class.qualifiedName}:${content.hashCode()}"
+internal fun NavDestination.commentThreadKey(): String = when (this) {
+    is Article -> "article:$type:$id"
+    is Pin -> "pin:$id"
+    is Question -> "question:$questionId"
+    is SegmentCommentHolder -> "segment:$contentType:$contentId:$segmentId"
+    is CommentHolder -> "comment:$commentId:${article.commentThreadKey()}"
+    else -> "comment:${this::class.qualifiedName}:${hashCode()}"
 }
 
 @OptIn(ExperimentalFoundationApi::class)
