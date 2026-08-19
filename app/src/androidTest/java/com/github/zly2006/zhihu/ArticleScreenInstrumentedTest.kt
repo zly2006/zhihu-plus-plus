@@ -59,7 +59,6 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -853,8 +852,8 @@ class ArticleScreenInstrumentedTest {
             .performTouchInput { click() }
         composeRule.onNodeWithText("划线片段").assertIsDisplayed()
         composeRule.onNodeWithText("“$HIGHLIGHTED_PARAGRAPH”").assertIsDisplayed()
-        composeRule.onNodeWithTag("segment_action_sheet_top_divider").assertIsNotDisplayed()
-        composeRule.onNodeWithTag("segment_action_sheet_bottom_divider").assertIsNotDisplayed()
+        composeRule.onNodeWithTag("segment_action_sheet_top_divider").assertDoesNotExist()
+        composeRule.onNodeWithTag("segment_action_sheet_bottom_divider").assertDoesNotExist()
     }
 
     @Test
@@ -898,18 +897,15 @@ class ArticleScreenInstrumentedTest {
 
         val text = composeRule.onNodeWithText("“$longDisplayText”")
         text.fetchSemanticsNode()
-        composeRule.onNodeWithTag("segment_action_sheet_top_divider").assertIsNotDisplayed()
+        composeRule.onNodeWithTag("segment_action_sheet_top_divider").assertDoesNotExist()
         composeRule.onNodeWithTag("segment_action_sheet_bottom_divider").assertIsDisplayed()
         composeRule.onNodeWithText("15").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("复制内容").assertIsDisplayed()
 
-        text.performSemanticsAction(SemanticsActions.ScrollBy) { scrollBy ->
-            scrollBy(0f, Float.MAX_VALUE)
-        }
-        composeRule.waitForIdle()
+        scrollToBoundary(text, end = true)
 
         composeRule.onNodeWithTag("segment_action_sheet_top_divider").assertIsDisplayed()
-        composeRule.onNodeWithTag("segment_action_sheet_bottom_divider").assertIsNotDisplayed()
+        composeRule.onNodeWithTag("segment_action_sheet_bottom_divider").assertDoesNotExist()
         composeRule.onNodeWithText("15").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("复制内容").assertIsDisplayed()
     }
