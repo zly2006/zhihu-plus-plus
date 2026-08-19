@@ -61,6 +61,7 @@ import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.click
+import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithText
@@ -903,6 +904,9 @@ class ArticleScreenInstrumentedTest {
         composeRule.onNodeWithContentDescription("复制内容").assertIsDisplayed()
 
         scrollToBoundary(text, end = true)
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onNodeWithTag("segment_action_sheet_top_divider").isDisplayed()
+        }
 
         composeRule.onNodeWithTag("segment_action_sheet_top_divider").assertIsDisplayed()
         composeRule.onNodeWithTag("segment_action_sheet_bottom_divider").assertDoesNotExist()
