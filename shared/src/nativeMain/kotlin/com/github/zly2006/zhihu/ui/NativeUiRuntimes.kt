@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.text.Placeholder
@@ -34,10 +35,11 @@ import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.platform.UserMessageSink
+import com.github.zly2006.zhihu.platform.nativeAppPrivateDirectoryPath
 import com.github.zly2006.zhihu.platform.nativeAppVersionName
 import com.github.zly2006.zhihu.platform.nativeBundledResourcePath
+import com.github.zly2006.zhihu.platform.nativeChooseBlocklistImportFilePath
 import com.github.zly2006.zhihu.platform.nativeIsDesktop
-import com.github.zly2006.zhihu.platform.nativePlatformName
 import com.github.zly2006.zhihu.platform.openNativeExternalUrl
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
@@ -45,22 +47,59 @@ import com.github.zly2006.zhihu.platform.requestNativeQrLogin
 import com.github.zly2006.zhihu.ui.subscreens.DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY
 import com.github.zly2006.zhihu.viewmodel.NativePaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.NotificationEnvironment
+import com.github.zly2006.zhihu.viewmodel.filter.encodeBlocklistBackup
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
+import com.github.zly2006.zhihu.viewmodel.filter.importBlocklistBackupFromJsonText
+import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.readBytes
 import kotlinx.cinterop.reinterpret
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import platform.Foundation.NSFileManager
+import platform.Foundation.NSString
+import platform.Foundation.NSUTF8StringEncoding
+import platform.Foundation.create
+import platform.Foundation.dataUsingEncoding
 import org.jetbrains.skia.Image as SkiaImage
 
 @Composable
-actual fun rememberArticleTtsState(): TtsState = TtsState.Ready
+actual fun rememberArticleTtsState(): TtsState = NativeArticleSpeechController.currentState
 
 @Composable
 actual fun rememberArticleSpeechToggler(): (title: String, content: String) -> Unit {
     val userMessages = rememberUserMessageSink()
-    return remember(userMessages) {
-        { _, _ -> userMessages.showMessage("$nativePlatformName TTS 暂未实现") }
+    val coroutineScope = rememberCoroutineScope()
+    val ttsState = NativeArticleSpeechController.currentState
+    return remember(userMessages, coroutineScope, ttsState) {
+        { title, content ->
+            if (ttsState.isSpeaking) {
+                NativeArticleSpeechController.stopSpeaking()
+            } else if (ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)) {
+                coroutineScope.launch {
+                    try {
+                        val textToRead = withContext(Dispatchers.Default) {
+                            articleSpeechText(title, content)
+                        }
+                        if (textToRead.isNotBlank()) {
+                            if (NativeArticleSpeechController.startSpeaking(textToRead)) {
+                                userMessages.showMessage("开始朗读：$title")
+                            } else {
+                                userMessages.showMessage("朗读启动失败")
+                            }
+                        }
+                    } catch (e: Exception) {
+                        withContext(Dispatchers.Main) {
+                            userMessages.showMessage("朗读失败：${e.message}")
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -96,8 +135,8 @@ actual fun ArticleWebViewContent(
         enableScroll = false,
         header = {},
         footer = {},
-        useTiqianRenderer = rememberSettingsStore()
-            .getBoolean(DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY, false),
+        useTiqianRenderer = !nativeIsDesktop &&
+            rememberSettingsStore().getBoolean(DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY, false),
     )
 }
 
@@ -193,24 +232,79 @@ actual fun rememberAccountQrLoginRequester(): () -> Unit = remember { ::requestN
 actual fun rememberAppVersionInfo(): String = nativeAppVersionName
 
 @Composable
-actual fun ZhihuHtmlWebViewContent(html: String) = Unit // TODO: iOS HTML WebView 实现
+actual fun ZhihuHtmlWebViewContent(html: String) = Unit
 
 actual fun supportsZhihuHtmlWebView(): Boolean = false
 
 @Composable
 actual fun rememberBlocklistRuleImporter(
     userMessages: UserMessageSink,
-): (((String) -> Unit) -> Unit) = remember(userMessages) {
-    { _ -> userMessages.showMessage("$nativePlatformName 导入规则暂未实现") }
+): (((String) -> Unit) -> Unit) {
+    val database = remember { getContentFilterDatabase() }
+    val coroutineScope = rememberCoroutineScope()
+    return remember(database, coroutineScope, userMessages) {
+        { onImported ->
+            val selectedFilePath = nativeChooseBlocklistImportFilePath()
+            if (selectedFilePath != null) {
+                coroutineScope.launch {
+                    try {
+                        val text = readNativeFileBytes(selectedFilePath)?.decodeToString()
+                            ?: error("读取文件失败")
+                        val summary = importBlocklistBackupFromJsonText(
+                            keywordDao = database.blockedKeywordDao(),
+                            userDao = database.blockedUserDao(),
+                            questionAuthorDao = database.blockedQuestionAuthorDao(),
+                            topicDao = database.blockedTopicDao(),
+                            text = text,
+                        )
+                        onImported(summary)
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (error: Exception) {
+                        userMessages.showShortMessage("导入失败：${error.message}")
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
-actual fun rememberBlocklistRuleExporter(): suspend () -> String = remember {
-    { "" } // TODO: iOS 导出规则
+@OptIn(BetaInteropApi::class, ExperimentalForeignApi::class)
+actual fun rememberBlocklistRuleExporter(): suspend () -> String {
+    val database = remember { getContentFilterDatabase() }
+    return remember(database) {
+        suspend {
+            val text = encodeBlocklistBackup(
+                keywordDao = database.blockedKeywordDao(),
+                userDao = database.blockedUserDao(),
+                questionAuthorDao = database.blockedQuestionAuthorDao(),
+                topicDao = database.blockedTopicDao(),
+            )
+            val outputDirectory = nativeAppPrivateDirectoryPath()
+            val outputFile = "$outputDirectory/zhihupp_blocklist.json"
+            val fileManager = NSFileManager.defaultManager
+            if (!fileManager.fileExistsAtPath(outputDirectory)) {
+                fileManager.createDirectoryAtPath(
+                    outputDirectory,
+                    withIntermediateDirectories = true,
+                    attributes = null,
+                    error = null,
+                )
+            }
+            val data = checkNotNull(
+                NSString.create(string = text).dataUsingEncoding(NSUTF8StringEncoding),
+            ) { "无法编码导出内容" }
+            check(fileManager.createFileAtPath(outputFile, contents = data, attributes = null)) {
+                "无法写入导出文件"
+            }
+            "已导出到 $outputFile"
+        }
+    }
 }
 
 @Composable
-actual fun QuestionDetailWebViewContent(questionId: Long, html: String) = Unit // TODO: iOS 问题 WebView 实现
+actual fun QuestionDetailWebViewContent(questionId: Long, html: String) = Unit
 
 actual fun supportsQuestionDetailWebView(): Boolean = false
 

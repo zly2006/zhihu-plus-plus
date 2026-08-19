@@ -19,13 +19,17 @@ package com.github.zly2006.zhihu.ui.components
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import com.github.zly2006.zhihu.platform.nativePlatformName
 import com.github.zly2006.zhihu.platform.rememberPlainTextClipboard
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 
 actual suspend fun extractFeedKeywords(
     title: String,
     excerpt: String?,
-): List<com.github.zly2006.zhihu.nlp.KeywordWithWeight> = emptyList() // TODO: iOS 关键词提取
+): List<com.github.zly2006.zhihu.nlp.KeywordWithWeight> =
+    throw UnsupportedOperationException("$nativePlatformName 暂不支持关键词提取")
+
+actual val feedKeywordExtractionAvailable: Boolean = false
 
 @Composable
 actual fun rememberShareActionExecutor(): ShareActionExecutor {

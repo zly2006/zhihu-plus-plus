@@ -25,6 +25,8 @@ import com.github.zly2006.zhihu.platform.nativeBundledResourcePath
 import com.github.zly2006.zhihu.platform.nativeIsDesktop
 import com.github.zly2006.zhihu.platform.openNativeExternalUrl
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.ui.NativeArticleSpeechController
+import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.updater.SchematicVersion
 import com.github.zly2006.zhihu.updater.extractGithubReleaseNotes
 import com.github.zly2006.zhihu.updater.fetchLatestZhihuRelease
@@ -34,6 +36,7 @@ import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.readBytes
 import kotlinx.cinterop.reinterpret
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import platform.Foundation.NSFileManager
 
@@ -70,11 +73,13 @@ actual fun rememberSystemUpdateRuntime(): SystemUpdateRuntime {
             },
             resetToNoUpdate = { nativeSystemUpdateState.value = SystemUpdateState.NoUpdate },
             downloadUpdate = { url ->
-                runCatching {
+                try {
                     require(url.isNotBlank()) { "下载链接为空" }
                     openNativeExternalUrl(url)
-                }.onFailure {
-                    nativeSystemUpdateState.value = SystemUpdateState.Error(it.message ?: "无法打开浏览器")
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    nativeSystemUpdateState.value = SystemUpdateState.Error(error.message ?: "无法打开浏览器")
                 }
             },
             installDownloadedUpdate = {
@@ -101,9 +106,8 @@ private suspend fun checkNativeUpdate(
         var releaseNotes = latestResponse.body?.let(::extractGithubReleaseNotes)
 
         if (checkNightly) {
-            runCatching {
-                fetchNightlyZhihuRelease(accountStore.httpClient(), githubToken)
-            }.onSuccess { nightlyResponse ->
+            try {
+                val nightlyResponse = fetchNightlyZhihuRelease(accountStore.httpClient(), githubToken)
                 if (nightlyResponse.tagName == "nightly") {
                     latestResponse = nightlyResponse
                     latestVersion = SchematicVersion(
@@ -114,6 +118,10 @@ private suspend fun checkNativeUpdate(
                     isNightly = true
                     releaseNotes = nightlyResponse.body?.let(::extractGithubReleaseNotes)
                 }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                // Stable release metadata remains usable when the optional nightly lookup fails.
             }
         }
 
@@ -137,8 +145,11 @@ private suspend fun checkNativeUpdate(
         } else {
             nativeSystemUpdateState.value = SystemUpdateState.Latest
         }
-    } catch (e: Exception) {
-        nativeSystemUpdateState.value = SystemUpdateState.Error(e.message ?: "Unknown error")
+    } catch (error: CancellationException) {
+        nativeSystemUpdateState.value = SystemUpdateState.NoUpdate
+        throw error
+    } catch (error: Exception) {
+        nativeSystemUpdateState.value = SystemUpdateState.Error(error.message ?: "Unknown error")
     }
 }
 
@@ -150,6 +161,9 @@ actual fun rememberDeveloperRuntimeInfo(): DeveloperRuntimeInfo =
         } else {
             "网络状态：iOS 端使用系统网络"
         },
+        ttsState = if (nativeIsDesktop) NativeArticleSpeechController.currentState else TtsState.Uninitialized,
+        currentTtsEngineLabel = if (nativeIsDesktop) "macOS 系统语音" else "未初始化",
+        availableTtsEngineLabels = if (nativeIsDesktop) listOf("NSSpeechSynthesizer") else emptyList(),
     )
 
 @Composable
@@ -176,4 +190,4 @@ actual fun rememberShowFullVariantLicenses(): Boolean = false
 actual fun WebViewCustomFontSettings(
     customFontName: String?,
     onCustomFontNameChange: (String?) -> Unit,
-) = Unit // TODO: iOS WebView 自定义字体设置
+) = Unit

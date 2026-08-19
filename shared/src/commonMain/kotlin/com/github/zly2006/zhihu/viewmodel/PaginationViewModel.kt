@@ -322,9 +322,8 @@ suspend fun ZhihuApiEnvironment.fetchContentDetail(destination: NavDestination):
             fetchJson(url, include)
         }
     }.getOrElse { error ->
-        if (error !is CancellationException) {
-            Log.e("ZhihuApiEnvironment", "Failed to fetch content detail for $destination", error)
-        }
+        if (error is CancellationException) throw error
+        Log.e("ZhihuApiEnvironment", "Failed to fetch content detail for $destination", error)
         null
     }
 
@@ -334,9 +333,8 @@ suspend fun ZhihuApiEnvironment.getOrFetchContentDetail(destination: NavDestinat
             fetchJson(url, include)
         }
     }.getOrElse { error ->
-        if (error !is CancellationException) {
-            Log.e("ZhihuApiEnvironment", "Failed to fetch content detail for $destination", error)
-        }
+        if (error is CancellationException) throw error
+        Log.e("ZhihuApiEnvironment", "Failed to fetch content detail for $destination", error)
         null
     }
 

@@ -121,6 +121,7 @@ import com.github.zly2006.zhihu.navigation.Topic
 import com.github.zly2006.zhihu.navigation.WriteAnswer
 import com.github.zly2006.zhihu.navigation.WritePin
 import com.github.zly2006.zhihu.platform.PlatformBackHandler
+import com.github.zly2006.zhihu.platform.platformBackNavigationHost
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
 import com.github.zly2006.zhihu.reading.saveReadingPlaybackSpeed
@@ -213,6 +214,9 @@ fun ZhihuMain(
 
     val navEntry by navController.currentBackStackEntryAsState()
     val showMainNavigation = navEntry?.destination?.hasRoute<MainTabs>() == true
+    PlatformBackHandler(enabled = navEntry != null && !showMainNavigation) {
+        navController.popBackStack()
+    }
     val isOnReadingDetail = navEntry?.destination?.hasRoute<Article>() == true ||
         navEntry?.destination?.hasRoute<Question>() == true ||
         navEntry?.destination?.hasRoute<Pin>() == true
@@ -349,7 +353,7 @@ fun ZhihuMain(
         }
     }
 
-    PlatformBackHandler(mainPagerState.currentPage != 0) {
+    PlatformBackHandler(showMainNavigation && mainPagerState.currentPage != 0) {
         coroutineScope.launch {
             mainPagerState.animateScrollToPage(0)
         }
@@ -381,7 +385,7 @@ fun ZhihuMain(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(modifier = modifier.fillMaxSize().platformBackNavigationHost(navEntry)) {
         Scaffold(
             modifier = Modifier
                 .fillMaxSize()

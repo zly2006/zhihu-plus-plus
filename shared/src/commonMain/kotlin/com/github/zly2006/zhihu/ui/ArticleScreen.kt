@@ -96,6 +96,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -998,7 +999,9 @@ fun ArticleScreen(
                             } else {
                                 RenderMarkdown(
                                     html = viewModel.content,
-                                    modifier = Modifier.articleMarkdownSelectionWorkaround(),
+                                    modifier = Modifier
+                                        .testTag("article_content")
+                                        .articleMarkdownSelectionWorkaround(),
                                     scrollState = scrollState,
                                     selectable = true,
                                     enableScroll = false,
@@ -1048,7 +1051,10 @@ fun ArticleScreen(
     val progressBarBottomPadding = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 96.dp
 
     Box(
-        modifier = Modifier.fillMaxSize().then(answerDoubleTapModifier),
+        modifier = Modifier
+            .fillMaxSize()
+            .testTag("article_screen_root")
+            .then(answerDoubleTapModifier),
     ) {
         // 根据模式渲染
         if (article.type == ArticleType.Answer && articleSettings.answerSwitchMode == "vertical") {

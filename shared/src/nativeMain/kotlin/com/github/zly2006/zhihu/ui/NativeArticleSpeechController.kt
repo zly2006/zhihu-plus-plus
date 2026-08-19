@@ -15,17 +15,12 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.github.zly2006.zhihu.theme
+package com.github.zly2006.zhihu.ui
 
-import androidx.compose.material3.ColorScheme
-import androidx.compose.runtime.Composable
-import com.github.zly2006.zhihu.platform.nativeSystemInDarkTheme
+internal expect object NativeArticleSpeechController {
+    val currentState: TtsState
 
-@Composable
-actual fun currentSystemInDarkTheme(): Boolean = nativeSystemInDarkTheme()
+    fun startSpeaking(text: String): Boolean
 
-@Composable
-actual fun platformDynamicColorScheme(darkTheme: Boolean): ColorScheme? = null
-
-@Composable
-actual fun PlatformSystemBarEffect(darkTheme: Boolean) = Unit
+    fun stopSpeaking()
+}

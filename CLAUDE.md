@@ -320,25 +320,19 @@ adb shell monkey -p com.github.zly2006.zhplus.lite -c android.intent.category.LA
 9. ✅ 仅在无 tag/文字可用且必须手势操作时，才使用 `adb shell input swipe` 等手势
 10. ❌ 异常时检查 logcat：`adb logcat | grep -i error`
 
-### UI 双代理复检
+### UI 自动化与复检
 
-`$ui-voyager` 和 `$picky-user` 运行成本较高，非必要不要调用。只有在改动范围较大、交互路径复杂、主 agent 已经完成基础截图/设备验证但仍需要额外视角，或我明确要求复检时，才启动它们。调用时必须优先使用 `gpt-5.4-mini`，复杂场景可用 `gpt-5.4`，避免使用过慢模型。
+macOS Kotlin/Native 的动态 UI 验证必须使用 `$background-ui-debug`。它直接驱动 debug-only 离屏 Compose 语义树，不创建、显示、激活或切换窗口；严禁使用 `open`、`osascript`、AppleScript、System Events、桌面截图、全局键鼠和屏幕坐标。正式应用和 release 二进制不得包含调试协议。
 
-需要调用时，主 agent 在完成上面的基础验证后，再执行以下流程：
+验证时由主 agent 持续执行以下闭环：
 
-1. 启动两个 subagent skill，不能由主 agent 自己扮演：
-   - `$ui-voyager`（UI漫游者）：系统性探索目标页面，把能点的尽量都点一遍，把上下左右的滑动都试一遍，重点找空白页、越界、裁切、重叠、错位、状态切换异常。
-   - `$picky-user`（挑剔的用户）：分别扮演新用户和老用户，对 self explain、明确性、直觉性、效率、布局和操作习惯提出高标准意见。
-2. 两个 skill 都必须先读取自己的持久化记忆：
-   - `.memory/YYYY-MM-DD/picky-user/`
-   - `.memory/YYYY-MM-DD/ui-volayor/`
-3. 两个 skill 都允许在 `ui-test` 之外结合截图做视觉判断，但交互仍优先走 `ui-test` 的 `dump` / `tap` / `screenshot` 工作流。
-4. `ui-voyager` 遇到拿不准的地方，必须把复现步骤和犹豫原因交给 `$picky-user` 或主 agent，请其再判断，不要含糊带过。
-5. 主 agent 只有在以下条件满足后，才能停止工作、宣布 UI 修改完成，或请求我做下一步决策：
-   - `$ui-voyager` 没有新的有效问题；
-   - `$picky-user` 没有新的有效意见；
-   - 或者它们提出的意见都已经被修复，或被明确标记为无效/驳回并留下充分理由。
-6. 主 agent 对每条意见都必须写回 memory，至少标记为 `fixed`、`rejected` 或 `invalid`，不能口头略过。
+1. 启动后台调试器前确认正式应用没有运行，先读取 `state` 和 `dump`。
+2. 枚举当前页面的语义化可点击节点，逐项执行非破坏性的点击、输入、滚动、等待和离屏截图；涉及发布、关注、投票或删除等副作用时只验证到提交前状态。
+3. 每次操作后验证明确的目标语义状态，不能用进程存活、命令返回成功或非空图片代替页面可用性。
+4. 卡死、超时、空白或状态不变都必须保留动作前后语义树、stderr、耗时和离屏截图，定位根因并在相同路径复测。
+5. 最后构建 release，确认 release 不含后台控制协议；整个过程不得把应用带到前台影响用户工作。
+
+需要额外检查视觉理解和操作习惯时才调用 `$picky-user`。它必须先读取 `.memory/YYYY-MM-DD/picky-user/`；主 agent 对每条有效意见都要修复或说明驳回理由，并写回 `fixed`、`rejected` 或 `invalid` 状态。
 
 记忆回写命令示例：
 
@@ -353,6 +347,14 @@ python3 .agents/skills/ui-review-memory/memory_store.py update-status \
 ```
 
 `update-status` 会按 `id` 自动定位历史记录，所以 issue 即使不是今天创建的，也必须继续回写，而不是新建另一个编号。
+
+### 平台 actual 的质量门槛
+
+跨平台迁移不能把“去掉 TODO”“返回非空结果”或“入口可以点击”当作功能完成。某个平台缺少能达到既有产品质量和语义契约的实现时，允许并且应该让该平台的 `actual` 明确禁用、返回 unsupported，或保留带原因的 TODO；严禁为了表面完成度，用低质量启发式、简化算法或行为不同的替代品冒充原功能。只有先明确目标质量、找到等价实现，并用真实输入证明结果达到契约后，才能启用该平台能力。例如，一个依赖成熟语义模型的分析功能不能退化成简单词频后仍宣称“已补齐”。
+
+### PR 中的本地构建产物
+
+为解决本机依赖解析而生成的 Maven 仓库、编译产物和发布附件不属于源码，未经用户明确授权不得提交到 PR。需要尚未正式发布的跨平台依赖时，应优先使用可审查的源码组合构建或先完成独立依赖发布；不能把本地仓库里的 `.jar`、`.klib`、资源压缩包和元数据整目录纳入版本控制。提交前必须按相对基线审计新增二进制文件和异常体积文件，确认每个产物都是明确交付物，而不是因为构建能够通过就直接推送。例如，本地发布一个 Native 库供 Gradle 解析，只证明本机构建输入可用，不代表其 Maven 发布目录应随应用源码一起进入 PR。
 
 ## 代码风格
 - Kotlin Serialization with `@Serializable`

@@ -18,9 +18,13 @@
 package com.github.zly2006.zhihu.platform
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.backhandler.BackHandler
+import androidx.compose.ui.platform.testTag
 import com.github.zly2006.zhihu.account.IosAccountStore
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -130,8 +134,11 @@ actual fun rememberPlainTextClipboard(): (label: String, text: String) -> Unit =
     { _, text -> copyNativePlainText(text) }
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
+@Suppress("DEPRECATION")
 @Composable
-actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) = Unit // TODO: iOS 返回手势处理
+actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) =
+    BackHandler(enabled = enabled, onBack = onBack)
 
 @Composable
 actual fun PlatformPredictiveBackHandler(
@@ -147,10 +154,14 @@ actual fun rememberSettingsStore(): SettingsStore = remember { nativeSettingsSto
 actual fun Modifier.exportTestTagsForUiAutomation(): Modifier = this
 
 @Composable
+actual fun Modifier.platformBackNavigationHost(navigationKey: Any?): Modifier =
+    testTag("platform_back_navigation_host")
+
+@Composable
 actual fun rememberAppPrivateDirectory(): Path = remember { Path(nativeAppPrivateDirectoryPath()) }
 
 @Composable
-actual fun rememberIsLiteVariant(): Boolean = false // TODO: iOS 变体判断
+actual fun rememberIsLiteVariant(): Boolean = false
 
 @Composable
 actual fun rememberUserMessageSink(): UserMessageSink = remember {

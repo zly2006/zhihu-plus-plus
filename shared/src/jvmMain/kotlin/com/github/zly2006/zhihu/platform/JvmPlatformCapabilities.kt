@@ -36,6 +36,9 @@ actual fun rememberSettingsStore(): SettingsStore = remember { desktopSettingsSt
 actual fun Modifier.exportTestTagsForUiAutomation(): Modifier = this
 
 @Composable
+actual fun Modifier.platformBackNavigationHost(navigationKey: Any?): Modifier = this
+
+@Composable
 actual fun rememberAppPrivateDirectory(): Path = remember { Path(desktopZhihuDataDir().absolutePath) }
 
 fun desktopSettingsStore(): SettingsStore {

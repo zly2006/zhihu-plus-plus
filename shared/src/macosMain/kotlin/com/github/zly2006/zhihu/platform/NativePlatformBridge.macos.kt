@@ -25,6 +25,8 @@ import kotlinx.coroutines.flow.update
 import platform.AppKit.NSAppearanceNameAqua
 import platform.AppKit.NSAppearanceNameDarkAqua
 import platform.AppKit.NSApplication
+import platform.AppKit.NSModalResponseOK
+import platform.AppKit.NSOpenPanel
 import platform.AppKit.NSPasteboard
 import platform.AppKit.NSPasteboardTypeString
 import platform.AppKit.NSWorkspace
@@ -68,6 +70,16 @@ internal actual fun nativeAppPrivateDirectoryPath(): String =
     "${NSHomeDirectory()}/.zhihu-plus"
 
 internal actual fun nativeDownloadsDirectoryPath(): String = "${NSHomeDirectory()}/Downloads"
+
+@OptIn(ExperimentalForeignApi::class)
+internal actual fun nativeChooseBlocklistImportFilePath(): String? {
+    val panel = NSOpenPanel.openPanel()
+    panel.title = "导入屏蔽规则"
+    panel.canChooseFiles = true
+    panel.canChooseDirectories = false
+    panel.allowsMultipleSelection = false
+    return if (panel.runModal() == NSModalResponseOK) panel.URL?.path else null
+}
 
 internal actual fun nativeBundledResourcePath(relativePath: String): String? =
     NSBundle.mainBundle.resourcePath?.let { resourceDirectory -> "$resourceDirectory/$relativePath" }

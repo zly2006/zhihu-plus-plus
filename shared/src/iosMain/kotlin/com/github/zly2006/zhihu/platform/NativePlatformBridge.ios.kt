@@ -70,6 +70,8 @@ internal actual fun nativeAppPrivateDirectoryPath(): String {
 
 internal actual fun nativeDownloadsDirectoryPath(): String = "${nativeAppPrivateDirectoryPath()}/Downloads"
 
+internal actual fun nativeChooseBlocklistImportFilePath(): String? = null
+
 internal actual fun nativeBundledResourcePath(relativePath: String): String? =
     NSBundle.mainBundle.resourcePath?.let { resourceDirectory -> "$resourceDirectory/$relativePath" }
 

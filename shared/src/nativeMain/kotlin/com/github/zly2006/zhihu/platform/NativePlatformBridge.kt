@@ -39,6 +39,8 @@ internal expect fun nativeAppPrivateDirectoryPath(): String
 
 internal expect fun nativeDownloadsDirectoryPath(): String
 
+internal expect fun nativeChooseBlocklistImportFilePath(): String?
+
 internal expect fun nativeBundledResourcePath(relativePath: String): String?
 
 internal expect fun nativeSettingsStore(relativePath: String): SettingsStore

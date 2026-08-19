@@ -61,13 +61,19 @@ kotlin {
 
 val appVersionName = providers.gradleProperty("app.versionName").get()
 val appVersionCode = providers.gradleProperty("app.versionCode").get()
+val sharedMacosResources =
+    project(":shared").layout.buildDirectory.dir("kotlin-multiplatform-resources/aggregated-resources/macosArm64")
 
 listOf("Debug", "Release").forEach { buildType ->
     val buildTypeDirectory = buildType.lowercase()
     val appDirectory = layout.buildDirectory.dir("bin/macosArm64/${buildTypeDirectory}App/Zhihu++.app")
 
     tasks.register<Sync>("package${buildType}MacosApp") {
-        dependsOn("link${buildType}ExecutableMacosArm64", ":app:prepareLibraryDefinitionsLiteDebug")
+        dependsOn(
+            "link${buildType}ExecutableMacosArm64",
+            ":app:prepareLibraryDefinitionsLiteDebug",
+            ":shared:macosArm64AggregateResources",
+        )
         into(appDirectory)
         from("src/macosMain/resources/Info.plist") {
             into("Contents")
@@ -93,7 +99,24 @@ listOf("Debug", "Release").forEach { buildType ->
         from(rootProject.file("app/build/generated/aboutLibraries/liteDebug/res/raw/aboutlibraries.json")) {
             into("Contents/Resources")
         }
+        from(sharedMacosResources) {
+            into("Contents/Resources/compose-resources")
+        }
         doLast {
+            val sourceRoot = sharedMacosResources.get().asFile
+            val packagedRoot = appDirectory.get().asFile.resolve("Contents/Resources/compose-resources")
+            val resourceFiles = sourceRoot.walkTopDown().filter(File::isFile).toList()
+            check(resourceFiles.isNotEmpty()) {
+                "macOS Compose resources were not assembled"
+            }
+            val missingResources =
+                resourceFiles.filterNot { resourceFile ->
+                    packagedRoot.resolve(resourceFile.relativeTo(sourceRoot)).isFile
+                }
+            check(missingResources.isEmpty()) {
+                "macOS app is missing Compose resources: " +
+                    missingResources.joinToString { it.relativeTo(sourceRoot).invariantSeparatorsPath }
+            }
             providers
                 .exec {
                     commandLine(
