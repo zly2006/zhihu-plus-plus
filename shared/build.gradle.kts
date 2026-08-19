@@ -1,3 +1,20 @@
+/*
+ * Zhihu++ - Free & Ad-Free Zhihu client for all platforms.
+ * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation (version 3 only).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jlleitschuh.gradle.ktlint.tasks.GenerateReportsTask
 import org.jlleitschuh.gradle.ktlint.tasks.KtLintFormatTask
@@ -101,6 +118,7 @@ kotlin {
             isStatic = true
         }
     }
+    macosArm64()
 
     sourceSets {
         commonMain.dependencies {
@@ -122,7 +140,7 @@ kotlin {
             implementation("io.ktor:ktor-serialization-kotlinx-json:3.5.0")
             implementation("com.materialkolor:material-kolor:4.1.1")
             implementation("com.fleeksoft.ksoup:ksoup:0.2.6")
-            implementation("io.github.zly2006:latex-renderer:0.0.1-alpha6")
+            implementation(project(":latex-renderer"))
             implementation(project(":markdown-parser"))
             implementation(project(":markdown-renderer"))
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.8.0")
@@ -191,6 +209,9 @@ kotlin {
             compileOnly("org.openjfx:javafx-controls:21.0.2:$fxClassifier")
             compileOnly("org.openjfx:javafx-web:21.0.2:$fxClassifier")
             compileOnly("org.openjfx:javafx-swing:21.0.2:$fxClassifier")
+        }
+        macosMain.dependencies {
+            implementation("io.ktor:ktor-client-darwin:3.5.0")
         }
         jvmTest.dependencies {
             implementation("org.jsoup:jsoup:1.22.2")

@@ -18,22 +18,23 @@
 package com.github.zly2006.zhihu.account
 
 import com.github.zly2006.zhihu.data.installZhihuCommonClientConfig
+import com.github.zly2006.zhihu.platform.nativeAccountFilePath
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.darwin.Darwin
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
-import platform.Foundation.NSDocumentDirectory
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSString
-import platform.Foundation.NSTemporaryDirectory
-import platform.Foundation.NSURL
 import platform.Foundation.NSUTF8StringEncoding
-import platform.Foundation.NSUserDomainMask
 import platform.Foundation.create
 import platform.Foundation.dataUsingEncoding
 
 class IosAccountStore {
     private val accountClient = defaultIosAccountClient
+    val accountState: StateFlow<ZhihuAccountSession> = defaultIosAccountState.asStateFlow()
 
     fun load(): ZhihuAccountSession = accountClient.load()
 
@@ -45,11 +46,23 @@ class IosAccountStore {
 
     fun createHttpClient(cookies: MutableMap<String, String>): HttpClient =
         accountClient.temporaryHttpClient(cookies)
+
+    suspend fun <T> withAuthenticatedClient(
+        block: suspend (client: HttpClient, cookies: Map<String, String>) -> T,
+    ): T = accountClient.withAuthenticatedClient(block)
+
+    suspend fun verifyAndSave(cookies: MutableMap<String, String>): Boolean =
+        accountClient.verifyAndSave(cookies)
+
+    suspend fun refreshAndSaveProfile(): ZhihuAccountSession? =
+        accountClient.refreshAndSaveProfile()
 }
+
+private val defaultIosAccountState = MutableStateFlow(ZhihuAccountSession())
 
 private val defaultIosAccountClient by lazy {
     ZhihuAccountClient(
-        repository = ZhihuAccountRepository(IosFileAccountSessionStore()),
+        repository = ZhihuAccountRepository(NativeFileAccountSessionStore()),
         createClient = { cookies, session, onCookieChanged, _ ->
             HttpClient(Darwin) {
                 installZhihuCommonClientConfig(
@@ -59,18 +72,13 @@ private val defaultIosAccountClient by lazy {
                 )
             }
         },
+        onSessionChanged = { defaultIosAccountState.value = it },
     )
 }
 
 @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
-private class IosFileAccountSessionStore : ZhihuAccountSessionStore {
-    private val filePath: String by lazy {
-        val fm = NSFileManager.defaultManager
-        val urls = fm.URLsForDirectory(NSDocumentDirectory, inDomains = NSUserDomainMask)
-        val docsUrl = urls.firstOrNull() as? NSURL
-        val docsDir = docsUrl?.path ?: NSTemporaryDirectory()
-        "$docsDir/account.json"
-    }
+private class NativeFileAccountSessionStore : ZhihuAccountSessionStore {
+    private val filePath: String by lazy(::nativeAccountFilePath)
 
     override fun readText(): String? {
         val fm = NSFileManager.defaultManager

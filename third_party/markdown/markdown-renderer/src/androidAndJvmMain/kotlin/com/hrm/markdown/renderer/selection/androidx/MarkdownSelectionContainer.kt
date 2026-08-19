@@ -214,7 +214,7 @@ private fun MarkdownSelectionContextMenuArea(
     manager: MarkdownSelectionManager,
     content: @Composable () -> Unit,
 ) {
-    if (ComposeFoundationFlags.isNewContextMenuEnabled) {
+    if (ComposeFoundationFlags.isNewContextMenuEnabled && isNewMarkdownContextMenuSupported) {
         ProvideDefaultPlatformTextContextMenuProviders(manager.contextMenuAreaModifier, content)
     } else {
         val state = remember { ContextMenuState() }
