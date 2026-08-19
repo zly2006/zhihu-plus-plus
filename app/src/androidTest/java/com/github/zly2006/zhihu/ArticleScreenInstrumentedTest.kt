@@ -61,7 +61,6 @@ import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.click
-import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithText
@@ -878,7 +877,7 @@ class ArticleScreenInstrumentedTest {
 
     @Test
     fun longSpanningHighlightShowsDirectionalDividersAndKeepsActionsVisible() {
-        val repeatedParagraphs = List(12) { SPANNING_HIGHLIGHT_FIRST }
+        val repeatedParagraphs = List(24) { SPANNING_HIGHLIGHT_FIRST }
         val longDisplayText = repeatedParagraphs.joinToString("\n\n")
         val longDisplayTextAttribute = repeatedParagraphs.joinToString("&#10;&#10;")
         val html = SPANNING_HIGHLIGHT_HTML.replace(
@@ -904,9 +903,10 @@ class ArticleScreenInstrumentedTest {
         composeRule.onNodeWithContentDescription("复制内容").assertIsDisplayed()
 
         scrollToBoundary(text, end = true)
-        composeRule.waitUntil(timeoutMillis = 5_000) {
-            composeRule.onNodeWithTag("segment_action_sheet_top_divider").isDisplayed()
-        }
+        val finalScrollRange = text
+            .fetchSemanticsNode()
+            .config[SemanticsProperties.VerticalScrollAxisRange]
+        assertTrue("The expanded sheet must still have overflowing text", finalScrollRange.maxValue() > 0f)
 
         composeRule.onNodeWithTag("segment_action_sheet_top_divider").assertIsDisplayed()
         composeRule.onNodeWithTag("segment_action_sheet_bottom_divider").assertDoesNotExist()
@@ -1834,8 +1834,8 @@ class ArticleScreenInstrumentedTest {
         const val HIGHLIGHTED_PARAGRAPH =
             "目前灰度机制是在OpenCode上，被选中的账号调用deepseek-v4-pro或deepseek-v4-flash有机会拿到GA版。"
         const val HIGHLIGHT_SELECTION_TARGET = "后续普通段落用于验证拖动手柄跨越文字块。"
-        const val SPANNING_HIGHLIGHT_FIRST = "吃柠檬，怎么吃？谁吃的？"
-        const val SPANNING_HIGHLIGHT_SECOND = "柠檬，是怎样的檬？这个檬是否从事正当行业？"
+        const val SPANNING_HIGHLIGHT_FIRST = "第一段跨段划线内容。"
+        const val SPANNING_HIGHLIGHT_SECOND = "第二段跨段划线内容。"
         const val FORMATTED_HIGHLIGHT_PREFIX = "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW"
         const val FORMATTED_HIGHLIGHT = "划线命中"
         const val FORMATTED_HIGHLIGHT_PARAGRAPH = "$FORMATTED_HIGHLIGHT_PREFIX$FORMATTED_HIGHLIGHT 后缀"
