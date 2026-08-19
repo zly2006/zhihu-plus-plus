@@ -29,6 +29,7 @@ import com.github.zly2006.zhihu.data.effectiveSegInfo
 data class SegmentHighlightSpan(
     val text: String,
     val meta: SegmentInfoMeta,
+    val displayText: String = text,
     val sourceUrl: String? = null,
     val contentId: String? = null,
     val contentType: String? = null,
@@ -154,22 +155,56 @@ fun applySegmentInfosToHtml(
     if (content.isBlank() || segmentInfos.isEmpty()) return content
 
     val document = Ksoup.parseBodyFragment(content)
-    segmentInfos.forEach { paragraph ->
-        val target = document.selectFirst("""p[data-pid="${paragraph.pid}"]""") ?: return@forEach
-        if (target.text() != paragraph.text) return@forEach
-        // TODO(#418): 支持在保留内联格式的同时注入 segment_infos。
-        // https://github.com/zly2006/zhihu-plus-plus/issues/418
-        if (target.childNodes().any(Node::hasUnsupportedSegmentInfoFormat)) return@forEach
+    val segmentInfosByPid = segmentInfos.associateBy(SegmentInfoParagraph::pid)
+    val preparedParagraphs = document
+        .select("p[data-pid]")
+        .mapNotNull { target ->
+            val paragraph = segmentInfosByPid[target.attr("data-pid")] ?: return@mapNotNull null
+            if (target.text() != paragraph.text) return@mapNotNull null
+            // TODO(#418): 支持在保留内联格式的同时注入 segment_infos。
+            // https://github.com/zly2006/zhihu-plus-plus/issues/418
+            if (target.childNodes().any(Node::hasUnsupportedSegmentInfoFormat)) return@mapNotNull null
+            target to SegmentTextParagraph(
+                pid = paragraph.pid,
+                text = paragraph.text,
+                parts = buildSegmentTextParts(
+                    text = paragraph.text,
+                    marks = paragraph.marks,
+                    sourceUrl = sourceUrl,
+                    contentId = contentId,
+                    contentType = contentType,
+                    paragraphId = paragraph.pid,
+                ),
+            )
+        }
+    val spanFragments = preparedParagraphs.flatMap { (_, paragraph) ->
+        paragraph.parts.mapNotNull { part ->
+            val highlight = part.highlight?.takeIf { it.meta.isSpan } ?: return@mapNotNull null
+            val segmentId = highlight.meta.segIds
+                .joinToString(",")
+                .takeIf(String::isNotBlank)
+                ?: return@mapNotNull null
+            segmentId to (paragraph.pid to part.text)
+        }
+    }
+    val spanDisplayTexts = mutableMapOf<String, String>()
+    spanFragments
+        .groupBy({ it.first }, { it.second })
+        .forEach { (segmentId, fragments) ->
+            spanDisplayTexts[segmentId] = buildString {
+                var previousParagraphId: String? = null
+                fragments.forEach { (paragraphId, text) ->
+                    if (isNotEmpty() && paragraphId != previousParagraphId) append("\n\n")
+                    append(text)
+                    previousParagraphId = paragraphId
+                }
+            }
+        }
+    val displayTextOwners = spanDisplayTexts.keys.toMutableSet()
 
+    preparedParagraphs.forEach { (target, paragraph) ->
         target.empty()
-        buildSegmentTextParts(
-            text = paragraph.text,
-            marks = paragraph.marks,
-            sourceUrl = sourceUrl,
-            contentId = contentId,
-            contentType = contentType,
-            paragraphId = paragraph.pid,
-        ).forEach { part ->
+        paragraph.parts.forEach { part ->
             val highlight = part.highlight
             if (highlight == null) {
                 target.appendChild(TextNode(part.text))
@@ -187,6 +222,12 @@ fun applySegmentInfosToHtml(
                         attr("data-highlight-my-comment-count", highlight.meta.myCommentCount.toString())
                         attr("data-highlight-is-like", highlight.meta.isLike.toString())
                         attr("data-highlight-is-span", highlight.meta.isSpan.toString())
+                        val segmentId = highlight.meta.segIds.joinToString(",")
+                        if (highlight.meta.isSpan && displayTextOwners.remove(segmentId)) {
+                            spanDisplayTexts[segmentId]
+                                ?.takeIf { it != part.text }
+                                ?.let { attr("data-highlight-display-text", it) }
+                        }
                         attr(
                             "data-highlight-split-type",
                             when {
@@ -233,6 +274,7 @@ private fun parseSegmentNode(node: Node): SegmentTextPart? = when (node) {
             text = node.text(),
             highlight = SegmentHighlightSpan(
                 text = node.text(),
+                displayText = node.attr("data-highlight-display-text").ifBlank { node.text() },
                 meta = SegmentInfoMeta(
                     segIds = node
                         .attr("data-highlight-id")

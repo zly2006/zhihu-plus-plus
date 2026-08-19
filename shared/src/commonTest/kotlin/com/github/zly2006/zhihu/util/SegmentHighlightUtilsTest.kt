@@ -84,6 +84,42 @@ class SegmentHighlightUtilsTest {
     }
 
     @Test
+    fun spanningSegmentShouldExposeAllFragmentsAsDisplayText() {
+        val first = "吃柠檬，怎么吃？谁吃的？"
+        val second = "柠檬，是怎样的檬？这个檬是否从事正当行业？"
+        val spanMeta = SegmentInfoMeta(
+            segIds = listOf("shared-segment"),
+            likeCount = 806,
+            commentCount = 15,
+            isSpan = true,
+        )
+        val result = applySegmentInfosToHtml(
+            content = """<p data-pid="first">$first</p><p data-pid="second">$second</p>""",
+            segmentInfos = listOf(
+                SegmentInfoParagraph(
+                    pid = "first",
+                    text = first,
+                    marks = listOf(SegmentInfoMark(0, first.length, segInfo = spanMeta)),
+                ),
+                SegmentInfoParagraph(
+                    pid = "second",
+                    text = second,
+                    marks = listOf(SegmentInfoMark(0, second.length, segInfo = spanMeta)),
+                ),
+            ),
+            contentId = "1907864533831225689",
+            contentType = "answer",
+        )
+
+        val highlights = Ksoup.parseBodyFragment(result).select("span.highlight-wrap")
+        assertEquals(2, highlights.size)
+        assertEquals("$first\n\n$second", highlights[0].attr("data-highlight-display-text"))
+        assertEquals("", highlights[1].attr("data-highlight-display-text"))
+        assertEquals("first", highlights[0].attr("data-highlight-pid"))
+        assertEquals("second", highlights[1].attr("data-highlight-pid"))
+    }
+
+    @Test
     fun parseSegmentTextParagraphHtmlShouldReadInjectedHighlightSpan() {
         val element = Ksoup
             .parseBodyFragment(
@@ -95,6 +131,7 @@ class SegmentHighlightUtilsTest {
                     data-highlight-my-comment-count="0"
                     data-highlight-is-like="true"
                     data-highlight-is-span="false"
+                    data-highlight-display-text="第一句需要划线&#10;&#10;跨段续句"
                     data-highlight-content-id="42"
                     data-highlight-content-type="answer"
                     data-highlight-pid="seg-1"
@@ -114,6 +151,7 @@ class SegmentHighlightUtilsTest {
         assertEquals(true, highlight.meta.isLike)
         assertEquals(5, highlight.meta.likeCount)
         assertEquals(1, highlight.meta.commentCount)
+        assertEquals("第一句需要划线\n\n跨段续句", highlight.displayText)
         assertEquals("42", highlight.contentId)
         assertEquals("answer", highlight.contentType)
         assertEquals(0, highlight.startOffset)

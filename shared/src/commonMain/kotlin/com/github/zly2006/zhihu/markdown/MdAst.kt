@@ -702,6 +702,7 @@ private val SEGMENT_HIGHLIGHT_ATTRIBUTES = listOf(
     "data-highlight-my-comment-count",
     "data-highlight-is-like",
     "data-highlight-is-span",
+    "data-highlight-display-text",
     "data-highlight-source-url",
     "data-highlight-content-id",
     "data-highlight-content-type",

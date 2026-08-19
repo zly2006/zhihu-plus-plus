@@ -852,6 +852,66 @@ class ArticleScreenInstrumentedTest {
             .performTouchInput { click() }
         composeRule.onNodeWithText("划线片段").assertIsDisplayed()
         composeRule.onNodeWithText("“$HIGHLIGHTED_PARAGRAPH”").assertIsDisplayed()
+        composeRule.onNodeWithTag("segment_action_sheet_top_divider").assertDoesNotExist()
+        composeRule.onNodeWithTag("segment_action_sheet_bottom_divider").assertDoesNotExist()
+    }
+
+    @Test
+    fun spanningHighlightTapShowsTheCompleteSelection() {
+        composeRule.setScreenContent {
+            RenderMarkdown(
+                html = SPANNING_HIGHLIGHT_HTML,
+                enableScroll = false,
+            )
+        }
+
+        composeRule
+            .onNodeWithText(SPANNING_HIGHLIGHT_SECOND)
+            .performTouchInput { click() }
+
+        composeRule.onNodeWithText("划线片段").assertIsDisplayed()
+        composeRule
+            .onNodeWithText("“$SPANNING_HIGHLIGHT_FIRST\n\n$SPANNING_HIGHLIGHT_SECOND”")
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun longSpanningHighlightShowsDirectionalDividersAndKeepsActionsVisible() {
+        val repeatedParagraphs = List(24) { SPANNING_HIGHLIGHT_FIRST }
+        val longDisplayText = repeatedParagraphs.joinToString("\n\n")
+        val longDisplayTextAttribute = repeatedParagraphs.joinToString("&#10;&#10;")
+        val html = SPANNING_HIGHLIGHT_HTML.replace(
+            "$SPANNING_HIGHLIGHT_FIRST&#10;&#10;$SPANNING_HIGHLIGHT_SECOND",
+            longDisplayTextAttribute,
+        )
+        composeRule.setScreenContent {
+            RenderMarkdown(
+                html = html,
+                enableScroll = false,
+            )
+        }
+
+        composeRule
+            .onNodeWithText(SPANNING_HIGHLIGHT_SECOND)
+            .performTouchInput { click() }
+
+        val text = composeRule.onNodeWithText("“$longDisplayText”")
+        text.fetchSemanticsNode()
+        composeRule.onNodeWithTag("segment_action_sheet_top_divider").assertDoesNotExist()
+        composeRule.onNodeWithTag("segment_action_sheet_bottom_divider").assertIsDisplayed()
+        composeRule.onNodeWithText("15").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("复制内容").assertIsDisplayed()
+
+        scrollToBoundary(text, end = true)
+        val finalScrollRange = text
+            .fetchSemanticsNode()
+            .config[SemanticsProperties.VerticalScrollAxisRange]
+        assertTrue("The expanded sheet must still have overflowing text", finalScrollRange.maxValue() > 0f)
+
+        composeRule.onNodeWithTag("segment_action_sheet_top_divider").assertIsDisplayed()
+        composeRule.onNodeWithTag("segment_action_sheet_bottom_divider").assertDoesNotExist()
+        composeRule.onNodeWithText("15").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("复制内容").assertIsDisplayed()
     }
 
     @Test
@@ -1774,6 +1834,8 @@ class ArticleScreenInstrumentedTest {
         const val HIGHLIGHTED_PARAGRAPH =
             "目前灰度机制是在OpenCode上，被选中的账号调用deepseek-v4-pro或deepseek-v4-flash有机会拿到GA版。"
         const val HIGHLIGHT_SELECTION_TARGET = "后续普通段落用于验证拖动手柄跨越文字块。"
+        const val SPANNING_HIGHLIGHT_FIRST = "第一段跨段划线内容。"
+        const val SPANNING_HIGHLIGHT_SECOND = "第二段跨段划线内容。"
         const val FORMATTED_HIGHLIGHT_PREFIX = "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW"
         const val FORMATTED_HIGHLIGHT = "划线命中"
         const val FORMATTED_HIGHLIGHT_PARAGRAPH = "$FORMATTED_HIGHLIGHT_PREFIX$FORMATTED_HIGHLIGHT 后缀"
@@ -1797,6 +1859,30 @@ class ArticleScreenInstrumentedTest {
                 data-highlight-pid="WGd4cbq-"
                 data-highlight-start-offset="0"
                 data-highlight-end-offset="68">$HIGHLIGHTED_PARAGRAPH</span></p>
+            """.trimIndent()
+        val SPANNING_HIGHLIGHT_HTML =
+            """
+            <p data-pid="first"><span class="highlight-wrap other has-comments"
+                data-highlight-id="shared-segment"
+                data-highlight-like-count="806"
+                data-highlight-comment-count="15"
+                data-highlight-is-span="true"
+                data-highlight-display-text="$SPANNING_HIGHLIGHT_FIRST&#10;&#10;$SPANNING_HIGHLIGHT_SECOND"
+                data-highlight-content-id="1907864533831225689"
+                data-highlight-content-type="answer"
+                data-highlight-pid="first"
+                data-highlight-start-offset="0"
+                data-highlight-end-offset="${SPANNING_HIGHLIGHT_FIRST.length}">$SPANNING_HIGHLIGHT_FIRST</span></p>
+            <p data-pid="second"><span class="highlight-wrap other has-comments"
+                data-highlight-id="shared-segment"
+                data-highlight-like-count="806"
+                data-highlight-comment-count="15"
+                data-highlight-is-span="true"
+                data-highlight-content-id="1907864533831225689"
+                data-highlight-content-type="answer"
+                data-highlight-pid="second"
+                data-highlight-start-offset="0"
+                data-highlight-end-offset="${SPANNING_HIGHLIGHT_SECOND.length}">$SPANNING_HIGHLIGHT_SECOND</span></p>
             """.trimIndent()
         val FORMATTED_HIGHLIGHT_PARAGRAPH_HTML =
             """

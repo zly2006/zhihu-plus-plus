@@ -106,6 +106,7 @@ class MdAstTest {
                 data-highlight-my-comment-count="0"
                 data-highlight-is-like="true"
                 data-highlight-is-span="false"
+                data-highlight-display-text="第一句需要划线&#10;&#10;跨段续句"
                 data-highlight-content-id="42"
                 data-highlight-content-type="answer"
                 data-highlight-pid="seg-1"
@@ -118,6 +119,7 @@ class MdAstTest {
         val highlight = paragraph.children.first() as SegmentHighlight
         assertEquals("第一句需要划线", highlight.text)
         assertEquals("abc", highlight.attributes["data-highlight-id"])
+        assertEquals("第一句需要划线\n\n跨段续句", highlight.attributes["data-highlight-display-text"])
         assertEquals("第一句需要划线，第二句保持原样。", document.toMarkdown())
     }
 
