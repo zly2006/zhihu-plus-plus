@@ -120,6 +120,7 @@ fun DesktopZhihuMain() {
 
     fun navigate(route: NavDestination) {
         when (route) {
+            History -> navController.navigate(route)
             is TopLevelDestination -> {
                 mainTabNavigationTarget = route
                 navigateToMainTabs()

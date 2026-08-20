@@ -213,6 +213,9 @@ fun ZhihuMain(
 
     val navEntry by navController.currentBackStackEntryAsState()
     val showMainNavigation = navEntry?.destination?.hasRoute<MainTabs>() == true
+    PlatformBackHandler(enabled = navEntry != null && !showMainNavigation) {
+        navController.popBackStack()
+    }
     val isOnReadingDetail = navEntry?.destination?.hasRoute<Article>() == true ||
         navEntry?.destination?.hasRoute<Question>() == true ||
         navEntry?.destination?.hasRoute<Pin>() == true
@@ -349,7 +352,7 @@ fun ZhihuMain(
         }
     }
 
-    PlatformBackHandler(mainPagerState.currentPage != 0) {
+    PlatformBackHandler(showMainNavigation && mainPagerState.currentPage != 0) {
         coroutineScope.launch {
             mainPagerState.animateScrollToPage(0)
         }

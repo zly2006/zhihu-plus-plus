@@ -118,6 +118,8 @@ actual suspend fun extractFeedKeywords(
     extractor = androidKeywordWeightExtractor,
 )
 
+actual val feedKeywordExtractionAvailable: Boolean = true
+
 @Composable
 actual fun rememberShareActionExecutor(): ShareActionExecutor {
     val context = LocalContext.current

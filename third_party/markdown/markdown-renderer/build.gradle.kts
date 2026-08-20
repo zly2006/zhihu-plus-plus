@@ -1,3 +1,26 @@
+/*
+ * Copyright (c) 2026 huarangmeng
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -35,6 +58,28 @@ kotlin {
             isStatic = true
         }
     }
+    macosArm64 {
+        val foundationFriendModule = providers.provider {
+            configurations
+                .getByName("macosArm64CompileKlibraries")
+                .incoming
+                .artifactView {
+                    componentFilter { identifier ->
+                        identifier is ModuleComponentIdentifier &&
+                            identifier.group == "org.jetbrains.compose.foundation" &&
+                            identifier.module == "foundation-macosarm64"
+                    }
+                }.files
+                .singleFile
+        }
+        compilations.configureEach {
+            compileTaskProvider.configure {
+                compilerOptions.freeCompilerArgs.add(
+                    foundationFriendModule.map { "-friend-modules=${it.absolutePath}" },
+                )
+            }
+        }
+    }
 
     applyDefaultHierarchyTemplate()
 
@@ -49,20 +94,21 @@ kotlin {
             implementation("org.jetbrains.compose.ui:ui:1.11.1")
             implementation("org.jetbrains.compose.components:components-resources:1.11.1")
 
-            implementation("io.github.zly2006:latex-base:0.0.1-alpha6")
-            implementation("io.github.zly2006:latex-parser:0.0.1-alpha6")
-            implementation("io.github.zly2006:latex-renderer:0.0.1-alpha6")
-            implementation("io.github.huarangmeng:codehighlight-parser:1.1.1")
-            implementation("io.github.huarangmeng:codehighlight-render:1.1.1")
+            implementation(project(":latex-base"))
+            implementation(project(":latex-parser"))
+            implementation(project(":latex-renderer"))
+            implementation(project(":codehighlight-parser"))
+            implementation(project(":codehighlight-render"))
 
             implementation("io.coil-kt.coil3:coil-compose:3.5.0")
             implementation("io.coil-kt.coil3:coil-network-ktor3:3.5.0")
         }
-        val androidAndJvmMain by creating {
+        val persistentSelectionMain by creating {
             dependsOn(commonMain.get())
+            kotlin.srcDir("src/androidAndJvmMain/kotlin")
         }
         androidMain {
-            dependsOn(androidAndJvmMain)
+            dependsOn(persistentSelectionMain)
             dependencies {
                 implementation("io.ktor:ktor-client-android:3.5.0")
             }
@@ -70,8 +116,14 @@ kotlin {
         iosMain.dependencies {
             implementation("io.ktor:ktor-client-darwin:3.5.0")
         }
+        macosMain.dependencies {
+            implementation("io.ktor:ktor-client-darwin:3.5.0")
+        }
+        macosMain {
+            dependsOn(persistentSelectionMain)
+        }
         jvmMain {
-            dependsOn(androidAndJvmMain)
+            dependsOn(persistentSelectionMain)
             dependencies {
                 implementation("io.ktor:ktor-client-java:3.5.0")
             }

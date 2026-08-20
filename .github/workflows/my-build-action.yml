@@ -55,6 +55,11 @@ jobs:
         id: desktop_suffix
         shell: bash
         run: |
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            echo "suffix=macos-arm64" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           arch="$(uname -m)"
           case "$arch" in
             x86_64|amd64) arch="x64" ;;
@@ -62,27 +67,56 @@ jobs:
           esac
           case "$RUNNER_OS" in
             Linux) os="linux" ;;
-            macOS) os="macos" ;;
             Windows) os="windows" ;;
             *) os="$(echo "$RUNNER_OS" | tr '[:upper:]' '[:lower:]')" ;;
           esac
           echo "suffix=$os-$arch" >> "$GITHUB_OUTPUT"
 
       - name: Build Desktop Jar
+        if: runner.os != 'macOS'
         shell: bash
         run: ./gradlew ${{ inputs.args }} :desktopApp:packageReleaseUberJarForCurrentOS
 
       - name: Move desktop jar
+        if: runner.os != 'macOS'
         shell: bash
         run: |
           mkdir -p desktopApp/build/upload
           mv desktopApp/build/compose/jars/*-release.jar desktopApp/build/upload/zhihu++-desktop-${{ steps.desktop_suffix.outputs.suffix }}.jar
 
       - name: Upload Desktop Jar
+        if: runner.os != 'macOS'
         uses: actions/upload-artifact@v4
         with:
           name: zhihu++-desktop-${{ steps.desktop_suffix.outputs.suffix }}
           path: desktopApp/build/upload/zhihu++-desktop-${{ steps.desktop_suffix.outputs.suffix }}.jar
+
+      - name: Build and package macOS Kotlin/Native app
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          ./gradlew ${{ inputs.args }} :macosApp:macosArm64Test :macosApp:packageReleaseMacosApp :macosUiDebug:verifyMacosReleaseIsolation
+
+          app_bundle="macosApp/build/bin/macosArm64/releaseApp/Zhihu++.app"
+          app_executable="$app_bundle/Contents/MacOS/ZhihuPlusPlus"
+          app_archive="desktopApp/build/upload/zhihu++-desktop-${{ steps.desktop_suffix.outputs.suffix }}.app.zip"
+          extracted_dir="$RUNNER_TEMP/zhihu-native-release"
+
+          test -d "$app_bundle"
+          /usr/bin/file "$app_executable" | grep -q 'Mach-O 64-bit executable arm64'
+          /usr/bin/codesign --verify --deep --strict "$app_bundle"
+
+          mkdir -p desktopApp/build/upload
+          /usr/bin/ditto -c -k --sequesterRsrc --keepParent "$app_bundle" "$app_archive"
+          /usr/bin/ditto -x -k "$app_archive" "$extracted_dir"
+          /usr/bin/codesign --verify --deep --strict "$extracted_dir/Zhihu++.app"
+
+      - name: Upload macOS Kotlin/Native app
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: zhihu++-desktop-${{ steps.desktop_suffix.outputs.suffix }}
+          path: desktopApp/build/upload/zhihu++-desktop-${{ steps.desktop_suffix.outputs.suffix }}.app.zip
 
   build:
     name: Build Android App
@@ -172,7 +206,7 @@ jobs:
           mkdir -p app/build/upload
           mv app/build/outputs/apk/full/release/app-full-release.apk app/build/upload/zhihu++-full.apk
           mv app/build/outputs/apk/lite/release/app-lite-release.apk app/build/upload/zhihu++-lite.apk
-      - name: Download desktop jars
+      - name: Download desktop apps
         uses: actions/download-artifact@v4
         with:
           pattern: zhihu++-desktop-*
@@ -300,6 +334,7 @@ jobs:
             app/build/upload/mapping-lite.zip
             app/build/upload/zhihu++-full.apk
             app/build/upload/zhihu++-desktop-*.jar
+            app/build/upload/zhihu++-desktop-*.app.zip
           fail_on_unmatched_files: true
           prerelease: true
       - name: Generate release notes
@@ -339,5 +374,6 @@ jobs:
             app/build/upload/mapping-lite.zip
             app/build/upload/zhihu++-full.apk
             app/build/upload/zhihu++-desktop-*.jar
+            app/build/upload/zhihu++-desktop-*.app.zip
           fail_on_unmatched_files: true
           prerelease: false

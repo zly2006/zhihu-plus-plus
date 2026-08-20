@@ -139,6 +139,7 @@ import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
+import com.github.zly2006.zhihu.ui.components.feedKeywordExtractionAvailable
 import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_FAB_OPACITY
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FAB_OPACITY
 import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
@@ -754,7 +755,7 @@ fun HomeScreen(
                             else -> null
                         },
                         menuItems = { dismissMenu ->
-                            if (!isLiteVariant) {
+                            if (!isLiteVariant && feedKeywordExtractionAvailable) {
                                 DropdownMenuItem(
                                     text = { Text("按关键词屏蔽") },
                                     onClick = {

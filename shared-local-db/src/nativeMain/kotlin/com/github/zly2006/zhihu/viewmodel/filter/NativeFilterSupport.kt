@@ -21,9 +21,11 @@ import androidx.room.InvalidationTracker
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 
-actual fun getContentFilterDatabase(): ContentFilterDatabase = emptyContentFilterDatabase
+actual fun getContentFilterDatabase(): ContentFilterDatabase = nativeContentFilterDatabase()
 
-private val emptyContentFilterDatabase = object : ContentFilterDatabase() {
+internal expect fun nativeContentFilterDatabase(): ContentFilterDatabase
+
+internal val emptyContentFilterDatabase = object : ContentFilterDatabase() {
     override fun createInvalidationTracker(): InvalidationTracker =
         InvalidationTracker(
             database = this,

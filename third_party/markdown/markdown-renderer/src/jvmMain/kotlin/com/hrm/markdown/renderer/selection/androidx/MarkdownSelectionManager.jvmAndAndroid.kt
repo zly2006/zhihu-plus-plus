@@ -20,3 +20,5 @@ package com.hrm.markdown.renderer.selection.androidx
 
 internal actual val MarkdownSelectionManager.skipMarkdownCopyKeyEvent: Boolean
     get() = false
+
+internal actual val isNewMarkdownContextMenuSupported: Boolean = true

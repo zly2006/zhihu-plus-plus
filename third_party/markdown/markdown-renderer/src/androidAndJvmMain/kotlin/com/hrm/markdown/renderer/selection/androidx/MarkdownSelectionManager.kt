@@ -824,7 +824,7 @@ internal class MarkdownSelectionManager(private val selectionRegistrar: Markdown
             return
         }
 
-        if (ComposeFoundationFlags.isNewContextMenuEnabled) {
+        if (ComposeFoundationFlags.isNewContextMenuEnabled && isNewMarkdownContextMenuSupported) {
             if (showToolbar && isInTouchMode) {
                 derivedContentRect ?: return
                 toolbarRequester.show()
@@ -1001,7 +1001,7 @@ internal class MarkdownSelectionManager(private val selectionRegistrar: Markdown
 
     @OptIn(ExperimentalFoundationApi::class)
     private fun Modifier.addContextMenuComponents(): Modifier =
-        if (ComposeFoundationFlags.isNewContextMenuEnabled)
+        if (ComposeFoundationFlags.isNewContextMenuEnabled && isNewMarkdownContextMenuSupported)
             addMarkdownSelectionContainerTextContextMenuComponents(this@MarkdownSelectionManager)
         else this
 
@@ -1218,6 +1218,8 @@ internal expect fun Modifier.markdownSelectionMagnifier(manager: MarkdownSelecti
 internal expect fun Modifier.addMarkdownSelectionContainerTextContextMenuComponents(
     selectionManager: MarkdownSelectionManager
 ): Modifier
+
+internal expect val isNewMarkdownContextMenuSupported: Boolean
 
 internal fun MarkdownSelectionManager.markdownSelectionContextMenuBuilder(
     state: ContextMenuState

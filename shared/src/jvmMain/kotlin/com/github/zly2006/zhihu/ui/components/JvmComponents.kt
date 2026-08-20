@@ -35,6 +35,8 @@ actual suspend fun extractFeedKeywords(
     extractor = ::extractDesktopKeywordsWithWeight,
 )
 
+actual val feedKeywordExtractionAvailable: Boolean = true
+
 @Composable
 actual fun rememberShareActionExecutor(): ShareActionExecutor {
     val copyPlainText = rememberPlainTextClipboard()

@@ -25,7 +25,10 @@ import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 actual suspend fun extractFeedKeywords(
     title: String,
     excerpt: String?,
-): List<com.github.zly2006.zhihu.nlp.KeywordWithWeight> = emptyList() // TODO: iOS 关键词提取
+): List<com.github.zly2006.zhihu.nlp.KeywordWithWeight> =
+    throw UnsupportedOperationException("当前平台暂不支持关键词提取")
+
+actual val feedKeywordExtractionAvailable: Boolean = false
 
 @Composable
 actual fun rememberShareActionExecutor(): ShareActionExecutor {

@@ -19,24 +19,46 @@ package com.github.zly2006.zhihu.notification
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import com.github.zly2006.zhihu.platform.SettingsStore
+import com.github.zly2006.zhihu.platform.nativeSettingsStore
 
 @Composable
 actual fun rememberNotificationSettingsStore(): NotificationSettingsStore = remember {
-    object : NotificationSettingsStore {
-        override fun getSystemNotificationEnabled(type: NotificationType): Boolean = false // TODO: iOS 获取系统通知开关
+    nativeNotificationSettingsStore()
+}
 
-        override fun setSystemNotificationEnabled(type: NotificationType, enabled: Boolean) = Unit // TODO: iOS 设置系统通知开关
+internal fun nativeNotificationSettingsStore(): NotificationSettingsStore =
+    NativeNotificationSettingsStore(nativeSettingsStore("notification_settings.properties"))
 
-        override fun getDisplayInAppEnabled(type: NotificationType): Boolean = false // TODO: 获取App内通知开关
+private class NativeNotificationSettingsStore(
+    private val settings: SettingsStore,
+) : NotificationSettingsStore {
+    override fun getSystemNotificationEnabled(type: NotificationType): Boolean =
+        settings.getBoolean("$KEY_SYSTEM_NOTIFICATION${type.name}", false)
 
-        override fun setDisplayInAppEnabled(type: NotificationType, enabled: Boolean) = Unit // TODO: iOS 设置App内通知开关
+    override fun setSystemNotificationEnabled(type: NotificationType, enabled: Boolean) =
+        settings.putBoolean("$KEY_SYSTEM_NOTIFICATION${type.name}", enabled)
 
-        override fun getAutoMarkAsReadEnabled(): Boolean = false // TODO: iOS 获取自动已读开关
+    override fun getDisplayInAppEnabled(type: NotificationType): Boolean =
+        settings.getBoolean("$KEY_DISPLAY_IN_APP${type.name}", type.defaultValue)
 
-        override fun setAutoMarkAsReadEnabled(enabled: Boolean) = Unit // TODO: iOS 设置自动已读开关
+    override fun setDisplayInAppEnabled(type: NotificationType, enabled: Boolean) =
+        settings.putBoolean("$KEY_DISPLAY_IN_APP${type.name}", enabled)
 
-        override fun getUnreadBadgeEnabled(): Boolean = true // TODO: iOS 获取未读红点开关
+    override fun getAutoMarkAsReadEnabled(): Boolean =
+        settings.getBoolean(KEY_AUTO_MARK_AS_READ, false)
 
-        override fun setUnreadBadgeEnabled(enabled: Boolean) = Unit // TODO: iOS 设置未读红点开关
-    }
-} // TODO: iOS 通知设置存储完整实现
+    override fun setAutoMarkAsReadEnabled(enabled: Boolean) =
+        settings.putBoolean(KEY_AUTO_MARK_AS_READ, enabled)
+
+    override fun getUnreadBadgeEnabled(): Boolean =
+        settings.getBoolean(KEY_UNREAD_BADGE, true)
+
+    override fun setUnreadBadgeEnabled(enabled: Boolean) =
+        settings.putBoolean(KEY_UNREAD_BADGE, enabled)
+}
+
+private const val KEY_SYSTEM_NOTIFICATION = "system_notification_"
+private const val KEY_DISPLAY_IN_APP = "display_in_app_"
+private const val KEY_AUTO_MARK_AS_READ = "auto_mark_notifications_read"
+private const val KEY_UNREAD_BADGE = "show_unread_badge"

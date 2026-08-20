@@ -373,6 +373,8 @@ class ArticleViewModel(
                             Log.e("ArticleViewModel", "Article not found")
                         }
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     Log.e("ArticleViewModel", "Failed to load content", e)
                 }
@@ -563,6 +565,8 @@ class ArticleViewModel(
                     )
                     collectionOrder.clear()
                     collectionOrder.addAll(collections.map { it.id })
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     Log.e("ArticleViewModel", "Failed to load collections", e)
                 }
@@ -616,6 +620,8 @@ class ArticleViewModel(
                     loadAnswerRelationshipEndorsement(environment)
                     loadMoreVoters(environment, reset = true)
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e("ArticleViewModel", "Vote up failed", e)
                 userMessages.showShortMessage("点赞失败: ${e.message}")
@@ -663,6 +669,8 @@ class ArticleViewModel(
                 aigcEffectiveFlagCount = response.effectiveFlagCount
                 aigcNamedVoters = response.voters
                 zhihuaiAigcSupportVoterCount = response.externalSource?.voterCount ?: 0
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e("ArticleViewModel", "Failed to load AIGC vote status", e)
                 aigcVoteError = e.message ?: "AIGC 投票状态加载失败"
@@ -699,6 +707,8 @@ class ArticleViewModel(
                 aigcVoteProgress = response.progress
                 aigcVoteCap = response.cap
                 aigcVoteError = null
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e("ArticleViewModel", "Failed to sync AIGC read event", e)
                 aigcVoteError = e.message ?: "AIGC 阅读积分同步失败"
@@ -762,6 +772,8 @@ class ArticleViewModel(
                 aigcNamedVoters = response.voters
                 zhihuaiAigcSupportVoterCount = response.externalSource?.voterCount ?: 0
                 userMessages.showShortMessage("已标记疑似 AIGC")
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e("ArticleViewModel", "AIGC flag failed", e)
                 aigcVoteError = e.message ?: "AIGC 标记失败"
@@ -811,6 +823,8 @@ class ArticleViewModel(
                 voters.replaceOrAppendUniqueVoters(page.data, reset)
                 votersTotal = page.paging.totals.takeIf { it > 0 } ?: voteUpCount
                 votersNextUrl = page.nextUrlOrNull()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e("ArticleViewModel", "Failed to load answer voters", e)
                 votersError = e.message ?: "加载赞同者失败"
@@ -828,6 +842,8 @@ class ArticleViewModel(
                     ?: return@launch
                 val endorsement = ZhihuJson.decodeJson<AnswerRelationshipEndorsement>(response)
                 votersSocialText = endorsement.text
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e("ArticleViewModel", "Failed to load answer relationship endorsement", e)
                 votersSocialText = ""
@@ -912,6 +928,8 @@ class ArticleViewModel(
                 userMessages.showLongMessage("HTML 已保存到 $savedLocation")
                 onComplete(true)
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e("ArticleViewModel", "HTML export failed", e)
             withContext(Dispatchers.Main) {
@@ -952,6 +970,8 @@ class ArticleViewModel(
         val renderer = environment.articleImageExportRenderer { fileName ->
             try {
                 environment.loadExportAssetText(fileName)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e("ArticleViewModel", "Failed to load export asset: $fileName", e)
                 ""
@@ -982,6 +1002,8 @@ class ArticleViewModel(
                 userMessages.showLongMessage(successMessage)
                 onComplete(true)
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e("ArticleViewModel", "Image export failed", e)
             val errorPrefix = if (includeComments) "带评论图片导出失败" else "图片导出失败"
