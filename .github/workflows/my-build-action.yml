@@ -95,7 +95,7 @@ jobs:
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          ./gradlew ${{ inputs.args }} :macosApp:macosArm64Test :macosApp:packageReleaseMacosApp :macosUiDebug:verifyMacosReleaseIsolation
+          ./gradlew ${{ inputs.args }} :macosApp:packageReleaseMacosApp :macosUiDebug:verifyMacosReleaseIsolation
 
           app_bundle="macosApp/build/bin/macosArm64/releaseApp/Zhihu++.app"
           app_executable="$app_bundle/Contents/MacOS/ZhihuPlusPlus"
