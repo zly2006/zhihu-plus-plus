@@ -15,6 +15,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+import buildlogic.ValidateAndSignMacosApp
+import org.apache.tools.ant.filters.ReplaceTokens
 import org.gradle.api.tasks.Sync
 
 plugins {
@@ -68,81 +70,60 @@ listOf("Debug", "Release").forEach { buildType ->
     val buildTypeDirectory = buildType.lowercase()
     val appDirectory = layout.buildDirectory.dir("bin/macosArm64/${buildTypeDirectory}App/Zhihu++.app")
 
-    tasks.register<Sync>("package${buildType}MacosApp") {
-        dependsOn(
-            "link${buildType}ExecutableMacosArm64",
-            ":app:prepareLibraryDefinitionsLiteDebug",
-            ":shared:macosArm64AggregateResources",
-        )
-        into(appDirectory)
-        from("src/macosMain/resources/Info.plist") {
-            into("Contents")
-            filter { line ->
-                line
-                    .replace("@APP_VERSION_NAME@", appVersionName)
-                    .replace("@APP_VERSION_CODE@", appVersionCode)
+    val syncApp =
+        tasks.register<Sync>("sync${buildType}MacosApp") {
+            dependsOn(
+                "link${buildType}ExecutableMacosArm64",
+                ":app:prepareLibraryDefinitionsLiteDebug",
+                ":shared:macosArm64AggregateResources",
+            )
+            into(appDirectory)
+            from("src/macosMain/resources/Info.plist") {
+                into("Contents")
+                filter(
+                    ReplaceTokens::class,
+                    "tokens" to
+                        mapOf(
+                            "APP_VERSION_NAME" to appVersionName,
+                            "APP_VERSION_CODE" to appVersionCode,
+                        ),
+                )
+            }
+            from(layout.buildDirectory.file("bin/macosArm64/${buildTypeDirectory}Executable/ZhihuPlusPlus.kexe")) {
+                into("Contents/MacOS")
+                rename("ZhihuPlusPlus\\.kexe", "ZhihuPlusPlus")
+            }
+            from(rootProject.file("misc/emoji_mapping.json")) {
+                into("Contents/Resources/misc")
+            }
+            from(rootProject.file("misc/emojis")) {
+                into("Contents/Resources/misc/emojis")
+            }
+            from(rootProject.file("desktopApp/src/main/resources/desktop-icon.png")) {
+                into("Contents/Resources")
+            }
+            from(rootProject.file("app/build/generated/aboutLibraries/liteDebug/res/raw/aboutlibraries.json")) {
+                into("Contents/Resources")
+            }
+            from(sharedMacosResources) {
+                into("Contents/Resources/compose-resources")
             }
         }
-        from(layout.buildDirectory.file("bin/macosArm64/${buildTypeDirectory}Executable/ZhihuPlusPlus.kexe")) {
-            into("Contents/MacOS")
-            rename { "ZhihuPlusPlus" }
+    val validateAndSignApp =
+        tasks.register<ValidateAndSignMacosApp>("validateAndSign${buildType}MacosApp") {
+            dependsOn(syncApp)
+            appBundle.set(appDirectory)
+            composeResources.set(sharedMacosResources)
+            requiredBundleFiles.set(
+                listOf(
+                    "Contents/Info.plist",
+                    "Contents/MacOS/ZhihuPlusPlus",
+                    "Contents/Resources/aboutlibraries.json",
+                    "Contents/Resources/misc/emoji_mapping.json",
+                ),
+            )
         }
-        from(rootProject.file("misc/emoji_mapping.json")) {
-            into("Contents/Resources/misc")
-        }
-        from(rootProject.file("misc/emojis")) {
-            into("Contents/Resources/misc/emojis")
-        }
-        from(rootProject.file("desktopApp/src/main/resources/desktop-icon.png")) {
-            into("Contents/Resources")
-        }
-        from(rootProject.file("app/build/generated/aboutLibraries/liteDebug/res/raw/aboutlibraries.json")) {
-            into("Contents/Resources")
-        }
-        from(sharedMacosResources) {
-            into("Contents/Resources/compose-resources")
-        }
-        doLast {
-            val sourceRoot = sharedMacosResources.get().asFile
-            val packagedRoot = appDirectory.get().asFile.resolve("Contents/Resources/compose-resources")
-            val resourceFiles = sourceRoot.walkTopDown().filter(File::isFile).toList()
-            check(resourceFiles.isNotEmpty()) {
-                "macOS Compose resources were not assembled"
-            }
-            val missingResources =
-                resourceFiles.filterNot { resourceFile ->
-                    packagedRoot.resolve(resourceFile.relativeTo(sourceRoot)).isFile
-                }
-            check(missingResources.isEmpty()) {
-                "macOS app is missing Compose resources: " +
-                    missingResources.joinToString { it.relativeTo(sourceRoot).invariantSeparatorsPath }
-            }
-            providers
-                .exec {
-                    commandLine(
-                        "/usr/bin/codesign",
-                        "--force",
-                        "--deep",
-                        "--sign",
-                        "-",
-                        "--timestamp=none",
-                        appDirectory.get().asFile.absolutePath,
-                    )
-                }.result
-                .get()
-                .assertNormalExitValue()
-            providers
-                .exec {
-                    commandLine(
-                        "/usr/bin/codesign",
-                        "--verify",
-                        "--deep",
-                        "--strict",
-                        appDirectory.get().asFile.absolutePath,
-                    )
-                }.result
-                .get()
-                .assertNormalExitValue()
-        }
+    tasks.register("package${buildType}MacosApp") {
+        dependsOn(validateAndSignApp)
     }
 }

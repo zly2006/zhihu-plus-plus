@@ -34,13 +34,14 @@ UI 自动化的目标是证明用户可达状态，不是表演鼠标操作。�
 - 只能用 `testTag`、文本、content description 等语义选择器操作；找不到目标就是失败，不能退回坐标猜测。
 - 截图必须来自离屏 Compose 画布，不得捕获用户桌面或其他应用。
 - 每次动作前先读取当前语义状态，动作后等待明确终态并再次读取；超时、异常、空白画面和状态未变化都算失败。
-- 默认不修改真实账号和远端数据。涉及发布、关注、投票、删除等副作用时，必须已有明确任务授权并记录副作用。
+- 调试二进制必须在组合 UI 前创建唯一的临时数据根；账号、Cookie、设置、历史、数据库和下载文件只能读写该目录，退出后删除。协议必须报告 `dataMode=isolated`，且不提供切换到生产数据的参数。
+- 默认不执行远端副作用。涉及发布、关注、投票、删除等动作时只能验证到提交前状态；即使任务授权了真实副作用，也必须换用独立测试账号和单独执行面，不能解除本调试器的数据隔离。
 
 ## 工作流
 
 1. 先确认生产应用没有运行，并检查当前任务不会启动 `macosApp`。
-2. 用 `scripts/start_background_ui_debug.sh` 构建并启动离屏调试器。脚本只 `exec` 调试 kexe，不调用任何窗口 API。
-3. 发送一行一个 JSON 命令。先 `state` 和 `dump`，再按语义节点执行 `click`、`input`、`scroll`、`back`、`wait` 或 `screenshot`。
+2. 用 `scripts/start_background_ui_debug.sh` 构建并启动离屏调试器。脚本只 `exec` 调试 kexe，不调用任何窗口 API；启动后的首个 `ready` 事件必须同时满足 `windowHost=false` 和 `dataMode=isolated`。
+3. 发送一行一个 JSON 命令。先用 `state` 再次确认 `windowHost=false`、`dataMode=isolated` 和临时 `dataHome`，随后 `dump`，再按语义节点执行 `click`、`input`、`scroll`、`back`、`wait` 或 `screenshot`。
 4. 对每个页面枚举所有可点击节点；逐项操作后检查目标页面、返回路径、异常输出和耗时。破坏性动作只验证到提交前状态。
 5. 发现卡死时保留最后一个命令、动作前后语义树、离屏截图、耗时和 stderr；先定位确定根因，再修改生产代码。
 6. 修改后重跑相同命令序列，随后构建 release，并验证 release 二进制不含协议标记 `ZHPP_BACKGROUND_UI_DEBUG_V1`。
@@ -52,6 +53,7 @@ UI 自动化的目标是证明用户可达状态，不是表演鼠标操作。�
 一次有效验收至少包含：
 
 - 调试二进制的构建类型和进程路径；
+- `ready` 与 `state` 中一致的 `dataMode=isolated`、临时 `dataHome`，以及进程退出后该目录已删除；
 - 每个动作的请求 id、语义选择器、成功或失败响应及耗时；
 - 关键页面动作前后的语义树差异；
 - 来自离屏画布的 PNG；

@@ -21,7 +21,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 协议标记为 `ZHPP_BACKGROUND_UI_DEBUG_V1`。
 
-启动器默认直接承载共享 `MacosZhihuMain`，用于页面与导航验收；传入 `--root=login` 才承载登录壳。两种模式都只使用离屏画布。
+启动器默认直接承载共享 `MacosZhihuMain`，用于页面与导航验收；传入 `--root=login` 才承载登录壳。两种模式都只使用离屏画布，并在组合 UI 前创建唯一临时数据根。账号、Cookie、设置、历史、数据库和下载文件只会读写该目录；协议不提供生产数据模式。
+
+`ready` 事件和 `state` 响应必须包含 `windowHost=false`、`dataMode=isolated` 与绝对 `dataHome`。调用方应确认 `dataHome` 位于系统临时目录，并在 `quit` 后确认它已删除；缺少任一字段都应拒绝继续操作。
 
 ## 选择器
 
@@ -45,6 +47,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 {"id":"6","op":"scroll","selector":{"tag":"feed-list"},"direction":"up"}
 {"id":"6a","op":"key","key":"escape","selector":{"tag":"article_screen_root"}}
 {"id":"6b","op":"back"}
+{"id":"6c","op":"show_message","message":"测试消息","duration":"short"}
 {"id":"7","op":"wait","selector":{"textContains":"Kotlin Native"},"exists":true,"timeoutMs":5000}
 {"id":"8","op":"wait_clickables","minimumCount":12,"timeoutMs":5000}
 {"id":"9","op":"advance","milliseconds":300}
@@ -55,6 +58,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 `click` 直接调用节点自身的 Compose `OnClick` 语义动作，不通过节点中心坐标合成鼠标事件；这也让被其他内容覆盖中心点的遮罩保持可测。`dismiss` 同理调用 Compose `Dismiss`，适合关闭弹层或对话框。`key` 只向离屏 Compose 场景发送按键，支持 `escape`、`enter`、`tab`、`space`、`backspace`、`delete`和四个方向；它不使用全局键盘注入。页面存在弹层等多个语义根时必须提供 `selector`，把按键发给明确的页面焦点容器，不能依赖根节点顺序。
 
 `back` 直接驱动当前离屏 Compose 场景自带的 navigation event dispatcher，用于验证与真实窗口 Escape 相同的最内层已启用 `BackHandler`。它不依赖焦点，也不会注入全局按键；测试页面返回、弹层关闭和输入框抢焦点后的返回行为时必须使用 `back`，不能用 `key escape` 冒充系统返回。`scroll.direction` 可为 `up`、`down`、`left`、`right`，表示离屏画布内的手指滑动方向。`screenshot.file` 必须是 `/tmp` 下的显式绝对路径；调试器不会读取桌面，也不会自动选择用户目录。
+
+`show_message` 只向离屏应用内消息队列发送测试消息，`duration` 可为 `short` 或 `long`。它用于验证 Native `UserMessageSink` 最终能在 Material Snackbar 中显示，不调用系统通知或前台窗口；发送后必须用 `wait` 验证消息文本实际出现在语义树中。
 
 `dump` 带 `selector` 时只输出目标子树，不带时输出整个根节点。`wait_clickables` 用于等待异步页面真正产出预期数量的可点击节点；`advance` 只推进 Compose 测试时钟，不能代替目标状态断言。
 

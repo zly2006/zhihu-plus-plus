@@ -23,7 +23,7 @@ debug_bundle="$project_directory/macosUiDebug/build/bin/macosArm64/debugApp/Zhih
 debug_binary="$debug_bundle/Contents/MacOS/ZhihuPlusPlusUiDebug"
 
 cd "$project_directory"
-./gradlew :macosUiDebug:packageDebugMacosUiDebug --no-configuration-cache
+./gradlew :macosUiDebug:packageDebugMacosUiDebug
 
 if [[ ! -x "$debug_binary" ]]; then
     print -u2 "后台 UI 调试二进制不存在：$debug_binary"

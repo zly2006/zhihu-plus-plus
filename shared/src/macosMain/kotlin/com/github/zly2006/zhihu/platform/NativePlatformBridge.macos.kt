@@ -17,7 +17,10 @@
 
 package com.github.zly2006.zhihu.platform
 
+import com.github.zly2006.zhihu.data.macosAppDataDirectoryPath
+import com.github.zly2006.zhihu.data.macosBackgroundUiDebugDataDirectoryPath
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -64,12 +67,15 @@ internal actual fun requestNativeQrLogin() {
 }
 
 internal actual fun nativeAccountFilePath(): String =
-    "${NSHomeDirectory()}/.zhihu-plus-plus/account.json"
+    macosBackgroundUiDebugDataDirectoryPath()?.let { "$it/account.json" }
+        ?: "${NSHomeDirectory()}/.zhihu-plus-plus/account.json"
 
 internal actual fun nativeAppPrivateDirectoryPath(): String =
-    "${NSHomeDirectory()}/.zhihu-plus"
+    macosAppDataDirectoryPath()
 
-internal actual fun nativeDownloadsDirectoryPath(): String = "${NSHomeDirectory()}/Downloads"
+internal actual fun nativeDownloadsDirectoryPath(): String =
+    macosBackgroundUiDebugDataDirectoryPath()?.let { "$it/Downloads" }
+        ?: "${NSHomeDirectory()}/Downloads"
 
 @OptIn(ExperimentalForeignApi::class)
 internal actual fun nativeChooseBlocklistImportFilePath(): String? {
@@ -90,6 +96,24 @@ internal actual fun nativeSystemInDarkTheme(): Boolean =
         .effectiveAppearance()
         .bestMatchFromAppearancesWithNames(listOf(NSAppearanceNameAqua, NSAppearanceNameDarkAqua)) == NSAppearanceNameDarkAqua
 
-internal actual fun showNativeUserMessage(message: String) {
+internal data class MacosUserMessage(
+    val text: String,
+    val duration: UserMessageDuration,
+)
+
+internal val macosUserMessages = Channel<MacosUserMessage>(capacity = Channel.UNLIMITED)
+
+fun showMacosUserMessage(
+    message: String,
+    duration: UserMessageDuration = UserMessageDuration.Short,
+) {
     println(message)
+    check(macosUserMessages.trySend(MacosUserMessage(message, duration)).isSuccess) {
+        "macOS user message queue is unavailable"
+    }
 }
+
+internal actual fun showNativeUserMessage(
+    message: String,
+    duration: UserMessageDuration,
+) = showMacosUserMessage(message, duration)

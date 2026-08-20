@@ -165,5 +165,8 @@ actual fun rememberIsLiteVariant(): Boolean = false
 
 @Composable
 actual fun rememberUserMessageSink(): UserMessageSink = remember {
-    UserMessageSink(showShortMessage = ::showNativeUserMessage)
+    UserMessageSink(
+        showShortMessage = { message -> showNativeUserMessage(message, UserMessageDuration.Short) },
+        showLongMessage = { message -> showNativeUserMessage(message, UserMessageDuration.Long) },
+    )
 }

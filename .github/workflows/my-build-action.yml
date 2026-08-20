@@ -95,7 +95,7 @@ jobs:
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          ./gradlew ${{ inputs.args }} :macosApp:packageReleaseMacosApp
+          ./gradlew ${{ inputs.args }} :macosApp:macosArm64Test :macosApp:packageReleaseMacosApp :macosUiDebug:verifyMacosReleaseIsolation
 
           app_bundle="macosApp/build/bin/macosArm64/releaseApp/Zhihu++.app"
           app_executable="$app_bundle/Contents/MacOS/ZhihuPlusPlus"
@@ -105,7 +105,6 @@ jobs:
           test -d "$app_bundle"
           /usr/bin/file "$app_executable" | grep -q 'Mach-O 64-bit executable arm64'
           /usr/bin/codesign --verify --deep --strict "$app_bundle"
-          "$app_executable" --smoke-test
 
           mkdir -p desktopApp/build/upload
           /usr/bin/ditto -c -k --sequesterRsrc --keepParent "$app_bundle" "$app_archive"

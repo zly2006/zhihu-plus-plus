@@ -17,25 +17,22 @@
 
 @file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
 
-package com.github.zly2006.zhihu.viewmodel.local
+package com.github.zly2006.zhihu.data
 
-import androidx.room.Room
-import com.github.zly2006.zhihu.data.macosAppDataDirectoryPath
-import platform.Foundation.NSFileManager
+import kotlinx.cinterop.toKString
+import platform.Foundation.NSHomeDirectory
+import platform.Foundation.NSTemporaryDirectory
+import platform.posix.getenv
 
-private val macosLocalContentDatabase by lazy {
-    val dataDirectory = macosAppDataDirectoryPath()
-    NSFileManager.defaultManager.createDirectoryAtPath(
-        dataDirectory,
-        withIntermediateDirectories = true,
-        attributes = null,
-        error = null,
-    )
-    buildLocalContentDatabase(
-        Room.databaseBuilder<LocalContentDatabase>(
-            name = "$dataDirectory/local-content.db",
-        ),
-    )
+const val BACKGROUND_UI_DEBUG_DATA_HOME_ENV = "ZHPP_BACKGROUND_UI_DEBUG_DATA_HOME"
+
+fun macosBackgroundUiDebugDataDirectoryPath(): String? {
+    val temporaryRoot = NSTemporaryDirectory().trimEnd('/')
+    return getenv(BACKGROUND_UI_DEBUG_DATA_HOME_ENV)
+        ?.toKString()
+        ?.trimEnd('/')
+        ?.takeIf { candidate -> candidate.startsWith("$temporaryRoot/") }
 }
 
-internal actual fun nativeLocalContentDatabase(): LocalContentDatabase? = macosLocalContentDatabase
+fun macosAppDataDirectoryPath(): String =
+    macosBackgroundUiDebugDataDirectoryPath() ?: "${NSHomeDirectory()}/.zhihu-plus"

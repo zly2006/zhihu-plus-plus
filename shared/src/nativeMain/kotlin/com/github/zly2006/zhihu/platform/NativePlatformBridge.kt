@@ -47,4 +47,7 @@ internal expect fun nativeSettingsStore(relativePath: String): SettingsStore
 
 internal expect fun nativeSystemInDarkTheme(): Boolean
 
-internal expect fun showNativeUserMessage(message: String)
+internal expect fun showNativeUserMessage(
+    message: String,
+    duration: UserMessageDuration,
+)

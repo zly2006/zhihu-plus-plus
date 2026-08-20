@@ -15,6 +15,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+import buildlogic.ValidateAndSignMacosApp
+import org.apache.tools.ant.filters.ReplaceTokens
 import org.gradle.api.tasks.Sync
 import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType.DEBUG
 
@@ -64,94 +66,88 @@ val appVersionCode = providers.gradleProperty("app.versionCode").get()
 val sharedMacosResources =
     project(":shared").layout.buildDirectory.dir("kotlin-multiplatform-resources/aggregated-resources/macosArm64")
 
-tasks.register<Sync>("packageDebugMacosUiDebug") {
-    dependsOn(
-        "linkDebugExecutableMacosArm64",
-        ":app:prepareLibraryDefinitionsLiteDebug",
-        ":shared:macosArm64AggregateResources",
-    )
-    into(debugBundle)
-    from("src/macosMain/resources/Info.plist") {
-        into("Contents")
-        filter { line ->
-            line
-                .replace("@APP_VERSION_NAME@", appVersionName)
-                .replace("@APP_VERSION_CODE@", appVersionCode)
+val syncDebugApp =
+    tasks.register<Sync>("syncDebugMacosUiDebug") {
+        dependsOn(
+            "linkDebugExecutableMacosArm64",
+            ":app:prepareLibraryDefinitionsLiteDebug",
+            ":shared:macosArm64AggregateResources",
+        )
+        into(debugBundle)
+        from("src/macosMain/resources/Info.plist") {
+            into("Contents")
+            filter(
+                ReplaceTokens::class,
+                "tokens" to
+                    mapOf(
+                        "APP_VERSION_NAME" to appVersionName,
+                        "APP_VERSION_CODE" to appVersionCode,
+                    ),
+            )
+        }
+        from(layout.buildDirectory.file("bin/macosArm64/debugExecutable/ZhihuPlusPlusUiDebug.kexe")) {
+            into("Contents/MacOS")
+            rename("ZhihuPlusPlusUiDebug\\.kexe", "ZhihuPlusPlusUiDebug")
+        }
+        from(rootProject.file("misc/emoji_mapping.json")) {
+            into("Contents/Resources/misc")
+        }
+        from(rootProject.file("misc/emojis")) {
+            into("Contents/Resources/misc/emojis")
+        }
+        from(rootProject.file("desktopApp/src/main/resources/desktop-icon.png")) {
+            into("Contents/Resources")
+        }
+        from(rootProject.file("app/build/generated/aboutLibraries/liteDebug/res/raw/aboutlibraries.json")) {
+            into("Contents/Resources")
+        }
+        from(sharedMacosResources) {
+            into("Contents/Resources/compose-resources")
         }
     }
-    from(layout.buildDirectory.file("bin/macosArm64/debugExecutable/ZhihuPlusPlusUiDebug.kexe")) {
-        into("Contents/MacOS")
-        rename { "ZhihuPlusPlusUiDebug" }
+
+val validateAndSignDebugApp =
+    tasks.register<ValidateAndSignMacosApp>("validateAndSignDebugMacosUiDebug") {
+        dependsOn(syncDebugApp)
+        appBundle.set(debugBundle)
+        composeResources.set(sharedMacosResources)
+        requiredBundleFiles.set(
+            listOf(
+                "Contents/Info.plist",
+                "Contents/MacOS/ZhihuPlusPlusUiDebug",
+                "Contents/Resources/aboutlibraries.json",
+                "Contents/Resources/misc/emoji_mapping.json",
+            ),
+        )
     }
-    from(rootProject.file("misc/emoji_mapping.json")) {
-        into("Contents/Resources/misc")
-    }
-    from(rootProject.file("misc/emojis")) {
-        into("Contents/Resources/misc/emojis")
-    }
-    from(rootProject.file("desktopApp/src/main/resources/desktop-icon.png")) {
-        into("Contents/Resources")
-    }
-    from(rootProject.file("app/build/generated/aboutLibraries/liteDebug/res/raw/aboutlibraries.json")) {
-        into("Contents/Resources")
-    }
-    from(sharedMacosResources) {
-        into("Contents/Resources/compose-resources")
-    }
-    doLast {
-        val bundle = debugBundle.get().asFile
-        val sourceRoot = sharedMacosResources.get().asFile
-        val packagedRoot = bundle.resolve("Contents/Resources/compose-resources")
-        val resourceFiles = sourceRoot.walkTopDown().filter(File::isFile).toList()
-        check(resourceFiles.isNotEmpty()) {
-            "macOS Compose resources were not assembled"
-        }
-        check(resourceFiles.all { packagedRoot.resolve(it.relativeTo(sourceRoot)).isFile }) {
-            "The background UI debugger bundle is missing Compose resources"
-        }
-        check(bundle.resolve("Contents/Resources/aboutlibraries.json").isFile) {
-            "The background UI debugger bundle is missing aboutlibraries.json"
-        }
-        check(bundle.resolve("Contents/Resources/misc/emoji_mapping.json").isFile) {
-            "The background UI debugger bundle is missing emoji_mapping.json"
-        }
-        providers
-            .exec {
-                commandLine(
-                    "/usr/bin/codesign",
-                    "--force",
-                    "--deep",
-                    "--sign",
-                    "-",
-                    "--timestamp=none",
-                    bundle.absolutePath,
-                )
-            }.result
-            .get()
-            .assertNormalExitValue()
-    }
+
+tasks.register("packageDebugMacosUiDebug") {
+    dependsOn(validateAndSignDebugApp)
 }
 
-tasks.register("verifyMacosReleaseHasNoUiDebugProtocol") {
+tasks.register<Exec>("verifyMacosReleaseIsolation") {
     dependsOn(":macosApp:linkReleaseExecutableMacosArm64")
-    doLast {
-        val releaseBinary =
-            project(":macosApp")
-                .layout.buildDirectory
-                .file("bin/macosArm64/releaseExecutable/ZhihuPlusPlus.kexe")
-                .get()
-                .asFile
-        check(releaseBinary.isFile) {
-            "macOS release binary does not exist: $releaseBinary"
-        }
-        val stringsExecution =
-            providers.exec {
-                commandLine("/usr/bin/strings", releaseBinary.absolutePath)
-            }
-        val stringsOutput = stringsExecution.standardOutput
-        val strings = stringsOutput.asText.get()
-        check("ZHPP_BACKGROUND_UI_DEBUG_V1" !in strings) {
-            "The macOS release binary contains the debug UI protocol"
-        }
-    }
+    val releaseBinary =
+        project(":macosApp")
+            .layout.buildDirectory
+            .file("bin/macosArm64/releaseExecutable/ZhihuPlusPlus.kexe")
+            .get()
+            .asFile
+            .absolutePath
+    inputs.file(releaseBinary)
+    commandLine(
+        "/bin/bash",
+        "-euo",
+        "pipefail",
+        "-c",
+        """
+        test -f "${'$'}1"
+        if /usr/bin/strings "${'$'}1" | /usr/bin/grep -Eq 'ZHPP_BACKGROUND_UI_DEBUG_V1|--smoke-test|MacosAppSmokeTest|native-unhandled-exception-(smoke-)?test'; then
+          echo "macOS release binary contains debug or smoke-test controls" >&2
+          exit 1
+        fi
+        """.trimIndent(),
+        "verifyMacosReleaseIsolation",
+        releaseBinary,
+    )
 }

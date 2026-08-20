@@ -20,11 +20,11 @@
 package com.github.zly2006.zhihu.viewmodel.filter
 
 import androidx.room.Room
+import com.github.zly2006.zhihu.data.macosAppDataDirectoryPath
 import platform.Foundation.NSFileManager
-import platform.Foundation.NSHomeDirectory
 
 private val macosContentFilterDatabase by lazy {
-    val dataDirectory = "${NSHomeDirectory()}/.zhihu-plus"
+    val dataDirectory = macosAppDataDirectoryPath()
     NSFileManager.defaultManager.createDirectoryAtPath(
         dataDirectory,
         withIntermediateDirectories = true,

@@ -53,6 +53,12 @@ import androidx.navigationevent.DirectNavigationEventInput
 import androidx.navigationevent.NavigationEventDispatcher
 import androidx.navigationevent.NavigationEventDispatcherOwner
 import com.github.zly2006.zhihu.account.MacosQrLoginScreen
+import com.github.zly2006.zhihu.data.BACKGROUND_UI_DEBUG_DATA_HOME_ENV
+import com.github.zly2006.zhihu.data.macosBackgroundUiDebugDataDirectoryPath
+import com.github.zly2006.zhihu.platform.MacosUserMessageHost
+import com.github.zly2006.zhihu.platform.UserMessageDuration
+import com.github.zly2006.zhihu.platform.showMacosUserMessage
+import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.MacosZhihuMain
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.usePinned
@@ -75,6 +81,8 @@ import org.jetbrains.skia.impl.use
 import platform.Foundation.NSBundle
 import platform.Foundation.NSData
 import platform.Foundation.NSFileManager
+import platform.Foundation.NSTemporaryDirectory
+import platform.Foundation.NSUUID
 import platform.Foundation.dataWithBytes
 import platform.posix.STDERR_FILENO
 import platform.posix.STDOUT_FILENO
@@ -84,6 +92,8 @@ import platform.posix.fdopen
 import platform.posix.fflush
 import platform.posix.fputs
 import platform.posix.getpid
+import platform.posix.setenv
+import platform.posix.unsetenv
 import kotlin.time.TimeSource
 
 private const val PROTOCOL = "ZHPP_BACKGROUND_UI_DEBUG_V1"
@@ -94,78 +104,111 @@ fun main(args: Array<String>) {
         "Only --root=main and --root=login are supported"
     }
     val rootName = if ("--root=login" in args) "login" else "main"
-    fflush(null)
-    val protocolDescriptor = dup(STDOUT_FILENO)
-    check(protocolDescriptor >= 0) { "Cannot duplicate stdout for the UI debug protocol" }
-    check(dup2(STDERR_FILENO, STDOUT_FILENO) >= 0) { "Cannot redirect application logs to stderr" }
-    val protocolOutput = checkNotNull(fdopen(protocolDescriptor, "w")) {
-        "Cannot open the UI debug protocol stream"
+    val isolatedDataHome =
+        "${NSTemporaryDirectory().trimEnd('/')}/zhihupp-ui-debug-${NSUUID().UUIDString}"
+    check(
+        NSFileManager.defaultManager.createDirectoryAtPath(
+            isolatedDataHome,
+            withIntermediateDirectories = true,
+            attributes = null,
+            error = null,
+        ),
+    ) {
+        "Cannot create isolated background UI debug data directory"
     }
-
-    val uiTest = SkikoComposeUiTest(width = 1280, height = 900)
-    val backController = BackgroundBackController()
-    uiTest.runTest {
-        setContent {
-            val navigationEventDispatcherOwner =
-                checkNotNull(LocalCompatNavigationEventDispatcherOwner.current) {
-                    "Compose navigation event dispatcher is unavailable"
-                }
-            SideEffect {
-                backController.connect(navigationEventDispatcherOwner)
-            }
-            if (rootName == "login") {
-                MacosQrLoginScreen()
-            } else {
-                MacosZhihuMain()
-            }
+    try {
+        check(setenv(BACKGROUND_UI_DEBUG_DATA_HOME_ENV, isolatedDataHome, 1) == 0) {
+            "Cannot configure isolated background UI debug data directory"
         }
-        protocolOutput.emit(
-            buildJsonObject {
-                put("event", "ready")
-                put("protocol", PROTOCOL)
-                put("root", rootName)
-                put("windowHost", false)
-            },
-        )
+        check(macosBackgroundUiDebugDataDirectoryPath() == isolatedDataHome) {
+            "Background UI debugger did not activate isolated data storage"
+        }
+        fflush(null)
+        val protocolDescriptor = dup(STDOUT_FILENO)
+        check(protocolDescriptor >= 0) { "Cannot duplicate stdout for the UI debug protocol" }
+        check(dup2(STDERR_FILENO, STDOUT_FILENO) >= 0) { "Cannot redirect application logs to stderr" }
+        val protocolOutput = checkNotNull(fdopen(protocolDescriptor, "w")) {
+            "Cannot open the UI debug protocol stream"
+        }
 
-        while (true) {
-            val line = readlnOrNull() ?: break
-            val startedAt = TimeSource.Monotonic.markNow()
-            var requestId = ""
-            var operation = ""
-            val response = try {
-                val command = Json.parseToJsonElement(line).jsonObject
-                requestId = command.requiredString("id")
-                operation = command.requiredString("op")
-                val data = execute(command, rootName, backController)
-                buildJsonObject {
-                    put("id", requestId)
-                    put("ok", true)
-                    put("elapsedMs", startedAt.elapsedNow().inWholeMilliseconds)
-                    put("data", data)
+        val uiTest = SkikoComposeUiTest(width = 1280, height = 900)
+        val backController = BackgroundBackController()
+        try {
+            uiTest.runTest {
+                setContent {
+                    val navigationEventDispatcherOwner =
+                        checkNotNull(LocalCompatNavigationEventDispatcherOwner.current) {
+                            "Compose navigation event dispatcher is unavailable"
+                        }
+                    SideEffect {
+                        backController.connect(navigationEventDispatcherOwner)
+                    }
+                    if (rootName == "login") {
+                        MacosQrLoginScreen()
+                    } else {
+                        ZhihuTheme {
+                            MacosUserMessageHost {
+                                MacosZhihuMain()
+                            }
+                        }
+                    }
                 }
-            } catch (error: Throwable) {
-                println(
-                    "[ui-debug][$requestId][$operation] " +
-                        "${error::class.simpleName ?: "Error"}: ${error.message.orEmpty()}",
+                protocolOutput.emit(
+                    buildJsonObject {
+                        put("event", "ready")
+                        put("protocol", PROTOCOL)
+                        put("root", rootName)
+                        put("windowHost", false)
+                        put("dataMode", "isolated")
+                        put("dataHome", isolatedDataHome)
+                    },
                 )
-                buildJsonObject {
-                    put("id", requestId)
-                    put("ok", false)
-                    put("elapsedMs", startedAt.elapsedNow().inWholeMilliseconds)
-                    put("error", error.message ?: error::class.simpleName ?: "Unknown error")
+
+                while (true) {
+                    val line = readlnOrNull() ?: break
+                    val startedAt = TimeSource.Monotonic.markNow()
+                    var requestId = ""
+                    var operation = ""
+                    val response = try {
+                        val command = Json.parseToJsonElement(line).jsonObject
+                        requestId = command.requiredString("id")
+                        operation = command.requiredString("op")
+                        val data = execute(command, rootName, isolatedDataHome, backController)
+                        buildJsonObject {
+                            put("id", requestId)
+                            put("ok", true)
+                            put("elapsedMs", startedAt.elapsedNow().inWholeMilliseconds)
+                            put("data", data)
+                        }
+                    } catch (error: Throwable) {
+                        println(
+                            "[ui-debug][$requestId][$operation] " +
+                                "${error::class.simpleName ?: "Error"}: ${error.message.orEmpty()}",
+                        )
+                        buildJsonObject {
+                            put("id", requestId)
+                            put("ok", false)
+                            put("elapsedMs", startedAt.elapsedNow().inWholeMilliseconds)
+                            put("error", error.message ?: error::class.simpleName ?: "Unknown error")
+                        }
+                    }
+                    protocolOutput.emit(response)
+                    if (operation == "quit") break
                 }
             }
-            protocolOutput.emit(response)
-            if (operation == "quit") break
+        } finally {
+            backController.close()
         }
-        backController.close()
+    } finally {
+        unsetenv(BACKGROUND_UI_DEBUG_DATA_HOME_ENV)
+        NSFileManager.defaultManager.removeItemAtPath(isolatedDataHome, error = null)
     }
 }
 
 private fun SkikoComposeUiTest.execute(
     command: JsonObject,
     rootName: String,
+    isolatedDataHome: String,
     backController: BackgroundBackController,
 ): JsonElement =
     when (command.requiredString("op")) {
@@ -176,6 +219,8 @@ private fun SkikoComposeUiTest.execute(
                 put("pid", getpid())
                 put("bundle", NSBundle.mainBundle.bundlePath)
                 put("windowHost", false)
+                put("dataMode", "isolated")
+                put("dataHome", isolatedDataHome)
                 put("surfaceWidth", 1280)
                 put("surfaceHeight", 900)
             }
@@ -251,6 +296,16 @@ private fun SkikoComposeUiTest.execute(
         }
         "back" -> {
             backController.back()
+            waitForIdle()
+            JsonNull
+        }
+        "show_message" -> {
+            val duration = when (command["duration"]?.jsonPrimitive?.contentOrNull ?: "short") {
+                "short" -> UserMessageDuration.Short
+                "long" -> UserMessageDuration.Long
+                else -> error("Unsupported user message duration")
+            }
+            showMacosUserMessage(command.requiredString("message"), duration)
             waitForIdle()
             JsonNull
         }

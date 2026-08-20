@@ -34,6 +34,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.platform.MacosUserMessageHost
+import com.github.zly2006.zhihu.platform.UserMessageDuration
 import com.github.zly2006.zhihu.platform.nativeQrLoginRequestVersion
 import com.github.zly2006.zhihu.platform.showNativeUserMessage
 import com.github.zly2006.zhihu.theme.ZhihuTheme
@@ -69,7 +71,10 @@ fun MacosQrLoginScreen(
             throw error
         } catch (error: Exception) {
             statusText = "备份 cookie 验证失败，正在获取二维码"
-            showNativeUserMessage("备份 cookie 验证失败：${error.message ?: "未知错误"}")
+            showNativeUserMessage(
+                "备份 cookie 验证失败：${error.message ?: "未知错误"}",
+                UserMessageDuration.Long,
+            )
         } finally {
             didCheckSavedAccount = true
         }
@@ -84,33 +89,35 @@ fun MacosQrLoginScreen(
     }
 
     ZhihuTheme {
-        if (isLoggedIn) {
-            MacosZhihuMain()
-        } else if (didCheckSavedAccount) {
-            SharedQrLoginPane(
-                createClient = { cookies -> store.createHttpClient(cookies) },
-                onLoginSuccess = { cookies ->
-                    store.verifyAndSave(cookies.toMutableMap()).also { success ->
-                        if (success) {
-                            isLoggedIn = true
+        MacosUserMessageHost {
+            if (isLoggedIn) {
+                MacosZhihuMain()
+            } else if (didCheckSavedAccount) {
+                SharedQrLoginPane(
+                    createClient = { cookies -> store.createHttpClient(cookies) },
+                    onLoginSuccess = { cookies ->
+                        store.verifyAndSave(cookies.toMutableMap()).also { success ->
+                            if (success) {
+                                isLoggedIn = true
+                            }
                         }
-                    }
-                },
-                initialCookies = store.load().cookies,
-                qrReadyMessage = "请打开知乎++ App 扫一扫",
-                onQrReady = {
-                    showNativeUserMessage("需要扫码登录 macOS 端")
-                },
-            )
-        } else {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                CircularProgressIndicator()
-                Spacer(modifier = Modifier.size(16.dp))
-                Text(statusText)
+                    },
+                    initialCookies = store.load().cookies,
+                    qrReadyMessage = "请打开知乎++ App 扫一扫",
+                    onQrReady = {
+                        showNativeUserMessage("需要扫码登录 macOS 端", UserMessageDuration.Short)
+                    },
+                )
+            } else {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    CircularProgressIndicator()
+                    Spacer(modifier = Modifier.size(16.dp))
+                    Text(statusText)
+                }
             }
         }
     }

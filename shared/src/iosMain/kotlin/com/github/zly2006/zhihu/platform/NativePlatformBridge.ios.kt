@@ -81,6 +81,9 @@ internal actual fun nativeSettingsStore(relativePath: String): SettingsStore = n
 internal actual fun nativeSystemInDarkTheme(): Boolean =
     UITraitCollection.currentTraitCollection.userInterfaceStyle == UIUserInterfaceStyle.UIUserInterfaceStyleDark
 
-internal actual fun showNativeUserMessage(message: String) {
+internal actual fun showNativeUserMessage(
+    message: String,
+    duration: UserMessageDuration,
+) {
     println(message)
 }
