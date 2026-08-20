@@ -187,6 +187,9 @@ fun ZhihuMain(
     preferenceState: ZhihuMainPreferenceState,
     isDarkTheme: Boolean,
     articleContent: @Composable (Article, NavBackStackEntry) -> Unit,
+    showMainNavigationBar: Boolean = true,
+    showHomeTopActions: Boolean = true,
+    onCurrentMainTabDestinationChange: (TopLevelDestination) -> Unit = {},
     sentenceSimilarityContent: @Composable () -> Unit = {
         Text("Sentence similarity test is not available on this platform.")
     },
@@ -210,6 +213,7 @@ fun ZhihuMain(
     var readingPlayerHeightPx by remember { mutableIntStateOf(0) }
     val readingPlayerOverlayOffsetState = remember { ReadingPlayerOverlayOffsetState() }
     val density = LocalDensity.current
+    val currentOnMainTabDestinationChange by rememberUpdatedState(onCurrentMainTabDestinationChange)
 
     val navEntry by navController.currentBackStackEntryAsState()
     val showMainNavigation = navEntry?.destination?.hasRoute<MainTabs>() == true
@@ -349,6 +353,7 @@ fun ZhihuMain(
         mainTabPages.getOrNull(mainPagerState.currentPage)?.bottomDestination?.let { destination ->
             currentMainTabDestination = destination
             setCurrentMainTabOpenFrom(destination.openFrom)
+            currentOnMainTabDestinationChange(destination)
         }
     }
 
@@ -419,7 +424,7 @@ fun ZhihuMain(
             },
             floatingActionButtonPosition = FabPosition.Center,
             bottomBar = {
-                if (navEntry != null) {
+                if (showMainNavigationBar && navEntry != null) {
                     // 页面切换时重置底部导航栏可见状态
                     LaunchedEffect(navEntry) { isBottomBarVisible = true }
                     val currentBottomDestination = mainTabPages
@@ -535,6 +540,7 @@ fun ZhihuMain(
                             scrollToTopTrigger = scrollToTopTrigger,
                             innerPadding = innerPadding,
                             collectionDirectBrowseEnabled = collectionDirectBrowseEnabled,
+                            showHomeTopActions = showHomeTopActions,
                         )
                     }
                     composable<Question> { navEntry ->
@@ -762,6 +768,7 @@ private fun MainTabsPager(
     scrollToTopTrigger: Int,
     innerPadding: PaddingValues,
     collectionDirectBrowseEnabled: Boolean,
+    showHomeTopActions: Boolean,
 ) {
     HorizontalPager(
         state = pagerState,
@@ -773,6 +780,7 @@ private fun MainTabsPager(
             MainTabPage.HomePage -> HomeScreen(
                 scrollToTopTrigger = scrollToTopTrigger,
                 innerPadding = innerPadding,
+                showTopActions = showHomeTopActions,
             )
             MainTabPage.FollowPage -> FollowScreen(
                 scrollToTopTrigger = scrollToTopTrigger,

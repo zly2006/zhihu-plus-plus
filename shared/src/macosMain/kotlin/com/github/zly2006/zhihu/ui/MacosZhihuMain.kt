@@ -26,6 +26,8 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,6 +54,7 @@ import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
@@ -81,15 +84,17 @@ import kotlinx.coroutines.withContext
  * 窗口宿主只调用这个入口；所有页面、布局和导航图仍由共享 [ZhihuMain] 提供。
  */
 @Composable
-fun MacosZhihuMain() {
+fun MacosZhihuMain(windowChromeState: MacosWindowChromeState? = null) {
     val navController = rememberNavController()
     val accountStore = remember { NativeAccountStore() }
     val httpClient = accountStore.httpClient()
     val coroutineScope = rememberCoroutineScope()
     val openExternalUrl = rememberExternalUrlOpener()
     val userMessages = rememberUserMessageSink()
+    val preferenceState = rememberMacosZhihuMainPreferenceState()
     var mainTabNavigationTarget by remember { mutableStateOf<TopLevelDestination?>(null) }
     var currentMainTabOpenFrom by remember { mutableStateOf<String?>(null) }
+    var currentMainTabDestination by remember { mutableStateOf(preferenceState.startDestination) }
 
     fun navigateToMainTabs() {
         navController.navigate(MainTabs) {
@@ -186,6 +191,25 @@ fun MacosZhihuMain() {
         }
     }
 
+    if (windowChromeState != null) {
+        SideEffect {
+            windowChromeState.update(
+                destinationKeys = preferenceState.selectedBottomBarItemKeys,
+                selectedDestinationName = currentMainTabDestination.name,
+                navigateToDestination = { destinationName ->
+                    val destination = navDestinationFromName(destinationName)
+                    mainTabNavigationTarget = destination
+                    navigateToMainTabs()
+                },
+                openSearch = { navigate(Search()) },
+                openNotifications = { navigate(Notification) },
+            )
+        }
+        DisposableEffect(windowChromeState) {
+            onDispose(windowChromeState::clear)
+        }
+    }
+
     ZhihuMain(
         navController = navController,
         mainTabNavigationTarget = mainTabNavigationTarget,
@@ -196,8 +220,11 @@ fun MacosZhihuMain() {
                 mainTabNavigationTarget = null
             }
         },
-        preferenceState = rememberMacosZhihuMainPreferenceState(),
+        preferenceState = preferenceState,
         isDarkTheme = ThemeManager.isDarkTheme(),
+        showMainNavigationBar = windowChromeState == null,
+        showHomeTopActions = windowChromeState == null,
+        onCurrentMainTabDestinationChange = { currentMainTabDestination = it },
         articleEnterTransition = {
             when (nativeArticleAnswerSwitchState.answerTransitionDirection) {
                 ArticleAnswerTransitionDirection.VERTICAL_NEXT ->

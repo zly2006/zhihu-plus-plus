@@ -39,13 +39,14 @@ import com.github.zly2006.zhihu.platform.UserMessageDuration
 import com.github.zly2006.zhihu.platform.macosQrLoginRequestVersion
 import com.github.zly2006.zhihu.platform.showMacosUserMessage
 import com.github.zly2006.zhihu.theme.ZhihuTheme
+import com.github.zly2006.zhihu.ui.MacosWindowChromeState
 import com.github.zly2006.zhihu.ui.MacosZhihuMain
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Duration.Companion.seconds
 
 @Composable
-fun MacosQrLoginScreen() {
+fun MacosQrLoginScreen(windowChromeState: MacosWindowChromeState? = null) {
     val store = remember { NativeAccountStore() }
     var statusText by remember { mutableStateOf("正在获取二维码") }
     var isLoggedIn by remember { mutableStateOf(false) }
@@ -90,7 +91,7 @@ fun MacosQrLoginScreen() {
     ZhihuTheme {
         MacosUserMessageHost {
             if (isLoggedIn) {
-                MacosZhihuMain()
+                MacosZhihuMain(windowChromeState)
             } else if (didCheckSavedAccount) {
                 SharedQrLoginPane(
                     createClient = { cookies -> store.createHttpClient(cookies) },

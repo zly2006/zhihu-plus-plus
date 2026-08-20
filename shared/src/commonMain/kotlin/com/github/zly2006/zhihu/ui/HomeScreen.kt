@@ -206,6 +206,7 @@ fun homePinAnnouncementReadKey(pinId: Long): String = "readHomePinAnnouncement_$
 fun HomeScreen(
     scrollToTopTrigger: Int,
     innerPadding: PaddingValues,
+    showTopActions: Boolean = true,
 ) {
     val readingPlayerOverlayPadding = LocalReadingPlayerOverlayPadding.current
     val navigator = LocalNavigator.current
@@ -430,6 +431,9 @@ fun HomeScreen(
                     .blur(createMenuBlurRadius)
             },
             topBar = {
+                if (!showTopActions) {
+                    return@Scaffold
+                }
                 if (duo3HomeAccount) {
                     Box {
                         Surface(
