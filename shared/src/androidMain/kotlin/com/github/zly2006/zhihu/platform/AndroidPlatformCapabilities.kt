@@ -122,9 +122,6 @@ actual fun rememberSettingsStore(): SettingsStore {
 actual fun Modifier.exportTestTagsForUiAutomation(): Modifier = semantics { testTagsAsResourceId = true }
 
 @Composable
-actual fun Modifier.platformBackNavigationHost(navigationKey: Any?): Modifier = this
-
-@Composable
 actual fun rememberAppPrivateDirectory(): Path {
     val context = LocalContext.current.applicationContext
     return remember(context) { Path(context.filesDir.absolutePath) }

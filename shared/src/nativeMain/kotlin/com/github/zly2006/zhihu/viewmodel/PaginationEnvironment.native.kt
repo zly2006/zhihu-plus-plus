@@ -19,7 +19,7 @@ package com.github.zly2006.zhihu.viewmodel
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import com.github.zly2006.zhihu.account.IosAccountStore
+import com.github.zly2006.zhihu.account.NativeAccountStore
 import com.github.zly2006.zhihu.account.NativeHistoryStorage
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.FeedDisplayItem
@@ -32,7 +32,6 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.notification.nativeNotificationSettingsStore
 import com.github.zly2006.zhihu.platform.copyNativePlainText
-import com.github.zly2006.zhihu.platform.nativePlatformName
 import com.github.zly2006.zhihu.platform.nativeSettingsStore
 import com.github.zly2006.zhihu.platform.requestNativeQrLogin
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
@@ -95,8 +94,8 @@ private fun consumeNativePendingContentOpenFrom(destination: NavDestination): St
 actual fun rememberPaginationEnvironment(allowGuestAccess: Boolean): PaginationEnvironment =
     remember(allowGuestAccess) { NativePaginationEnvironment() }
 
-class NativePaginationEnvironment(
-    private val accountStore: IosAccountStore = IosAccountStore(),
+internal class NativePaginationEnvironment(
+    private val accountStore: NativeAccountStore = NativeAccountStore(),
     override val notificationSettingsStore: NotificationSettingsStore = nativeNotificationSettingsStore(),
     private val showFetchFailureMessage: ((String) -> Unit)? = null,
 ) : PaginationEnvironment,
@@ -307,7 +306,7 @@ class NativePaginationEnvironment(
         items: List<CollectionItem>,
         includeImages: Boolean,
         onProgress: suspend (CollectionHtmlExportProgress) -> Unit,
-    ): CollectionHtmlExportResult = error("$nativePlatformName 暂不支持收藏夹 HTML 压缩包导出")
+    ): CollectionHtmlExportResult = error("当前平台暂不支持收藏夹 HTML 压缩包导出")
 
     override suspend fun handleCollectionExportFailure(error: Exception) {
         Log.e("CollectionContentViewModel", "Failed to export collection HTML zip", error)

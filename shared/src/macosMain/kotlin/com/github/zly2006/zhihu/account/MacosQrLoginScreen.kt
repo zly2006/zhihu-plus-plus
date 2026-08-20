@@ -36,8 +36,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.platform.MacosUserMessageHost
 import com.github.zly2006.zhihu.platform.UserMessageDuration
-import com.github.zly2006.zhihu.platform.nativeQrLoginRequestVersion
-import com.github.zly2006.zhihu.platform.showNativeUserMessage
+import com.github.zly2006.zhihu.platform.macosQrLoginRequestVersion
+import com.github.zly2006.zhihu.platform.showMacosUserMessage
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.MacosZhihuMain
 import kotlinx.coroutines.CancellationException
@@ -45,13 +45,12 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Duration.Companion.seconds
 
 @Composable
-fun MacosQrLoginScreen(
-    store: IosAccountStore = remember { IosAccountStore() },
-) {
+fun MacosQrLoginScreen() {
+    val store = remember { NativeAccountStore() }
     var statusText by remember { mutableStateOf("正在获取二维码") }
     var isLoggedIn by remember { mutableStateOf(false) }
     var didCheckSavedAccount by remember { mutableStateOf(false) }
-    val loginRequestVersion by nativeQrLoginRequestVersion.collectAsState()
+    val loginRequestVersion by macosQrLoginRequestVersion.collectAsState()
 
     LaunchedEffect(Unit) {
         try {
@@ -71,7 +70,7 @@ fun MacosQrLoginScreen(
             throw error
         } catch (error: Exception) {
             statusText = "备份 cookie 验证失败，正在获取二维码"
-            showNativeUserMessage(
+            showMacosUserMessage(
                 "备份 cookie 验证失败：${error.message ?: "未知错误"}",
                 UserMessageDuration.Long,
             )
@@ -105,7 +104,7 @@ fun MacosQrLoginScreen(
                     initialCookies = store.load().cookies,
                     qrReadyMessage = "请打开知乎++ App 扫一扫",
                     onQrReady = {
-                        showNativeUserMessage("需要扫码登录 macOS 端", UserMessageDuration.Short)
+                        showMacosUserMessage("需要扫码登录 macOS 端")
                     },
                 )
             } else {

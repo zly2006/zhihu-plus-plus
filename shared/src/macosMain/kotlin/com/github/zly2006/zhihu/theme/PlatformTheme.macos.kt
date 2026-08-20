@@ -15,24 +15,18 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.github.zly2006.zhihu.ui.components
+package com.github.zly2006.zhihu.theme
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import com.github.zly2006.zhihu.platform.rememberPlainTextClipboard
-import com.github.zly2006.zhihu.platform.rememberUserMessageSink
-
-actual suspend fun extractFeedKeywords(
-    title: String,
-    excerpt: String?,
-): List<com.github.zly2006.zhihu.nlp.KeywordWithWeight> =
-    throw UnsupportedOperationException("当前平台暂不支持关键词提取")
-
-actual val feedKeywordExtractionAvailable: Boolean = false
+import kotlinx.cinterop.ExperimentalForeignApi
+import platform.AppKit.NSAppearanceNameAqua
+import platform.AppKit.NSAppearanceNameDarkAqua
+import platform.AppKit.NSApplication
+import platform.AppKit.effectiveAppearance
 
 @Composable
-actual fun rememberShareActionExecutor(): ShareActionExecutor {
-    val copyPlainText = rememberPlainTextClipboard()
-    val userMessages = rememberUserMessageSink()
-    return remember(copyPlainText, userMessages) { clipboardShareActionExecutor(copyPlainText, userMessages) }
-}
+@OptIn(ExperimentalForeignApi::class)
+actual fun currentSystemInDarkTheme(): Boolean =
+    NSApplication.sharedApplication
+        .effectiveAppearance()
+        .bestMatchFromAppearancesWithNames(listOf(NSAppearanceNameAqua, NSAppearanceNameDarkAqua)) == NSAppearanceNameDarkAqua

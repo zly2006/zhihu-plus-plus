@@ -28,7 +28,7 @@ import platform.Foundation.NSUTF8StringEncoding
 import platform.Foundation.create
 import platform.Foundation.dataUsingEncoding
 
-class NativeHistoryStorage {
+internal class NativeHistoryStorage {
     private val filePath = "${nativeAppPrivateDirectoryPath()}/history.json"
     private val historyMap = linkedMapOf<NavDestination, NavDestination>()
     val history: List<NavDestination>

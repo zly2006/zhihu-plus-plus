@@ -19,21 +19,21 @@ package com.github.zly2006.zhihu.editor
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import com.github.zly2006.zhihu.account.IosAccountStore
+import com.github.zly2006.zhihu.account.NativeAccountStore
 import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import io.ktor.client.HttpClient
 
 @Composable
 internal fun rememberZhihuPublisherEnvironment(): ZhihuApiEnvironment {
-    val store = remember { IosAccountStore() }
+    val store = remember { NativeAccountStore() }
     return remember(store) {
-        IosZhihuPublisherEnvironment(store)
+        NativeZhihuPublisherEnvironment(store)
     }
 }
 
-private class IosZhihuPublisherEnvironment(
-    private val store: IosAccountStore,
+private class NativeZhihuPublisherEnvironment(
+    private val store: NativeAccountStore,
 ) : ZhihuApiEnvironment {
     override fun httpClient(): HttpClient = store.httpClient()
 

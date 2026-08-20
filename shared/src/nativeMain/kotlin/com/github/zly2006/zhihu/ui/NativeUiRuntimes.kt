@@ -30,7 +30,7 @@ import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.unit.em
-import com.github.zly2006.zhihu.account.IosAccountStore
+import com.github.zly2006.zhihu.account.NativeAccountStore
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.notification.NotificationSettingsStore
@@ -40,7 +40,7 @@ import com.github.zly2006.zhihu.platform.nativeAppVersionName
 import com.github.zly2006.zhihu.platform.nativeBundledResourcePath
 import com.github.zly2006.zhihu.platform.nativeChooseBlocklistImportFilePath
 import com.github.zly2006.zhihu.platform.nativeIsDesktop
-import com.github.zly2006.zhihu.platform.openNativeExternalUrl
+import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.platform.requestNativeQrLogin
@@ -104,8 +104,11 @@ actual fun rememberArticleSpeechToggler(): (title: String, content: String) -> U
 }
 
 @Composable
-actual fun rememberArticleBrowserOpener(): (Article) -> Unit = remember {
-    { article -> openNativeExternalUrl(articleWebUrl(article)) }
+actual fun rememberArticleBrowserOpener(): (Article) -> Unit {
+    val openExternalUrl = rememberExternalUrlOpener()
+    return remember(openExternalUrl) {
+        { article -> openExternalUrl(articleWebUrl(article)) }
+    }
 }
 
 @Composable
@@ -209,7 +212,7 @@ actual fun rememberHomeIsDebuggable(): Boolean = nativeIsDesktop
 
 @Composable
 actual fun rememberAccountSettingsAccountState(): androidx.compose.runtime.State<AccountSettingsAccountState> {
-    val accountStore = remember { IosAccountStore() }
+    val accountStore = remember { NativeAccountStore() }
     val account = accountStore.accountState.collectAsState()
     return remember(account) {
         derivedStateOf {

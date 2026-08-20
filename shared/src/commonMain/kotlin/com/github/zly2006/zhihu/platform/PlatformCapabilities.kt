@@ -68,9 +68,6 @@ expect fun rememberSettingsStore(): SettingsStore
 expect fun Modifier.exportTestTagsForUiAutomation(): Modifier
 
 @Composable
-expect fun Modifier.platformBackNavigationHost(navigationKey: Any?): Modifier
-
-@Composable
 expect fun rememberAppPrivateDirectory(): Path
 
 @Composable

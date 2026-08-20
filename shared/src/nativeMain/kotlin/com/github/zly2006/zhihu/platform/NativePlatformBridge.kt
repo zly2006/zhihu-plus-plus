@@ -17,17 +17,12 @@
 
 package com.github.zly2006.zhihu.platform
 
-import kotlinx.coroutines.flow.StateFlow
-
-internal expect val nativePlatformName: String
+import platform.Foundation.NSBundle
 
 internal expect val nativeIsDesktop: Boolean
 
-internal expect val nativeAppVersionName: String
-
-internal expect val nativeQrLoginRequestVersion: StateFlow<Int>
-
-internal expect fun openNativeExternalUrl(url: String)
+internal val nativeAppVersionName: String
+    get() = NSBundle.mainBundle.objectForInfoDictionaryKey("CFBundleShortVersionString") as? String ?: "0.0.0"
 
 internal expect fun copyNativePlainText(text: String)
 
@@ -41,13 +36,7 @@ internal expect fun nativeDownloadsDirectoryPath(): String
 
 internal expect fun nativeChooseBlocklistImportFilePath(): String?
 
-internal expect fun nativeBundledResourcePath(relativePath: String): String?
+internal fun nativeBundledResourcePath(relativePath: String): String? =
+    NSBundle.mainBundle.resourcePath?.let { resourceDirectory -> "$resourceDirectory/$relativePath" }
 
 internal expect fun nativeSettingsStore(relativePath: String): SettingsStore
-
-internal expect fun nativeSystemInDarkTheme(): Boolean
-
-internal expect fun showNativeUserMessage(
-    message: String,
-    duration: UserMessageDuration,
-)

@@ -19,10 +19,6 @@ package com.github.zly2006.zhihu.theme
 
 import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.Composable
-import com.github.zly2006.zhihu.platform.nativeSystemInDarkTheme
-
-@Composable
-actual fun currentSystemInDarkTheme(): Boolean = nativeSystemInDarkTheme()
 
 @Composable
 actual fun platformDynamicColorScheme(darkTheme: Boolean): ColorScheme? = null

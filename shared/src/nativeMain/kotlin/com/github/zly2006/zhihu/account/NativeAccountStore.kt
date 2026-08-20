@@ -32,9 +32,9 @@ import platform.Foundation.NSUTF8StringEncoding
 import platform.Foundation.create
 import platform.Foundation.dataUsingEncoding
 
-class IosAccountStore {
-    private val accountClient = defaultIosAccountClient
-    val accountState: StateFlow<ZhihuAccountSession> = defaultIosAccountState.asStateFlow()
+internal class NativeAccountStore {
+    private val accountClient = defaultNativeAccountClient
+    val accountState: StateFlow<ZhihuAccountSession> = defaultNativeAccountState.asStateFlow()
 
     fun load(): ZhihuAccountSession = accountClient.load()
 
@@ -58,9 +58,9 @@ class IosAccountStore {
         accountClient.refreshAndSaveProfile()
 }
 
-private val defaultIosAccountState = MutableStateFlow(ZhihuAccountSession())
+private val defaultNativeAccountState = MutableStateFlow(ZhihuAccountSession())
 
-private val defaultIosAccountClient by lazy {
+private val defaultNativeAccountClient by lazy {
     ZhihuAccountClient(
         repository = ZhihuAccountRepository(NativeFileAccountSessionStore()),
         createClient = { cookies, session, onCookieChanged, _ ->
@@ -72,7 +72,7 @@ private val defaultIosAccountClient by lazy {
                 )
             }
         },
-        onSessionChanged = { defaultIosAccountState.value = it },
+        onSessionChanged = { defaultNativeAccountState.value = it },
     )
 }
 
@@ -98,5 +98,7 @@ private class NativeFileAccountSessionStore : ZhihuAccountSessionStore {
         fm.createFileAtPath(filePath, contents = nsString.dataUsingEncoding(NSUTF8StringEncoding), attributes = null)
     }
 
-    override fun delete() = NSFileManager.defaultManager.removeItemAtPath(filePath, error = null).let {}
+    override fun delete() {
+        NSFileManager.defaultManager.removeItemAtPath(filePath, error = null)
+    }
 }

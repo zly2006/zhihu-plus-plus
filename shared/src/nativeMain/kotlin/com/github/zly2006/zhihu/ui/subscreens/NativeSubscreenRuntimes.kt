@@ -19,11 +19,11 @@ package com.github.zly2006.zhihu.ui.subscreens
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import com.github.zly2006.zhihu.account.IosAccountStore
+import com.github.zly2006.zhihu.account.NativeAccountStore
 import com.github.zly2006.zhihu.platform.nativeAppVersionName
 import com.github.zly2006.zhihu.platform.nativeBundledResourcePath
 import com.github.zly2006.zhihu.platform.nativeIsDesktop
-import com.github.zly2006.zhihu.platform.openNativeExternalUrl
+import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.NativeArticleSpeechController
 import com.github.zly2006.zhihu.ui.TtsState
@@ -48,8 +48,9 @@ private val nativeSystemUpdateState = MutableStateFlow<SystemUpdateState>(System
 @Composable
 actual fun rememberSystemUpdateRuntime(): SystemUpdateRuntime {
     val settings = rememberSettingsStore()
-    val accountStore = remember { IosAccountStore() }
-    return remember(settings, accountStore) {
+    val accountStore = remember { NativeAccountStore() }
+    val openExternalUrl = rememberExternalUrlOpener()
+    return remember(settings, accountStore, openExternalUrl) {
         SystemUpdateRuntime(
             state = nativeSystemUpdateState,
             autoCheckEnabled = { settings.getBoolean(PREF_AUTO_CHECK_UPDATES, true) },
@@ -75,7 +76,7 @@ actual fun rememberSystemUpdateRuntime(): SystemUpdateRuntime {
             downloadUpdate = { url ->
                 try {
                     require(url.isNotBlank()) { "下载链接为空" }
-                    openNativeExternalUrl(url)
+                    openExternalUrl(url)
                 } catch (error: CancellationException) {
                     throw error
                 } catch (error: Exception) {
@@ -92,7 +93,7 @@ actual fun rememberSystemUpdateRuntime(): SystemUpdateRuntime {
 }
 
 private suspend fun checkNativeUpdate(
-    accountStore: IosAccountStore,
+    accountStore: NativeAccountStore,
     githubToken: String?,
     checkNightly: Boolean,
     skippedVersion: String?,

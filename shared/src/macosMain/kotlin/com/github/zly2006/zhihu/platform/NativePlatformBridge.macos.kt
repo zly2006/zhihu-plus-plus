@@ -17,6 +17,8 @@
 
 package com.github.zly2006.zhihu.platform
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.data.macosAppDataDirectoryPath
 import com.github.zly2006.zhihu.data.macosBackgroundUiDebugDataDirectoryPath
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -25,33 +27,24 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import platform.AppKit.NSAppearanceNameAqua
-import platform.AppKit.NSAppearanceNameDarkAqua
-import platform.AppKit.NSApplication
 import platform.AppKit.NSModalResponseOK
 import platform.AppKit.NSOpenPanel
 import platform.AppKit.NSPasteboard
 import platform.AppKit.NSPasteboardTypeString
 import platform.AppKit.NSWorkspace
-import platform.AppKit.effectiveAppearance
-import platform.Foundation.NSBundle
 import platform.Foundation.NSHomeDirectory
 import platform.Foundation.NSURL
 
-internal actual val nativePlatformName: String = "macOS Kotlin/Native"
-
 internal actual val nativeIsDesktop: Boolean = true
-
-internal actual val nativeAppVersionName: String
-    get() = NSBundle.mainBundle.objectForInfoDictionaryKey("CFBundleShortVersionString") as? String ?: "0.0.0"
 
 private val macosQrLoginRequests = MutableStateFlow(0)
 
-internal actual val nativeQrLoginRequestVersion: StateFlow<Int> = macosQrLoginRequests.asStateFlow()
+internal val macosQrLoginRequestVersion: StateFlow<Int> = macosQrLoginRequests.asStateFlow()
 
+@Composable
 @OptIn(ExperimentalForeignApi::class)
-internal actual fun openNativeExternalUrl(url: String) {
-    NSURL.URLWithString(url)?.let(NSWorkspace.sharedWorkspace::openURL)
+actual fun rememberExternalUrlOpener(): (String) -> Unit = remember {
+    { url -> NSURL.URLWithString(url)?.let(NSWorkspace.sharedWorkspace::openURL) }
 }
 
 @OptIn(ExperimentalForeignApi::class)
@@ -87,15 +80,6 @@ internal actual fun nativeChooseBlocklistImportFilePath(): String? {
     return if (panel.runModal() == NSModalResponseOK) panel.URL?.path else null
 }
 
-internal actual fun nativeBundledResourcePath(relativePath: String): String? =
-    NSBundle.mainBundle.resourcePath?.let { resourceDirectory -> "$resourceDirectory/$relativePath" }
-
-@OptIn(ExperimentalForeignApi::class)
-internal actual fun nativeSystemInDarkTheme(): Boolean =
-    NSApplication.sharedApplication
-        .effectiveAppearance()
-        .bestMatchFromAppearancesWithNames(listOf(NSAppearanceNameAqua, NSAppearanceNameDarkAqua)) == NSAppearanceNameDarkAqua
-
 internal data class MacosUserMessage(
     val text: String,
     val duration: UserMessageDuration,
@@ -112,8 +96,3 @@ fun showMacosUserMessage(
         "macOS user message queue is unavailable"
     }
 }
-
-internal actual fun showNativeUserMessage(
-    message: String,
-    duration: UserMessageDuration,
-) = showMacosUserMessage(message, duration)

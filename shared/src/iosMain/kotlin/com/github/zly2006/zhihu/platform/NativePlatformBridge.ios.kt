@@ -17,13 +17,10 @@
 
 package com.github.zly2006.zhihu.platform
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.ui.noopSettingsStore
 import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import platform.Foundation.NSBundle
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSTemporaryDirectory
@@ -31,33 +28,20 @@ import platform.Foundation.NSURL
 import platform.Foundation.NSUserDomainMask
 import platform.UIKit.UIApplication
 import platform.UIKit.UIPasteboard
-import platform.UIKit.UITraitCollection
-import platform.UIKit.UIUserInterfaceStyle
-import platform.UIKit.currentTraitCollection
-
-internal actual val nativePlatformName: String = "iOS"
 
 internal actual val nativeIsDesktop: Boolean = false
 
-internal actual val nativeAppVersionName: String
-    get() = NSBundle.mainBundle.objectForInfoDictionaryKey("CFBundleShortVersionString") as? String ?: "0.0.0"
-
-private val iosQrLoginRequests = MutableStateFlow(0)
-
-internal actual val nativeQrLoginRequestVersion: StateFlow<Int> = iosQrLoginRequests.asStateFlow()
-
+@Composable
 @OptIn(ExperimentalForeignApi::class)
-internal actual fun openNativeExternalUrl(url: String) {
-    NSURL.URLWithString(url)?.let(UIApplication.sharedApplication::openURL)
+actual fun rememberExternalUrlOpener(): (String) -> Unit = remember {
+    { url -> NSURL.URLWithString(url)?.let(UIApplication.sharedApplication::openURL) }
 }
 
 internal actual fun copyNativePlainText(text: String) {
     UIPasteboard.generalPasteboard.string = text
 }
 
-internal actual fun requestNativeQrLogin() {
-    iosQrLoginRequests.update { it + 1 }
-}
+internal actual fun requestNativeQrLogin() = Unit
 
 @OptIn(ExperimentalForeignApi::class)
 internal actual fun nativeAccountFilePath(): String = "${nativeAppPrivateDirectoryPath()}/account.json"
@@ -72,18 +56,9 @@ internal actual fun nativeDownloadsDirectoryPath(): String = "${nativeAppPrivate
 
 internal actual fun nativeChooseBlocklistImportFilePath(): String? = null
 
-internal actual fun nativeBundledResourcePath(relativePath: String): String? =
-    NSBundle.mainBundle.resourcePath?.let { resourceDirectory -> "$resourceDirectory/$relativePath" }
-
 internal actual fun nativeSettingsStore(relativePath: String): SettingsStore = noopSettingsStore()
 
-@OptIn(ExperimentalForeignApi::class)
-internal actual fun nativeSystemInDarkTheme(): Boolean =
-    UITraitCollection.currentTraitCollection.userInterfaceStyle == UIUserInterfaceStyle.UIUserInterfaceStyleDark
-
-internal actual fun showNativeUserMessage(
-    message: String,
-    duration: UserMessageDuration,
-) {
-    println(message)
+@Composable
+actual fun rememberUserMessageSink(): UserMessageSink = remember {
+    UserMessageSink(showShortMessage = ::println)
 }

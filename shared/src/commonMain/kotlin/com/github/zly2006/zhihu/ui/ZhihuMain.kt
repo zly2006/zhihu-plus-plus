@@ -121,7 +121,6 @@ import com.github.zly2006.zhihu.navigation.Topic
 import com.github.zly2006.zhihu.navigation.WriteAnswer
 import com.github.zly2006.zhihu.navigation.WritePin
 import com.github.zly2006.zhihu.platform.PlatformBackHandler
-import com.github.zly2006.zhihu.platform.platformBackNavigationHost
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.reading.rememberReadingPlayerController
 import com.github.zly2006.zhihu.reading.saveReadingPlaybackSpeed
@@ -385,7 +384,7 @@ fun ZhihuMain(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize().platformBackNavigationHost(navEntry)) {
+    Box(modifier = modifier.fillMaxSize()) {
         Scaffold(
             modifier = Modifier
                 .fillMaxSize()

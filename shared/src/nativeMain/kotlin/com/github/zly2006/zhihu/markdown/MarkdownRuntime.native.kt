@@ -27,7 +27,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.platform.Font
-import com.github.zly2006.zhihu.account.IosAccountStore
+import com.github.zly2006.zhihu.account.NativeAccountStore
 import com.github.zly2006.zhihu.data.toCookieHeaderString
 import com.github.zly2006.zhihu.platform.nativeAppPrivateDirectoryPath
 import com.hrm.latex.renderer.font.MathFont
@@ -52,7 +52,7 @@ private val LM_MATH_URLS = listOf(
 
 @Composable
 actual fun rememberMarkdownMathFont(): MathFont? {
-    val store = remember { IosAccountStore() }
+    val store = remember { NativeAccountStore() }
     var mathFont by remember { mutableStateOf<MathFont?>(null) }
 
     LaunchedEffect(store) {
@@ -64,7 +64,7 @@ actual fun rememberMarkdownMathFont(): MathFont? {
 
 @Composable
 actual fun rememberMarkdownImageRequestHeaders(): MarkdownImageRequestHeaders {
-    val store = remember { IosAccountStore() }
+    val store = remember { NativeAccountStore() }
     val session = remember(store) { store.load() }
     return MarkdownImageRequestHeaders(
         cookieHeader = session.cookies.toCookieHeaderString(),
@@ -73,7 +73,7 @@ actual fun rememberMarkdownImageRequestHeaders(): MarkdownImageRequestHeaders {
 }
 
 @OptIn(ExperimentalForeignApi::class)
-private suspend fun loadNativeMathFont(store: IosAccountStore): MathFont {
+private suspend fun loadNativeMathFont(store: NativeAccountStore): MathFont {
     val fontFilePath = "${nativeAppPrivateDirectoryPath()}/latex-fonts/v$FONT_VERSION/latinmodern-math.otf"
     val fontBytes = NSFileManager.defaultManager
         .contentsAtPath(fontFilePath)
@@ -90,7 +90,7 @@ private suspend fun loadNativeMathFont(store: IosAccountStore): MathFont {
 }
 
 @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
-private suspend fun downloadNativeMathFont(store: IosAccountStore, fontFilePath: String): ByteArray {
+private suspend fun downloadNativeMathFont(store: NativeAccountStore, fontFilePath: String): ByteArray {
     var lastError: Exception? = null
     for (url in LM_MATH_URLS) {
         try {
