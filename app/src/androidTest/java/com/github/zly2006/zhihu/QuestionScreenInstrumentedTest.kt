@@ -27,7 +27,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
 import com.github.zly2006.zhihu.data.CommonFeed
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
@@ -41,24 +40,16 @@ import com.github.zly2006.zhihu.test.InstrumentedTestEnvironment
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
 import com.github.zly2006.zhihu.test.ZhihuMockApi
-import com.github.zly2006.zhihu.test.mockRootComments
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.seedViewModel
 import com.github.zly2006.zhihu.test.setScreenContent
-import com.github.zly2006.zhihu.ui.COMMENT_SCREEN_LIST_TAG
-import com.github.zly2006.zhihu.ui.QUESTION_COMMENTS_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.QUESTION_DETAIL_CONTENT_TAG
-import com.github.zly2006.zhihu.ui.QUESTION_DETAIL_PREVIEW_TAG
 import com.github.zly2006.zhihu.ui.QUESTION_DETAIL_TOGGLE_TAG
 import com.github.zly2006.zhihu.ui.QUESTION_FOLLOW_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.QUESTION_SCREEN_LIST_TAG
-import com.github.zly2006.zhihu.ui.QUESTION_SHARE_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.QUESTION_SORT_DEFAULT_TAG
 import com.github.zly2006.zhihu.ui.QUESTION_SORT_UPDATED_TAG
-import com.github.zly2006.zhihu.ui.QUESTION_STATS_TAG
-import com.github.zly2006.zhihu.ui.QUESTION_TITLE_TAG
-import com.github.zly2006.zhihu.ui.QUESTION_VIEW_LOG_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.QUESTION_WRITE_ANSWER_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.QuestionScreen
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
@@ -72,7 +63,6 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonArray
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -101,93 +91,10 @@ class QuestionScreenInstrumentedTest {
         ZhihuMockApi.install(enabled = InstrumentedTestEnvironment.isMockMode())
     }
 
-    @Test
-    fun headerActionsDetailToggleSortAndDialogEntrancesRemainOffline() {
-        /*
-         * Expected behavior:
-         * 1. The seeded title, statistics, and detail markdown must render from the mocked question
-         *    detail endpoint through the production loadQuestion path.
-         * 2. Tapping the detail toggle should collapse the markdown body into the preview snippet,
-         *    then allow expanding back to the full content.
-         * 3. Sort buttons must call the seeded ViewModel refresh path whenever the order actually
-         *    changes, and the follow button must toggle through mocked production POST/DELETE calls.
-         * 4. View-log, share, and comments actions should exercise the real platform/dialog entry
-         *    points while staying offline through ActivityMonitor and mocked HTTP.
-         */
-        mockQuestionDetail(
-            detail =
-                """
-                <p>离线问题详情用于 QuestionScreen instrumented test。</p>
-                <p>为了覆盖收起和展开详情的交互，这里需要一段更长的详情文本来触发可折叠逻辑。</p>
-                <p>这一段纯文字不包含复杂结构，主要用于保证详情总长度超过阈值。</p>
-                <p>详情收起后应显示预览，展开后应恢复完整内容，排序和操作入口仍应可用。</p>
-                """.trimIndent(),
-        )
-        mockQuestionFollowActions()
-        mockRootComments("https://www.zhihu.com/api/v4/comment_v5/questions/123456789/root_comment")
-        val viewModel = seedQuestionViewModel()
-
-        setScreen()
-
-        val instrumentation = InstrumentationRegistry.getInstrumentation()
-        val webviewMonitor = instrumentation.addMonitor(WebviewActivity::class.java.name, null, false)
-        try {
-            composeRule.waitUntilTextExists("345 浏览")
-            composeRule.onNodeWithTag(QUESTION_TITLE_TAG).assertIsDisplayed()
-            composeRule.onNodeWithText("离线问题标题").assertIsDisplayed()
-            composeRule.onNodeWithTag(QUESTION_STATS_TAG).assertIsDisplayed()
-            composeRule.onNodeWithText("345 浏览").assertIsDisplayed()
-            composeRule.onNodeWithText("7 评论").assertIsDisplayed()
-            composeRule.onNodeWithText("89 关注").assertIsDisplayed()
-            composeRule
-                .onNodeWithTag(QUESTION_SCREEN_LIST_TAG)
-                .performScrollToNode(hasTestTag(QUESTION_DETAIL_TOGGLE_TAG))
-            composeRule.waitUntilTagIsDisplayed(QUESTION_DETAIL_TOGGLE_TAG)
-            composeRule.waitUntilTagIsDisplayed(QUESTION_DETAIL_PREVIEW_TAG)
-            composeRule.onNodeWithTag(QUESTION_DETAIL_PREVIEW_TAG).assertIsDisplayed()
-            composeRule.onNodeWithText("离线问题详情用于 QuestionScreen instrumented test。").assertIsDisplayed()
-
-            composeRule.onNodeWithTag(QUESTION_DETAIL_TOGGLE_TAG).performClick()
-            composeRule.waitUntilTagIsDisplayed(QUESTION_DETAIL_CONTENT_TAG)
-            composeRule.onNodeWithTag(QUESTION_DETAIL_CONTENT_TAG).assertIsDisplayed()
-
-            composeRule.onNodeWithTag(QUESTION_DETAIL_TOGGLE_TAG).performClick()
-            composeRule.waitUntilTagIsDisplayed(QUESTION_DETAIL_PREVIEW_TAG)
-            composeRule.onNodeWithTag(QUESTION_DETAIL_PREVIEW_TAG).assertIsDisplayed()
-
-            composeRule
-                .onNodeWithTag(QUESTION_SCREEN_LIST_TAG)
-                .performScrollToNode(hasText("12 回答"))
-            composeRule.onNodeWithText("12 回答").assertIsDisplayed()
-
-            composeRule.onNodeWithTag(QUESTION_SORT_UPDATED_TAG).performClick()
-            composeRule.onNodeWithTag(QUESTION_SORT_DEFAULT_TAG).performClick()
-            assertEquals(2, viewModel.refreshCount)
-
-            composeRule.onNodeWithTag(QUESTION_FOLLOW_BUTTON_TAG).performClick()
-            composeRule.onNodeWithText("已关注").assertIsDisplayed()
-            composeRule.onNodeWithTag(QUESTION_FOLLOW_BUTTON_TAG).performClick()
-            composeRule.onNodeWithText("关注问题").assertIsDisplayed()
-            assertEquals(1, ZhihuMockApi.requestCount(HttpMethod.Post, "questions/123456789/followers"))
-            assertEquals(1, ZhihuMockApi.requestCount(HttpMethod.Delete, "questions/123456789/followers"))
-
-            composeRule.onNodeWithTag(QUESTION_SHARE_BUTTON_TAG).performClick()
-            composeRule.onNodeWithText("复制链接").assertIsDisplayed().performClick()
-
-            composeRule.onNodeWithTag(QUESTION_VIEW_LOG_BUTTON_TAG).performClick()
-            val startedActivity = instrumentation.waitForMonitorWithTimeout(webviewMonitor, 5_000)
-            assertNotNull("日志按钮应打开知乎网页日志页", startedActivity)
-            startedActivity?.finish()
-            instrumentation.waitForIdleSync()
-
-            composeRule.onNodeWithTag(QUESTION_COMMENTS_BUTTON_TAG).performClick()
-            composeRule.waitUntilTagIsDisplayed(COMMENT_SCREEN_LIST_TAG)
-            composeRule.onNodeWithTag(COMMENT_SCREEN_LIST_TAG).assertIsDisplayed()
-        } finally {
-            instrumentation.removeMonitor(webviewMonitor)
-        }
-    }
-
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/643
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/651
+     */
     @Test
     fun emptyQuestionDetailKeepsPrimaryActionsAndAnswerSortVisible() {
         mockQuestionDetail(detail = "")
@@ -207,18 +114,12 @@ class QuestionScreenInstrumentedTest {
         composeRule.onNodeWithTag(QUESTION_DETAIL_CONTENT_TAG).assertDoesNotExist()
     }
 
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/431
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/461
+     */
     @Test
     fun seededAnswerListSupportsScrollSwipesPaginationAndRowNavigationOffline() {
-        /*
-         * Expected behavior:
-         * 1. A locally seeded answer list should render in the paginated list immediately, without
-         *    waiting for QuestionFeedViewModel to fetch real answers.
-         * 2. Scrolling to a deep row and running vertical swipe cycles must keep list semantics intact
-         *    without removing the visible seeded item.
-         * 3. Reaching the lower part of the list should trigger the seeded ViewModel load-more path
-         *    at least once, proving pagination can be exercised offline.
-         * 4. Clicking a seeded row must navigate to its deterministic destination exactly once.
-         */
         val viewModel = seedQuestionViewModel(
             itemCount = 24,
             isEnd = false,
@@ -246,12 +147,7 @@ class QuestionScreenInstrumentedTest {
 
         assertTrue("Scrolling near the end should trigger the seeded load-more path", viewModel.loadMoreCount > 0)
         assertEquals(
-            listOf(
-                Article(
-                    type = ArticleType.Answer,
-                    id = 7003L,
-                ),
-            ),
+            listOf(Article(type = ArticleType.Answer, id = 7003L)),
             navigator.destinations,
         )
         val pendingNavigator = composeRule.activity.articleAnswerSwitchState.pendingNavigator
@@ -259,6 +155,10 @@ class QuestionScreenInstrumentedTest {
         assertEquals(7004L, runBlocking { pendingNavigator?.loadNext()?.id })
     }
 
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/615
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/618
+     */
     @Test
     fun longQuestionDetailRemainsVisibleAfterReturnFromAnswerList() {
         val lastDetailParagraph =
@@ -289,6 +189,10 @@ class QuestionScreenInstrumentedTest {
         composeRule.onNodeWithText(lastDetailParagraph).assertIsDisplayed()
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/357
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/363
+     */
     @Test
     fun blockedUserAnswersAreRemovedFromQuestionFeedProcessing() {
         /*

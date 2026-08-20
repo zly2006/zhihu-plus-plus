@@ -15,12 +15,9 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.github.zly2006.zhihu
+package com.github.zly2006.zhihu.viewmodel
 
-import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.data.Collection
-import com.github.zly2006.zhihu.viewmodel.CollectionsViewModel
-import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
@@ -33,22 +30,24 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.TextContent
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.junit.Test
-import org.junit.runner.RunWith
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
-@RunWith(AndroidJUnit4::class)
-class CollectionsViewModelInstrumentedTest {
+class CollectionsViewModelTest {
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/525
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/607
+     */
     @Test
-    fun createCollectionUsesVerifiedWebContract() = runBlocking {
+    fun createCollectionUsesVerifiedWebContract() = runTest {
         val client = jsonClient { request ->
             assertEquals(HttpMethod.Post, request.method)
             assertEquals("/api/v4/collections", request.url.encodedPath)
@@ -76,8 +75,12 @@ class CollectionsViewModelInstrumentedTest {
         assertNull(viewModel.createCollectionError)
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/525
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/607
+     */
     @Test
-    fun deleteCollectionTargetsOnlyTheSelectedNonDefaultCollection() = runBlocking {
+    fun deleteCollectionTargetsOnlyTheSelectedNonDefaultCollection() = runTest {
         var requestCount = 0
         val client = jsonClient { request ->
             requestCount++
@@ -104,8 +107,12 @@ class CollectionsViewModelInstrumentedTest {
         assertEquals("默认收藏夹不能删除", viewModel.deleteCollectionError)
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/525
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/607
+     */
     @Test
-    fun httpSuccessWithoutDeleteConfirmationIsRejected() = runBlocking {
+    fun httpSuccessWithoutDeleteConfirmationIsRejected() = runTest {
         val client = jsonClient { request ->
             assertEquals(HttpMethod.Delete, request.method)
             respondJson("""{"success":false,"message":"不能删除"}""")

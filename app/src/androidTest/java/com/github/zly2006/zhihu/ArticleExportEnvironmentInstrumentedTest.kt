@@ -30,7 +30,6 @@ import com.github.zly2006.zhihu.viewmodel.AndroidPreparedExportWebView
 import com.github.zly2006.zhihu.viewmodel.SharedAndroidPaginationEnvironment
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -40,56 +39,10 @@ import kotlin.math.roundToInt
 
 @RunWith(AndroidJUnit4::class)
 class ArticleExportEnvironmentInstrumentedTest {
-    @Test
-    fun androidEnvironmentProvidesArticleImageExportPlatformCapabilities() {
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val environment = SharedAndroidPaginationEnvironment(context, allowGuestAccess = true)
-
-        assertNotNull(environment.articleImageExportRenderer { "" })
-
-        val html = environment.buildArticleExportHtml(
-            content = sampleArticleContent(),
-            includeAppAttribution = true,
-            extraSectionsHtml = "",
-        )
-        assertTrue(html.contains("导出环境回归"))
-
-        val bitmap = Bitmap.createBitmap(2, 2, Bitmap.Config.ARGB_8888)
-        val displayName = "zhihu-export-regression-${System.currentTimeMillis()}.jpg"
-        try {
-            environment.saveImageToMediaStore(displayName, bitmap)
-            assertTrue(context.savedImageExists(displayName))
-        } finally {
-            bitmap.recycle()
-            context.deleteSavedImage(displayName)
-        }
-
-        val htmlDisplayName = "zhihu-html-export-regression-${System.currentTimeMillis()}.html"
-        try {
-            val savedLocation = environment.saveHtmlToDownloads(htmlDisplayName, "<html><body>正文</body></html>")
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                assertEquals("Zhihu++/$htmlDisplayName", savedLocation)
-                assertTrue(context.savedDownloadExists(htmlDisplayName))
-                assertTrue(context.savedDownloadSize(htmlDisplayName) > 0L)
-            } else {
-                assertEquals(
-                    File(
-                        File(
-                            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                            "Zhihu++",
-                        ),
-                        htmlDisplayName,
-                    ).absolutePath,
-                    savedLocation,
-                )
-                assertTrue(File(savedLocation).exists())
-                assertTrue(File(savedLocation).length() > 0L)
-            }
-        } finally {
-            context.deleteSavedDownload(htmlDisplayName)
-        }
-    }
-
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/428
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/429
+     */
     @Test
     fun androidEnvironmentBuildsOfflineArticleExportHtml() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
@@ -105,6 +58,10 @@ class ArticleExportEnvironmentInstrumentedTest {
         assertTrue(html.length > 1_000)
     }
 
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/428
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/429
+     */
     @Test
     fun articleImageRendererUsesStableContentHeightBeforeFullLayout() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext

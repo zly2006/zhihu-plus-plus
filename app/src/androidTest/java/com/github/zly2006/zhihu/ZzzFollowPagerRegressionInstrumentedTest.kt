@@ -56,6 +56,10 @@ class ZzzFollowPagerRegressionInstrumentedTest {
     @get:Rule
     val composeRule: MainActivityComposeRule = createAndroidComposeRule<MainActivity>()
 
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/318
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/548
+     */
     @Test
     fun boundaryReverseGesture_settlesParentToWholePage() {
         val outerPagerState = AtomicReference<PagerState>()
@@ -105,6 +109,10 @@ class ZzzFollowPagerRegressionInstrumentedTest {
         }
     }
 
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/318
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/548
+     */
     @Test
     fun boundaryReverseGesture_withoutHandoffLeavesParentBetweenPages() {
         val outerPagerState = AtomicReference<PagerState>()

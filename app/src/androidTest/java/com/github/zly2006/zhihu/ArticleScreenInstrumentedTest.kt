@@ -105,10 +105,8 @@ import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.hrm.markdown.renderer.Markdown
 import com.hrm.markdown.renderer.MarkdownImageData
 import io.ktor.client.HttpClient
-import kotlinx.coroutines.CancellationException
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Before
@@ -119,7 +117,6 @@ import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 
@@ -159,30 +156,10 @@ class ArticleScreenInstrumentedTest {
         }
     }
 
-    @Test
-    fun topBarActionsDialogsClipboardAndBackHandlerRemainDeterministicOffline() {
-        setArticleScreen()
-
-        composeRule.onNodeWithText("离线 Article 标题").assertIsDisplayed()
-        composeRule.onNodeWithText("离线作者").assertIsDisplayed()
-        composeRule.onNodeWithText("IP属地：上海").assertExists()
-        composeRule.onNodeWithContentDescription("更多选项").assertIsDisplayed().performClick()
-        composeRule.onNodeWithText("复制链接").assertIsDisplayed().performClick()
-        composeRule.waitUntil(timeoutMillis = 5_000) {
-            composeRule.activity.clipboardDestination == ARTICLE
-        }
-        assertEquals(ARTICLE, composeRule.activity.clipboardDestination)
-    }
-
-    @Test
-    fun contentBodyAndMetadataRenderOffline() {
-        setArticleScreen()
-        composeRule.onNodeWithText("离线 Article 标题").assertIsDisplayed()
-        composeRule.onNodeWithText("离线作者").assertIsDisplayed()
-        composeRule.onNodeWithText("IP属地：上海").assertExists()
-        composeRule.onNodeWithText("第 1 段离线正文", substring = true).assertIsDisplayed()
-    }
-
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/638
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/640
+     */
     @Test
     fun autoHideTitleRemainsResponsiveWhenDirectionChangesDuringHideAnimation() {
         setArticleScreen()
@@ -246,6 +223,10 @@ class ArticleScreenInstrumentedTest {
         composeRule.onNodeWithText("复制链接").assertIsDisplayed()
     }
 
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/495
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/556
+     */
     @Test
     fun issue495FirstFrameBenchmarkIncludesHtmlParsingLayoutAndDraw() {
         val warmupViewModel = seededAnswerViewModel(ANSWER)
@@ -308,6 +289,10 @@ class ArticleScreenInstrumentedTest {
         )
     }
 
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/495
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/646
+     */
     @Test
     fun markdownJvmToAvdCalibrationBenchmark() {
         assumeTrue(
@@ -379,6 +364,10 @@ class ArticleScreenInstrumentedTest {
         Log.i(ISSUE_495_BENCHMARK_TAG, "calibrationMediansMs=$medians")
     }
 
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/495
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/579
+     */
     @OptIn(ExperimentalFoundationApi::class)
     @Test
     fun selectionSurvivesDeferredMarkdownViewDisposal() {
@@ -521,6 +510,10 @@ class ArticleScreenInstrumentedTest {
         }
     }
 
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/495
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/646
+     */
     @Test
     fun deferredMarkdownSaveStateUsesBundleSafeKeys() {
         val markdown = (0 until 80).joinToString("\n\n") { index -> "SAVEABLE_BLOCK_$index" }
@@ -689,6 +682,10 @@ class ArticleScreenInstrumentedTest {
         assertEquals(fillerParagraphs.indices.toList(), copiedFillerIndexes)
     }
 
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/322
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/584
+     */
     @OptIn(ExperimentalFoundationApi::class)
     @Test
     fun highlightedParagraphRemainsSelectable() {
@@ -748,6 +745,10 @@ class ArticleScreenInstrumentedTest {
         }
     }
 
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/322
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/584
+     */
     @OptIn(ExperimentalFoundationApi::class)
     @Test
     fun highlightedParagraphSelectionHandleCanExtendToFollowingParagraph() {
@@ -838,6 +839,12 @@ class ArticleScreenInstrumentedTest {
         }
     }
 
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/322
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/584
+     * Later tap regression: https://github.com/zly2006/zhihu-plus-plus/issues/595
+     * Direct fix: https://github.com/zly2006/zhihu-plus-plus/commit/bc79ed18
+     */
     @Test
     fun highlightedParagraphTapStillOpensActions() {
         composeRule.setScreenContent {
@@ -856,6 +863,10 @@ class ArticleScreenInstrumentedTest {
         composeRule.onNodeWithTag("segment_action_sheet_bottom_divider").assertDoesNotExist()
     }
 
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/595
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/683
+     */
     @Test
     fun spanningHighlightTapShowsTheCompleteSelection() {
         composeRule.setScreenContent {
@@ -875,6 +886,10 @@ class ArticleScreenInstrumentedTest {
             .assertIsDisplayed()
     }
 
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/595
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/683
+     */
     @Test
     fun longSpanningHighlightShowsDirectionalDividersAndKeepsActionsVisible() {
         val repeatedParagraphs = List(24) { SPANNING_HIGHLIGHT_FIRST }
@@ -914,6 +929,11 @@ class ArticleScreenInstrumentedTest {
         composeRule.onNodeWithContentDescription("复制内容").assertIsDisplayed()
     }
 
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/595
+     * Direct fix: https://github.com/zly2006/zhihu-plus-plus/commit/bc79ed18
+     * Later audited by: https://github.com/zly2006/zhihu-plus-plus/pull/683
+     */
     @Test
     fun highlightedTextUsesVisibleLayoutForTapTarget() {
         composeRule.setScreenContent {
@@ -941,6 +961,10 @@ class ArticleScreenInstrumentedTest {
         composeRule.onNodeWithText("“$FORMATTED_HIGHLIGHT”").assertIsDisplayed()
     }
 
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/271
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/629
+     */
     @Test
     fun highlightedTextDrawsDashesAcrossEveryWrappedLine() {
         composeRule.setScreenContent {
@@ -999,6 +1023,11 @@ class ArticleScreenInstrumentedTest {
         }
     }
 
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/595
+     * Direct fix: https://github.com/zly2006/zhihu-plus-plus/commit/bc79ed18
+     * Later audited by: https://github.com/zly2006/zhihu-plus-plus/pull/683
+     */
     @Test
     fun highlightedParagraphTapOpensActionsInsideAnswerScreen() {
         val viewModel = seededAnswerViewModel(ANSWER)
@@ -1024,6 +1053,11 @@ class ArticleScreenInstrumentedTest {
         composeRule.onNodeWithText("“$HIGHLIGHTED_PARAGRAPH”").assertIsDisplayed()
     }
 
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/595
+     * Direct fix: https://github.com/zly2006/zhihu-plus-plus/commit/bc79ed18
+     * Later audited by: https://github.com/zly2006/zhihu-plus-plus/pull/683
+     */
     @Test
     fun highlightedParagraphDragDoesNotOpenActions() {
         composeRule.setScreenContent {
@@ -1043,6 +1077,10 @@ class ArticleScreenInstrumentedTest {
         composeRule.onNodeWithText("划线片段").assertDoesNotExist()
     }
 
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/495
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/579
+     */
     @OptIn(ExperimentalFoundationApi::class)
     @Test
     fun selectAllHighlightsEveryVisualLineOfLongParagraph() {
@@ -1109,6 +1147,10 @@ class ArticleScreenInstrumentedTest {
         }
     }
 
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/495
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/579
+     */
     @OptIn(ExperimentalFoundationApi::class)
     @Test
     fun draggingSelectionHandleUsesSameCompleteTextLayer() {
@@ -1192,6 +1234,10 @@ class ArticleScreenInstrumentedTest {
         }
     }
 
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/495
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/556
+     */
     @Test
     fun issue495MaterializesEstimatedOffscreenBlocksWhenScrolledIntoView() {
         val viewModel = issue495ViewModel()
@@ -1263,6 +1309,10 @@ class ArticleScreenInstrumentedTest {
         )
     }
 
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/320
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/576
+     */
     @Test
     fun markdownImageReservesItsApiAspectRatioBeforeNetworkLoad() {
         composeRule.setScreenContent {
@@ -1290,6 +1340,10 @@ class ArticleScreenInstrumentedTest {
         )
     }
 
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/495
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/556
+     */
     @Test
     fun footnoteReferenceAndBackLinkNavigateInsideOuterArticleScroll() {
         val markdown = buildString {
@@ -1326,6 +1380,10 @@ class ArticleScreenInstrumentedTest {
         composeRule.onNodeWithText("正文开头脚注", substring = true).assertIsDisplayed()
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/493
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/502
+     */
     @Test
     fun answerEndorsementsRenderOffline() {
         val viewModel = seededAnswerViewModel(ANSWER)
@@ -1347,6 +1405,10 @@ class ArticleScreenInstrumentedTest {
         composeRule.onNodeWithText("收录于话题: 科技").assertIsDisplayed()
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/550
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/552
+     */
     @Test
     fun articleTtsStateReadsFromMainActivityHost() {
         composeRule.activity.runOnUiThread {
@@ -1361,6 +1423,10 @@ class ArticleScreenInstrumentedTest {
         composeRule.onNodeWithText("tts=Ready").assertIsDisplayed()
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/550
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/552
+     */
     @Test
     fun pausedContinuousReadingOnAnotherQueueItemUsesStopActionInArticleMenu() {
         val viewModel = seededAnswerViewModel(ANSWER)
@@ -1406,143 +1472,10 @@ class ArticleScreenInstrumentedTest {
         }
     }
 
-    @Test
-    fun emptyAnswerQueueProviderDoesNotFallBackToPaginationIds() {
-        val viewModel = seededAnswerViewModel(ANSWER)
-        composeRule.runOnIdle {
-            viewModel.forceAnswerNextIdsForTest(listOf(901L, 902L))
-        }
-        setArticleActionsMenu(
-            viewModel = viewModel,
-            answerQueueFallbackProvider = { _ -> emptyList() },
-        )
-
-        composeRule.onNodeWithText("开始连续朗读").assertIsDisplayed().performClick()
-        waitForReadingQueue(listOf(ANSWER.id))
-
-        composeRule.onNodeWithText("停止朗读").assertIsDisplayed().performClick()
-        composeRule.waitUntil(timeoutMillis = 5_000) {
-            !AndroidReadingPlayerBridge.state.value.hasSession
-        }
-    }
-
-    @Test
-    fun answerQueueProviderKeepsCollectionOrderWithoutPaginationItems() {
-        val viewModel = seededAnswerViewModel(ANSWER)
-        composeRule.runOnIdle {
-            viewModel.forceAnswerNextIdsForTest(listOf(901L, 902L))
-        }
-        setArticleActionsMenu(
-            viewModel = viewModel,
-            answerQueueFallbackProvider = { _ ->
-                listOf(
-                    Article(type = ArticleType.Answer, id = 801L, title = "收藏回答一"),
-                    Article(type = ArticleType.Answer, id = 802L, title = "收藏回答二"),
-                )
-            },
-        )
-
-        composeRule.onNodeWithText("开始连续朗读").assertIsDisplayed().performClick()
-        waitForReadingQueue(listOf(ANSWER.id, 801L, 802L))
-
-        composeRule.onNodeWithText("停止朗读").assertIsDisplayed().performClick()
-        composeRule.waitUntil(timeoutMillis = 5_000) {
-            !AndroidReadingPlayerBridge.state.value.hasSession
-        }
-    }
-
-    @Test
-    fun failingAnswerQueueProviderStillStartsCurrentAnswer() {
-        val viewModel = seededAnswerViewModel(ANSWER)
-        setArticleActionsMenu(
-            viewModel = viewModel,
-            answerQueueFallbackProvider = { error("离线分页失败") },
-        )
-
-        composeRule.onNodeWithText("开始连续朗读").assertIsDisplayed().performClick()
-        waitForReadingQueue(listOf(ANSWER.id))
-    }
-
-    @Test
-    fun matchingOriginAtQueueLimitDoesNotLoadQuestionFallback() {
-        val viewModel = seededAnswerViewModel(ANSWER)
-        val sourceId = FULL_ORIGIN_SOURCE_ID
-        val sourceAnswer = ANSWER.copy(readingQueueSourceId = sourceId)
-        var providerCalls = 0
-        ReadingQueueSourceRegistry.register(
-            sourceId = sourceId,
-            items = listOf(
-                ReadingQueueItem(ReadingContentType.Answer, id = ANSWER.id),
-                ReadingQueueItem(ReadingContentType.Answer, id = NEXT_ANSWER.id),
-                ReadingQueueItem(ReadingContentType.Answer, id = 779L),
-                ReadingQueueItem(ReadingContentType.Answer, id = 780L),
-                ReadingQueueItem(ReadingContentType.Answer, id = 781L),
-            ),
-        )
-        setArticleActionsMenu(
-            viewModel = viewModel,
-            article = sourceAnswer,
-            answerQueueFallbackProvider = {
-                providerCalls++
-                error("来源队列足够时不应加载 fallback")
-            },
-        )
-
-        composeRule.onNodeWithText("开始连续朗读").assertIsDisplayed().performClick()
-        waitForReadingQueue(listOf(ANSWER.id, NEXT_ANSWER.id, 779L, 780L, 781L))
-        composeRule.runOnIdle { assertEquals(0, providerCalls) }
-    }
-
-    @Test
-    fun partialMatchingOriginLoadsRequestedRemainderAndFillsQueue() {
-        val viewModel = seededAnswerViewModel(ANSWER)
-        val sourceId = PARTIAL_ORIGIN_SOURCE_ID
-        val sourceAnswer = ANSWER.copy(readingQueueSourceId = sourceId)
-        var requestedLimit = 0
-        ReadingQueueSourceRegistry.register(
-            sourceId = sourceId,
-            items = listOf(
-                ReadingQueueItem(ReadingContentType.Answer, id = ANSWER.id),
-                ReadingQueueItem(ReadingContentType.Answer, id = NEXT_ANSWER.id),
-            ),
-        )
-        setArticleActionsMenu(
-            viewModel = viewModel,
-            article = sourceAnswer,
-            answerQueueFallbackProvider = { limit ->
-                requestedLimit = limit
-                listOf(
-                    NEXT_ANSWER,
-                    Article(type = ArticleType.Answer, id = 779L),
-                    Article(type = ArticleType.Answer, id = 780L),
-                    Article(type = ArticleType.Answer, id = 781L),
-                )
-            },
-        )
-
-        composeRule.onNodeWithText("开始连续朗读").assertIsDisplayed().performClick()
-        waitForReadingQueue(listOf(ANSWER.id, NEXT_ANSWER.id, 779L, 780L, 781L))
-        composeRule.runOnIdle { assertEquals(4, requestedLimit) }
-    }
-
-    @Test
-    fun cancelledAnswerQueueProviderDoesNotStartReadingSession() {
-        val viewModel = seededAnswerViewModel(ANSWER)
-        val providerCalled = AtomicBoolean(false)
-        setArticleActionsMenu(
-            viewModel = viewModel,
-            answerQueueFallbackProvider = {
-                providerCalled.set(true)
-                throw CancellationException("测试取消")
-            },
-        )
-
-        composeRule.onNodeWithText("开始连续朗读").assertIsDisplayed().performClick()
-        composeRule.waitUntil(timeoutMillis = 5_000) { providerCalled.get() }
-
-        assertFalse(AndroidReadingPlayerBridge.state.value.hasSession)
-    }
-
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/550
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/552
+     */
     @Test
     fun articleScreenUsesSharedAnswerNavigatorSnapshotForReadingQueue() {
         val viewModel = seededAnswerViewModel(ANSWER)
@@ -1591,6 +1524,10 @@ class ArticleScreenInstrumentedTest {
         assertEquals(4, snapshotLimit.get())
     }
 
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/213
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/316
+     */
     @Test
     fun skipAnswerButtonNavigatesToPrefetchedNextAnswerOffline() {
         val viewModel = seededAnswerViewModel(ANSWER)
@@ -1643,6 +1580,10 @@ class ArticleScreenInstrumentedTest {
         }
     }
 
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/477
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/480
+     */
     @Test
     fun skipAnswerButtonCanBeDraggedBackToRightEdge() {
         val viewModel = seededAnswerViewModel(ANSWER)

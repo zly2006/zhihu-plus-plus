@@ -93,6 +93,10 @@ class ReadingPlayerUiInstrumentedTest {
         AndroidReadingPlayerBridge.publish(ReadingPlayerState())
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/550
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/552
+     */
     @Test
     fun outsideDetailPlayerCompactsForBackgroundGestureWithoutSwallowingNavigation() {
         composeRule.setZhihuMainContent()
@@ -140,6 +144,10 @@ class ReadingPlayerUiInstrumentedTest {
         }
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/550
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/552
+     */
     @Test
     fun leavingDetailCompactsTheExpandedPlayer() {
         lateinit var navController: NavHostController
@@ -157,6 +165,10 @@ class ReadingPlayerUiInstrumentedTest {
         composeRule.onNodeWithTag(READING_PLAYER_BAR_TAG).assertDoesNotExist()
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/550
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/552
+     */
     @Test
     fun changingThePlayingItemReplacesTheVisibleReadingDetail() {
         lateinit var navController: NavHostController
@@ -179,6 +191,10 @@ class ReadingPlayerUiInstrumentedTest {
         )
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/550
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/552
+     */
     @Test
     fun expandedPlayerStopButtonEndsTheReadingSession() {
         composeRule.setZhihuMainContent()
@@ -195,6 +211,10 @@ class ReadingPlayerUiInstrumentedTest {
         composeRule.onNodeWithTag(READING_PLAYER_COMPACT_TAG).assertDoesNotExist()
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/550
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/552
+     */
     @Test
     fun compactPlayerCanBeDraggedAndRestoresItsSavedEdge() {
         composeRule.setZhihuMainContent()
@@ -224,6 +244,10 @@ class ReadingPlayerUiInstrumentedTest {
         assertEquals(draggedBounds.top, restoredBounds.top, 1f)
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/550
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/552
+     */
     @Test
     fun queueSheetHostsReadingSettingsInsteadOfStop() {
         composeRule.setZhihuMainContent()

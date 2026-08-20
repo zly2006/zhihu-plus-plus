@@ -52,6 +52,10 @@ class WriteAnswerScreenInstrumentedTest {
         composeRule.resetAppPreferences()
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/648
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/662
+     */
     @Test
     fun editorActionsFollowVerticalScrollDirection() {
         composeRule.setScreenContent {
@@ -83,6 +87,10 @@ class WriteAnswerScreenInstrumentedTest {
         composeRule.onNodeWithTag(WRITE_ANSWER_FAB_SAVE_TAG).assertIsDisplayed()
     }
 
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/271
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/663
+     */
     @Test
     fun previewRendersMarkdownWithReferenceDefinitions() {
         composeRule.setScreenContent {

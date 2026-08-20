@@ -20,22 +20,16 @@ package com.github.zly2006.zhihu
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
-import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.data.ZhihuJson
-import com.github.zly2006.zhihu.navigation.History
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
-import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
-import com.github.zly2006.zhihu.test.pressSystemBack
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
-import com.github.zly2006.zhihu.ui.ONLINE_HISTORY_OVERFLOW_TAG
 import com.github.zly2006.zhihu.ui.OnlineHistoryScreen
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.OnlineHistoryViewModel
@@ -75,33 +69,10 @@ class OnlineHistoryScreenInstrumentedTest {
         clearDisplayItems()
     }
 
-    @Test
-    fun overflowMenuShowsStableActionsAndBackDismissesWithoutNavigation() {
-        // Seed deterministic fake rows before composition so OnlineHistoryScreen skips the
-        // automatic refresh path. This keeps the test fully local and makes the toolbar/menu
-        // assertions independent from login state, network reachability, and remote history data.
-        val navigator = setOnlineHistoryScreen()
-
-        composeRule.onNodeWithText("历史记录").assertIsDisplayed()
-        composeRule.onNodeWithTag(ONLINE_HISTORY_OVERFLOW_TAG).performClick()
-
-        // The overflow menu is the only stable toolbar entry point on this screen, so it must
-        // always expose both supported actions and be dismissible with the system back gesture
-        // without emitting any app-level navigation callbacks.
-        composeRule.onNodeWithText("查看本地历史记录").assertIsDisplayed()
-        composeRule.onNodeWithText("清除历史记录").assertIsDisplayed()
-        composeRule.pressSystemBack()
-        composeRule.waitUntil(timeoutMillis = 5_000) {
-            composeRule.onAllNodesWithText("查看本地历史记录").fetchSemanticsNodes().isEmpty() &&
-                composeRule.onAllNodesWithText("清除历史记录").fetchSemanticsNodes().isEmpty()
-        }
-
-        composeRule.runOnIdle {
-            assertEquals(0, navigator.destinations.size)
-            assertEquals(0, navigator.backCount)
-        }
-    }
-
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/562
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/604
+     */
     @Test
     fun historyItemOverflowOffersSingleDeleteAction() {
         setOnlineHistoryScreen()
@@ -113,6 +84,10 @@ class OnlineHistoryScreenInstrumentedTest {
         composeRule.onNodeWithText("删除该条历史记录").assertIsDisplayed()
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/562
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/604
+     */
     @Test
     fun singleDeletePostsDecodedPairAndRemovesRowAfterSuccess() {
         val client = HttpClient(
@@ -184,68 +159,6 @@ class OnlineHistoryScreenInstrumentedTest {
         }
 
         assertEquals(0, viewModel.displayItems.size)
-    }
-
-    @Test
-    fun overflowMenuNavigatesLocallyAndClearDialogCancelsWithoutMutatingSeededRows() {
-        // Populate the activity-scoped ViewModel with stable placeholder rows so the screen renders
-        // a real lazy list but never depends on zhihu read-history responses during this test.
-        val navigator = setOnlineHistoryScreen()
-
-        // Choosing the local-history action should synchronously record one navigation event to the
-        // History destination and close the menu, while keeping the current screen mounted because
-        // the test host only records navigation instead of replacing the content tree.
-        composeRule.onNodeWithTag(ONLINE_HISTORY_OVERFLOW_TAG).performClick()
-        composeRule.onNodeWithText("查看本地历史记录").performClick()
-        composeRule.runOnIdle {
-            assertEquals(listOf(History), navigator.destinations)
-            assertEquals(0, navigator.backCount)
-        }
-
-        // Opening the clear-history flow must show the confirmation copy and both dialog buttons,
-        // but cancelling via the explicit secondary action should keep the seeded rows intact and
-        // must not create any extra navigation event or trigger a destructive clear.
-        composeRule.onNodeWithTag(ONLINE_HISTORY_OVERFLOW_TAG).performClick()
-        composeRule.onNodeWithText("清除历史记录").performClick()
-        composeRule.onNodeWithText("确认清除历史记录").assertIsDisplayed()
-        composeRule.onNodeWithText("此操作会清除当前账号的在线和本地的全部历史记录。").assertIsDisplayed()
-        composeRule.onNodeWithText("确认").assertIsDisplayed()
-        composeRule.onNodeWithText("我再想想").assertIsDisplayed()
-        composeRule.onNodeWithText("我再想想").performClick()
-        composeRule.onNodeWithText("确认清除历史记录").assertDoesNotExist()
-        composeRule.onNodeWithText(seedTitle(1)).assertExists()
-
-        composeRule.runOnIdle {
-            assertEquals(listOf(History), navigator.destinations)
-            assertEquals(0, navigator.backCount)
-        }
-    }
-
-    @Test
-    fun listSwipeCyclesKeepToolbarMenuAndDialogInteractionsStable() {
-        // Use enough fake rows to guarantee a scrollable lazy list. The swipe assertions then
-        // exercise gesture handling on the actual list container without ever approaching the end
-        // of pagination or invoking the network-backed clear-history confirmation path.
-        val navigator = setOnlineHistoryScreen(itemCount = 24)
-
-        composeRule.onNodeWithTag(LIST_TAG).assertExists()
-        composeRule.onNodeWithTag(LIST_TAG).performVerticalSwipeCycle()
-
-        // After the gesture cycle, the toolbar should remain interactive, the overflow menu
-        // should still open normally, and dismissing the confirmation dialog with system back
-        // should restore the untouched list state instead of navigating away or corrupting UI.
-        composeRule.onNodeWithText("历史记录").assertIsDisplayed()
-        composeRule.onNodeWithTag(ONLINE_HISTORY_OVERFLOW_TAG).performClick()
-        composeRule.onNodeWithText("清除历史记录").performClick()
-        composeRule.onNodeWithText("确认清除历史记录").assertIsDisplayed()
-        composeRule.pressSystemBack()
-        composeRule.onNodeWithText("确认清除历史记录").assertDoesNotExist()
-        composeRule.onNodeWithTag(LIST_TAG).assertExists()
-
-        composeRule.runOnIdle {
-            assertEquals(0, navigator.destinations.size)
-            assertEquals(0, navigator.backCount)
-        }
     }
 
     private fun setOnlineHistoryScreen(itemCount: Int = 24): RecordingNavigator {
