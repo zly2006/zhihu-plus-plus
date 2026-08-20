@@ -95,6 +95,7 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.MyCollections
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
+import com.github.zly2006.zhihu.platform.SettingsStore
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.theme.ThemeManager
@@ -114,6 +115,7 @@ import com.github.zly2006.zhihu.ui.components.SettingItemOverall
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
 import com.github.zly2006.zhihu.ui.components.normalizedAnswerSwitchSensitivity
 import kotlinx.coroutines.delay
+import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -142,8 +144,23 @@ const val BOTTOM_BAR_ITEMS_PREFERENCE_KEY = "bottom_bar_items"
 const val BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY = "bottom_bar_item_order"
 const val COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY = "collectionDirectBrowse"
 private const val BOTTOM_BAR_ITEM_ORDER_SEPARATOR = ","
+internal val contentFontSizeLevels = (50..120 step 5).toList() + (130..200 step 10).toList()
 private val bottomBarSettingItemHeight = 64.dp
 private val bottomBarSettingItemSpacing = 4.dp
+
+internal fun normalizedContentFontSize(value: Int): Int {
+    val boundedValue = value.coerceIn(contentFontSizeLevels.first(), contentFontSizeLevels.last())
+    return contentFontSizeLevels.minBy { abs(it - boundedValue) }
+}
+
+internal fun SettingsStore.contentFontSize(): Int {
+    val storedValue = getInt(PREF_FONT_SIZE, 100)
+    val normalizedValue = normalizedContentFontSize(storedValue)
+    if (storedValue != normalizedValue) {
+        putInt(PREF_FONT_SIZE, normalizedValue)
+    }
+    return normalizedValue
+}
 
 private val topLevelDestinationsInOrder: List<Pair<String, TopLevelDestination>> = listOf(
     Home.name to Home,
@@ -587,7 +604,7 @@ fun AppearanceSettingsScreen(
             SettingItemGroup(
                 title = "阅读",
             ) {
-                var fontSize by remember { mutableIntStateOf(settings.getInt(PREF_FONT_SIZE, 100)) }
+                var fontSize by remember { mutableIntStateOf(settings.contentFontSize()) }
                 SettingItem(
                     title = { Text("字号") },
                     description = { Text("调整内容文字大小 ($fontSize%)") },
@@ -596,13 +613,14 @@ fun AppearanceSettingsScreen(
                     bringIntoViewRequester = requesterFor("fontScale"),
                     bottomAction = {
                         Slider(
-                            value = fontSize.toFloat(),
+                            value = contentFontSizeLevels.indexOf(fontSize).toFloat(),
                             onValueChange = {
-                                fontSize = it.toInt()
-                                settings.putInt(PREF_FONT_SIZE, it.toInt())
+                                val levelIndex = it.roundToInt().coerceIn(0, contentFontSizeLevels.lastIndex)
+                                fontSize = contentFontSizeLevels[levelIndex]
+                                settings.putInt(PREF_FONT_SIZE, fontSize)
                             },
-                            valueRange = 50f..200f,
-                            steps = 14,
+                            valueRange = 0f..contentFontSizeLevels.lastIndex.toFloat(),
+                            steps = contentFontSizeLevels.size - 2,
                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                         )
                     },
