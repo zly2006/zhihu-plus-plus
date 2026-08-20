@@ -67,6 +67,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.GraphicsLayerScope
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
@@ -87,10 +88,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import com.github.zly2006.zhihu.platform.PlatformPredictiveBackHandler
 import com.github.zly2006.zhihu.platform.exportTestTagsForUiAutomation
+import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.max
 import kotlin.math.min
+
+const val DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_PREFERENCE_KEY = "disableBottomSheetRoundedCorners"
 
 @Composable
 @ExperimentalMaterial3Api
@@ -111,6 +115,12 @@ fun MyModalBottomSheet(
     usePlatformWindow: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val settings = rememberSettingsStore()
+    val bottomSheetShape = if (settings.getBoolean(DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_PREFERENCE_KEY, false)) {
+        RectangleShape
+    } else {
+        shape
+    }
     val scope = rememberCoroutineScope()
     val animateToDismiss: () -> Unit = {
         // 绕过 SheetState.confirmValueChange 不可见的问题，直接调用内部 anchoredDraggableState。
@@ -156,7 +166,7 @@ fun MyModalBottomSheet(
                 state = sheetState,
                 maxWidth = sheetMaxWidth,
                 gesturesEnabled = sheetGesturesEnabled,
-                shape = shape,
+                shape = bottomSheetShape,
                 containerColor = containerColor,
                 contentColor = contentColor,
                 tonalElevation = tonalElevation,
