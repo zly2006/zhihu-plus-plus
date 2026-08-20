@@ -61,6 +61,10 @@ class SystemBarsInstrumentedTest {
         AndroidThemeSettings.setThemeMode(composeRule.activity, ThemeMode.DARK)
     }
 
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/288
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/571
+     */
     @Test
     fun identityChangeRestartKeepsDarkThemeStatusBarEdgeToEdge() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()

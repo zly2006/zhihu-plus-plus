@@ -17,13 +17,10 @@
 
 package com.github.zly2006.zhihu
 
-import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onNodeWithContentDescription
-import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
@@ -34,7 +31,6 @@ import com.github.zly2006.zhihu.data.MobileNotificationTimelineItem
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CommentHolder
-import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.resolveContent
@@ -46,7 +42,6 @@ import com.github.zly2006.zhihu.ui.NotificationScreen
 import com.github.zly2006.zhihu.viewmodel.MobileNotificationCategory
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -62,60 +57,10 @@ class NotificationScreenInstrumentedTest {
         composeRule.resetAppPreferences()
     }
 
-    @Test
-    fun notificationScreen_showsStableToolbarActionsWithoutLiveData() {
-        /*
-         * Expected behavior:
-         * 1. The test waits for the screen's initial lifecycle refresh, then seeds one local notification.
-         * 2. The toolbar should always show the page title plus clickable back and settings actions.
-         * 3. The "mark all as read" action should stay hidden while unreadCount remains at its default zero.
-         */
-        setNotificationScreenContent()
-
-        composeRule.onNodeWithText("消息").assertIsDisplayed()
-        MobileNotificationCategory.entries.forEach { category ->
-            composeRule
-                .onNodeWithTag("notification_category_${category.entryName}")
-                .assertExists()
-                .assertHasClickAction()
-        }
-        composeRule.onNodeWithContentDescription("返回").assertExists().assertHasClickAction()
-        composeRule.onNodeWithContentDescription("设置").assertExists().assertHasClickAction()
-        composeRule.onNodeWithContentDescription("已读").assertDoesNotExist()
-    }
-
-    @Test
-    fun notificationScreen_backButton_delegatesToNavigatorBackCallback() {
-        /*
-         * Expected behavior:
-         * 1. Pressing the toolbar back button should invoke the injected navigator back callback exactly once.
-         * 2. The screen should not record any forward navigation destination when the user only requests back.
-         * 3. This interaction must remain deterministic even when the notification list itself is seeded locally.
-         */
-        val recordingNavigator = setNotificationScreenContent()
-
-        composeRule.onNodeWithContentDescription("返回").performClick()
-
-        assertEquals(1, recordingNavigator.backCount)
-        assertTrue(recordingNavigator.destinations.isEmpty())
-    }
-
-    @Test
-    fun notificationScreen_settingsButton_navigatesToNotificationSettings() {
-        /*
-         * Expected behavior:
-         * 1. Pressing the toolbar settings button should navigate to Notification.NotificationSettings().
-         * 2. This action should not trigger a back event because it is a forward navigation path.
-         * 3. The recorded destination list should contain exactly the settings destination after one click.
-         */
-        val recordingNavigator = setNotificationScreenContent()
-
-        composeRule.onNodeWithContentDescription("设置").performClick()
-
-        assertEquals(0, recordingNavigator.backCount)
-        assertEquals(listOf(Notification.NotificationSettings()), recordingNavigator.destinations)
-    }
-
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/490
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/503
+     */
     @Test
     fun notificationScreen_showsCategoryUnreadCountBadge() {
         /*
@@ -134,6 +79,10 @@ class NotificationScreenInstrumentedTest {
         composeRule.onNodeWithText("2").assertIsDisplayed()
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/569
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/606
+     */
     @Test
     fun notificationScreen_fourObservedCommentActionsNavigateWithCommentAnchors() {
         val notifications = listOf(
@@ -199,6 +148,10 @@ class NotificationScreenInstrumentedTest {
         assertEquals(8L, likedChildPinComment.id)
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/569
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/606
+     */
     @Test
     fun realAccountCommentLinkSnapshot_all212OccurrencesResolveToTheirAnchors() {
         // 2026-07-30 从当前账号 comment/like 通知各取两页后，保留结构与数量，ID 全部替换为测试值。

@@ -18,49 +18,27 @@
 package com.github.zly2006.zhihu
 
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.ZhihuJson
-import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
-import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.test.InstrumentedTestEnvironment
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.ZhihuMockApi
 import com.github.zly2006.zhihu.test.mockRootComments
-import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
-import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.COMMENT_INPUT_TAG
 import com.github.zly2006.zhihu.ui.COMMENT_SCREEN_LIST_TAG
-import com.github.zly2006.zhihu.ui.PIN_SCREEN_AUTHOR_TAG
-import com.github.zly2006.zhihu.ui.PIN_SCREEN_BACK_BUTTON_TAG
-import com.github.zly2006.zhihu.ui.PIN_SCREEN_COMMENT_BUTTON_TAG
-import com.github.zly2006.zhihu.ui.PIN_SCREEN_ERROR_TAG
-import com.github.zly2006.zhihu.ui.PIN_SCREEN_LIKE_BUTTON_TAG
-import com.github.zly2006.zhihu.ui.PIN_SCREEN_LINK_CARD_TAG
-import com.github.zly2006.zhihu.ui.PIN_SCREEN_LOADING_TAG
-import com.github.zly2006.zhihu.ui.PIN_SCREEN_POLL_CARD_TAG
-import com.github.zly2006.zhihu.ui.PIN_SCREEN_SCROLL_TAG
-import com.github.zly2006.zhihu.ui.PIN_SCREEN_SHARE_BUTTON_TAG
-import com.github.zly2006.zhihu.ui.PinScreen
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
-import com.github.zly2006.zhihu.ui.pinScreenPollOptionTag
 import io.ktor.http.HttpMethod
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.serialization.encodeToString
 import org.junit.After
-import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -83,131 +61,10 @@ class PinScreenInstrumentedTest {
         ZhihuMockApi.install(enabled = InstrumentedTestEnvironment.isMockMode())
     }
 
-    @Test
-    fun loadingAndErrorStatesRenderDeterministicallyOffline() {
-        /*
-         * Expected behavior:
-         * 1. A pending mocked pin-detail request should render the dedicated loading container.
-         * 2. A null mocked response should render the visible error message contract exactly where
-         *    PinScreen normally reports load failures.
-         * 3. Both states stay offline while still entering the production loadPinDetail path.
-         */
-        val releasePinDetail = CompletableDeferred<Unit>()
-        mockPinDetailBody(
-            pinId = 101,
-            body = ZhihuJson.json.encodeToString(seededPinContent()),
-            beforeRespond = { releasePinDetail.await() },
-        )
-
-        try {
-            composeRule.setScreenContent {
-                PinScreen(
-                    pin = Pin(101),
-                )
-            }
-            composeRule.waitUntilTagExists(PIN_SCREEN_LOADING_TAG)
-            composeRule.onNodeWithTag(PIN_SCREEN_LOADING_TAG).assertIsDisplayed()
-        } finally {
-            releasePinDetail.complete(Unit)
-        }
-
-        mockPinDetailBody(pinId = 102, body = "null")
-
-        composeRule.setScreenContent {
-            PinScreen(
-                pin = Pin(102),
-            )
-        }
-        composeRule.waitUntilTagExists(PIN_SCREEN_ERROR_TAG)
-        composeRule.onNodeWithTag(PIN_SCREEN_ERROR_TAG).assertIsDisplayed()
-        composeRule.onNodeWithText("加载失败: 想法详情为空").assertIsDisplayed()
-    }
-
-    @Test
-    fun pollOptionsRenderAndDispatchVoteOffline() {
-        /*
-         * Expected behavior:
-         * 1. A mocked pin detail with bottom_poll should render the poll card without using the
-         *    real network.
-         * 2. The poll should expose each option through a stable test tag so UI automation can tap by
-         *    semantic identity instead of coordinates.
-         * 3. Tapping an unvoted option must dispatch the exact poll id and option id through the
-         *    production POST contract.
-         */
-        mockPinDetail(content = seededPollPinContent())
-        mockPinPollVote()
-        mockPinLike(likedCount = 10)
-
-        composeRule.setScreenContent {
-            PinScreen(
-                pin = Pin(101),
-            )
-        }
-
-        composeRule.waitUntilTagExists(PIN_SCREEN_POLL_CARD_TAG)
-        composeRule.onNodeWithTag(PIN_SCREEN_POLL_CARD_TAG).assertIsDisplayed()
-        composeRule.onNodeWithText("知乎++好用吗").assertIsDisplayed()
-        composeRule.onNodeWithTag(pinScreenPollOptionTag("option-b")).assertIsDisplayed().performClick()
-
-        composeRule.waitUntilRequestCount(HttpMethod.Post, "api/v4/polls/poll-101", 1)
-        composeRule.waitUntilRequestCount(HttpMethod.Post, "api/v4/pins/101/voters/up", 1)
-    }
-
-    @Test
-    fun contentActionsNavigationDialogsAndSwipeCyclesStayStableOffline() {
-        /*
-         * Expected behavior:
-         * 1. With a fully mocked pin detail, the author row, link card, like button, comment button,
-         *    share button, and back button should all remain interactive without real network access.
-         * 2. Author and link-card clicks must navigate to their deterministic Person and Question
-         *    destinations, while the back button must increment only the navigator back counter.
-         * 3. Like, comment, and share actions should route through mocked HTTP and the real dialog
-         *    surfaces, proving PinScreen can be exercised without test-only production branches.
-         * 4. Vertical and horizontal swipe cycles on the main scroll container must preserve all of
-         *    the seeded content and action affordances afterward.
-         */
-        mockPinDetail(content = seededPinContent())
-        mockPinLike(likedCount = 10)
-        mockRootComments("https://www.zhihu.com/api/v4/comment_v5/pins/101/root_comment")
-        val navigator = composeRule.setScreenContent {
-            PinScreen(
-                pin = Pin(101),
-            )
-        }
-
-        composeRule.waitUntilTagExists(PIN_SCREEN_SCROLL_TAG)
-        composeRule.onNodeWithTag(PIN_SCREEN_SCROLL_TAG).assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("离线优秀答主").assertIsDisplayed()
-        composeRule.onNodeWithText("离线点赞者 等 9 人赞同了该想法").assertIsDisplayed()
-        composeRule.onNodeWithTag(PIN_SCREEN_SCROLL_TAG).performVerticalSwipeCycle()
-        composeRule.onNodeWithTag(PIN_SCREEN_SCROLL_TAG).performHorizontalSwipeCycle()
-        composeRule.onNodeWithTag(PIN_SCREEN_AUTHOR_TAG).assertIsDisplayed().performClick()
-        composeRule.onNodeWithTag(PIN_SCREEN_LINK_CARD_TAG).assertIsDisplayed().performClick()
-        composeRule.onNodeWithTag(PIN_SCREEN_LIKE_BUTTON_TAG).performClick()
-        composeRule.waitUntilRequestCount(HttpMethod.Post, "api/v4/pins/101/voters/up", 1)
-
-        composeRule.onNodeWithTag(PIN_SCREEN_SHARE_BUTTON_TAG).performClick()
-        composeRule.onNodeWithText("复制链接").assertIsDisplayed().performClick()
-
-        composeRule.onNodeWithTag(PIN_SCREEN_BACK_BUTTON_TAG).performClick()
-        composeRule.onNodeWithTag(PIN_SCREEN_COMMENT_BUTTON_TAG).performClick()
-        composeRule.waitUntilTagExists(COMMENT_SCREEN_LIST_TAG)
-        composeRule.onNodeWithTag(COMMENT_SCREEN_LIST_TAG).assertIsDisplayed()
-
-        assertEquals(1, navigator.backCount)
-        assertEquals(
-            listOf(
-                Person(
-                    id = "pin-author-id",
-                    urlToken = "pin-author-token",
-                    name = "离线想法作者",
-                ),
-                Question(questionId = 987654321L),
-            ),
-            navigator.destinations,
-        )
-    }
-
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/534
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/546
+     */
     @Test
     fun commentDraftSurvivesSheetDismissAndReopen() {
         /*

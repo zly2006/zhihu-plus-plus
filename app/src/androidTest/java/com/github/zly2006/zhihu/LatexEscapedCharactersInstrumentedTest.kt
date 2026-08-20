@@ -55,6 +55,10 @@ class LatexEscapedCharactersInstrumentedTest {
     @get:Rule
     val composeRule = createAndroidComposeRule<MainActivity>()
 
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/484
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/559
+     */
     @Test
     fun rendersCommonEscapedCharactersAndSpacingCommands() {
         val samples = listOf(
@@ -122,6 +126,10 @@ class LatexEscapedCharactersInstrumentedTest {
         )
     }
 
+    /**
+     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/532
+     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/563
+     */
     @Test
     fun rendersAdjacentUnbracedScriptsAsSeparateTerms() {
         val latex = "a_ib_jx^{i+j}"

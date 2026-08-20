@@ -116,13 +116,6 @@ fun SemanticsNodeInteraction.performVerticalSwipeCycle() {
     performTouchInput { swipeDown() }
 }
 
-fun MainActivityComposeRule.pressSystemBack() {
-    activityRule.scenario.onActivity {
-        it.onBackPressedDispatcher.onBackPressed()
-    }
-    waitForIdle()
-}
-
 fun SemanticsNodeInteraction.performHorizontalSwipeCycle() {
     performTouchInput { swipeLeft() }
     performTouchInput { swipeRight() }

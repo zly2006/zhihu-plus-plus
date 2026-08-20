@@ -71,6 +71,10 @@ class AnswerVerticalOverscrollInstrumentedTest {
         composeRule.resetAppPreferences()
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/213
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/316
+     */
     @Test
     fun bottomOverscrollSwipeUpTriggersNextAnswerNavigation() {
         val nextNavigationCount = AtomicInteger(0)
@@ -118,6 +122,10 @@ class AnswerVerticalOverscrollInstrumentedTest {
         assertTrue(latestOverscrollOffset.get() < 0f)
     }
 
+    /**
+     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/550
+     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/552
+     */
     @Test
     fun playerOverlayTracksOverscrollAndReturnsAfterSubthresholdPull() {
         val nextNavigationCount = AtomicInteger(0)
